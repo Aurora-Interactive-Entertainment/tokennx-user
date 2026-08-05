@@ -1,0 +1,6 @@
+{
+    "workbench.externalBrowser": "chrome",
+    "i18n-ally.localesPaths": [
+        "src/i18n"
+    ]
+}
