@@ -1,0 +1,175 @@
+import { fetchAuthenticatedJson } from './authenticated'
+import { ApiError, isApiError } from './http'
+import type { ApiTimeValue } from '@/utils/format'
+import i18n from '@/i18n'
+
+const PROFILE_PATH = '/api/user/profile'
+
+export const PROFILE_DISPLAY_NAME_MAX_LENGTH = 20
+export const PROFILE_PHONE_LENGTH = 11
+export const PROFILE_EMAIL_MAX_LENGTH = 254
+export const PROFILE_VERIFICATION_CODE_LENGTH = 6
+export const PROFILE_DEFAULT_RETRY_SECONDS = 60
+
+export const PROFILE_NOTIFICATION_CODES = [
+  'low_balance',
+  'invitations',
+  'product_updates',
+] as const
+
+export type ContactProvider = 'phone' | 'email'
+export type ContactPurpose = 'current' | 'new'
+export type NotificationPreferenceCode = typeof PROFILE_NOTIFICATION_CODES[number]
+
+export interface ProfileContact {
+  bound: boolean
+  masked_identifier: string
+}
+
+export interface UserProfile {
+  id: string
+  display_name: string
+  avatar_url: string
+  locale: string
+  timezone: string
+  status: string
+  version: number
+  phone: ProfileContact
+  email: ProfileContact
+}
+
+export interface ProfileContactCodeRequest {
+  provider_code: ContactProvider
+  purpose: ContactPurpose
+  destination: string
+  locale?: string
+}
+
+export interface ProfileContactCodeResult {
+  destination_masked: string
+  expires_at: ApiTimeValue
+  retry_after_seconds: number
+}
+
+export interface UpdateProfileContactRequest {
+  current_destination?: string
+  current_code?: string
+  new_destination: string
+  new_code: string
+}
+
+export interface EnterpriseMembership {
+  id: string
+  enterprise_id: string
+  enterprise_name: string
+  enterprise_code: string
+  member_status: 'active' | 'suspended' | string
+  join_source: string
+  roles: string[]
+  owner: boolean
+  joined_at: ApiTimeValue
+  exited_at?: ApiTimeValue | null
+  version: number
+}
+
+export interface NotificationPreference {
+  code: NotificationPreferenceCode | string
+  enabled: boolean
+  default_enabled: boolean
+  version: number
+}
+
+export interface NotificationPreferences {
+  items: NotificationPreference[]
+}
+
+const PHONE_PATTERN = /^1[3-9][0-9]{9}$/
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+export function limitDisplayNameLength(value: string): string {
+  return Array.from(value).slice(0, PROFILE_DISPLAY_NAME_MAX_LENGTH).join('')
+}
+
+export function isValidDisplayName(value: string): boolean {
+  const displayName = value.trim()
+  return displayName.length > 0 && Array.from(displayName).length <= PROFILE_DISPLAY_NAME_MAX_LENGTH
+}
+
+export function isValidContactDestination(provider: ContactProvider, value: string): boolean {
+  const destination = value.trim()
+  if (provider === 'phone') return destination.length === PROFILE_PHONE_LENGTH && PHONE_PATTERN.test(destination)
+  return destination.length <= PROFILE_EMAIL_MAX_LENGTH && EMAIL_PATTERN.test(destination)
+}
+
+export function isValidVerificationCode(value: string): boolean {
+  return new RegExp(`^[0-9]{${PROFILE_VERIFICATION_CODE_LENGTH}}$`).test(value.trim())
+}
+
+export function isNotificationPreferenceCode(value: string): value is NotificationPreferenceCode {
+  return (PROFILE_NOTIFICATION_CODES as readonly string[]).includes(value)
+}
+
+export function getProfileErrorMessage(error: unknown): string {
+	if (!isApiError(error)) return i18n.t('api.profile.requestFailed')
+	const messageKeys: Record<number, string> = {
+		100001: 'api.profile.invalidInput',
+		100004: 'api.profile.missing',
+		100006: 'api.profile.stateChanged',
+		100007: 'api.profile.authUnavailable',
+		110001: 'api.profile.sessionExpired',
+		110003: 'api.profile.contactAlreadyBound',
+		110004: 'api.profile.codeTooFrequent',
+		110005: 'api.profile.contactUnbound',
+		110006: 'api.profile.contactVerificationFailed',
+		100008: 'api.profile.contactUnchanged',
+	}
+	return messageKeys[error.code] ? i18n.t(messageKeys[error.code]) : error.message
+}
+
+export function getUserProfile(accessToken: string): Promise<UserProfile> {
+  return fetchAuthenticatedJson<UserProfile>(PROFILE_PATH, { accessToken })
+}
+
+export function updateProfileNickname(accessToken: string, displayName: string): Promise<UserProfile> {
+  const normalizedName = displayName.trim()
+  if (!isValidDisplayName(normalizedName)) {
+    return Promise.reject(new ApiError(i18n.t('api.profile.invalidNickname'), 400, 100001, null))
+  }
+  return fetchAuthenticatedJson<UserProfile>(`${PROFILE_PATH}/nickname`, {
+    method: 'PUT',
+    body: { display_name: normalizedName },
+    accessToken,
+  })
+}
+
+export function sendProfileContactCode(accessToken: string, request: ProfileContactCodeRequest): Promise<ProfileContactCodeResult> {
+  return fetchAuthenticatedJson<ProfileContactCodeResult>(`${PROFILE_PATH}/contact/code`, {
+    method: 'POST',
+    body: request,
+    accessToken,
+  })
+}
+
+export function updateProfileContact(accessToken: string, provider: ContactProvider, request: UpdateProfileContactRequest): Promise<UserProfile> {
+  return fetchAuthenticatedJson<UserProfile>(`${PROFILE_PATH}/${provider}`, {
+    method: 'PUT',
+    body: request,
+    accessToken,
+  })
+}
+
+export function getProfileEnterprises(accessToken: string): Promise<EnterpriseMembership[]> {
+  return fetchAuthenticatedJson<EnterpriseMembership[]>(`${PROFILE_PATH}/enterprises`, { accessToken })
+}
+
+export function getNotificationPreferences(accessToken: string): Promise<NotificationPreferences> {
+  return fetchAuthenticatedJson<NotificationPreferences>(`${PROFILE_PATH}/notification-preferences`, { accessToken })
+}
+
+export function updateNotificationPreferences(accessToken: string, values: Partial<Record<NotificationPreferenceCode, boolean>>): Promise<NotificationPreferences> {
+  return fetchAuthenticatedJson<NotificationPreferences>(`${PROFILE_PATH}/notification-preferences`, {
+    method: 'PUT',
+    body: { values },
+    accessToken,
+  })
+}

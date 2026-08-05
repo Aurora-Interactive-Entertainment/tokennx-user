@@ -1,0 +1,610 @@
+import { render, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { MemoryRouter, useLocation } from 'react-router'
+import { Provider } from 'react-redux'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { limitDisplayNameLength } from '@/api/profile'
+import { getEnterpriseContext, type EnterpriseContext } from '@/api/enterprise-console'
+import { AppStoreProvider } from '@/data/app-state'
+import { createAppStore } from '@/store'
+import { clearAuthTokens, saveAuthTokens } from '@/auth/token-storage'
+import { activeNavKey, ConsoleLayout, consoleNavGroupsFor, DEFAULT_CONSOLE_PATH, isEnterpriseOwner, isEnterprisePermissionPath, LoginPanel, localizeConsoleLabel, normalizeLoginReturnPath, PublicHeader, PUBLIC_LINKS } from './common'
+import { NEW_ENTERPRISE_CREATE_PATH } from '@/api/enterprise-certification'
+import i18n from '@/i18n'
+
+vi.mock('@/api/enterprise-console', async () => {
+  const actual = await vi.importActual<typeof import('@/api/enterprise-console')>('@/api/enterprise-console')
+  return { ...actual, getEnterpriseContext: vi.fn() }
+})
+
+const getEnterpriseContextMock = vi.mocked(getEnterpriseContext)
+
+// 中文：测试默认返回完整企业上下文，避免权限 mock 逃逸为不完整对象。
+const DEFAULT_ENTERPRISE_CONTEXT: EnterpriseContext = {
+  id: 'test-enterprise',
+  name: '测试企业',
+  code: 'TEST-001',
+  member_id: 'test-member',
+  role: 'member',
+  roles: ['member'],
+  permissions: [],
+  capabilities: {
+    can_manage_members: false,
+    can_manage_roles: false,
+    can_manage_tags: false,
+    can_manage_models: false,
+    can_manage_usage: false,
+    can_view_models: false,
+    can_view_usage: false,
+    can_view_audit: false,
+    can_view_analytics: false,
+  },
+}
+
+function LocationProbe() {
+  const location = useLocation()
+  return <output data-testid="common-location">{location.pathname}{location.search}</output>
+}
+
+beforeEach(() => {
+  clearAuthTokens()
+  vi.clearAllMocks()
+  getEnterpriseContextMock.mockResolvedValue(DEFAULT_ENTERPRISE_CONTEXT)
+})
+afterEach(() => {
+  vi.restoreAllMocks()
+  clearAuthTokens()
+})
+
+describe('控制台导航路径匹配', () => {
+  it('优先匹配最长路径并避免把控制台根路径误判为子页面', () => {
+    expect(activeNavKey('/console/quickstart')).toBe('/console/quickstart')
+    expect(activeNavKey('/console/models/deepseek-chat')).toBe('/console/models')
+    expect(activeNavKey('/console/enterprise-records/detail')).toBe('/console/enterprise-records')
+    expect(activeNavKey('/console/real-name')).toBe('/console/real-name')
+    expect(activeNavKey('/console/enterprise-create')).toBe('/console/enterprise-create')
+    expect(activeNavKey('/console/video')).toBe('/console/video')
+    expect(activeNavKey('/console/invitations')).toBe('')
+    expect(activeNavKey('/console')).toBe('')
+  })
+
+  it('展示侧栏入口、个人空间标识和全局客服入口', () => {
+    render(
+      <MemoryRouter initialEntries={['/console/quickstart']}>
+        <Provider store={createAppStore()}>
+          <AppStoreProvider>
+            <ConsoleLayout><span>页面内容</span></ConsoleLayout>
+          </AppStoreProvider>
+        </Provider>
+      </MemoryRouter>,
+    )
+
+    const navigation = screen.getByRole('navigation', { name: '控制台导航' })
+    expect(navigation).toHaveTextContent('实名认证')
+    expect(navigation).toHaveTextContent('调用记录')
+    expect(navigation).not.toHaveTextContent('使用日志')
+    expect(navigation).not.toHaveTextContent('企业管理')
+    expect(navigation).toHaveTextContent('视频生成')
+    expect(navigation).not.toHaveTextContent('邀请返现')
+    expect(navigation).not.toHaveTextContent('认证送现金')
+    expect(navigation).not.toHaveTextContent('文档中心')
+    expect(navigation).not.toHaveTextContent('联系我们')
+    expect(navigation).not.toHaveTextContent('在线客服')
+    expect(screen.getByRole('link', { name: '实名认证' })).toHaveAttribute('href', '/console/real-name')
+    expect(screen.getByRole('link', { name: '视频生成' })).toHaveAttribute('href', '/console/video')
+    expect(screen.queryByRole('button', { name: /认证送现金/ })).toBeNull()
+    expect(screen.getByRole('status', { name: '当前空间' })).toHaveTextContent('个人空间')
+    expect(screen.getByRole('button', { name: '打开客服' })).toBeInTheDocument()
+    expect(navigation.closest('.console-sidebar')).not.toHaveTextContent('han')
+    expect(navigation.querySelectorAll('.console-nav-link .console-nav-icon')).toHaveLength(navigation.querySelectorAll('.console-nav-link').length)
+  })
+
+  it('Header 消息图标打开全局客服并默认切换到通知栏目', async () => {
+    const user = userEvent.setup()
+    render(
+      <MemoryRouter initialEntries={['/console/records']}>
+        <Provider store={createAppStore()}>
+          <AppStoreProvider><ConsoleLayout><span>页面内容</span></ConsoleLayout></AppStoreProvider>
+        </Provider>
+      </MemoryRouter>,
+    )
+
+    await user.click(screen.getByRole('button', { name: '查看通知' }))
+    const supportDialog = await screen.findByRole('dialog', { name: '联系客服' })
+    expect(within(supportDialog).getByRole('tab', { name: /通知/ })).toHaveAttribute('aria-selected', 'true')
+    expect(within(supportDialog).getByRole('tabpanel', { name: '通知' })).toBeInTheDocument()
+  })
+
+  it('企业空间只展示企业名并为完整名称保留悬浮提示', () => {
+    const previousSnapshot = window.localStorage.getItem('token-nx:user-front:v1')
+    const enterpriseName = '华东智能模型服务与研发企业空间'
+    window.localStorage.setItem('token-nx:user-front:v1', JSON.stringify({
+      nickname: 'han',
+      activeWorkspaceId: 'ent-long',
+      workspaces: [{ id: 'ent-long', name: enterpriseName, type: 'enterprise', role: 'owner' }],
+    }))
+
+    try {
+      render(
+        <MemoryRouter initialEntries={['/console/quickstart']}>
+          <Provider store={createAppStore()}>
+            <AppStoreProvider><ConsoleLayout><span>页面内容</span></ConsoleLayout></AppStoreProvider>
+          </Provider>
+        </MemoryRouter>,
+      )
+
+      const workspaceDisplay = screen.getByRole('status', { name: '当前空间' })
+      expect(workspaceDisplay).toHaveAttribute('title', enterpriseName)
+      expect(workspaceDisplay.querySelector('strong')).toHaveAttribute('title', enterpriseName)
+      expect(workspaceDisplay.querySelector('strong')).toHaveTextContent(enterpriseName)
+      expect(workspaceDisplay).not.toHaveTextContent('企业空间 · 所有者')
+    } finally {
+      if (previousSnapshot === null) {
+        window.localStorage.removeItem('token-nx:user-front:v1')
+      } else {
+        window.localStorage.setItem('token-nx:user-front:v1', previousSnapshot)
+      }
+    }
+  })
+
+  it('企业治理入口位于企业设置末尾并保持企业管理顺序', () => {
+    const previousSnapshot = window.localStorage.getItem('token-nx:user-front:v1')
+    window.localStorage.setItem('token-nx:user-front:v1', JSON.stringify({
+      activeWorkspaceId: 'ent-nav',
+      workspaces: [{ id: 'ent-nav', name: '测试企业', type: 'enterprise', role: 'owner' }],
+    }))
+
+    try {
+      render(
+        <MemoryRouter initialEntries={['/console/enterprise-governance']}>
+          <Provider store={createAppStore()}>
+            <AppStoreProvider><ConsoleLayout><span>页面内容</span></ConsoleLayout></AppStoreProvider>
+          </Provider>
+        </MemoryRouter>,
+      )
+
+      const navigation = screen.getByRole('navigation', { name: '控制台导航' })
+      const sections = Array.from(navigation.querySelectorAll('.console-nav-section'))
+      const management = sections.find((section) => section.querySelector('.console-nav-section-title')?.textContent === '企业管理')
+      const settings = sections.find((section) => section.querySelector('.console-nav-section-title')?.textContent === '企业设置')
+      expect(management).not.toBeUndefined()
+      expect(settings).not.toBeUndefined()
+      expect(within(management as HTMLElement).getAllByRole('link').map((link) => link.textContent)).toEqual(['人员管理', '用量管理', '操作日志', '数据分析', '费用管理'])
+      expect(within(management as HTMLElement).queryByRole('link', { name: '权限与标签' })).toBeNull()
+      expect(within(settings as HTMLElement).getAllByRole('link').map((link) => link.textContent)).toEqual(['通用设置', '模型管理', '权限与标签'])
+    } finally {
+      if (previousSnapshot === null) {
+        window.localStorage.removeItem('token-nx:user-front:v1')
+      } else {
+        window.localStorage.setItem('token-nx:user-front:v1', previousSnapshot)
+      }
+    }
+  })
+
+  it('企业成员只展示个人使用入口，并从用户菜单同步隐藏企业所有者入口', async () => {
+    const previousSnapshot = window.localStorage.getItem('token-nx:user-front:v1')
+    window.localStorage.setItem('token-nx:user-front:v1', JSON.stringify({
+      activeWorkspaceId: 'ent-member',
+      workspaces: [{ id: 'ent-member', name: '成员企业', type: 'enterprise', role: 'member' }],
+    }))
+
+    try {
+      const appStore = createAppStore()
+      appStore.dispatch({ type: 'auth/loginWithEmail/fulfilled', payload: { id: 'user-member', display_name: '企业成员', avatar_url: '', locale: 'zh-CN', timezone: 'Asia/Shanghai', status: 'active' } })
+      render(
+        <MemoryRouter initialEntries={['/console/quickstart']}>
+          <Provider store={appStore}>
+            <AppStoreProvider><ConsoleLayout><span>页面内容</span></ConsoleLayout></AppStoreProvider>
+          </Provider>
+        </MemoryRouter>,
+      )
+
+      const navigation = screen.getByRole('navigation', { name: '控制台导航' })
+      expect(navigation).toHaveTextContent('快速接入')
+      expect(navigation).toHaveTextContent('模型广场')
+      expect(navigation).toHaveTextContent('智能对话')
+      expect(navigation).toHaveTextContent('视频生成')
+      expect(navigation).toHaveTextContent('用量统计')
+      expect(navigation).toHaveTextContent('调用记录')
+      expect(navigation).toHaveTextContent('账号信息')
+      expect(navigation).toHaveTextContent('API 密钥管理')
+      for (const label of ['企业管理', '人员管理', '用量管理', '操作日志', '数据分析', '企业设置', '通用设置', '模型管理', '权限与标签', '费用管理']) {
+        expect(navigation).not.toHaveTextContent(label)
+      }
+
+      await userEvent.setup().click(screen.getByRole('button', { name: '打开用户菜单' }))
+      const menu = screen.getByRole('menu', { name: '用户菜单' })
+      expect(menu).toHaveTextContent('快速接入')
+      expect(menu).toHaveTextContent('API 密钥管理')
+      expect(menu).not.toHaveTextContent('企业管理')
+      expect(menu).not.toHaveTextContent('费用管理')
+    } finally {
+      if (previousSnapshot === null) {
+        window.localStorage.removeItem('token-nx:user-front:v1')
+      } else {
+        window.localStorage.setItem('token-nx:user-front:v1', previousSnapshot)
+      }
+    }
+  })
+
+  it('企业导航过滤器按角色组权限显示对应菜单并把费用归入企业管理', () => {
+    expect(isEnterpriseOwner({ type: 'enterprise', role: 'owner' })).toBe(true)
+    expect(isEnterpriseOwner({ type: 'enterprise', role: 'member' })).toBe(false)
+    expect(isEnterpriseOwner({ type: 'personal', role: 'owner' })).toBe(false)
+    expect(consoleNavGroupsFor({ type: 'enterprise', role: 'member' }).flatMap((group) => group.items).map((item) => item.label)).toEqual(['快速接入', '模型广场', '智能对话', '视频生成', '用量统计', '调用记录', '账号信息', 'API 密钥管理'])
+    expect(consoleNavGroupsFor({ type: 'enterprise', role: 'member' }, ['usage.detail']).flatMap((group) => group.items).map((item) => item.label)).toContain('用量管理')
+    expect(consoleNavGroupsFor({ type: 'enterprise', role: 'member' }, ['billing.view']).flatMap((group) => group.items).map((item) => item.label)).toContain('费用管理')
+    expect(consoleNavGroupsFor({ type: 'enterprise', role: 'member' }, ['billing.view']).find((group) => group.key === 'enterprise-management')?.items.map((item) => item.label)).toContain('费用管理')
+    expect(consoleNavGroupsFor({ type: 'enterprise', role: 'member' }, ['billing.view']).find((group) => group.key === 'account')?.items.map((item) => item.label)).not.toContain('费用管理')
+    expect(consoleNavGroupsFor({ type: 'enterprise', role: 'member' }, ['tags.edit']).flatMap((group) => group.items).map((item) => item.label)).toContain('权限与标签')
+    expect(consoleNavGroupsFor({ type: 'enterprise', role: 'owner' }).flatMap((group) => group.items).map((item) => item.label)).toContain('费用管理')
+    expect(isEnterprisePermissionPath('/console/enterprise-settings')).toBe(true)
+    expect(isEnterprisePermissionPath('/console/enterprise-records/detail')).toBe(true)
+    expect(isEnterprisePermissionPath('/console/usage')).toBe(false)
+  })
+
+  it('企业成员直接打开所有者入口时回到快速接入', async () => {
+    const previousSnapshot = window.localStorage.getItem('token-nx:user-front:v1')
+    window.localStorage.setItem('token-nx:user-front:v1', JSON.stringify({
+      activeWorkspaceId: 'ent-member-direct',
+      workspaces: [{ id: 'ent-member-direct', name: '成员企业', type: 'enterprise', role: 'member' }],
+    }))
+
+    try {
+      render(
+        <MemoryRouter initialEntries={['/console/enterprise-usage']}>
+          <Provider store={createAppStore()}>
+            <AppStoreProvider><LocationProbe /><ConsoleLayout><span>页面内容</span></ConsoleLayout></AppStoreProvider>
+          </Provider>
+        </MemoryRouter>,
+      )
+
+      await waitFor(() => expect(screen.getByTestId('common-location')).toHaveTextContent('/console/quickstart'))
+      expect(screen.getByRole('navigation', { name: '控制台导航' })).not.toHaveTextContent('企业管理')
+    } finally {
+      if (previousSnapshot === null) {
+        window.localStorage.removeItem('token-nx:user-front:v1')
+      } else {
+        window.localStorage.setItem('token-nx:user-front:v1', previousSnapshot)
+      }
+    }
+  })
+
+  it('企业成员加载角色组权限后只展示对应企业菜单并允许受控路由', async () => {
+    const previousSnapshot = window.localStorage.getItem('token-nx:user-front:v1')
+    window.localStorage.setItem('token-nx:user-front:v1', JSON.stringify({
+      activeWorkspaceId: 'ent-usage-role',
+      workspaces: [{ id: 'ent-usage-role', name: '用量企业', type: 'enterprise', role: 'usage_manager' }],
+    }))
+    saveAuthTokens({ status: 'succeeded', binding_required: false, access_token: 'enterprise-access-token', refresh_token: 'enterprise-refresh-token', refresh_expires_at: Date.UTC(2099, 0, 1) })
+    getEnterpriseContextMock.mockResolvedValue({ ...DEFAULT_ENTERPRISE_CONTEXT, permissions: ['usage.detail'] })
+
+    try {
+      render(
+        <MemoryRouter initialEntries={['/console/enterprise-usage']}>
+          <Provider store={createAppStore()}>
+            <AppStoreProvider><LocationProbe /><ConsoleLayout><span>页面内容</span></ConsoleLayout></AppStoreProvider>
+          </Provider>
+        </MemoryRouter>,
+      )
+
+      await waitFor(() => expect(screen.getByRole('navigation', { name: '控制台导航' })).toHaveTextContent('用量管理'))
+      const navigation = screen.getByRole('navigation', { name: '控制台导航' })
+      expect(navigation).not.toHaveTextContent('人员管理')
+      expect(navigation).not.toHaveTextContent('费用管理')
+      expect(screen.getByTestId('common-location')).toHaveTextContent('/console/enterprise-usage')
+    } finally {
+      if (previousSnapshot === null) {
+        window.localStorage.removeItem('token-nx:user-front:v1')
+      } else {
+        window.localStorage.setItem('token-nx:user-front:v1', previousSnapshot)
+      }
+    }
+  })
+})
+
+describe('公共 Header 布局', () => {
+  it('公共导航不再暴露已移除的信号首页', () => {
+    expect(PUBLIC_LINKS.some((link) => link.path === '/signal')).toBe(false)
+    expect(PUBLIC_LINKS.some((link) => link.labelKey === 'nav.signalHome')).toBe(false)
+  })
+
+  it('非首页路由也使用首页 Header 布局', () => {
+    render(
+      <MemoryRouter initialEntries={['/models']}>
+        <Provider store={createAppStore()}>
+          <AppStoreProvider><PublicHeader /></AppStoreProvider>
+        </Provider>
+      </MemoryRouter>,
+    )
+
+    expect(document.querySelector('.public-header')).toHaveClass('public-header--home')
+  })
+
+  it('公开 Header 仅保留模型入口可点击，桌面和移动导航都禁用其余四项', async () => {
+    const user = userEvent.setup()
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <Provider store={createAppStore()}>
+          <AppStoreProvider><PublicHeader /></AppStoreProvider>
+        </Provider>
+      </MemoryRouter>,
+    )
+
+    const desktopNav = screen.getByRole('navigation', { name: '公开导航' })
+    expect(within(desktopNav).getByRole('link', { name: '模型' })).toHaveAttribute('href', '/models')
+    for (const label of ['私有化', '排名', '应用', '文档']) {
+      expect(within(desktopNav).queryByRole('link', { name: label })).toBeNull()
+      expect(within(desktopNav).getByText(label)).toHaveAttribute('aria-disabled', 'true')
+    }
+
+    await user.click(screen.getByRole('button', { name: '打开公开导航' }))
+    const mobileNav = document.querySelector('.public-mobile-nav')
+    expect(mobileNav).not.toBeNull()
+    expect(within(mobileNav as HTMLElement).getByRole('link', { name: '模型' })).toHaveAttribute('href', '/models')
+    for (const label of ['私有化', '排名', '应用', '文档']) {
+      expect(within(mobileNav as HTMLElement).queryByRole('link', { name: label })).toBeNull()
+      expect(within(mobileNav as HTMLElement).getByText(label)).toHaveAttribute('aria-disabled', 'true')
+    }
+  })
+
+  it('Header 和用户菜单统一限制昵称展示长度', async () => {
+    const user = userEvent.setup()
+    const appStore = createAppStore()
+    const longName = '超长昵称'.repeat(8)
+    appStore.dispatch({ type: 'auth/loginWithEmail/fulfilled', payload: { id: 'user-1', display_name: longName, avatar_url: '', locale: 'zh-CN', timezone: 'Asia/Shanghai', status: 'active' } })
+
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <Provider store={appStore}>
+          <AppStoreProvider><ConsoleLayout><span>页面内容</span></ConsoleLayout></AppStoreProvider>
+        </Provider>
+      </MemoryRouter>,
+    )
+
+    const expectedName = limitDisplayNameLength(longName)
+    expect(screen.getByRole('button', { name: '打开用户菜单' })).toHaveTextContent(expectedName)
+    expect(screen.getByRole('button', { name: '打开用户菜单' })).not.toHaveTextContent(longName)
+    expect(screen.getByRole('status', { name: '当前空间' })).toHaveTextContent('个人空间')
+    await user.click(screen.getByRole('button', { name: '打开用户菜单' }))
+    const menu = screen.getByRole('menu', { name: '用户菜单' })
+    expect(menu).toHaveTextContent(expectedName)
+    expect(menu).not.toHaveTextContent(longName)
+  })
+})
+
+describe('控制台模型展示本地化', () => {
+  it('模型可用时间窗口使用当前语言资源', async () => {
+    const previousLanguage = i18n.language
+    await i18n.changeLanguage('en-US')
+    try {
+      expect(localizeConsoleLabel(i18n.t, '近 24 小时')).toBe('Last 24 hours')
+    } finally {
+      await i18n.changeLanguage(previousLanguage)
+    }
+  })
+})
+
+describe('登录验证码按钮', () => {
+  it('发送验证码后立即显示加载并阻止重复请求', async () => {
+    const user = userEvent.setup()
+    let resolveRequest!: (response: Response) => void
+    const pendingResponse = new Promise<Response>((resolve) => { resolveRequest = resolve })
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockReturnValue(pendingResponse)
+
+    render(
+      <MemoryRouter initialEntries={['/login']}>
+        <Provider store={createAppStore()}>
+          <AppStoreProvider><LoginPanel onSuccess={vi.fn()} /></AppStoreProvider>
+        </Provider>
+      </MemoryRouter>,
+    )
+
+    await user.type(screen.getByLabelText('邮箱'), 'user@example.com')
+    const sendButton = screen.getByRole('button', { name: '获取验证码' })
+    await user.click(sendButton)
+
+    await waitFor(() => {
+      expect(sendButton).toBeDisabled()
+      expect(sendButton).toHaveAttribute('aria-busy', 'true')
+      expect(sendButton).toHaveTextContent('发送中...')
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+
+    await user.click(sendButton)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+
+    resolveRequest(new Response(JSON.stringify({ code: 0, msg: 'success', data: { destination_masked: 'u***@example.com', expires_at: '2099-01-01T00:05:00Z', retry_after_seconds: 60 } }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
+    await waitFor(() => expect(screen.getByRole('button', { name: '60s 后重试' })).toBeDisabled())
+  })
+})
+
+describe('已登录用户菜单', () => {
+  it('显示参考站的账号信息、分组入口和退出登录', async () => {
+    const user = userEvent.setup()
+    const appStore = createAppStore()
+    appStore.dispatch({ type: 'auth/loginWithEmail/fulfilled', payload: { id: 'user-1', display_name: '测试用户', avatar_url: '', locale: 'zh-CN', timezone: 'Asia/Shanghai', status: 'active' } })
+
+    render(
+      <MemoryRouter initialEntries={['/console/quickstart']}>
+        <Provider store={appStore}>
+          <AppStoreProvider><PublicHeader /></AppStoreProvider>
+        </Provider>
+      </MemoryRouter>,
+    )
+
+    await user.click(screen.getByRole('button', { name: '打开用户菜单' }))
+    const menu = screen.getByRole('menu', { name: '用户菜单' })
+    expect(menu).toHaveTextContent('测试用户')
+    expect(menu).toHaveTextContent('137****7000')
+    expect(menu).toHaveTextContent('当前空间 · 测试用户')
+    expect(menu).toHaveTextContent('切换空间')
+    expect(menu).toHaveTextContent('快速接入')
+    expect(menu).toHaveTextContent('智能对话')
+    expect(menu).toHaveTextContent('视频生成')
+    expect(menu).toHaveTextContent('调用记录')
+    expect(menu).not.toHaveTextContent('使用日志')
+    expect(menu).toHaveTextContent('费用管理')
+    expect(menu).toHaveTextContent('API 密钥管理')
+    expect(menu).not.toHaveTextContent('邀请返现')
+    expect(menu).not.toHaveTextContent('认证送现金')
+    expect(menu).not.toHaveTextContent('文档中心')
+    expect(menu).not.toHaveTextContent('联系我们')
+    expect(menu).toHaveTextContent('退出登录')
+  })
+
+  it('登录没有指定返回地址时进入快速接入而不是总览', () => {
+    expect(normalizeLoginReturnPath(undefined)).toBe(DEFAULT_CONSOLE_PATH)
+    expect(normalizeLoginReturnPath(null)).toBe(DEFAULT_CONSOLE_PATH)
+  })
+
+  it('无企业时只显示当前用户和创建企业，并将选择菜单放到用户菜单左侧', async () => {
+    const user = userEvent.setup()
+    const appStore = createAppStore()
+    saveAuthTokens({ status: 'succeeded', binding_required: false, access_token: 'workspace-access-token', refresh_token: 'workspace-refresh-token', refresh_expires_at: Date.UTC(2099, 0, 1) })
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ code: 0, msg: 'success', data: [] }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
+    appStore.dispatch({ type: 'auth/loginWithEmail/fulfilled', payload: { id: 'user-1', display_name: '测试用户', avatar_url: '', locale: 'zh-CN', timezone: 'Asia/Shanghai', status: 'active' } })
+
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <Provider store={appStore}>
+          <AppStoreProvider><ConsoleLayout><><LocationProbe /><span>页面内容</span></></ConsoleLayout></AppStoreProvider>
+        </Provider>
+      </MemoryRouter>,
+    )
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+    await user.click(screen.getByRole('button', { name: '打开用户菜单' }))
+    await user.click(screen.getByRole('menuitem', { name: '切换空间' }))
+    const workspaceMenu = screen.getByRole('menu', { name: '切换空间' })
+    expect(workspaceMenu).toBeVisible()
+    expect(workspaceMenu.parentElement).toBe(document.body)
+    expect(workspaceMenu.style.top).not.toBe('')
+    expect(workspaceMenu).toHaveTextContent('测试用户')
+    expect(workspaceMenu).not.toHaveTextContent('NX Labs')
+    expect(workspaceMenu).not.toHaveTextContent('云启科技')
+    expect(workspaceMenu).toHaveTextContent('创建企业')
+    expect(screen.getByRole('link', { name: '企业入驻' })).toHaveAttribute('href', NEW_ENTERPRISE_CREATE_PATH)
+
+    await user.click(screen.getByRole('menuitem', { name: /创建企业/ }))
+    await waitFor(() => expect(screen.getByTestId('common-location')).toHaveTextContent(NEW_ENTERPRISE_CREATE_PATH))
+  })
+
+  it('使用个人中心返回的企业关系并在选中后同步侧栏顶部', async () => {
+    const user = userEvent.setup()
+    const appStore = createAppStore()
+    saveAuthTokens({ status: 'succeeded', binding_required: false, access_token: 'workspace-access-token', refresh_token: 'workspace-refresh-token', refresh_expires_at: Date.UTC(2099, 0, 1) })
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({
+      code: 0,
+      msg: 'success',
+      data: [{
+        id: 'membership-real',
+        enterprise_id: 'enterprise-real',
+        enterprise_name: '真实关联企业',
+        enterprise_code: 'REAL-001',
+        member_status: 'active',
+        join_source: 'invite',
+        roles: ['administrator'],
+        owner: false,
+        joined_at: '2026-07-24T08:00:00Z',
+        version: 1,
+      }],
+    }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
+    appStore.dispatch({ type: 'auth/loginWithEmail/fulfilled', payload: { id: 'user-1', display_name: '测试用户', avatar_url: '', locale: 'zh-CN', timezone: 'Asia/Shanghai', status: 'active' } })
+
+    render(
+      <MemoryRouter initialEntries={['/console/quickstart']}>
+        <Provider store={appStore}>
+          <AppStoreProvider><ConsoleLayout><span>页面内容</span></ConsoleLayout></AppStoreProvider>
+        </Provider>
+      </MemoryRouter>,
+    )
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+    expect(screen.getByRole('status', { name: '当前空间' })).toHaveTextContent('个人空间')
+    await user.click(screen.getByRole('button', { name: '打开用户菜单' }))
+    await user.click(screen.getByRole('menuitem', { name: '切换空间' }))
+    const workspaceMenu = screen.getByRole('menu', { name: '切换空间' })
+    expect(workspaceMenu).toHaveTextContent('真实关联企业')
+    expect(workspaceMenu).not.toHaveTextContent('NX Labs')
+    expect(workspaceMenu).not.toHaveTextContent('云启科技')
+
+    await user.click(screen.getByRole('menuitem', { name: /真实关联企业/ }))
+    expect(appStore.getState()).toBeDefined()
+    expect(screen.getByRole('menu', { name: '用户菜单' })).toHaveTextContent('当前空间 · 真实关联企业')
+    expect(screen.getByRole('menu', { name: '用户菜单' })).not.toHaveTextContent('人员管理')
+    expect(screen.getByRole('status', { name: '当前空间' })).toHaveTextContent('真实关联企业')
+    const enterpriseNavigation = screen.getByRole('navigation', { name: '控制台导航' })
+    expect(enterpriseNavigation).toHaveTextContent('我的数据')
+    expect(enterpriseNavigation).toHaveTextContent('调用记录')
+    expect(enterpriseNavigation).not.toHaveTextContent('我的用量')
+  })
+
+  it('刷新后同步企业关系时保留已选择的企业空间', async () => {
+    const appStore = createAppStore()
+    saveAuthTokens({ status: 'succeeded', binding_required: false, access_token: 'workspace-access-token', refresh_token: 'workspace-refresh-token', refresh_expires_at: Date.UTC(2099, 0, 1) })
+    window.localStorage.setItem('token-nx:user-front:v1', JSON.stringify({
+      nickname: '测试用户',
+      phone: '137****7000',
+      avatar: 'H',
+      activeWorkspaceId: 'enterprise-persisted',
+      workspaces: [
+        { id: 'personal', name: '个人空间', type: 'personal', role: 'owner' },
+        { id: 'enterprise-persisted', name: '刷新后企业', type: 'enterprise', role: 'member' },
+      ],
+      apiKeys: [],
+      usageRecords: [],
+      playgroundSessions: [],
+    }))
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({
+      code: 0,
+      msg: 'success',
+      data: [{
+        id: 'membership-persisted',
+        enterprise_id: 'enterprise-persisted',
+        enterprise_name: '刷新后企业',
+        enterprise_code: 'PERSISTED-001',
+        member_status: 'active',
+        join_source: 'certification',
+        roles: ['member'],
+        owner: false,
+        joined_at: '2026-07-30T08:00:00Z',
+        version: 1,
+      }],
+    }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
+    appStore.dispatch({ type: 'auth/loginWithEmail/fulfilled', payload: { id: 'user-1', display_name: '测试用户', avatar_url: '', locale: 'zh-CN', timezone: 'Asia/Shanghai', status: 'active' } })
+
+    render(
+      <MemoryRouter initialEntries={['/console/quickstart']}>
+        <Provider store={appStore}>
+          <AppStoreProvider><ConsoleLayout><span>页面内容</span></ConsoleLayout></AppStoreProvider>
+        </Provider>
+      </MemoryRouter>,
+    )
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(screen.getByRole('status', { name: '当前空间' })).toHaveTextContent('刷新后企业'))
+    await userEvent.setup().click(screen.getByRole('button', { name: '打开用户菜单' }))
+    expect(screen.getByRole('menu', { name: '用户菜单' })).toHaveTextContent('当前空间 · 刷新后企业')
+    window.localStorage.removeItem('token-nx:user-front:v1')
+  })
+
+  it('退出登录后恢复未登录 Header', async () => {
+    const user = userEvent.setup()
+    const appStore = createAppStore()
+    appStore.dispatch({ type: 'auth/loginWithEmail/fulfilled', payload: { id: 'user-1', display_name: '测试用户', avatar_url: '', locale: 'zh-CN', timezone: 'Asia/Shanghai', status: 'active' } })
+
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <Provider store={appStore}>
+          <AppStoreProvider><PublicHeader /></AppStoreProvider>
+        </Provider>
+      </MemoryRouter>,
+    )
+
+    await user.click(screen.getByRole('button', { name: '打开用户菜单' }))
+    await user.click(screen.getByRole('menuitem', { name: '退出登录' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: '登录' })).toBeInTheDocument())
+    expect(appStore.getState().auth.status).toBe('unauthenticated')
+  })
+})

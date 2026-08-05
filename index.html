@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#1a1b1d" />
+    <title>Token NX</title>
+    <script>
+      (() => {
+        // 中文：在样式和 React 加载前应用已保存的主题，避免首屏出现主题闪烁。
+        const themeStorageKey = 'token-nx:theme'
+        const root = document.documentElement
+        let mode = 'system'
+
+        try {
+          const stored = window.localStorage.getItem(themeStorageKey)
+          if (stored === 'light' || stored === 'dark' || stored === 'system') mode = stored
+        } catch {
+          // 中文：浏览器禁用存储时继续使用系统主题，不能阻塞应用启动。
+        }
+
+        let prefersLight = false
+        try {
+          prefersLight = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-color-scheme: light)').matches
+        } catch {
+          // 中文：系统主题查询失败时按暗色启动，后续主题模块仍可继续接管。
+        }
+        const theme = mode === 'system' ? (prefersLight ? 'light' : 'dark') : mode
+        root.dataset.themeMode = mode
+        root.dataset.theme = theme
+        root.style.colorScheme = theme
+      })()
+    </script>
+    <style>
+      :root {
+        color-scheme: dark light;
+        --boot-bg: #1a1b1d;
+        --boot-text: #f5f9fe;
+        --boot-muted: #9599a6;
+        --boot-line: rgba(224, 226, 242, .15);
+        --boot-accent: #65b994;
+        --boot-logo-glow: rgba(101, 185, 148, .42);
+      }
+
+      html,
+      body {
+        min-width: 320px;
+        min-height: 100%;
+        margin: 0;
+        background: var(--boot-bg);
+      }
+
+      #root {
+        position: relative;
+        min-height: 100vh;
+      }
+
+      #app-mount {
+        min-height: 100vh;
+      }
+
+      /* 中文：静态首屏只展示品牌 Logo 呼吸灯，避免 React 接管前仍出现旧的进度条。 */
+      .app-loading-shell {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        display: grid;
+        place-items: center;
+        color: var(--boot-text);
+        background: var(--boot-bg);
+        opacity: 1;
+        pointer-events: auto;
+        transition: opacity .42s cubic-bezier(.22, .8, .26, 1), visibility 0s linear .42s;
+        visibility: visible;
+      }
+
+      html.app-ready .app-loading-shell {
+        opacity: 0;
+        pointer-events: none;
+        visibility: hidden;
+      }
+
+      html.app-ready .app-loading-shell__content {
+        opacity: 0;
+        transform: translateY(-8px) scale(.98);
+      }
+
+      .app-loading-shell__content {
+        display: grid;
+        justify-items: center;
+        padding: 24px;
+        text-align: center;
+        transition: opacity .3s ease, transform .42s cubic-bezier(.22, .8, .26, 1);
+      }
+
+      .app-loading-shell__logo-shell {
+        display: grid;
+        place-items: center;
+        animation: boot-loader-logo-breathe 1.8s ease-in-out infinite;
+        transform-origin: center;
+      }
+
+      .app-loading-shell__logo-shell .app-loading-shell__logo {
+        display: block;
+        width: 178px;
+        height: 40px;
+        object-fit: cover;
+      }
+
+      @keyframes boot-loader-logo-breathe {
+        0%, 100% { opacity: .7; filter: drop-shadow(0 0 4px var(--boot-logo-glow)); transform: scale(.98); }
+        50% { opacity: 1; filter: drop-shadow(0 0 18px var(--boot-logo-glow)); transform: scale(1); }
+      }
+
+      html[data-theme="light"] {
+        --boot-bg: #f5f6f8;
+        --boot-text: #17181b;
+        --boot-muted: #686d78;
+        --boot-line: rgba(23, 24, 27, .13);
+        --boot-accent: #2f8d68;
+        --boot-logo-glow: rgba(72, 105, 181, .36);
+      }
+
+      html[data-theme="light"] .app-loading-shell__logo { filter: invert(1); }
+
+      @media (prefers-color-scheme: light) {
+        :root:not([data-theme]) {
+          --boot-bg: #f5f6f8;
+          --boot-text: #17181b;
+          --boot-muted: #686d78;
+          --boot-line: rgba(23, 24, 27, .13);
+          --boot-accent: #2f8d68;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .app-loading-shell,
+        .app-loading-shell__content {
+          transition-duration: 1ms;
+        }
+
+        .app-loading-shell__logo-shell {
+          animation: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root">
+      <div id="app-mount"></div>
+      <div id="boot-loader" class="app-loading-shell" role="status" aria-label="正在加载 Token NX">
+        <div class="app-loading-shell__content">
+          <span class="app-loading-shell__logo-shell" aria-hidden="true"><img class="app-loading-shell__logo" src="./src/token-nx-logo.png" alt="" /></span>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

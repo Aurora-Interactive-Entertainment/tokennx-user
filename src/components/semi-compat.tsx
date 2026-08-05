@@ -1,0 +1,56 @@
+import type { ComponentProps, ReactElement, ReactNode } from "react";
+import SemiCard from "@douyinfe/semi-ui/lib/es/card";
+import SemiInput from "@douyinfe/semi-ui/lib/es/input";
+import SemiSelect from "@douyinfe/semi-ui/lib/es/select";
+import SemiTextArea from "@douyinfe/semi-ui/lib/es/input/textarea";
+
+type SelectValue = string | number | Record<string, unknown>;
+
+type CompatSelectProps<T = SelectValue> = Omit<
+  ComponentProps<typeof SemiSelect>,
+  "defaultValue" | "onChange" | "value"
+> & {
+  defaultValue?: T | T[];
+  onChange?: (value: T | T[] | undefined) => void;
+  value?: T | T[];
+  block?: boolean;
+};
+
+type CompatSelectComponent = {
+  <T = SelectValue>(props: CompatSelectProps<T>): ReactElement | null;
+  Option: typeof SemiSelect.Option;
+  OptGroup: typeof SemiSelect.OptGroup;
+};
+
+const CompatSelect = (({ block, style, ...props }: CompatSelectProps) => {
+  // 兼容旧版 block 语义，同时保留调用方显式传入的其他样式。
+  const mergedStyle = block ? { ...style, width: "100%" } : style;
+  return <SemiSelect {...props} style={mergedStyle} />;
+}) as CompatSelectComponent;
+
+CompatSelect.Option = SemiSelect.Option;
+CompatSelect.OptGroup = SemiSelect.OptGroup;
+
+export { CompatSelect };
+
+type CompatCardProps = ComponentProps<typeof SemiCard> & {
+  headerExtra?: ReactNode;
+};
+
+export function CompatCard({
+  headerExtra,
+  headerExtraContent,
+  ...props
+}: CompatCardProps) {
+  // 兼容旧版 headerExtra 属性，统一交给当前版本的 headerExtraContent 渲染。
+  return (
+    <SemiCard
+      {...props}
+      headerExtraContent={headerExtraContent ?? headerExtra}
+    />
+  );
+}
+
+export const CompatInput = Object.assign(SemiInput, {
+  TextArea: SemiTextArea,
+});

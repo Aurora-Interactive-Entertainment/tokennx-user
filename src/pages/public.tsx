@@ -1,0 +1,725 @@
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import type { TFunction } from 'i18next'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
+import { Toast } from '@douyinfe/semi-ui'
+import { IconArrowRight, IconBolt } from '@douyinfe/semi-icons'
+import { LoginPanel, LoginRequiredAction, ManuscriptSupportWidget, PublicLayout, ModelLogo, normalizeLoginReturnPath } from '@/components/common'
+import { ModelPriceSummary } from '@/components/money'
+import { NEW_ENTERPRISE_CREATE_PATH } from '@/api/enterprise-certification'
+import { getPublicHomepage, getPublicHomepageAssetURL, type HomepageDiscountKind, type HomepageEntry, type HomepageTranslation, type PublicHomepage } from '@/api/homepage'
+import { filterModels, findModel, modelAlias, modelRouteKey, MODEL_CATALOG, MODALITY_LABELS, type ModelModality, type ModelPrice, type ModelRecord } from '@/data/models'
+import { QUICKSTART_API_BASE_URL, quickstartCodeSample } from '@/utils/quickstart'
+import { useTranslation } from 'react-i18next'
+import zaiPartnerLogo from '@lobehub/icons-static-svg/icons/zai-text.svg?raw'
+import qwenPartnerLogo from '@lobehub/icons-static-svg/icons/qwen-text.svg?raw'
+import doubaoPartnerLogo from '@lobehub/icons-static-svg/icons/doubao-text.svg?raw'
+import kwaikatPartnerLogo from '@lobehub/icons-static-svg/icons/kwaikat-text.svg?raw'
+import cherryStudioPartnerLogo from '@lobehub/icons-static-svg/icons/cherrystudio-text.svg?raw'
+import difyPartnerLogo from '@lobehub/icons-static-svg/icons/dify-text.svg?raw'
+import obsidianPartnerLogo from '@lobehub/icons-static-svg/icons/obsidian-text.svg?raw'
+import mastraPartnerLogo from '@lobehub/icons-static-svg/icons/mastra-text.svg?raw'
+import wenxinPartnerLogo from '@lobehub/icons-static-svg/icons/wenxin.svg?raw'
+
+function formatPublicPrice(price: ModelPrice): ReactNode {
+  return <ModelPriceSummary price={price} />
+}
+
+// 中文：公开页面的模型链接只使用面向用户的别名，旧模型 code 仅由查找逻辑兼容。
+function modelPublicHref(model: { id: string; alias?: string }): string | undefined {
+  const routeKey = modelRouteKey(model)
+  return routeKey ? `/models/${encodeURIComponent(routeKey)}` : undefined
+}
+
+const MODEL_FOOTER_LINKS = [
+  { label: 'footer.docs', path: '/docs' },
+  { label: 'footer.status', path: '/status' },
+  { label: 'footer.terms', path: '/terms' },
+  { label: 'footer.privacy', path: '/privacy' },
+]
+
+const HOME_MODEL_MOSAIC_COLUMNS = 6
+const HOME_PROMOTION_MODEL = findModel('claude-sonnet-4') ?? MODEL_CATALOG[0]
+const HOME_PROMOTION_ITEMS = [
+  { id: 'claude-opus-promo-1', model: HOME_PROMOTION_MODEL, name: 'Claude Opus 4.8', company: 'Anthropic', discountKind: 'half', input: '0.10000000', output: '0.10000000', availability: '99.82%' },
+  { id: 'claude-opus-promo-2', model: HOME_PROMOTION_MODEL, name: 'Claude Opus 4.8', company: 'Anthropic', discountKind: 'free', input: '0.10000000', output: '0.10000000', availability: '99.97%' },
+  { id: 'claude-opus-promo-3', model: HOME_PROMOTION_MODEL, name: 'Claude Opus 4.8', company: 'Anthropic', discountKind: 'half', input: '0.10000000', output: '0.10000000', availability: '99.91%' },
+] as const
+const HOME_PARTNER_NAMES = ['Z.ai', 'Qwen', 'ERNIE', '豆包大模型', 'KwaiKAT', 'Cherry Studio', 'Dify', 'Obsidian', 'mastra', 'OOMOL']
+const HOME_PARTNER_LOGOS: Record<string, string> = {
+  'Z.ai': zaiPartnerLogo,
+  Qwen: qwenPartnerLogo,
+  ERNIE: wenxinPartnerLogo,
+  豆包大模型: doubaoPartnerLogo,
+  KwaiKAT: kwaikatPartnerLogo,
+  'Cherry Studio': cherryStudioPartnerLogo,
+  Dify: difyPartnerLogo,
+  Obsidian: obsidianPartnerLogo,
+  mastra: mastraPartnerLogo,
+}
+type HomePartner = { name: string; logoMarkup?: string; logoUrl?: string; href?: string; logoKind: 'wordmark' | 'mark' | 'css' }
+const HOME_PARTNERS: HomePartner[] = HOME_PARTNER_NAMES.map((name) => ({
+  name,
+  logoMarkup: HOME_PARTNER_LOGOS[name],
+  logoKind: name === 'ERNIE' ? 'mark' : name === 'OOMOL' ? 'css' : 'wordmark',
+}))
+const PUBLIC_COMPANY_KEYS: Record<string, string> = {
+  阿里云: 'aliyun',
+  百川智能: 'baichuan',
+  零一万物: 'yi',
+  月之暗面: 'moonshot',
+  智谱AI: 'zhipu',
+  字节跳动: 'bytedance',
+  Anthropic: 'anthropic',
+  DeepSeek: 'deepseek',
+  Google: 'google',
+  Meta: 'meta',
+  Midjourney: 'midjourney',
+  'Mistral AI': 'mistral',
+  OpenAI: 'openai',
+  'Stability AI': 'stability',
+}
+const PUBLIC_CAPABILITY_KEYS: Record<string, string> = {
+  对话: 'conversation',
+  代码: 'code',
+  推理: 'reasoning',
+  分析: 'analysis',
+  视觉: 'vision',
+  音频: 'audio',
+  长文本: 'longText',
+  创作: 'creation',
+  图像生成: 'imageGeneration',
+  风格化: 'stylization',
+  视频生成: 'videoGeneration',
+  语音合成: 'speechSynthesis',
+  高清: 'hd',
+}
+const HOME_PARTNER_NAME_KEYS: Record<string, string> = {
+  'Z.ai': 'zai',
+  Qwen: 'qwen',
+  ERNIE: 'ernie',
+  豆包大模型: 'doubao',
+  KwaiKAT: 'kwaikat',
+  'Cherry Studio': 'cherryStudio',
+  Dify: 'dify',
+  Obsidian: 'obsidian',
+  mastra: 'mastra',
+  OOMOL: 'oomol',
+}
+const HOME_NEWS_ITEMS = [
+  { key: '0', href: '/docs' },
+  { key: '1', href: '/models' },
+] as const
+const HOME_AVAILABILITY_BAR_COUNT = 24
+const HOME_AVAILABILITY_RATE_DECIMAL_PLACES = 2
+const HOME_AVAILABILITY_SEGMENT_OFFSETS = [-0.05, 0.02, 0.01, -0.03, 0.04, -0.01, 0, 0.03, -0.02, -0.04, 0.05, -0.01, -0.03, 0.02, 0.01, -0.02, 0.04, -0.03, 0, -0.01, 0.03, -0.04, 0.02, 0.02] as const
+const HOME_MODEL_MOSAIC_COUNT = 18
+const HOME_REWARD_MARK_COUNT = 6
+const HOME_SCOREBOARD_ANIMATION_DURATION = 1_600
+const HOME_SCOREBOARD_DIGIT_COUNT = 8
+const HOME_SCOREBOARD_INITIAL_DIGITS = '0'.repeat(HOME_SCOREBOARD_DIGIT_COUNT)
+const HOME_SCOREBOARD_MAX_VALUE = 10 ** HOME_SCOREBOARD_DIGIT_COUNT - 1
+const HOME_SCOREBOARD_DIGIT_DELAY = 70
+const HOME_SCOREBOARD_METRIC_COUNT = 2
+const HOME_MOCK_UPDATE_INTERVAL = 5_000
+const HOME_MOCK_TOKEN_BASE = 76_371_153
+const HOME_MOCK_API_BASE = 42_371_153
+const HOME_MOCK_TOKEN_INCREMENT = 18_721
+const HOME_MOCK_API_CALL_INCREMENT = 4_807
+
+function publicCompanyLabel(t: TFunction, company: string): string {
+  const key = PUBLIC_COMPANY_KEYS[company]
+  return key ? t(`public.companies.${key}`, { defaultValue: company }) : company
+}
+
+function publicCapabilityLabel(t: TFunction, capability: string): string {
+  const key = PUBLIC_CAPABILITY_KEYS[capability]
+  return key ? t(`public.modelCapabilities.${key}`, { defaultValue: capability }) : capability
+}
+
+function publicModalityLabel(t: TFunction, modality: ModelModality): string {
+  return t(`public.modalities.${modality}`, { defaultValue: MODALITY_LABELS[modality] })
+}
+
+function publicModelDescription(t: TFunction, modelId: string, description: string): string {
+  return t(`public.modelDescriptions.${modelId}`, { defaultValue: description })
+}
+
+function homepageLocale(language: string): 'zh-CN' | 'en-US' {
+  return language.toLowerCase().startsWith('en') ? 'en-US' : 'zh-CN'
+}
+
+function homepageTranslation(entry: HomepageEntry, language: string): HomepageTranslation {
+  const locale = homepageLocale(language)
+  return entry.data.translations?.[locale] ?? entry.data.translations?.['zh-CN'] ?? entry.data.translations?.['en-US'] ?? {}
+}
+
+function homepageHref(value: string | undefined, fallback: string): string {
+  const normalized = value?.trim() ?? ''
+  if (/^https?:\/\//i.test(normalized)) return normalized
+  if (normalized.startsWith('/') && !normalized.startsWith('//')) return normalized
+  return fallback
+}
+
+function homepageDate(value: number | string | undefined, language: string): string {
+  if (value === undefined) return ''
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  return date.toLocaleDateString(homepageLocale(language), { year: 'numeric', month: '2-digit', day: '2-digit' })
+}
+
+function homepagePrice(value: string | number | undefined): string {
+  if (typeof value === 'number' && Number.isFinite(value)) return value.toFixed(8)
+  return typeof value === 'string' && value.trim() ? value : '--'
+}
+
+function homepageMediaURL(objectID: string | undefined, fallbackURL: string | undefined): string | undefined {
+  return getPublicHomepageAssetURL(objectID) ?? (fallbackURL?.trim() || undefined)
+}
+
+// 中文：用固定偏移生成可重复的 mock 分段数据，让每个条纹既有独立成功率又与卡片汇总值保持一致。
+function formatHomeAvailabilityRate(summaryRate: string, segmentIndex: number, itemIndex: number): string {
+  const parsedSummaryRate = Number.parseFloat(summaryRate)
+  if (!Number.isFinite(parsedSummaryRate)) return summaryRate
+
+  const offsetIndex = (segmentIndex + itemIndex * 7) % HOME_AVAILABILITY_SEGMENT_OFFSETS.length
+  const segmentRate = Math.min(100, Math.max(0, parsedSummaryRate + HOME_AVAILABILITY_SEGMENT_OFFSETS[offsetIndex]))
+  return `${segmentRate.toFixed(HOME_AVAILABILITY_RATE_DECIMAL_PLACES)}%`
+}
+
+function useMockHomeMetrics(): { tokenVolume: number; apiCalls: number } {
+  const [updateCount, setUpdateCount] = useState(0)
+
+  useEffect(() => {
+    const interval = window.setInterval(() => setUpdateCount((count) => count + 1), HOME_MOCK_UPDATE_INTERVAL)
+    return () => window.clearInterval(interval)
+  }, [])
+
+  return useMemo(() => ({
+    tokenVolume: HOME_MOCK_TOKEN_BASE + updateCount * HOME_MOCK_TOKEN_INCREMENT,
+    apiCalls: HOME_MOCK_API_BASE + updateCount * HOME_MOCK_API_CALL_INCREMENT,
+  }), [updateCount])
+}
+
+function prefersReducedMotion(): boolean {
+  return typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+}
+
+function useScoreboardValue(targetValue: number): number {
+  const target = Number.isFinite(targetValue) ? targetValue : 0
+  const [value, setValue] = useState(0)
+  const valueRef = useRef(0)
+
+  useEffect(() => {
+    const startValue = valueRef.current
+    if (startValue === target) return undefined
+
+    if (prefersReducedMotion()) {
+      valueRef.current = target
+      setValue(target)
+      return undefined
+    }
+
+    // 中文：只在目标值落定时更新整组数字，按位翻页交给 CSS 延迟，避免每帧重挂载数字节点。
+    const timeout = window.setTimeout(() => {
+      valueRef.current = target
+      setValue(target)
+    }, HOME_SCOREBOARD_ANIMATION_DURATION)
+
+    return () => window.clearTimeout(timeout)
+  }, [target])
+
+  return value
+}
+
+function formatScoreboardValue(value: number): string {
+  const normalizedValue = Math.min(HOME_SCOREBOARD_MAX_VALUE, Math.max(0, Math.round(value)))
+  return String(normalizedValue).padStart(HOME_SCOREBOARD_DIGIT_COUNT, '0')
+}
+
+type ScoreboardFlipState = { fromDigit: string; toDigit: string; version: number }
+type ScoreboardInitialFlipTracker = { target: string | null; pendingIndexes: Set<number>; completedIndexes: Set<number>; notified: boolean }
+
+function ManuscriptScoreboardDigit({ metricId, index, digit, onFlipComplete }: { metricId: string; index: number; digit: string; onFlipComplete?: (index: number) => void }) {
+  const [flipState, setFlipState] = useState<ScoreboardFlipState>(() => ({ fromDigit: digit, toDigit: digit, version: 0 }))
+  const reportedFlipVersionRef = useRef(0)
+  const { fromDigit, toDigit, version } = flipState
+
+  useLayoutEffect(() => {
+    setFlipState((current) => {
+      if (current.toDigit === digit) return current
+
+      // 中文：在浏览器绘制前锁定上一轮终值，确保每次都从旧数字翻到新数字。
+      return { fromDigit: current.toDigit, toDigit: digit, version: current.version + 1 }
+    })
+  }, [digit])
+
+  useEffect(() => {
+    if (version <= 0 || !onFlipComplete || !prefersReducedMotion() || reportedFlipVersionRef.current === version) return
+    reportedFlipVersionRef.current = version
+    onFlipComplete(index)
+  }, [index, onFlipComplete, version])
+
+  function handleAnimationEnd(): void {
+    if (version <= 0 || reportedFlipVersionRef.current === version) return
+    reportedFlipVersionRef.current = version
+    onFlipComplete?.(index)
+  }
+
+  return (
+    <i className="manuscript-scoreboard-digit" data-digit={toDigit} style={{ '--scoreboard-delay': `${(HOME_SCOREBOARD_DIGIT_COUNT - index - 1) * HOME_SCOREBOARD_DIGIT_DELAY}ms` } as CSSProperties}>
+      <span className={`manuscript-scoreboard-flip${version > 0 ? ' is-flipping' : ''}`} key={`${metricId}-${index}-${version}`}>
+        <span className="manuscript-scoreboard-face manuscript-scoreboard-face--base-top"><b>{fromDigit}</b></span>
+        <span className="manuscript-scoreboard-face manuscript-scoreboard-face--base-bottom"><b>{fromDigit}</b></span>
+        <span className="manuscript-scoreboard-face manuscript-scoreboard-face--next-top"><b>{toDigit}</b></span>
+        <span className="manuscript-scoreboard-flap manuscript-scoreboard-flap--top"><b>{fromDigit}</b></span>
+        <span className="manuscript-scoreboard-flap manuscript-scoreboard-flap--bottom" onAnimationEnd={handleAnimationEnd}><b>{toDigit}</b></span>
+      </span>
+    </i>
+  )
+}
+
+function ManuscriptScoreboard({ metricId, unit, value, onInitialFlipComplete }: { metricId: string; unit: string; value: number; onInitialFlipComplete?: () => void }) {
+  const formattedValue = formatScoreboardValue(value)
+  const initialFlipTrackerRef = useRef<ScoreboardInitialFlipTracker>({ target: null, pendingIndexes: new Set(), completedIndexes: new Set(), notified: false })
+
+  useLayoutEffect(() => {
+    const tracker = initialFlipTrackerRef.current
+    if (tracker.target !== null || formattedValue === HOME_SCOREBOARD_INITIAL_DIGITS) return
+
+    tracker.target = formattedValue
+    formattedValue.split('').forEach((digit, index) => {
+      if (digit !== HOME_SCOREBOARD_INITIAL_DIGITS[index]) tracker.pendingIndexes.add(index)
+    })
+    if (tracker.pendingIndexes.size === 0) {
+      tracker.notified = true
+      onInitialFlipComplete?.()
+    }
+  }, [formattedValue, onInitialFlipComplete])
+
+  const handleDigitFlipComplete = useCallback((index: number): void => {
+    const tracker = initialFlipTrackerRef.current
+    if (tracker.notified || !tracker.pendingIndexes.has(index)) return
+
+    tracker.completedIndexes.add(index)
+    if (tracker.completedIndexes.size !== tracker.pendingIndexes.size) return
+    tracker.notified = true
+    onInitialFlipComplete?.()
+  }, [onInitialFlipComplete])
+
+  return (
+    <div className="manuscript-digital-stat" role="listitem" aria-label={`${unit} ${formattedValue}`}>
+      <div className="manuscript-scoreboard" aria-live="polite" aria-atomic="true">
+        <div className="manuscript-scoreboard-content">
+          <span className="manuscript-scoreboard-unit" aria-hidden="true">{unit}</span>
+          <span className="public-sr-only">{formattedValue}</span>
+          <div className="manuscript-scoreboard-value" aria-hidden="true">
+            {formattedValue.split('').map((digit, index) => <ManuscriptScoreboardDigit key={`${metricId}-${index}`} metricId={metricId} index={index} digit={digit} onFlipComplete={handleDigitFlipComplete} />)}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function HomeModelMosaic() {
+  const models = MODEL_CATALOG.slice(0, HOME_MODEL_MOSAIC_COUNT)
+  const rows = Array.from({ length: Math.ceil(models.length / HOME_MODEL_MOSAIC_COLUMNS) }, (_, rowIndex) => models.slice(rowIndex * HOME_MODEL_MOSAIC_COLUMNS, (rowIndex + 1) * HOME_MODEL_MOSAIC_COLUMNS))
+  return <div className="manuscript-model-mosaic" aria-hidden="true">{rows.map((row, rowIndex) => <div className={`manuscript-model-mosaic-row${rowIndex % 2 === 1 ? ' is-offset' : ''}`} key={`model-mosaic-row-${rowIndex}`}>{row.map((model) => <ModelLogo key={model.id} model={model} size="small" />)}</div>)}</div>
+}
+
+function HomePartnerLogo({ partner }: { partner: HomePartner }) {
+  if (partner.logoUrl) {
+    return <img className="manuscript-partner-image" src={partner.logoUrl} alt="" aria-hidden="true" />
+  }
+  if (partner.logoMarkup) {
+    const logoClassName = `manuscript-partner-logo${partner.logoKind === 'mark' ? ' manuscript-partner-logo--mark' : ''}`
+    return <span className={logoClassName} aria-hidden="true" dangerouslySetInnerHTML={{ __html: partner.logoMarkup }} />
+  }
+  return <span className="manuscript-partner-css-logo" aria-hidden="true"><i className="manuscript-partner-css-logo-mark"><b /><b /><b /></i></span>
+}
+
+// 中文：每条轨道复制一份品牌序列，循环位移到半程时正好衔接下一份内容，保证滚动不会跳帧。
+function HomePartnerRow({ partners, rowIndex }: { partners: HomePartner[]; rowIndex: number }) {
+  const { t } = useTranslation()
+  const duplicatedPartners = [...partners, ...partners]
+  const direction = rowIndex === 0 ? 'is-forward' : 'is-reverse'
+
+  return <div className="manuscript-partner-row" data-row={rowIndex + 1}>
+    <div className={`manuscript-partner-track ${direction}`}>
+      {duplicatedPartners.map((partner, partnerIndex) => {
+        const isDuplicate = partnerIndex >= partners.length
+        const partnerName = t(`public.home.partnerNames.${HOME_PARTNER_NAME_KEYS[partner.name]}`, { defaultValue: partner.name })
+        const href = homepageHref(partner.href, '/models')
+        const content = <><HomePartnerLogo partner={partner} />{partner.logoKind !== 'wordmark' || partner.logoUrl ? <strong>{partnerName}</strong> : null}</>
+        const linkProps = {
+          className: 'manuscript-partner-item',
+          key: `${rowIndex}-${partner.name}-${partnerIndex}`,
+          'aria-label': `${partnerName} ${t('common.browseModels')}`,
+          'aria-hidden': isDuplicate,
+          tabIndex: isDuplicate ? -1 : undefined,
+          'data-copy': isDuplicate ? 'duplicate' : 'primary',
+        }
+        return href.startsWith('/')
+          ? <Link {...linkProps} to={href}>{content}</Link>
+          : <a {...linkProps} href={href} target="_blank" rel="noopener noreferrer">{content}</a>
+      })}
+    </div>
+  </div>
+}
+
+function ManagedFeatureCard({ entry, index }: { entry: HomepageEntry; index: number }) {
+  const { t, i18n } = useTranslation()
+  const content = homepageTranslation(entry, i18n.language)
+  const href = homepageHref(content.link_url, '/models')
+  const action = content.action_text?.trim() || t(`home.rebuild.featureCards.${index % 3}.action`)
+  const imageURL = homepageMediaURL(content.image_object_id, content.image_url)
+  return <article className="manuscript-feature-card">
+    <div className="manuscript-feature-visual">{imageURL ? <img className="manuscript-feature-image" src={imageURL} alt="" aria-hidden="true" /> : <HomeModelMosaic />}<span>{index === 0 ? t('home.rebuild.featureModelsCount') : t('home.rebuild.featuresTitle')}</span></div>
+    <div className="manuscript-feature-copy">
+      <h3>{content.title || t('home.rebuild.featuresTitle')}</h3>
+      <p>{content.description || ''}</p>
+      {href.startsWith('/') ? <Link className="manuscript-feature-action" to={href}>{action}</Link> : <a className="manuscript-feature-action" href={href} target="_blank" rel="noopener noreferrer">{action}</a>}
+    </div>
+  </article>
+}
+
+function ManagedNewsCard({ entry, index }: { entry: HomepageEntry; index: number }) {
+  const { t, i18n } = useTranslation()
+  const content = homepageTranslation(entry, i18n.language)
+  const href = homepageHref(content.link_url, '/docs')
+  const card = <><div className="manuscript-news-copy"><h3>{content.title || t('home.rebuild.news.0.title')}</h3><p>{content.summary || ''}</p><small>{homepageDate(entry.updated_at, i18n.language)} <b className="manuscript-news-new">{t('public.home.newBadge')}</b></small></div><div className={`manuscript-news-art manuscript-news-art--${index % 2}`} aria-hidden="true"><i /><i /><div className="manuscript-news-document"><strong>ZenMux</strong><small>TOKEN<br />ECONOMICS</small><b>NX</b></div></div></>
+  return href.startsWith('/') ? <Link className="manuscript-news-card" to={href}>{card}</Link> : <a className="manuscript-news-card" href={href} target="_blank" rel="noopener noreferrer">{card}</a>
+}
+
+function ManagedAdSlots({ entries }: { entries: HomepageEntry[] }) {
+  const { t, i18n } = useTranslation()
+  return <div className="manuscript-ad-slots">{entries.map((entry) => {
+    const content = homepageTranslation(entry, i18n.language)
+    const href = homepageHref(content.link_url, '/models')
+    const imageURL = homepageMediaURL(content.image_object_id, content.image_url)
+    const ad = <>{imageURL ? <img src={imageURL} alt={content.title || t('home.rebuild.adSlot')} /> : <strong>{content.title || t('home.rebuild.adSlot')}</strong>}</>
+    return href.startsWith('/') ? <Link className="manuscript-ad-slot" key={entry.id} to={href}>{ad}</Link> : <a className="manuscript-ad-slot" key={entry.id} href={href} target="_blank" rel="noopener noreferrer">{ad}</a>
+  })}</div>
+}
+
+type HomePromotionItem = { id: string; model: ModelRecord; name: string; company: string; discountKind: HomepageDiscountKind; input: string; output: string; availability: string }
+
+function managedPromotionItems(homepage: PublicHomepage | null, language: string): HomePromotionItem[] {
+  if (!homepage?.promotion_models.length) return []
+  return homepage.promotion_models.flatMap((entry) => {
+    const model = findModel(entry.model_id)
+    if (!model) return []
+    const content = homepageTranslation(entry, language)
+    return [{
+      id: entry.id,
+      model,
+      name: content.title?.trim() || model.name,
+      company: model.company,
+      discountKind: entry.data.discount_kind ?? 'half',
+      input: homepagePrice(model.tokenNxPrice.inputRaw ?? model.tokenNxPrice.input),
+      output: homepagePrice(model.tokenNxPrice.outputRaw ?? model.tokenNxPrice.output),
+      availability: `${model.availability.rate.toFixed(2)}%`,
+    }]
+  })
+}
+
+function managedPartners(homepage: PublicHomepage | null, language: string): HomePartner[] {
+  if (!homepage?.partners.length) return []
+  return homepage.partners.flatMap((entry) => {
+    const content = homepageTranslation(entry, language)
+    const name = content.name?.trim() || content.title?.trim()
+    if (!name) return []
+    const logoURL = homepageMediaURL(content.logo_object_id, content.logo_url)
+    return [{ name, logoUrl: logoURL, href: content.link_url, logoKind: logoURL ? 'wordmark' : 'css' as const }]
+  })
+}
+
+export function HomePage({ onInitialScoreboardReady }: { onInitialScoreboardReady?: () => void } = {}) {
+  const { t, i18n } = useTranslation()
+  const [homepage, setHomepage] = useState<PublicHomepage | null>(null)
+  const homeMetrics = useMockHomeMetrics()
+  const animatedTokenVolume = useScoreboardValue(homeMetrics.tokenVolume)
+  const animatedApiCalls = useScoreboardValue(homeMetrics.apiCalls)
+  const completedScoreboardsRef = useRef(new Set<string>())
+
+  const handleScoreboardReady = useCallback((metricId: string): void => {
+    if (!onInitialScoreboardReady || completedScoreboardsRef.current.has(metricId)) return
+    completedScoreboardsRef.current.add(metricId)
+    if (completedScoreboardsRef.current.size === HOME_SCOREBOARD_METRIC_COUNT) onInitialScoreboardReady()
+  }, [onInitialScoreboardReady])
+  const handleTokenScoreboardReady = useCallback(() => handleScoreboardReady('token-volume'), [handleScoreboardReady])
+  const handleApiScoreboardReady = useCallback(() => handleScoreboardReady('api-calls'), [handleScoreboardReady])
+  const managedCards = homepage?.cards ?? []
+  const promotionItems = useMemo(() => {
+    const managed = managedPromotionItems(homepage, i18n.language)
+    return managed.length ? managed : HOME_PROMOTION_ITEMS
+  }, [homepage, i18n.language])
+  const managedNews = useMemo(() => {
+    const news = homepage?.news ?? []
+    const pinned = news.filter((entry) => entry.pinned)
+    return (pinned.length ? pinned : news).slice(0, 2)
+  }, [homepage])
+  const managedPartnerItems = useMemo(() => managedPartners(homepage, i18n.language), [homepage, i18n.language])
+  const partnerItems = managedPartnerItems.length ? managedPartnerItems : HOME_PARTNERS
+  const partnerRows = [partnerItems.slice(0, 5), partnerItems.slice(5)]
+
+  useEffect(() => {
+    let mounted = true
+    getPublicHomepage().then((value) => {
+      if (mounted) setHomepage(value)
+    }).catch(() => {
+      // 中文：公开内容接口失败时保留已编排的默认首页，避免运营接口故障影响首页首屏。
+    })
+    return () => { mounted = false }
+  }, [])
+
+  return (
+    <PublicLayout mainClassName="home-page home-page--manuscript">
+      <div className="manuscript-home-shell">
+        <section className="manuscript-hero" aria-labelledby="homeTitle">
+          <div className="manuscript-hero-copy">
+            <h1 id="homeTitle"><span>{t('home.rebuild.heroTitle')}</span><strong>{t('home.rebuild.heroSubtitle')}</strong></h1>
+            <div className="manuscript-hero-actions">
+            <LoginRequiredAction className="btn btn-primary" returnPath="/console/quickstart">{t('home.rebuild.primaryCta')} <IconArrowRight /></LoginRequiredAction>
+              <Link className="btn btn-secondary manuscript-model-button" to="/models" aria-label={t('home.rebuild.secondaryCta')}>{t('home.rebuild.secondaryCta')} <IconBolt aria-hidden="true" /></Link>
+            </div>
+            <div className="manuscript-digital-stats" role="list" aria-label={t('home.overview')}>
+              <ManuscriptScoreboard metricId="token-volume" unit={t('home.rebuild.tokenVolumeUnit')} value={animatedTokenVolume} onInitialFlipComplete={handleTokenScoreboardReady} />
+              <ManuscriptScoreboard metricId="api-calls" unit={t('home.rebuild.apiCallsUnit')} value={animatedApiCalls} onInitialFlipComplete={handleApiScoreboardReady} />
+            </div>
+          </div>
+        </section>
+
+        <section className="manuscript-section manuscript-features" aria-labelledby="homeFeaturesTitle">
+          <h2 className="public-sr-only" id="homeFeaturesTitle">{t('home.rebuild.featuresTitle')}</h2>
+          <div className="manuscript-feature-grid">
+            {managedCards.length ? managedCards.map((entry, index) => <ManagedFeatureCard key={entry.id} entry={entry} index={index} />) : <>
+              <article className="manuscript-feature-card"><div className="manuscript-feature-visual"><HomeModelMosaic /><span>{t('home.rebuild.featureModelsCount')}</span></div><div className="manuscript-feature-copy"><h3>{t('home.rebuild.featureCards.0.title')}</h3><p>{t('home.rebuild.featureCards.0.description')}</p><Link className="manuscript-feature-action" to="/models">{t('home.rebuild.featureCards.0.action')}</Link></div></article>
+              <article className="manuscript-feature-card"><div className="manuscript-feature-visual"><HomeModelMosaic /></div><div className="manuscript-feature-copy"><h3>{t('home.rebuild.featureCards.1.title')}</h3><p>{t('home.rebuild.featureCards.1.description')}</p><LoginRequiredAction className="manuscript-feature-action" returnPath={NEW_ENTERPRISE_CREATE_PATH}>{t('home.rebuild.featureCards.1.action')}</LoginRequiredAction></div></article>
+              <article className="manuscript-feature-card"><div className="manuscript-feature-visual"><HomeModelMosaic /></div><div className="manuscript-feature-copy"><h3>{t('home.rebuild.featureCards.2.title')}</h3><p>{t('home.rebuild.featureCards.2.description')}</p><Link className="manuscript-feature-action" to="/pricing">{t('home.rebuild.featureCards.2.action')}</Link></div></article>
+            </>}
+          </div>
+        </section>
+
+        <section className="manuscript-section manuscript-pricing" aria-labelledby="homePricingTitle">
+          <div className="manuscript-section-heading"><div><h2 id="homePricingTitle">{t('home.pricing.manuscriptTitle')}</h2><p>{t('home.pricing.manuscriptSubtitle')}</p></div></div>
+          <div className="manuscript-price-grid">{promotionItems.map((item, itemIndex) => <article className="manuscript-price-card" key={item.id}>
+            <div className="manuscript-price-card-head"><Link className="manuscript-price-model" to={modelPublicHref(item.model) ?? '/models'}><ModelLogo model={item.model} size="small" /><span><strong>{item.name}</strong><small>{t('home.rebuild.providedBy', { company: item.company })}</small></span></Link><span className={`manuscript-price-badge${item.discountKind === 'free' ? ' is-equal' : ''}`}>{t(`public.home.discount${item.discountKind === 'free' ? 'Free' : item.discountKind === 'custom' ? 'Custom' : 'Half'}`)}</span></div>
+            <div className="manuscript-price-divider" />
+            <div className="manuscript-price-values"><div><span>{t('home.rebuild.inputPrice')}</span><strong>{item.input}<small>{t('public.home.priceUnit')}</small></strong></div><div><span>{t('home.rebuild.outputPrice')}</span><strong>{item.output}<small>{t('public.home.priceUnit')}</small></strong></div></div>
+            <div className="manuscript-price-availability"><span>{t('home.rebuild.availability')}</span><strong>{item.availability}</strong><div>{Array.from({ length: HOME_AVAILABILITY_BAR_COUNT }, (_, index) => {
+              const rate = formatHomeAvailabilityRate(item.availability, index, itemIndex)
+              const rateLabel = t('home.rebuild.availabilitySegment', { index: index + 1, rate })
+              return <i className="manuscript-price-availability-bar" key={index} role="img" tabIndex={0} data-rate={rate} data-tooltip={rateLabel} aria-label={rateLabel} title={rateLabel} />
+            })}</div></div>
+          </article>)}</div>
+        </section>
+
+        <section className="manuscript-section manuscript-promotion" aria-labelledby="homePromotionTitle">
+          <div className="manuscript-section-heading"><div><h2 id="homePromotionTitle">{t('home.rebuild.promotionTitle')}</h2><p>{t('home.rebuild.manuscriptPromotionDescription')}</p></div></div>
+          <div className="manuscript-promotion-grid"><article className="manuscript-reward-card"><h3>{t('home.rebuild.rewardTitle')}</h3><p>{t('home.rebuild.rewardDescription')}</p><div className="manuscript-reward-marks" aria-hidden="true">{Array.from({ length: HOME_REWARD_MARK_COUNT }, (_, index) => <i key={index}>?</i>)}</div><div className="manuscript-reward-login"><span>{t('home.rebuild.rewardLoginHint')}</span><LoginRequiredAction returnPath="/console/invitations">{t('home.rebuild.rewardLoginAction')}</LoginRequiredAction></div><div className="manuscript-reward-stats"><span><strong>00</strong><small>{t('home.rebuild.rewardPending')}</small></span><span><strong>00</strong><small>{t('home.rebuild.rewardApproved')}</small></span><span><strong>00</strong><small>{t('home.rebuild.rewardRejected')}</small></span></div></article><div className="manuscript-news-column">
+            {homepage?.ad_slots.length ? <ManagedAdSlots entries={homepage.ad_slots} /> : <div className="manuscript-ad-slots"><div className="manuscript-ad-slot"><strong>{t('home.rebuild.adSlot')}</strong></div></div>}
+            <div className="manuscript-news-grid">{managedNews.length ? managedNews.map((entry, index) => <ManagedNewsCard entry={entry} index={index} key={entry.id} />) : HOME_NEWS_ITEMS.map((item, index) => <Link className="manuscript-news-card" to={item.href} key={item.key}><div className="manuscript-news-copy"><h3>{t(`home.rebuild.news.${item.key}.title`)}</h3><p>{t(`home.rebuild.news.${item.key}.description`)}</p><small>{t(`home.rebuild.news.${item.key}.date`)} <b className="manuscript-news-new">{t('public.home.newBadge')}</b></small></div><div className={`manuscript-news-art manuscript-news-art--${index}`} aria-hidden="true"><i /><i /><div className="manuscript-news-document"><strong>ZenMux</strong><small>TOKEN<br />ECONOMICS</small><b>NX</b></div></div></Link>)}</div>
+          </div></div>
+        </section>
+
+        <section className="manuscript-section manuscript-partners" aria-labelledby="homePartnersTitle">
+          <div className="manuscript-section-heading"><div><h2 id="homePartnersTitle">{t('home.rebuild.partnersTitle')}</h2><p>{t('home.rebuild.partnersDescription')}</p></div></div>
+          <div className="manuscript-partner-grid" aria-label={t('home.rebuild.partnersTitle')}>{partnerRows.map((row, rowIndex) => <HomePartnerRow key={`partner-row-${rowIndex}`} partners={row} rowIndex={rowIndex} />)}</div>
+        </section>
+      </div>
+    </PublicLayout>
+  )
+}
+
+export function ModelsPublicPage() {
+  const { t } = useTranslation()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [query, setQuery] = useState(searchParams.get('q') ?? '')
+  const [company, setCompany] = useState(searchParams.get('company') ?? '')
+  const [modality, setModality] = useState<ModelModality | 'all'>('all')
+  const models = useMemo(() => filterModels(query, modality).filter((model) => !company || model.company === company), [company, modality, query])
+  const companyOptions = Object.keys(PUBLIC_COMPANY_KEYS)
+  const modalityCounts = Object.fromEntries((Object.keys(MODALITY_LABELS) as ModelModality[]).map((key) => [key, MODEL_CATALOG.filter((model) => model.modality === key).length])) as Record<ModelModality, number>
+
+  function syncFilters(nextQuery: string, nextCompany: string): void {
+    const nextParams = new URLSearchParams()
+    if (nextQuery) nextParams.set('q', nextQuery)
+    if (nextCompany) nextParams.set('company', nextCompany)
+    setSearchParams(nextParams)
+  }
+
+  function updateSearch(value: string): void {
+    setQuery(value)
+    syncFilters(value, company)
+  }
+
+  function updateCompany(value: string): void {
+    setCompany(value)
+    syncFilters(query, value)
+  }
+
+  function clearFilters(): void {
+    setQuery('')
+    setCompany('')
+    setModality('all')
+    setSearchParams({})
+  }
+
+  return (
+    <PublicLayout mainClassName="public-models-page" footerLabel="public.footer.catalogLabel" footerLinks={MODEL_FOOTER_LINKS}>
+      <header className="public-models-head">
+        <div>
+          <p className="public-models-kicker">{t('public.models.kicker')}</p>
+          <h1>{t('public.models.title')}</h1>
+          <p className="public-models-lead">{t('public.models.lead')}</p>
+          <p className="public-models-price-note">{t('public.models.priceNote')}</p>
+        </div>
+        <div className="public-models-head-meta" aria-label={t('public.models.catalogInfo')}><span className="badge">{t('public.models.catalogCount', { count: MODEL_CATALOG.length })}</span><Link to="/pricing">{t('public.models.viewPricing')}</Link></div>
+      </header>
+
+      <section className="public-models-filter" aria-labelledby="filterTitle">
+        <h2 className="public-sr-only" id="filterTitle">{t('public.models.filterTitle')}</h2>
+        <form onSubmit={(event) => event.preventDefault()} role="search">
+          <div className="public-models-filter-grid">
+            <div className="public-models-search-field"><label htmlFor="modelSearch">{t('public.models.searchLabel')}</label><div className="public-models-search-control"><input className="input" id="modelSearch" type="search" value={query} onChange={(event) => updateSearch(event.target.value)} autoComplete="off" placeholder={t('public.models.searchPlaceholder')} /><button className="btn btn-secondary" type="submit">{t('public.models.searchButton')}</button></div></div>
+            <div className="public-models-company-field"><label htmlFor="companyFilter">{t('public.models.companyLabel')}</label><select className="input" id="companyFilter" value={company} onChange={(event) => updateCompany(event.target.value)}><option value="">{t('public.models.allCompanies')}</option>{companyOptions.map((option) => <option key={option} value={option}>{publicCompanyLabel(t, option)}</option>)}</select></div>
+          </div>
+          <div className="public-models-filter-row">
+            <div className="public-models-modality" role="group" aria-label={t('public.models.modalityLabel')}>
+              <button className="public-models-modality-button" type="button" aria-pressed={modality === 'all'} onClick={() => setModality('all')}><span>{t('public.models.allModalities')}</span><span className="public-models-modality-count">{MODEL_CATALOG.length}</span></button>
+              {(Object.keys(MODALITY_LABELS) as ModelModality[]).map((key) => <button className="public-models-modality-button" key={key} type="button" aria-pressed={modality === key} onClick={() => setModality(key)}><span>{publicModalityLabel(t, key)}</span><span className="public-models-modality-count">{modalityCounts[key]}</span></button>)}
+            </div>
+            <button className="public-models-clear" type="button" hidden={!query && !company && modality === 'all'} onClick={clearFilters}>{t('public.models.clearFilters')}</button>
+          </div>
+        </form>
+      </section>
+
+      <section className="public-models-results" aria-labelledby="resultsTitle">
+        <div className="public-models-results-head"><h2 id="resultsTitle">{t('public.models.resultTitle')}</h2><output aria-live="polite">{t('public.models.resultCount', { count: models.length })}</output></div>
+        {models.length ? <div className="public-models-grid">{models.map((model) => <article className="public-model-card" key={model.id}>
+          <div className="public-model-card-head"><ModelLogo model={model} className="public-model-logo" /><div className="public-model-identity"><h2><Link to={modelPublicHref(model) ?? '/models'}>{model.name}</Link></h2><span>{publicCompanyLabel(t, model.company)}</span></div><span className="badge">{publicModalityLabel(t, model.modality)}</span></div>
+          <ul className="public-model-capabilities" aria-label={t('public.models.capabilitiesLabel')}>{model.capabilities.slice(0, 3).map((capability) => <li key={capability}>{publicCapabilityLabel(t, capability)}</li>)}</ul>
+          <p className="public-model-specs">{model.context ? t('public.models.context', { value: model.context }) : publicModelDescription(t, model.id, model.description)}</p>
+          <dl className="public-model-prices"><div><dt>{t('public.models.tokenNxPrice')}</dt><dd className="public-models-price-highlight"><ModelPriceSummary price={model.tokenNxPrice} /></dd></div><div><dt>{t('public.models.officialPrice')}</dt><dd>{formatPublicPrice(model.officialPrice)}</dd></div></dl>
+          <div className="public-model-card-actions"><Link className="btn btn-primary btn-sm" to={modelPublicHref(model) ?? '/models'}>{t('public.models.viewDetails')}</Link></div>
+        </article>)}</div> : <div className="public-models-empty"><h2>{t('public.models.noMatchTitle')}</h2><p>{t('public.models.noMatchHint')}</p><button className="btn btn-secondary" type="button" onClick={clearFilters}>{t('public.models.clearFilters')}</button></div>}
+      </section>
+    </PublicLayout>
+  )
+}
+
+export function ModelDetailPage() {
+  const { t } = useTranslation()
+  const { modelId } = useParams()
+  const navigate = useNavigate()
+  const model = findModel(modelId)
+  const routeKey = model ? modelRouteKey(model) : undefined
+  const displayAlias = model ? modelAlias(model) || t('console.common.modelAliasUnset') : ''
+  const modelQuery = routeKey ? encodeURIComponent(routeKey) : ''
+
+  useEffect(() => {
+    if (!model || !routeKey || modelId === routeKey) return
+    // 中文：旧模型 code 仅用于兼容历史链接，进入页面后立即规范化为模型别名。
+    navigate(`/models/${encodeURIComponent(routeKey)}`, { replace: true })
+  }, [model, modelId, navigate, routeKey])
+
+  if (!model) return <PublicLayout mainClassName="public-model-detail"><div className="public-model-missing"><h1>{t('public.modelDetail.missingTitle')}</h1><p>{t('public.modelDetail.missingHint')}</p><Link className="btn btn-primary" to="/models">{t('public.modelDetail.backCatalog')}</Link></div></PublicLayout>
+
+  return (
+    <PublicLayout mainClassName="public-model-detail" footerLabel="public.footer.catalogLabel" footerLinks={[{ label: 'footer.models', path: '/models' }, ...MODEL_FOOTER_LINKS]}>
+      <Link className="public-model-back" to="/models">← {t('public.modelDetail.backCatalog')}</Link>
+      <section className="public-model-hero" aria-labelledby="modelTitle">
+        <div>
+          <div className="public-model-detail-identity"><ModelLogo model={model} className="public-model-detail-logo" /><div><p className="public-model-detail-kicker">{publicCompanyLabel(t, model.company)}</p><h1 id="modelTitle">{model.name}</h1><p className="public-model-detail-id">{t('public.modelDetail.alias', { alias: displayAlias })}</p></div></div>
+          <div className="public-model-detail-meta"><span className="badge">{publicModalityLabel(t, model.modality)}</span>{model.context ? <span className="badge">{t('public.modelDetail.context', { value: model.context })}</span> : null}<span className="badge">{t('public.models.capabilityCount', { count: model.capabilities.length })}</span></div>
+        </div>
+        <div className="public-model-detail-actions"><LoginRequiredAction className="btn btn-secondary" returnPath={'/console/playground?model=' + modelQuery}>{t('public.modelDetail.onlineTest')}</LoginRequiredAction><LoginRequiredAction className="btn btn-primary" returnPath={'/console/api-keys?model=' + modelQuery}>{t('public.modelDetail.apiAccess')}</LoginRequiredAction></div>
+      </section>
+
+      <div className="public-model-detail-grid">
+        <div>
+          <section className="public-model-detail-section" aria-labelledby="capabilitiesTitle"><h2 id="capabilitiesTitle">{t('public.modelDetail.capabilitiesTitle')}</h2><div className="public-model-detail-capabilities">{model.capabilities.map((capability) => <span className="badge" key={capability}>{publicCapabilityLabel(t, capability)}</span>)}</div><p>{t('public.modelDetail.contextWindow', { value: model.context ?? t('public.modelDetail.byParameter') })}</p></section>
+          <section className="public-model-detail-section" aria-labelledby="pricingTitle"><h2 id="pricingTitle">{t('public.modelDetail.pricingTitle')}</h2><div className="public-table-wrap"><table className="public-model-detail-prices"><tbody><tr><th scope="row">{t('public.models.officialPrice')}</th><td>{formatPublicPrice(model.officialPrice)}</td></tr><tr><th scope="row">{t('public.models.tokenNxPrice')}</th><td><strong><ModelPriceSummary price={model.tokenNxPrice} /></strong></td></tr></tbody></table></div><p className="public-model-price-note">{t('public.modelDetail.priceNote')}</p></section>
+          <section className="public-model-detail-section" aria-labelledby="boundaryTitle"><h2 id="boundaryTitle">{t('public.modelDetail.boundaryTitle')}</h2><p>{t('public.modelDetail.boundaryText')}</p></section>
+        </div>
+        <aside className="public-model-connect" aria-labelledby="connectTitle"><h2 id="connectTitle">{t('public.modelDetail.accessTitle')}</h2><dl><div><dt>{t('public.modelDetail.baseUrl')}</dt><dd><code>{QUICKSTART_API_BASE_URL}</code></dd></div><div><dt>{t('public.modelDetail.aliasLabel')}</dt><dd><code>{displayAlias}</code></dd></div><div><dt>{t('public.modelDetail.defaultProtocol')}</dt><dd>{t('public.modelDetail.protocolValue')}</dd></div></dl><p>{t('public.modelDetail.accessHint')}</p><LoginRequiredAction className="btn btn-primary" returnPath={'/console/api-keys?model=' + modelQuery}>{t('public.modelDetail.createApiKey')}</LoginRequiredAction></aside>
+      </div>
+    </PublicLayout>
+  )
+}
+
+export function DocsPage() {
+  const { t } = useTranslation()
+  const code = quickstartCodeSample({ protocol: 'openai', language: 'curl', modelAlias: 'deepseek-public' })
+  const [copied, setCopied] = useState(false)
+
+  async function copyCode(): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(code)
+      setCopied(true)
+      Toast.success(t('public.docs.copySuccess'))
+      window.setTimeout(() => setCopied(false), 1500)
+    } catch {
+      Toast.error(t('public.docs.copyUnsupported'))
+    }
+  }
+
+  return (
+    <PublicLayout mainClassName="public-page" footerLabel="public.docs.footerLabel">
+      <header className="public-page-head"><h1>{t('public.docs.title')}</h1><p>{t('public.docs.description')}</p><div className="public-actions"><LoginRequiredAction className="btn btn-primary" returnPath="/console/quickstart">{t('public.docs.openQuickstart')}</LoginRequiredAction><Link className="btn btn-secondary" to="/models">{t('public.docs.chooseModel')}</Link></div></header>
+      <section className="public-section"><div className="callout"><strong>{t('public.docs.gatewayTitle')}</strong><span>{t('public.docs.gatewayText', { baseUrl: QUICKSTART_API_BASE_URL })}</span></div></section>
+      <section className="public-section"><h2>{t('public.docs.flowTitle')}</h2><ol><li>{t('public.docs.flow.catalog')}</li><li>{t('public.docs.flow.key')}</li><li>{t('public.docs.flow.request')}</li><li>{t('public.docs.flow.records')}</li></ol></section>
+      <section className="public-section"><h2>{t('public.docs.stylesTitle')}</h2><div className="public-grid"><div className="public-grid-item"><h3>{t('public.docs.openaiStyle')}</h3><p>{t('public.docs.openaiDescription')}</p></div><div className="public-grid-item"><h3>{t('public.docs.claudeStyle')}</h3><p>{t('public.docs.claudeDescription')}</p></div><div className="public-grid-item"><h3>{t('public.docs.tracingTitle')}</h3><p>{t('public.docs.tracingDescription')}</p></div></div></section>
+      <section className="public-section"><h2>{t('public.docs.endpointsTitle')}</h2><div className="public-grid"><div className="public-grid-item"><h3>{t('public.docs.openaiStyle')}</h3><p><code>POST /v1/chat/completions</code></p><p><code>Authorization: Bearer YOUR_TOKEN_NX_API_KEY</code></p></div><div className="public-grid-item"><h3>{t('public.docs.claudeStyle')}</h3><p><code>POST /v1/messages</code></p><p><code>x-api-key: YOUR_TOKEN_NX_API_KEY</code></p></div><div className="public-grid-item"><h3>{t('public.docs.resultTitle')}</h3><p>{t('public.docs.resultDescription')}</p></div></div></section>
+      <section className="public-section" aria-labelledby="curlExampleTitle"><div className="public-section-row"><div><h2 id="curlExampleTitle">{t('public.docs.curlTitle')}</h2><p>{t('public.docs.curlDescription')}</p></div><button className="btn btn-secondary btn-sm" type="button" onClick={copyCode}>{t('public.docs.copyCurl')}</button></div><pre className="public-code-block"><code>{code}</code></pre><p className="public-copy-status" aria-live="polite">{copied ? t('public.docs.copied') : ''}</p></section>
+      <section className="public-section"><h2>{t('public.docs.errorsTitle')}</h2><p>{t('public.docs.errorsDescription')}</p><ul><li>{t('public.docs.errors.unauthorized')}</li><li>{t('public.docs.errors.rateLimited')}</li><li>{t('public.docs.errors.balance')}</li><li>{t('public.docs.errors.unavailable')}</li><li>{t('public.docs.errors.other')}</li></ul></section>
+    </PublicLayout>
+  )
+}
+
+export function PricingPage() {
+  const { t } = useTranslation()
+  return (
+    <PublicLayout mainClassName="public-page" footerLabel="public.pricing.footerLabel" footerLinks={[{ label: 'footer.docs', path: '/docs' }, { label: 'footer.terms', path: '/terms' }]}>
+      <header className="public-page-head"><h1>{t('public.pricing.title')}</h1><p>{t('public.pricing.description')}</p><div className="public-actions"><Link className="btn btn-primary" to="/models">{t('public.pricing.viewCapabilities')}</Link><LoginRequiredAction className="btn btn-secondary" returnPath="/console/quickstart">{t('public.pricing.startIntegration')}</LoginRequiredAction></div></header>
+      <section className="public-section"><div className="public-table-wrap"><table className="public-table"><thead><tr><th>{t('public.pricing.model')}</th><th>{t('public.pricing.type')}</th><th>{t('public.pricing.officialPrice')}</th><th>{t('public.pricing.tokenNxPrice')}</th></tr></thead><tbody>{MODEL_CATALOG.map((model) => <tr key={model.id}><td>{model.name}</td><td>{publicModalityLabel(t, model.modality)}</td><td>{formatPublicPrice(model.officialPrice)}</td><td><ModelPriceSummary price={model.tokenNxPrice} /></td></tr>)}</tbody></table></div></section>
+      <section className="public-section"><h2>{t('public.pricing.localCostTitle')}</h2><div className="public-grid"><div className="public-grid-item"><h3>{t('public.pricing.textModel')}</h3><p>{t('public.pricing.textModelDescription')}</p></div><div className="public-grid-item"><h3>{t('public.pricing.generationModel')}</h3><p>{t('public.pricing.generationModelDescription')}</p></div><div className="public-grid-item"><h3>{t('public.pricing.failedRequest')}</h3><p>{t('public.pricing.failedRequestDescription')}</p></div></div></section>
+    </PublicLayout>
+  )
+}
+
+export function StatusPage() {
+  const { t } = useTranslation()
+  const platformKeys = ['openai', 'claude', 'console', 'billing'] as const
+  return (
+    <PublicLayout mainClassName="public-page" footerLabel="public.status.footerLabel" footerLinks={[{ label: 'footer.docs', path: '/docs' }, { label: 'footer.about', path: '/about' }]}>
+      <header className="public-page-head"><h1>{t('public.status.title')}</h1><p>{t('public.status.description')}</p></header>
+      <section className="public-section"><div className="callout"><strong>{t('public.status.calloutTitle')}</strong><span>{t('public.status.calloutText')}</span></div></section>
+      <section className="public-section" aria-labelledby="modelStatusTitle"><h2 id="modelStatusTitle">{t('public.status.modelTitle')}</h2><p>{t('public.status.modelDescription')}</p><div>{MODEL_CATALOG.map((model) => <div className="status-row" key={model.id}><span className="status-identity"><strong>{model.name}</strong><span>{publicCompanyLabel(t, model.company)}</span></span><span className="badge">{t('public.status.monitoringUnavailable')}</span></div>)}</div></section>
+      <section className="public-section"><h2>{t('public.status.platformTitle')}</h2>{platformKeys.map((key) => <div className="status-row" key={key}><span>{t(`public.status.platform.${key}`)}</span><span className="badge">{t('public.status.monitoringUnavailable')}</span></div>)}</section>
+      <section className="public-section"><h2>{t('public.status.incidentTitle')}</h2><p>{t('public.status.incidentDescription')}</p><div className="public-actions"><LoginRequiredAction className="btn btn-primary" returnPath="/console/records">{t('public.status.viewRecords')}</LoginRequiredAction><Link className="btn btn-secondary" to="/docs">{t('public.status.viewErrors')}</Link></div></section>
+    </PublicLayout>
+  )
+}
+
+export function AboutPage() {
+  const { t } = useTranslation()
+  return <PublicLayout mainClassName="public-page"><header className="public-page-head"><h1>{t('public.about.title')}</h1><p>{t('public.about.description')}</p></header><section className="public-section"><h2>{t('public.about.boundaryTitle')}</h2><div className="public-grid"><div className="public-grid-item"><h3>{t('public.about.catalogTitle')}</h3><p>{t('public.about.catalogDescription')}</p></div><div className="public-grid-item"><h3>{t('public.about.requestTitle')}</h3><p>{t('public.about.requestDescription')}</p></div><div className="public-grid-item"><h3>{t('public.about.upstreamTitle')}</h3><p>{t('public.about.upstreamDescription')}</p></div></div></section><section className="public-section"><h2>{t('public.about.stageTitle')}</h2><p>{t('public.about.stageDescription')}</p><div className="public-actions"><Link className="btn btn-primary" to="/models">{t('public.about.browseModels')}</Link><Link className="btn btn-secondary" to="/docs">{t('public.about.viewDocs')}</Link></div></section></PublicLayout>
+}
+
+export function LegalPage({ kind }: { kind: 'terms' | 'privacy' }) {
+  const { t } = useTranslation()
+  const isTerms = kind === 'terms'
+  const sectionKeys = isTerms ? ['account', 'pricing', 'pending'] as const : ['records', 'console', 'pending'] as const
+  const resourceKey = isTerms ? 'terms' : 'privacy'
+  return <PublicLayout mainClassName="public-page"><header className="public-page-head"><h1>{t(`public.legal.${resourceKey}.title`)}</h1><p>{t(`public.legal.${resourceKey}.intro`)}</p></header>{sectionKeys.map((sectionKey) => <section className="public-section" key={sectionKey}><h2>{t(`public.legal.${resourceKey}.sections.${sectionKey}.title`)}</h2><p>{t(`public.legal.${resourceKey}.sections.${sectionKey}.text`)}</p></section>)}</PublicLayout>
+}
+
+export function LoginPage() {
+  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const returnPath = normalizeLoginReturnPath(searchParams.get('return'))
+  // 中文：登录页没有公共页脚，仍然需要保留全局客服入口。
+  return <div className="login-page"><div className="login-card"><LoginPanel onSuccess={() => navigate(returnPath)} /></div><ManuscriptSupportWidget /></div>
+}
