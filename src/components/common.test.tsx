@@ -523,6 +523,43 @@ describe('已登录用户菜单', () => {
     expect(menu).toHaveTextContent('退出登录')
   })
 
+  it('点击用户菜单设置打开全局账户弹窗', async () => {
+    const user = userEvent.setup()
+    const appStore = createAppStore()
+    appStore.dispatch({ type: 'auth/loginWithEmail/fulfilled', payload: { id: 'user-1', display_name: '测试用户', avatar_url: '', locale: 'zh-CN', timezone: 'Asia/Shanghai', status: 'active' } })
+
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <Provider store={appStore}>
+          <AppStoreProvider><PublicHeader /></AppStoreProvider>
+        </Provider>
+      </MemoryRouter>,
+    )
+
+    await user.hover(screen.getByRole('button', { name: '打开用户菜单' }))
+    await user.click(screen.getByRole('button', { name: '账户设置' }))
+    const dialog = await screen.findByRole('dialog', { name: '个人中心' })
+    expect(dialog).toHaveTextContent('个人资料')
+    expect(dialog).toHaveTextContent('账户')
+    expect(dialog).toHaveTextContent('测试用户')
+    expect(dialog.querySelectorAll('.account-settings-badges img')).toHaveLength(3)
+
+    await user.click(within(dialog).getByRole('button', { name: '昵称' }))
+    const nameInput = within(dialog).getByRole('textbox', { name: '昵称' })
+    await user.clear(nameInput)
+    await user.type(nameInput, '新的昵称')
+    await user.click(within(dialog).getByText('头像'))
+    expect(within(dialog).queryByRole('textbox', { name: '昵称' })).toBeNull()
+    expect(dialog).toHaveTextContent('新的昵称')
+
+    await user.click(within(dialog).getByRole('button', { name: '手机号' }))
+    const phoneInput = within(dialog).getByRole('textbox', { name: '手机号' })
+    await user.clear(phoneInput)
+    await user.type(phoneInput, '13800138000{enter}')
+    expect(within(dialog).queryByRole('textbox', { name: '手机号' })).toBeNull()
+    expect(dialog).toHaveTextContent('13800138000')
+  })
+
   it('登录没有指定返回地址时进入快速接入而不是总览', () => {
     expect(normalizeLoginReturnPath(undefined)).toBe(DEFAULT_CONSOLE_PATH)
     expect(normalizeLoginReturnPath(null)).toBe(DEFAULT_CONSOLE_PATH)

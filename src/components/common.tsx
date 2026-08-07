@@ -20,6 +20,7 @@ import {
   IconCreditCardStroked,
   IconCustomerSupport,
   IconDesktop,
+  IconEditStroked,
   IconExit,
   IconEyeClosedStroked,
   IconEyeOpenedStroked,
@@ -38,6 +39,7 @@ import {
   IconSettingStroked,
   IconSend,
   IconSunStroked,
+  IconTick,
   IconUserGroup,
   IconUserStroked,
   IconVideo,
@@ -61,6 +63,7 @@ import headerLogo from '@/assets/figma-header/token-nx-header-logo.png'
 import headerTrialPill from '@/assets/figma-header/trial-pill.png'
 import headerTrialFreeTag from '@/assets/figma-header/trial-free-tag.svg'
 import headerNotificationIcon from '@/assets/figma-header/notification.svg'
+import accountBadge from '@/assets/figma-account-badge.png'
 import manuscriptFooterLogo from '@/assets/figma-home/footer-logo.png'
 import manuscriptCustomerQr from '@/assets/figma-home/footer-qr-customer.png'
 import manuscriptOfficialQr from '@/assets/figma-home/footer-qr-official.png'
@@ -938,6 +941,7 @@ export function PublicHeader({ enterpriseAccess, unreadNotificationCount = 0 }: 
   const [mobileOpen, setMobileOpen] = useState(false)
   const [billingMenuOpen, setBillingMenuOpen] = useState(false)
   const [billingBalanceVisible, setBillingBalanceVisible] = useState(true)
+  const [accountSettingsOpen, setAccountSettingsOpen] = useState(false)
   const billingBalance = '348.62'
   const maskedBillingBalance = billingBalance.replace(/\D/g, '').replace(/\d/g, '*')
   const billingHoverCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -1004,7 +1008,8 @@ export function PublicHeader({ enterpriseAccess, unreadNotificationCount = 0 }: 
   }
 
   return (
-    <header className="app-header public-header public-header--home">
+    <>
+      <header className="app-header public-header public-header--home">
       <div className="app-header-inner app-header-full public-header-inner">
         <button className="mobile-menu-button" type="button" aria-controls="public-mobile-nav" aria-expanded={mobileOpen} aria-label={mobileOpen ? t('nav.close') : t('nav.open')} onClick={() => setMobileOpen((open) => !open)}>
           {mobileOpen ? <IconClose className="icon-svg" /> : <IconMenu className="icon-svg" />}
@@ -1037,6 +1042,7 @@ export function PublicHeader({ enterpriseAccess, unreadNotificationCount = 0 }: 
               phone={auth.user?.phone_masked || store.phone}
               enterpriseAccess={enterpriseAccess}
               onNavigate={go}
+              onOpenSettings={() => setAccountSettingsOpen(true)}
               onLogout={() => { void dispatch(logoutAuth()).finally(() => go('/')) }}
             />
           ) : (
@@ -1048,7 +1054,9 @@ export function PublicHeader({ enterpriseAccess, unreadNotificationCount = 0 }: 
         {publicLinks.map((link) => renderPublicLink(link, true))}
         <div className="public-mobile-tools"><ThemeToggleButton /><LanguageToggleButton mobile /></div>
       </nav>
-    </header>
+      </header>
+      {accountSettingsOpen ? <AccountSettingsModal onClose={() => setAccountSettingsOpen(false)} /> : null}
+    </>
   )
 }
 
@@ -1230,6 +1238,7 @@ type UserMenuProps = {
   phone: string
   enterpriseAccess?: EnterpriseMenuAccess
   onNavigate: (path: string) => void
+  onOpenSettings: () => void
   onLogout: () => void
 }
 
@@ -1254,7 +1263,7 @@ const WORKSPACE_MENU_VIEWPORT_GAP_PX = 12
 const WORKSPACE_MENU_GAP_PX = 1
 
 // 中文：登录后的用户菜单与参考站保持同一层级，空间切换和控制台入口共用当前工作空间状态。
-function UserMenu({ store, userId, userName, phone, enterpriseAccess, onNavigate, onLogout }: UserMenuProps) {
+function UserMenu({ store, userId, userName, phone, enterpriseAccess, onNavigate, onOpenSettings, onLogout }: UserMenuProps) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [workspaceOpen, setWorkspaceOpen] = useState(false)
@@ -1436,7 +1445,7 @@ function UserMenu({ store, userId, userName, phone, enterpriseAccess, onNavigate
             <span className="user-dropdown-identity-avatar">{initial}</span>
             <span className="user-dropdown-identity-copy"><strong>{displayName}</strong><span>{activeWorkspace.type === 'personal' ? t('console.common.personalWorkspace') : activeWorkspace.name}</span><IconChevronDown className="icon-svg user-dropdown-identity-chevron" /><span className="public-sr-only">{phoneLabel}</span><span className="public-sr-only">{t('console.common.currentWorkspace')} · {activeWorkspace.type === 'personal' ? displayName : activeWorkspace.name}</span><span className="public-sr-only">{t('console.common.switchWorkspace')}</span></span>
           </button>
-          <button className="user-dropdown-settings" type="button" aria-label={t('nav.settings')} onClick={() => navigateFromMenu('/console/settings')}><IconSettingStroked aria-hidden="true" /></button>
+          <button className="user-dropdown-settings" type="button" aria-label={t('nav.settings')} onClick={() => { closeMenu(); onOpenSettings() }}><IconSettingStroked aria-hidden="true" /></button>
         </div>
         {groups.map((group) => <div className="user-dropdown-section" key={group.key}>{group.items.map(renderMenuItem)}</div>)}
         <div className="user-dropdown-section">
@@ -1448,6 +1457,134 @@ function UserMenu({ store, userId, userName, phone, enterpriseAccess, onNavigate
       </div>
       {renderWorkspaceMenu()}
     </div>
+  )
+}
+
+function AccountSettingsModal({ onClose }: { onClose: () => void }) {
+  const { t } = useTranslation()
+  const store = useAppStore()
+  const auth = useAppSelector((state) => state.auth)
+  const initialDisplayName = limitDisplayNameLength(auth.user?.display_name || store.nickname) || t('console.common.demoUser')
+  const initialPhone = auth.user?.phone_masked || store.phone || t('profile.overview.notSet')
+  const email = auth.user?.email_masked || t('profile.overview.notSet')
+  const userId = auth.user?.id || t('profile.overview.notSet')
+  const [displayName, setDisplayName] = useState(initialDisplayName)
+  const [phone, setPhone] = useState(initialPhone)
+  const [editingField, setEditingField] = useState<'name' | 'phone' | null>(null)
+  const [editingValue, setEditingValue] = useState('')
+  const initial = displayName.slice(0, 1).toUpperCase()
+  const accountLabel = t('console.nav.account').replace(/管理$/, '')
+
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.body.style.overflow = previousOverflow
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [onClose])
+
+  async function copyUserId(): Promise<void> {
+    if (!userId || userId === t('profile.overview.notSet')) return
+    try {
+      await navigator.clipboard.writeText(userId)
+      Toast.success(t('profile.overview.copied'))
+    } catch {
+      Toast.error(t('console.common.copyFailed'))
+    }
+  }
+
+  function beginEdit(field: 'name' | 'phone'): void {
+    setEditingField(field)
+    setEditingValue(field === 'name' ? displayName : phone)
+  }
+
+  function commitEdit(field: 'name' | 'phone'): void {
+    const value = editingValue.trim()
+    if (value) {
+      if (field === 'name') {
+        const nextName = limitDisplayNameLength(value) || displayName
+        setDisplayName(nextName)
+        store.updateProfile({ nickname: nextName, phone: store.phone, avatar: store.avatar })
+      } else {
+        setPhone(value)
+        store.updateProfile({ nickname: store.nickname, phone: value, avatar: store.avatar })
+      }
+    }
+    setEditingField(null)
+  }
+
+  function handleEditKeyDown(event: ReactKeyboardEvent<HTMLInputElement>, field: 'name' | 'phone'): void {
+    if (event.key === 'Enter') {
+      event.preventDefault()
+      event.currentTarget.blur()
+    } else if (event.key === 'Escape') {
+      event.preventDefault()
+      event.stopPropagation()
+      setEditingField(null)
+    }
+  }
+
+  function renderEditableValue(field: 'name' | 'phone', value: string, label: string): ReactNode {
+    if (editingField === field) {
+      return <span className="account-settings-value account-settings-value--editing">
+        <input className="account-settings-input" autoFocus value={editingValue} aria-label={label} onChange={(event) => setEditingValue(event.target.value)} onBlur={() => commitEdit(field)} onKeyDown={(event) => handleEditKeyDown(event, field)} />
+        <button type="button" className="account-settings-icon-button account-settings-confirm" aria-label={t('profile.personal.save')} onMouseDown={(event) => event.preventDefault()} onClick={() => commitEdit(field)}><IconTick aria-hidden="true" /></button>
+      </span>
+    }
+    return <span className="account-settings-value">{value}<button type="button" className="account-settings-icon-button" aria-label={label} onClick={() => beginEdit(field)}><IconEditStroked aria-hidden="true" /></button></span>
+  }
+
+  return createPortal(
+    <div className="account-settings-overlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}>
+      <section className="account-settings-modal" role="dialog" aria-modal="true" aria-label={t('profile.title')}>
+        <aside className="account-settings-sidebar">
+          <h2>{t('profile.personal.title')}</h2>
+          <button className="account-settings-tab active" type="button"><IconUserStroked aria-hidden="true" /><span>{accountLabel}</span></button>
+        </aside>
+        <main className="account-settings-main">
+          <header className="account-settings-main-header">
+            <h3>{accountLabel}</h3>
+            <button className="account-settings-close" type="button" aria-label={t('nav.close')} onClick={onClose}><IconClose aria-hidden="true" /></button>
+          </header>
+          <div className="account-settings-fields">
+            <div className="account-settings-row account-settings-row--name">
+              <span className="account-settings-label">{t('profile.personal.nickname')}</span>
+              {renderEditableValue('name', displayName, t('profile.personal.nickname'))}
+            </div>
+            <div className="account-settings-row account-settings-row--avatar">
+              <span className="account-settings-label">{t('profile.personal.avatar')}</span>
+              <span className="account-settings-avatar">{initial}</span>
+            </div>
+            <div className="account-settings-row">
+              <span className="account-settings-label">{t('profile.contact.email')}</span>
+              <span className="account-settings-value">{email}{email === t('profile.overview.notSet') ? <button type="button" className="account-settings-inline-action">{t('profile.contact.dialogEmailBind')}</button> : null}</span>
+            </div>
+            <div className="account-settings-row">
+              <span className="account-settings-label">{t('profile.overview.id')}</span>
+              <span className="account-settings-value">{userId}<button type="button" className="account-settings-icon-button" aria-label={t('profile.overview.copyId')} onClick={() => { void copyUserId() }}><IconCopyStroked aria-hidden="true" /></button></span>
+            </div>
+            <div className="account-settings-row">
+              <span className="account-settings-label">{t('login.phone')}</span>
+              {renderEditableValue('phone', phone, t('login.phone'))}
+            </div>
+            <div className="account-settings-row account-settings-row--badges">
+              <span className="account-settings-label">徽章</span>
+              <span className="account-settings-badges"><img src={accountBadge} alt="" /><img src={accountBadge} alt="" /><img src={accountBadge} alt="" /></span>
+            </div>
+            <div className="account-settings-row account-settings-row--delete">
+              <span className="account-settings-label">删除账户</span>
+              <button type="button" className="account-settings-delete">删除账户</button>
+            </div>
+          </div>
+        </main>
+      </section>
+    </div>,
+    document.body,
   )
 }
 
