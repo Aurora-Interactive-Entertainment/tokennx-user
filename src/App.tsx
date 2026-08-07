@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation, useParams, useNavigate } from 'react-router'
+import { BrowserRouter, Navigate, Outlet, Route, Routes, useParams, useNavigate } from 'react-router'
 import { Button, Card, Tag } from '@douyinfe/semi-ui'
 import { IconArrowRight, IconCheckCircleStroked, IconCode, IconHistory } from '@douyinfe/semi-icons'
 import { AppLoadingScreen, ConsoleLayout, DEFAULT_CONSOLE_PATH, EmptyPanel, PublicLayout, PageTitle, ModelLogo, ModelTags, BannerNotice, localizeConsoleLabel } from '@/components/common'
@@ -117,11 +117,7 @@ function AppLoadingFallback() {
 }
 
 function BootReadyWatcher({ onBootReady }: { onBootReady: () => void }) {
-  const location = useLocation()
-
   useEffect(() => {
-    if (location.pathname === '/' || location.pathname === '/home') return
-
     if (typeof window.requestAnimationFrame === 'function') {
       const frame = window.requestAnimationFrame(onBootReady)
       return () => window.cancelAnimationFrame(frame)
@@ -129,7 +125,7 @@ function BootReadyWatcher({ onBootReady }: { onBootReady: () => void }) {
 
     const timer = window.setTimeout(onBootReady, 0)
     return () => window.clearTimeout(timer)
-  }, [location.pathname, onBootReady])
+  }, [onBootReady])
 
   return null
 }

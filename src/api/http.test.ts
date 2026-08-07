@@ -81,4 +81,28 @@ describe('认证 HTTP 客户端', () => {
     await fetchJson('/api/test')
     expect(new Headers(fetchMock.mock.calls[0]?.[1]?.headers).get('X-App-Lang')).toBe('en-US')
   })
+  it('external AbortSignal cancels the wrapped request', async () => {
+    const external = new AbortController()
+    let rejectFetch: ((reason?: unknown) => void) | undefined
+    vi.spyOn(globalThis, 'fetch').mockImplementation(() => new Promise<Response>((_resolve, reject) => {
+      rejectFetch = reject
+    }))
+    const request = fetchJson('/api/test', { signal: external.signal })
+    external.abort()
+    rejectFetch?.(new DOMException('Aborted', 'AbortError'))
+    await expect(request).rejects.toMatchObject({ name: 'ApiError', status: 0 })
+  })
+
+  it('external AbortSignal requests still honor the 15 second timeout', async () => {
+    vi.useFakeTimers()
+    const external = new AbortController()
+    vi.spyOn(globalThis, 'fetch').mockImplementation((_input, init) => new Promise<Response>((_resolve, reject) => {
+      init?.signal?.addEventListener('abort', () => reject(new DOMException('Timeout', 'AbortError')), { once: true })
+    }))
+    const request = fetchJson('/api/test', { signal: external.signal })
+    const rejection = expect(request).rejects.toMatchObject({ name: 'ApiError', status: 408 })
+    await vi.advanceTimersByTimeAsync(15_000)
+    await rejection
+    vi.useRealTimers()
+  })
 })

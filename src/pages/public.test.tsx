@@ -166,17 +166,16 @@ describe('公开模型页面', () => {
     expect(document.querySelector('.manuscript-partner-grid a[data-copy="duplicate"]')).toBeNull()
   })
 
-  it('首页内容接口失败时持续显示 Semi Design 骨架', async () => {
+  it('首页内容接口失败时停止骨架并允许重新加载', async () => {
     vi.mocked(globalThis.fetch).mockRejectedValueOnce(new Error('offline'))
     renderPage(<HomePage />, '/')
 
     await waitFor(() => expect(globalThis.fetch).toHaveBeenCalled())
-    expect(document.querySelector('.manuscript-feature-grid')).toHaveAttribute('aria-busy', 'true')
-    expect(document.querySelectorAll('.manuscript-feature-card.manuscript-skeleton-card')).toHaveLength(3)
-    expect(document.querySelectorAll('.semi-skeleton-active')).not.toHaveLength(0)
-    expect(document.querySelectorAll('.semi-skeleton-image')).not.toHaveLength(0)
-    expect(document.querySelectorAll('.semi-skeleton-title')).not.toHaveLength(0)
-    expect(document.querySelectorAll('.semi-skeleton-paragraph')).not.toHaveLength(0)
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('首页内容加载失败，请稍后重试'))
+    expect(document.querySelector('.manuscript-feature-grid')).not.toHaveAttribute('aria-busy')
+    expect(document.querySelectorAll('.manuscript-feature-card.manuscript-skeleton-card')).toHaveLength(0)
+    expect(document.querySelectorAll('.semi-skeleton-active')).toHaveLength(0)
+    expect(screen.getByRole('button', { name: '重新加载' })).toBeInTheDocument()
     expect(screen.queryByText('一个账户，统一访问所有顶级AI模型')).toBeNull()
     expect(screen.queryByText('后台能力卡片')).toBeNull()
   })
@@ -209,5 +208,18 @@ describe('公开模型页面', () => {
     expect(screen.getByRole('heading', { name: 'Price comparison' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Sign in for API access' })).toBeInTheDocument()
     expect(screen.getAllByText('Standard').length).toBeGreaterThan(0)
+  })
+
+  it('logo-only partners remain visible', async () => {
+    vi.mocked(globalThis.fetch).mockResolvedValueOnce(new Response(JSON.stringify({
+      code: 0,
+      msg: 'success',
+      data: {
+        cards: [], promotion_models: [], ad_slots: [], news: [],
+        partners: [{ id: 'logo-only-partner', kind: 'partner', status: 'active', sort_order: 1, pinned: false, data: { translations: { 'zh-CN': { logo_url: 'https://cdn.example.com/partner.png' } } } }],
+      },
+    }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
+    renderPage(<HomePage />, '/')
+    await waitFor(() => expect(document.querySelector('.manuscript-partner-image')).toHaveAttribute('src', 'https://cdn.example.com/partner.png'))
   })
 })

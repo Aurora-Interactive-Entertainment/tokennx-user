@@ -89,7 +89,21 @@ export async function fetchJson<T>(path: string, options: FetchJsonOptions = {})
 // fetchResponse 保留认证请求的原始响应，供文件下载等非 JSON 接口复用统一超时和错误处理。
 export async function fetchResponse(path: string, options: FetchJsonOptions = {}): Promise<Response> {
 	const controller = new AbortController()
-	const timeout = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
+	let timedOut = false
+	let removeExternalAbortListener: (() => void) | undefined
+	if (options.signal) {
+		if (options.signal.aborted) {
+			controller.abort(options.signal.reason)
+		} else {
+			const onExternalAbort = () => controller.abort(options.signal?.reason)
+			options.signal.addEventListener('abort', onExternalAbort, { once: true })
+			removeExternalAbortListener = () => options.signal?.removeEventListener('abort', onExternalAbort)
+		}
+	}
+	const timeout = window.setTimeout(() => {
+		timedOut = true
+		controller.abort()
+	}, REQUEST_TIMEOUT_MS)
   const headers = new Headers(options.headers)
   const requestId = createRequestId()
   headers.set('Accept', 'application/json')
@@ -105,13 +119,14 @@ export async function fetchResponse(path: string, options: FetchJsonOptions = {}
       body: options.body === undefined ? undefined : JSON.stringify(options.body),
       credentials: 'omit',
       headers,
-      signal: options.signal ?? controller.signal,
+      signal: controller.signal,
     })
   } catch (error) {
-    if (error instanceof DOMException && error.name === 'AbortError') throw new ApiError(i18n.t('api.http.timeout'), 408, 0, requestId)
+    if (timedOut && error instanceof DOMException && error.name === 'AbortError') throw new ApiError(i18n.t('api.http.timeout'), 408, 0, requestId)
     throw new ApiError(i18n.t('api.http.networkFailure'), 0, 0, requestId)
   } finally {
     window.clearTimeout(timeout)
+		removeExternalAbortListener?.()
   }
 
 	let payload: Partial<ApiEnvelope<unknown>> | null = null

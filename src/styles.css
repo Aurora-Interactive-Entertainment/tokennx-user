@@ -3954,8 +3954,16 @@ html[data-theme="light"] .public-header--home .login-trigger-wrap > .btn { borde
 
 .manuscript-section { padding-bottom: 76px; }
 .manuscript-features { position: relative; isolation: isolate; }
-.manuscript-wave-field { position: absolute; top: -255px; left: 50%; z-index: 0; width: 100vw; height: 625px; overflow: hidden; pointer-events: none; transform: translateX(-50%); }
+.public-layout--manuscript-home .manuscript-pricing,
+.public-layout--manuscript-home .manuscript-promotion,
+.public-layout--manuscript-home .manuscript-partners { content-visibility: auto; contain-intrinsic-size: 800px; }
+.manuscript-wave-field { position: absolute; top: -255px; left: 50%; z-index: 0; width: 100vw; height: 625px; contain: paint; overflow: hidden; pointer-events: none; transform: translateX(-50%); }
 .manuscript-silk-canvas { display: block; width: 100%; height: 100%; opacity: .94; }
+.manuscript-home-error { display: flex; width: min(1280px, calc(100% - 48px)); min-height: 48px; align-items: center; justify-content: center; gap: 16px; box-sizing: border-box; margin: 24px auto 0; padding: 10px 16px; border: 1px solid rgba(255, 255, 255, .16); border-radius: 4px; color: #cfcfcf; background: #191919; font-size: 16px; }
+.manuscript-home-error button { min-height: 30px; padding: 0 14px; border: 1px solid #555; border-radius: 3px; color: #fff; background: #292929; cursor: pointer; }
+.manuscript-home-error button:hover { border-color: #777; background: #353535; }
+html[data-theme="light"] .manuscript-home-error { border-color: rgba(23, 24, 27, .18); color: #343434; background: #f5f5f5; }
+html[data-theme="light"] .manuscript-home-error button { border-color: #bbb; color: #17181b; background: #fff; }
 .manuscript-feature-grid { position: relative; z-index: 1; }
 .manuscript-feature-grid, .manuscript-price-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
 .manuscript-feature-card { display: flex; min-width: 0; height: 296px; flex-direction: column; overflow: hidden; border: 1px solid #292929; border-radius: 4px; background: rgba(18, 18, 18, .0); box-shadow: none; transition: border-color .2s ease, transform .2s ease, background-color .2s ease; }
@@ -4615,11 +4623,11 @@ html[data-theme="light"] .login-popover .login-tab.active { border-bottom-color:
 .public-layout--manuscript-home .manuscript-partner-row.is-scrolling::after { position: absolute; top: 0; bottom: 0; z-index: 2; width: 180px; content: ''; pointer-events: none; }
 .public-layout--manuscript-home .manuscript-partner-row.is-scrolling::before { left: 0; background: linear-gradient(90deg, #121212 0%, rgba(18, 18, 18, .86) 32%, transparent 100%); }
 .public-layout--manuscript-home .manuscript-partner-row.is-scrolling::after { right: 0; background: linear-gradient(270deg, #121212 0%, rgba(18, 18, 18, .86) 32%, transparent 100%); }
-.public-layout--manuscript-home .manuscript-partner-row { position: relative; border: 0; }
+.public-layout--manuscript-home .manuscript-partner-row { position: relative; contain: paint; border: 0; }
 .public-layout--manuscript-home .manuscript-partner-item { min-height: 130px; gap: 12px; padding: 12px 18px; border: 0; color: #f2f2f2; }
 .public-layout--manuscript-home .manuscript-partner-item:hover { background: transparent; }
 .public-layout--manuscript-home .manuscript-partner-item strong { max-width: 150px; font-family: "Source Han Sans CN", "Noto Sans SC", sans-serif; font-size: 20px; font-weight: 400; line-height: 28px; letter-spacing: -.02em; }
-.public-layout--manuscript-home .manuscript-partner-image { display: block; width: 112px; height: 64px; flex: 0 0 112px; box-sizing: border-box; object-fit: contain; object-position: center; }
+.public-layout--manuscript-home .manuscript-partner-image { display: block; width: 112px; height: 64px; flex: 0 0 112px; box-sizing: border-box; object-fit: contain; object-position: center; aspect-ratio: 7 / 4; }
 .public-layout--manuscript-home .manuscript-partner-logo { max-width: 170px; height: 40px; }
 .public-layout--manuscript-home .manuscript-partner-logo svg { height: 40px; max-width: 170px; }
 .public-layout--manuscript-home .manuscript-partner-logo--mark svg { width: 38px; height: 38px; max-width: 38px; }
@@ -4754,9 +4762,15 @@ html[data-theme="light"] .login-popover .login-tab.active { border-bottom-color:
 }
 
 @media (max-width: 480px) {
+  .public-layout--manuscript-home .manuscript-reward-card { width: min(416px, 100%); }
+  .public-layout--manuscript-home .manuscript-reward-marks { left: 50%; width: min(327px, calc(100% - 32px)); transform: translateX(-50%); }
+  .public-layout--manuscript-home .manuscript-reward-marks img { width: 100%; max-width: 327px; height: auto; }
+  .public-layout--manuscript-home .manuscript-promotion-skeleton-art { left: 50%; width: min(327px, calc(100% - 32px)); height: auto; transform: translateX(-50%); }
+  .public-layout--manuscript-home .manuscript-promotion-skeleton-login { right: 16px; left: 16px; width: auto; }
+  .public-layout--manuscript-home .manuscript-promotion-skeleton-stats { right: 16px; left: 16px; width: auto; }
   .public-layout--manuscript-home .manuscript-reward-card h3,
   .public-layout--manuscript-home .manuscript-reward-card > p { right: 16px; left: 16px; }
-  .public-layout--manuscript-home .manuscript-reward-marks { left: 16px; }
+  .public-layout--manuscript-home .manuscript-reward-marks { left: 50%; }
   .public-layout--manuscript-home .manuscript-reward-login { right: 16px; left: 16px; width: auto; }
   .public-layout--manuscript-home .manuscript-reward-login span { font-size: 16px; }
   .public-layout--manuscript-home .manuscript-reward-stats { right: 16px; left: 16px; width: auto; gap: 8px; }
@@ -5522,6 +5536,26 @@ html[data-theme="light"] .manuscript-support-notifications strong { color: #1718
 :is(.login-popover, .login-card) .phone-prefix-control::after {
   position: absolute; top: 50%; right: 10px; width: 7px; height: 7px; border: solid #8b8b8b; border-width: 0 2px 2px 0;
   content: ''; pointer-events: none; transform: translateY(-70%) rotate(45deg); transition: transform .18s ease;
+}
+
+/* 中文：微信 WebView 和低性能触控设备优先保证滚动稳定，保留内容与交互，仅降级装饰动画。 */
+html[data-performance="lite"] .public-layout--manuscript-home .manuscript-partner-track.is-forward,
+html[data-performance="lite"] .public-layout--manuscript-home .manuscript-partner-track.is-reverse { animation: none; transform: none; }
+html[data-performance="lite"] .public-layout--manuscript-home .header-trial-glass,
+html[data-performance="lite"] .public-layout--manuscript-home .header-trial-subscription,
+html[data-performance="lite"] .public-layout--manuscript-home .manuscript-support-panel { backdrop-filter: none; -webkit-backdrop-filter: none; }
+html[data-performance="lite"] .public-layout--manuscript-home .header-trial-glass::after,
+html[data-performance="lite"] .public-layout--manuscript-home .header-trial-badge strong,
+html[data-performance="lite"] .public-layout--manuscript-home .header-trial-subscription { animation: none; }
+html[data-performance="lite"] .public-layout--manuscript-home .manuscript-support-icon-button,
+html[data-performance="lite"] .public-layout--manuscript-home .manuscript-support-label-button { box-shadow: 0 3px 10px rgba(0, 0, 0, .2); }
+html[data-performance="lite"] .public-layout--manuscript-home .manuscript-support-panel { box-shadow: 0 12px 32px rgba(0, 0, 0, .3); }
+html[data-performance="lite"] .public-layout--manuscript-home .manuscript-silk-canvas { opacity: .58; }
+
+@media (max-width: 900px) {
+  .public-layout--manuscript-home .manuscript-pricing,
+  .public-layout--manuscript-home .manuscript-promotion,
+  .public-layout--manuscript-home .manuscript-partners { content-visibility: visible; contain-intrinsic-size: none; }
 }
 :is(.login-popover, .login-card) .phone-prefix-control.is-open::after { transform: translateY(-25%) rotate(-135deg); }
 :is(.login-popover, .login-card) .phone-prefix-select { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; opacity: 0; cursor: pointer; }

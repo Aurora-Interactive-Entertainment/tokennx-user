@@ -188,10 +188,17 @@ function useHomeMetrics(): { tokenVolume: number; apiCalls: number; initialReque
     }
 
     void refresh()
-    const interval = window.setInterval(() => { void refresh() }, HOME_STATS_POLL_INTERVAL)
+    const interval = window.setInterval(() => {
+      if (!document.hidden) void refresh()
+    }, HOME_STATS_POLL_INTERVAL)
+    const handleVisibilityChange = (): void => {
+      if (!document.hidden) void refresh()
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
     return () => {
       mounted = false
       window.clearInterval(interval)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
   }, [])
 
@@ -326,6 +333,7 @@ type HomeSilkRibbon = {
   speed: number
   phase: number
   opacity: number
+  gradient?: CanvasGradient
 }
 
 function HomeSilkCanvas() {
@@ -337,16 +345,28 @@ function HomeSilkCanvas() {
     if (!canvas || !context || typeof context.createLinearGradient !== 'function') return undefined
 
     const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
+    const compactViewport = window.matchMedia?.('(max-width: 768px)').matches ?? false
+    const litePerformance = /MicroMessenger/i.test(navigator.userAgent) || (window.matchMedia?.('(pointer: coarse)').matches ?? false) || (navigator.hardwareConcurrency > 0 && navigator.hardwareConcurrency <= 4)
+    const canAnimate = !reducedMotion
+    const targetFrameInterval = 1000 / (litePerformance ? 20 : compactViewport ? 30 : 60)
     let width = 0
     let height = 0
     let tick = 0
     let animationFrame = 0
+    let lastDrawTime = 0
+    let isVisible = true
     let ribbons: HomeSilkRibbon[] = []
 
     const createRibbons = (): void => {
-      ribbons = Array.from({ length: 22 }, () => {
+      ribbons = Array.from({ length: litePerformance ? 8 : compactViewport ? 16 : 22 }, () => {
         const amplitude = 50 + Math.random() * 120
         const verticalPadding = Math.min(height / 2, amplitude + 36)
+        const opacity = .05 + Math.random() * .18
+        const gradient = context.createLinearGradient(0, 0, width, 0)
+        gradient.addColorStop(0, 'rgba(20,70,255,0)')
+        gradient.addColorStop(.45, `rgba(70,130,255,${opacity})`)
+        gradient.addColorStop(.7, `rgba(20,90,255,${opacity})`)
+        gradient.addColorStop(1, 'rgba(20,70,255,0)')
 
         return {
           y: verticalPadding + Math.random() * Math.max(0, height - verticalPadding * 2),
@@ -354,7 +374,8 @@ function HomeSilkCanvas() {
           frequency: .002 + Math.random() * .004,
           speed: .3 + Math.random() * .7,
           phase: Math.random() * Math.PI * 2,
-          opacity: .05 + Math.random() * .18,
+          opacity,
+          gradient,
         }
       })
     }
@@ -363,7 +384,7 @@ function HomeSilkCanvas() {
       const bounds = canvas.getBoundingClientRect()
       width = Math.max(1, bounds.width)
       height = Math.max(1, bounds.height)
-      const pixelRatio = Math.min(window.devicePixelRatio || 1, 2)
+      const pixelRatio = Math.min(window.devicePixelRatio || 1, litePerformance ? 1 : compactViewport ? 1.5 : 2)
       canvas.width = Math.round(width * pixelRatio)
       canvas.height = Math.round(height * pixelRatio)
       context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0)
@@ -383,27 +404,25 @@ function HomeSilkCanvas() {
           else context.lineTo(x, y)
         }
 
-        const gradient = context.createLinearGradient(0, 0, width, 0)
-        gradient.addColorStop(0, 'rgba(20,70,255,0)')
-        gradient.addColorStop(.45, `rgba(70,130,255,${ribbon.opacity})`)
-        gradient.addColorStop(.7, `rgba(20,90,255,${ribbon.opacity})`)
-        gradient.addColorStop(1, 'rgba(20,70,255,0)')
-        context.strokeStyle = gradient
+        context.strokeStyle = ribbon.gradient ?? 'rgba(40,100,255,.14)'
         context.lineWidth = 1.3
-        context.shadowBlur = 18
+        context.shadowBlur = litePerformance ? 0 : compactViewport ? 10 : 18
         context.shadowColor = 'rgba(40,100,255,.8)'
         context.stroke()
       })
     }
 
-    const animate = (): void => {
-      draw()
+    const animate = (time: number): void => {
+      if (time - lastDrawTime >= targetFrameInterval) {
+        draw()
+        lastDrawTime = time
+      }
       animationFrame = window.requestAnimationFrame(animate)
     }
 
     const start = (): void => {
       window.cancelAnimationFrame(animationFrame)
-      if (document.hidden || reducedMotion) {
+      if (document.hidden || !canAnimate || !isVisible) {
         draw()
         return
       }
@@ -415,16 +434,22 @@ function HomeSilkCanvas() {
       resize()
       if (reducedMotion) draw()
     })
+    const intersectionObserver = typeof IntersectionObserver === 'undefined' ? null : new IntersectionObserver(([entry]) => {
+      isVisible = entry?.isIntersecting ?? true
+      start()
+    }, { rootMargin: '160px 0px' })
 
     resize()
     start()
     resizeObserver?.observe(canvas)
+    intersectionObserver?.observe(canvas)
     if (!resizeObserver) window.addEventListener('resize', resize)
     document.addEventListener('visibilitychange', handleVisibilityChange)
 
     return () => {
       window.cancelAnimationFrame(animationFrame)
       resizeObserver?.disconnect()
+      intersectionObserver?.disconnect()
       if (!resizeObserver) window.removeEventListener('resize', resize)
       document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
@@ -441,7 +466,7 @@ function HomeModelMosaic() {
 
 function HomeFeatureArtwork() {
   return <>
-    <img className="manuscript-feature-image" src={modelCardArt} alt="" aria-hidden="true" />
+    <img className="manuscript-feature-image" src={modelCardArt} alt="" aria-hidden="true" loading="lazy" decoding="async" width={416} height={106} />
     {/* Retain the previous mosaic fallback in the DOM for compatibility with existing consumers. */}
     <div className="manuscript-feature-mosaic-legacy" aria-hidden="true"><HomeModelMosaic /></div>
   </>
@@ -449,7 +474,7 @@ function HomeFeatureArtwork() {
 
 function HomePartnerLogo({ partner }: { partner: HomePartner }) {
   if (partner.logoUrl) {
-    return <img className="manuscript-partner-image" src={partner.logoUrl} alt="" aria-hidden="true" />
+    return <img className="manuscript-partner-image" src={partner.logoUrl} alt="" aria-hidden="true" loading="lazy" decoding="async" width={112} height={64} />
   }
   if (partner.logoMarkup) {
     const logoClassName = `manuscript-partner-logo${partner.logoKind === 'mark' ? ' manuscript-partner-logo--mark' : ''}`
@@ -533,7 +558,7 @@ function ManagedFeatureCard({ entry, index }: { entry: HomepageEntry; index: num
   const action = content.action_text?.trim() || t(`home.rebuild.featureCards.${index % 3}.action`)
   const imageURL = homepageMediaURL(content.image_object_id, content.image_url)
   return <article className="manuscript-feature-card">
-    <div className="manuscript-feature-visual">{imageURL ? <img className="manuscript-feature-image" src={imageURL} alt="" aria-hidden="true" /> : <HomeFeatureArtwork />}<span>{index === 0 ? t('home.rebuild.featureModelsCount') : t('home.rebuild.featuresTitle')}</span></div>
+    <div className="manuscript-feature-visual">{imageURL ? <img className="manuscript-feature-image" src={imageURL} alt="" aria-hidden="true" loading="lazy" decoding="async" width={416} height={106} /> : <HomeFeatureArtwork />}<span>{index === 0 ? t('home.rebuild.featureModelsCount') : t('home.rebuild.featuresTitle')}</span></div>
     <div className="manuscript-feature-copy">
       <h3>{content.title || t('home.rebuild.featuresTitle')}</h3>
       <p>{content.description || ''}</p>
@@ -546,7 +571,7 @@ function ManagedNewsCard({ entry, index }: { entry: HomepageEntry; index: number
   const { t, i18n } = useTranslation()
   const content = homepageTranslation(entry, i18n.language)
   const href = homepageHref(content.link_url, '/docs')
-  const card = <><div className="manuscript-news-copy"><h3>{content.title || t('home.rebuild.news.0.title')}</h3><p>{content.summary || ''}</p><small>{homepageDate(entry.updated_at, i18n.language)} <b className="manuscript-news-new">{t('public.home.newBadge')}</b></small></div><div className={`manuscript-news-art manuscript-news-art--${index % 2}`} aria-hidden="true"><img className="manuscript-news-art-image" src={promoArticleArt} alt="" /></div></>
+  const card = <><div className="manuscript-news-copy"><h3>{content.title || t('home.rebuild.news.0.title')}</h3><p>{content.summary || ''}</p><small>{homepageDate(entry.updated_at, i18n.language)} <b className="manuscript-news-new">{t('public.home.newBadge')}</b></small></div><div className={`manuscript-news-art manuscript-news-art--${index % 2}`} aria-hidden="true"><img className="manuscript-news-art-image" src={promoArticleArt} alt="" loading="lazy" decoding="async" width={850} height={333} /></div></>
   return href.startsWith('/') ? <Link className="manuscript-news-card" to={href}>{card}</Link> : <a className="manuscript-news-card" href={href} target="_blank" rel="noopener noreferrer">{card}</a>
 }
 
@@ -556,7 +581,7 @@ function ManagedAdSlots({ entries }: { entries: HomepageEntry[] }) {
     const content = homepageTranslation(entry, i18n.language)
     const href = homepageHref(content.link_url, '/models')
     const imageURL = homepageMediaURL(content.image_object_id, content.image_url)
-    const ad = <img src={imageURL || promoBannerArt} alt={content.title || t('home.rebuild.adSlot')} />
+    const ad = <img src={imageURL || promoBannerArt} alt={content.title || t('home.rebuild.adSlot')} loading="lazy" decoding="async" width={850} height={193} />
     return href.startsWith('/') ? <Link className="manuscript-ad-slot" key={entry.id} to={href}>{ad}</Link> : <a className="manuscript-ad-slot" key={entry.id} href={href} target="_blank" rel="noopener noreferrer">{ad}</a>
   })}</div>
 }
@@ -607,10 +632,9 @@ function managedPartners(homepage: PublicHomepage | null, language: string): Hom
   if (!homepage?.partners.length) return []
   return homepage.partners.flatMap((entry) => {
     const content = homepageTranslation(entry, language)
-    const name = content.name?.trim() || content.title?.trim()
-    if (!name) return []
     const logoURL = homepageMediaURL(content.logo_object_id, content.logo_url)
     if (!logoURL) return []
+    const name = content.name?.trim() || content.title?.trim() || entry.id
     return [{ name, logoUrl: logoURL, href: content.link_url, logoKind: 'wordmark' as const }]
   })
 }
@@ -671,6 +695,15 @@ export function HomePage({ onInitialScoreboardReady }: { onInitialScoreboardRead
   const initialAuthStatusRef = useRef(authStatus)
   const previousAuthStatusRef = useRef(authStatus)
 
+  useEffect(() => {
+    const litePerformance = /MicroMessenger/i.test(navigator.userAgent) || (window.matchMedia?.('(pointer: coarse)').matches ?? false) || (navigator.hardwareConcurrency > 0 && navigator.hardwareConcurrency <= 4)
+    if (!litePerformance) return undefined
+    document.documentElement.dataset.performance = 'lite'
+    return () => {
+      if (document.documentElement.dataset.performance === 'lite') delete document.documentElement.dataset.performance
+    }
+  }, [])
+
   const handleScoreboardReady = useCallback((metricId: string): void => {
     if (!onInitialScoreboardReady || completedScoreboardsRef.current.has(metricId)) return
     completedScoreboardsRef.current.add(metricId)
@@ -678,19 +711,19 @@ export function HomePage({ onInitialScoreboardReady }: { onInitialScoreboardRead
   }, [onInitialScoreboardReady])
   const handleTokenScoreboardReady = useCallback(() => handleScoreboardReady('token-volume'), [handleScoreboardReady])
   const handleApiScoreboardReady = useCallback(() => handleScoreboardReady('api-calls'), [handleScoreboardReady])
-  const isHomepageLoading = homepageStatus !== 'ready'
-  const managedCards = homepageStatus === 'ready' ? homepage?.cards ?? [] : []
+  const isHomepageLoading = homepageStatus === 'loading' && homepage === null
+  const isHomepageError = homepageStatus === 'error' && homepage === null
+  const managedCards = homepage?.cards ?? []
   const promotionItems = useMemo(() => {
-    const managed = managedPromotionItems(homepage, i18n.language)
-    return homepageStatus === 'ready' ? managed : []
-  }, [homepage, homepageStatus, i18n.language])
+    return managedPromotionItems(homepage, i18n.language)
+  }, [homepage, i18n.language])
   const managedNews = useMemo(() => {
     const news = homepage?.news ?? []
     const pinned = news.filter((entry) => entry.pinned)
     return (pinned.length ? pinned : news).slice(0, 2)
   }, [homepage])
   const managedPartnerItems = useMemo(() => managedPartners(homepage, i18n.language), [homepage, i18n.language])
-  const partnerItems = homepageStatus === 'ready' ? managedPartnerItems : []
+  const partnerItems = managedPartnerItems
   const partnerRows = useMemo(() => {
     if (!partnerItems.length) return []
     if (partnerItems.length < 12) return [partnerItems]
@@ -753,6 +786,11 @@ export function HomePage({ onInitialScoreboardReady }: { onInitialScoreboardRead
           </div>
         </section>
 
+        {isHomepageError ? <div className="manuscript-home-error" role="alert">
+          <span>{t('home.rebuild.loadFailed')}</span>
+          <button type="button" onClick={() => refreshHomepage(authStatus === 'authenticated' ? getAccessToken() ?? undefined : undefined)}>{t('home.rebuild.retry')}</button>
+        </div> : null}
+
         <section className="manuscript-section manuscript-features" aria-labelledby="homeFeaturesTitle">
           <div className="manuscript-wave-field" aria-hidden="true"><HomeSilkCanvas /></div>
           <h2 className="public-sr-only" id="homeFeaturesTitle">{t('home.rebuild.featuresTitle')}</h2>
@@ -765,7 +803,7 @@ export function HomePage({ onInitialScoreboardReady }: { onInitialScoreboardRead
           <div className="manuscript-section-heading"><div><h2 id="homePricingTitle">{t('home.pricing.manuscriptTitle')}</h2><p>{t('home.pricing.manuscriptSubtitle')}</p></div></div>
           <div className="manuscript-price-grid" role={isHomepageLoading ? 'status' : undefined} aria-busy={isHomepageLoading || undefined}>{isHomepageLoading ? <><span className="public-sr-only">正在加载优惠模型</span><HomePriceSkeletons /></> : promotionItems.map((item, itemIndex) => <article className={`manuscript-price-card${item.input.length > 5 || item.output.length > 5 ? ' has-long-price' : ''}`} key={item.id}>
             <span className="manuscript-price-card-kicker">{t('home.pricing.manuscriptSubtitle')}</span>
-            <div className="manuscript-price-card-head"><Link className="manuscript-price-model" to={modelPublicHref(item.model) ?? '/models'}><span className="manuscript-price-model-logo"><img src={promoModelLogo} alt="" aria-hidden="true" /></span><span><strong>{item.name}</strong><small>{t('home.rebuild.providedBy', { company: item.company })}</small></span></Link><span className={`manuscript-price-badge${item.discountKind === 'free' ? ' is-equal' : ''}`}>{t(`public.home.discount${item.discountKind === 'free' ? 'Free' : item.discountKind === 'custom' ? 'Custom' : 'Half'}`)}</span></div>
+            <div className="manuscript-price-card-head"><Link className="manuscript-price-model" to={modelPublicHref(item.model) ?? '/models'}><span className="manuscript-price-model-logo"><img src={promoModelLogo} alt="" aria-hidden="true" loading="lazy" decoding="async" width={30} height={24} /></span><span><strong>{item.name}</strong><small>{t('home.rebuild.providedBy', { company: item.company })}</small></span></Link><span className={`manuscript-price-badge${item.discountKind === 'free' ? ' is-equal' : ''}`}>{t(`public.home.discount${item.discountKind === 'free' ? 'Free' : item.discountKind === 'custom' ? 'Custom' : 'Half'}`)}</span></div>
             <div className="manuscript-price-divider" />
             <div className="manuscript-price-values"><div><span>{t('home.rebuild.inputPrice')}</span><strong>{item.input}<small>{t('public.home.priceUnit')}</small></strong></div><div><span>{t('home.rebuild.outputPrice')}</span><strong>{item.output}<small>{t('public.home.priceUnit')}</small></strong></div></div>
             <div className="manuscript-price-availability"><span>{t('home.rebuild.availability')}</span><div>{Array.from({ length: HOME_AVAILABILITY_BAR_COUNT }, (_, index) => {
@@ -780,7 +818,7 @@ export function HomePage({ onInitialScoreboardReady }: { onInitialScoreboardRead
 
         <section className="manuscript-section manuscript-promotion" aria-labelledby="homePromotionTitle">
           <div className="manuscript-section-heading"><div><h2 id="homePromotionTitle">{t('home.rebuild.promotionTitle')}</h2><p>{t('home.rebuild.manuscriptPromotionDescription')}</p></div></div>
-          <div className="manuscript-promotion-grid" role={isHomepageLoading ? 'status' : undefined} aria-busy={isHomepageLoading || undefined}>{isHomepageLoading ? <><span className="public-sr-only">正在加载推广与资讯</span><HomePromotionSkeleton /></> : <><article className="manuscript-reward-card"><h3>{t('home.rebuild.rewardTitle')}</h3><p>{t('home.rebuild.rewardDescription')}</p><div className="manuscript-reward-marks" aria-hidden="true"><img src={promoRewardAvatars} alt="" /></div><div className="manuscript-reward-login"><span>{t('home.rebuild.rewardLoginHint')}</span><LoginRequiredAction returnPath="/console/invitations">{t('home.rebuild.rewardLoginAction')}</LoginRequiredAction></div><div className="manuscript-reward-stats">{HOME_REWARD_STATS.map(({ value, unit, labelKey }) => <span key={labelKey}><strong className={value.length > 2 ? 'is-long' : undefined}>{value}<em>{unit}</em></strong><small>{t(`home.rebuild.${labelKey}`)}</small></span>)}</div></article><div className="manuscript-news-column">
+          <div className="manuscript-promotion-grid" role={isHomepageLoading ? 'status' : undefined} aria-busy={isHomepageLoading || undefined}>{isHomepageLoading ? <><span className="public-sr-only">正在加载推广与资讯</span><HomePromotionSkeleton /></> : <><article className="manuscript-reward-card"><h3>{t('home.rebuild.rewardTitle')}</h3><p>{t('home.rebuild.rewardDescription')}</p><div className="manuscript-reward-marks" aria-hidden="true"><img src={promoRewardAvatars} alt="" loading="lazy" decoding="async" width={327} height={68} /></div><div className="manuscript-reward-login"><span>{t('home.rebuild.rewardLoginHint')}</span><LoginRequiredAction returnPath="/console/invitations">{t('home.rebuild.rewardLoginAction')}</LoginRequiredAction></div><div className="manuscript-reward-stats">{HOME_REWARD_STATS.map(({ value, unit, labelKey }) => <span key={labelKey}><strong className={value.length > 2 ? 'is-long' : undefined}>{value}<em>{unit}</em></strong><small>{t(`home.rebuild.${labelKey}`)}</small></span>)}</div></article><div className="manuscript-news-column">
             {homepage?.ad_slots.length ? <ManagedAdSlots entries={homepage.ad_slots} /> : null}
             <div className="manuscript-news-grid">{managedNews.map((entry, index) => <ManagedNewsCard entry={entry} index={index} key={entry.id} />)}</div>
           </div></>}</div>
