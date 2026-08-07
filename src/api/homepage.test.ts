@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { getPublicHomepage, getPublicHomepageAssetURL } from './homepage'
+import { getPublicHomepage, getPublicHomepageAssetURL, getPublicHomepageStats } from './homepage'
 
 function response(data: unknown, status = 200): Response {
   return new Response(JSON.stringify({ code: 0, msg: 'success', data }), {
@@ -44,12 +44,66 @@ describe('公开首页内容 API', () => {
       ],
     }))
 
-    await expect(getPublicHomepage()).resolves.toEqual({ cards: [], promotion_models: [], ad_slots: [], news: [], partners: [] })
+    await expect(getPublicHomepage()).resolves.toEqual({ cards: [], promotion_models: [], ad_slots: [], news: [], partners: [], promotion: [] })
+  })
+
+  it('读取优惠模型详情、价格和登录后推广数据，并为登录请求携带令牌', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(response({
+      cards: [],
+      promotion_models: [{
+        id: 'promotion-1',
+        kind: 'promotion_model',
+        status: 'active',
+        sort_order: 0,
+        pinned: false,
+        data: { discount_kind: 'half', translations: { 'zh-CN': { title: 'Kimi 2.6' } } },
+        model: {
+          id: 'model-1',
+          alias: 'moonshotai/kimi-k2.6',
+          name: 'moonshotai/kimi-k2.6',
+          company: 'Moonshot AI',
+          modality: 'text',
+          prices: [
+            { meter_kind: 'input_token', unit_price_yuan: '1.000000000000', unit_quantity: 1_000_000 },
+            { meter_kind: 'output_token', unit_price_yuan: '2.000000000000', unit_quantity: 1_000_000 },
+          ],
+        },
+      }],
+      ad_slots: [],
+      news: [],
+      partners: [],
+      promotion: [{ id: 'member-promotion' }],
+    }))
+
+    await expect(getPublicHomepage('access-token')).resolves.toMatchObject({
+      promotion_models: [{
+        model: {
+          alias: 'moonshotai/kimi-k2.6',
+          prices: [{ meter_kind: 'input_token', unit_price_yuan: '1.000000000000' }, { meter_kind: 'output_token' }],
+        },
+      }],
+      promotion: [{ id: 'member-promotion' }],
+    })
+    const headers = new Headers(fetchMock.mock.calls[0][1]?.headers)
+    expect(headers.get('Authorization')).toBe('Bearer access-token')
   })
 
   it('响应不是对象时返回可识别的 API 错误', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(response([]))
 
     await expect(getPublicHomepage()).rejects.toMatchObject({ name: 'ApiError', status: 502, code: 100003 })
+  })
+
+  it('读取首页累计统计并兼容数字字符串', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(response({ token_total: '11820495', api_call_total: 800, generated_at: 1786086854834 }))
+
+    await expect(getPublicHomepageStats()).resolves.toEqual({ tokenVolume: 11, apiCalls: 800 })
+    expect(fetchMock).toHaveBeenCalledWith('/api/homepage/stats', expect.objectContaining({ credentials: 'omit' }))
+  })
+
+  it('首页累计统计字段无效时拒绝更新数据', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(response({ token_total: -1, api_call_total: 'invalid' }))
+
+    await expect(getPublicHomepageStats()).rejects.toMatchObject({ name: 'ApiError', status: 502, code: 100003 })
   })
 })

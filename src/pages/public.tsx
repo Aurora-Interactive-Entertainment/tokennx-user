@@ -2,6 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, typ
 import type { TFunction } from 'i18next'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
 import { Toast } from '@douyinfe/semi-ui'
+import Skeleton from '@douyinfe/semi-ui/lib/es/skeleton'
 import { LoginPanel, LoginRequiredAction, ManuscriptSupportWidget, PublicLayout, ModelLogo, normalizeLoginReturnPath } from '@/components/common'
 import modelCardArt from '@/assets/figma-home/model-card-art.png'
 import promoModelLogo from '@/assets/figma-home/promo-model-logo.svg'
@@ -9,22 +10,12 @@ import promoRewardAvatars from '@/assets/figma-home/promo-reward-avatars.png'
 import promoBannerArt from '@/assets/figma-home/promo-banner.png'
 import promoArticleArt from '@/assets/figma-home/promo-article.png'
 import { ModelPriceSummary } from '@/components/money'
-import { NEW_ENTERPRISE_CREATE_PATH } from '@/api/enterprise-certification'
-import { getPublicHomepage, getPublicHomepageAssetURL, type HomepageDiscountKind, type HomepageEntry, type HomepageTranslation, type PublicHomepage } from '@/api/homepage'
+import { getPublicHomepage, getPublicHomepageAssetURL, getPublicHomepageStats, type HomepageDiscountKind, type HomepageEntry, type HomepagePromotionModel, type HomepageTranslation, type PublicHomepage } from '@/api/homepage'
 import { filterModels, findModel, modelAlias, modelRouteKey, MODEL_CATALOG, MODALITY_LABELS, type ModelModality, type ModelPrice, type ModelRecord } from '@/data/models'
+import { getAccessToken } from '@/auth/token-storage'
+import { useAppSelector } from '@/store/hooks'
 import { QUICKSTART_API_BASE_URL, quickstartCodeSample } from '@/utils/quickstart'
 import { useTranslation } from 'react-i18next'
-import zaiPartnerLogo from '@lobehub/icons-static-svg/icons/zai-text.svg?raw'
-import kimiPartnerLogo from '@lobehub/icons-static-svg/icons/kimi-text.svg?raw'
-import qwenPartnerLogo from '@lobehub/icons-static-svg/icons/qwen-text.svg?raw'
-import doubaoPartnerLogo from '@lobehub/icons-static-svg/icons/doubao-text.svg?raw'
-import kwaikatPartnerLogo from '@lobehub/icons-static-svg/icons/kwaikat-text.svg?raw'
-import cherryStudioPartnerLogo from '@lobehub/icons-static-svg/icons/cherrystudio-text.svg?raw'
-import difyPartnerLogo from '@lobehub/icons-static-svg/icons/dify-text.svg?raw'
-import obsidianPartnerLogo from '@lobehub/icons-static-svg/icons/obsidian-text.svg?raw'
-import mastraPartnerLogo from '@lobehub/icons-static-svg/icons/mastra-text.svg?raw'
-import wenxinPartnerLogo from '@lobehub/icons-static-svg/icons/wenxin.svg?raw'
-import metagptPartnerLogo from '@lobehub/icons-static-svg/icons/metagpt-text.svg?raw'
 
 function formatPublicPrice(price: ModelPrice): ReactNode {
   return <ModelPriceSummary price={price} />
@@ -44,38 +35,12 @@ const MODEL_FOOTER_LINKS = [
 ]
 
 const HOME_MODEL_MOSAIC_COLUMNS = 6
-const HOME_WAVE_LINE_COUNT = 16
-const HOME_PROMOTION_MODEL = findModel('claude-sonnet-4') ?? MODEL_CATALOG[0]
-const HOME_PROMOTION_ITEMS = [
-  { id: 'claude-opus-promo-1', model: HOME_PROMOTION_MODEL, name: 'Claude Opus 4.8', company: 'Anthropic', discountKind: 'half', input: '0.1', output: '0.1', availability: '99.82%' },
-  { id: 'claude-opus-promo-2', model: HOME_PROMOTION_MODEL, name: 'Claude Opus 4.8', company: 'Anthropic', discountKind: 'free', input: '0.1', output: '0.1', availability: '99.97%' },
-  { id: 'claude-opus-promo-3', model: HOME_PROMOTION_MODEL, name: 'Claude Opus 4.8', company: 'Anthropic', discountKind: 'half', input: '0.1', output: '0.1', availability: '99.91%' },
-] as const
 const HOME_REWARD_STATS = [
   { value: '00', unit: '元', labelKey: 'rewardPending' },
   { value: '00', unit: '人', labelKey: 'rewardApproved' },
   { value: '00', unit: '次', labelKey: 'rewardRejected' },
 ] as const
-const HOME_PARTNER_NAMES = ['KIMI', 'Z.ai', 'Qwen', 'ERNIE', '豆包大模型', 'KwaiKAT', 'Obsidian', 'mastra', 'OOMOL', 'CAMEL', 'Scietrain', 'MetaGPT']
-const HOME_PARTNER_LOGOS: Record<string, string> = {
-  KIMI: kimiPartnerLogo,
-  'Z.ai': zaiPartnerLogo,
-  Qwen: qwenPartnerLogo,
-  ERNIE: wenxinPartnerLogo,
-  豆包大模型: doubaoPartnerLogo,
-  KwaiKAT: kwaikatPartnerLogo,
-  'Cherry Studio': cherryStudioPartnerLogo,
-  Dify: difyPartnerLogo,
-  Obsidian: obsidianPartnerLogo,
-  mastra: mastraPartnerLogo,
-  MetaGPT: metagptPartnerLogo,
-}
 type HomePartner = { name: string; logoMarkup?: string; logoUrl?: string; href?: string; logoKind: 'wordmark' | 'mark' | 'css' }
-const HOME_PARTNERS: HomePartner[] = HOME_PARTNER_NAMES.map((name) => ({
-  name,
-  logoMarkup: HOME_PARTNER_LOGOS[name],
-  logoKind: ['ERNIE', 'OOMOL', 'CAMEL', 'Scietrain'].includes(name) ? 'mark' : 'wordmark',
-}))
 const PUBLIC_COMPANY_KEYS: Record<string, string> = {
   阿里云: 'aliyun',
   百川智能: 'baichuan',
@@ -123,10 +88,6 @@ const HOME_PARTNER_NAME_KEYS: Record<string, string> = {
   Scietrain: 'scietrain',
   MetaGPT: 'metagpt',
 }
-const HOME_NEWS_ITEMS = [
-  { key: '0', href: '/docs' },
-  { key: '1', href: '/models' },
-] as const
 const HOME_AVAILABILITY_BAR_COUNT = 24
 const HOME_AVAILABILITY_RATE_DECIMAL_PLACES = 2
 const HOME_AVAILABILITY_SEGMENT_OFFSETS = [-0.05, 0.02, 0.01, -0.03, 0.04, -0.01, 0, 0.03, -0.02, -0.04, 0.05, -0.01, -0.03, 0.02, 0.01, -0.02, 0.04, -0.03, 0, -0.01, 0.03, -0.04, 0.02, 0.02] as const
@@ -137,11 +98,7 @@ const HOME_SCOREBOARD_INITIAL_DIGITS = '0'.repeat(HOME_SCOREBOARD_DIGIT_COUNT)
 const HOME_SCOREBOARD_MAX_VALUE = 10 ** HOME_SCOREBOARD_DIGIT_COUNT - 1
 const HOME_SCOREBOARD_DIGIT_DELAY = 70
 const HOME_SCOREBOARD_METRIC_COUNT = 2
-const HOME_MOCK_UPDATE_INTERVAL = 5_000
-const HOME_MOCK_TOKEN_BASE = 76_371_153
-const HOME_MOCK_API_BASE = 42_371_153
-const HOME_MOCK_TOKEN_INCREMENT = 18_721
-const HOME_MOCK_API_CALL_INCREMENT = 4_807
+const HOME_STATS_POLL_INTERVAL = 60_000
 
 function publicCompanyLabel(t: TFunction, company: string): string {
   const key = PUBLIC_COMPANY_KEYS[company]
@@ -208,18 +165,37 @@ function formatHomeAvailabilityRate(summaryRate: string, segmentIndex: number, i
   return `${segmentRate.toFixed(HOME_AVAILABILITY_RATE_DECIMAL_PLACES)}%`
 }
 
-function useMockHomeMetrics(): { tokenVolume: number; apiCalls: number } {
-  const [updateCount, setUpdateCount] = useState(0)
+function useHomeMetrics(): { tokenVolume: number; apiCalls: number; initialRequestFinished: boolean } {
+  const [metrics, setMetrics] = useState({ tokenVolume: 0, apiCalls: 0 })
+  const [initialRequestFinished, setInitialRequestFinished] = useState(false)
 
   useEffect(() => {
-    const interval = window.setInterval(() => setUpdateCount((count) => count + 1), HOME_MOCK_UPDATE_INTERVAL)
-    return () => window.clearInterval(interval)
+    let mounted = true
+    let requestInFlight = false
+
+    const refresh = async (): Promise<void> => {
+      if (requestInFlight) return
+      requestInFlight = true
+      try {
+        const value = await getPublicHomepageStats()
+        if (mounted) setMetrics(value)
+      } catch {
+        // Keep the last successful values. Before the first response the scoreboards remain at zero.
+      } finally {
+        requestInFlight = false
+        if (mounted) setInitialRequestFinished(true)
+      }
+    }
+
+    void refresh()
+    const interval = window.setInterval(() => { void refresh() }, HOME_STATS_POLL_INTERVAL)
+    return () => {
+      mounted = false
+      window.clearInterval(interval)
+    }
   }, [])
 
-  return useMemo(() => ({
-    tokenVolume: HOME_MOCK_TOKEN_BASE + updateCount * HOME_MOCK_TOKEN_INCREMENT,
-    apiCalls: HOME_MOCK_API_BASE + updateCount * HOME_MOCK_API_CALL_INCREMENT,
-  }), [updateCount])
+  return { ...metrics, initialRequestFinished }
 }
 
 function prefersReducedMotion(): boolean {
@@ -343,6 +319,120 @@ function ManuscriptScoreboard({ metricId, unit, value, onInitialFlipComplete }: 
   )
 }
 
+type HomeSilkRibbon = {
+  y: number
+  amplitude: number
+  frequency: number
+  speed: number
+  phase: number
+  opacity: number
+}
+
+function HomeSilkCanvas() {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    const context = canvas?.getContext('2d')
+    if (!canvas || !context || typeof context.createLinearGradient !== 'function') return undefined
+
+    const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
+    let width = 0
+    let height = 0
+    let tick = 0
+    let animationFrame = 0
+    let ribbons: HomeSilkRibbon[] = []
+
+    const createRibbons = (): void => {
+      ribbons = Array.from({ length: 22 }, () => {
+        const amplitude = 50 + Math.random() * 120
+        const verticalPadding = Math.min(height / 2, amplitude + 36)
+
+        return {
+          y: verticalPadding + Math.random() * Math.max(0, height - verticalPadding * 2),
+          amplitude,
+          frequency: .002 + Math.random() * .004,
+          speed: .3 + Math.random() * .7,
+          phase: Math.random() * Math.PI * 2,
+          opacity: .05 + Math.random() * .18,
+        }
+      })
+    }
+
+    const resize = (): void => {
+      const bounds = canvas.getBoundingClientRect()
+      width = Math.max(1, bounds.width)
+      height = Math.max(1, bounds.height)
+      const pixelRatio = Math.min(window.devicePixelRatio || 1, 2)
+      canvas.width = Math.round(width * pixelRatio)
+      canvas.height = Math.round(height * pixelRatio)
+      context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0)
+      createRibbons()
+    }
+
+    const draw = (): void => {
+      context.clearRect(0, 0, width, height)
+      tick += 1
+
+      ribbons.forEach((ribbon, index) => {
+        context.beginPath()
+        for (let x = 0; x <= width; x += 8) {
+          const wave = Math.sin(x * ribbon.frequency - tick * .01 * ribbon.speed - ribbon.phase) * ribbon.amplitude
+          const y = ribbon.y + wave + Math.sin(tick * .005 + index) * 30
+          if (x === 0) context.moveTo(x, y)
+          else context.lineTo(x, y)
+        }
+
+        const gradient = context.createLinearGradient(0, 0, width, 0)
+        gradient.addColorStop(0, 'rgba(20,70,255,0)')
+        gradient.addColorStop(.45, `rgba(70,130,255,${ribbon.opacity})`)
+        gradient.addColorStop(.7, `rgba(20,90,255,${ribbon.opacity})`)
+        gradient.addColorStop(1, 'rgba(20,70,255,0)')
+        context.strokeStyle = gradient
+        context.lineWidth = 1.3
+        context.shadowBlur = 18
+        context.shadowColor = 'rgba(40,100,255,.8)'
+        context.stroke()
+      })
+    }
+
+    const animate = (): void => {
+      draw()
+      animationFrame = window.requestAnimationFrame(animate)
+    }
+
+    const start = (): void => {
+      window.cancelAnimationFrame(animationFrame)
+      if (document.hidden || reducedMotion) {
+        draw()
+        return
+      }
+      animationFrame = window.requestAnimationFrame(animate)
+    }
+
+    const handleVisibilityChange = (): void => start()
+    const resizeObserver = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(() => {
+      resize()
+      if (reducedMotion) draw()
+    })
+
+    resize()
+    start()
+    resizeObserver?.observe(canvas)
+    if (!resizeObserver) window.addEventListener('resize', resize)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    return () => {
+      window.cancelAnimationFrame(animationFrame)
+      resizeObserver?.disconnect()
+      if (!resizeObserver) window.removeEventListener('resize', resize)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [])
+
+  return <canvas ref={canvasRef} className="manuscript-silk-canvas" aria-hidden="true" />
+}
+
 function HomeModelMosaic() {
   const models = MODEL_CATALOG.slice(0, HOME_MODEL_MOSAIC_COUNT)
   const rows = Array.from({ length: Math.ceil(models.length / HOME_MODEL_MOSAIC_COLUMNS) }, (_, rowIndex) => models.slice(rowIndex * HOME_MODEL_MOSAIC_COLUMNS, (rowIndex + 1) * HOME_MODEL_MOSAIC_COLUMNS))
@@ -372,16 +462,46 @@ function HomePartnerLogo({ partner }: { partner: HomePartner }) {
 // 中文：每条轨道复制一份品牌序列，循环位移到半程时正好衔接下一份内容，保证滚动不会跳帧。
 function HomePartnerRow({ partners, rowIndex }: { partners: HomePartner[]; rowIndex: number }) {
   const { t } = useTranslation()
-  const duplicatedPartners = [...partners, ...partners]
+  const rowRef = useRef<HTMLDivElement>(null)
+  const primarySequenceRef = useRef<HTMLDivElement>(null)
+  const [shouldScroll, setShouldScroll] = useState(partners.length >= 6)
   const direction = rowIndex === 0 ? 'is-forward' : 'is-reverse'
 
-  return <div className="manuscript-partner-row" data-row={rowIndex + 1}>
-    <div className={`manuscript-partner-track ${direction}`}>
-      {duplicatedPartners.map((partner, partnerIndex) => {
-        const isDuplicate = partnerIndex >= partners.length
+  useLayoutEffect(() => {
+    const updateOverflow = (): void => {
+      const rowWidth = rowRef.current?.clientWidth ?? 0
+      const sequenceWidth = primarySequenceRef.current?.scrollWidth ?? 0
+      if (partners.length <= 2) {
+        setShouldScroll(false)
+        return
+      }
+      if (rowWidth === 0) {
+        setShouldScroll(partners.length >= 6)
+        return
+      }
+      const fadeAllowance = Math.min(160, rowWidth * .12)
+      setShouldScroll(sequenceWidth > rowWidth - fadeAllowance)
+    }
+
+    updateOverflow()
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', updateOverflow)
+      return () => window.removeEventListener('resize', updateOverflow)
+    }
+    const observer = new ResizeObserver(updateOverflow)
+    if (rowRef.current) observer.observe(rowRef.current)
+    if (primarySequenceRef.current) observer.observe(primarySequenceRef.current)
+    return () => observer.disconnect()
+  }, [partners.length])
+
+  const renderSequence = (isDuplicate: boolean) => (
+    <div className="manuscript-partner-sequence" ref={isDuplicate ? undefined : primarySequenceRef} aria-hidden={isDuplicate || undefined} data-sequence={isDuplicate ? 'duplicate' : 'primary'}>
+      {partners.map((partner, partnerIndex) => {
         const partnerName = t(`public.home.partnerNames.${HOME_PARTNER_NAME_KEYS[partner.name]}`, { defaultValue: partner.name })
         const href = homepageHref(partner.href, '/models')
-        const content = <><HomePartnerLogo partner={partner} />{partner.logoKind !== 'wordmark' || partner.logoUrl ? <strong>{partnerName}</strong> : null}</>
+        // Partner artwork is the source of truth; keep the name available to assistive
+        // technology without rendering it beside the logo.
+        const content = <><HomePartnerLogo partner={partner} /><span className="public-sr-only">{partnerName}</span></>
         const linkProps = {
           className: 'manuscript-partner-item',
           'aria-label': `${partnerName} ${t('common.browseModels')}`,
@@ -389,11 +509,19 @@ function HomePartnerRow({ partners, rowIndex }: { partners: HomePartner[]; rowIn
           tabIndex: isDuplicate ? -1 : undefined,
           'data-copy': isDuplicate ? 'duplicate' : 'primary',
         }
-        const partnerKey = `${rowIndex}-${partner.name}-${partnerIndex}`
+        const partnerKey = `${rowIndex}-${isDuplicate ? 'duplicate' : 'primary'}-${partner.name}-${partnerIndex}`
         return href.startsWith('/')
           ? <Link key={partnerKey} {...linkProps} to={href}>{content}</Link>
           : <a key={partnerKey} {...linkProps} href={href} target="_blank" rel="noopener noreferrer">{content}</a>
       })}
+    </div>
+  )
+
+  const rowClassName = `manuscript-partner-row ${shouldScroll ? 'is-scrolling' : 'is-static'}${partners.length <= 2 ? ' is-compact' : ''}`
+  return <div className={rowClassName} data-row={rowIndex + 1} ref={rowRef}>
+    <div className={`manuscript-partner-track ${shouldScroll ? direction : 'is-static'}`}>
+      {renderSequence(false)}
+      {shouldScroll ? renderSequence(true) : null}
     </div>
   </div>
 }
@@ -433,14 +561,35 @@ function ManagedAdSlots({ entries }: { entries: HomepageEntry[] }) {
   })}</div>
 }
 
-type HomePromotionItem = { id: string; model: ModelRecord; name: string; company: string; discountKind: HomepageDiscountKind; input: string; output: string; availability: string }
+type HomePromotionRouteModel = Pick<ModelRecord, 'id' | 'alias'>
+type HomePromotionItem = { id: string; model: HomePromotionRouteModel; name: string; company: string; discountKind: HomepageDiscountKind; input: string; output: string; availability: string }
+
+function homepageModelPrice(model: HomepagePromotionModel, meterKind: 'input_token' | 'output_token'): string {
+  const price = model.prices.find((item) => item.meter_kind === meterKind)
+  if (!price) return '--'
+  const unitPrice = typeof price.unit_price_yuan === 'number' ? price.unit_price_yuan : Number(price.unit_price_yuan)
+  if (!Number.isFinite(unitPrice)) return '--'
+  return homepagePrice(unitPrice * (1_000_000 / price.unit_quantity))
+}
 
 function managedPromotionItems(homepage: PublicHomepage | null, language: string): HomePromotionItem[] {
   if (!homepage?.promotion_models.length) return []
-  return homepage.promotion_models.flatMap((entry) => {
+  return homepage.promotion_models.flatMap((entry): HomePromotionItem[] => {
+    const content = homepageTranslation(entry, language)
+    if (entry.model) {
+      return [{
+        id: entry.id,
+        model: entry.model,
+        name: content.title?.trim() || entry.model.name,
+        company: entry.model.company,
+        discountKind: entry.data.discount_kind ?? 'half',
+        input: homepageModelPrice(entry.model, 'input_token'),
+        output: homepageModelPrice(entry.model, 'output_token'),
+        availability: entry.model.availability ? `${entry.model.availability.rate.toFixed(2)}%` : '--',
+      }]
+    }
     const model = findModel(entry.model_id)
     if (!model) return []
-    const content = homepageTranslation(entry, language)
     return [{
       id: entry.id,
       model,
@@ -461,17 +610,66 @@ function managedPartners(homepage: PublicHomepage | null, language: string): Hom
     const name = content.name?.trim() || content.title?.trim()
     if (!name) return []
     const logoURL = homepageMediaURL(content.logo_object_id, content.logo_url)
-    return [{ name, logoUrl: logoURL, href: content.link_url, logoKind: logoURL ? 'wordmark' : 'css' as const }]
+    if (!logoURL) return []
+    return [{ name, logoUrl: logoURL, href: content.link_url, logoKind: 'wordmark' as const }]
   })
+}
+
+type HomepageLoadStatus = 'loading' | 'ready' | 'error'
+
+function HomeFeatureSkeletons() {
+  return <>
+    {Array.from({ length: 3 }, (_, index) => <Skeleton active loading className="manuscript-skeleton-host" key={`feature-skeleton-${index}`} placeholder={<article className="manuscript-feature-card manuscript-skeleton-card" aria-hidden="true">
+      <Skeleton.Image className="manuscript-feature-skeleton-visual" />
+      <div className="manuscript-feature-skeleton-copy"><Skeleton.Title className="manuscript-skeleton-title" /><Skeleton.Paragraph className="manuscript-skeleton-paragraph" rows={2} /><Skeleton.Button className="manuscript-skeleton-action" /></div>
+    </article>} />)}
+  </>
+}
+
+function HomePriceSkeletons() {
+  return <>
+    {Array.from({ length: 3 }, (_, index) => <Skeleton active loading className="manuscript-skeleton-host" key={`price-skeleton-${index}`} placeholder={<article className="manuscript-price-card manuscript-skeleton-card" aria-hidden="true">
+      <div className="manuscript-price-skeleton-head">
+        <Skeleton.Image className="manuscript-price-skeleton-logo" />
+        <div className="manuscript-price-skeleton-name"><Skeleton.Title className="manuscript-skeleton-title" /><Skeleton.Paragraph className="manuscript-skeleton-paragraph" rows={1} /></div>
+        <Skeleton.Button className="manuscript-price-skeleton-badge" />
+      </div>
+      <div className="manuscript-price-skeleton-divider" />
+      <div className="manuscript-price-skeleton-values"><div><Skeleton.Paragraph className="manuscript-skeleton-paragraph" rows={1} /><Skeleton.Title className="manuscript-skeleton-value" /></div><div><Skeleton.Paragraph className="manuscript-skeleton-paragraph" rows={1} /><Skeleton.Title className="manuscript-skeleton-value" /></div></div>
+      <div className="manuscript-price-skeleton-availability"><Skeleton.Paragraph className="manuscript-skeleton-paragraph" rows={1} /><Skeleton.Image className="manuscript-price-skeleton-bars" /></div>
+    </article>} />)}
+  </>
+}
+
+function HomePromotionSkeleton() {
+  return <>
+    <Skeleton active loading className="manuscript-skeleton-host" placeholder={<article className="manuscript-reward-card manuscript-skeleton-card manuscript-promotion-skeleton-reward" aria-hidden="true">
+      <Skeleton.Title className="manuscript-skeleton-title" /><Skeleton.Paragraph className="manuscript-skeleton-paragraph" rows={2} />
+      <Skeleton.Image className="manuscript-promotion-skeleton-art" /><Skeleton.Button className="manuscript-promotion-skeleton-login" />
+      <div className="manuscript-promotion-skeleton-stats">{Array.from({ length: 3 }, (_, index) => <Skeleton.Title key={`reward-stat-skeleton-${index}`} />)}</div>
+    </article>} />
+    <Skeleton active loading className="manuscript-skeleton-host" placeholder={<div className="manuscript-news-column manuscript-promotion-skeleton-news" aria-hidden="true">
+      <Skeleton.Image className="manuscript-promotion-skeleton-banner" />
+      <div className="manuscript-news-grid">{Array.from({ length: 2 }, (_, index) => <div className="manuscript-news-card manuscript-skeleton-card" key={`news-skeleton-${index}`}><div className="manuscript-news-skeleton-copy"><Skeleton.Title className="manuscript-skeleton-title" /><Skeleton.Paragraph className="manuscript-skeleton-paragraph" rows={3} /></div><Skeleton.Image className="manuscript-news-skeleton-art" /></div>)}</div>
+    </div>} />
+  </>
+}
+
+function HomePartnerSkeleton() {
+  return <Skeleton active loading className="manuscript-skeleton-host" placeholder={<div>{Array.from({ length: 2 }, (_, rowIndex) => <div className="manuscript-partner-skeleton-row" aria-hidden="true" key={`partner-row-skeleton-${rowIndex}`}>
+    {Array.from({ length: 6 }, (_, itemIndex) => <div className="manuscript-partner-skeleton-item" key={`partner-skeleton-${rowIndex}-${itemIndex}`}><Skeleton.Image className="manuscript-partner-skeleton-logo" /><Skeleton.Title className="manuscript-partner-skeleton-name" /></div>)}
+  </div>)}</div>} />
 }
 
 export function HomePage({ onInitialScoreboardReady }: { onInitialScoreboardReady?: () => void } = {}) {
   const { t, i18n } = useTranslation()
+  const authStatus = useAppSelector((state) => state.auth.status)
   const [homepage, setHomepage] = useState<PublicHomepage | null>(null)
-  const homeMetrics = useMockHomeMetrics()
-  const animatedTokenVolume = useScoreboardValue(homeMetrics.tokenVolume)
-  const animatedApiCalls = useScoreboardValue(homeMetrics.apiCalls)
+  const [homepageStatus, setHomepageStatus] = useState<HomepageLoadStatus>('loading')
   const completedScoreboardsRef = useRef(new Set<string>())
+  const homepageRequestIdRef = useRef(0)
+  const initialAuthStatusRef = useRef(authStatus)
+  const previousAuthStatusRef = useRef(authStatus)
 
   const handleScoreboardReady = useCallback((metricId: string): void => {
     if (!onInitialScoreboardReady || completedScoreboardsRef.current.has(metricId)) return
@@ -480,30 +678,63 @@ export function HomePage({ onInitialScoreboardReady }: { onInitialScoreboardRead
   }, [onInitialScoreboardReady])
   const handleTokenScoreboardReady = useCallback(() => handleScoreboardReady('token-volume'), [handleScoreboardReady])
   const handleApiScoreboardReady = useCallback(() => handleScoreboardReady('api-calls'), [handleScoreboardReady])
-  const managedCards = homepage?.cards ?? []
+  const isHomepageLoading = homepageStatus !== 'ready'
+  const managedCards = homepageStatus === 'ready' ? homepage?.cards ?? [] : []
   const promotionItems = useMemo(() => {
     const managed = managedPromotionItems(homepage, i18n.language)
-    return managed.length ? managed : HOME_PROMOTION_ITEMS
-  }, [homepage, i18n.language])
+    return homepageStatus === 'ready' ? managed : []
+  }, [homepage, homepageStatus, i18n.language])
   const managedNews = useMemo(() => {
     const news = homepage?.news ?? []
     const pinned = news.filter((entry) => entry.pinned)
     return (pinned.length ? pinned : news).slice(0, 2)
   }, [homepage])
   const managedPartnerItems = useMemo(() => managedPartners(homepage, i18n.language), [homepage, i18n.language])
-  const partnerItems = managedPartnerItems.length ? managedPartnerItems : HOME_PARTNERS
-  const partnerSplitIndex = Math.ceil(partnerItems.length / 2)
-  const partnerRows = [partnerItems.slice(0, partnerSplitIndex), partnerItems.slice(partnerSplitIndex)]
+  const partnerItems = homepageStatus === 'ready' ? managedPartnerItems : []
+  const partnerRows = useMemo(() => {
+    if (!partnerItems.length) return []
+    if (partnerItems.length < 12) return [partnerItems]
+    const splitIndex = Math.ceil(partnerItems.length / 2)
+    return [partnerItems.slice(0, splitIndex), partnerItems.slice(splitIndex)]
+  }, [partnerItems])
 
-  useEffect(() => {
-    let mounted = true
-    getPublicHomepage().then((value) => {
-      if (mounted) setHomepage(value)
+  const refreshHomepage = useCallback((accessToken?: string): void => {
+    const requestId = ++homepageRequestIdRef.current
+    setHomepageStatus('loading')
+    getPublicHomepage(accessToken).then((value) => {
+      if (requestId !== homepageRequestIdRef.current) return
+      setHomepage(value)
+      setHomepageStatus('ready')
     }).catch(() => {
+      if (requestId === homepageRequestIdRef.current) setHomepageStatus('error')
       // 中文：公开内容接口失败时保留已编排的默认首页，避免运营接口故障影响首页首屏。
     })
-    return () => { mounted = false }
   }, [])
+
+  useEffect(() => {
+    refreshHomepage(initialAuthStatusRef.current === 'authenticated' ? getAccessToken() ?? undefined : undefined)
+    return () => { homepageRequestIdRef.current += 1 }
+  }, [refreshHomepage])
+
+  useEffect(() => {
+    const previousStatus = previousAuthStatusRef.current
+    previousAuthStatusRef.current = authStatus
+    if (authStatus === 'authenticated' && previousStatus !== 'authenticated') {
+      refreshHomepage(getAccessToken() ?? undefined)
+    } else if (authStatus === 'unauthenticated' && previousStatus === 'authenticated') {
+      refreshHomepage()
+    }
+  }, [authStatus, refreshHomepage])
+
+  const homeMetrics = useHomeMetrics()
+  const animatedTokenVolume = useScoreboardValue(homeMetrics.tokenVolume)
+  const animatedApiCalls = useScoreboardValue(homeMetrics.apiCalls)
+
+  useEffect(() => {
+    if (!homeMetrics.initialRequestFinished) return
+    if (homeMetrics.tokenVolume === 0) handleTokenScoreboardReady()
+    if (homeMetrics.apiCalls === 0) handleApiScoreboardReady()
+  }, [handleApiScoreboardReady, handleTokenScoreboardReady, homeMetrics.apiCalls, homeMetrics.initialRequestFinished, homeMetrics.tokenVolume])
 
   return (
     <PublicLayout mainClassName="home-page home-page--manuscript">
@@ -523,27 +754,16 @@ export function HomePage({ onInitialScoreboardReady }: { onInitialScoreboardRead
         </section>
 
         <section className="manuscript-section manuscript-features" aria-labelledby="homeFeaturesTitle">
-          <div className="manuscript-wave-field" aria-hidden="true">
-            <div className="manuscript-wave-bank manuscript-wave-bank--left">
-              {Array.from({ length: HOME_WAVE_LINE_COUNT }, (_, index) => <i key={`left-wave-${index}`} style={{ '--wave-index': index } as CSSProperties} />)}
-            </div>
-            <div className="manuscript-wave-bank manuscript-wave-bank--right">
-              {Array.from({ length: HOME_WAVE_LINE_COUNT }, (_, index) => <i key={`right-wave-${index}`} style={{ '--wave-index': index } as CSSProperties} />)}
-            </div>
-          </div>
+          <div className="manuscript-wave-field" aria-hidden="true"><HomeSilkCanvas /></div>
           <h2 className="public-sr-only" id="homeFeaturesTitle">{t('home.rebuild.featuresTitle')}</h2>
-          <div className="manuscript-feature-grid">
-            {managedCards.length ? managedCards.map((entry, index) => <ManagedFeatureCard key={entry.id} entry={entry} index={index} />) : <>
-              <article className="manuscript-feature-card"><div className="manuscript-feature-visual"><HomeFeatureArtwork /><span>{t('home.rebuild.featureModelsCount')}</span></div><div className="manuscript-feature-copy"><h3>{t('home.rebuild.featureCards.0.title')}</h3><p>{t('home.rebuild.featureCards.0.description')}</p><Link className="manuscript-feature-action" to="/models">{t('home.rebuild.featureCards.0.action')}</Link></div></article>
-              <article className="manuscript-feature-card"><div className="manuscript-feature-visual"><HomeFeatureArtwork /></div><div className="manuscript-feature-copy"><h3>{t('home.rebuild.featureCards.1.title')}</h3><p>{t('home.rebuild.featureCards.1.description')}</p><LoginRequiredAction className="manuscript-feature-action" returnPath={NEW_ENTERPRISE_CREATE_PATH}>{t('home.rebuild.featureCards.1.action')}</LoginRequiredAction></div></article>
-              <article className="manuscript-feature-card"><div className="manuscript-feature-visual"><HomeFeatureArtwork /></div><div className="manuscript-feature-copy"><h3>{t('home.rebuild.featureCards.2.title')}</h3><p>{t('home.rebuild.featureCards.2.description')}</p><Link className="manuscript-feature-action" to="/pricing">{t('home.rebuild.featureCards.2.action')}</Link></div></article>
-            </>}
+          <div className="manuscript-feature-grid" role={isHomepageLoading ? 'status' : undefined} aria-busy={isHomepageLoading || undefined}>
+            {isHomepageLoading ? <><span className="public-sr-only">正在加载首页功能</span><HomeFeatureSkeletons /></> : managedCards.map((entry, index) => <ManagedFeatureCard key={entry.id} entry={entry} index={index} />)}
           </div>
         </section>
 
         <section className="manuscript-section manuscript-pricing" aria-labelledby="homePricingTitle">
           <div className="manuscript-section-heading"><div><h2 id="homePricingTitle">{t('home.pricing.manuscriptTitle')}</h2><p>{t('home.pricing.manuscriptSubtitle')}</p></div></div>
-          <div className="manuscript-price-grid">{promotionItems.map((item, itemIndex) => <article className={`manuscript-price-card${item.input.length > 5 || item.output.length > 5 ? ' has-long-price' : ''}`} key={item.id}>
+          <div className="manuscript-price-grid" role={isHomepageLoading ? 'status' : undefined} aria-busy={isHomepageLoading || undefined}>{isHomepageLoading ? <><span className="public-sr-only">正在加载优惠模型</span><HomePriceSkeletons /></> : promotionItems.map((item, itemIndex) => <article className={`manuscript-price-card${item.input.length > 5 || item.output.length > 5 ? ' has-long-price' : ''}`} key={item.id}>
             <span className="manuscript-price-card-kicker">{t('home.pricing.manuscriptSubtitle')}</span>
             <div className="manuscript-price-card-head"><Link className="manuscript-price-model" to={modelPublicHref(item.model) ?? '/models'}><span className="manuscript-price-model-logo"><img src={promoModelLogo} alt="" aria-hidden="true" /></span><span><strong>{item.name}</strong><small>{t('home.rebuild.providedBy', { company: item.company })}</small></span></Link><span className={`manuscript-price-badge${item.discountKind === 'free' ? ' is-equal' : ''}`}>{t(`public.home.discount${item.discountKind === 'free' ? 'Free' : item.discountKind === 'custom' ? 'Custom' : 'Half'}`)}</span></div>
             <div className="manuscript-price-divider" />
@@ -560,15 +780,15 @@ export function HomePage({ onInitialScoreboardReady }: { onInitialScoreboardRead
 
         <section className="manuscript-section manuscript-promotion" aria-labelledby="homePromotionTitle">
           <div className="manuscript-section-heading"><div><h2 id="homePromotionTitle">{t('home.rebuild.promotionTitle')}</h2><p>{t('home.rebuild.manuscriptPromotionDescription')}</p></div></div>
-          <div className="manuscript-promotion-grid"><article className="manuscript-reward-card"><h3>{t('home.rebuild.rewardTitle')}</h3><p>{t('home.rebuild.rewardDescription')}</p><div className="manuscript-reward-marks" aria-hidden="true"><img src={promoRewardAvatars} alt="" /></div><div className="manuscript-reward-login"><span>{t('home.rebuild.rewardLoginHint')}</span><LoginRequiredAction returnPath="/console/invitations">{t('home.rebuild.rewardLoginAction')}</LoginRequiredAction></div><div className="manuscript-reward-stats">{HOME_REWARD_STATS.map(({ value, unit, labelKey }) => <span key={labelKey}><strong className={value.length > 2 ? 'is-long' : undefined}>{value}<em>{unit}</em></strong><small>{t(`home.rebuild.${labelKey}`)}</small></span>)}</div></article><div className="manuscript-news-column">
-            {homepage?.ad_slots.length ? <ManagedAdSlots entries={homepage.ad_slots} /> : <div className="manuscript-ad-slots"><div className="manuscript-ad-slot"><img src={promoBannerArt} alt={t('home.rebuild.adSlot')} /></div></div>}
-            <div className="manuscript-news-grid">{managedNews.length ? managedNews.map((entry, index) => <ManagedNewsCard entry={entry} index={index} key={entry.id} />) : HOME_NEWS_ITEMS.map((item, index) => <Link className="manuscript-news-card" to={item.href} key={item.key}><div className="manuscript-news-copy"><h3>{t(`home.rebuild.news.${item.key}.title`)}</h3><p>{t(`home.rebuild.news.${item.key}.description`)}</p><small>{t(`home.rebuild.news.${item.key}.date`)} <b className="manuscript-news-new">{t('public.home.newBadge')}</b></small></div><div className={`manuscript-news-art manuscript-news-art--${index}`} aria-hidden="true"><img className="manuscript-news-art-image" src={promoArticleArt} alt="" /></div></Link>)}</div>
-          </div></div>
+          <div className="manuscript-promotion-grid" role={isHomepageLoading ? 'status' : undefined} aria-busy={isHomepageLoading || undefined}>{isHomepageLoading ? <><span className="public-sr-only">正在加载推广与资讯</span><HomePromotionSkeleton /></> : <><article className="manuscript-reward-card"><h3>{t('home.rebuild.rewardTitle')}</h3><p>{t('home.rebuild.rewardDescription')}</p><div className="manuscript-reward-marks" aria-hidden="true"><img src={promoRewardAvatars} alt="" /></div><div className="manuscript-reward-login"><span>{t('home.rebuild.rewardLoginHint')}</span><LoginRequiredAction returnPath="/console/invitations">{t('home.rebuild.rewardLoginAction')}</LoginRequiredAction></div><div className="manuscript-reward-stats">{HOME_REWARD_STATS.map(({ value, unit, labelKey }) => <span key={labelKey}><strong className={value.length > 2 ? 'is-long' : undefined}>{value}<em>{unit}</em></strong><small>{t(`home.rebuild.${labelKey}`)}</small></span>)}</div></article><div className="manuscript-news-column">
+            {homepage?.ad_slots.length ? <ManagedAdSlots entries={homepage.ad_slots} /> : null}
+            <div className="manuscript-news-grid">{managedNews.map((entry, index) => <ManagedNewsCard entry={entry} index={index} key={entry.id} />)}</div>
+          </div></>}</div>
         </section>
 
         <section className="manuscript-section manuscript-partners" aria-labelledby="homePartnersTitle">
           <div className="manuscript-section-heading"><div><h2 id="homePartnersTitle">{t('home.rebuild.partnersTitle')}</h2><p>{t('home.rebuild.partnersDescription')}</p></div></div>
-          <div className="manuscript-partner-grid" aria-label={t('home.rebuild.partnersTitle')}>{partnerRows.map((row, rowIndex) => <HomePartnerRow key={`partner-row-${rowIndex}`} partners={row} rowIndex={rowIndex} />)}</div>
+          <div className="manuscript-partner-grid" aria-label={t('home.rebuild.partnersTitle')} role={isHomepageLoading ? 'status' : undefined} aria-busy={isHomepageLoading || undefined}>{isHomepageLoading ? <><span className="public-sr-only">正在加载合作伙伴</span><HomePartnerSkeleton /></> : partnerRows.map((row, rowIndex) => <HomePartnerRow key={`partner-row-${rowIndex}`} partners={row} rowIndex={rowIndex} />)}</div>
         </section>
       </div>
     </PublicLayout>

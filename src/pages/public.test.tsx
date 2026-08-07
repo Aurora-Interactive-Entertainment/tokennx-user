@@ -71,12 +71,37 @@ describe('公开模型页面', () => {
     expect(screen.queryByText(/deepseek-chat/)).toBeNull()
   })
 
-  it('首页促销模型链接不使用内部模型 code', () => {
+  it('首页促销模型链接不使用内部模型 code', async () => {
+    vi.mocked(globalThis.fetch).mockResolvedValueOnce(new Response(JSON.stringify({
+      code: 0,
+      msg: 'success',
+      data: {
+        cards: [],
+        promotion_models: [{ id: 'promotion-alias', kind: 'promotion_model', status: 'active', sort_order: 1, pinned: false, model_id: 'claude-sonnet-4', data: { discount_kind: 'half', translations: { 'zh-CN': { title: 'Claude Opus 4.8' } } } }],
+        ad_slots: [],
+        news: [],
+        partners: [],
+      },
+    }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
     renderPage(<HomePage />, '/')
 
-    const promotionLinks = screen.getAllByRole('link', { name: /Claude Opus 4\.8/ })
-    expect(promotionLinks).toHaveLength(3)
+    const promotionLinks = await screen.findAllByRole('link', { name: /Claude Opus 4\.8/ })
+    expect(promotionLinks).toHaveLength(1)
     promotionLinks.forEach((link) => expect(link).toHaveAttribute('href', '/models/claude-public'))
+  })
+
+  it('首页接口成功返回空编排时不再闪现默认内容', async () => {
+    renderPage(<HomePage />, '/')
+
+    expect(document.querySelector('.manuscript-feature-grid')).toHaveAttribute('aria-busy', 'true')
+    expect(document.querySelectorAll('.manuscript-feature-card.manuscript-skeleton-card')).toHaveLength(3)
+    expect(screen.queryByText('Claude Opus 4.8')).toBeNull()
+    await waitFor(() => expect(document.querySelector('.manuscript-feature-grid')).not.toHaveAttribute('aria-busy'))
+    expect(document.querySelectorAll('.manuscript-feature-card')).toHaveLength(0)
+    expect(document.querySelectorAll('.manuscript-price-card')).toHaveLength(0)
+    expect(document.querySelector('.manuscript-ad-slot')).toBeNull()
+    expect(document.querySelector('.manuscript-partner-row')).toBeNull()
+    expect(screen.queryByText('Claude Opus 4.8')).toBeNull()
   })
 
   it('首页优先渲染后台生效的卡片、优惠模型、广告位、置顶新闻和合作伙伴', async () => {
@@ -85,7 +110,26 @@ describe('公开模型页面', () => {
       msg: 'success',
       data: {
         cards: [{ id: 'card-1', kind: 'card', status: 'active', sort_order: 1, pinned: false, data: { translations: { 'zh-CN': { title: '后台能力卡片', description: '后台描述', action_text: '进入能力', image_object_id: '01J00000000000000000000001', link_url: '/models' } } } }],
-        promotion_models: [{ id: 'promotion-1', kind: 'promotion_model', status: 'active', sort_order: 1, pinned: false, model_id: 'deepseek-public', data: { discount_kind: 'custom', translations: { 'zh-CN': { title: '后台优惠模型' } } } }],
+        promotion_models: [{
+          id: 'promotion-1',
+          kind: 'promotion_model',
+          status: 'active',
+          sort_order: 1,
+          pinned: false,
+          data: { discount_kind: 'custom', translations: { 'zh-CN': { title: '后台优惠模型' } } },
+          model: {
+            id: 'managed-model-1',
+            alias: 'managed-model',
+            name: 'managed-model',
+            company: 'Managed AI',
+            modality: 'text',
+            prices: [
+              { meter_kind: 'input_token', unit_price_yuan: '1.000000000000', unit_quantity: 1_000_000 },
+              { meter_kind: 'output_token', unit_price_yuan: '6.000000000000', unit_quantity: 1_000_000 },
+            ],
+            availability: { rate: 100 },
+          },
+        }],
         ad_slots: [{ id: 'ad-1', kind: 'ad_slot', status: 'active', sort_order: 1, pinned: false, data: { translations: { 'zh-CN': { title: '后台广告位', image_object_id: '01J00000000000000000000002', link_url: '/pricing' } } } }],
         news: [
           { id: 'news-1', kind: 'news', status: 'active', sort_order: 1, pinned: false, updated_at: '2026-08-02T00:00:00Z', data: { translations: { 'zh-CN': { title: '未固定动态', summary: '不应优先展示' } } } },
@@ -96,21 +140,44 @@ describe('公开模型页面', () => {
     }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
     renderPage(<HomePage />, '/')
 
+    expect(document.querySelectorAll('.manuscript-feature-card.manuscript-skeleton-card')).toHaveLength(3)
+    expect(document.querySelectorAll('.manuscript-price-card.manuscript-skeleton-card')).toHaveLength(3)
+    expect(document.querySelector('.manuscript-promotion-skeleton-reward')).toBeInTheDocument()
+    expect(document.querySelectorAll('.manuscript-partner-skeleton-row')).toHaveLength(2)
+    expect(screen.queryByText('后台能力卡片')).toBeNull()
     await waitFor(() => expect(screen.getByText('后台能力卡片')).toBeInTheDocument())
+    expect(document.querySelector('.manuscript-skeleton-card')).toBeNull()
     expect(screen.getByText('后台优惠模型')).toBeInTheDocument()
+    expect(screen.getByText('后台优惠模型').closest('a')).toHaveAttribute('href', '/models/managed-model')
+    const promotionCard = screen.getByText('后台优惠模型').closest('.manuscript-price-card')
+    expect(promotionCard).toHaveTextContent('Managed AI')
+    const promotionPrices = Array.from(promotionCard?.querySelectorAll('.manuscript-price-values strong') ?? []).map((element) => element.textContent)
+    expect(promotionPrices[0]).toMatch(/^1/)
+    expect(promotionPrices[1]).toMatch(/^6/)
     expect(screen.getByText('固定动态')).toBeInTheDocument()
     expect(screen.queryByText('未固定动态')).toBeNull()
     expect(screen.getAllByText('后台伙伴').length).toBeGreaterThan(0)
     expect(document.querySelector('.manuscript-feature-image')).toHaveAttribute('src', '/api/homepage/assets/01J00000000000000000000001')
     expect(screen.getByRole('img', { name: '后台广告位' })).toHaveAttribute('src', '/api/homepage/assets/01J00000000000000000000002')
     expect(document.querySelector('.manuscript-partner-image')).toHaveAttribute('src', '/api/homepage/assets/01J00000000000000000000003')
+    expect(document.querySelectorAll('.manuscript-partner-row')).toHaveLength(1)
+    expect(document.querySelector('.manuscript-partner-row')).toHaveClass('is-static', 'is-compact')
+    expect(document.querySelectorAll('.manuscript-partner-grid a[data-copy="primary"]')).toHaveLength(1)
+    expect(document.querySelector('.manuscript-partner-grid a[data-copy="duplicate"]')).toBeNull()
   })
 
-  it('首页内容接口失败时保留默认静态卡片', async () => {
+  it('首页内容接口失败时持续显示 Semi Design 骨架', async () => {
     vi.mocked(globalThis.fetch).mockRejectedValueOnce(new Error('offline'))
     renderPage(<HomePage />, '/')
 
-    await waitFor(() => expect(screen.getByText('一个账户，统一访问所有顶级AI模型')).toBeInTheDocument())
+    await waitFor(() => expect(globalThis.fetch).toHaveBeenCalled())
+    expect(document.querySelector('.manuscript-feature-grid')).toHaveAttribute('aria-busy', 'true')
+    expect(document.querySelectorAll('.manuscript-feature-card.manuscript-skeleton-card')).toHaveLength(3)
+    expect(document.querySelectorAll('.semi-skeleton-active')).not.toHaveLength(0)
+    expect(document.querySelectorAll('.semi-skeleton-image')).not.toHaveLength(0)
+    expect(document.querySelectorAll('.semi-skeleton-title')).not.toHaveLength(0)
+    expect(document.querySelectorAll('.semi-skeleton-paragraph')).not.toHaveLength(0)
+    expect(screen.queryByText('一个账户，统一访问所有顶级AI模型')).toBeNull()
     expect(screen.queryByText('后台能力卡片')).toBeNull()
   })
 

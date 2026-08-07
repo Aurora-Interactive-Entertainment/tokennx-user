@@ -21,6 +21,8 @@ import {
   IconCustomerSupport,
   IconDesktop,
   IconExit,
+  IconEyeClosedStroked,
+  IconEyeOpenedStroked,
   IconFile,
   IconIdCardStroked,
   IconImage,
@@ -103,16 +105,17 @@ type PublicLink = {
   labelKey: string
   path: string
   disabled?: boolean
-  emphasized?: boolean
 }
 
 export const PUBLIC_LINKS: PublicLink[] = [
   { labelKey: 'nav.models', path: '/models' },
-  { labelKey: 'nav.private', path: ENTERPRISE_CREATE_PATH, disabled: true, emphasized: true },
+  { labelKey: 'nav.private', path: ENTERPRISE_CREATE_PATH, disabled: true },
   { labelKey: 'nav.ranking', path: '/models', disabled: true },
   { labelKey: 'nav.apps', path: '/docs', disabled: true },
   { labelKey: 'nav.docs', path: '/docs', disabled: true },
 ]
+
+const AUTHENTICATED_PUBLIC_LINK: PublicLink = { labelKey: 'nav.billing', path: '/console/billing' }
 
 // 中文：登录后的默认工作页改为快速接入，控制台根路径不再承载总览页面。
 export const DEFAULT_CONSOLE_PATH = '/console/quickstart'
@@ -391,6 +394,7 @@ type LoginDialCode = {
 }
 
 const LOGIN_CODE_RETRY_SECONDS = 60
+const PHONE_CODE_COOLDOWN_KEY = 'token-nx:auth:phone-code-cooldown:v1'
 const LOGIN_DIAL_CODES: readonly LoginDialCode[] = [
   { code: '+86', label: '中国大陆', minLength: 11, maxLength: 11, pattern: /^1[3-9]\d{9}$/ },
   { code: '+852', label: '中国香港', minLength: 8, maxLength: 8 },
@@ -417,6 +421,43 @@ function normalizeLoginPhone(value: string): string {
 
 function internationalLoginPhone(dialCode: string, value: string): string {
   return `${dialCode}${normalizeLoginPhone(value)}`
+}
+
+type PhoneCodeCooldown = {
+  destination: string
+  countryCode: string
+  expiresAt: number
+}
+
+function readPhoneCodeCooldown(): PhoneCodeCooldown | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = window.localStorage.getItem(PHONE_CODE_COOLDOWN_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as Partial<PhoneCodeCooldown>
+    if (typeof parsed.destination !== 'string' || typeof parsed.countryCode !== 'string' || typeof parsed.expiresAt !== 'number' || !Number.isFinite(parsed.expiresAt)) return null
+    if (parsed.expiresAt <= Date.now()) {
+      window.localStorage.removeItem(PHONE_CODE_COOLDOWN_KEY)
+      return null
+    }
+    return { destination: parsed.destination, countryCode: parsed.countryCode, expiresAt: parsed.expiresAt }
+  } catch {
+    return null
+  }
+}
+
+function savePhoneCodeCooldown(destination: string, countryCode: string): void {
+  try {
+    window.localStorage.setItem(PHONE_CODE_COOLDOWN_KEY, JSON.stringify({ destination, countryCode, expiresAt: Date.now() + LOGIN_CODE_RETRY_SECONDS * 1000 }))
+  } catch {
+    // Ignore storage failures; the in-memory countdown still protects this session.
+  }
+}
+
+function remainingPhoneCodeCooldown(destination: string, countryCode: string): number {
+  const cooldown = readPhoneCodeCooldown()
+  if (!cooldown || cooldown.destination !== destination || cooldown.countryCode !== countryCode) return 0
+  return Math.max(1, Math.ceil((cooldown.expiresAt - Date.now()) / 1000))
 }
 
 function VerificationCodeButton(props: VerificationCodeButtonProps) {
@@ -519,6 +560,13 @@ export function LoginPanel({ onSuccess, onAuthFailure }: { onSuccess: () => void
   }, [phoneRetryAfter])
 
   useEffect(() => {
+    const destination = normalizeLoginPhone(phone)
+    const retryAfter = destination ? remainingPhoneCodeCooldown(destination, dialCode) : 0
+    setPhoneRetryAfter(retryAfter)
+    setPhoneCodeSent(retryAfter > 0)
+  }, [dialCode, phone])
+
+  useEffect(() => {
     if (bindingRetryAfter <= 0) return undefined
     const timer = window.setInterval(() => setBindingRetryAfter((value) => Math.max(0, value - 1)), 1000)
     return () => window.clearInterval(timer)
@@ -600,9 +648,11 @@ export function LoginPanel({ onSuccess, onAuthFailure }: { onSuccess: () => void
     setPhoneCodeLoading(true)
     setFeedback('')
     try {
-      const result = await dispatch(requestPhoneCode({ destination: internationalLoginPhone(dialCode, phone) })).unwrap()
+      const destination = normalizeLoginPhone(phone)
+      const result = await dispatch(requestPhoneCode({ destination, countryCode: dialCode })).unwrap()
       setPhoneCodeSent(true)
       setPhoneRetryAfter(LOGIN_CODE_RETRY_SECONDS)
+      savePhoneCodeCooldown(destination, dialCode)
       setFeedback(t('login.sentTo', { destination: result.destination_masked }))
     } catch (error) {
       handleLoginError(error)
@@ -625,7 +675,7 @@ export function LoginPanel({ onSuccess, onAuthFailure }: { onSuccess: () => void
     setPhoneLoginLoading(true)
     setFeedback('')
     try {
-      await dispatch(loginWithPhone({ destination: internationalLoginPhone(dialCode, phone), code })).unwrap()
+      await dispatch(loginWithPhone({ destination: normalizeLoginPhone(phone), code })).unwrap()
       onSuccess()
     } catch (error) {
       handleLoginError(error)
@@ -861,11 +911,14 @@ function LanguageToggleButton({ mobile = false }: { mobile?: boolean }) {
   const { t, i18n: translationI18n } = useTranslation()
   const isEnglish = translationI18n.resolvedLanguage?.startsWith('en') ?? false
   const nextLanguage = isEnglish ? 'zh-CN' : 'en-US'
-  const nextLanguageLabel = isEnglish ? '中' : 'EN'
 
   return (
     <button className={`header-tool language-switcher${isEnglish ? ' is-english' : ''}${mobile ? ' language-switcher--mobile' : ''}`} type="button" title={t('language.label')} aria-label={t('language.toggle')} aria-pressed={isEnglish} onClick={() => { void translationI18n.changeLanguage(nextLanguage) }}>
-      <span className="language-current" aria-hidden="true">{nextLanguageLabel}</span>
+      <span className="language-switcher-track" aria-hidden="true">
+        <span className="language-switcher-thumb" />
+        <span className="language-switcher-option language-switcher-option--en">EN</span>
+        <span className="language-switcher-option language-switcher-option--zh">中</span>
+      </span>
     </button>
   )
 }
@@ -883,21 +936,71 @@ export function PublicHeader({ enterpriseAccess, unreadNotificationCount = 0 }: 
   const dispatch = useAppDispatch()
   const auth = useAppSelector((state) => state.auth)
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [billingMenuOpen, setBillingMenuOpen] = useState(false)
+  const [billingBalanceVisible, setBillingBalanceVisible] = useState(true)
+  const billingBalance = '348.62'
+  const maskedBillingBalance = billingBalance.replace(/\D/g, '').replace(/\d/g, '*')
+  const billingHoverCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const currentPath = location.pathname
+  const publicLinks = auth.status === 'authenticated' ? [...PUBLIC_LINKS, AUTHENTICATED_PUBLIC_LINK] : PUBLIC_LINKS
   function go(path: string): void {
     setMobileOpen(false)
     navigate(path)
   }
 
+  function clearBillingHoverCloseTimer(): void {
+    if (billingHoverCloseTimerRef.current === null) return
+    clearTimeout(billingHoverCloseTimerRef.current)
+    billingHoverCloseTimerRef.current = null
+  }
+
+  function openBillingMenu(): void {
+    clearBillingHoverCloseTimer()
+    setBillingMenuOpen(true)
+  }
+
+  function scheduleBillingMenuClose(): void {
+    clearBillingHoverCloseTimer()
+    billingHoverCloseTimerRef.current = setTimeout(() => {
+      billingHoverCloseTimerRef.current = null
+      setBillingMenuOpen(false)
+    }, 160)
+  }
+
+  useEffect(() => () => clearBillingHoverCloseTimer(), [])
+
   function renderPublicLink(link: PublicLink, mobile = false): ReactNode {
     const isActive = !link.disabled && currentPath.startsWith(link.path)
-    const isHome = currentPath === '/' || currentPath === '/home'
-    const showEmphasis = (link.path === '/models' && isActive) || (link.emphasized && isHome)
+    const showEmphasis = isActive
     const className = `public-nav-link${isActive ? ' active' : ''}${link.disabled ? ' public-nav-link--disabled' : ''}${showEmphasis ? ' public-nav-link--emphasized' : ''}`
     if (link.disabled) {
       return <span key={`${link.path}-${link.labelKey}`} className={className} aria-disabled="true">{t(link.labelKey)}</span>
     }
-    return <Link key={`${link.path}-${link.labelKey}`} className={className} to={link.path} onClick={mobile ? () => setMobileOpen(false) : undefined}>{t(link.labelKey)}</Link>
+    const linkNode = <Link key={`${link.path}-${link.labelKey}`} className={className} to={link.path} onClick={mobile ? () => setMobileOpen(false) : undefined} onFocus={!mobile && link.labelKey === 'nav.billing' ? openBillingMenu : undefined} aria-haspopup={!mobile && link.labelKey === 'nav.billing' ? 'dialog' : undefined}>{t(link.labelKey)}</Link>
+    if (mobile || link.labelKey !== 'nav.billing') return linkNode
+    return <div className="public-billing-menu-shell" key={`${link.path}-${link.labelKey}`} onMouseEnter={openBillingMenu} onMouseLeave={scheduleBillingMenuClose}>
+      {linkNode}
+      {billingMenuOpen ? <div className="billing-hover-card" role="dialog" aria-label={t('console.billing.balance')}>
+        <div className="billing-hover-card-top">
+          <div className="billing-hover-balance">
+            <div className="billing-hover-label">
+              <span>{t('console.billing.balance')}</span><span>{t('console.billing.currency')}</span>
+              <button className="billing-hover-eye" type="button" aria-label={t(billingBalanceVisible ? 'console.billing.hideBalance' : 'console.billing.showBalance')} title={t(billingBalanceVisible ? 'console.billing.hideBalance' : 'console.billing.showBalance')} onClick={() => setBillingBalanceVisible((visible) => !visible)}>
+                {billingBalanceVisible ? <IconEyeOpenedStroked aria-hidden="true" /> : <IconEyeClosedStroked aria-hidden="true" />}
+              </button>
+            </div>
+            <strong className={billingBalanceVisible ? '' : 'is-hidden'}>{billingBalanceVisible ? billingBalance : maskedBillingBalance}</strong>
+          </div>
+          <Link className="billing-hover-recharge" to="/console/billing" onClick={() => setBillingMenuOpen(false)}>{t('console.billing.rechargeNow')}</Link>
+        </div>
+        <div className="billing-hover-facts">
+          <div><span>{t('console.billing.promotionBalance')}</span><strong>0</strong></div>
+          <div><span>{t('console.billing.invoiceAvailable')}</span><strong>0</strong></div>
+        </div>
+        <div className="billing-hover-divider" aria-hidden="true" />
+        <Link className="billing-hover-center" to="/console/billing" onClick={() => setBillingMenuOpen(false)}>{t('console.billing.billingCenter')}</Link>
+      </div> : null}
+    </div>
   }
 
   return (
@@ -915,7 +1018,7 @@ export function PublicHeader({ enterpriseAccess, unreadNotificationCount = 0 }: 
           <span className="header-trial-free"><img src={headerTrialFreeTag} alt="" aria-hidden="true" /><em>{t('console.models.free')}</em></span>
         </span>
         <nav className="header-nav public-nav" aria-label={t('console.common.publicNav')}>
-          {PUBLIC_LINKS.map((link) => renderPublicLink(link))}
+          {publicLinks.map((link) => renderPublicLink(link))}
         </nav>
         <div className="header-actions public-header-actions">
           <div className="header-tools">
@@ -937,12 +1040,12 @@ export function PublicHeader({ enterpriseAccess, unreadNotificationCount = 0 }: 
               onLogout={() => { void dispatch(logoutAuth()).finally(() => go('/')) }}
             />
           ) : (
-            <LoginPopover onSuccess={() => go(DEFAULT_CONSOLE_PATH)} />
+            <LoginPopover onSuccess={() => setMobileOpen(false)} />
           )}
         </div>
       </div>
       <nav className="public-mobile-nav" id="public-mobile-nav" aria-label={t('console.common.publicNav')} hidden={!mobileOpen}>
-        {PUBLIC_LINKS.map((link) => renderPublicLink(link, true))}
+        {publicLinks.map((link) => renderPublicLink(link, true))}
         <div className="public-mobile-tools"><ThemeToggleButton /><LanguageToggleButton mobile /></div>
       </nav>
     </header>
@@ -1148,7 +1251,7 @@ export function workspacesFromMemberships(memberships: EnterpriseMembership[]): 
 }
 
 const WORKSPACE_MENU_VIEWPORT_GAP_PX = 12
-const WORKSPACE_MENU_GAP_PX = 12
+const WORKSPACE_MENU_GAP_PX = 1
 
 // 中文：登录后的用户菜单与参考站保持同一层级，空间切换和控制台入口共用当前工作空间状态。
 function UserMenu({ store, userId, userName, phone, enterpriseAccess, onNavigate, onLogout }: UserMenuProps) {
@@ -1160,12 +1263,34 @@ function UserMenu({ store, userId, userName, phone, enterpriseAccess, onNavigate
   const workspaceTriggerRef = useRef<HTMLButtonElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const workspaceMenuRef = useRef<HTMLDivElement>(null)
+  const hoverCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [workspaceMenuPosition, setWorkspaceMenuPosition] = useState<{ top: number; left: number } | null>(null)
   const displayName = limitDisplayNameLength(userName.trim()) || limitDisplayNameLength(store.nickname) || t('console.common.demoUser')
   const phoneLabel = phone.trim() || t('console.common.phoneUnavailable')
   const initial = (displayName || store.avatar || '用').slice(0, 1).toUpperCase()
   const activeWorkspace = store.activeWorkspace
   const groups = userMenuGroupsFor(activeWorkspace, enterpriseAccess?.permissions)
+
+  function clearHoverCloseTimer(): void {
+    if (hoverCloseTimerRef.current === null) return
+    clearTimeout(hoverCloseTimerRef.current)
+    hoverCloseTimerRef.current = null
+  }
+
+  function openMenuOnHover(): void {
+    clearHoverCloseTimer()
+    setOpen(true)
+  }
+
+  function scheduleHoverClose(): void {
+    clearHoverCloseTimer()
+    hoverCloseTimerRef.current = setTimeout(() => {
+      hoverCloseTimerRef.current = null
+      closeMenu()
+    }, 160)
+  }
+
+  useEffect(() => () => clearHoverCloseTimer(), [])
 
   useEffect(() => {
     let mounted = true
@@ -1267,23 +1392,24 @@ function UserMenu({ store, userId, userName, phone, enterpriseAccess, onNavigate
         id="workspace-menu"
         role="menu"
         aria-label={t('console.common.switchWorkspace')}
+        onMouseEnter={clearHoverCloseTimer}
+        onMouseLeave={scheduleHoverClose}
         style={workspaceMenuPosition ? { top: workspaceMenuPosition.top, left: workspaceMenuPosition.left } : { visibility: 'hidden' }}
       >
-        <div className="workspace-menu-heading">{t('console.common.switchWorkspace')}</div>
         {store.workspaces.map((workspace) => {
           const workspaceName = workspace.type === 'personal' ? displayName : workspace.name
           const workspaceInitial = workspaceName.slice(0, 1).toUpperCase()
           const active = workspace.id === activeWorkspace.id
           return <button className={`workspace-menu-item${active ? ' active' : ''}`} type="button" role="menuitem" key={workspace.id} aria-current={active ? 'true' : undefined} aria-pressed={active} title={workspaceName} onClick={() => switchWorkspace(workspace)}>
-            <span className={`workspace-avatar${workspace.type === 'personal' ? '' : ' workspace-avatar-muted'}`}>{workspaceInitial}</span>
-            <span className="workspace-info"><span className="workspace-name">{workspaceName}</span><span className="workspace-type">{workspaceTypeLabel(workspace, t)}</span></span>
-            {active ? <span className="workspace-current-label">{t('console.common.current')}</span> : null}
+            <span className="workspace-avatar">{workspaceInitial}</span>
+            <span className="workspace-info"><span className="workspace-name">{workspaceName}</span><span className="workspace-type">{workspace.type === 'personal' ? t('console.common.personalWorkspace') : `${workspace.name} · ${workspace.role}`}</span></span>
+            {workspace.type === 'enterprise' ? <IconChevronDown className="icon-svg workspace-menu-chevron" aria-hidden="true" /> : null}
           </button>
         })}
-        <button className="workspace-menu-item workspace-menu-create" type="button" role="menuitem" onClick={() => navigateFromMenu(NEW_ENTERPRISE_CREATE_PATH)}>
-          <span className="workspace-avatar workspace-avatar-muted">+</span>
+        {store.workspaces.length === 1 ? <button className="workspace-menu-item workspace-menu-create" type="button" role="menuitem" onClick={() => navigateFromMenu(NEW_ENTERPRISE_CREATE_PATH)}>
+          <span className="workspace-avatar">+</span>
           <span className="workspace-info"><span className="workspace-name">{t('console.common.createWorkspace')}</span><span className="workspace-type">{t('console.common.startEnterpriseVerification')}</span></span>
-        </button>
+        </button> : null}
       </div>,
       document.body,
     )
@@ -1298,24 +1424,19 @@ function UserMenu({ store, userId, userName, phone, enterpriseAccess, onNavigate
   }
 
   return (
-    <div className="user-menu-shell" ref={shellRef}>
-      <button ref={triggerRef} className="user-menu-trigger" type="button" aria-haspopup="menu" aria-controls="user-dropdown" aria-expanded={open} aria-label={open ? t('console.common.closeUserMenu') : t('console.common.openUserMenu')} onClick={() => { if (open) closeMenu(); else setOpen(true) }}>
+    <div className="user-menu-shell" ref={shellRef} onMouseEnter={openMenuOnHover} onMouseLeave={scheduleHoverClose}>
+      <button ref={triggerRef} className="user-menu-trigger user-menu-trigger--avatar-only" type="button" aria-haspopup="menu" aria-controls="user-dropdown" aria-expanded={open} aria-label={open ? t('console.common.closeUserMenu') : t('console.common.openUserMenu')} onClick={() => setOpen(true)}>
         <span className="user-avatar">{initial}</span>
         <span className="user-name">{displayName}</span>
         <IconChevronDown className="icon-svg user-menu-chevron" />
       </button>
       <div ref={dropdownRef} className={`user-dropdown${open ? ' open' : ''}`} id="user-dropdown" role="menu" aria-label={t('console.common.userMenu')} aria-hidden={!open}>
         <div className="user-dropdown-header">
-          <div className="dropdown-user-name">{displayName}</div>
-          <div className="dropdown-user-email">{phoneLabel}</div>
-          <div className="dropdown-workspace">{t('console.common.currentWorkspace')} · {activeWorkspace.type === 'personal' ? displayName : activeWorkspace.name}</div>
-        </div>
-        <div className="user-dropdown-section">
-          <button ref={workspaceTriggerRef} className="dropdown-link dropdown-link-switch" type="button" role="menuitem" aria-label={t('console.common.switchWorkspace')} aria-controls="workspace-menu" aria-expanded={workspaceOpen} onClick={() => setWorkspaceOpen((value) => !value)}>
-            <ConsoleNavIcon name="workspace" className="dropdown-icon" />
-            <span>{t('console.common.switchWorkspace')}</span>
-            <IconChevronDown className="icon-svg dropdown-link-chevron" />
+          <button ref={workspaceTriggerRef} className="user-dropdown-identity" type="button" role="menuitem" aria-label={t('console.common.switchWorkspace')} aria-controls="workspace-menu" aria-expanded={workspaceOpen} onClick={() => setWorkspaceOpen((value) => !value)}>
+            <span className="user-dropdown-identity-avatar">{initial}</span>
+            <span className="user-dropdown-identity-copy"><strong>{displayName}</strong><span>{activeWorkspace.type === 'personal' ? t('console.common.personalWorkspace') : activeWorkspace.name}</span><IconChevronDown className="icon-svg user-dropdown-identity-chevron" /><span className="public-sr-only">{phoneLabel}</span><span className="public-sr-only">{t('console.common.currentWorkspace')} · {activeWorkspace.type === 'personal' ? displayName : activeWorkspace.name}</span><span className="public-sr-only">{t('console.common.switchWorkspace')}</span></span>
           </button>
+          <button className="user-dropdown-settings" type="button" aria-label={t('nav.settings')} onClick={() => navigateFromMenu('/console/settings')}><IconSettingStroked aria-hidden="true" /></button>
         </div>
         {groups.map((group) => <div className="user-dropdown-section" key={group.key}>{group.items.map(renderMenuItem)}</div>)}
         <div className="user-dropdown-section">
@@ -1328,12 +1449,6 @@ function UserMenu({ store, userId, userName, phone, enterpriseAccess, onNavigate
       {renderWorkspaceMenu()}
     </div>
   )
-}
-
-function workspaceTypeLabel(workspace: Workspace, t: TFunction): string {
-  return workspace.type === 'enterprise'
-    ? `${t('console.common.enterpriseWorkspace')} · ${workspace.role}`
-    : t('console.common.personalWorkspace')
 }
 
 export function activeNavKey(pathname: string): string {

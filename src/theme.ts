@@ -11,13 +11,13 @@ const listeners = new Set<() => void>()
 let mediaQuery: MediaQueryList | null = null
 
 function readStoredThemeMode(): ThemeMode {
-  if (typeof window === 'undefined') return 'system'
+  if (typeof window === 'undefined') return 'dark'
   try {
     const stored = window.localStorage.getItem(THEME_STORAGE_KEY)
-    return stored === 'light' || stored === 'dark' || stored === 'system' ? stored : 'system'
+    return stored === 'light' || stored === 'dark' || stored === 'system' ? stored : 'dark'
   } catch {
     // 中文：浏览器禁用存储时使用系统主题，避免阻塞首屏渲染。
-    return 'system'
+    return 'dark'
   }
 }
 
@@ -100,7 +100,7 @@ export function useThemeMode(): ThemeMode {
       return () => listeners.delete(listener)
     },
     getThemeMode,
-    () => 'system',
+    () => 'dark',
   )
 }
 

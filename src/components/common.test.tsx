@@ -344,6 +344,32 @@ describe('公共 Header 布局', () => {
     expect(screen.getByRole('button', { name: '查看通知' }).querySelectorAll('.header-notification-dot')).toHaveLength(1)
   })
 
+  it('费用弹窗可通过眼睛按钮隐藏和恢复余额', async () => {
+    const user = userEvent.setup()
+    const appStore = createAppStore()
+    appStore.dispatch({ type: 'auth/loginWithEmail/fulfilled', payload: { id: 'user-1', display_name: '测试用户', avatar_url: '', locale: 'zh-CN', timezone: 'Asia/Shanghai', status: 'active' } })
+
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <Provider store={appStore}>
+          <AppStoreProvider><PublicHeader /></AppStoreProvider>
+        </Provider>
+      </MemoryRouter>,
+    )
+
+    const navigation = screen.getByRole('navigation', { name: '公开导航' })
+    await user.hover(within(navigation).getByRole('link', { name: '费用' }))
+    const dialog = await screen.findByRole('dialog', { name: '账户余额' })
+    expect(within(dialog).getByText('348.62')).toBeInTheDocument()
+
+    await user.click(within(dialog).getByRole('button', { name: '隐藏余额' }))
+    expect(within(dialog).getByText('*****')).toBeInTheDocument()
+    expect(within(dialog).getByRole('button', { name: '显示余额' })).toBeInTheDocument()
+
+    await user.click(within(dialog).getByRole('button', { name: '显示余额' }))
+    expect(within(dialog).getByText('348.62')).toBeInTheDocument()
+  })
+
   it('公开 Header 仅保留模型入口可点击，桌面和移动导航都禁用其余四项', async () => {
     const user = userEvent.setup()
     render(
@@ -439,7 +465,27 @@ describe('登录验证码按钮', () => {
 
     resolveRequest(new Response(JSON.stringify({ code: 0, msg: 'success', data: { destination_masked: '138****8000', expires_at: '2099-01-01T00:05:00Z', retry_after_seconds: 10 } }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
     await waitFor(() => expect(screen.getByRole('button', { name: '60s 后重试' })).toBeDisabled())
-    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toMatchObject({ destination: '+8613800138000' })
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toMatchObject({ destination: '13800138000', country_code: '+86' })
+  })
+
+  it('刷新后相同手机号继续冷却，切换其他手机号即可发送', async () => {
+    const user = userEvent.setup()
+    const cooldownKey = 'token-nx:auth:phone-code-cooldown:v1'
+    window.localStorage.setItem(cooldownKey, JSON.stringify({ destination: '13800138000', countryCode: '+86', expiresAt: Date.now() + 60_000 }))
+    render(
+      <MemoryRouter initialEntries={['/login']}>
+        <Provider store={createAppStore()}>
+          <AppStoreProvider><LoginPanel onSuccess={vi.fn()} /></AppStoreProvider>
+        </Provider>
+      </MemoryRouter>,
+    )
+    const phoneInput = screen.getByLabelText('手机号')
+    await user.type(phoneInput, '13800138000')
+    expect(screen.getByRole('button', { name: /s 后重试/ })).toBeDisabled()
+    await user.clear(phoneInput)
+    await user.type(phoneInput, '13900139000')
+    expect(screen.getByRole('button', { name: '获取验证码' })).toBeEnabled()
+    window.localStorage.removeItem(cooldownKey)
   })
 })
 

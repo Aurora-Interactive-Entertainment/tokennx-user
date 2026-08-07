@@ -30,11 +30,11 @@ describe('认证接口封装', () => {
 
     const [url, options] = fetchMock.mock.calls[0]
     expect(String(url)).toContain('/api/auth/phone/code')
-    expect(JSON.parse(String(options?.body))).toEqual({ destination: '13800138000', locale: 'zh-CN' })
+    expect(JSON.parse(String(options?.body))).toEqual({ destination: '13800138000', country_code: '+86' })
 
     fetchMock.mockResolvedValue(response({ status: 'succeeded', binding_required: false }))
-    await loginByPhone('13800138000', '482915', { device_id: 'device-1', device_name: 'Chrome' })
-    expect(JSON.parse(String(fetchMock.mock.calls[1][1]?.body))).toEqual({ destination: '13800138000', code: '482915', locale: 'zh-CN', device_id: 'device-1', device_name: 'Chrome' })
+    await loginByPhone('13800138000', '482915')
+    expect(JSON.parse(String(fetchMock.mock.calls[1][1]?.body))).toEqual({ destination: '13800138000', code: '482915' })
   })
 
   it('正确编码微信状态并合并并发 refresh 请求', async () => {

@@ -76,6 +76,7 @@ export const consoleResources = {
         usageTitle: '用量统计', recordsTitle: '调用记录', billingTitle: '费用管理',
       },
       billing: {
+        currency: '（元）', promotionBalance: '推广金（元）', invoiceAvailable: '可开发票（元）', billingCenter: '费用中心', showBalance: '显示余额', hideBalance: '隐藏余额',
         title: '费用管理', description: '查看当前工作空间的费用、账本与发票信息', overview: '费用概览', ledger: '账本明细', invoice: '发票', period: '账期',
         analysis: '费用分析', filter: '筛选', allSources: '全部渠道', apiKey: 'API 密钥', model: '模型', source: '渠道', all: '全部',
         time: '时间', type: '类型', relatedDescription: '相关描述', amountChange: '金额变动', request: '查看请求', ledgerPagination: '账本分页',
@@ -221,6 +222,7 @@ export const consoleResources = {
         usageTitle: 'Usage', recordsTitle: 'Request records', billingTitle: 'Billing',
       },
       billing: {
+        currency: '(CNY)', promotionBalance: 'Promotion balance (CNY)', invoiceAvailable: 'Available to invoice (CNY)', billingCenter: 'Billing center', showBalance: 'Show balance', hideBalance: 'Hide balance',
         title: 'Billing', description: 'View costs, the ledger, and invoice information for the current workspace', overview: 'Overview', ledger: 'Ledger', invoice: 'Invoices', period: 'Billing period',
         analysis: 'Cost analysis', filter: 'Filter', allSources: 'All sources', apiKey: 'API key', model: 'Model', source: 'Source', all: 'All',
         time: 'Time', type: 'Type', relatedDescription: 'Description', amountChange: 'Amount change', request: 'View request', ledgerPagination: 'Ledger pagination',

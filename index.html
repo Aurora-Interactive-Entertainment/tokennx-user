@@ -5,12 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#1a1b1d" />
     <title>Token NX</title>
+    <link rel="icon" type="image/png" href="./src/assets/figma-header/X-16.png" />
     <script>
       (() => {
         // 中文：在样式和 React 加载前应用已保存的主题，避免首屏出现主题闪烁。
         const themeStorageKey = 'token-nx:theme'
         const root = document.documentElement
-        let mode = 'system'
+        let mode = 'dark'
 
         try {
           const stored = window.localStorage.getItem(themeStorageKey)

@@ -70,17 +70,17 @@ export function loginByEmail(destination: string, code: string, device: DeviceIn
   })
 }
 
-export function sendPhoneCode(destination: string, locale = 'zh-CN'): Promise<PhoneCodeResult> {
+export function sendPhoneCode(destination: string, countryCode = '+86'): Promise<PhoneCodeResult> {
   return fetchJson<PhoneCodeResult>('/api/auth/phone/code', {
     method: 'POST',
-    body: { destination, locale },
+    body: { destination, country_code: countryCode },
   })
 }
 
-export function loginByPhone(destination: string, code: string, device: DeviceInfo, locale = 'zh-CN'): Promise<AuthResult> {
+export function loginByPhone(destination: string, code: string): Promise<AuthResult> {
   return fetchJson<AuthResult>('/api/auth/phone/login', {
     method: 'POST',
-    body: { destination, code, locale, ...device },
+    body: { destination, code },
   })
 }
 

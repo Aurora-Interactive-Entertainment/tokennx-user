@@ -64,9 +64,9 @@ export const hydrateAuth = createAsyncThunk<AuthUser | null>('auth/hydrate', asy
   }
 })
 
-export const requestPhoneCode = createAsyncThunk<PhoneCodeResult, { destination: string } , ThunkConfig>('auth/requestPhoneCode', async ({ destination }, { rejectWithValue }) => {
+export const requestPhoneCode = createAsyncThunk<PhoneCodeResult, { destination: string; countryCode?: string }, ThunkConfig>('auth/requestPhoneCode', async ({ destination, countryCode = '+86' }, { rejectWithValue }) => {
   try {
-    return await sendPhoneCode(destination)
+    return await sendPhoneCode(destination, countryCode)
   } catch (error) {
     return rejectWithValue(authError(error))
   }
@@ -90,7 +90,7 @@ export const loginWithEmail = createAsyncThunk<AuthUser, { destination: string; 
 
 export const loginWithPhone = createAsyncThunk<AuthUser, { destination: string; code: string }, ThunkConfig>('auth/loginWithPhone', async ({ destination, code }, { rejectWithValue }) => {
   try {
-    return completeAuth(await loginByPhone(destination, code, deviceInfo()))
+    return completeAuth(await loginByPhone(destination, code))
   } catch (error) {
     return rejectWithValue(authError(error))
   }
