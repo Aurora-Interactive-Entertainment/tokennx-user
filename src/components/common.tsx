@@ -496,16 +496,23 @@ type LoginPhoneFieldProps = {
 function LoginPhoneField(props: LoginPhoneFieldProps) {
   const { t } = useTranslation()
   const dial = loginDialCode(props.dialCode)
+  const [dialCodeOpen, setDialCodeOpen] = useState(false)
   return (
     <div className="form-field phone-field">
       {props.label ? <label className="field-label" htmlFor={props.id}>{props.label}</label> : null}
       <div className="phone-input-wrapper">
-        <div className="phone-prefix-control">
+        <div className={`phone-prefix-control${dialCodeOpen ? ' is-open' : ''}`}>
           <span className="phone-prefix-value" aria-hidden="true">{dial.code}</span>
           <select
             className="phone-prefix-select"
             value={props.dialCode}
-            onChange={(event) => props.onDialCodeChange(event.target.value)}
+            onChange={(event) => {
+              props.onDialCodeChange(event.target.value)
+              setDialCodeOpen(false)
+            }}
+            onMouseDown={() => setDialCodeOpen((open) => !open)}
+            onFocus={() => setDialCodeOpen(true)}
+            onBlur={() => setDialCodeOpen(false)}
             aria-label={t('login.countryCode')}
           >
             {LOGIN_DIAL_CODES.map((entry) => <option key={entry.code} value={entry.code}>{entry.code} {entry.label}</option>)}
@@ -1439,7 +1446,7 @@ function UserMenu({ store, userId, userName, phone, enterpriseAccess, onNavigate
         <span className="user-name">{displayName}</span>
         <IconChevronDown className="icon-svg user-menu-chevron" />
       </button>
-      <div ref={dropdownRef} className={`user-dropdown${open ? ' open' : ''}`} id="user-dropdown" role="menu" aria-label={t('console.common.userMenu')} aria-hidden={!open}>
+      <div ref={dropdownRef} className={`user-dropdown${open ? ' open' : ''}`} id="user-dropdown" role="menu" aria-label={t('console.common.userMenu')} aria-hidden={!open} onMouseEnter={clearHoverCloseTimer} onMouseLeave={scheduleHoverClose}>
         <div className="user-dropdown-header">
           <button ref={workspaceTriggerRef} className="user-dropdown-identity" type="button" role="menuitem" aria-label={t('console.common.switchWorkspace')} aria-controls="workspace-menu" aria-expanded={workspaceOpen} onClick={() => setWorkspaceOpen((value) => !value)}>
             <span className="user-dropdown-identity-avatar">{initial}</span>
@@ -1709,7 +1716,7 @@ const MANUSCRIPT_FOOTER_GROUPS = [
 const PUBLIC_WECHAT_QR_TARGET = 'https://example.com/token-nx-official-account'
 const PUBLIC_WECHAT_QR_IMAGE = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=8&data=${encodeURIComponent(PUBLIC_WECHAT_QR_TARGET)}`
 
-const MANUSCRIPT_SUPPORT_TRANSITION_MS = 300
+const MANUSCRIPT_SUPPORT_TRANSITION_MS = 360
 const MANUSCRIPT_SUPPORT_MESSAGE_MAX_LENGTH = 1000
 type SupportTab = 'contact' | 'notifications'
 const SUPPORT_OPEN_EVENT = 'token-nx:open-support'
