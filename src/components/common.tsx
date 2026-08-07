@@ -43,19 +43,28 @@ import {
 import { useAppStore, type AppStoreValue, type Workspace, type WorkspaceRole } from '@/data/app-state'
 import { modelAlias, modelRouteKey, MODALITY_LABELS, type ModelRecord } from '@/data/models'
 import { getProfileEnterprises, limitDisplayNameLength, type EnterpriseMembership } from '@/api/profile'
-import { completeBinding, completeWechatLogin, invalidateAuth, loginWithEmail, loginWithPhone, logoutAuth, pollWechatStatus, requestBindingCode, requestEmailCode, requestPhoneCode, requestWechatQr } from '@/store/auth-slice'
+import { completeBinding, completeWechatLogin, invalidateAuth, loginWithPhone, logoutAuth, pollWechatStatus, requestBindingCode, requestPhoneCode, requestWechatQr } from '@/store/auth-slice'
 import { useAppDispatch, useAppSelector } from '@/store/hooks'
 import { clearAuthTokens, getAccessToken } from '@/auth/token-storage'
 import { isAuthenticationFailure } from '@/api/http'
-import i18n from '@/i18n'
 import { useTranslation } from 'react-i18next'
-import { cycleThemeMode, themeModeLabel, useThemeMode } from '@/theme'
+import { cycleThemeMode, themeModeLabel, useResolvedTheme, useThemeMode } from '@/theme'
 import { getMockSupportReply, MOCK_SUPPORT_REPLY_DELAY_MS, type SupportChatMessage, type SupportLocale, type SupportMessageRole } from './support-chat'
 import { MoneyText } from './money'
 import { enterpriseMenuPermissionKeyForPath, hasEnterpriseMenuPermission, isEnterpriseOwner, type EnterpriseMenuAccess, type EnterpriseMenuPermissionKey, useEnterpriseMenuAccess } from './enterprise-menu-access'
 import { ENTERPRISE_CREATE_PATH, NEW_ENTERPRISE_CREATE_PATH } from '@/api/enterprise-certification'
 export { isEnterpriseOwner } from './enterprise-menu-access'
 import tokenNxLogo from '@/token-nx-logo.png'
+import headerLogo from '@/assets/figma-header/token-nx-header-logo.png'
+import headerTrialPill from '@/assets/figma-header/trial-pill.png'
+import headerTrialFreeTag from '@/assets/figma-header/trial-free-tag.svg'
+import headerNotificationIcon from '@/assets/figma-header/notification.svg'
+import manuscriptFooterLogo from '@/assets/figma-home/footer-logo.png'
+import manuscriptCustomerQr from '@/assets/figma-home/footer-qr-customer.png'
+import manuscriptOfficialQr from '@/assets/figma-home/footer-qr-official.png'
+import manuscriptFilingIcpIcon from '@/assets/figma-home/filing-icp.png'
+import manuscriptFilingSecurityIcon from '@/assets/figma-home/filing-security.png'
+import wechatIcon from '@/assets/figma-home/wechat.png'
 import deepseekLogo from '@lobehub/icons-static-svg/icons/deepseek-color.svg?raw'
 import anthropicLogo from '@lobehub/icons-static-svg/icons/claude-color.svg?raw'
 import openaiLogo from '@lobehub/icons-static-svg/icons/openai.svg?raw'
@@ -94,11 +103,12 @@ type PublicLink = {
   labelKey: string
   path: string
   disabled?: boolean
+  emphasized?: boolean
 }
 
 export const PUBLIC_LINKS: PublicLink[] = [
   { labelKey: 'nav.models', path: '/models' },
-  { labelKey: 'nav.private', path: ENTERPRISE_CREATE_PATH, disabled: true },
+  { labelKey: 'nav.private', path: ENTERPRISE_CREATE_PATH, disabled: true, emphasized: true },
   { labelKey: 'nav.ranking', path: '/models', disabled: true },
   { labelKey: 'nav.apps', path: '/docs', disabled: true },
   { labelKey: 'nav.docs', path: '/docs', disabled: true },
@@ -372,6 +382,43 @@ type VerificationCodeButtonProps = {
   onClick: () => void
 }
 
+type LoginDialCode = {
+  code: string
+  label: string
+  minLength: number
+  maxLength: number
+  pattern?: RegExp
+}
+
+const LOGIN_CODE_RETRY_SECONDS = 60
+const LOGIN_DIAL_CODES: readonly LoginDialCode[] = [
+  { code: '+86', label: '中国大陆', minLength: 11, maxLength: 11, pattern: /^1[3-9]\d{9}$/ },
+  { code: '+852', label: '中国香港', minLength: 8, maxLength: 8 },
+  { code: '+853', label: '中国澳门', minLength: 8, maxLength: 8 },
+  { code: '+886', label: '中国台湾', minLength: 9, maxLength: 10 },
+  { code: '+1', label: '美国/加拿大', minLength: 10, maxLength: 10 },
+  { code: '+44', label: '英国', minLength: 10, maxLength: 10 },
+  { code: '+81', label: '日本', minLength: 10, maxLength: 11 },
+  { code: '+82', label: '韩国', minLength: 9, maxLength: 11 },
+  { code: '+65', label: '新加坡', minLength: 8, maxLength: 8 },
+  { code: '+60', label: '马来西亚', minLength: 9, maxLength: 10 },
+  { code: '+61', label: '澳大利亚', minLength: 9, maxLength: 9 },
+  { code: '+49', label: '德国', minLength: 10, maxLength: 11 },
+  { code: '+33', label: '法国', minLength: 9, maxLength: 9 },
+] as const
+
+function loginDialCode(value: string): LoginDialCode {
+  return LOGIN_DIAL_CODES.find((entry) => entry.code === value) ?? LOGIN_DIAL_CODES[0]
+}
+
+function normalizeLoginPhone(value: string): string {
+  return value.replace(/\D/g, '')
+}
+
+function internationalLoginPhone(dialCode: string, value: string): string {
+  return `${dialCode}${normalizeLoginPhone(value)}`
+}
+
 function VerificationCodeButton(props: VerificationCodeButtonProps) {
   const { t } = useTranslation()
   let label = t('login.sendCode')
@@ -392,18 +439,61 @@ function VerificationCodeButton(props: VerificationCodeButtonProps) {
   )
 }
 
+type LoginPhoneFieldProps = {
+  id: string
+  label?: string
+  dialCode: string
+  phone: string
+  invalid?: boolean
+  onDialCodeChange: (value: string) => void
+  onPhoneChange: (value: string) => void
+}
+
+function LoginPhoneField(props: LoginPhoneFieldProps) {
+  const { t } = useTranslation()
+  const dial = loginDialCode(props.dialCode)
+  return (
+    <div className="form-field phone-field">
+      {props.label ? <label className="field-label" htmlFor={props.id}>{props.label}</label> : null}
+      <div className="phone-input-wrapper">
+        <div className="phone-prefix-control">
+          <span className="phone-prefix-value" aria-hidden="true">{dial.code}</span>
+          <select
+            className="phone-prefix-select"
+            value={props.dialCode}
+            onChange={(event) => props.onDialCodeChange(event.target.value)}
+            aria-label={t('login.countryCode')}
+          >
+            {LOGIN_DIAL_CODES.map((entry) => <option key={entry.code} value={entry.code}>{entry.code} {entry.label}</option>)}
+          </select>
+        </div>
+        <input
+          className="phone-input"
+          id={props.id}
+          aria-label={t('login.phone')}
+          type="tel"
+          value={props.phone}
+          onChange={(event) => props.onPhoneChange(normalizeLoginPhone(event.target.value).slice(0, dial.maxLength))}
+          placeholder={t('login.phonePlaceholder')}
+          maxLength={dial.maxLength}
+          autoComplete="tel-national"
+          inputMode="numeric"
+          aria-invalid={props.invalid}
+          required
+        />
+      </div>
+    </div>
+  )
+}
+
 export function LoginPanel({ onSuccess, onAuthFailure }: { onSuccess: () => void; onAuthFailure?: () => void }) {
   const { t } = useTranslation()
-  const [tab, setTab] = useState<'email' | 'phone' | 'wechat'>('email')
-  const [email, setEmail] = useState('')
-  const [emailCode, setEmailCode] = useState('')
-  const [emailCodeSent, setEmailCodeSent] = useState(false)
-  const [emailRetryAfter, setEmailRetryAfter] = useState(0)
-  const [emailCodeLoading, setEmailCodeLoading] = useState(false)
-  const [emailLoginLoading, setEmailLoginLoading] = useState(false)
+  const [tab, setTab] = useState<'phone' | 'wechat'>('phone')
+  const [dialCode, setDialCode] = useState('+86')
   const [phone, setPhone] = useState('')
   const [code, setCode] = useState('')
   const [termsAccepted, setTermsAccepted] = useState(false)
+  const [rememberLogin, setRememberLogin] = useState(false)
   const [phoneCodeSent, setPhoneCodeSent] = useState(false)
   const [phoneRetryAfter, setPhoneRetryAfter] = useState(0)
   const [phoneCodeLoading, setPhoneCodeLoading] = useState(false)
@@ -412,21 +502,15 @@ export function LoginPanel({ onSuccess, onAuthFailure }: { onSuccess: () => void
   const [wechatView, setWechatView] = useState<'idle' | 'loading' | 'pending' | 'binding' | 'error'>('idle')
   const [wechatQr, setWechatQr] = useState<{ state: string; authorize_url: string } | null>(null)
   const [bindingTicket, setBindingTicket] = useState('')
+  const [bindingDialCode, setBindingDialCode] = useState('+86')
   const [bindingPhone, setBindingPhone] = useState('')
   const [bindingCode, setBindingCode] = useState('')
   const [bindingCodeSent, setBindingCodeSent] = useState(false)
   const [bindingRetryAfter, setBindingRetryAfter] = useState(0)
   const [bindingCodeLoading, setBindingCodeLoading] = useState(false)
   const [bindingLoading, setBindingLoading] = useState(false)
-  const wechatWindowRef = useRef<Window | null>(null)
   const dispatch = useAppDispatch()
   const navigate = useNavigate()
-
-  useEffect(() => {
-    if (emailRetryAfter <= 0) return undefined
-    const timer = window.setInterval(() => setEmailRetryAfter((value) => Math.max(0, value - 1)), 1000)
-    return () => window.clearInterval(timer)
-  }, [emailRetryAfter])
 
   useEffect(() => {
     if (phoneRetryAfter <= 0) return undefined
@@ -469,7 +553,6 @@ export function LoginPanel({ onSuccess, onAuthFailure }: { onSuccess: () => void
           return
         }
         await dispatch(completeWechatLogin(result.result)).unwrap()
-        if (wechatWindowRef.current && !wechatWindowRef.current.closed) wechatWindowRef.current.close()
         onSuccess()
       } catch (error) {
         if (active) {
@@ -501,71 +584,25 @@ export function LoginPanel({ onSuccess, onAuthFailure }: { onSuccess: () => void
     setFeedback(readLoginError(error))
   }
 
-  function validatePhone(value: string): boolean {
-    if (!/^1[3-9]\d{9}$/.test(value)) {
+  function validatePhone(value: string, selectedDialCode: string): boolean {
+    const normalized = normalizeLoginPhone(value)
+    const dial = loginDialCode(selectedDialCode)
+    const validLength = normalized.length >= dial.minLength && normalized.length <= dial.maxLength
+    if (!validLength || (dial.pattern && !dial.pattern.test(normalized))) {
       setFeedback(t('login.validationPhone'))
       return false
     }
     return true
   }
 
-  function validateEmail(value: string): boolean {
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())) {
-      setFeedback(t('login.validationEmail'))
-      return false
-    }
-    return true
-  }
-
-  async function requestEmailCodeAction(): Promise<void> {
-    const destination = email.trim()
-    if (emailRetryAfter > 0 || emailCodeLoading || !validateEmail(destination)) return
-    setEmailCodeLoading(true)
-    setFeedback('')
-    try {
-      const result = await dispatch(requestEmailCode({ destination })).unwrap()
-      setEmailCodeSent(true)
-      setEmailRetryAfter(result.retry_after_seconds)
-      setFeedback(t('login.sentTo', { destination: result.destination_masked }))
-    } catch (error) {
-      handleLoginError(error)
-    } finally {
-      setEmailCodeLoading(false)
-    }
-  }
-
-  async function submitEmail(event: React.FormEvent<HTMLFormElement>): Promise<void> {
-    event.preventDefault()
-    if (!termsAccepted) {
-      setFeedback(t('login.acceptTermsRequired'))
-      return
-    }
-    const destination = email.trim()
-    if (!validateEmail(destination)) return
-    if (!/^\d{6}$/.test(emailCode)) {
-      setFeedback(t('login.validationCode'))
-      return
-    }
-    setEmailLoginLoading(true)
-    setFeedback('')
-    try {
-      await dispatch(loginWithEmail({ destination, code: emailCode })).unwrap()
-      onSuccess()
-    } catch (error) {
-      handleLoginError(error)
-    } finally {
-      setEmailLoginLoading(false)
-    }
-  }
-
   async function requestCode(): Promise<void> {
-    if (phoneRetryAfter > 0 || phoneCodeLoading || !validatePhone(phone)) return
+    if (phoneRetryAfter > 0 || phoneCodeLoading || !validatePhone(phone, dialCode)) return
     setPhoneCodeLoading(true)
     setFeedback('')
     try {
-      const result = await dispatch(requestPhoneCode({ destination: phone })).unwrap()
+      const result = await dispatch(requestPhoneCode({ destination: internationalLoginPhone(dialCode, phone) })).unwrap()
       setPhoneCodeSent(true)
-      setPhoneRetryAfter(result.retry_after_seconds)
+      setPhoneRetryAfter(LOGIN_CODE_RETRY_SECONDS)
       setFeedback(t('login.sentTo', { destination: result.destination_masked }))
     } catch (error) {
       handleLoginError(error)
@@ -580,7 +617,7 @@ export function LoginPanel({ onSuccess, onAuthFailure }: { onSuccess: () => void
       setFeedback(t('login.acceptTermsRequired'))
       return
     }
-    if (!validatePhone(phone)) return
+    if (!validatePhone(phone, dialCode)) return
     if (!/^\d{6}$/.test(code)) {
       setFeedback(t('login.validationCode'))
       return
@@ -588,7 +625,7 @@ export function LoginPanel({ onSuccess, onAuthFailure }: { onSuccess: () => void
     setPhoneLoginLoading(true)
     setFeedback('')
     try {
-      await dispatch(loginWithPhone({ destination: phone, code })).unwrap()
+      await dispatch(loginWithPhone({ destination: internationalLoginPhone(dialCode, phone), code })).unwrap()
       onSuccess()
     } catch (error) {
       handleLoginError(error)
@@ -605,9 +642,6 @@ export function LoginPanel({ onSuccess, onAuthFailure }: { onSuccess: () => void
       const result = await dispatch(requestWechatQr()).unwrap()
       setWechatQr({ state: result.state, authorize_url: result.authorize_url })
       setWechatView('pending')
-      const popup = window.open(result.authorize_url, 'token-nx-wechat-login', 'popup,width=480,height=720')
-      wechatWindowRef.current = popup
-      if (!popup) setFeedback(t('login.popupBlocked'))
     } catch (error) {
       setWechatView('error')
       handleLoginError(error)
@@ -615,13 +649,13 @@ export function LoginPanel({ onSuccess, onAuthFailure }: { onSuccess: () => void
   }
 
   async function requestBindingCodeAction(): Promise<void> {
-    if (!bindingTicket || bindingRetryAfter > 0 || bindingCodeLoading || !validatePhone(bindingPhone)) return
+    if (!bindingTicket || bindingRetryAfter > 0 || bindingCodeLoading || !validatePhone(bindingPhone, bindingDialCode)) return
     setBindingCodeLoading(true)
     setFeedback('')
     try {
-      const result = await dispatch(requestBindingCode({ bindingTicket, phone: bindingPhone })).unwrap()
+      const result = await dispatch(requestBindingCode({ bindingTicket, phone: internationalLoginPhone(bindingDialCode, bindingPhone) })).unwrap()
       setBindingCodeSent(true)
-      setBindingRetryAfter(result.retry_after_seconds)
+      setBindingRetryAfter(LOGIN_CODE_RETRY_SECONDS)
       setFeedback(t('login.sentTo', { destination: result.destination_masked }))
     } catch (error) {
       handleLoginError(error)
@@ -632,7 +666,11 @@ export function LoginPanel({ onSuccess, onAuthFailure }: { onSuccess: () => void
 
   async function submitBinding(event: React.FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault()
-    if (!validatePhone(bindingPhone)) return
+    if (!termsAccepted) {
+      setFeedback(t('login.acceptTermsRequired'))
+      return
+    }
+    if (!validatePhone(bindingPhone, bindingDialCode)) return
     if (!/^\d{6}$/.test(bindingCode)) {
       setFeedback(t('login.validationCode'))
       return
@@ -640,8 +678,7 @@ export function LoginPanel({ onSuccess, onAuthFailure }: { onSuccess: () => void
     setBindingLoading(true)
     setFeedback('')
     try {
-      await dispatch(completeBinding({ bindingTicket, phone: bindingPhone, code: bindingCode })).unwrap()
-      if (wechatWindowRef.current && !wechatWindowRef.current.closed) wechatWindowRef.current.close()
+      await dispatch(completeBinding({ bindingTicket, phone: internationalLoginPhone(bindingDialCode, bindingPhone), code: bindingCode })).unwrap()
       onSuccess()
     } catch (error) {
       handleLoginError(error)
@@ -653,72 +690,51 @@ export function LoginPanel({ onSuccess, onAuthFailure }: { onSuccess: () => void
   return (
     <div className="login-panel" aria-labelledby="login-panel-heading">
       <div className="login-panel-header">
-        <div className="login-panel-logo"><BrandLogo size="panel" /><small>SECURE ACCESS</small></div>
-        <div className="login-panel-title" id="login-panel-heading">{t('login.title')}</div>
+        <div className="login-panel-logo"><BrandLogo size="panel" /></div>
       </div>
-      <div className="login-tabs" role="tablist" aria-label={t('login.methods')}>
-        <button className={`login-tab${tab === 'email' ? ' active' : ''}`} type="button" role="tab" aria-selected={tab === 'email'} onClick={() => { setTab('email'); setFeedback('') }}>{t('login.emailTab')}</button>
-        <button className={`login-tab${tab === 'phone' ? ' active' : ''}`} type="button" role="tab" aria-selected={tab === 'phone'} onClick={() => { setTab('phone'); setFeedback('') }}>{t('login.phoneTab')}</button>
-        <button className={`login-tab${tab === 'wechat' ? ' active' : ''}`} type="button" role="tab" aria-selected={tab === 'wechat'} onClick={() => { setTab('wechat'); setFeedback(''); if (wechatView === 'idle' || wechatView === 'error') void startWechatLogin() }}>{t('login.wechatTab')}</button>
-      </div>
-      {tab === 'email' ? (
-        <div className="login-pane" role="tabpanel">
-          <form className="login-form" onSubmit={submitEmail} noValidate>
-            <div className="form-field">
-              <label className="field-label" htmlFor="login-email">{t('login.email')}</label>
-              <input className="input" id="login-email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder={t('login.emailPlaceholder')} maxLength={254} autoComplete="email" autoCapitalize="none" spellCheck={false} aria-invalid={feedback === t('login.validationEmail')} required />
-            </div>
-            <div className="form-field">
-              <label className="field-label" htmlFor="login-email-code">{t('login.code')}</label>
-              <div className="code-input-wrapper">
-                <input className="input" id="login-email-code" type="text" value={emailCode} onChange={(event) => setEmailCode(event.target.value)} placeholder={t('login.codePlaceholder')} maxLength={6} autoComplete="one-time-code" inputMode="numeric" required />
-                <VerificationCodeButton loading={emailCodeLoading} retryAfter={emailRetryAfter} sent={emailCodeSent} onClick={() => { void requestEmailCodeAction() }} />
-              </div>
-            </div>
-            <div className="terms-checkbox"><input type="checkbox" id="login-email-terms" checked={termsAccepted} onChange={(event) => setTermsAccepted(event.target.checked)} /><label htmlFor="login-email-terms">{t('login.agreementPrefix')} <a href="/terms" target="_blank" rel="noopener noreferrer">{t('login.userAgreement')}</a> {t('login.agreementAnd')} <a href="/privacy" target="_blank" rel="noopener noreferrer">{t('login.privacyPolicy')}</a></label></div>
-            {feedback ? <p className="login-feedback" role="status" aria-live="polite">{feedback}</p> : null}
-            <button className="btn btn-primary submit-btn" type="submit" disabled={!termsAccepted || emailLoginLoading}>{emailLoginLoading ? t('login.loggingIn') : t('login.login')}</button>
-          </form>
-        </div>
-      ) : tab === 'phone' ? (
-        <div className="login-pane" role="tabpanel">
+      {tab === 'phone' ? (
+        <div className="login-pane login-pane--phone">
           <form className="login-form" onSubmit={submitPhone} noValidate>
-            <div className="form-field">
-              <label className="field-label" htmlFor="login-phone">{t('login.phone')}</label>
-              <div className="phone-input-wrapper">
-                <span className="phone-prefix">+86</span>
-                <input className="phone-input" id="login-phone" type="tel" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder={t('login.phonePlaceholder')} maxLength={11} autoComplete="tel" inputMode="numeric" aria-invalid={feedback === t('login.validationPhone')} required />
-              </div>
-            </div>
-            <div className="form-field">
-              <label className="field-label" htmlFor="login-code">{t('login.code')}</label>
+            <h2 className="login-panel-title" id="login-panel-heading"><label htmlFor="login-phone">{t('login.phoneLoginTitle')}</label></h2>
+            <LoginPhoneField id="login-phone" dialCode={dialCode} phone={phone} invalid={feedback === t('login.validationPhone')} onDialCodeChange={setDialCode} onPhoneChange={setPhone} />
+            <div className="form-field code-field">
+              <label className="public-sr-only" htmlFor="login-code">{t('login.code')}</label>
               <div className="code-input-wrapper">
-                <input className="input" id="login-code" type="text" value={code} onChange={(event) => setCode(event.target.value)} placeholder={t('login.codePlaceholder')} maxLength={6} autoComplete="one-time-code" inputMode="numeric" required />
+                <input className="input" id="login-code" type="text" value={code} onChange={(event) => setCode(normalizeLoginPhone(event.target.value).slice(0, 6))} placeholder={t('login.codePlaceholder')} maxLength={6} autoComplete="one-time-code" inputMode="numeric" required />
                 <VerificationCodeButton loading={phoneCodeLoading} retryAfter={phoneRetryAfter} sent={phoneCodeSent} onClick={() => { void requestCode() }} />
               </div>
             </div>
-            <div className="terms-checkbox"><input type="checkbox" id="login-terms" checked={termsAccepted} onChange={(event) => setTermsAccepted(event.target.checked)} /><label htmlFor="login-terms">{t('login.agreementPrefix')} <a href="/terms" target="_blank" rel="noopener noreferrer">{t('login.userAgreement')}</a> {t('login.agreementAnd')} <a href="/privacy" target="_blank" rel="noopener noreferrer">{t('login.privacyPolicy')}</a></label></div>
+            <div className="remember-checkbox"><input type="checkbox" id="login-remember" checked={rememberLogin} onChange={(event) => setRememberLogin(event.target.checked)} /><label htmlFor="login-remember">{t('login.rememberLogin')}</label></div>
             {feedback ? <p className="login-feedback" role="status" aria-live="polite">{feedback}</p> : null}
-            <button className="btn btn-primary submit-btn" type="submit" disabled={!termsAccepted || phoneLoginLoading}>{phoneLoginLoading ? t('login.loggingIn') : t('login.login')}</button>
+            <button className="btn btn-primary submit-btn" type="submit" disabled={phoneLoginLoading}><span>{phoneLoginLoading ? t('login.loggingIn') : t('login.loginRegister')}</span></button>
+            <div className="terms-checkbox"><input type="checkbox" id="login-terms" checked={termsAccepted} onChange={(event) => setTermsAccepted(event.target.checked)} /><label htmlFor="login-terms">{t('login.agreementPrefix')} <a href="/terms" target="_blank" rel="noopener noreferrer">{t('login.userAgreement')}</a> {t('login.agreementAnd')} <a href="/privacy" target="_blank" rel="noopener noreferrer">{t('login.privacyPolicy')}</a>{t('login.accountCreationHint')}</label></div>
           </form>
+          <div className="login-separator"><span>{t('login.separatorOr')}</span></div>
+          <button className="btn login-switch-btn" type="button" onClick={() => { setTab('wechat'); setFeedback(''); if (wechatView === 'idle' || wechatView === 'error') void startWechatLogin() }}>
+            <img className="wechat-icon" src={wechatIcon} alt="" aria-hidden="true" />{t('login.wechatLoginAction')}
+          </button>
         </div>
       ) : (
-        <div className="login-pane" role="tabpanel">
+        <div className={`login-pane${wechatView === 'binding' ? ' login-pane--phone login-pane--binding' : ' login-pane--wechat'}`}>
           {wechatView === 'binding' ? (
             <form className="login-form" onSubmit={submitBinding} noValidate>
-              <p className="wechat-status" role="status" aria-live="polite">{t('login.bindingTitle')}</p>
-              <div className="form-field"><label className="field-label" htmlFor="binding-phone">{t('login.phone')}</label><div className="phone-input-wrapper"><span className="phone-prefix">+86</span><input className="phone-input" id="binding-phone" type="tel" value={bindingPhone} onChange={(event) => setBindingPhone(event.target.value)} placeholder={t('login.phonePlaceholder')} maxLength={11} autoComplete="tel" inputMode="numeric" required /></div></div>
-              <div className="form-field"><label className="field-label" htmlFor="binding-code">{t('login.code')}</label><div className="code-input-wrapper"><input className="input" id="binding-code" type="text" value={bindingCode} onChange={(event) => setBindingCode(event.target.value)} placeholder={t('login.codePlaceholder')} maxLength={6} inputMode="numeric" required /><VerificationCodeButton loading={bindingCodeLoading} retryAfter={bindingRetryAfter} sent={bindingCodeSent} onClick={() => { void requestBindingCodeAction() }} /></div></div>
+              <h2 className="login-panel-title" id="login-panel-heading"><label htmlFor="binding-phone">{t('login.bindPhoneTitle')}</label></h2>
+              <LoginPhoneField id="binding-phone" dialCode={bindingDialCode} phone={bindingPhone} invalid={feedback === t('login.validationPhone')} onDialCodeChange={setBindingDialCode} onPhoneChange={setBindingPhone} />
+              <div className="form-field code-field"><label className="public-sr-only" htmlFor="binding-code">{t('login.code')}</label><div className="code-input-wrapper"><input className="input" id="binding-code" type="text" value={bindingCode} onChange={(event) => setBindingCode(normalizeLoginPhone(event.target.value).slice(0, 6))} placeholder={t('login.codePlaceholder')} maxLength={6} autoComplete="one-time-code" inputMode="numeric" required /><VerificationCodeButton loading={bindingCodeLoading} retryAfter={bindingRetryAfter} sent={bindingCodeSent} onClick={() => { void requestBindingCodeAction() }} /></div></div>
+              <div className="remember-checkbox"><input type="checkbox" id="binding-remember" checked={rememberLogin} onChange={(event) => setRememberLogin(event.target.checked)} /><label htmlFor="binding-remember">{t('login.rememberLogin')}</label></div>
               {feedback ? <p className="login-feedback" role="status" aria-live="polite">{feedback}</p> : null}
-              <button className="btn btn-primary submit-btn" type="submit" disabled={bindingLoading}>{bindingLoading ? t('login.binding') : t('login.bindingLogin')}</button>
+              <button className="btn btn-primary submit-btn" type="submit" disabled={bindingLoading}><span>{bindingLoading ? t('login.binding') : t('login.bindAndLogin')}</span></button>
+              <div className="terms-checkbox"><input type="checkbox" id="binding-terms" checked={termsAccepted} onChange={(event) => setTermsAccepted(event.target.checked)} /><label htmlFor="binding-terms">{t('login.agreementPrefix')} <a href="/terms" target="_blank" rel="noopener noreferrer">{t('login.userAgreement')}</a> {t('login.agreementAnd')} <a href="/privacy" target="_blank" rel="noopener noreferrer">{t('login.privacyPolicy')}</a>{t('login.accountCreationHint')}</label></div>
+              <div className="login-separator"><span>{t('login.separatorOr')}</span></div>
+              <button className="btn login-switch-btn" type="button" onClick={() => { setTab('phone'); setWechatView('idle'); setWechatQr(null); setFeedback('') }}>{t('login.backToPhone')}</button>
             </form>
           ) : (
             <>
+              <h2 className="login-panel-title" id="login-panel-heading">{t('login.wechatLoginTitle')}</h2>
               <div className="wechat-qr-remote">{wechatQr ? <iframe title={t('login.wechatTab')} src={wechatQr.authorize_url} /> : <span>{wechatView === 'error' ? t('login.qrFailed') : t('login.qrLoading')}</span>}</div>
-              <p className="wechat-agreement">{t('login.wechatAgreement')}</p>
-              <p className="wechat-status" role="status" aria-live="polite">{feedback || (wechatView === 'pending' ? t('login.wechatScanHint') : t('login.wechatPreparing'))}</p>
-              {wechatQr ? <button className="btn btn-secondary submit-btn" type="button" onClick={() => { const popup = window.open(wechatQr.authorize_url, 'token-nx-wechat-login', 'popup,width=480,height=720'); wechatWindowRef.current = popup }}>{t('login.openWechat')}</button> : null}
-              {wechatView === 'error' ? <button className="btn btn-primary submit-btn" type="button" onClick={() => void startWechatLogin()}>{t('login.refreshQr')}</button> : null}
+              <p className={`wechat-status${wechatView === 'error' ? ' is-error' : ' public-sr-only'}`} role="status" aria-live="polite">{feedback || (wechatView === 'pending' ? t('login.wechatScanHint') : t('login.wechatPreparing'))}</p>
+              {wechatView === 'error' ? <button className="btn btn-primary submit-btn" type="button" onClick={() => void startWechatLogin()}><span>{t('login.refreshQr')}</span></button> : null}
+              <button className="btn login-switch-btn" type="button" onClick={() => { setTab('phone'); setFeedback('') }}>{t('login.backToPhone')}</button>
             </>
           )}
         </div>
@@ -830,13 +846,36 @@ export function LoginRequiredAction({ returnPath, children, className = '' }: Lo
 export function ThemeToggleButton() {
   const { t } = useTranslation()
   const mode = useThemeMode()
-  const icon = mode === 'light' ? <IconSunStroked className="icon-svg tool-icon" /> : mode === 'dark' ? <IconMoonStroked className="icon-svg tool-icon" /> : <IconDesktop className="icon-svg tool-icon" />
+  const resolvedTheme = useResolvedTheme()
+  const icon = mode === 'system'
+    ? <IconDesktop className="icon-svg tool-icon" />
+    : resolvedTheme === 'dark'
+      ? <IconMoonStroked className="icon-svg tool-icon" />
+      : <IconSunStroked className="icon-svg tool-icon" />
   const label = t(themeModeLabel(mode))
 
   return <button className="header-tool theme-switcher" type="button" title={`${t('theme.switch')} · ${label}`} aria-label={`${t('theme.switch')} · ${label}`} onClick={cycleThemeMode}>{icon}</button>
 }
 
-export function PublicHeader({ enterpriseAccess }: { enterpriseAccess?: EnterpriseMenuAccess } = {}) {
+function LanguageToggleButton({ mobile = false }: { mobile?: boolean }) {
+  const { t, i18n: translationI18n } = useTranslation()
+  const isEnglish = translationI18n.resolvedLanguage?.startsWith('en') ?? false
+  const nextLanguage = isEnglish ? 'zh-CN' : 'en-US'
+  const nextLanguageLabel = isEnglish ? '中' : 'EN'
+
+  return (
+    <button className={`header-tool language-switcher${isEnglish ? ' is-english' : ''}${mobile ? ' language-switcher--mobile' : ''}`} type="button" title={t('language.label')} aria-label={t('language.toggle')} aria-pressed={isEnglish} onClick={() => { void translationI18n.changeLanguage(nextLanguage) }}>
+      <span className="language-current" aria-hidden="true">{nextLanguageLabel}</span>
+    </button>
+  )
+}
+
+type PublicHeaderProps = {
+  enterpriseAccess?: EnterpriseMenuAccess
+  unreadNotificationCount?: number
+}
+
+export function PublicHeader({ enterpriseAccess, unreadNotificationCount = 0 }: PublicHeaderProps = {}) {
   const { t } = useTranslation()
   const location = useLocation()
   const navigate = useNavigate()
@@ -850,11 +889,11 @@ export function PublicHeader({ enterpriseAccess }: { enterpriseAccess?: Enterpri
     navigate(path)
   }
 
-  const isEnglish = i18n.resolvedLanguage?.startsWith('en') ?? false
-  const nextLanguage = isEnglish ? 'zh-CN' : 'en-US'
-
   function renderPublicLink(link: PublicLink, mobile = false): ReactNode {
-    const className = `public-nav-link${currentPath.startsWith(link.path) ? ' active' : ''}${link.disabled ? ' public-nav-link--disabled' : ''}`
+    const isActive = !link.disabled && currentPath.startsWith(link.path)
+    const isHome = currentPath === '/' || currentPath === '/home'
+    const showEmphasis = (link.path === '/models' && isActive) || (link.emphasized && isHome)
+    const className = `public-nav-link${isActive ? ' active' : ''}${link.disabled ? ' public-nav-link--disabled' : ''}${showEmphasis ? ' public-nav-link--emphasized' : ''}`
     if (link.disabled) {
       return <span key={`${link.path}-${link.labelKey}`} className={className} aria-disabled="true">{t(link.labelKey)}</span>
     }
@@ -867,26 +906,26 @@ export function PublicHeader({ enterpriseAccess }: { enterpriseAccess?: Enterpri
         <button className="mobile-menu-button" type="button" aria-controls="public-mobile-nav" aria-expanded={mobileOpen} aria-label={mobileOpen ? t('nav.close') : t('nav.open')} onClick={() => setMobileOpen((open) => !open)}>
           {mobileOpen ? <IconClose className="icon-svg" /> : <IconMenu className="icon-svg" />}
         </button>
-        <Link className="header-logo brand-link" to="/" aria-label={`${t('common.home')} Token NX`}><span className="brand-lockup"><BrandLogo /></span></Link>
-        <span className="header-trial-badge"><strong>{t('console.common.trial')}</strong><em>{t('console.models.free')}</em></span>
+        <Link className="header-logo brand-link" to="/" aria-label={`${t('common.home')} Token NX`}><img className="header-brand-image" src={headerLogo} alt="" aria-hidden="true" /></Link>
+        <span className="header-trial-badge">
+          <img className="header-trial-pill" src={headerTrialPill} alt="" aria-hidden="true" />
+          <span className="header-trial-glass" aria-hidden="true" />
+          <strong>{t('console.common.trial')}</strong>
+          <span className="header-trial-subscription" aria-hidden="true">{t('console.common.subscription')}</span>
+          <span className="header-trial-free"><img src={headerTrialFreeTag} alt="" aria-hidden="true" /><em>{t('console.models.free')}</em></span>
+        </span>
         <nav className="header-nav public-nav" aria-label={t('console.common.publicNav')}>
           {PUBLIC_LINKS.map((link) => renderPublicLink(link))}
-          </nav>
-          <div className="header-actions public-header-actions">
-            <div className="header-tools">
-              <button className="header-tool header-tool-badge" type="button" title={t('nav.notifications')} aria-label={t('nav.notifications')} onClick={() => requestSupportWidget('notifications')}>
-                <IconBellStroked className="icon-svg tool-icon" />
-                <i className="header-notification-dot" aria-hidden="true" />
-              </button>
-              <ThemeToggleButton />
-              <button className={`header-tool language-switcher${isEnglish ? ' is-english' : ''}`} type="button" title={t('language.label')} aria-label={t('language.toggle')} aria-pressed={isEnglish} onClick={() => { void i18n.changeLanguage(nextLanguage) }}>
-                <span className="language-switch-track" aria-hidden="true">
-                  <span className="language-option">EN</span>
-                  <span className="language-option">中</span>
-                  <i className="language-switch-thumb" />
-                </span>
-              </button>
-            </div>
+        </nav>
+        <div className="header-actions public-header-actions">
+          <div className="header-tools">
+            <ThemeToggleButton />
+            <button className="header-tool header-tool-badge" type="button" title={t('nav.notifications')} aria-label={t('nav.notifications')} onClick={() => requestSupportWidget('notifications')}>
+              <img className="header-notification-icon" src={headerNotificationIcon} alt="" aria-hidden="true" />
+              {unreadNotificationCount > 0 ? <i className="header-notification-dot" aria-hidden="true" /> : null}
+            </button>
+            <LanguageToggleButton />
+          </div>
           {auth.status === 'authenticated' ? (
             <UserMenu
               store={store}
@@ -904,6 +943,7 @@ export function PublicHeader({ enterpriseAccess }: { enterpriseAccess?: Enterpri
       </div>
       <nav className="public-mobile-nav" id="public-mobile-nav" aria-label={t('console.common.publicNav')} hidden={!mobileOpen}>
         {PUBLIC_LINKS.map((link) => renderPublicLink(link, true))}
+        <div className="public-mobile-tools"><ThemeToggleButton /><LanguageToggleButton mobile /></div>
       </nav>
     </header>
   )
@@ -1394,9 +1434,11 @@ const DEFAULT_FOOTER_LINKS: FooterLink[] = [
 
 const PUBLIC_COMPANY_INFO = {
   name: '安顺佳云灵犀智能科技有限公司',
-  phone: '13388889999',
+  phone: '1892000000',
+  email: 'tokennx@120.com',
   address: '贵州省安顺市平坝区',
-  filing: '备案号 1293232-12',
+  filing: '京ICP备20011824号-24',
+  securityFiling: '北京公安备 11010802041394号',
 } as const
 
 const PUBLIC_FOOTER_GROUPS = [
@@ -1409,7 +1451,7 @@ const MANUSCRIPT_FOOTER_GROUPS = [
   { titleKey: 'footer.product', links: [{ labelKey: 'footer.chat', path: '/docs' }, { labelKey: 'footer.video', path: '/docs' }, { labelKey: 'footer.ranking', path: '/models' }, { labelKey: 'footer.modelPrice', path: '/pricing' }] },
   { titleKey: 'footer.docs', links: [{ labelKey: 'footer.chat', path: '/docs' }, { labelKey: 'footer.video', path: '/docs' }, { labelKey: 'footer.ranking', path: '/models' }, { labelKey: 'footer.modelPrice', path: '/pricing' }] },
   { titleKey: 'footer.pricing', links: [{ labelKey: 'footer.apiPrice', path: '/pricing' }, { labelKey: 'footer.subscriptionPrice', path: '/pricing' }, { labelKey: 'footer.specialOffers', path: '/pricing' }] },
-  { titleKey: 'footer.about', links: [{ labelKey: 'footer.companyIntro', path: '/about' }, { labelKey: 'footer.news', path: '/docs' }] },
+  { titleKey: 'footer.about', links: [{ labelKey: 'footer.companyIntro', path: '/about' }, { labelKey: 'footer.officialQr', path: '/docs' }] },
 ] as const
 
 const PUBLIC_WECHAT_QR_TARGET = 'https://example.com/token-nx-official-account'
@@ -1448,14 +1490,14 @@ export function PublicFooter({ label = 'Token NX', links = DEFAULT_FOOTER_LINKS,
   return (
     <footer className={`public-footer${manuscript ? ' public-footer--manuscript' : ''}`}>
       <div className="public-footer-inner">
-        {manuscript ? <div className="public-footer-brand manuscript-footer-brand"><span className="manuscript-footer-logo"><BrandLogo size="compact" /></span><span>© {new Date().getFullYear()} Token NX, Inc</span><small>{PUBLIC_COMPANY_INFO.name}</small></div> : <div className="public-footer-brand"><span className="footer-brand-lockup"><BrandLogo size="compact" /></span><span>{localizeFooterLabel(label)}</span><small>{PUBLIC_COMPANY_INFO.name}</small></div>}
+        {manuscript ? <div className="public-footer-brand manuscript-footer-brand"><span className="manuscript-footer-logo"><img src={manuscriptFooterLogo} alt="Token NX" /></span><span>© {new Date().getFullYear()} Token NX,Inc</span><small>{PUBLIC_COMPANY_INFO.name}</small></div> : <div className="public-footer-brand"><span className="footer-brand-lockup"><BrandLogo size="compact" /></span><span>{localizeFooterLabel(label)}</span><small>{PUBLIC_COMPANY_INFO.name}</small></div>}
         {manuscript ? <nav className="public-footer-nav manuscript-footer-nav" aria-label={t('public.footer.navigation')}>{MANUSCRIPT_FOOTER_GROUPS.map((group) => <div className="public-footer-nav-group" key={group.titleKey}><strong>{t(group.titleKey)}</strong>{group.links.map((link) => <Link key={`${link.path}-${link.labelKey}`} to={link.path}>{t(link.labelKey)}</Link>)}</div>)}</nav> : <nav className="public-footer-nav" aria-label={t('public.footer.navigation')}>
           {PUBLIC_FOOTER_GROUPS.map((group) => <div className="public-footer-nav-group" key={group.title}><strong>{group.title === '产品' ? t('footer.product') : group.title === '服务' ? t('footer.service') : t('footer.legal')}</strong>{group.links.map((link) => <Link key={`${link.path}-${link.label}`} to={link.path}>{localizeFooterLabel(link.label)}</Link>)}</div>)}
           {links.length ? <div className="public-footer-nav-group public-footer-nav-group--extra"><strong>{t('footer.related')}</strong>{links.map((link) => <Link key={`${link.path}-${link.label}`} to={link.path}>{localizeFooterLabel(link.label)}</Link>)}</div> : null}
         </nav>}
-        {manuscript ? <div className="public-footer-contact manuscript-footer-contact"><strong>{t('footer.contact')}</strong><a href={`tel:${PUBLIC_COMPANY_INFO.phone}`}>{PUBLIC_COMPANY_INFO.phone}</a><span>{PUBLIC_COMPANY_INFO.address}</span><div className="manuscript-footer-qr-row"><div className="public-footer-qr"><img src={PUBLIC_WECHAT_QR_IMAGE} alt={t('footer.qrAlt')} loading="eager" /><span>{t('footer.customerQr')}</span></div><div className="public-footer-qr"><img src={PUBLIC_WECHAT_QR_IMAGE} alt={t('footer.officialQr')} loading="eager" /><span>{t('footer.officialQr')}</span></div></div></div> : <div className="public-footer-contact"><div className="public-footer-qr"><img src={PUBLIC_WECHAT_QR_IMAGE} alt={t('footer.qrAlt')} loading="eager" /><span>{t('footer.qrTitle').split('\n').map((line) => <span key={line}>{line}<br /></span>)}</span></div><div className="public-footer-contact-copy"><strong>{t('footer.contact')}</strong><a href={`tel:${PUBLIC_COMPANY_INFO.phone}`}>{PUBLIC_COMPANY_INFO.phone}</a><span>{PUBLIC_COMPANY_INFO.address}</span></div></div>}
+        {manuscript ? <div className="public-footer-contact manuscript-footer-contact"><strong>{t('footer.contact')}</strong><a href={`tel:${PUBLIC_COMPANY_INFO.phone}`}>售前咨询：{PUBLIC_COMPANY_INFO.phone}</a><a href={`mailto:${PUBLIC_COMPANY_INFO.email}`}>商务合作：{PUBLIC_COMPANY_INFO.email}</a><div className="manuscript-footer-qr-row"><div className="public-footer-qr"><img src={manuscriptCustomerQr} alt={t('footer.qrAlt')} loading="eager" /><span>{t('footer.customerQr')}</span></div><div className="public-footer-qr"><img src={manuscriptOfficialQr} alt={t('footer.officialQr')} loading="eager" /><span>{t('footer.officialQr')}</span></div></div></div> : <div className="public-footer-contact"><div className="public-footer-qr"><img src={PUBLIC_WECHAT_QR_IMAGE} alt={t('footer.qrAlt')} loading="eager" /><span>{t('footer.qrTitle').split('\n').map((line) => <span key={line}>{line}<br /></span>)}</span></div><div className="public-footer-contact-copy"><strong>{t('footer.contact')}</strong><a href={`tel:${PUBLIC_COMPANY_INFO.phone}`}>{PUBLIC_COMPANY_INFO.phone}</a><span>{PUBLIC_COMPANY_INFO.address}</span></div></div>}
       </div>
-      <div className="public-footer-bottom"><span>© {new Date().getFullYear()} {PUBLIC_COMPANY_INFO.name}</span><span>{t('footer.filing')}</span></div>
+      <div className="public-footer-bottom manuscript-footer-filing" aria-label={t('footer.filing')}><span className="manuscript-footer-filing-copy">Copyright @ 2025-{new Date().getFullYear()} {PUBLIC_COMPANY_INFO.name}</span><span className="manuscript-footer-filing-item"><img src={manuscriptFilingIcpIcon} alt="" aria-hidden="true" />{PUBLIC_COMPANY_INFO.filing}</span><span className="manuscript-footer-filing-item"><img src={manuscriptFilingSecurityIcon} alt="" aria-hidden="true" />{PUBLIC_COMPANY_INFO.securityFiling}</span><Link className="manuscript-footer-filing-item" to="/about">营业执照</Link><Link className="manuscript-footer-filing-item" to="/terms">许可证</Link></div>
       <ManuscriptSupportWidget />
     </footer>
   )

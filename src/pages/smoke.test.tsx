@@ -100,7 +100,7 @@ describe('页面主链冒烟场景', () => {
     expect(document.querySelector('.manuscript-pricing')).toHaveTextContent('免费')
     expect(screen.getByRole('heading', { name: '现金奖励' })).toBeInTheDocument()
     const rewardCard = document.querySelector('.manuscript-reward-card')
-    expect(rewardCard).toHaveTextContent('Log in to get your affiliate link.')
+    expect(rewardCard).toHaveTextContent('登录后获取邀请专属链接')
     expect(rewardCard?.querySelector('.manuscript-reward-login')).toBeInTheDocument()
     expect(rewardCard?.querySelectorAll('.manuscript-reward-stats > span')).toHaveLength(3)
     expect(rewardCard?.querySelectorAll('.manuscript-reward-stats strong')).toHaveLength(3)
@@ -109,9 +109,9 @@ describe('页面主链冒烟场景', () => {
     expect(document.querySelectorAll('.manuscript-partner-row')).toHaveLength(2)
     expect(document.querySelectorAll('.manuscript-partner-track.is-forward')).toHaveLength(1)
     expect(document.querySelectorAll('.manuscript-partner-track.is-reverse')).toHaveLength(1)
-    expect(document.querySelectorAll('.manuscript-partner-grid a')).toHaveLength(20)
-    expect(document.querySelectorAll('.manuscript-partner-grid a[data-copy="primary"]')).toHaveLength(10)
-    expect(document.querySelectorAll('.manuscript-partner-grid a[data-copy="duplicate"][aria-hidden="true"]')).toHaveLength(10)
+    expect(document.querySelectorAll('.manuscript-partner-grid a')).toHaveLength(24)
+    expect(document.querySelectorAll('.manuscript-partner-grid a[data-copy="primary"]')).toHaveLength(12)
+    expect(document.querySelectorAll('.manuscript-partner-grid a[data-copy="duplicate"][aria-hidden="true"]')).toHaveLength(12)
     expect(document.querySelectorAll('.manuscript-partner-logo')).not.toHaveLength(0)
     expect(document.querySelector('.manuscript-partner-logo--mark')).toBeInTheDocument()
     expect(document.querySelector('.manuscript-partner-css-logo-mark')).toBeInTheDocument()
@@ -147,8 +147,8 @@ describe('页面主链冒烟场景', () => {
     const user = userEvent.setup()
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
       const url = String(input)
-      if (url.endsWith('/api/auth/email/code')) return apiResponse({ destination_masked: 'u***@example.com', expires_at: '2099-01-01T00:05:00Z', retry_after_seconds: 60 })
-      if (url.endsWith('/api/auth/email/login')) return apiResponse(authResult)
+      if (url.endsWith('/api/auth/phone/code')) return apiResponse({ destination_masked: '138****8000', expires_at: '2099-01-01T00:05:00Z', retry_after_seconds: 60 })
+      if (url.endsWith('/api/auth/phone/login')) return apiResponse(authResult)
       throw new Error(`unexpected request: ${url}`)
     })
 
@@ -165,11 +165,11 @@ describe('页面主链冒烟场景', () => {
 
     await user.click(screen.getByRole('link', { name: '登录后继续' }))
     expect(screen.getByRole('dialog', { name: '登录 Token NX' })).toHaveClass('is-open')
-    await user.type(screen.getByLabelText('邮箱'), 'user@example.com')
+    await user.type(screen.getByLabelText('手机号'), '13800138000')
     await user.click(screen.getByRole('button', { name: '获取验证码' }))
-    expect(await screen.findByText('验证码已发送至 u***@example.com')).toBeInTheDocument()
+    expect(await screen.findByText('验证码已发送至 138****8000')).toBeInTheDocument()
     await user.type(screen.getByLabelText('验证码'), '482915')
-    await user.click(screen.getByRole('checkbox'))
+    await user.click(screen.getByRole('checkbox', { name: /我已阅读并同意/ }))
     await user.click(screen.getByRole('button', { name: '登录 / 注册' }))
 
     expect(await screen.findByText('关于页面')).toBeInTheDocument()
@@ -320,8 +320,9 @@ describe('页面主链冒烟场景', () => {
     setThemeMode('system')
     render(<MemoryRouter><Provider store={createAppStore()}><AppStoreProvider><HomePage /></AppStoreProvider></Provider></MemoryRouter>)
     const themeButton = screen.getByRole('button', { name: '切换主题 · 跟随系统' })
+    expect(themeButton.querySelector('.semi-icon-desktop')).toBeInTheDocument()
     await user.click(themeButton)
-    expect(screen.getByRole('button', { name: '切换主题 · 亮色主题' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '切换主题 · 亮色主题' }).querySelector('.semi-icon-sun_stroked')).toBeInTheDocument()
     expect(document.documentElement).toHaveAttribute('data-theme', 'light')
     await user.click(screen.getByRole('button', { name: '切换主题 · 亮色主题' }))
     expect(screen.getByRole('button', { name: '切换主题 · 暗色主题' })).toBeInTheDocument()
@@ -330,12 +331,14 @@ describe('页面主链冒烟场景', () => {
     expect(screen.getByRole('button', { name: '切换主题 · 跟随系统' })).toBeInTheDocument()
   })
 
-  it('邮箱登录在同意协议前保持禁用', async () => {
+  it('手机号登录未同意协议时保持可交互并阻止提交', async () => {
     const user = userEvent.setup()
     renderLogin('/about')
     const loginButton = screen.getByRole('button', { name: '登录 / 注册' })
-    expect(loginButton).toBeDisabled()
-    await user.click(screen.getByRole('checkbox'))
+    expect(loginButton).toBeEnabled()
+    await user.click(loginButton)
+    expect(screen.getByRole('status')).toHaveTextContent('请先勾选并同意用户协议和隐私政策')
+    await user.click(screen.getByRole('checkbox', { name: /我已阅读并同意/ }))
     expect(loginButton).toBeEnabled()
   })
 
@@ -359,27 +362,30 @@ describe('页面主链冒烟场景', () => {
     expect(screen.getByRole('status')).toHaveTextContent('18 个模型')
   })
 
-  it('登录页邮箱登录会调用验证码和登录接口并续接到目标路径', async () => {
+  it('登录页默认只显示手机号登录并校验号码格式', async () => {
     const user = userEvent.setup()
-    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
-      const url = String(input)
-      if (url.endsWith('/api/auth/email/code')) return apiResponse({ destination_masked: 'u***@example.com', expires_at: '2099-01-01T00:05:00Z', retry_after_seconds: 60 })
-      if (url.endsWith('/api/auth/email/login')) return apiResponse(authResult)
-      throw new Error(`unexpected request: ${url}`)
-    })
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(apiResponse({ destination_masked: '+1 415****2671', expires_at: '2099-01-01T00:05:00Z', retry_after_seconds: 5 }))
 
     renderLogin('/about')
+    expect(screen.getByRole('heading', { name: '手机号登录' })).toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: '国家或地区区号' })).toHaveValue('+86')
+    expect(document.querySelector('.phone-prefix-value')).toHaveTextContent('+86')
+    expect(document.querySelector('.phone-prefix-value')).not.toHaveTextContent('中国')
+    expect(document.querySelector('.code-input-wrapper')).toContainElement(screen.getByLabelText('验证码'))
+    expect(document.querySelector('.code-input-wrapper')).toContainElement(screen.getByRole('button', { name: '获取验证码' }))
+    expect(screen.getByRole('button', { name: '使用微信登录' }).querySelector('img')).toHaveAttribute('src', expect.stringContaining('wechat.png'))
+    expect(screen.queryByLabelText('邮箱')).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '获取验证码' }))
-    expect(screen.getByRole('status')).toHaveTextContent('请输入正确的邮箱地址')
-    await user.type(screen.getByLabelText('邮箱'), 'user@example.com')
+    expect(screen.getByRole('status')).toHaveTextContent('请输入正确的手机号')
+    await user.type(screen.getByLabelText('手机号'), '12345678901')
     await user.click(screen.getByRole('button', { name: '获取验证码' }))
-    expect(await screen.findByText('验证码已发送至 u***@example.com')).toBeInTheDocument()
-    await user.type(screen.getByLabelText('验证码'), '482915')
-    await user.click(screen.getByRole('checkbox'))
-    await user.click(screen.getByRole('button', { name: '登录 / 注册' }))
-    expect(await screen.findByText('关于页面')).toBeInTheDocument()
-    expect(fetchMock).toHaveBeenCalledTimes(2)
-    expect(window.sessionStorage.length).toBe(0)
+    expect(fetchMock).not.toHaveBeenCalled()
+    await user.clear(screen.getByLabelText('手机号'))
+    await user.selectOptions(screen.getByRole('combobox', { name: '国家或地区区号' }), '+1')
+    await user.type(screen.getByLabelText('手机号'), '4155552671')
+    await user.click(screen.getByRole('button', { name: '获取验证码' }))
+    expect(await screen.findByText('验证码已发送至 +1 415****2671')).toBeInTheDocument()
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toMatchObject({ destination: '+14155552671' })
   })
 
   it('登录页手机号登录仍会调用短信验证码和登录接口', async () => {
@@ -392,15 +398,15 @@ describe('页面主链冒烟场景', () => {
     })
 
     renderLogin('/about')
-    await user.click(screen.getByRole('tab', { name: '手机号登录' }))
     await user.type(screen.getByLabelText('手机号'), '13800138000')
     await user.click(screen.getByRole('button', { name: '获取验证码' }))
     expect(await screen.findByText('验证码已发送至 138****8000')).toBeInTheDocument()
     await user.type(screen.getByLabelText('验证码'), '482915')
-    await user.click(screen.getByRole('checkbox'))
+    await user.click(screen.getByRole('checkbox', { name: /我已阅读并同意/ }))
     await user.click(screen.getByRole('button', { name: '登录 / 注册' }))
     expect(await screen.findByText('关于页面')).toBeInTheDocument()
     expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toMatchObject({ destination: '+8613800138000' })
   })
 
   it('登录验证失败后清理会话并返回首页', async () => {
@@ -413,10 +419,9 @@ describe('页面主链冒烟场景', () => {
     })
 
     renderLogin('/about')
-    await user.click(screen.getByRole('tab', { name: '手机号登录' }))
     await user.type(screen.getByLabelText('手机号'), '13800138000')
     await user.type(screen.getByLabelText('验证码'), '482915')
-    await user.click(screen.getByRole('checkbox'))
+    await user.click(screen.getByRole('checkbox', { name: /我已阅读并同意/ }))
     await user.click(screen.getByRole('button', { name: '登录 / 注册' }))
 
     expect(await screen.findByText('首页')).toBeInTheDocument()
@@ -433,10 +438,9 @@ describe('页面主链冒烟场景', () => {
     })
 
     render(<MemoryRouter initialEntries={['/']}><Provider store={createAppStore()}><AppStoreProvider><LoginDialogHarness /></AppStoreProvider></Provider></MemoryRouter>)
-    await user.click(screen.getByRole('tab', { name: '手机号登录' }))
     await user.type(screen.getByLabelText('手机号'), '13800138000')
     await user.type(screen.getByLabelText('验证码'), '482915')
-    await user.click(screen.getByRole('checkbox'))
+    await user.click(screen.getByRole('checkbox', { name: /我已阅读并同意/ }))
     await user.click(screen.getByRole('button', { name: '登录 / 注册' }))
 
     expect(await screen.findByText('登录弹窗已关闭')).toBeInTheDocument()
@@ -454,16 +458,28 @@ describe('页面主链冒烟场景', () => {
     })
 
     renderLogin('/console')
-    await user.click(screen.getByRole('tab', { name: '微信扫码' }))
+    await user.click(screen.getByRole('button', { name: '使用微信登录' }))
     expect(screen.queryByText(/本地演示|演示验证码|模拟扫码|占位二维码|演示占位/)).not.toBeInTheDocument()
     expect(await screen.findByText('控制台首页')).toBeInTheDocument()
-    expect(openMock).toHaveBeenCalledWith(expect.stringContaining('wechat-state'), 'token-nx-wechat-login', expect.any(String))
+    expect(openMock).not.toHaveBeenCalled()
     expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
+  it('微信二维码接口返回无法识别的响应时展示红色错误并允许重试', async () => {
+    const user = userEvent.setup()
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('not-json', { status: 200, headers: { 'Content-Type': 'application/json' } }))
+
+    renderLogin('/console')
+    await user.click(screen.getByRole('button', { name: '使用微信登录' }))
+
+    const errorStatus = await screen.findByText('服务返回了无法识别的响应')
+    expect(errorStatus).toHaveClass('wechat-status', 'is-error')
+    expect(screen.getByRole('button', { name: '重新获取二维码' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: '返回手机号登录' })).toBeEnabled()
   })
 
   it('首次微信登录会先绑定手机号再进入控制台', async () => {
     const user = userEvent.setup()
-    vi.spyOn(window, 'open').mockReturnValue(null)
     const bindingResult = { ...authResult, access_token: 'binding-access', refresh_token: 'binding-refresh' }
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
       const url = String(input)
@@ -475,13 +491,14 @@ describe('页面主链冒烟场景', () => {
     })
 
     renderLogin('/console')
-    await user.click(screen.getByRole('tab', { name: '微信扫码' }))
-    expect(await screen.findByText('首次微信登录需要绑定手机号')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '使用微信登录' }))
+    expect(await screen.findByRole('heading', { name: '绑定手机号' })).toBeInTheDocument()
     await user.type(screen.getByLabelText('手机号'), '13900139000')
     await user.click(screen.getByRole('button', { name: '获取验证码' }))
     expect(await screen.findByText('验证码已发送至 139****0000')).toBeInTheDocument()
     await user.type(screen.getByLabelText('验证码'), '731204')
-    await user.click(screen.getByRole('button', { name: '绑定手机号并登录' }))
+    await user.click(screen.getByRole('checkbox', { name: /我已阅读并同意/ }))
+    await user.click(screen.getByRole('button', { name: '绑定并登录' }))
     expect(await screen.findByText('控制台首页')).toBeInTheDocument()
   })
 })

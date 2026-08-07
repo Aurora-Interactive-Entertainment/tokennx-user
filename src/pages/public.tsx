@@ -2,8 +2,12 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, typ
 import type { TFunction } from 'i18next'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
 import { Toast } from '@douyinfe/semi-ui'
-import { IconArrowRight, IconBolt } from '@douyinfe/semi-icons'
 import { LoginPanel, LoginRequiredAction, ManuscriptSupportWidget, PublicLayout, ModelLogo, normalizeLoginReturnPath } from '@/components/common'
+import modelCardArt from '@/assets/figma-home/model-card-art.png'
+import promoModelLogo from '@/assets/figma-home/promo-model-logo.svg'
+import promoRewardAvatars from '@/assets/figma-home/promo-reward-avatars.png'
+import promoBannerArt from '@/assets/figma-home/promo-banner.png'
+import promoArticleArt from '@/assets/figma-home/promo-article.png'
 import { ModelPriceSummary } from '@/components/money'
 import { NEW_ENTERPRISE_CREATE_PATH } from '@/api/enterprise-certification'
 import { getPublicHomepage, getPublicHomepageAssetURL, type HomepageDiscountKind, type HomepageEntry, type HomepageTranslation, type PublicHomepage } from '@/api/homepage'
@@ -11,6 +15,7 @@ import { filterModels, findModel, modelAlias, modelRouteKey, MODEL_CATALOG, MODA
 import { QUICKSTART_API_BASE_URL, quickstartCodeSample } from '@/utils/quickstart'
 import { useTranslation } from 'react-i18next'
 import zaiPartnerLogo from '@lobehub/icons-static-svg/icons/zai-text.svg?raw'
+import kimiPartnerLogo from '@lobehub/icons-static-svg/icons/kimi-text.svg?raw'
 import qwenPartnerLogo from '@lobehub/icons-static-svg/icons/qwen-text.svg?raw'
 import doubaoPartnerLogo from '@lobehub/icons-static-svg/icons/doubao-text.svg?raw'
 import kwaikatPartnerLogo from '@lobehub/icons-static-svg/icons/kwaikat-text.svg?raw'
@@ -19,6 +24,7 @@ import difyPartnerLogo from '@lobehub/icons-static-svg/icons/dify-text.svg?raw'
 import obsidianPartnerLogo from '@lobehub/icons-static-svg/icons/obsidian-text.svg?raw'
 import mastraPartnerLogo from '@lobehub/icons-static-svg/icons/mastra-text.svg?raw'
 import wenxinPartnerLogo from '@lobehub/icons-static-svg/icons/wenxin.svg?raw'
+import metagptPartnerLogo from '@lobehub/icons-static-svg/icons/metagpt-text.svg?raw'
 
 function formatPublicPrice(price: ModelPrice): ReactNode {
   return <ModelPriceSummary price={price} />
@@ -38,14 +44,21 @@ const MODEL_FOOTER_LINKS = [
 ]
 
 const HOME_MODEL_MOSAIC_COLUMNS = 6
+const HOME_WAVE_LINE_COUNT = 16
 const HOME_PROMOTION_MODEL = findModel('claude-sonnet-4') ?? MODEL_CATALOG[0]
 const HOME_PROMOTION_ITEMS = [
-  { id: 'claude-opus-promo-1', model: HOME_PROMOTION_MODEL, name: 'Claude Opus 4.8', company: 'Anthropic', discountKind: 'half', input: '0.10000000', output: '0.10000000', availability: '99.82%' },
-  { id: 'claude-opus-promo-2', model: HOME_PROMOTION_MODEL, name: 'Claude Opus 4.8', company: 'Anthropic', discountKind: 'free', input: '0.10000000', output: '0.10000000', availability: '99.97%' },
-  { id: 'claude-opus-promo-3', model: HOME_PROMOTION_MODEL, name: 'Claude Opus 4.8', company: 'Anthropic', discountKind: 'half', input: '0.10000000', output: '0.10000000', availability: '99.91%' },
+  { id: 'claude-opus-promo-1', model: HOME_PROMOTION_MODEL, name: 'Claude Opus 4.8', company: 'Anthropic', discountKind: 'half', input: '0.1', output: '0.1', availability: '99.82%' },
+  { id: 'claude-opus-promo-2', model: HOME_PROMOTION_MODEL, name: 'Claude Opus 4.8', company: 'Anthropic', discountKind: 'free', input: '0.1', output: '0.1', availability: '99.97%' },
+  { id: 'claude-opus-promo-3', model: HOME_PROMOTION_MODEL, name: 'Claude Opus 4.8', company: 'Anthropic', discountKind: 'half', input: '0.1', output: '0.1', availability: '99.91%' },
 ] as const
-const HOME_PARTNER_NAMES = ['Z.ai', 'Qwen', 'ERNIE', '豆包大模型', 'KwaiKAT', 'Cherry Studio', 'Dify', 'Obsidian', 'mastra', 'OOMOL']
+const HOME_REWARD_STATS = [
+  { value: '00', unit: '元', labelKey: 'rewardPending' },
+  { value: '00', unit: '人', labelKey: 'rewardApproved' },
+  { value: '00', unit: '次', labelKey: 'rewardRejected' },
+] as const
+const HOME_PARTNER_NAMES = ['KIMI', 'Z.ai', 'Qwen', 'ERNIE', '豆包大模型', 'KwaiKAT', 'Obsidian', 'mastra', 'OOMOL', 'CAMEL', 'Scietrain', 'MetaGPT']
 const HOME_PARTNER_LOGOS: Record<string, string> = {
+  KIMI: kimiPartnerLogo,
   'Z.ai': zaiPartnerLogo,
   Qwen: qwenPartnerLogo,
   ERNIE: wenxinPartnerLogo,
@@ -55,12 +68,13 @@ const HOME_PARTNER_LOGOS: Record<string, string> = {
   Dify: difyPartnerLogo,
   Obsidian: obsidianPartnerLogo,
   mastra: mastraPartnerLogo,
+  MetaGPT: metagptPartnerLogo,
 }
 type HomePartner = { name: string; logoMarkup?: string; logoUrl?: string; href?: string; logoKind: 'wordmark' | 'mark' | 'css' }
 const HOME_PARTNERS: HomePartner[] = HOME_PARTNER_NAMES.map((name) => ({
   name,
   logoMarkup: HOME_PARTNER_LOGOS[name],
-  logoKind: name === 'ERNIE' ? 'mark' : name === 'OOMOL' ? 'css' : 'wordmark',
+  logoKind: ['ERNIE', 'OOMOL', 'CAMEL', 'Scietrain'].includes(name) ? 'mark' : 'wordmark',
 }))
 const PUBLIC_COMPANY_KEYS: Record<string, string> = {
   阿里云: 'aliyun',
@@ -94,6 +108,7 @@ const PUBLIC_CAPABILITY_KEYS: Record<string, string> = {
   高清: 'hd',
 }
 const HOME_PARTNER_NAME_KEYS: Record<string, string> = {
+  KIMI: 'kimi',
   'Z.ai': 'zai',
   Qwen: 'qwen',
   ERNIE: 'ernie',
@@ -104,6 +119,9 @@ const HOME_PARTNER_NAME_KEYS: Record<string, string> = {
   Obsidian: 'obsidian',
   mastra: 'mastra',
   OOMOL: 'oomol',
+  CAMEL: 'camel',
+  Scietrain: 'scietrain',
+  MetaGPT: 'metagpt',
 }
 const HOME_NEWS_ITEMS = [
   { key: '0', href: '/docs' },
@@ -113,7 +131,6 @@ const HOME_AVAILABILITY_BAR_COUNT = 24
 const HOME_AVAILABILITY_RATE_DECIMAL_PLACES = 2
 const HOME_AVAILABILITY_SEGMENT_OFFSETS = [-0.05, 0.02, 0.01, -0.03, 0.04, -0.01, 0, 0.03, -0.02, -0.04, 0.05, -0.01, -0.03, 0.02, 0.01, -0.02, 0.04, -0.03, 0, -0.01, 0.03, -0.04, 0.02, 0.02] as const
 const HOME_MODEL_MOSAIC_COUNT = 18
-const HOME_REWARD_MARK_COUNT = 6
 const HOME_SCOREBOARD_ANIMATION_DURATION = 1_600
 const HOME_SCOREBOARD_DIGIT_COUNT = 8
 const HOME_SCOREBOARD_INITIAL_DIGITS = '0'.repeat(HOME_SCOREBOARD_DIGIT_COUNT)
@@ -168,8 +185,13 @@ function homepageDate(value: number | string | undefined, language: string): str
 }
 
 function homepagePrice(value: string | number | undefined): string {
-  if (typeof value === 'number' && Number.isFinite(value)) return value.toFixed(8)
-  return typeof value === 'string' && value.trim() ? value : '--'
+  const normalized = typeof value === 'number' && Number.isFinite(value)
+    ? value.toFixed(8)
+    : typeof value === 'string' && value.trim()
+      ? value.trim()
+      : '--'
+  if (!/^[-+]?\d+\.\d+$/.test(normalized)) return normalized
+  return normalized.replace(/0+$/, '').replace(/\.$/, '')
 }
 
 function homepageMediaURL(objectID: string | undefined, fallbackURL: string | undefined): string | undefined {
@@ -327,6 +349,14 @@ function HomeModelMosaic() {
   return <div className="manuscript-model-mosaic" aria-hidden="true">{rows.map((row, rowIndex) => <div className={`manuscript-model-mosaic-row${rowIndex % 2 === 1 ? ' is-offset' : ''}`} key={`model-mosaic-row-${rowIndex}`}>{row.map((model) => <ModelLogo key={model.id} model={model} size="small" />)}</div>)}</div>
 }
 
+function HomeFeatureArtwork() {
+  return <>
+    <img className="manuscript-feature-image" src={modelCardArt} alt="" aria-hidden="true" />
+    {/* Retain the previous mosaic fallback in the DOM for compatibility with existing consumers. */}
+    <div className="manuscript-feature-mosaic-legacy" aria-hidden="true"><HomeModelMosaic /></div>
+  </>
+}
+
 function HomePartnerLogo({ partner }: { partner: HomePartner }) {
   if (partner.logoUrl) {
     return <img className="manuscript-partner-image" src={partner.logoUrl} alt="" aria-hidden="true" />
@@ -335,7 +365,8 @@ function HomePartnerLogo({ partner }: { partner: HomePartner }) {
     const logoClassName = `manuscript-partner-logo${partner.logoKind === 'mark' ? ' manuscript-partner-logo--mark' : ''}`
     return <span className={logoClassName} aria-hidden="true" dangerouslySetInnerHTML={{ __html: partner.logoMarkup }} />
   }
-  return <span className="manuscript-partner-css-logo" aria-hidden="true"><i className="manuscript-partner-css-logo-mark"><b /><b /><b /></i></span>
+  const cssLogoName = partner.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')
+  return <span className={`manuscript-partner-css-logo manuscript-partner-css-logo--${cssLogoName}`} aria-hidden="true"><i className="manuscript-partner-css-logo-mark"><b /><b /><b /></i></span>
 }
 
 // 中文：每条轨道复制一份品牌序列，循环位移到半程时正好衔接下一份内容，保证滚动不会跳帧。
@@ -353,15 +384,15 @@ function HomePartnerRow({ partners, rowIndex }: { partners: HomePartner[]; rowIn
         const content = <><HomePartnerLogo partner={partner} />{partner.logoKind !== 'wordmark' || partner.logoUrl ? <strong>{partnerName}</strong> : null}</>
         const linkProps = {
           className: 'manuscript-partner-item',
-          key: `${rowIndex}-${partner.name}-${partnerIndex}`,
           'aria-label': `${partnerName} ${t('common.browseModels')}`,
           'aria-hidden': isDuplicate,
           tabIndex: isDuplicate ? -1 : undefined,
           'data-copy': isDuplicate ? 'duplicate' : 'primary',
         }
+        const partnerKey = `${rowIndex}-${partner.name}-${partnerIndex}`
         return href.startsWith('/')
-          ? <Link {...linkProps} to={href}>{content}</Link>
-          : <a {...linkProps} href={href} target="_blank" rel="noopener noreferrer">{content}</a>
+          ? <Link key={partnerKey} {...linkProps} to={href}>{content}</Link>
+          : <a key={partnerKey} {...linkProps} href={href} target="_blank" rel="noopener noreferrer">{content}</a>
       })}
     </div>
   </div>
@@ -374,7 +405,7 @@ function ManagedFeatureCard({ entry, index }: { entry: HomepageEntry; index: num
   const action = content.action_text?.trim() || t(`home.rebuild.featureCards.${index % 3}.action`)
   const imageURL = homepageMediaURL(content.image_object_id, content.image_url)
   return <article className="manuscript-feature-card">
-    <div className="manuscript-feature-visual">{imageURL ? <img className="manuscript-feature-image" src={imageURL} alt="" aria-hidden="true" /> : <HomeModelMosaic />}<span>{index === 0 ? t('home.rebuild.featureModelsCount') : t('home.rebuild.featuresTitle')}</span></div>
+    <div className="manuscript-feature-visual">{imageURL ? <img className="manuscript-feature-image" src={imageURL} alt="" aria-hidden="true" /> : <HomeFeatureArtwork />}<span>{index === 0 ? t('home.rebuild.featureModelsCount') : t('home.rebuild.featuresTitle')}</span></div>
     <div className="manuscript-feature-copy">
       <h3>{content.title || t('home.rebuild.featuresTitle')}</h3>
       <p>{content.description || ''}</p>
@@ -387,7 +418,7 @@ function ManagedNewsCard({ entry, index }: { entry: HomepageEntry; index: number
   const { t, i18n } = useTranslation()
   const content = homepageTranslation(entry, i18n.language)
   const href = homepageHref(content.link_url, '/docs')
-  const card = <><div className="manuscript-news-copy"><h3>{content.title || t('home.rebuild.news.0.title')}</h3><p>{content.summary || ''}</p><small>{homepageDate(entry.updated_at, i18n.language)} <b className="manuscript-news-new">{t('public.home.newBadge')}</b></small></div><div className={`manuscript-news-art manuscript-news-art--${index % 2}`} aria-hidden="true"><i /><i /><div className="manuscript-news-document"><strong>ZenMux</strong><small>TOKEN<br />ECONOMICS</small><b>NX</b></div></div></>
+  const card = <><div className="manuscript-news-copy"><h3>{content.title || t('home.rebuild.news.0.title')}</h3><p>{content.summary || ''}</p><small>{homepageDate(entry.updated_at, i18n.language)} <b className="manuscript-news-new">{t('public.home.newBadge')}</b></small></div><div className={`manuscript-news-art manuscript-news-art--${index % 2}`} aria-hidden="true"><img className="manuscript-news-art-image" src={promoArticleArt} alt="" /></div></>
   return href.startsWith('/') ? <Link className="manuscript-news-card" to={href}>{card}</Link> : <a className="manuscript-news-card" href={href} target="_blank" rel="noopener noreferrer">{card}</a>
 }
 
@@ -397,7 +428,7 @@ function ManagedAdSlots({ entries }: { entries: HomepageEntry[] }) {
     const content = homepageTranslation(entry, i18n.language)
     const href = homepageHref(content.link_url, '/models')
     const imageURL = homepageMediaURL(content.image_object_id, content.image_url)
-    const ad = <>{imageURL ? <img src={imageURL} alt={content.title || t('home.rebuild.adSlot')} /> : <strong>{content.title || t('home.rebuild.adSlot')}</strong>}</>
+    const ad = <img src={imageURL || promoBannerArt} alt={content.title || t('home.rebuild.adSlot')} />
     return href.startsWith('/') ? <Link className="manuscript-ad-slot" key={entry.id} to={href}>{ad}</Link> : <a className="manuscript-ad-slot" key={entry.id} href={href} target="_blank" rel="noopener noreferrer">{ad}</a>
   })}</div>
 }
@@ -461,7 +492,8 @@ export function HomePage({ onInitialScoreboardReady }: { onInitialScoreboardRead
   }, [homepage])
   const managedPartnerItems = useMemo(() => managedPartners(homepage, i18n.language), [homepage, i18n.language])
   const partnerItems = managedPartnerItems.length ? managedPartnerItems : HOME_PARTNERS
-  const partnerRows = [partnerItems.slice(0, 5), partnerItems.slice(5)]
+  const partnerSplitIndex = Math.ceil(partnerItems.length / 2)
+  const partnerRows = [partnerItems.slice(0, partnerSplitIndex), partnerItems.slice(partnerSplitIndex)]
 
   useEffect(() => {
     let mounted = true
@@ -480,8 +512,8 @@ export function HomePage({ onInitialScoreboardReady }: { onInitialScoreboardRead
           <div className="manuscript-hero-copy">
             <h1 id="homeTitle"><span>{t('home.rebuild.heroTitle')}</span><strong>{t('home.rebuild.heroSubtitle')}</strong></h1>
             <div className="manuscript-hero-actions">
-            <LoginRequiredAction className="btn btn-primary" returnPath="/console/quickstart">{t('home.rebuild.primaryCta')} <IconArrowRight /></LoginRequiredAction>
-              <Link className="btn btn-secondary manuscript-model-button" to="/models" aria-label={t('home.rebuild.secondaryCta')}>{t('home.rebuild.secondaryCta')} <IconBolt aria-hidden="true" /></Link>
+              <LoginRequiredAction className="btn btn-primary" returnPath="/console/quickstart"><span>{t('home.rebuild.primaryCta')}</span></LoginRequiredAction>
+              <Link className="btn btn-secondary manuscript-model-button" to="/models" aria-label={t('home.rebuild.secondaryCta')}><span>{t('home.rebuild.secondaryCta')}</span></Link>
             </div>
             <div className="manuscript-digital-stats" role="list" aria-label={t('home.overview')}>
               <ManuscriptScoreboard metricId="token-volume" unit={t('home.rebuild.tokenVolumeUnit')} value={animatedTokenVolume} onInitialFlipComplete={handleTokenScoreboardReady} />
@@ -491,35 +523,46 @@ export function HomePage({ onInitialScoreboardReady }: { onInitialScoreboardRead
         </section>
 
         <section className="manuscript-section manuscript-features" aria-labelledby="homeFeaturesTitle">
+          <div className="manuscript-wave-field" aria-hidden="true">
+            <div className="manuscript-wave-bank manuscript-wave-bank--left">
+              {Array.from({ length: HOME_WAVE_LINE_COUNT }, (_, index) => <i key={`left-wave-${index}`} style={{ '--wave-index': index } as CSSProperties} />)}
+            </div>
+            <div className="manuscript-wave-bank manuscript-wave-bank--right">
+              {Array.from({ length: HOME_WAVE_LINE_COUNT }, (_, index) => <i key={`right-wave-${index}`} style={{ '--wave-index': index } as CSSProperties} />)}
+            </div>
+          </div>
           <h2 className="public-sr-only" id="homeFeaturesTitle">{t('home.rebuild.featuresTitle')}</h2>
           <div className="manuscript-feature-grid">
             {managedCards.length ? managedCards.map((entry, index) => <ManagedFeatureCard key={entry.id} entry={entry} index={index} />) : <>
-              <article className="manuscript-feature-card"><div className="manuscript-feature-visual"><HomeModelMosaic /><span>{t('home.rebuild.featureModelsCount')}</span></div><div className="manuscript-feature-copy"><h3>{t('home.rebuild.featureCards.0.title')}</h3><p>{t('home.rebuild.featureCards.0.description')}</p><Link className="manuscript-feature-action" to="/models">{t('home.rebuild.featureCards.0.action')}</Link></div></article>
-              <article className="manuscript-feature-card"><div className="manuscript-feature-visual"><HomeModelMosaic /></div><div className="manuscript-feature-copy"><h3>{t('home.rebuild.featureCards.1.title')}</h3><p>{t('home.rebuild.featureCards.1.description')}</p><LoginRequiredAction className="manuscript-feature-action" returnPath={NEW_ENTERPRISE_CREATE_PATH}>{t('home.rebuild.featureCards.1.action')}</LoginRequiredAction></div></article>
-              <article className="manuscript-feature-card"><div className="manuscript-feature-visual"><HomeModelMosaic /></div><div className="manuscript-feature-copy"><h3>{t('home.rebuild.featureCards.2.title')}</h3><p>{t('home.rebuild.featureCards.2.description')}</p><Link className="manuscript-feature-action" to="/pricing">{t('home.rebuild.featureCards.2.action')}</Link></div></article>
+              <article className="manuscript-feature-card"><div className="manuscript-feature-visual"><HomeFeatureArtwork /><span>{t('home.rebuild.featureModelsCount')}</span></div><div className="manuscript-feature-copy"><h3>{t('home.rebuild.featureCards.0.title')}</h3><p>{t('home.rebuild.featureCards.0.description')}</p><Link className="manuscript-feature-action" to="/models">{t('home.rebuild.featureCards.0.action')}</Link></div></article>
+              <article className="manuscript-feature-card"><div className="manuscript-feature-visual"><HomeFeatureArtwork /></div><div className="manuscript-feature-copy"><h3>{t('home.rebuild.featureCards.1.title')}</h3><p>{t('home.rebuild.featureCards.1.description')}</p><LoginRequiredAction className="manuscript-feature-action" returnPath={NEW_ENTERPRISE_CREATE_PATH}>{t('home.rebuild.featureCards.1.action')}</LoginRequiredAction></div></article>
+              <article className="manuscript-feature-card"><div className="manuscript-feature-visual"><HomeFeatureArtwork /></div><div className="manuscript-feature-copy"><h3>{t('home.rebuild.featureCards.2.title')}</h3><p>{t('home.rebuild.featureCards.2.description')}</p><Link className="manuscript-feature-action" to="/pricing">{t('home.rebuild.featureCards.2.action')}</Link></div></article>
             </>}
           </div>
         </section>
 
         <section className="manuscript-section manuscript-pricing" aria-labelledby="homePricingTitle">
           <div className="manuscript-section-heading"><div><h2 id="homePricingTitle">{t('home.pricing.manuscriptTitle')}</h2><p>{t('home.pricing.manuscriptSubtitle')}</p></div></div>
-          <div className="manuscript-price-grid">{promotionItems.map((item, itemIndex) => <article className="manuscript-price-card" key={item.id}>
-            <div className="manuscript-price-card-head"><Link className="manuscript-price-model" to={modelPublicHref(item.model) ?? '/models'}><ModelLogo model={item.model} size="small" /><span><strong>{item.name}</strong><small>{t('home.rebuild.providedBy', { company: item.company })}</small></span></Link><span className={`manuscript-price-badge${item.discountKind === 'free' ? ' is-equal' : ''}`}>{t(`public.home.discount${item.discountKind === 'free' ? 'Free' : item.discountKind === 'custom' ? 'Custom' : 'Half'}`)}</span></div>
+          <div className="manuscript-price-grid">{promotionItems.map((item, itemIndex) => <article className={`manuscript-price-card${item.input.length > 5 || item.output.length > 5 ? ' has-long-price' : ''}`} key={item.id}>
+            <span className="manuscript-price-card-kicker">{t('home.pricing.manuscriptSubtitle')}</span>
+            <div className="manuscript-price-card-head"><Link className="manuscript-price-model" to={modelPublicHref(item.model) ?? '/models'}><span className="manuscript-price-model-logo"><img src={promoModelLogo} alt="" aria-hidden="true" /></span><span><strong>{item.name}</strong><small>{t('home.rebuild.providedBy', { company: item.company })}</small></span></Link><span className={`manuscript-price-badge${item.discountKind === 'free' ? ' is-equal' : ''}`}>{t(`public.home.discount${item.discountKind === 'free' ? 'Free' : item.discountKind === 'custom' ? 'Custom' : 'Half'}`)}</span></div>
             <div className="manuscript-price-divider" />
             <div className="manuscript-price-values"><div><span>{t('home.rebuild.inputPrice')}</span><strong>{item.input}<small>{t('public.home.priceUnit')}</small></strong></div><div><span>{t('home.rebuild.outputPrice')}</span><strong>{item.output}<small>{t('public.home.priceUnit')}</small></strong></div></div>
-            <div className="manuscript-price-availability"><span>{t('home.rebuild.availability')}</span><strong>{item.availability}</strong><div>{Array.from({ length: HOME_AVAILABILITY_BAR_COUNT }, (_, index) => {
+            <div className="manuscript-price-availability"><span>{t('home.rebuild.availability')}</span><div>{Array.from({ length: HOME_AVAILABILITY_BAR_COUNT }, (_, index) => {
               const rate = formatHomeAvailabilityRate(item.availability, index, itemIndex)
               const rateLabel = t('home.rebuild.availabilitySegment', { index: index + 1, rate })
-              return <i className="manuscript-price-availability-bar" key={index} role="img" tabIndex={0} data-rate={rate} data-tooltip={rateLabel} aria-label={rateLabel} title={rateLabel} />
+              const offset = HOME_AVAILABILITY_SEGMENT_OFFSETS[(index + itemIndex * 7) % HOME_AVAILABILITY_SEGMENT_OFFSETS.length]
+              const segmentKind = offset <= -0.03 ? 'is-danger' : offset >= 0.04 ? 'is-warning' : 'is-up'
+              return <i className={`manuscript-price-availability-bar ${segmentKind}`} key={index} role="img" tabIndex={0} data-rate={rate} data-tooltip={rateLabel} aria-label={rateLabel} title={rateLabel} />
             })}</div></div>
           </article>)}</div>
         </section>
 
         <section className="manuscript-section manuscript-promotion" aria-labelledby="homePromotionTitle">
           <div className="manuscript-section-heading"><div><h2 id="homePromotionTitle">{t('home.rebuild.promotionTitle')}</h2><p>{t('home.rebuild.manuscriptPromotionDescription')}</p></div></div>
-          <div className="manuscript-promotion-grid"><article className="manuscript-reward-card"><h3>{t('home.rebuild.rewardTitle')}</h3><p>{t('home.rebuild.rewardDescription')}</p><div className="manuscript-reward-marks" aria-hidden="true">{Array.from({ length: HOME_REWARD_MARK_COUNT }, (_, index) => <i key={index}>?</i>)}</div><div className="manuscript-reward-login"><span>{t('home.rebuild.rewardLoginHint')}</span><LoginRequiredAction returnPath="/console/invitations">{t('home.rebuild.rewardLoginAction')}</LoginRequiredAction></div><div className="manuscript-reward-stats"><span><strong>00</strong><small>{t('home.rebuild.rewardPending')}</small></span><span><strong>00</strong><small>{t('home.rebuild.rewardApproved')}</small></span><span><strong>00</strong><small>{t('home.rebuild.rewardRejected')}</small></span></div></article><div className="manuscript-news-column">
-            {homepage?.ad_slots.length ? <ManagedAdSlots entries={homepage.ad_slots} /> : <div className="manuscript-ad-slots"><div className="manuscript-ad-slot"><strong>{t('home.rebuild.adSlot')}</strong></div></div>}
-            <div className="manuscript-news-grid">{managedNews.length ? managedNews.map((entry, index) => <ManagedNewsCard entry={entry} index={index} key={entry.id} />) : HOME_NEWS_ITEMS.map((item, index) => <Link className="manuscript-news-card" to={item.href} key={item.key}><div className="manuscript-news-copy"><h3>{t(`home.rebuild.news.${item.key}.title`)}</h3><p>{t(`home.rebuild.news.${item.key}.description`)}</p><small>{t(`home.rebuild.news.${item.key}.date`)} <b className="manuscript-news-new">{t('public.home.newBadge')}</b></small></div><div className={`manuscript-news-art manuscript-news-art--${index}`} aria-hidden="true"><i /><i /><div className="manuscript-news-document"><strong>ZenMux</strong><small>TOKEN<br />ECONOMICS</small><b>NX</b></div></div></Link>)}</div>
+          <div className="manuscript-promotion-grid"><article className="manuscript-reward-card"><h3>{t('home.rebuild.rewardTitle')}</h3><p>{t('home.rebuild.rewardDescription')}</p><div className="manuscript-reward-marks" aria-hidden="true"><img src={promoRewardAvatars} alt="" /></div><div className="manuscript-reward-login"><span>{t('home.rebuild.rewardLoginHint')}</span><LoginRequiredAction returnPath="/console/invitations">{t('home.rebuild.rewardLoginAction')}</LoginRequiredAction></div><div className="manuscript-reward-stats">{HOME_REWARD_STATS.map(({ value, unit, labelKey }) => <span key={labelKey}><strong className={value.length > 2 ? 'is-long' : undefined}>{value}<em>{unit}</em></strong><small>{t(`home.rebuild.${labelKey}`)}</small></span>)}</div></article><div className="manuscript-news-column">
+            {homepage?.ad_slots.length ? <ManagedAdSlots entries={homepage.ad_slots} /> : <div className="manuscript-ad-slots"><div className="manuscript-ad-slot"><img src={promoBannerArt} alt={t('home.rebuild.adSlot')} /></div></div>}
+            <div className="manuscript-news-grid">{managedNews.length ? managedNews.map((entry, index) => <ManagedNewsCard entry={entry} index={index} key={entry.id} />) : HOME_NEWS_ITEMS.map((item, index) => <Link className="manuscript-news-card" to={item.href} key={item.key}><div className="manuscript-news-copy"><h3>{t(`home.rebuild.news.${item.key}.title`)}</h3><p>{t(`home.rebuild.news.${item.key}.description`)}</p><small>{t(`home.rebuild.news.${item.key}.date`)} <b className="manuscript-news-new">{t('public.home.newBadge')}</b></small></div><div className={`manuscript-news-art manuscript-news-art--${index}`} aria-hidden="true"><img className="manuscript-news-art-image" src={promoArticleArt} alt="" /></div></Link>)}</div>
           </div></div>
         </section>
 

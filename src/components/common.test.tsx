@@ -321,6 +321,29 @@ describe('公共 Header 布局', () => {
     expect(document.querySelector('.public-header')).toHaveClass('public-header--home')
   })
 
+  it('通知红点与铃铛资源分离并由未读数量控制', () => {
+    const { rerender } = render(
+      <MemoryRouter initialEntries={['/']}>
+        <Provider store={createAppStore()}>
+          <AppStoreProvider><PublicHeader unreadNotificationCount={0} /></AppStoreProvider>
+        </Provider>
+      </MemoryRouter>,
+    )
+
+    const notificationButton = screen.getByRole('button', { name: '查看通知' })
+    expect(notificationButton.querySelector('.header-notification-icon')).toBeInTheDocument()
+    expect(notificationButton.querySelector('.header-notification-dot')).toBeNull()
+
+    rerender(
+      <MemoryRouter initialEntries={['/']}>
+        <Provider store={createAppStore()}>
+          <AppStoreProvider><PublicHeader unreadNotificationCount={2} /></AppStoreProvider>
+        </Provider>
+      </MemoryRouter>,
+    )
+    expect(screen.getByRole('button', { name: '查看通知' }).querySelectorAll('.header-notification-dot')).toHaveLength(1)
+  })
+
   it('公开 Header 仅保留模型入口可点击，桌面和移动导航都禁用其余四项', async () => {
     const user = userEvent.setup()
     render(
@@ -400,7 +423,7 @@ describe('登录验证码按钮', () => {
       </MemoryRouter>,
     )
 
-    await user.type(screen.getByLabelText('邮箱'), 'user@example.com')
+    await user.type(screen.getByLabelText('手机号'), '13800138000')
     const sendButton = screen.getByRole('button', { name: '获取验证码' })
     await user.click(sendButton)
 
@@ -414,8 +437,9 @@ describe('登录验证码按钮', () => {
     await user.click(sendButton)
     expect(fetchMock).toHaveBeenCalledTimes(1)
 
-    resolveRequest(new Response(JSON.stringify({ code: 0, msg: 'success', data: { destination_masked: 'u***@example.com', expires_at: '2099-01-01T00:05:00Z', retry_after_seconds: 60 } }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
+    resolveRequest(new Response(JSON.stringify({ code: 0, msg: 'success', data: { destination_masked: '138****8000', expires_at: '2099-01-01T00:05:00Z', retry_after_seconds: 10 } }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
     await waitFor(() => expect(screen.getByRole('button', { name: '60s 后重试' })).toBeDisabled())
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toMatchObject({ destination: '+8613800138000' })
   })
 })
 
