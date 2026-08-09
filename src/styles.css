@@ -5852,3 +5852,62 @@ html:has(.login-page) { overflow-y: hidden; scrollbar-gutter: auto; }
   .account-settings-row { font-size: 14px; }
   .account-settings-value { max-width: 70%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 }
+
+/* Figma partner strip edge treatment: use a longer multi-stop fade so the
+   first and last logos dissolve into the background instead of ending at a
+   visible hard boundary. */
+@media (min-width: 721px) {
+  .public-layout--manuscript-home .manuscript-partners {
+    position: relative;
+    left: 50%;
+    width: min(1480px, calc(100vw - 96px));
+    max-width: none;
+    transform: translateX(-50%);
+  }
+  .public-layout--manuscript-home .manuscript-partners .manuscript-section-heading {
+    width: min(1280px, 100%);
+    margin-right: auto;
+    margin-left: auto;
+  }
+  .public-layout--manuscript-home .manuscript-partners .manuscript-partner-grid {
+    left: auto;
+    width: 100%;
+    transform: none;
+  }
+  .public-layout--manuscript-home .manuscript-partner-row.is-scrolling::before,
+  .public-layout--manuscript-home .manuscript-partner-row.is-scrolling::after {
+    width: 320px;
+    z-index: 3;
+  }
+  .public-layout--manuscript-home .manuscript-partner-row.is-scrolling::before {
+    background: linear-gradient(90deg,
+      #121212 0%,
+      #121212 18%,
+      rgba(18, 18, 18, .98) 38%,
+      rgba(18, 18, 18, .78) 58%,
+      rgba(18, 18, 18, .38) 80%,
+      rgba(18, 18, 18, 0) 100%);
+  }
+  .public-layout--manuscript-home .manuscript-partner-row.is-scrolling::after {
+    background: linear-gradient(270deg,
+      #121212 0%,
+      #121212 18%,
+      rgba(18, 18, 18, .98) 38%,
+      rgba(18, 18, 18, .78) 58%,
+      rgba(18, 18, 18, .38) 80%,
+      rgba(18, 18, 18, 0) 100%);
+  }
+}
+
+@media (max-width: 720px) {
+  .public-layout--manuscript-home .manuscript-partner-row.is-scrolling::before,
+  .public-layout--manuscript-home .manuscript-partner-row.is-scrolling::after {
+    width: 76px;
+  }
+  .public-layout--manuscript-home .manuscript-partner-row.is-scrolling::before {
+    background: linear-gradient(90deg, #121212 0%, rgba(18, 18, 18, .82) 38%, rgba(18, 18, 18, 0) 100%);
+  }
+  .public-layout--manuscript-home .manuscript-partner-row.is-scrolling::after {
+    background: linear-gradient(270deg, #121212 0%, rgba(18, 18, 18, .82) 38%, rgba(18, 18, 18, 0) 100%);
+  }
+}
