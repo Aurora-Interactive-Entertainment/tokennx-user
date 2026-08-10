@@ -466,9 +466,9 @@ function HomeModelMosaic() {
   return <div className="manuscript-model-mosaic" aria-hidden="true">{rows.map((row, rowIndex) => <div className={`manuscript-model-mosaic-row${rowIndex % 2 === 1 ? ' is-offset' : ''}`} key={`model-mosaic-row-${rowIndex}`}>{row.map((model) => <ModelLogo key={model.id} model={model} size="small" />)}</div>)}</div>
 }
 
-function HomeFeatureArtwork() {
+function HomeFeatureArtwork({ priority = false }: { priority?: boolean }) {
   return <>
-    <img className="manuscript-feature-image" src={modelCardArt} alt="" aria-hidden="true" loading="lazy" decoding="async" width={416} height={106} />
+    <img className="manuscript-feature-image" src={modelCardArt} alt="" aria-hidden="true" loading={priority ? 'eager' : 'lazy'} fetchPriority={priority ? 'high' : 'auto'} decoding="async" width={416} height={106} />
     {/* Retain the previous mosaic fallback in the DOM for compatibility with existing consumers. */}
     <div className="manuscript-feature-mosaic-legacy" aria-hidden="true"><HomeModelMosaic /></div>
   </>
@@ -560,7 +560,7 @@ function ManagedFeatureCard({ entry, index }: { entry: HomepageEntry; index: num
   const action = content.action_text?.trim() || t(`home.rebuild.featureCards.${index % 3}.action`)
   const imageURL = homepageMediaURL(content.image_object_id, content.image_url)
   return <article className="manuscript-feature-card">
-    <div className="manuscript-feature-visual">{imageURL ? <img className="manuscript-feature-image" src={imageURL} alt="" aria-hidden="true" loading="lazy" decoding="async" width={416} height={106} /> : <HomeFeatureArtwork />}<span>{index === 0 ? t('home.rebuild.featureModelsCount') : t('home.rebuild.featuresTitle')}</span></div>
+    <div className="manuscript-feature-visual">{imageURL ? <img className="manuscript-feature-image" src={imageURL} alt="" aria-hidden="true" loading={index === 0 ? 'eager' : 'lazy'} fetchPriority={index === 0 ? 'high' : 'auto'} decoding="async" width={416} height={106} /> : <HomeFeatureArtwork priority={index === 0} />}<span>{index === 0 ? t('home.rebuild.featureModelsCount') : t('home.rebuild.featuresTitle')}</span></div>
     <div className="manuscript-feature-copy">
       <h3>{content.title || t('home.rebuild.featuresTitle')}</h3>
       <p>{content.description || ''}</p>

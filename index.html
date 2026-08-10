@@ -32,6 +32,56 @@
         root.style.colorScheme = theme
       })()
     </script>
+    <script>
+      (() => {
+        if (window.location.pathname !== '/' && window.location.pathname !== '/home') return
+
+        const configuredApiBase = '%VITE_API_BASE_URL%'
+        const apiBase = configuredApiBase.startsWith('%') ? '' : configuredApiBase.trim().replace(/\/+$/, '')
+        const homepageUrl = `${apiBase}/api/homepage`
+        const requestController = new AbortController()
+        const requestTimeout = window.setTimeout(() => requestController.abort(), 15000)
+
+        window.__TOKEN_NX_HOMEPAGE_REQUEST__ = fetch(homepageUrl, {
+          credentials: 'omit',
+          headers: { Accept: 'application/json' },
+          priority: 'high',
+          signal: requestController.signal,
+        }).then(async (response) => {
+          if (!response.ok) return undefined
+          const payload = await response.json()
+          if (!payload || payload.code !== 0 || !payload.data) return undefined
+
+          const firstCard = Array.isArray(payload.data.cards) ? payload.data.cards[0] : undefined
+          const translations = firstCard?.data?.translations
+          let language = 'zh-CN'
+          try {
+            const storedLanguage = window.localStorage.getItem('token-nx:locale')
+            if (storedLanguage === 'en-US') language = storedLanguage
+          } catch {
+            // Storage may be unavailable in privacy-restricted WebViews.
+          }
+          const content = translations?.[language] ?? translations?.['zh-CN'] ?? translations?.['en-US']
+          const objectId = typeof content?.image_object_id === 'string' ? content.image_object_id.trim() : ''
+          const imageUrl = /^[0-9A-HJKMNP-TV-Z]{26}$/.test(objectId)
+            ? `${apiBase}/api/homepage/assets/${encodeURIComponent(objectId)}`
+            : typeof content?.image_url === 'string' ? content.image_url.trim() : ''
+
+          if (imageUrl) {
+            const image = new Image()
+            image.fetchPriority = 'high'
+            image.decoding = 'async'
+            const releaseImage = () => { delete window.__TOKEN_NX_HOMEPAGE_LCP_IMAGE__ }
+            image.addEventListener('load', releaseImage, { once: true })
+            image.addEventListener('error', releaseImage, { once: true })
+            window.__TOKEN_NX_HOMEPAGE_LCP_IMAGE__ = image
+            image.src = imageUrl
+          }
+
+          return payload.data
+        }).catch(() => undefined).finally(() => window.clearTimeout(requestTimeout))
+      })()
+    </script>
     <style>
       :root {
         color-scheme: dark light;

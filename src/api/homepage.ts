@@ -1,11 +1,19 @@
 import i18n from '@/i18n'
 import { ApiError, fetchJson, makeApiUrl } from './http'
 
+declare global {
+  interface Window {
+    __TOKEN_NX_HOMEPAGE_REQUEST__?: Promise<unknown | undefined>
+    __TOKEN_NX_HOMEPAGE_LCP_IMAGE__?: HTMLImageElement
+  }
+}
+
 export const PUBLIC_HOMEPAGE_PATH = '/api/homepage'
 export const PUBLIC_HOMEPAGE_ASSET_PATH = '/api/homepage/assets'
 export const PUBLIC_HOMEPAGE_STATS_PATH = '/api/homepage/stats'
 
 const PUBLIC_OBJECT_ID_PATTERN = /^[0-9A-HJKMNP-TV-Z]{26}$/
+let initialHomepageRequestConsumed = false
 
 export type HomepageKind = 'card' | 'promotion_model' | 'ad_slot' | 'news' | 'partner'
 export type HomepageDiscountKind = 'half' | 'free' | 'custom'
@@ -177,6 +185,15 @@ function parseHomepageStats(value: unknown): PublicHomepageStats {
 }
 
 export async function getPublicHomepage(accessToken?: string): Promise<PublicHomepage> {
+  if (!accessToken && !initialHomepageRequestConsumed && typeof window !== 'undefined') {
+    const initialRequest = window.__TOKEN_NX_HOMEPAGE_REQUEST__
+    if (initialRequest) {
+      initialHomepageRequestConsumed = true
+      delete window.__TOKEN_NX_HOMEPAGE_REQUEST__
+      const preloadedValue = await initialRequest
+      if (preloadedValue !== undefined) return parseHomepage(preloadedValue)
+    }
+  }
   return parseHomepage(await fetchJson<unknown>(PUBLIC_HOMEPAGE_PATH, accessToken ? { accessToken } : {}))
 }
 

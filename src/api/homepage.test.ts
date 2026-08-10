@@ -47,6 +47,21 @@ describe('公开首页内容 API', () => {
     await expect(getPublicHomepage()).resolves.toEqual({ cards: [], promotion_models: [], ad_slots: [], news: [], partners: [], promotion: [] })
   })
 
+  it('首次匿名读取复用 HTML 阶段的首页预请求', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch')
+    window.__TOKEN_NX_HOMEPAGE_REQUEST__ = Promise.resolve({
+      cards: [{ id: 'preloaded-card', kind: 'card', status: 'active', sort_order: 1, pinned: false, data: {} }],
+      promotion_models: [],
+      ad_slots: [],
+      news: [],
+      partners: [],
+      promotion: [],
+    })
+
+    await expect(getPublicHomepage()).resolves.toMatchObject({ cards: [{ id: 'preloaded-card' }] })
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
   it('读取优惠模型详情、价格和登录后推广数据，并为登录请求携带令牌', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(response({
       cards: [],

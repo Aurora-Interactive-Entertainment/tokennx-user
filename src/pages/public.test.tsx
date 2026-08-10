@@ -158,6 +158,8 @@ describe('公开模型页面', () => {
     expect(screen.queryByText('未固定动态')).toBeNull()
     expect(screen.getAllByText('后台伙伴').length).toBeGreaterThan(0)
     expect(document.querySelector('.manuscript-feature-image')).toHaveAttribute('src', '/api/homepage/assets/01J00000000000000000000001')
+    expect(document.querySelector('.manuscript-feature-image')).toHaveAttribute('loading', 'eager')
+    expect(document.querySelector('.manuscript-feature-image')).toHaveAttribute('fetchpriority', 'high')
     expect(screen.getByRole('img', { name: '后台广告位' })).toHaveAttribute('src', '/api/homepage/assets/01J00000000000000000000002')
     expect(document.querySelector('.manuscript-partner-image')).toHaveAttribute('src', '/api/homepage/assets/01J00000000000000000000003')
     expect(document.querySelectorAll('.manuscript-partner-row')).toHaveLength(1)
