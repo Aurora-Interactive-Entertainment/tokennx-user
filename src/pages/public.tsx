@@ -341,7 +341,7 @@ function HomeSilkCanvas() {
 
   useEffect(() => {
     const canvas = canvasRef.current
-    const context = canvas?.getContext('2d')
+    const context = canvas?.getContext('2d', { alpha: true, desynchronized: true })
     if (!canvas || !context || typeof context.createLinearGradient !== 'function') return undefined
 
     const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
@@ -351,12 +351,15 @@ function HomeSilkCanvas() {
     const balancedPerformance = performanceMode === 'balanced' || compactViewport
     const canAnimate = !reducedMotion
     const targetFrameInterval = 1000 / (litePerformance ? 20 : balancedPerformance ? 30 : 60)
+    const scrollingFrameInterval = 1000 / (litePerformance ? 12 : balancedPerformance ? 15 : 20)
     let width = 0
     let height = 0
     let tick = 0
     let animationFrame = 0
     let lastDrawTime = 0
     let isVisible = true
+    let isScrolling = false
+    let scrollEndTimer: number | undefined
     let ribbons: HomeSilkRibbon[] = []
 
     const createRibbons = (): void => {
@@ -397,9 +400,16 @@ function HomeSilkCanvas() {
       context.clearRect(0, 0, width, height)
       tick += 1
 
+      context.shadowBlur = isScrolling || litePerformance ? 0 : balancedPerformance ? 10 : 18
+      context.shadowColor = 'rgba(40,100,255,.8)'
+      context.lineWidth = 1.3
+      const drawStep = isScrolling
+        ? litePerformance ? 24 : balancedPerformance ? 20 : 16
+        : litePerformance ? 16 : balancedPerformance ? 12 : 8
+
       ribbons.forEach((ribbon, index) => {
         context.beginPath()
-        for (let x = 0; x <= width; x += 8) {
+        for (let x = 0; x <= width; x += drawStep) {
           const wave = Math.sin(x * ribbon.frequency - tick * .01 * ribbon.speed - ribbon.phase) * ribbon.amplitude
           const y = ribbon.y + wave + Math.sin(tick * .005 + index) * 30
           if (x === 0) context.moveTo(x, y)
@@ -407,15 +417,17 @@ function HomeSilkCanvas() {
         }
 
         context.strokeStyle = ribbon.gradient ?? 'rgba(40,100,255,.14)'
-        context.lineWidth = 1.3
-        context.shadowBlur = litePerformance ? 0 : balancedPerformance ? 10 : 18
-        context.shadowColor = 'rgba(40,100,255,.8)'
         context.stroke()
       })
     }
 
     const animate = (time: number): void => {
-      if (time - lastDrawTime >= targetFrameInterval) {
+      if (document.hidden || !isVisible) {
+        animationFrame = 0
+        return
+      }
+      const frameInterval = isScrolling ? scrollingFrameInterval : targetFrameInterval
+      if (time - lastDrawTime >= frameInterval) {
         draw()
         lastDrawTime = time
       }
@@ -424,6 +436,7 @@ function HomeSilkCanvas() {
 
     const start = (): void => {
       window.cancelAnimationFrame(animationFrame)
+      animationFrame = 0
       if (document.hidden || !canAnimate || !isVisible) {
         draw()
         return
@@ -432,6 +445,17 @@ function HomeSilkCanvas() {
     }
 
     const handleVisibilityChange = (): void => start()
+    const handleScroll = (): void => {
+      if (!isScrolling) {
+        isScrolling = true
+        lastDrawTime = 0
+      }
+      if (scrollEndTimer !== undefined) window.clearTimeout(scrollEndTimer)
+      scrollEndTimer = window.setTimeout(() => {
+        isScrolling = false
+        lastDrawTime = 0
+      }, 140)
+    }
     const resizeObserver = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(() => {
       resize()
       if (reducedMotion) draw()
@@ -447,13 +471,20 @@ function HomeSilkCanvas() {
     intersectionObserver?.observe(canvas)
     if (!resizeObserver) window.addEventListener('resize', resize)
     document.addEventListener('visibilitychange', handleVisibilityChange)
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    window.addEventListener('wheel', handleScroll, { passive: true })
+    window.addEventListener('touchmove', handleScroll, { passive: true })
 
     return () => {
       window.cancelAnimationFrame(animationFrame)
+      if (scrollEndTimer !== undefined) window.clearTimeout(scrollEndTimer)
       resizeObserver?.disconnect()
       intersectionObserver?.disconnect()
       if (!resizeObserver) window.removeEventListener('resize', resize)
       document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('scroll', handleScroll)
+      window.removeEventListener('wheel', handleScroll)
+      window.removeEventListener('touchmove', handleScroll)
     }
   }, [])
 
