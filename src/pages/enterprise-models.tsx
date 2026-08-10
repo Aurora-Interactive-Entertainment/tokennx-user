@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Toast } from '@douyinfe/semi-ui'
+import Toast from '@douyinfe/semi-ui/lib/es/toast'
 import { BannerNotice } from '@/components/common'
 import { getEnterpriseModels, updateEnterpriseModel, type EnterpriseContext, type EnterpriseModel, type EnterpriseModelPage } from '@/api/enterprise-console'
 import { isApiError } from '@/api/http'

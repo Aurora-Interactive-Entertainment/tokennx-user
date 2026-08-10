@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import type { TFunction } from 'i18next'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
-import { Toast } from '@douyinfe/semi-ui'
+import Toast from '@douyinfe/semi-ui/lib/es/toast'
 import Skeleton from '@douyinfe/semi-ui/lib/es/skeleton'
 import { LoginPanel, LoginRequiredAction, ManuscriptSupportWidget, PublicLayout, ModelLogo, normalizeLoginReturnPath } from '@/components/common'
 import modelCardArt from '@/assets/figma-home/model-card-art.png'
@@ -346,9 +346,11 @@ function HomeSilkCanvas() {
 
     const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
     const compactViewport = window.matchMedia?.('(max-width: 768px)').matches ?? false
-    const litePerformance = /MicroMessenger/i.test(navigator.userAgent) || (window.matchMedia?.('(pointer: coarse)').matches ?? false) || (navigator.hardwareConcurrency > 0 && navigator.hardwareConcurrency <= 4)
+    const performanceMode = document.documentElement.dataset.performance
+    const litePerformance = performanceMode === 'lite'
+    const balancedPerformance = performanceMode === 'balanced' || compactViewport
     const canAnimate = !reducedMotion
-    const targetFrameInterval = 1000 / (litePerformance ? 20 : compactViewport ? 30 : 60)
+    const targetFrameInterval = 1000 / (litePerformance ? 20 : balancedPerformance ? 30 : 60)
     let width = 0
     let height = 0
     let tick = 0
@@ -358,7 +360,7 @@ function HomeSilkCanvas() {
     let ribbons: HomeSilkRibbon[] = []
 
     const createRibbons = (): void => {
-      ribbons = Array.from({ length: litePerformance ? 8 : compactViewport ? 16 : 22 }, () => {
+      ribbons = Array.from({ length: litePerformance ? 8 : balancedPerformance ? 16 : 22 }, () => {
         const amplitude = 50 + Math.random() * 120
         const verticalPadding = Math.min(height / 2, amplitude + 36)
         const opacity = .05 + Math.random() * .18
@@ -384,7 +386,7 @@ function HomeSilkCanvas() {
       const bounds = canvas.getBoundingClientRect()
       width = Math.max(1, bounds.width)
       height = Math.max(1, bounds.height)
-      const pixelRatio = Math.min(window.devicePixelRatio || 1, litePerformance ? 1 : compactViewport ? 1.5 : 2)
+      const pixelRatio = Math.min(window.devicePixelRatio || 1, litePerformance ? 1 : balancedPerformance ? 1.5 : 2)
       canvas.width = Math.round(width * pixelRatio)
       canvas.height = Math.round(height * pixelRatio)
       context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0)
@@ -406,7 +408,7 @@ function HomeSilkCanvas() {
 
         context.strokeStyle = ribbon.gradient ?? 'rgba(40,100,255,.14)'
         context.lineWidth = 1.3
-        context.shadowBlur = litePerformance ? 0 : compactViewport ? 10 : 18
+        context.shadowBlur = litePerformance ? 0 : balancedPerformance ? 10 : 18
         context.shadowColor = 'rgba(40,100,255,.8)'
         context.stroke()
       })

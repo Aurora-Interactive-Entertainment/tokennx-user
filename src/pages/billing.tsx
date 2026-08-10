@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useMemo, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useLocation, useNavigate } from 'react-router'
-import { Button, Modal, Pagination, Toast } from '@douyinfe/semi-ui'
+import Button from '@douyinfe/semi-ui/lib/es/button'
+import Modal from '@douyinfe/semi-ui/lib/es/modal'
+import Pagination from '@douyinfe/semi-ui/lib/es/pagination'
+import Toast from '@douyinfe/semi-ui/lib/es/toast'
 import { IconDownload, IconRefresh, IconTickCircle } from '@douyinfe/semi-icons'
 import { isAuthenticationFailure } from '@/api/http'
 import {

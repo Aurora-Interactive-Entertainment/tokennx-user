@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
-import { Button } from '@douyinfe/semi-ui'
+import Button from '@douyinfe/semi-ui/lib/es/button'
 import { BannerNotice, PageTitle } from '@/components/common'
 import { CompatInput as Input } from '@/components/semi-compat'
 import { getAccessToken } from '@/auth/token-storage'

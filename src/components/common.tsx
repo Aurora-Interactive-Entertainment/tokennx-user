@@ -1346,10 +1346,18 @@ function UserMenu({ store, userId, userName, phone, enterpriseAccess, onNavigate
       return undefined
     }
     updateWorkspaceMenuPosition()
-    const handleViewportChange = () => updateWorkspaceMenuPosition()
+    let frame = 0
+    const handleViewportChange = () => {
+      if (frame) return
+      frame = window.requestAnimationFrame(() => {
+        frame = 0
+        updateWorkspaceMenuPosition()
+      })
+    }
     window.addEventListener('resize', handleViewportChange)
-    document.addEventListener('scroll', handleViewportChange, true)
+    document.addEventListener('scroll', handleViewportChange, { capture: true, passive: true })
     return () => {
+      window.cancelAnimationFrame(frame)
       window.removeEventListener('resize', handleViewportChange)
       document.removeEventListener('scroll', handleViewportChange, true)
     }

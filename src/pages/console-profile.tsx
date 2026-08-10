@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router'
-import { Button, Input, Modal, Switch, Toast } from '@douyinfe/semi-ui'
+import Button from '@douyinfe/semi-ui/lib/es/button'
+import Input from '@douyinfe/semi-ui/lib/es/input'
+import Modal from '@douyinfe/semi-ui/lib/es/modal'
+import Switch from '@douyinfe/semi-ui/lib/es/switch'
+import Toast from '@douyinfe/semi-ui/lib/es/toast'
 import {
   getNotificationPreferences,
   getProfileEnterprises,

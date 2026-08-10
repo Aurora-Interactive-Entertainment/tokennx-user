@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Button, Input, Modal, Toast } from '@douyinfe/semi-ui'
+import Button from '@douyinfe/semi-ui/lib/es/button'
+import Input from '@douyinfe/semi-ui/lib/es/input'
+import Modal from '@douyinfe/semi-ui/lib/es/modal'
+import Toast from '@douyinfe/semi-ui/lib/es/toast'
 import {
   getProfileErrorMessage,
   isValidContactDestination,

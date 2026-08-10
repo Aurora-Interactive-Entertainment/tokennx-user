@@ -10,10 +10,16 @@ import './styles.css'
 
 function applyInitialPerformanceMode(): void {
   if (typeof navigator === 'undefined' || typeof document === 'undefined') return
-  const isLite = /MicroMessenger/i.test(navigator.userAgent)
+  const deviceMemory = Number((navigator as Navigator & { deviceMemory?: number }).deviceMemory ?? 0)
+  const hardwareConcurrency = navigator.hardwareConcurrency || 0
+  const isConstrained = (deviceMemory > 0 && deviceMemory <= 2)
+    || (hardwareConcurrency > 0 && hardwareConcurrency <= 2)
+  const isBalanced = /MicroMessenger/i.test(navigator.userAgent)
     || (typeof window.matchMedia === 'function' && window.matchMedia('(pointer: coarse)').matches)
-    || (navigator.hardwareConcurrency > 0 && navigator.hardwareConcurrency <= 4)
-  if (isLite) document.documentElement.dataset.performance = 'lite'
+    || (deviceMemory > 0 && deviceMemory <= 4)
+    || (hardwareConcurrency > 0 && hardwareConcurrency <= 4)
+
+  document.documentElement.dataset.performance = isConstrained ? 'lite' : isBalanced ? 'balanced' : 'full'
 }
 
 applyInitialPerformanceMode()

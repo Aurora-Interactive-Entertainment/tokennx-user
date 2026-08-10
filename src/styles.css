@@ -5876,7 +5876,7 @@ html:has(.login-page) { overflow-y: hidden; scrollbar-gutter: auto; }
   }
   .public-layout--manuscript-home .manuscript-partner-row.is-scrolling::before,
   .public-layout--manuscript-home .manuscript-partner-row.is-scrolling::after {
-    width: 320px;
+    width: 160px;
     z-index: 3;
   }
   .public-layout--manuscript-home .manuscript-partner-row.is-scrolling::before {

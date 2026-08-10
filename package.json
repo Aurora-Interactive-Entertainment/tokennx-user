@@ -9,13 +9,14 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && vite build && npm run size:check",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "size:check": "node scripts/check-bundle-size.mjs"
   },
   "dependencies": {
     "@douyinfe/semi-icons": "2.101.1",

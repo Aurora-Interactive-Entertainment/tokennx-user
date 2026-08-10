@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router'
-import { Button } from '@douyinfe/semi-ui'
+import Button from '@douyinfe/semi-ui/lib/es/button'
 import { IconRefresh } from '@douyinfe/semi-icons'
 import { BannerNotice, PageTitle } from '@/components/common'
 import { MoneyText } from '@/components/money'
