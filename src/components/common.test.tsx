@@ -370,7 +370,7 @@ describe('公共 Header 布局', () => {
     expect(within(dialog).getByText('348.62')).toBeInTheDocument()
   })
 
-  it('公开 Header 仅保留模型入口可点击，桌面和移动导航都禁用其余四项', async () => {
+  it('公开 Header 的模型、排名、应用和文档入口可点击，桌面和移动导航仅禁用私有化', async () => {
     const user = userEvent.setup()
     render(
       <MemoryRouter initialEntries={['/']}>
@@ -382,7 +382,10 @@ describe('公共 Header 布局', () => {
 
     const desktopNav = screen.getByRole('navigation', { name: '公开导航' })
     expect(within(desktopNav).getByRole('link', { name: '模型' })).toHaveAttribute('href', '/models')
-    for (const label of ['私有化', '排名', '应用', '文档']) {
+    expect(within(desktopNav).getByRole('link', { name: '排名' })).toHaveAttribute('href', '/rankings')
+    expect(within(desktopNav).getByRole('link', { name: '应用' })).toHaveAttribute('href', '/apps')
+    expect(within(desktopNav).getByRole('link', { name: '文档' })).toHaveAttribute('href', '/docs')
+    for (const label of ['私有化']) {
       expect(within(desktopNav).queryByRole('link', { name: label })).toBeNull()
       expect(within(desktopNav).getByText(label)).toHaveAttribute('aria-disabled', 'true')
     }
@@ -391,7 +394,10 @@ describe('公共 Header 布局', () => {
     const mobileNav = document.querySelector('.public-mobile-nav')
     expect(mobileNav).not.toBeNull()
     expect(within(mobileNav as HTMLElement).getByRole('link', { name: '模型' })).toHaveAttribute('href', '/models')
-    for (const label of ['私有化', '排名', '应用', '文档']) {
+    expect(within(mobileNav as HTMLElement).getByRole('link', { name: '排名' })).toHaveAttribute('href', '/rankings')
+    expect(within(mobileNav as HTMLElement).getByRole('link', { name: '应用' })).toHaveAttribute('href', '/apps')
+    expect(within(mobileNav as HTMLElement).getByRole('link', { name: '文档' })).toHaveAttribute('href', '/docs')
+    for (const label of ['私有化']) {
       expect(within(mobileNav as HTMLElement).queryByRole('link', { name: label })).toBeNull()
       expect(within(mobileNav as HTMLElement).getByText(label)).toHaveAttribute('aria-disabled', 'true')
     }

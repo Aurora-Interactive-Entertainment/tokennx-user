@@ -16,6 +16,8 @@ const loadConsoleAccountPages = () => import('@/pages/console-account')
 const HomePage = lazy(() => loadPublicPages().then(({ HomePage }) => ({ default: HomePage })))
 const ModelsPublicPage = lazy(() => loadPublicPages().then(({ ModelsPublicPage }) => ({ default: ModelsPublicPage })))
 const ModelDetailPage = lazy(() => loadPublicPages().then(({ ModelDetailPage }) => ({ default: ModelDetailPage })))
+const RankingsPage = lazy(() => loadPublicPages().then(({ RankingsPage }) => ({ default: RankingsPage })))
+const AppsPage = lazy(() => loadPublicPages().then(({ AppsPage }) => ({ default: AppsPage })))
 const DocsPage = lazy(() => loadPublicPages().then(({ DocsPage }) => ({ default: DocsPage })))
 const PricingPage = lazy(() => loadPublicPages().then(({ PricingPage }) => ({ default: PricingPage })))
 const StatusPage = lazy(() => loadPublicPages().then(({ StatusPage }) => ({ default: StatusPage })))
@@ -115,6 +117,8 @@ export default function App({ onBootReady }: { onBootReady: () => void }) {
               <Route path="/" element={<HomePage onInitialScoreboardReady={onBootReady} />} />
               <Route path="/models" element={<ModelsPublicPage />} />
               <Route path="/models/:modelId" element={<ModelDetailPage />} />
+              <Route path="/rankings" element={<RankingsPage />} />
+              <Route path="/apps" element={<AppsPage />} />
               <Route path="/docs" element={<DocsPage />} />
               <Route path="/pricing" element={<PricingPage />} />
               <Route path="/status" element={<StatusPage />} />

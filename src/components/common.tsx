@@ -113,9 +113,9 @@ type PublicLink = {
 export const PUBLIC_LINKS: PublicLink[] = [
   { labelKey: 'nav.models', path: '/models' },
   { labelKey: 'nav.private', path: ENTERPRISE_CREATE_PATH, disabled: true },
-  { labelKey: 'nav.ranking', path: '/models', disabled: true },
-  { labelKey: 'nav.apps', path: '/docs', disabled: true },
-  { labelKey: 'nav.docs', path: '/docs', disabled: true },
+  { labelKey: 'nav.ranking', path: '/rankings' },
+  { labelKey: 'nav.apps', path: '/apps' },
+  { labelKey: 'nav.docs', path: '/docs' },
 ]
 
 const AUTHENTICATED_PUBLIC_LINK: PublicLink = { labelKey: 'nav.billing', path: '/console/billing' }
@@ -1920,8 +1920,8 @@ export function ManuscriptSupportWidget() {
 }
 
 export function PublicLayout({ children, mainClassName = '', footerLabel, footerLinks }: { children: ReactNode; mainClassName?: string; footerLabel?: string; footerLinks?: FooterLink[] }) {
-  const layoutClassName = mainClassName.includes('home-page--manuscript') ? ' public-layout--manuscript-home' : ''
-  const manuscript = mainClassName.includes('home-page--manuscript')
+  const manuscript = mainClassName.includes('home-page--manuscript') || mainClassName.includes('docs-page--manuscript') || mainClassName.includes('apps-page--manuscript') || mainClassName.includes('rankings-page--manuscript')
+  const layoutClassName = manuscript ? ' public-layout--manuscript-home' : ''
   return <div className={`public-layout${layoutClassName}`}><PublicHeader /><main className={`public-main${mainClassName ? ` ${mainClassName}` : ''}`}>{children}</main><PublicFooter label={footerLabel} links={footerLinks} manuscript={manuscript} /></div>
 }
 

@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AppStoreProvider } from '@/data/app-state'
 import { createAppStore } from '@/store'
 import i18n from '@/i18n'
-import { DocsPage, HomePage, ModelDetailPage, ModelsPublicPage } from './public'
+import { AppsPage, DocsPage, HomePage, ModelDetailPage, ModelsPublicPage, RankingsPage } from './public'
 
 function LocationProbe() {
   const location = useLocation()
@@ -69,6 +69,62 @@ describe('公开模型页面', () => {
 
     expect(screen.getByText(/"model":"deepseek-public"/)).toBeInTheDocument()
     expect(screen.queryByText(/deepseek-chat/)).toBeNull()
+  })
+
+  it('应用页展示热门工具、使用趋势和排行榜', () => {
+    renderPage(<AppsPage />, '/apps')
+
+    expect(screen.getByRole('heading', { name: '最受欢迎的 AI 工具排名' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Token NX 平台智能体客户端整体使用情况' })).toBeInTheDocument()
+    expect(document.querySelectorAll('.apps-popular-card')).toHaveLength(4)
+    expect(document.querySelectorAll('.apps-ranking-row')).toHaveLength(12)
+    expect(screen.getByLabelText('排行榜时间范围')).toHaveValue('today')
+  })
+
+  it('排名页展示 TOP10 图表、图例和模型排行榜', () => {
+    renderPage(<RankingsPage />, '/rankings')
+
+    expect(screen.getByRole('heading', { name: 'TOP10 模型排名' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '大模型排行榜' })).toBeInTheDocument()
+    expect(screen.getByLabelText('图表图例')).toBeInTheDocument()
+    expect(document.querySelectorAll('.ranking-model-row')).toHaveLength(8)
+    expect(screen.getByRole('button', { name: /本星期/ })).toHaveAttribute('aria-expanded', 'true')
+  })
+
+  it('应用页切换英文后翻译标题、说明、筛选器和排行内容', async () => {
+    await i18n.changeLanguage('en-US')
+    renderPage(<AppsPage />, '/apps')
+
+    expect(screen.getByRole('heading', { name: 'Most Popular AI Tools' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Overall Token NX Agent Client Usage' })).toBeInTheDocument()
+    expect(screen.getByLabelText('Leaderboard time range')).toHaveValue('today')
+    expect(screen.getAllByRole('heading', { name: 'Hermes Agent' })).toHaveLength(16)
+    expect(screen.getAllByText('32.1T tokens')).toHaveLength(4)
+  })
+
+  it('排名页切换英文后翻译页签、目录、标题和筛选器', async () => {
+    await i18n.changeLanguage('en-US')
+    renderPage(<RankingsPage />, '/rankings')
+
+    expect(screen.getByRole('navigation', { name: 'Model types' })).toBeInTheDocument()
+    expect(screen.getByRole('complementary', { name: 'Rankings navigation' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Top 10 Model Rankings' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Large Model Leaderboard' })).toBeInTheDocument()
+    expect(screen.getByLabelText('Chart legend')).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: /This Week/ }).find((button) => button.getAttribute('aria-expanded') === 'true')).toBeInTheDocument()
+  })
+
+  it('文档页切换英文后翻译产品导航、目录和正文固定文案', async () => {
+    await i18n.changeLanguage('en-US')
+    renderPage(<DocsPage />, '/docs')
+
+    expect(screen.getByRole('navigation', { name: 'Documentation categories' })).toBeInTheDocument()
+    expect(screen.getByRole('complementary', { name: 'Documentation navigation' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Quickstart' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Using third-party SDKs' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Building with an AI assistant' })).toBeInTheDocument()
+    expect(screen.getByRole('complementary', { name: 'On this page navigation' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Copy page' })).toBeInTheDocument()
   })
 
   it('首页促销模型链接不使用内部模型 code', async () => {

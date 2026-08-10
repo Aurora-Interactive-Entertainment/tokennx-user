@@ -3,12 +3,15 @@ import type { TFunction } from 'i18next'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
 import Toast from '@douyinfe/semi-ui/lib/es/toast'
 import Skeleton from '@douyinfe/semi-ui/lib/es/skeleton'
+import { IconChevronDown, IconCopyStroked, IconFile } from '@douyinfe/semi-icons'
 import { LoginPanel, LoginRequiredAction, ManuscriptSupportWidget, PublicLayout, ModelLogo, normalizeLoginReturnPath } from '@/components/common'
 import modelCardArt from '@/assets/figma-home/model-card-art.png'
 import promoModelLogo from '@/assets/figma-home/promo-model-logo.svg'
 import promoRewardAvatars from '@/assets/figma-home/promo-reward-avatars.png'
 import promoBannerArt from '@/assets/figma-home/promo-banner.png'
 import promoArticleArt from '@/assets/figma-home/promo-article.png'
+import hermesAgentImage from '@/assets/figma-apps/hermes-agent.png'
+import mimoXiaomiImage from '@/assets/figma-ranking/mimo-xiaomi.png'
 import { ModelPriceSummary } from '@/components/money'
 import { getPublicHomepage, getPublicHomepageAssetURL, getPublicHomepageStats, type HomepageDiscountKind, type HomepageEntry, type HomepagePromotionModel, type HomepageTranslation, type PublicHomepage } from '@/api/homepage'
 import { filterModels, findModel, modelAlias, modelRouteKey, MODEL_CATALOG, MODALITY_LABELS, type ModelModality, type ModelPrice, type ModelRecord } from '@/data/models'
@@ -983,31 +986,294 @@ export function ModelDetailPage() {
   )
 }
 
+const RANKING_SERIES_COLORS = ['#f476b7', '#c6a4ff', '#3981ec', '#ddd784', '#ebb849', '#f47154', '#b86bbd', '#d64f25', '#678032', '#e7834f'] as const
+const RANKING_USAGE_POINTS = Array.from({ length: 46 }, (_, index) => {
+  const base = index < 18 ? 8 + Math.sin(index / 3) * 3 : 8 + (index - 17) * 3.1
+  const surge = index > 31 ? (index - 31) * 2.6 : 0
+  const peak = index > 41 ? (index % 2 === 0 ? 24 : 9) : 0
+  const total = Math.max(6, base + surge + peak)
+  return RANKING_SERIES_COLORS.map((_, seriesIndex) => Math.max(1.5, total * (.11 + ((seriesIndex * 7 + index) % 5) * .018)))
+})
+
+const RANKING_MODELS = Array.from({ length: 10 }, (_, index) => ({
+  id: `mimo-ranking-${index + 1}`,
+  name: 'MiMo-V2.5',
+  provider: 'by xiaomi',
+  tokens: index < 8 ? '8.9T tokens' : `${(8.7 - (index - 8) * .3).toFixed(1)}T tokens`,
+  trend: index === 8 ? '↑4%' : '↓9%',
+}))
+
+export function RankingsPage() {
+  const { t } = useTranslation()
+  const [rankingRange, setRankingRange] = useState('week')
+  const [rangeMenuOpen, setRangeMenuOpen] = useState(true)
+  const [showAll, setShowAll] = useState(false)
+  const visibleModels = showAll ? RANKING_MODELS : RANKING_MODELS.slice(0, 8)
+  const rankingModalities = [
+    ['text', 'T'], ['image', '▧'], ['embedding', '⌘'], ['rerank', '⇅'], ['video', '▣'], ['speech', '♙'], ['transcription', '♩'],
+  ] as const
+  const rankingRanges = ['today', 'week', 'month', 'popular'] as const
+
+  return (
+    <PublicLayout mainClassName="rankings-page--manuscript">
+      <nav className="ranking-modality-nav" aria-label={t('public.rankings.modalityLabel')}>
+        <div className="ranking-modality-nav-inner">
+          {rankingModalities.map(([key, icon], index) => <button className={index === 0 ? 'is-active' : ''} type="button" key={key}><span aria-hidden="true">{icon}</span>{t(`public.rankings.modalities.${key}`)}</button>)}
+        </div>
+      </nav>
+
+      <div className="ranking-shell">
+        <aside className="ranking-sidebar" aria-label={t('public.rankings.pageNavLabel')}>
+          <a className="is-active" href="#top-models"><span aria-hidden="true">▥</span>{t('public.rankings.topModelsNav')}</a>
+          <a href="#model-ranking"><span aria-hidden="true">♧</span>{t('public.rankings.leaderboardNav')}</a>
+        </aside>
+
+        <main className="ranking-content">
+          <section id="top-models" className="ranking-top-section">
+            <header><h1>{t('public.rankings.topTitle')}</h1><p>{t('public.rankings.topDescription')}</p></header>
+            <div className="ranking-chart-layout">
+              <div className="ranking-chart" role="img" aria-label={t('public.rankings.chartLabel')}>
+                <div className="ranking-chart-y-axis" aria-hidden="true"><span>80T</span><span>60T</span><span>40T</span><span>20T</span></div>
+                <div className="ranking-chart-plot" aria-hidden="true">
+                  <i className="ranking-grid-line" /><i className="ranking-grid-line" /><i className="ranking-grid-line" /><i className="ranking-grid-line" />
+                  <div className="ranking-chart-bars">{RANKING_USAGE_POINTS.map((segments, pointIndex) => <span className="ranking-chart-bar" key={pointIndex}>{segments.map((height, seriesIndex) => <i key={seriesIndex} style={{ height: `${height}px`, backgroundColor: RANKING_SERIES_COLORS[seriesIndex] }} />)}</span>)}</div>
+                </div>
+                <div className="ranking-chart-x-axis" aria-hidden="true">{Array.from({ length: 8 }, (_, index) => <span key={index}>{t(`public.rankings.dates.${index}`)}</span>)}</div>
+              </div>
+
+              <aside className="ranking-legend" aria-label={t('public.rankings.legendLabel')}>
+                <time dateTime="2026-07-13">{t('public.rankings.legendDate')}</time>
+                <div className="ranking-legend-list">{RANKING_SERIES_COLORS.map((color, index) => <span className={index === 1 ? 'is-active' : ''} key={color}><i style={{ backgroundColor: color }} /><strong>{t('public.rankings.other')}</strong><em>19T</em></span>)}</div>
+                <div className="ranking-legend-total"><strong>{t('public.rankings.all')}</strong><em>19T</em></div>
+              </aside>
+            </div>
+          </section>
+
+          <section id="model-ranking" className="ranking-list-section">
+            <div className="ranking-list-head"><div><h2>{t('public.rankings.leaderboardTitle')}</h2><p>{t('public.rankings.leaderboardDescription')}</p></div>
+              <div className="ranking-filters">
+                <button type="button">{t('public.rankings.comparisonRange')} <span aria-hidden="true">⌄</span></button>
+                <button type="button" aria-haspopup="menu" aria-expanded={rangeMenuOpen} onClick={() => setRangeMenuOpen((open) => !open)}>{t(`public.rankings.ranges.${rankingRange}`)}<span aria-hidden="true">⌄</span></button>
+                {rangeMenuOpen ? <div className="ranking-range-menu" role="menu">{rankingRanges.map((value) => <button className={rankingRange === value ? 'is-active' : ''} type="button" role="menuitemradio" aria-checked={rankingRange === value} key={value} onClick={() => { setRankingRange(value); setRangeMenuOpen(false) }}><span aria-hidden="true">{rankingRange === value ? '✓' : ''}</span>{t(`public.rankings.ranges.${value}`)}</button>)}</div> : null}
+              </div>
+            </div>
+
+            <div className="ranking-model-list" aria-live="polite">{visibleModels.map((model, index) => <article className="ranking-model-row" key={model.id}>
+              <span className="ranking-model-number">{index + 1}.</span>
+              <span className="ranking-model-logo"><img src={mimoXiaomiImage} alt="" /></span>
+              <div className="ranking-model-name"><strong>{model.name}</strong><span>{model.provider}</span></div>
+              <div className="ranking-model-metric"><strong>{model.tokens}</strong><span className={model.trend.startsWith('↑') ? 'is-up' : ''}>{model.trend}</span></div>
+            </article>)}</div>
+            <button className="ranking-show-more" type="button" aria-expanded={showAll} onClick={() => setShowAll((shown) => !shown)}>{t(showAll ? 'public.rankings.collapse' : 'public.rankings.showMore')} <span aria-hidden="true">{showAll ? '⌃' : '⌄'}</span></button>
+          </section>
+        </main>
+      </div>
+    </PublicLayout>
+  )
+}
+
+const APPS_POPULAR_ITEMS = [
+  { id: 'hermes-agent-1' },
+  { id: 'hermes-agent-2' },
+  { id: 'hermes-agent-3' },
+  { id: 'hermes-agent-4' },
+] as const
+
+const APPS_USAGE_POINTS = Array.from({ length: 48 }, (_, index) => {
+  const early = index < 18 ? 28 + Math.sin(index / 3) * 10 : 0
+  const ramp = index >= 18 && index < 29 ? (index - 17) * 10 : 0
+  const late = index >= 29 ? 76 + Math.sin(index / 2.4) * 22 + (index > 40 ? 34 : 0) : 0
+  const total = Math.max(18, early + ramp + late)
+  return [total * .18, total * .16, total * .27, total * .31, total * .08]
+})
+
+const APPS_RANKING_ITEMS = Array.from({ length: 12 }, (_, index) => ({
+  id: `hermes-ranking-${index + 1}`,
+  tokenBillions: index < 3 ? 9700 : Math.max(41, 92 - index * 4) * 100,
+}))
+
+export function AppsPage() {
+  const { t } = useTranslation()
+  const [timeRange, setTimeRange] = useState('today')
+  const activeRangeLabel = t(`public.apps.ranges.${timeRange}`)
+
+  return (
+    <PublicLayout mainClassName="apps-page--manuscript">
+      <div className="apps-shell">
+        <header className="apps-page-head">
+          <h1>{t('public.apps.title')}</h1>
+          <p>{t('public.apps.description')}</p>
+        </header>
+
+        <section className="apps-popular-grid" aria-label={t('public.apps.popularLabel')}>
+          {APPS_POPULAR_ITEMS.map((item) => <article className="apps-popular-card" key={item.id}>
+            <div className="apps-popular-title"><h2>{t('public.apps.agentName')}</h2><span className="apps-agent-logo"><img src={hermesAgentImage} alt="" /></span></div>
+            <p>{t('public.apps.agentSummary')}</p>
+            <strong>{t('public.apps.popularTokens')}</strong>
+          </article>)}
+        </section>
+
+        <section className="apps-chart-panel" aria-labelledby="appsChartTitle">
+          <div className="apps-chart-heading"><h2 id="appsChartTitle">{t('public.apps.chartTitle')}</h2><span>{t('public.apps.pastThirtyDays')}</span></div>
+          <div className="apps-chart" role="img" aria-label={t('public.apps.chartLabel')}>
+            <div className="apps-chart-y-axis" aria-hidden="true"><span>1.6T</span><span>1.2T</span><span>800B</span><span>400B</span></div>
+            <div className="apps-chart-plot">
+              <span className="apps-chart-grid-line" /><span className="apps-chart-grid-line" /><span className="apps-chart-grid-line" /><span className="apps-chart-grid-line" />
+              <div className="apps-chart-bars" aria-hidden="true">{APPS_USAGE_POINTS.map((segments, pointIndex) => <span className="apps-chart-bar" key={pointIndex}>{segments.map((height, segmentIndex) => <i key={segmentIndex} style={{ height: `${height}px` }} />)}</span>)}</div>
+            </div>
+            <div className="apps-chart-x-axis" aria-hidden="true">{Array.from({ length: 8 }, (_, index) => <span key={index}>{t(`public.apps.dates.${index}`)}</span>)}</div>
+          </div>
+        </section>
+
+        <div className="apps-ranking-filter">
+          <label className="public-sr-only" htmlFor="apps-time-range">{t('public.apps.rangeLabel')}</label>
+          <select id="apps-time-range" value={timeRange} onChange={(event) => setTimeRange(event.target.value)}>
+            <option value="today">{t('public.apps.ranges.today')}</option>
+            <option value="week">{t('public.apps.ranges.week')}</option>
+            <option value="month">{t('public.apps.ranges.month')}</option>
+          </select>
+        </div>
+
+        <section className="apps-ranking-list" aria-label={t('public.apps.rankingLabel', { range: activeRangeLabel })}>
+          {APPS_RANKING_ITEMS.map((item, index) => <article className="apps-ranking-row" key={item.id}>
+            <span className="apps-ranking-number">{index + 1}.</span>
+            <i className="apps-ranking-dot" aria-hidden="true" />
+            <span className="apps-agent-logo apps-agent-logo--small"><img src={hermesAgentImage} alt="" /></span>
+            <div><h2>{t('public.apps.agentName')}</h2><p>{t('public.apps.agentDescription')}</p></div>
+            <strong>{t('public.apps.rankingTokens', { count: item.tokenBillions })}</strong>
+          </article>)}
+        </section>
+      </div>
+    </PublicLayout>
+  )
+}
+
 export function DocsPage() {
   const { t } = useTranslation()
   const code = quickstartCodeSample({ protocol: 'openai', language: 'curl', modelAlias: 'deepseek-public' })
-  const [copied, setCopied] = useState(false)
+  const [copied, setCopied] = useState<'code' | 'page' | 'mcp' | null>(null)
+  const [copyMenuOpen, setCopyMenuOpen] = useState(false)
+  const [activeSection, setActiveSection] = useState('overview')
 
-  async function copyCode(): Promise<void> {
+  const sidebarItems = [
+    ['overview', 'overview'],
+    ['quickstart', 'quickstart'],
+    ['batch', 'batch'],
+    ['original', 'original'],
+    ['models', 'models'],
+    ['mcp', 'mcp'],
+    ['servers', 'servers'],
+    ['providers', 'providers'],
+    ['parameters', 'parameters'],
+    ['privacy', 'privacy'],
+    ['troubleshooting', 'troubleshooting'],
+    ['principles', 'principles'],
+    ['authentication', 'authentication'],
+    ['api-keys', 'apiKeys'],
+    ['byok', 'byok'],
+    ['rate-limits', 'rateLimits'],
+    ['uptime', 'uptime'],
+    ['limits', 'limits'],
+  ] as const
+
+  const markdownPage = `# ${t('public.docs.manuscript.quickstart')}\n\n${t('public.docs.manuscript.quickstartSubtitle')}\n\n${code}`
+
+  async function copyText(value: string, type: 'code' | 'page' | 'mcp'): Promise<void> {
     try {
-      await navigator.clipboard.writeText(code)
-      setCopied(true)
-      Toast.success(t('public.docs.copySuccess'))
-      window.setTimeout(() => setCopied(false), 1500)
+      await navigator.clipboard.writeText(value)
+      setCopied(type)
+      Toast.success(t(type === 'code' ? 'public.docs.manuscript.copyCodeSuccess' : type === 'page' ? 'public.docs.manuscript.copyPageSuccess' : 'public.docs.manuscript.copyMcpSuccess'))
+      window.setTimeout(() => setCopied(null), 1500)
     } catch {
-      Toast.error(t('public.docs.copyUnsupported'))
+      Toast.error(t('public.docs.manuscript.copyUnsupported'))
     }
   }
 
   return (
-    <PublicLayout mainClassName="public-page" footerLabel="public.docs.footerLabel">
-      <header className="public-page-head"><h1>{t('public.docs.title')}</h1><p>{t('public.docs.description')}</p><div className="public-actions"><LoginRequiredAction className="btn btn-primary" returnPath="/console/quickstart">{t('public.docs.openQuickstart')}</LoginRequiredAction><Link className="btn btn-secondary" to="/models">{t('public.docs.chooseModel')}</Link></div></header>
-      <section className="public-section"><div className="callout"><strong>{t('public.docs.gatewayTitle')}</strong><span>{t('public.docs.gatewayText', { baseUrl: QUICKSTART_API_BASE_URL })}</span></div></section>
-      <section className="public-section"><h2>{t('public.docs.flowTitle')}</h2><ol><li>{t('public.docs.flow.catalog')}</li><li>{t('public.docs.flow.key')}</li><li>{t('public.docs.flow.request')}</li><li>{t('public.docs.flow.records')}</li></ol></section>
-      <section className="public-section"><h2>{t('public.docs.stylesTitle')}</h2><div className="public-grid"><div className="public-grid-item"><h3>{t('public.docs.openaiStyle')}</h3><p>{t('public.docs.openaiDescription')}</p></div><div className="public-grid-item"><h3>{t('public.docs.claudeStyle')}</h3><p>{t('public.docs.claudeDescription')}</p></div><div className="public-grid-item"><h3>{t('public.docs.tracingTitle')}</h3><p>{t('public.docs.tracingDescription')}</p></div></div></section>
-      <section className="public-section"><h2>{t('public.docs.endpointsTitle')}</h2><div className="public-grid"><div className="public-grid-item"><h3>{t('public.docs.openaiStyle')}</h3><p><code>POST /v1/chat/completions</code></p><p><code>Authorization: Bearer YOUR_TOKEN_NX_API_KEY</code></p></div><div className="public-grid-item"><h3>{t('public.docs.claudeStyle')}</h3><p><code>POST /v1/messages</code></p><p><code>x-api-key: YOUR_TOKEN_NX_API_KEY</code></p></div><div className="public-grid-item"><h3>{t('public.docs.resultTitle')}</h3><p>{t('public.docs.resultDescription')}</p></div></div></section>
-      <section className="public-section" aria-labelledby="curlExampleTitle"><div className="public-section-row"><div><h2 id="curlExampleTitle">{t('public.docs.curlTitle')}</h2><p>{t('public.docs.curlDescription')}</p></div><button className="btn btn-secondary btn-sm" type="button" onClick={copyCode}>{t('public.docs.copyCurl')}</button></div><pre className="public-code-block"><code>{code}</code></pre><p className="public-copy-status" aria-live="polite">{copied ? t('public.docs.copied') : ''}</p></section>
-      <section className="public-section"><h2>{t('public.docs.errorsTitle')}</h2><p>{t('public.docs.errorsDescription')}</p><ul><li>{t('public.docs.errors.unauthorized')}</li><li>{t('public.docs.errors.rateLimited')}</li><li>{t('public.docs.errors.balance')}</li><li>{t('public.docs.errors.unavailable')}</li><li>{t('public.docs.errors.other')}</li></ul></section>
+    <PublicLayout mainClassName="docs-page--manuscript">
+      <nav className="docs-product-nav" aria-label={t('public.docs.manuscript.productNavLabel')}>
+        <div className="docs-product-nav-inner">
+          <Link className="is-active" to="/docs"><span aria-hidden="true">▣</span>{t('public.docs.manuscript.productNav.docs')}</Link>
+          <button type="button"><span aria-hidden="true">⌘</span>{t('public.docs.manuscript.productNav.apiReference')}</button>
+          <button type="button"><span aria-hidden="true">&lt;/&gt;</span>{t('public.docs.manuscript.productNav.clientSdk')}</button>
+          <button type="button"><span aria-hidden="true">◇</span>{t('public.docs.manuscript.productNav.agentSdk')}</button>
+          <button type="button"><span aria-hidden="true">✣</span>{t('public.docs.manuscript.productNav.recipes')}</button>
+        </div>
+      </nav>
+
+      <div className="docs-shell">
+        <aside className="docs-sidebar" aria-label={t('public.docs.manuscript.sidebarLabel')}>
+          <nav>
+            {sidebarItems.map(([id, labelKey]) => <a className={activeSection === id ? 'is-active' : ''} href={`#${id}`} key={id} onClick={() => setActiveSection(id)}><span aria-hidden="true">◇</span>{t(`public.docs.manuscript.sidebar.${labelKey}`)}</a>)}
+          </nav>
+        </aside>
+
+        <article className="docs-article">
+          <div className="docs-article-toolbar">
+            <div className="docs-copy-control">
+              <button type="button" aria-expanded={copyMenuOpen} aria-haspopup="menu" onClick={() => setCopyMenuOpen((open) => !open)}><IconCopyStroked aria-hidden="true" /><span>{t('public.docs.manuscript.copyPage')}</span><IconChevronDown aria-hidden="true" /></button>
+              {copyMenuOpen ? <div className="docs-copy-menu" role="menu">
+                <button type="button" role="menuitem" onClick={() => void copyText(markdownPage, 'page')}><span><IconCopyStroked aria-hidden="true" /></span><strong>{t('public.docs.manuscript.copyPage')}</strong><small>{t('public.docs.manuscript.copyPageDescription')}</small></button>
+                <a role="menuitem" href="data:text/plain;charset=utf-8,%23%20Token%20NX%20Quickstart" target="_blank" rel="noreferrer"><span><IconFile aria-hidden="true" /></span><strong>{t('public.docs.manuscript.viewMarkdown')}</strong><small>{t('public.docs.manuscript.viewMarkdownDescription')}</small></a>
+                <button type="button" role="menuitem" onClick={() => void copyText(`${QUICKSTART_API_BASE_URL}/mcp`, 'mcp')}><span>&lt;/&gt;</span><strong>{t('public.docs.manuscript.copyMcp')}</strong><small>{t('public.docs.manuscript.copyMcpDescription')}</small></button>
+                <a role="menuitem" href="https://cursor.com" target="_blank" rel="noreferrer"><span>C</span><strong>{t('public.docs.manuscript.connectCursor')}</strong><small>{t('public.docs.manuscript.connectCursorDescription')}</small></a>
+                <a role="menuitem" href="https://code.visualstudio.com" target="_blank" rel="noreferrer"><span>V</span><strong>{t('public.docs.manuscript.connectVsCode')}</strong><small>{t('public.docs.manuscript.connectVsCodeDescription')}</small></a>
+              </div> : null}
+            </div>
+          </div>
+
+          <header id="overview" className="docs-article-head">
+            <span>{t('public.docs.manuscript.overview')}</span>
+            <h1>{t('public.docs.manuscript.quickstart')}</h1>
+            <p>{t('public.docs.manuscript.quickstartSubtitle')}</p>
+          </header>
+
+          <section id="quickstart" className="docs-section">
+            <p>{t('public.docs.manuscript.introduction')}</p>
+            <p>{t('public.docs.manuscript.integrationOptions')}</p>
+            <div className="docs-method-table" role="table" aria-label={t('public.docs.manuscript.methodComparison')}>
+              <div role="row"><strong role="columnheader">{t('public.docs.manuscript.method')}</strong><strong role="columnheader">{t('public.docs.manuscript.bestFor')}</strong></div>
+              <div role="row"><a href="#openrouter-api" role="cell">API</a><span role="cell">{t('public.docs.manuscript.apiBestFor')}</span></div>
+              <div role="row"><a href="#client-sdk" role="cell">{t('public.docs.manuscript.productNav.clientSdk')}</a><span role="cell">{t('public.docs.manuscript.clientSdkBestFor')}</span></div>
+              <div role="row"><a href="#proxy-sdk" role="cell">{t('public.docs.manuscript.productNav.agentSdk')}</a><span role="cell">{t('public.docs.manuscript.agentSdkBestFor')}</span></div>
+            </div>
+          </section>
+
+          <section id="openrouter-api" className="docs-section docs-api-section">
+            <div className="docs-code-block">
+              <div className="docs-code-head"><span>cURL</span><button type="button" aria-label={t('public.docs.manuscript.copyCurl')} title={t('public.docs.manuscript.copyCurl')} onClick={() => void copyText(code, 'code')}><IconCopyStroked aria-hidden="true" /></button></div>
+              <pre><code>{code}</code></pre>
+            </div>
+            <div className="docs-note"><strong>{t('public.docs.manuscript.tip')}</strong><span>{t('public.docs.manuscript.routingTip')}</span></div>
+            <p>{t('public.docs.manuscript.routingDescription')}</p>
+          </section>
+
+          <section id="client-sdk" className="docs-section">
+            <h2>{t('public.docs.manuscript.thirdPartyTitle')}</h2>
+            <p>{t('public.docs.manuscript.thirdPartyDescription')}</p>
+          </section>
+
+          <section id="proxy-sdk" className="docs-section">
+            <h2>{t('public.docs.manuscript.assistantTitle')}</h2>
+            <p>{t('public.docs.manuscript.assistantDescription')}</p>
+            <div className="docs-mcp-url"><code>{QUICKSTART_API_BASE_URL}/mcp</code><button type="button" aria-label={t('public.docs.manuscript.copyMcp')} title={t('public.docs.manuscript.copyMcp')} onClick={() => void copyText(`${QUICKSTART_API_BASE_URL}/mcp`, 'mcp')}><IconCopyStroked aria-hidden="true" /></button></div>
+            <p>{t('public.docs.manuscript.assistantGuidePrefix')} <a href="#mcp">{t('public.docs.manuscript.mcpGuide')}</a>{t('public.docs.manuscript.assistantGuideSuffix')}</p>
+          </section>
+
+          <Link id="batch" className="docs-next-link" to="/docs#batch">{t('public.docs.manuscript.nextBatch')} <span aria-hidden="true">-&gt;</span></Link>
+          <span className="docs-copy-status" aria-live="polite">{copied ? t(copied === 'code' ? 'public.docs.manuscript.copyCodeSuccess' : copied === 'page' ? 'public.docs.manuscript.copyPageSuccess' : 'public.docs.manuscript.copyMcpSuccess') : ''}</span>
+        </article>
+
+        <aside className="docs-on-page" aria-label={t('public.docs.manuscript.onPageLabel')}>
+          <strong>{t('public.docs.manuscript.onPageTitle')}</strong>
+          <a className="is-active" href="#openrouter-api">{t('public.docs.manuscript.onPage.api')}</a>
+          <a href="#client-sdk">{t('public.docs.manuscript.onPage.clientSdk')}</a>
+          <a href="#proxy-sdk">{t('public.docs.manuscript.onPage.agentSdk')}</a>
+          <a href="#openai-sdk">{t('public.docs.manuscript.onPage.openaiSdk')}</a>
+          <a href="#third-party-sdk">{t('public.docs.manuscript.onPage.thirdPartySdk')}</a>
+          <a href="#ai-assistant">{t('public.docs.manuscript.onPage.aiAssistant')}</a>
+        </aside>
+      </div>
     </PublicLayout>
   )
 }
