@@ -14,6 +14,7 @@ import {
   IconBellStroked,
   IconBriefcaseStroked,
   IconChevronDown,
+  IconChevronRight,
   IconClose,
   IconCommentStroked,
   IconCopyStroked,
@@ -63,6 +64,8 @@ import headerLogo from '@/assets/figma-header/token-nx-header-logo.png'
 import headerTrialPill from '@/assets/figma-header/trial-pill.png'
 import headerTrialFreeTag from '@/assets/figma-header/trial-free-tag.svg'
 import headerNotificationIcon from '@/assets/figma-header/notification.svg'
+import publicMobileNavStyles from '@/public-mobile-nav.css?inline'
+import '@/public-footer.css'
 import accountBadge from '@/assets/figma-account-badge.png'
 import manuscriptFooterLogo from '@/assets/figma-home/footer-logo.png'
 import manuscriptCustomerQr from '@/assets/figma-home/footer-qr-customer.png'
@@ -864,6 +867,9 @@ export function LoginDialog({ open, onClose, onSuccess, dialogId = 'login-popove
     <>
       <button className={`login-drawer-backdrop${open ? '' : ' is-closing'}`} type="button" aria-label={t('login.close')} onClick={onClose} />
       <div className={`login-popover${open ? ' is-open' : ' is-closing'}`} id={dialogId} role="dialog" aria-modal="true" aria-label={t('login.dialogLabel')}>
+        <button className="login-popover-close" type="button" aria-label={t('login.close')} title={t('login.close')} onClick={onClose}>
+          <IconClose aria-hidden="true" />
+        </button>
         <LoginPanel onSuccess={handleSuccess} onAuthFailure={onClose} />
       </div>
     </>,
@@ -877,7 +883,10 @@ export function LoginPopover({ onSuccess }: { onSuccess: () => void }) {
 
   return (
     <div className="login-trigger-wrap">
-      <button className="btn btn-primary" type="button" aria-haspopup="dialog" aria-controls="login-popover" aria-expanded={open} onClick={() => setOpen((value) => !value)}>{t('login.trigger')}</button>
+      <button className="btn btn-primary" type="button" aria-label={t('login.trigger')} aria-haspopup="dialog" aria-controls="login-popover" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
+        <span className="header-login-label header-login-label--desktop">{t('login.trigger')}</span>
+        <span className="header-login-label header-login-label--mobile">{t('login.loginRegister')}</span>
+      </button>
       <LoginDialog open={open} onClose={() => setOpen(false)} onSuccess={onSuccess} />
     </div>
   )
@@ -1001,10 +1010,11 @@ export function PublicHeader({ enterpriseAccess, unreadNotificationCount = 0 }: 
     const isActive = !link.disabled && currentPath.startsWith(link.path)
     const showEmphasis = isActive
     const className = `public-nav-link${isActive ? ' active' : ''}${link.disabled ? ' public-nav-link--disabled' : ''}${showEmphasis ? ' public-nav-link--emphasized' : ''}`
+    const linkContent = <>{t(link.labelKey)}{mobile ? <IconChevronRight className="public-mobile-nav-chevron" aria-hidden="true" /> : null}</>
     if (link.disabled) {
-      return <span key={`${link.path}-${link.labelKey}`} className={className} aria-disabled="true">{t(link.labelKey)}</span>
+      return <span key={`${link.path}-${link.labelKey}`} className={className} aria-disabled="true">{linkContent}</span>
     }
-    const linkNode = <Link key={`${link.path}-${link.labelKey}`} className={className} to={link.path} onClick={mobile ? () => setMobileOpen(false) : undefined} onFocus={!mobile && link.labelKey === 'nav.billing' ? openBillingMenu : undefined} aria-haspopup={!mobile && link.labelKey === 'nav.billing' ? 'dialog' : undefined}>{t(link.labelKey)}</Link>
+    const linkNode = <Link key={`${link.path}-${link.labelKey}`} className={className} to={link.path} onClick={mobile ? () => setMobileOpen(false) : undefined} onFocus={!mobile && link.labelKey === 'nav.billing' ? openBillingMenu : undefined} aria-haspopup={!mobile && link.labelKey === 'nav.billing' ? 'dialog' : undefined}>{linkContent}</Link>
     if (mobile || link.labelKey !== 'nav.billing') return linkNode
     return <div className="public-billing-menu-shell" key={`${link.path}-${link.labelKey}`} onMouseEnter={openBillingMenu} onMouseLeave={scheduleBillingMenuClose}>
       {linkNode}
@@ -1033,10 +1043,14 @@ export function PublicHeader({ enterpriseAccess, unreadNotificationCount = 0 }: 
 
   return (
     <>
-      <header className="app-header public-header public-header--home" ref={headerRef}>
+      <style>{publicMobileNavStyles}</style>
+      <header className={`app-header public-header public-header--home${mobileOpen ? ' mobile-nav-open' : ''}`} ref={headerRef}>
       <div className="app-header-inner app-header-full public-header-inner">
         <button className="mobile-menu-button" type="button" aria-controls="public-mobile-nav" aria-expanded={mobileOpen} aria-label={mobileOpen ? t('nav.close') : t('nav.open')} onClick={() => setMobileOpen((open) => !open)}>
-          {mobileOpen ? <IconClose className="icon-svg" /> : <IconMenu className="icon-svg" />}
+          <span className="mobile-menu-icon" aria-hidden="true">
+            <IconMenu className="icon-svg mobile-menu-icon-menu" />
+            <IconClose className="icon-svg mobile-menu-icon-close" />
+          </span>
         </button>
         <Link className="header-logo brand-link" to="/" aria-label={`${t('common.home')} Token NX`}><img className="header-brand-image" src={headerLogo} alt="" aria-hidden="true" /></Link>
         <span className="header-trial-badge">
@@ -1059,16 +1073,21 @@ export function PublicHeader({ enterpriseAccess, unreadNotificationCount = 0 }: 
             <LanguageToggleButton />
           </div>
           {auth.status === 'authenticated' ? (
-            <UserMenu
-              store={store}
-              userId={auth.user?.id || ''}
-              userName={auth.user?.display_name || store.nickname}
-              phone={auth.user?.phone_masked || store.phone}
-              enterpriseAccess={enterpriseAccess}
-              onNavigate={go}
-              onOpenSettings={() => setAccountSettingsOpen(true)}
-              onLogout={() => { void dispatch(logoutAuth()).finally(() => go('/')) }}
-            />
+            <>
+              <UserMenu
+                store={store}
+                userId={auth.user?.id || ''}
+                userName={auth.user?.display_name || store.nickname}
+                phone={auth.user?.phone_masked || store.phone}
+                enterpriseAccess={enterpriseAccess}
+                onNavigate={go}
+                onOpenSettings={() => setAccountSettingsOpen(true)}
+                onLogout={() => { void dispatch(logoutAuth()).finally(() => go('/')) }}
+              />
+              <button className="public-mobile-logout" type="button" onClick={() => { void dispatch(logoutAuth()).finally(() => go('/')) }}>
+                <span>{t('nav.logout')}</span>
+              </button>
+            </>
           ) : (
             <LoginPopover onSuccess={() => setMobileOpen(false)} />
           )}
@@ -1715,28 +1734,13 @@ export function ConsoleLayout({ children }: { children: ReactNode }) {
   )
 }
 
-type FooterLink = { label: string; path: string }
-
-const DEFAULT_FOOTER_LINKS: FooterLink[] = [
-  { label: 'footer.status', path: '/status' },
-  { label: 'footer.terms', path: '/terms' },
-  { label: 'footer.privacy', path: '/privacy' },
-]
-
 const PUBLIC_COMPANY_INFO = {
   name: '安顺佳云灵犀智能科技有限公司',
   phone: '1892000000',
   email: 'tokennx@120.com',
-  address: '贵州省安顺市平坝区',
   filing: '京ICP备20011824号-24',
   securityFiling: '北京公安备 11010802041394号',
 } as const
-
-const PUBLIC_FOOTER_GROUPS = [
-  { title: '产品', links: [{ label: '模型目录', path: '/models' }, { label: '模型价格', path: '/pricing' }, { label: '接入文档', path: '/docs' }] },
-  { title: '服务', links: [{ label: '服务状态', path: '/status' }, { label: '关于我们', path: '/about' }] },
-  { title: '法律', links: [{ label: '服务条款', path: '/terms' }, { label: '隐私政策', path: '/privacy' }] },
-] as const
 
 const MANUSCRIPT_FOOTER_GROUPS = [
   { titleKey: 'footer.product', mobileTitleKey: 'footer.product', links: [{ labelKey: 'footer.chat', path: '/docs' }, { labelKey: 'footer.video', path: '/docs' }, { labelKey: 'footer.ranking', path: '/models' }, { labelKey: 'footer.modelPrice', path: '/pricing' }] },
@@ -1744,9 +1748,6 @@ const MANUSCRIPT_FOOTER_GROUPS = [
   { titleKey: 'footer.pricing', mobileTitleKey: 'nav.pricing', links: [{ labelKey: 'footer.apiPrice', path: '/pricing' }, { labelKey: 'footer.subscriptionPrice', path: '/pricing' }, { labelKey: 'footer.specialOffers', path: '/pricing' }] },
   { titleKey: 'footer.about', mobileTitleKey: 'footer.about', links: [{ labelKey: 'footer.companyIntro', path: '/about' }, { labelKey: 'footer.officialQr', path: '/docs' }] },
 ] as const
-
-const PUBLIC_WECHAT_QR_TARGET = 'https://example.com/token-nx-official-account'
-const PUBLIC_WECHAT_QR_IMAGE = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=8&data=${encodeURIComponent(PUBLIC_WECHAT_QR_TARGET)}`
 
 const MANUSCRIPT_SUPPORT_TRANSITION_MS = 360
 const MANUSCRIPT_SUPPORT_MESSAGE_MAX_LENGTH = 1000
@@ -1758,32 +1759,15 @@ export function requestSupportWidget(tab: SupportTab = 'contact'): void {
   window.dispatchEvent(new CustomEvent(SUPPORT_OPEN_EVENT, { detail: { tab } }))
 }
 
-const FOOTER_LABEL_KEYS: Record<string, string> = {
-  '模型目录': 'footer.models',
-  '模型价格': 'footer.pricing',
-  '接入文档': 'footer.docs',
-  '服务状态': 'footer.status',
-  '关于我们': 'footer.about',
-  '服务条款': 'footer.terms',
-  '隐私政策': 'footer.privacy',
-  文档: 'footer.docs',
-}
-
-export function PublicFooter({ label = 'Token NX', links = DEFAULT_FOOTER_LINKS, manuscript = false }: { label?: string; links?: FooterLink[]; manuscript?: boolean }) {
+export function PublicFooter() {
   const { t } = useTranslation()
   const [openManuscriptGroup, setOpenManuscriptGroup] = useState<string | null>(null)
 
-  function localizeFooterLabel(value: string): string {
-    const key = FOOTER_LABEL_KEYS[value]
-    if (key) return t(key)
-    return value.startsWith('footer.') || value.startsWith('public.') ? t(value) : value
-  }
-
   return (
-    <footer className={`public-footer${manuscript ? ' public-footer--manuscript' : ''}`}>
-      <div className="public-footer-inner">
-        {manuscript ? <div className="public-footer-brand manuscript-footer-brand"><span className="manuscript-footer-logo"><img src={manuscriptFooterLogo} alt="Token NX" decoding="async" /></span><span>© {new Date().getFullYear()} Token NX,Inc</span><small>{PUBLIC_COMPANY_INFO.name}</small></div> : <div className="public-footer-brand"><span className="footer-brand-lockup"><BrandLogo size="compact" /></span><span>{localizeFooterLabel(label)}</span><small>{PUBLIC_COMPANY_INFO.name}</small></div>}
-        {manuscript ? <nav className="public-footer-nav manuscript-footer-nav" aria-label={t('public.footer.navigation')}>{MANUSCRIPT_FOOTER_GROUPS.map((group) => {
+    <footer className="public-footer public-footer--manuscript">
+        <div className="public-footer-inner">
+          <div className="public-footer-brand manuscript-footer-brand"><span className="manuscript-footer-logo"><img src={manuscriptFooterLogo} alt="Token NX" decoding="async" /></span><span>© {new Date().getFullYear()} Token NX,Inc</span><small>{PUBLIC_COMPANY_INFO.name}</small></div>
+          <nav className="public-footer-nav manuscript-footer-nav" aria-label={t('public.footer.navigation')}>{MANUSCRIPT_FOOTER_GROUPS.map((group) => {
           const isOpen = openManuscriptGroup === group.titleKey
           const panelId = `manuscript-footer-panel-${group.titleKey.replace(/[^a-z0-9]+/gi, '-')}`
           return <div className={`public-footer-nav-group${isOpen ? ' is-open' : ''}`} key={group.titleKey}>
@@ -1793,14 +1777,11 @@ export function PublicFooter({ label = 'Token NX', links = DEFAULT_FOOTER_LINKS,
             </button>
             <div className="manuscript-footer-group-links" id={panelId}>{group.links.map((link) => <Link key={`${link.path}-${link.labelKey}`} to={link.path}>{t(link.labelKey)}</Link>)}</div>
           </div>
-        })}</nav> : <nav className="public-footer-nav" aria-label={t('public.footer.navigation')}>
-          {PUBLIC_FOOTER_GROUPS.map((group) => <div className="public-footer-nav-group" key={group.title}><strong>{group.title === '产品' ? t('footer.product') : group.title === '服务' ? t('footer.service') : t('footer.legal')}</strong>{group.links.map((link) => <Link key={`${link.path}-${link.label}`} to={link.path}>{localizeFooterLabel(link.label)}</Link>)}</div>)}
-          {links.length ? <div className="public-footer-nav-group public-footer-nav-group--extra"><strong>{t('footer.related')}</strong>{links.map((link) => <Link key={`${link.path}-${link.label}`} to={link.path}>{localizeFooterLabel(link.label)}</Link>)}</div> : null}
-        </nav>}
-        {manuscript ? <div className="public-footer-contact manuscript-footer-contact"><strong>{t('footer.contact')}</strong><a href={`tel:${PUBLIC_COMPANY_INFO.phone}`}>售前咨询：{PUBLIC_COMPANY_INFO.phone}</a><a href={`mailto:${PUBLIC_COMPANY_INFO.email}`}>商务合作：{PUBLIC_COMPANY_INFO.email}</a><div className="manuscript-footer-qr-row"><div className="public-footer-qr"><img src={manuscriptCustomerQr} alt={t('footer.qrAlt')} loading="lazy" decoding="async" /><span>{t('footer.customerQr')}</span></div><div className="public-footer-qr"><img src={manuscriptOfficialQr} alt={t('footer.officialQr')} loading="lazy" decoding="async" /><span>{t('footer.officialQr')}</span></div></div></div> : <div className="public-footer-contact"><div className="public-footer-qr"><img src={PUBLIC_WECHAT_QR_IMAGE} alt={t('footer.qrAlt')} loading="lazy" decoding="async" /><span>{t('footer.qrTitle').split('\n').map((line) => <span key={line}>{line}<br /></span>)}</span></div><div className="public-footer-contact-copy"><strong>{t('footer.contact')}</strong><a href={`tel:${PUBLIC_COMPANY_INFO.phone}`}>{PUBLIC_COMPANY_INFO.phone}</a><span>{PUBLIC_COMPANY_INFO.address}</span></div></div>}
-      </div>
-      <div className="public-footer-bottom manuscript-footer-filing" aria-label={t('footer.filing')}><span className="manuscript-footer-filing-copy">Copyright @ 2025-{new Date().getFullYear()} {PUBLIC_COMPANY_INFO.name}</span><span className="manuscript-footer-filing-item"><img src={manuscriptFilingIcpIcon} alt="" aria-hidden="true" />{PUBLIC_COMPANY_INFO.filing}</span><span className="manuscript-footer-filing-item"><img src={manuscriptFilingSecurityIcon} alt="" aria-hidden="true" />{PUBLIC_COMPANY_INFO.securityFiling}</span><Link className="manuscript-footer-filing-item" to="/about">{t('footer.businessLicense')}</Link><Link className="manuscript-footer-filing-item" to="/terms">{t('footer.license')}</Link></div>
-      <ManuscriptSupportWidget />
+          })}</nav>
+          <div className="public-footer-contact manuscript-footer-contact"><strong>{t('footer.contact')}</strong><a href={`tel:${PUBLIC_COMPANY_INFO.phone}`}>售前咨询：{PUBLIC_COMPANY_INFO.phone}</a><a href={`mailto:${PUBLIC_COMPANY_INFO.email}`}>商务合作：{PUBLIC_COMPANY_INFO.email}</a><div className="manuscript-footer-qr-row"><div className="public-footer-qr"><img src={manuscriptCustomerQr} alt={t('footer.qrAlt')} loading="lazy" decoding="async" /><span>{t('footer.customerQr')}</span></div><div className="public-footer-qr"><img src={manuscriptOfficialQr} alt={t('footer.officialQr')} loading="lazy" decoding="async" /><span>{t('footer.officialQr')}</span></div></div></div>
+        </div>
+        <div className="public-footer-bottom manuscript-footer-filing" aria-label={t('footer.filing')}><span className="manuscript-footer-filing-copy">Copyright @ 2025-{new Date().getFullYear()} {PUBLIC_COMPANY_INFO.name}</span><span className="manuscript-footer-filing-item"><img src={manuscriptFilingIcpIcon} alt="" aria-hidden="true" />{PUBLIC_COMPANY_INFO.filing}</span><span className="manuscript-footer-filing-item"><img src={manuscriptFilingSecurityIcon} alt="" aria-hidden="true" />{PUBLIC_COMPANY_INFO.securityFiling}</span><Link className="manuscript-footer-filing-item" to="/about">{t('footer.businessLicense')}</Link><Link className="manuscript-footer-filing-item" to="/terms">{t('footer.license')}</Link></div>
+        <ManuscriptSupportWidget />
     </footer>
   )
 }
@@ -1958,10 +1939,10 @@ export function ManuscriptSupportWidget() {
   )
 }
 
-export function PublicLayout({ children, mainClassName = '', footerLabel, footerLinks }: { children: ReactNode; mainClassName?: string; footerLabel?: string; footerLinks?: FooterLink[] }) {
+export function PublicLayout({ children, mainClassName = '' }: { children: ReactNode; mainClassName?: string }) {
   const manuscript = mainClassName.includes('home-page--manuscript') || mainClassName.includes('docs-page--manuscript') || mainClassName.includes('apps-page--manuscript') || mainClassName.includes('rankings-page--manuscript')
   const layoutClassName = manuscript ? ' public-layout--manuscript-home' : ''
-  return <div className={`public-layout${layoutClassName}`}><PublicHeader /><main className={`public-main${mainClassName ? ` ${mainClassName}` : ''}`}>{children}</main><PublicFooter label={footerLabel} links={footerLinks} manuscript={manuscript} /></div>
+  return <div className={`public-layout${layoutClassName}`}><PublicHeader /><main className={`public-main${mainClassName ? ` ${mainClassName}` : ''}`}>{children}</main><PublicFooter /></div>
 }
 
 export function BannerNotice({ children, tone = 'info' }: { children: ReactNode; tone?: 'info' | 'warning' | 'success' }) {

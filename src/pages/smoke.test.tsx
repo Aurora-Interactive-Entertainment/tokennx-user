@@ -130,8 +130,9 @@ describe('页面主链冒烟场景', () => {
     expect(dialog.querySelector('.login-panel-logo')).not.toBeNull()
     expect(dialog.querySelector('.login-drawer-toolbar')).toBeNull()
 
-    expect(dialog.querySelector('.login-drawer-close')).toBeNull()
-    await user.click(document.querySelector<HTMLButtonElement>('.login-drawer-backdrop')!)
+    const closeButton = dialog.querySelector<HTMLButtonElement>('.login-popover-close')
+    expect(closeButton).not.toBeNull()
+    await user.click(closeButton!)
     await waitFor(() => expect(screen.queryByRole('dialog', { name: '登录 Token NX' })).not.toBeInTheDocument())
     expect(document.body.style.overflow).toBe('')
   })

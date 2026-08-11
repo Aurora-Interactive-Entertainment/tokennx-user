@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AppStoreProvider } from '@/data/app-state'
 import { createAppStore } from '@/store'
 import i18n from '@/i18n'
-import { AppsPage, DocsPage, HomePage, ModelDetailPage, ModelsPublicPage, RankingsPage } from './public'
+import { AboutPage, AppsPage, DocsPage, HomePage, LegalPage, ModelDetailPage, ModelsPublicPage, PricingPage, RankingsPage, StatusPage } from './public'
 
 function LocationProbe() {
   const location = useLocation()
@@ -36,6 +36,25 @@ describe('公开模型页面', () => {
   })
 
   afterEach(() => vi.restoreAllMocks())
+
+  it.each([
+    ['模型页', '/models', <ModelsPublicPage />],
+    ['排名页', '/rankings', <RankingsPage />],
+    ['应用页', '/apps', <AppsPage />],
+    ['文档页', '/docs', <DocsPage />],
+    ['价格页', '/pricing', <PricingPage />],
+    ['状态页', '/status', <StatusPage />],
+    ['关于页', '/about', <AboutPage />],
+    ['法律页', '/terms', <LegalPage kind="terms" />],
+  ])('%s 复用首页统一页脚结构', (_name, path, page) => {
+    renderPage(page, path)
+
+    expect(document.querySelectorAll('.public-footer')).toHaveLength(1)
+    expect(document.querySelector('.public-footer')).toHaveClass('public-footer--manuscript')
+    expect(document.querySelectorAll('.manuscript-footer-nav .public-footer-nav-group')).toHaveLength(4)
+    expect(document.querySelector('.public-footer-nav-group--extra')).toBeNull()
+    expect(document.querySelectorAll('.manuscript-footer-qr-row .public-footer-qr')).toHaveLength(2)
+  })
 
   it('模型目录和首页促销模型链接使用模型别名', () => {
     renderPage(<ModelsPublicPage />, '/models')

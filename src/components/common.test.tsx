@@ -7,6 +7,7 @@ import { limitDisplayNameLength } from '@/api/profile'
 import { getEnterpriseContext, type EnterpriseContext } from '@/api/enterprise-console'
 import { AppStoreProvider } from '@/data/app-state'
 import { createAppStore } from '@/store'
+import { synchronizeAuthenticatedUser } from '@/store/auth-slice'
 import { clearAuthTokens, saveAuthTokens } from '@/auth/token-storage'
 import { activeNavKey, ConsoleLayout, consoleNavGroupsFor, DEFAULT_CONSOLE_PATH, isEnterpriseOwner, isEnterprisePermissionPath, LoginPanel, localizeConsoleLabel, normalizeLoginReturnPath, PublicFooter, PublicHeader, PUBLIC_LINKS } from './common'
 import { NEW_ENTERPRISE_CREATE_PATH } from '@/api/enterprise-certification'
@@ -415,6 +416,8 @@ describe('公共 Header 布局', () => {
 
     const menuButton = document.querySelector('.mobile-menu-button') as HTMLButtonElement
     const mobileNav = document.querySelector('.public-mobile-nav') as HTMLElement
+    expect(menuButton.querySelector('.mobile-menu-icon-menu')).toBeInTheDocument()
+    expect(menuButton.querySelector('.mobile-menu-icon-close')).toBeInTheDocument()
     await user.click(menuButton)
     expect(menuButton).toHaveAttribute('aria-expanded', 'true')
     expect(mobileNav).not.toHaveAttribute('hidden')
@@ -429,6 +432,34 @@ describe('公共 Header 布局', () => {
     expect(mobileNav).toHaveAttribute('hidden')
   })
 
+  it('移动导航登录后展示用户身份和独立退出入口', async () => {
+    const user = userEvent.setup()
+    const appStore = createAppStore()
+    appStore.dispatch(synchronizeAuthenticatedUser({
+      id: 'mobile-user',
+      display_name: '移动端用户',
+      avatar_url: '',
+      locale: 'zh-CN',
+      timezone: 'Asia/Shanghai',
+      status: 'active',
+      phone_masked: '138****0000',
+    }))
+
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <Provider store={appStore}>
+          <AppStoreProvider><PublicHeader /></AppStoreProvider>
+        </Provider>
+      </MemoryRouter>,
+    )
+
+    await user.click(document.querySelector('.mobile-menu-button') as HTMLButtonElement)
+
+    expect(document.querySelector('.public-header')).toHaveClass('mobile-nav-open')
+    expect(document.querySelector('.user-menu-trigger')).toHaveTextContent('移动端用户')
+    expect(document.querySelector('.public-mobile-logout')).toHaveTextContent(i18n.t('nav.logout'))
+  })
+
   it('移动导航通知按钮会收起导航并打开通知面板', async () => {
     const user = userEvent.setup()
     render(
@@ -436,7 +467,7 @@ describe('公共 Header 布局', () => {
         <Provider store={createAppStore()}>
           <AppStoreProvider>
             <PublicHeader unreadNotificationCount={2} />
-            <PublicFooter manuscript />
+            <PublicFooter />
           </AppStoreProvider>
         </Provider>
       </MemoryRouter>,
@@ -461,7 +492,7 @@ describe('公共 Header 布局', () => {
 
   it('关闭客服面板后会同步收起悬浮入口', async () => {
     const user = userEvent.setup()
-    render(<MemoryRouter><PublicFooter manuscript /></MemoryRouter>)
+    render(<MemoryRouter><PublicFooter /></MemoryRouter>)
 
     const widget = document.querySelector('.manuscript-support-widget') as HTMLElement
     const labelButton = document.querySelector('.manuscript-support-label-button') as HTMLButtonElement
@@ -477,9 +508,9 @@ describe('公共 Header 布局', () => {
     expect(labelButton).toHaveAttribute('tabindex', '-1')
   })
 
-  it('手稿首页 Footer 分组支持展开、切换和收起', async () => {
+  it('统一公共 Footer 分组支持展开、切换和收起', async () => {
     const user = userEvent.setup()
-    render(<MemoryRouter><PublicFooter manuscript /></MemoryRouter>)
+    render(<MemoryRouter><PublicFooter /></MemoryRouter>)
 
     const productToggle = screen.getByRole('button', { name: i18n.t('footer.product') })
     const docsToggle = screen.getByRole('button', { name: i18n.t('footer.docs') })

@@ -2,10 +2,6 @@ export const publicResources = {
   'zh-CN': {
     public: {
       footer: {
-        catalogLabel: '模型能力与价格来自当前目录',
-        docsLabel: 'Token NX 文档',
-        pricingLabel: '原型目录价格，正式上线前核验',
-        statusLabel: 'Token NX 状态',
         navigation: '页脚导航',
       },
       home: {
@@ -79,7 +75,6 @@ export const publicResources = {
         createApiKey: '创建 API Key',
       },
       docs: {
-        footerLabel: 'Token NX 文档',
         title: '接入文档',
         description: '使用 Token NX 后端网关、API Key 和兼容协议接入可用模型。登录后可在快速接入页按模型复制完整代码。',
         openQuickstart: '打开快速接入',
@@ -204,7 +199,6 @@ export const publicResources = {
         collapse: '收起',
       },
       pricing: {
-        footerLabel: '原型目录价格，正式上线前核验',
         title: '模型价格',
         description: '下方展示模型公司参考价与 Token NX 价格；不展示或推断上游供应商价格。本地控制台费用按固定的本地演示成本基准生成，仅用于验证跨页链路，不是 Token NX 对外报价或真实账单。',
         viewCapabilities: '查看模型能力',
@@ -222,7 +216,6 @@ export const publicResources = {
         failedRequestDescription: '本地演示保留失败记录，演示成本为零。',
       },
       status: {
-        footerLabel: 'Token NX 状态',
         title: '服务状态',
         description: '当前静态原型尚未连接生产监控，因此不展示不可核验的实时可用率或事故结论。',
         calloutTitle: '实时状态数据尚未接入',
@@ -351,10 +344,6 @@ export const publicResources = {
   'en-US': {
     public: {
       footer: {
-        catalogLabel: 'Model capabilities and prices come from the current catalog',
-        docsLabel: 'Token NX docs',
-        pricingLabel: 'Prototype catalog pricing, to be verified before launch',
-        statusLabel: 'Token NX status',
         navigation: 'Footer navigation',
       },
       home: {
@@ -428,7 +417,6 @@ export const publicResources = {
         createApiKey: 'Create API key',
       },
       docs: {
-        footerLabel: 'Token NX docs',
         title: 'Integration docs',
         description: 'Connect to available models through the Token NX backend gateway, API keys, and compatible protocols. Sign in to copy complete model-specific code from quick integration.',
         openQuickstart: 'Open quick integration',
@@ -553,7 +541,6 @@ export const publicResources = {
         collapse: 'Show less',
       },
       pricing: {
-        footerLabel: 'Prototype catalog pricing, to be verified before launch',
         title: 'Model pricing',
         description: 'The table shows provider reference prices and Token NX prices without displaying or inferring upstream supplier pricing. Local console costs use a fixed demo basis to validate cross-page flows; they are not Token NX public prices or real billing.',
         viewCapabilities: 'View model capabilities',
@@ -571,7 +558,6 @@ export const publicResources = {
         failedRequestDescription: 'Failed requests remain in local demo records and have zero demo cost.',
       },
       status: {
-        footerLabel: 'Token NX status',
         title: 'Service status',
         description: 'This static prototype is not connected to production monitoring, so it does not show unverifiable live availability or incident conclusions.',
         calloutTitle: 'Live status data is not connected',

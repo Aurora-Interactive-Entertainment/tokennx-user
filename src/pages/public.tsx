@@ -31,13 +31,6 @@ function modelPublicHref(model: { id: string; alias?: string }): string | undefi
   return routeKey ? `/models/${encodeURIComponent(routeKey)}` : undefined
 }
 
-const MODEL_FOOTER_LINKS = [
-  { label: 'footer.docs', path: '/docs' },
-  { label: 'footer.status', path: '/status' },
-  { label: 'footer.terms', path: '/terms' },
-  { label: 'footer.privacy', path: '/privacy' },
-]
-
 const HOME_MODEL_MOSAIC_COLUMNS = 6
 const HOME_REWARD_STATS = [
   { value: '00', unit: '元', labelKey: 'rewardPending' },
@@ -906,7 +899,7 @@ export function ModelsPublicPage() {
   }
 
   return (
-    <PublicLayout mainClassName="public-models-page" footerLabel="public.footer.catalogLabel" footerLinks={MODEL_FOOTER_LINKS}>
+    <PublicLayout mainClassName="public-models-page">
       <header className="public-models-head">
         <div>
           <p className="public-models-kicker">{t('public.models.kicker')}</p>
@@ -966,7 +959,7 @@ export function ModelDetailPage() {
   if (!model) return <PublicLayout mainClassName="public-model-detail"><div className="public-model-missing"><h1>{t('public.modelDetail.missingTitle')}</h1><p>{t('public.modelDetail.missingHint')}</p><Link className="btn btn-primary" to="/models">{t('public.modelDetail.backCatalog')}</Link></div></PublicLayout>
 
   return (
-    <PublicLayout mainClassName="public-model-detail" footerLabel="public.footer.catalogLabel" footerLinks={[{ label: 'footer.models', path: '/models' }, ...MODEL_FOOTER_LINKS]}>
+    <PublicLayout mainClassName="public-model-detail">
       <Link className="public-model-back" to="/models">← {t('public.modelDetail.backCatalog')}</Link>
       <section className="public-model-hero" aria-labelledby="modelTitle">
         <div>
@@ -1283,7 +1276,7 @@ export function DocsPage() {
 export function PricingPage() {
   const { t } = useTranslation()
   return (
-    <PublicLayout mainClassName="public-page" footerLabel="public.pricing.footerLabel" footerLinks={[{ label: 'footer.docs', path: '/docs' }, { label: 'footer.terms', path: '/terms' }]}>
+    <PublicLayout mainClassName="public-page">
       <header className="public-page-head"><h1>{t('public.pricing.title')}</h1><p>{t('public.pricing.description')}</p><div className="public-actions"><Link className="btn btn-primary" to="/models">{t('public.pricing.viewCapabilities')}</Link><LoginRequiredAction className="btn btn-secondary" returnPath="/console/quickstart">{t('public.pricing.startIntegration')}</LoginRequiredAction></div></header>
       <section className="public-section"><div className="public-table-wrap"><table className="public-table"><thead><tr><th>{t('public.pricing.model')}</th><th>{t('public.pricing.type')}</th><th>{t('public.pricing.officialPrice')}</th><th>{t('public.pricing.tokenNxPrice')}</th></tr></thead><tbody>{MODEL_CATALOG.map((model) => <tr key={model.id}><td>{model.name}</td><td>{publicModalityLabel(t, model.modality)}</td><td>{formatPublicPrice(model.officialPrice)}</td><td><ModelPriceSummary price={model.tokenNxPrice} /></td></tr>)}</tbody></table></div></section>
       <section className="public-section"><h2>{t('public.pricing.localCostTitle')}</h2><div className="public-grid"><div className="public-grid-item"><h3>{t('public.pricing.textModel')}</h3><p>{t('public.pricing.textModelDescription')}</p></div><div className="public-grid-item"><h3>{t('public.pricing.generationModel')}</h3><p>{t('public.pricing.generationModelDescription')}</p></div><div className="public-grid-item"><h3>{t('public.pricing.failedRequest')}</h3><p>{t('public.pricing.failedRequestDescription')}</p></div></div></section>
@@ -1295,7 +1288,7 @@ export function StatusPage() {
   const { t } = useTranslation()
   const platformKeys = ['openai', 'claude', 'console', 'billing'] as const
   return (
-    <PublicLayout mainClassName="public-page" footerLabel="public.status.footerLabel" footerLinks={[{ label: 'footer.docs', path: '/docs' }, { label: 'footer.about', path: '/about' }]}>
+    <PublicLayout mainClassName="public-page">
       <header className="public-page-head"><h1>{t('public.status.title')}</h1><p>{t('public.status.description')}</p></header>
       <section className="public-section"><div className="callout"><strong>{t('public.status.calloutTitle')}</strong><span>{t('public.status.calloutText')}</span></div></section>
       <section className="public-section" aria-labelledby="modelStatusTitle"><h2 id="modelStatusTitle">{t('public.status.modelTitle')}</h2><p>{t('public.status.modelDescription')}</p><div>{MODEL_CATALOG.map((model) => <div className="status-row" key={model.id}><span className="status-identity"><strong>{model.name}</strong><span>{publicCompanyLabel(t, model.company)}</span></span><span className="badge">{t('public.status.monitoringUnavailable')}</span></div>)}</div></section>

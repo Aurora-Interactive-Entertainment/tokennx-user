@@ -1,6 +1,4 @@
 /* Figma mobile homepage (750px source frame, authored at 2x). */
-.public-layout--manuscript-home .manuscript-footer-group-toggle { display: none; }
-.public-layout--manuscript-home .manuscript-footer-group-links { display: grid; gap: 36px; }
 
 @media (max-width: 770px) {
   .public-layout--manuscript-home {
@@ -16,105 +14,6 @@
     --home-scoreboard-padding-inline: 0px;
     color: #f2f2f2;
     background: #121212;
-  }
-
-  .public-layout--manuscript-home .public-header--home {
-    height: 29px;
-    border-bottom: 0;
-    background: #050505;
-  }
-  .public-layout--manuscript-home .public-header-inner {
-    height: 29px;
-    gap: 0;
-    padding: 0 12px 0 18px;
-  }
-  .public-layout--manuscript-home .header-logo {
-    order: 1;
-    width: 49px;
-    min-height: 0;
-    flex: 0 0 49px;
-    margin: 0;
-  }
-  .public-layout--manuscript-home .header-brand-image { width: 49px; height: 12px; }
-  .public-layout--manuscript-home .header-trial-badge {
-    order: 2;
-    display: grid;
-    width: 56px;
-    height: 14px;
-    flex: 0 0 56px;
-    margin-left: 17px;
-    border-radius: 7px;
-  }
-  .public-layout--manuscript-home .header-trial-pill { width: 56px; height: 14px; }
-  .public-layout--manuscript-home .header-trial-glass { border-radius: 7px; backdrop-filter: blur(4px) saturate(120%); }
-  .public-layout--manuscript-home .header-trial-badge strong,
-  .public-layout--manuscript-home .header-trial-subscription { font-size: 7px; }
-  .public-layout--manuscript-home .header-trial-free { top: -2px; right: -13px; width: 21px; height: 13px; }
-  .public-layout--manuscript-home .header-trial-free img { width: 21px; height: 13px; }
-  .public-layout--manuscript-home .header-trial-badge em { font-size: 6px; transform: translateY(-2px) rotate(-4.5deg); }
-  .public-layout--manuscript-home .mobile-menu-button {
-    order: 3;
-    display: inline-grid;
-    width: 26px;
-    height: 24px;
-    min-height: 0;
-    flex: 0 0 26px;
-    place-items: center;
-    margin-left: auto;
-    padding: 0;
-    border-radius: 0;
-    color: #8b8b8b;
-    background: transparent;
-    cursor: pointer;
-  }
-  .public-layout--manuscript-home .mobile-menu-button:hover,
-  .public-layout--manuscript-home .mobile-menu-button:focus-visible { color: #fff; background: transparent; }
-  .public-layout--manuscript-home .mobile-menu-button .icon-svg { width: 13px; height: 13px; }
-  .public-layout--manuscript-home .public-header-actions { display: none; }
-  .public-layout--manuscript-home .public-mobile-nav {
-    position: absolute;
-    top: 100%;
-    right: 9px;
-    left: auto;
-    width: min(220px, calc(100vw - 36px));
-    max-height: calc(100dvh - 38px);
-    grid-template-columns: 1fr;
-    gap: 2px;
-    overflow-y: auto;
-    padding: 8px;
-    border: 1px solid #333;
-    border-radius: 3px;
-    background: #1c1c1c;
-    box-shadow: 0 12px 28px rgba(0, 0, 0, .5);
-  }
-  .public-layout--manuscript-home .public-mobile-nav a,
-  .public-layout--manuscript-home .public-mobile-nav .public-nav-link {
-    min-height: 36px;
-    justify-content: flex-start;
-    padding: 0 12px;
-    border-radius: 2px;
-    color: #ddd;
-    font-size: 13px;
-    cursor: pointer;
-  }
-  .public-layout--manuscript-home .public-mobile-tools { min-height: 46px; gap: 18px; padding-top: 6px; }
-  .public-layout--manuscript-home .public-mobile-tools .header-tool {
-    display: grid;
-    width: 28px;
-    height: 28px;
-    min-height: 28px;
-    place-items: center;
-    padding: 0;
-  }
-  .public-layout--manuscript-home .public-mobile-tools .header-notification-icon { width: 18px; height: 18px; }
-  .public-layout--manuscript-home .public-mobile-tools .language-switcher {
-    display: flex;
-    width: 74px;
-    min-width: 74px;
-    height: 30px;
-    min-height: 30px;
-    padding: 3px;
-    border-radius: 15px;
   }
 
   .public-layout--manuscript-home .home-page--manuscript { background: #121212; }
@@ -569,151 +468,6 @@
   .public-layout--manuscript-home .manuscript-partner-logo--mark svg { width: 19px; height: 19px; }
   .public-layout--manuscript-home .manuscript-partner-css-logo { width: 20px; height: 20px; flex-basis: 20px; }
   .public-layout--manuscript-home .manuscript-partner-css-logo-mark { width: 17px; height: 17px; }
-
-  .public-layout--manuscript-home .public-footer { padding: 25.5px 0 0; background: #1a1a1a; }
-  .public-layout--manuscript-home .public-footer-inner {
-    width: calc(100% - 36px);
-    min-height: 0;
-    grid-template-columns: 1fr;
-    gap: 0;
-    padding: 0;
-  }
-  .public-layout--manuscript-home .manuscript-footer-brand { justify-items: center; gap: 0; margin-bottom: 32px; }
-  .public-layout--manuscript-home .manuscript-footer-logo,
-  .public-layout--manuscript-home .manuscript-footer-logo img {
-    width: 119px;
-    height: 29.5px;
-  }
-  .public-layout--manuscript-home .manuscript-footer-brand > span:not(.manuscript-footer-logo) { display: none; }
-  .public-layout--manuscript-home .manuscript-footer-nav {
-    display: grid;
-    grid-column: 1;
-    grid-template-columns: 1fr;
-    gap: 0;
-    border-top: 1px solid #414141;
-  }
-  .public-layout--manuscript-home .public-footer-nav-group {
-    display: block;
-    min-height: 50px;
-    border-bottom: 1px solid #414141;
-  }
-  .public-layout--manuscript-home .manuscript-footer-group-title { display: none; }
-  .public-layout--manuscript-home .manuscript-footer-group-toggle {
-    display: flex;
-    width: 100%;
-    height: 49px;
-    min-height: 49px;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0;
-    border: 0;
-    border-radius: 0;
-    color: #fff;
-    background: transparent;
-    font: inherit;
-    font-size: 11px;
-    line-height: 16.5px;
-    text-align: left;
-    cursor: pointer;
-  }
-  .public-layout--manuscript-home .manuscript-footer-group-label {
-    display: flex;
-    height: 100%;
-    align-items: center;
-    font-size: 0;
-    line-height: 1;
-  }
-  .public-layout--manuscript-home .manuscript-footer-group-label::after {
-    display: block;
-    font-size: 11px;
-    line-height: 1;
-    content: attr(data-mobile-label);
-  }
-  .public-layout--manuscript-home .manuscript-footer-group-symbol {
-    display: grid;
-    width: 24px;
-    height: 24px;
-    flex: 0 0 24px;
-    place-items: center;
-    align-self: center;
-    color: #fff;
-    font-family: Arial, sans-serif;
-    font-size: 18px;
-    font-weight: 300;
-    line-height: 1;
-  }
-  .public-layout--manuscript-home .manuscript-footer-group-links {
-    display: grid;
-    max-height: 0;
-    gap: 0;
-    overflow: hidden;
-    padding-bottom: 0;
-    opacity: 0;
-    transform: translateY(-6px);
-    transition: max-height .36s cubic-bezier(.22, .8, .26, 1), padding-bottom .36s cubic-bezier(.22, .8, .26, 1), opacity .22s ease, transform .3s cubic-bezier(.22, .8, .26, 1);
-  }
-  .public-layout--manuscript-home .public-footer-nav-group.is-open .manuscript-footer-group-links { max-height: 180px; padding-bottom: 7px; opacity: 1; transform: translateY(0); }
-  .public-layout--manuscript-home .public-footer-nav-group a {
-    min-height: 27px;
-    padding: 6px 0 6px 10px;
-    color: #aaa;
-    font-size: 10px;
-    line-height: 15px;
-  }
-  .public-layout--manuscript-home .manuscript-footer-contact {
-    grid-column: 1;
-    display: flex;
-    align-items: center;
-    flex-direction: column;
-    gap: 0;
-    padding: 32px 0 24.75px;
-    text-align: center;
-  }
-  .public-layout--manuscript-home .manuscript-footer-contact > strong { display: none; }
-  .public-layout--manuscript-home .manuscript-footer-contact > a {
-    color: #bbb;
-    font-family: inherit;
-    font-size: 15px;
-    line-height: 22.5px;
-    white-space: normal;
-  }
-  .public-layout--manuscript-home .manuscript-footer-contact > strong + a { margin-top: 0; }
-  .public-layout--manuscript-home .manuscript-footer-contact > a + a { margin-top: 7px; }
-  .public-layout--manuscript-home .manuscript-footer-qr-row {
-    order: -1;
-    gap: 59.625px;
-    margin: 0 0 32px;
-  }
-  .public-layout--manuscript-home .manuscript-footer-qr-row .public-footer-qr { gap: 3.75px; }
-  .public-layout--manuscript-home .manuscript-footer-qr-row .public-footer-qr img { width: 75px; height: 75px; }
-  .public-layout--manuscript-home .manuscript-footer-qr-row .public-footer-qr span { color: #bbb; font-size: 15px; line-height: 22.5px; }
-  .public-layout--manuscript-home .manuscript-footer-filing {
-    display: grid;
-    width: 100%;
-    height: 106px;
-    min-height: 106px;
-    max-height: 106px;
-    grid-template-columns: max-content max-content;
-    grid-template-rows: repeat(3, 15.75px);
-    align-content: start;
-    align-items: center;
-    justify-content: space-between;
-    row-gap: 7px;
-    margin: 0;
-    padding: 24px max(12px, calc((100% - 307px) / 2)) 0;
-    font-size: 10.5px;
-    line-height: 15.75px;
-    text-align: center;
-    background: #1a1a1a;
-  }
-  .public-layout--manuscript-home .manuscript-footer-filing::before { height: 1px; background: #565656; }
-  .public-layout--manuscript-home .manuscript-footer-filing-copy { grid-column: 1 / -1; justify-self: center; white-space: nowrap; }
-  .public-layout--manuscript-home .manuscript-footer-filing-item { min-height: 15.75px; gap: 3px; justify-self: center; font-size: inherit; line-height: inherit; }
-  .public-layout--manuscript-home .manuscript-footer-filing-item img { width: 11px; height: 10px; }
-  .public-layout--manuscript-home .manuscript-footer-filing-item:nth-of-type(3) img { width: 9px; height: 10px; }
-  .public-layout--manuscript-home .manuscript-footer-filing-item[href] { display: inline-flex; text-underline-offset: 2.5px; }
-  .public-layout--manuscript-home .manuscript-footer-filing-item[href]:first-of-type { grid-column: 1 / -1; grid-row: 3; transform: translateX(-30px); }
-  .public-layout--manuscript-home .manuscript-footer-filing-item[href]:last-of-type { grid-column: 1 / -1; grid-row: 3; transform: translateX(35px); }
 }
 
 @media (max-width: 360px) {
@@ -736,42 +490,6 @@
     --home-scoreboard-unit-font-size: clamp(7.6px, 2.027vw, 15.2px);
     --home-scoreboard-value-gap: clamp(2.14px, .571vw, 4.28px);
     --home-scoreboard-content-gap: clamp(5px, 1.333vw, 10px);
-  }
-
-  .public-layout--manuscript-home .public-header--home,
-  .public-layout--manuscript-home .public-header-inner { height: clamp(29px, 7.733vw, 58px); }
-  .public-layout--manuscript-home .public-header-inner { padding-right: clamp(12px, 3.2vw, 24px); padding-left: clamp(18px, 4.8vw, 36px); }
-  .public-layout--manuscript-home .header-logo { width: clamp(49px, 13.067vw, 98px); flex-basis: clamp(49px, 13.067vw, 98px); }
-  .public-layout--manuscript-home .header-brand-image { width: clamp(49px, 13.067vw, 98px); height: clamp(12px, 3.2vw, 24px); }
-  .public-layout--manuscript-home .header-trial-badge {
-    width: clamp(56px, 14.933vw, 112px);
-    height: clamp(14px, 3.733vw, 28px);
-    flex-basis: clamp(56px, 14.933vw, 112px);
-    margin-left: clamp(17px, 4.533vw, 34px);
-    border-radius: clamp(7px, 1.867vw, 14px);
-  }
-  .public-layout--manuscript-home .header-trial-pill { width: 100%; height: 100%; }
-  .public-layout--manuscript-home .header-trial-badge strong,
-  .public-layout--manuscript-home .header-trial-subscription { font-size: clamp(7px, 1.867vw, 14px); }
-  .public-layout--manuscript-home .header-trial-free {
-    top: clamp(-4px, -.533vw, -2px);
-    right: clamp(-26px, -3.467vw, -13px);
-    width: clamp(21px, 5.6vw, 42px);
-    height: clamp(13px, 3.467vw, 26px);
-  }
-  .public-layout--manuscript-home .header-trial-free img { width: 100%; height: 100%; }
-  .public-layout--manuscript-home .header-trial-badge em { font-size: clamp(6px, 1.6vw, 12px); }
-  .public-layout--manuscript-home .mobile-menu-button {
-    width: clamp(26px, 6.933vw, 52px);
-    height: clamp(24px, 6.4vw, 48px);
-    flex-basis: clamp(26px, 6.933vw, 52px);
-  }
-  .public-layout--manuscript-home .mobile-menu-button .icon-svg { width: clamp(13px, 3.467vw, 26px); height: clamp(13px, 3.467vw, 26px); }
-  .public-layout--manuscript-home .public-mobile-nav { top: 100%; right: clamp(9px, 2.4vw, 18px); }
-
-  .public-layout--manuscript-home .manuscript-home-shell,
-  .public-layout--manuscript-home .public-footer-inner {
-    width: calc(100% - clamp(36px, 9.6vw, 72px));
   }
   .public-layout--manuscript-home .manuscript-hero {
     min-height: clamp(239px, 63.733vw, 478px);
@@ -1004,27 +722,10 @@
   .public-layout--manuscript-home .manuscript-partner-image { width: 100%; height: 100%; flex-basis: auto; }
   .public-layout--manuscript-home .manuscript-partner-logo,
   .public-layout--manuscript-home .manuscript-partner-logo svg { max-width: 76px; height: 20px; }
-
-  .public-layout--manuscript-home .public-footer { padding-top: 25.5px; }
-  .public-layout--manuscript-home .manuscript-footer-brand { margin-bottom: 32px; }
-  .public-layout--manuscript-home .manuscript-footer-logo,
-  .public-layout--manuscript-home .manuscript-footer-logo img { width: 119px; height: 29.5px; }
-  .public-layout--manuscript-home .manuscript-footer-group-toggle { height: 49px; min-height: 49px; font-size: 11px; }
-  .public-layout--manuscript-home .manuscript-footer-group-symbol { font-size: 18px; }
-  .public-layout--manuscript-home .public-footer-nav-group a { min-height: 27px; padding: 6px 0 6px 10px; font-size: 10px; line-height: 15px; }
-  .public-layout--manuscript-home .manuscript-footer-contact { padding: 32px 0 24.75px; }
-  .public-layout--manuscript-home .manuscript-footer-contact > a,
-  .public-layout--manuscript-home .manuscript-footer-qr-row .public-footer-qr span { font-size: 15px; line-height: 22.5px; }
-  .public-layout--manuscript-home .manuscript-footer-qr-row { gap: 59.625px; margin-bottom: 32px; }
-  .public-layout--manuscript-home .manuscript-footer-qr-row .public-footer-qr img { width: 75px; height: 75px; }
 }
 
 @media (max-width: 559px) {
   .public-layout--manuscript-home .manuscript-price-card:not(:first-of-type) { display: block; }
-}
-
-@media (max-width: 375px) {
-  .public-layout--manuscript-home .manuscript-footer-filing-item[href] { display: inline-flex; }
 }
 
 @media (min-width: 471px) and (max-width: 770px) {
@@ -1497,53 +1198,6 @@
     max-width: 100%;
     overflow-x: clip;
   }
-  .public-layout--manuscript-home .public-header-inner {
-    width: 100%;
-    min-width: 0;
-    gap: 0;
-    padding-inline: 16px;
-  }
-  .public-layout--manuscript-home .header-logo {
-    width: 90px;
-    flex: 0 0 90px;
-  }
-  .public-layout--manuscript-home .header-brand-image { width: 90px; height: 23px; }
-  .public-layout--manuscript-home .header-trial-badge {
-    width: 80px;
-    height: 24px;
-    flex-basis: 80px;
-    margin-left: 10px;
-  }
-  .public-layout--manuscript-home .header-trial-pill { width: 80px; height: 24px; }
-  .public-layout--manuscript-home .header-trial-badge strong,
-  .public-layout--manuscript-home .header-trial-subscription { font-size: 12px; }
-  .public-layout--manuscript-home .header-trial-free { top: -3px; right: -18px; width: 34px; height: 21px; }
-  .public-layout--manuscript-home .header-trial-free img { width: 34px; height: 21px; }
-  .public-layout--manuscript-home .header-trial-badge em { font-size: 10px; transform: translateY(-3px) rotate(-4.5deg); }
-  .public-layout--manuscript-home .public-header--home .public-nav {
-    min-width: 0;
-    flex: 1 1 auto;
-    justify-content: center;
-    margin-left: 12px;
-  }
-  .public-layout--manuscript-home .public-header .header-nav { gap: clamp(4px, .7vw, 8px); }
-  .public-layout--manuscript-home .public-header .header-nav .public-nav-link {
-    min-width: 0;
-    padding-inline: clamp(4px, .65vw, 7px);
-    font-size: 12px;
-  }
-  .public-layout--manuscript-home .public-header .public-header-actions {
-    flex: 0 0 auto;
-    gap: 8px;
-    margin-left: 8px;
-  }
-  .public-layout--manuscript-home .public-header .header-tools { gap: 6px; }
-  .public-layout--manuscript-home .public-header .header-tool { width: 24px; height: 24px; }
-  .public-layout--manuscript-home .public-header .language-switcher { width: 68px; min-width: 68px; height: 28px; }
-  .public-layout--manuscript-home .public-header .language-switcher-thumb { width: 31px; transform: translateX(31px); }
-  .public-layout--manuscript-home .public-header .language-switcher.is-english .language-switcher-thumb { transform: translateX(0); }
-  .public-layout--manuscript-home .public-header .login-trigger-wrap > .btn { width: 68px; }
-
   .public-layout--manuscript-home .manuscript-home-shell {
     width: calc(100% - 48px);
     max-width: 100%;
@@ -1572,12 +1226,6 @@
   }
   .public-layout--manuscript-home .manuscript-news-column,
   .public-layout--manuscript-home .manuscript-ad-slot { width: 100%; max-width: 100%; }
-  .public-layout--manuscript-home .public-footer-inner {
-    width: calc(100% - 48px);
-    max-width: 100%;
-    grid-template-columns: minmax(160px, .8fr) repeat(4, minmax(64px, 1fr)) minmax(150px, 1fr);
-    gap: 12px;
-  }
 
   .public-layout--manuscript-home .manuscript-promotion .manuscript-reward-card {
     width: min(416px, 100%);
@@ -1723,207 +1371,6 @@
   }
 }
 
-/* Switch only the header to its mobile navigation before the desktop row can overflow. */
-@media (min-width: 771px) and (max-width: 1070px) {
-  .public-layout--manuscript-home .public-header--home .header-logo { order: 1; }
-  .public-layout--manuscript-home .public-header--home .header-trial-badge { order: 2; }
-  .public-layout--manuscript-home .public-header--home .header-nav,
-  .public-layout--manuscript-home .public-header--home .public-header-actions { display: none; }
-  .public-layout--manuscript-home .public-header--home .mobile-menu-button {
-    order: 3;
-    display: inline-grid;
-    width: 40px;
-    height: 40px;
-    min-height: 0;
-    flex: 0 0 40px;
-    place-items: center;
-    margin-left: auto;
-    padding: 0;
-    border-radius: 0;
-    color: #8b8b8b;
-    background: transparent;
-    cursor: pointer;
-  }
-  .public-layout--manuscript-home .public-header--home .mobile-menu-button:hover,
-  .public-layout--manuscript-home .public-header--home .mobile-menu-button:focus-visible { color: #fff; background: transparent; }
-  .public-layout--manuscript-home .public-header--home .mobile-menu-button .icon-svg { width: 20px; height: 20px; }
-  .public-layout--manuscript-home .public-mobile-nav {
-    position: absolute;
-    top: 100%;
-    right: 16px;
-    left: auto;
-    z-index: 1002;
-    display: grid;
-    width: min(280px, calc(100vw - 32px));
-    max-height: calc(100dvh - 88px);
-    grid-template-columns: 1fr;
-    gap: 4px;
-    overflow-y: auto;
-    padding: 10px;
-    border: 1px solid #333;
-    border-radius: 3px;
-    background: #1c1c1c;
-    box-shadow: 0 12px 28px rgba(0, 0, 0, .5);
-  }
-  .public-layout--manuscript-home .public-mobile-nav[hidden] { display: none; }
-  .public-layout--manuscript-home .public-mobile-nav a,
-  .public-layout--manuscript-home .public-mobile-nav .public-nav-link {
-    min-height: 40px;
-    justify-content: flex-start;
-    padding: 0 12px;
-    border-radius: 2px;
-    color: #ddd;
-    font-size: 14px;
-  }
-  .public-layout--manuscript-home .public-mobile-nav a:hover,
-  .public-layout--manuscript-home .public-mobile-nav .public-nav-link:hover { color: #fff; background: #292929; }
-  .public-layout--manuscript-home .public-mobile-tools {
-    display: flex;
-    min-height: 48px;
-    align-items: center;
-    justify-content: center;
-    gap: 20px;
-    padding-top: 8px;
-    border-top: 1px solid #333;
-  }
-}
-
-/* Use the collapsible footer below the full desktop breakpoint. */
-@media (min-width: 771px) and (max-width: 1099px) {
-  .public-layout--manuscript-home .public-footer {
-    padding: 26px 0 0;
-    background: #1a1a1a;
-  }
-  .public-layout--manuscript-home .public-footer-inner {
-    width: min(750px, calc(100% - 48px));
-    min-height: 0;
-    grid-template-columns: 1fr;
-    gap: 0;
-    padding: 0;
-  }
-  .public-layout--manuscript-home .manuscript-footer-brand {
-    justify-items: center;
-    gap: 0;
-    margin-bottom: 32px;
-  }
-  .public-layout--manuscript-home .manuscript-footer-logo,
-  .public-layout--manuscript-home .manuscript-footer-logo img {
-    width: 119px;
-    height: 29.5px;
-  }
-  .public-layout--manuscript-home .manuscript-footer-brand > span:not(.manuscript-footer-logo) { display: none; }
-  .public-layout--manuscript-home .manuscript-footer-nav {
-    display: grid;
-    grid-column: 1;
-    width: 100%;
-    grid-template-columns: 1fr;
-    gap: 0;
-    border-top: 1px solid #414141;
-  }
-  .public-layout--manuscript-home .public-footer-nav-group {
-    display: block;
-    min-height: 50px;
-    border-bottom: 1px solid #414141;
-  }
-  .public-layout--manuscript-home .manuscript-footer-group-title { display: none; }
-  .public-layout--manuscript-home .manuscript-footer-group-toggle {
-    display: flex;
-    width: 100%;
-    height: 49px;
-    min-height: 49px;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0;
-    border: 0;
-    border-radius: 0;
-    color: #fff;
-    background: transparent;
-    font: inherit;
-    font-size: 11px;
-    line-height: 16.5px;
-    text-align: left;
-    cursor: pointer;
-  }
-  .public-layout--manuscript-home .manuscript-footer-group-label {
-    display: flex;
-    height: 100%;
-    align-items: center;
-    font-size: 0;
-    line-height: 1;
-  }
-  .public-layout--manuscript-home .manuscript-footer-group-label::after {
-    display: block;
-    font-size: 11px;
-    line-height: 1;
-    content: attr(data-mobile-label);
-  }
-  .public-layout--manuscript-home .manuscript-footer-group-symbol {
-    display: grid;
-    width: 24px;
-    height: 24px;
-    flex: 0 0 24px;
-    place-items: center;
-    color: #fff;
-    font-family: Arial, sans-serif;
-    font-size: 18px;
-    font-weight: 300;
-    line-height: 1;
-  }
-  .public-layout--manuscript-home .manuscript-footer-group-links {
-    display: grid;
-    max-height: 0;
-    gap: 0;
-    overflow: hidden;
-    padding-bottom: 0;
-    opacity: 0;
-    transform: translateY(-6px);
-    transition: max-height .36s cubic-bezier(.22, .8, .26, 1), padding-bottom .36s cubic-bezier(.22, .8, .26, 1), opacity .22s ease, transform .3s cubic-bezier(.22, .8, .26, 1);
-  }
-  .public-layout--manuscript-home .public-footer-nav-group.is-open .manuscript-footer-group-links {
-    max-height: 180px;
-    padding-bottom: 7px;
-    opacity: 1;
-    transform: translateY(0);
-  }
-  .public-layout--manuscript-home .public-footer-nav-group a {
-    min-height: 27px;
-    padding: 6px 0 6px 10px;
-    color: #aaa;
-    font-size: 10px;
-    line-height: 15px;
-  }
-  .public-layout--manuscript-home .manuscript-footer-contact {
-    grid-column: 1;
-    display: flex;
-    align-items: center;
-    flex-direction: column;
-    gap: 0;
-    padding: 32px 0 25px;
-    text-align: center;
-  }
-  .public-layout--manuscript-home .manuscript-footer-contact > strong { display: none; }
-  .public-layout--manuscript-home .manuscript-footer-contact > a {
-    color: #bbb;
-    font-family: inherit;
-    font-size: 15px;
-    line-height: 22.5px;
-    white-space: normal;
-  }
-  .public-layout--manuscript-home .manuscript-footer-contact > strong + a { margin-top: 0; }
-  .public-layout--manuscript-home .manuscript-footer-contact > a + a { margin-top: 7px; }
-  .public-layout--manuscript-home .manuscript-footer-qr-row {
-    order: -1;
-    gap: 60px;
-    margin: 0 0 32px;
-  }
-  .public-layout--manuscript-home .manuscript-footer-qr-row .public-footer-qr { gap: 4px; }
-  .public-layout--manuscript-home .manuscript-footer-qr-row .public-footer-qr img { width: 75px; height: 75px; }
-  .public-layout--manuscript-home .manuscript-footer-qr-row .public-footer-qr span {
-    color: #bbb;
-    font-size: 15px;
-    line-height: 22.5px;
-  }
-}
 
 /* Keep every availability segment visible in the compact three-card layout. */
 @media (min-width: 771px) and (max-width: 1099px) {
@@ -1940,6 +1387,10 @@
 
 /* Render availability history as data-driven CSS segments instead of image layers. */
 .public-layout--manuscript-home .manuscript-pricing .manuscript-price-availability > div {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
   grid-template-columns: repeat(48, minmax(0, 1fr));
   gap: clamp(1.5px, .4vw, 3px);
   background: transparent !important;
@@ -1954,10 +1405,3 @@
 }
 .public-layout--manuscript-home .manuscript-pricing .manuscript-price-availability-bar.is-warning { background: #dde46e; }
 .public-layout--manuscript-home .manuscript-pricing .manuscript-price-availability-bar.is-danger { background: #dd3845; }
-
-/* Use one solid divider for the manuscript footer filing area at every width. */
-.public-layout--manuscript-home .manuscript-footer-filing::before {
-  height: 1px;
-  background: #565656 !important;
-  background-image: none !important;
-}
