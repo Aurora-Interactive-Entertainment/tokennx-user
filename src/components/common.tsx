@@ -949,6 +949,7 @@ export function PublicHeader({ enterpriseAccess, unreadNotificationCount = 0 }: 
   const [billingMenuOpen, setBillingMenuOpen] = useState(false)
   const [billingBalanceVisible, setBillingBalanceVisible] = useState(true)
   const [accountSettingsOpen, setAccountSettingsOpen] = useState(false)
+  const headerRef = useRef<HTMLElement | null>(null)
   const billingBalance = '348.62'
   const maskedBillingBalance = billingBalance.replace(/\D/g, '').replace(/\d/g, '*')
   const billingHoverCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -979,6 +980,22 @@ export function PublicHeader({ enterpriseAccess, unreadNotificationCount = 0 }: 
   }
 
   useEffect(() => () => clearBillingHoverCloseTimer(), [])
+
+  useEffect(() => {
+    if (!mobileOpen) return undefined
+    const handlePointerDown = (event: PointerEvent): void => {
+      if (!headerRef.current?.contains(event.target as Node)) setMobileOpen(false)
+    }
+    const handleKeyDown = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape') setMobileOpen(false)
+    }
+    document.addEventListener('pointerdown', handlePointerDown)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [mobileOpen])
 
   function renderPublicLink(link: PublicLink, mobile = false): ReactNode {
     const isActive = !link.disabled && currentPath.startsWith(link.path)
@@ -1016,7 +1033,7 @@ export function PublicHeader({ enterpriseAccess, unreadNotificationCount = 0 }: 
 
   return (
     <>
-      <header className="app-header public-header public-header--home">
+      <header className="app-header public-header public-header--home" ref={headerRef}>
       <div className="app-header-inner app-header-full public-header-inner">
         <button className="mobile-menu-button" type="button" aria-controls="public-mobile-nav" aria-expanded={mobileOpen} aria-label={mobileOpen ? t('nav.close') : t('nav.open')} onClick={() => setMobileOpen((open) => !open)}>
           {mobileOpen ? <IconClose className="icon-svg" /> : <IconMenu className="icon-svg" />}
@@ -1059,7 +1076,14 @@ export function PublicHeader({ enterpriseAccess, unreadNotificationCount = 0 }: 
       </div>
       <nav className="public-mobile-nav" id="public-mobile-nav" aria-label={t('console.common.publicNav')} hidden={!mobileOpen}>
         {publicLinks.map((link) => renderPublicLink(link, true))}
-        <div className="public-mobile-tools"><ThemeToggleButton /><LanguageToggleButton mobile /></div>
+        <div className="public-mobile-tools">
+          <ThemeToggleButton />
+          <button className="header-tool header-tool-badge" type="button" title={t('nav.notifications')} aria-label={t('nav.notifications')} onClick={() => { setMobileOpen(false); requestSupportWidget('notifications') }}>
+            <img className="header-notification-icon" src={headerNotificationIcon} alt="" aria-hidden="true" />
+            {unreadNotificationCount > 0 ? <i className="header-notification-dot" aria-hidden="true" /> : null}
+          </button>
+          <LanguageToggleButton mobile />
+        </div>
       </nav>
       </header>
       {accountSettingsOpen ? <AccountSettingsModal onClose={() => setAccountSettingsOpen(false)} /> : null}
@@ -1715,10 +1739,10 @@ const PUBLIC_FOOTER_GROUPS = [
 ] as const
 
 const MANUSCRIPT_FOOTER_GROUPS = [
-  { titleKey: 'footer.product', links: [{ labelKey: 'footer.chat', path: '/docs' }, { labelKey: 'footer.video', path: '/docs' }, { labelKey: 'footer.ranking', path: '/models' }, { labelKey: 'footer.modelPrice', path: '/pricing' }] },
-  { titleKey: 'footer.docs', links: [{ labelKey: 'footer.chat', path: '/docs' }, { labelKey: 'footer.video', path: '/docs' }, { labelKey: 'footer.ranking', path: '/models' }, { labelKey: 'footer.modelPrice', path: '/pricing' }] },
-  { titleKey: 'footer.pricing', links: [{ labelKey: 'footer.apiPrice', path: '/pricing' }, { labelKey: 'footer.subscriptionPrice', path: '/pricing' }, { labelKey: 'footer.specialOffers', path: '/pricing' }] },
-  { titleKey: 'footer.about', links: [{ labelKey: 'footer.companyIntro', path: '/about' }, { labelKey: 'footer.officialQr', path: '/docs' }] },
+  { titleKey: 'footer.product', mobileTitleKey: 'footer.product', links: [{ labelKey: 'footer.chat', path: '/docs' }, { labelKey: 'footer.video', path: '/docs' }, { labelKey: 'footer.ranking', path: '/models' }, { labelKey: 'footer.modelPrice', path: '/pricing' }] },
+  { titleKey: 'footer.docs', mobileTitleKey: 'nav.docs', links: [{ labelKey: 'footer.chat', path: '/docs' }, { labelKey: 'footer.video', path: '/docs' }, { labelKey: 'footer.ranking', path: '/models' }, { labelKey: 'footer.modelPrice', path: '/pricing' }] },
+  { titleKey: 'footer.pricing', mobileTitleKey: 'nav.pricing', links: [{ labelKey: 'footer.apiPrice', path: '/pricing' }, { labelKey: 'footer.subscriptionPrice', path: '/pricing' }, { labelKey: 'footer.specialOffers', path: '/pricing' }] },
+  { titleKey: 'footer.about', mobileTitleKey: 'footer.about', links: [{ labelKey: 'footer.companyIntro', path: '/about' }, { labelKey: 'footer.officialQr', path: '/docs' }] },
 ] as const
 
 const PUBLIC_WECHAT_QR_TARGET = 'https://example.com/token-nx-official-account'
@@ -1747,6 +1771,7 @@ const FOOTER_LABEL_KEYS: Record<string, string> = {
 
 export function PublicFooter({ label = 'Token NX', links = DEFAULT_FOOTER_LINKS, manuscript = false }: { label?: string; links?: FooterLink[]; manuscript?: boolean }) {
   const { t } = useTranslation()
+  const [openManuscriptGroup, setOpenManuscriptGroup] = useState<string | null>(null)
 
   function localizeFooterLabel(value: string): string {
     const key = FOOTER_LABEL_KEYS[value]
@@ -1758,13 +1783,23 @@ export function PublicFooter({ label = 'Token NX', links = DEFAULT_FOOTER_LINKS,
     <footer className={`public-footer${manuscript ? ' public-footer--manuscript' : ''}`}>
       <div className="public-footer-inner">
         {manuscript ? <div className="public-footer-brand manuscript-footer-brand"><span className="manuscript-footer-logo"><img src={manuscriptFooterLogo} alt="Token NX" decoding="async" /></span><span>© {new Date().getFullYear()} Token NX,Inc</span><small>{PUBLIC_COMPANY_INFO.name}</small></div> : <div className="public-footer-brand"><span className="footer-brand-lockup"><BrandLogo size="compact" /></span><span>{localizeFooterLabel(label)}</span><small>{PUBLIC_COMPANY_INFO.name}</small></div>}
-        {manuscript ? <nav className="public-footer-nav manuscript-footer-nav" aria-label={t('public.footer.navigation')}>{MANUSCRIPT_FOOTER_GROUPS.map((group) => <div className="public-footer-nav-group" key={group.titleKey}><strong>{t(group.titleKey)}</strong>{group.links.map((link) => <Link key={`${link.path}-${link.labelKey}`} to={link.path}>{t(link.labelKey)}</Link>)}</div>)}</nav> : <nav className="public-footer-nav" aria-label={t('public.footer.navigation')}>
+        {manuscript ? <nav className="public-footer-nav manuscript-footer-nav" aria-label={t('public.footer.navigation')}>{MANUSCRIPT_FOOTER_GROUPS.map((group) => {
+          const isOpen = openManuscriptGroup === group.titleKey
+          const panelId = `manuscript-footer-panel-${group.titleKey.replace(/[^a-z0-9]+/gi, '-')}`
+          return <div className={`public-footer-nav-group${isOpen ? ' is-open' : ''}`} key={group.titleKey}>
+            <strong className="manuscript-footer-group-title">{t(group.titleKey)}</strong>
+            <button className="manuscript-footer-group-toggle" type="button" aria-expanded={isOpen} aria-controls={panelId} onClick={() => setOpenManuscriptGroup((current) => current === group.titleKey ? null : group.titleKey)}>
+              <span className="manuscript-footer-group-label" data-mobile-label={t(group.mobileTitleKey)}>{t(group.titleKey)}</span><span className="manuscript-footer-group-symbol" aria-hidden="true">{isOpen ? '-' : '+'}</span>
+            </button>
+            <div className="manuscript-footer-group-links" id={panelId}>{group.links.map((link) => <Link key={`${link.path}-${link.labelKey}`} to={link.path}>{t(link.labelKey)}</Link>)}</div>
+          </div>
+        })}</nav> : <nav className="public-footer-nav" aria-label={t('public.footer.navigation')}>
           {PUBLIC_FOOTER_GROUPS.map((group) => <div className="public-footer-nav-group" key={group.title}><strong>{group.title === '产品' ? t('footer.product') : group.title === '服务' ? t('footer.service') : t('footer.legal')}</strong>{group.links.map((link) => <Link key={`${link.path}-${link.label}`} to={link.path}>{localizeFooterLabel(link.label)}</Link>)}</div>)}
           {links.length ? <div className="public-footer-nav-group public-footer-nav-group--extra"><strong>{t('footer.related')}</strong>{links.map((link) => <Link key={`${link.path}-${link.label}`} to={link.path}>{localizeFooterLabel(link.label)}</Link>)}</div> : null}
         </nav>}
         {manuscript ? <div className="public-footer-contact manuscript-footer-contact"><strong>{t('footer.contact')}</strong><a href={`tel:${PUBLIC_COMPANY_INFO.phone}`}>售前咨询：{PUBLIC_COMPANY_INFO.phone}</a><a href={`mailto:${PUBLIC_COMPANY_INFO.email}`}>商务合作：{PUBLIC_COMPANY_INFO.email}</a><div className="manuscript-footer-qr-row"><div className="public-footer-qr"><img src={manuscriptCustomerQr} alt={t('footer.qrAlt')} loading="lazy" decoding="async" /><span>{t('footer.customerQr')}</span></div><div className="public-footer-qr"><img src={manuscriptOfficialQr} alt={t('footer.officialQr')} loading="lazy" decoding="async" /><span>{t('footer.officialQr')}</span></div></div></div> : <div className="public-footer-contact"><div className="public-footer-qr"><img src={PUBLIC_WECHAT_QR_IMAGE} alt={t('footer.qrAlt')} loading="lazy" decoding="async" /><span>{t('footer.qrTitle').split('\n').map((line) => <span key={line}>{line}<br /></span>)}</span></div><div className="public-footer-contact-copy"><strong>{t('footer.contact')}</strong><a href={`tel:${PUBLIC_COMPANY_INFO.phone}`}>{PUBLIC_COMPANY_INFO.phone}</a><span>{PUBLIC_COMPANY_INFO.address}</span></div></div>}
       </div>
-      <div className="public-footer-bottom manuscript-footer-filing" aria-label={t('footer.filing')}><span className="manuscript-footer-filing-copy">Copyright @ 2025-{new Date().getFullYear()} {PUBLIC_COMPANY_INFO.name}</span><span className="manuscript-footer-filing-item"><img src={manuscriptFilingIcpIcon} alt="" aria-hidden="true" />{PUBLIC_COMPANY_INFO.filing}</span><span className="manuscript-footer-filing-item"><img src={manuscriptFilingSecurityIcon} alt="" aria-hidden="true" />{PUBLIC_COMPANY_INFO.securityFiling}</span><Link className="manuscript-footer-filing-item" to="/about">营业执照</Link><Link className="manuscript-footer-filing-item" to="/terms">许可证</Link></div>
+      <div className="public-footer-bottom manuscript-footer-filing" aria-label={t('footer.filing')}><span className="manuscript-footer-filing-copy">Copyright @ 2025-{new Date().getFullYear()} {PUBLIC_COMPANY_INFO.name}</span><span className="manuscript-footer-filing-item"><img src={manuscriptFilingIcpIcon} alt="" aria-hidden="true" />{PUBLIC_COMPANY_INFO.filing}</span><span className="manuscript-footer-filing-item"><img src={manuscriptFilingSecurityIcon} alt="" aria-hidden="true" />{PUBLIC_COMPANY_INFO.securityFiling}</span><Link className="manuscript-footer-filing-item" to="/about">{t('footer.businessLicense')}</Link><Link className="manuscript-footer-filing-item" to="/terms">{t('footer.license')}</Link></div>
       <ManuscriptSupportWidget />
     </footer>
   )
@@ -1785,12 +1820,14 @@ export function ManuscriptSupportWidget() {
   const messageSequenceRef = useRef(0)
   const messagesEndRef = useRef<HTMLDivElement | null>(null)
   const supportLocale: SupportLocale = translationI18n.language.startsWith('en') ? 'en-US' : 'zh-CN'
+  const triggerExpanded = hovered && !mounted
 
   useEffect(() => {
     const handleOpenRequest = (event: Event) => {
       const detail = (event as CustomEvent<{ tab?: SupportTab }>).detail
       if (detail?.tab === 'contact' || detail?.tab === 'notifications') setTab(detail.tab)
       if (closeTimerRef.current !== undefined) window.clearTimeout(closeTimerRef.current)
+      setHovered(false)
       setOpen(true)
       setMounted(true)
     }
@@ -1831,11 +1868,13 @@ export function ManuscriptSupportWidget() {
   function openPanel(): void {
     if (closeTimerRef.current !== undefined) window.clearTimeout(closeTimerRef.current)
     setTab('contact')
+    setHovered(false)
     setOpen(true)
     setMounted(true)
   }
 
   function closePanel(): void {
+    setHovered(false)
     setOpen(false)
     if (closeTimerRef.current !== undefined) window.clearTimeout(closeTimerRef.current)
     closeTimerRef.current = window.setTimeout(() => setMounted(false), MANUSCRIPT_SUPPORT_TRANSITION_MS)
@@ -1879,7 +1918,7 @@ export function ManuscriptSupportWidget() {
   }
 
   return (
-    <div ref={rootRef} className={`manuscript-support-widget${hovered ? ' is-hovered' : ''}`} onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}>
+    <div ref={rootRef} className={`manuscript-support-widget${triggerExpanded ? ' is-hovered' : ''}`} onMouseEnter={() => { if (!mounted) setHovered(true) }} onMouseLeave={() => setHovered(false)}>
       {mounted ? <section className={`manuscript-support-panel${open ? ' is-open' : ' is-closing'}`} role="dialog" aria-modal="false" aria-label={t('support.dialogLabel')}>
         <div className="manuscript-support-tabs" role="tablist" aria-label={t('support.panel')}>
           <span className={`manuscript-support-tab-thumb${tab === 'notifications' ? ' is-right' : ''}`} aria-hidden="true" />
@@ -1913,7 +1952,7 @@ export function ManuscriptSupportWidget() {
       </section> : null}
       <div className="manuscript-support-trigger">
         <button className="manuscript-support-icon-button" type="button" aria-label={open ? t('support.close') : t('support.open')} title={open ? t('support.close') : t('support.open')} aria-expanded={open} onClick={togglePanel}><IconCustomerSupport /></button>
-        <button className="manuscript-support-label-button" type="button" aria-label={t('support.trigger')} aria-hidden={!hovered} tabIndex={hovered ? 0 : -1} onClick={togglePanel}><IconCustomerSupport /><span>{t('support.trigger')}</span></button>
+        <button className="manuscript-support-label-button" type="button" aria-label={t('support.trigger')} aria-hidden={!triggerExpanded} tabIndex={triggerExpanded ? 0 : -1} onClick={togglePanel}><IconCustomerSupport /><span>{t('support.trigger')}</span></button>
       </div>
     </div>
   )

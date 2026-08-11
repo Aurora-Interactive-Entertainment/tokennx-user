@@ -10,6 +10,7 @@ import promoModelLogo from '@/assets/figma-home/promo-model-logo.svg'
 import promoRewardAvatars from '@/assets/figma-home/promo-reward-avatars.png'
 import promoBannerArt from '@/assets/figma-home/promo-banner.png'
 import promoArticleArt from '@/assets/figma-home/promo-article.png'
+import mobileHomeStyles from '@/mobile-home.css?inline'
 import hermesAgentImage from '@/assets/figma-apps/hermes-agent.png'
 import mimoXiaomiImage from '@/assets/figma-ranking/mimo-xiaomi.png'
 import { ModelPriceSummary } from '@/components/money'
@@ -91,9 +92,9 @@ const HOME_PARTNER_NAME_KEYS: Record<string, string> = {
   Scietrain: 'scietrain',
   MetaGPT: 'metagpt',
 }
-const HOME_AVAILABILITY_BAR_COUNT = 24
+const HOME_AVAILABILITY_BAR_COUNT = 48
 const HOME_AVAILABILITY_RATE_DECIMAL_PLACES = 2
-const HOME_AVAILABILITY_SEGMENT_OFFSETS = [-0.05, 0.02, 0.01, -0.03, 0.04, -0.01, 0, 0.03, -0.02, -0.04, 0.05, -0.01, -0.03, 0.02, 0.01, -0.02, 0.04, -0.03, 0, -0.01, 0.03, -0.04, 0.02, 0.02] as const
+const HOME_AVAILABILITY_SEGMENT_OFFSETS = [-0.04, 0.02, 0.01, 0, 0.04, -0.01, 0, 0.03, -0.02, 0.01, 0.05, 0, 0.01, 0.02, 0.01, 0, 0.04, 0, 0.02, 0.01, 0.03, 0, 0.02, 0.01] as const
 const HOME_MODEL_MOSAIC_COUNT = 18
 const HOME_SCOREBOARD_ANIMATION_DURATION = 1_600
 const HOME_SCOREBOARD_DIGIT_COUNT = 8
@@ -807,6 +808,7 @@ export function HomePage({ onInitialScoreboardReady }: { onInitialScoreboardRead
 
   return (
     <PublicLayout mainClassName="home-page home-page--manuscript">
+      <style>{mobileHomeStyles}</style>
       <div className="manuscript-home-shell">
         <section className="manuscript-hero" aria-labelledby="homeTitle">
           <div className="manuscript-hero-copy">

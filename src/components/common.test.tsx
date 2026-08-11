@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, useLocation } from 'react-router'
 import { Provider } from 'react-redux'
@@ -8,7 +8,7 @@ import { getEnterpriseContext, type EnterpriseContext } from '@/api/enterprise-c
 import { AppStoreProvider } from '@/data/app-state'
 import { createAppStore } from '@/store'
 import { clearAuthTokens, saveAuthTokens } from '@/auth/token-storage'
-import { activeNavKey, ConsoleLayout, consoleNavGroupsFor, DEFAULT_CONSOLE_PATH, isEnterpriseOwner, isEnterprisePermissionPath, LoginPanel, localizeConsoleLabel, normalizeLoginReturnPath, PublicHeader, PUBLIC_LINKS } from './common'
+import { activeNavKey, ConsoleLayout, consoleNavGroupsFor, DEFAULT_CONSOLE_PATH, isEnterpriseOwner, isEnterprisePermissionPath, LoginPanel, localizeConsoleLabel, normalizeLoginReturnPath, PublicFooter, PublicHeader, PUBLIC_LINKS } from './common'
 import { NEW_ENTERPRISE_CREATE_PATH } from '@/api/enterprise-certification'
 import i18n from '@/i18n'
 
@@ -401,6 +401,100 @@ describe('公共 Header 布局', () => {
       expect(within(mobileNav as HTMLElement).queryByRole('link', { name: label })).toBeNull()
       expect(within(mobileNav as HTMLElement).getByText(label)).toHaveAttribute('aria-disabled', 'true')
     }
+  })
+
+  it('移动导航可通过外部点击和 Escape 收起', async () => {
+    const user = userEvent.setup()
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <Provider store={createAppStore()}>
+          <AppStoreProvider><PublicHeader /></AppStoreProvider>
+        </Provider>
+      </MemoryRouter>,
+    )
+
+    const menuButton = document.querySelector('.mobile-menu-button') as HTMLButtonElement
+    const mobileNav = document.querySelector('.public-mobile-nav') as HTMLElement
+    await user.click(menuButton)
+    expect(menuButton).toHaveAttribute('aria-expanded', 'true')
+    expect(mobileNav).not.toHaveAttribute('hidden')
+
+    fireEvent.pointerDown(document.body)
+    expect(menuButton).toHaveAttribute('aria-expanded', 'false')
+    expect(mobileNav).toHaveAttribute('hidden')
+
+    await user.click(menuButton)
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(menuButton).toHaveAttribute('aria-expanded', 'false')
+    expect(mobileNav).toHaveAttribute('hidden')
+  })
+
+  it('移动导航通知按钮会收起导航并打开通知面板', async () => {
+    const user = userEvent.setup()
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <Provider store={createAppStore()}>
+          <AppStoreProvider>
+            <PublicHeader unreadNotificationCount={2} />
+            <PublicFooter manuscript />
+          </AppStoreProvider>
+        </Provider>
+      </MemoryRouter>,
+    )
+
+    const menuButton = document.querySelector('.mobile-menu-button') as HTMLButtonElement
+    const mobileNav = document.querySelector('.public-mobile-nav') as HTMLElement
+    await user.click(menuButton)
+
+    const notificationButton = within(mobileNav).getByRole('button', { name: i18n.t('nav.notifications') })
+    expect(notificationButton.querySelector('.header-notification-icon')).toBeInTheDocument()
+    expect(notificationButton.querySelector('.header-notification-dot')).toBeInTheDocument()
+
+    await user.click(notificationButton)
+
+    expect(menuButton).toHaveAttribute('aria-expanded', 'false')
+    expect(mobileNav).toHaveAttribute('hidden')
+    const supportDialog = await screen.findByRole('dialog', { name: i18n.t('support.dialogLabel') })
+    expect(within(supportDialog).getByRole('tabpanel', { name: i18n.t('support.notificationsTab') })).toBeInTheDocument()
+    expect(supportDialog.querySelector('.manuscript-support-tab.is-active')).toHaveAttribute('aria-selected', 'true')
+  })
+
+  it('关闭客服面板后会同步收起悬浮入口', async () => {
+    const user = userEvent.setup()
+    render(<MemoryRouter><PublicFooter manuscript /></MemoryRouter>)
+
+    const widget = document.querySelector('.manuscript-support-widget') as HTMLElement
+    const labelButton = document.querySelector('.manuscript-support-label-button') as HTMLButtonElement
+    fireEvent.mouseEnter(widget)
+    expect(widget).toHaveClass('is-hovered')
+
+    await user.click(labelButton)
+    const supportDialog = await screen.findByRole('dialog', { name: i18n.t('support.dialogLabel') })
+    await user.click(within(supportDialog).getByRole('button', { name: i18n.t('support.closePanel') }))
+
+    expect(widget).not.toHaveClass('is-hovered')
+    expect(labelButton).toHaveAttribute('aria-hidden', 'true')
+    expect(labelButton).toHaveAttribute('tabindex', '-1')
+  })
+
+  it('手稿首页 Footer 分组支持展开、切换和收起', async () => {
+    const user = userEvent.setup()
+    render(<MemoryRouter><PublicFooter manuscript /></MemoryRouter>)
+
+    const productToggle = screen.getByRole('button', { name: i18n.t('footer.product') })
+    const docsToggle = screen.getByRole('button', { name: i18n.t('footer.docs') })
+    expect(productToggle).toHaveAttribute('aria-expanded', 'false')
+
+    await user.click(productToggle)
+    expect(productToggle).toHaveAttribute('aria-expanded', 'true')
+    expect(productToggle.closest('.public-footer-nav-group')).toHaveClass('is-open')
+
+    await user.click(docsToggle)
+    expect(productToggle).toHaveAttribute('aria-expanded', 'false')
+    expect(docsToggle).toHaveAttribute('aria-expanded', 'true')
+
+    await user.click(docsToggle)
+    expect(docsToggle).toHaveAttribute('aria-expanded', 'false')
   })
 
   it('Header 和用户菜单统一限制昵称展示长度', async () => {
