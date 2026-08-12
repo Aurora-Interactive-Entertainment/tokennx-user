@@ -1,10 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
 import Button from '@douyinfe/semi-ui/lib/es/button'
 import Input from '@douyinfe/semi-ui/lib/es/input'
 import Modal from '@douyinfe/semi-ui/lib/es/modal'
 import Switch from '@douyinfe/semi-ui/lib/es/switch'
-import Toast from '@douyinfe/semi-ui/lib/es/toast'
 import {
   getNotificationPreferences,
   getProfileEnterprises,
@@ -23,7 +22,7 @@ import {
   type NotificationPreferences,
   type UserProfile,
 } from '@/api/profile'
-import { getAccessToken } from '@/auth/token-storage'
+import { getAccessToken, getVerifiedPhone } from '@/auth/token-storage'
 import { isAuthenticationFailure } from '@/api/http'
 import { ProfileContactDialog } from '@/components/profile-contact-dialog'
 import { BannerNotice, PageTitle } from '@/components/common'
@@ -33,6 +32,8 @@ import { getEnterpriseContext, type EnterpriseContext, type EnterpriseRoleOption
 import { invalidateAuth, updateAuthenticatedUser } from '@/store/auth-slice'
 import { useAppDispatch } from '@/store/hooks'
 import { useTranslation } from 'react-i18next'
+import { appToast as Toast } from '@/components/app-toast'
+import { publishProfileUpdate, subscribeProfileUpdates } from '@/profile/profile-sync'
 
 const PREFERENCE_DEFINITIONS: Record<NotificationPreferenceCode, { labelKey: string; descriptionKey: string }> = {
   low_balance: { labelKey: 'profile.notifications.lowBalance', descriptionKey: 'profile.notifications.lowBalanceDescription' },
@@ -91,6 +92,7 @@ export function SettingsPage() {
   const [savingPreference, setSavingPreference] = useState<NotificationPreferenceCode | null>(null)
   const [contactProvider, setContactProvider] = useState<ContactProvider | null>(null)
   const [deactivateVisible, setDeactivateVisible] = useState(false)
+  const nicknameRequestPending = useRef(false)
 
   const invalidateSession = useCallback((): void => {
     dispatch(invalidateAuth())
@@ -173,14 +175,18 @@ export function SettingsPage() {
     ]
   }, [enterprises, enterpriseContext, profile, store.activeWorkspace.id, store.activeWorkspace.type, t])
 
-  function applyProfile(nextProfile: UserProfile): void {
+  const applyProfile = useCallback((nextProfile: UserProfile, publish = true): void => {
     const normalizedProfile = normalizeProfile(nextProfile)
     setProfile(normalizedProfile)
     setDisplayName(normalizedProfile.display_name)
     dispatch(updateAuthenticatedUser(profileToAuthUser(normalizedProfile)))
-  }
+    if (publish) publishProfileUpdate(normalizedProfile)
+  }, [dispatch])
+
+  useEffect(() => subscribeProfileUpdates((nextProfile) => applyProfile(nextProfile, false)), [applyProfile])
 
   async function saveNickname(): Promise<void> {
+    if (nicknameRequestPending.current) return
     const normalizedName = displayName.trim()
     if (!normalizedName) {
       Toast.warning(t('profile.personal.emptyName'))
@@ -197,6 +203,7 @@ export function SettingsPage() {
       return
     }
     if (normalizedName === profile.display_name) return
+    nicknameRequestPending.current = true
     setSavingNickname(true)
     try {
       const nextProfile = await updateProfileNickname(accessToken, normalizedName)
@@ -205,6 +212,7 @@ export function SettingsPage() {
     } catch (requestError) {
       if (!handleProfileError(requestError)) Toast.error(getProfileErrorMessage(requestError))
     } finally {
+      nicknameRequestPending.current = false
       setSavingNickname(false)
     }
   }
@@ -250,7 +258,7 @@ export function SettingsPage() {
         <p>{t('profile.personal.description')}</p>
         <p className="settings-hint">{t('profile.personal.dataHint')}</p>
       </div>
-      <form className="settings-form" noValidate onSubmit={(event) => { event.preventDefault(); void saveNickname() }}>
+      <div className="settings-form">
         <div className="settings-row">
           <span className="settings-label">{t('profile.personal.avatar')}</span>
           <div className="settings-control">
@@ -261,7 +269,22 @@ export function SettingsPage() {
         <div className="settings-row">
           <label className="settings-label" htmlFor="profile-display-name">{t('profile.personal.nickname')}</label>
           <div className="settings-control">
-            <Input id="profile-display-name" value={displayName} onChange={(value) => setDisplayName(limitDisplayNameLength(value))} maxLength={PROFILE_DISPLAY_NAME_MAX_LENGTH} autoComplete="nickname" aria-describedby="profile-display-name-hint" />
+            <Input
+              id="profile-display-name"
+              value={displayName}
+              onChange={(value) => setDisplayName(limitDisplayNameLength(value))}
+              onBlur={() => { void saveNickname() }}
+              onKeyDown={(event) => {
+                if (event.key !== 'Enter' || event.nativeEvent.isComposing) return
+                event.preventDefault()
+                void saveNickname()
+              }}
+              maxLength={PROFILE_DISPLAY_NAME_MAX_LENGTH}
+              autoComplete="nickname"
+              aria-describedby="profile-display-name-hint"
+              aria-busy={savingNickname}
+              disabled={savingNickname}
+            />
             <p className="settings-hint" id="profile-display-name-hint">{t('profile.personal.nicknameHint', { count: PROFILE_DISPLAY_NAME_MAX_LENGTH })}</p>
           </div>
         </div>
@@ -295,13 +318,7 @@ export function SettingsPage() {
             <p className="settings-hint">{t('profile.personal.userIdHint')}</p>
           </div>
         </div>
-        <div className="settings-row">
-          <span className="settings-label" aria-hidden="true" />
-          <div className="settings-actions">
-            <Button className="settings-primary-button" theme="solid" type="primary" htmlType="submit" loading={savingNickname} disabled={savingNickname || !displayName.trim()}>{savingNickname ? t('profile.personal.saving') : t('profile.personal.save')}</Button>
-          </div>
-        </div>
-      </form>
+      </div>
     </section>
   }
 
@@ -327,7 +344,6 @@ export function SettingsPage() {
 
   if (!profile || (!enterpriseWorkspace && !preferences) || (enterpriseWorkspace && !enterpriseContext)) return null
 
-  const profileContact = contactProvider ? profile[contactProvider] : profile.phone
   const enterprisePermissions = enterpriseContext
     ? ENTERPRISE_CAPABILITY_DEFINITIONS.filter(({ key }) => enterpriseContext.capabilities[key]).map(({ labelKey }) => t(labelKey))
     : []
@@ -412,16 +428,16 @@ export function SettingsPage() {
         </section> : null}
       </div>
 
-      <ProfileContactDialog
-        visible={Boolean(contactProvider)}
-        provider={contactProvider ?? 'phone'}
-        currentContact={profileContact}
+      {contactProvider ? <ProfileContactDialog
+        visible
+        provider={contactProvider}
+        currentContact={profile[contactProvider]}
+        currentDestination={contactProvider === 'phone' ? getVerifiedPhone(profile.id) ?? undefined : undefined}
         accessToken={getAccessToken()}
-        locale={profile.locale}
         onAuthFailure={invalidateSession}
         onCancel={() => setContactProvider(null)}
         onSaved={(nextProfile) => { applyProfile(nextProfile); setContactProvider(null) }}
-      />
+      /> : null}
       <Modal
         className="profile-security-modal"
         centered

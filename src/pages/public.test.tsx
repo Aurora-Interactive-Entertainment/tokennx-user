@@ -250,7 +250,7 @@ describe('公开模型页面', () => {
     promotionLinks.forEach((link) => expect(link).toHaveAttribute('href', '/models/claude-public'))
   })
 
-  it('首页接口成功返回空编排时不再闪现默认内容', async () => {
+  it('首页接口成功返回空编排时使用默认优惠模型兜底', async () => {
     renderPage(<HomePage />, '/')
 
     expect(document.querySelector('.manuscript-feature-grid')).toHaveAttribute('aria-busy', 'true')
@@ -258,10 +258,10 @@ describe('公开模型页面', () => {
     expect(screen.queryByText('Claude Opus 4.8')).toBeNull()
     await waitFor(() => expect(document.querySelector('.manuscript-feature-grid')).not.toHaveAttribute('aria-busy'))
     expect(document.querySelectorAll('.manuscript-feature-card')).toHaveLength(0)
-    expect(document.querySelectorAll('.manuscript-price-card')).toHaveLength(0)
+    expect(document.querySelectorAll('.manuscript-price-card')).toHaveLength(3)
     expect(document.querySelector('.manuscript-ad-slot')).toBeNull()
     expect(document.querySelector('.manuscript-partner-row')).toBeNull()
-    expect(screen.queryByText('Claude Opus 4.8')).toBeNull()
+    expect(screen.getAllByText('Claude Opus 4.8')).toHaveLength(3)
   })
 
   it('首页优先渲染后台生效的卡片、优惠模型、广告位、置顶新闻和合作伙伴', async () => {

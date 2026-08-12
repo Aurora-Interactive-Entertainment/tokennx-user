@@ -4013,8 +4013,8 @@ html[data-theme="light"] .manuscript-home-error button { border-color: #bbb; col
 .manuscript-reward-marks { display: flex; align-items: center; justify-content: center; gap: 0; min-height: 48px; margin: 7px 0 10px; }
 .manuscript-reward-avatar { position: relative; display: grid; width: 68px; height: 68px; flex: 0 0 68px; place-items: center; margin-left: -16px; overflow: hidden; border: 2px solid #202020; border-radius: 50%; background: linear-gradient(145deg, #5a5a5a 0%, #333 100%); box-shadow: 0 1px 2px rgba(0, 0, 0, .28); }
 .manuscript-reward-avatar:first-child { margin-left: 0; }
-.manuscript-reward-avatar::before { position: absolute; top: 25%; width: 31%; height: 31%; border-radius: 50%; background: #8b8b8b; content: ''; }
-.manuscript-reward-avatar::after { position: absolute; bottom: 18%; width: 50%; height: 26%; border-radius: 50% 50% 18% 18%; background: #8b8b8b; content: ''; }
+.manuscript-reward-avatar::before { position: absolute; top: 25%; left: 50%; width: 26%; height: 26%; border-radius: 50%; background: #8b8b8b; content: ''; transform: translateX(-50%); }
+.manuscript-reward-avatar::after { position: absolute; bottom: 24%; left: 50%; width: 43%; height: 23%; border-radius: 50% 50% 18% 18%; background: #8b8b8b; content: ''; transform: translateX(-50%); }
 .manuscript-reward-marks i { display: grid; width: 29px; height: 29px; place-items: center; margin-left: -4px; border: 1px solid #493a37; border-radius: 50%; color: #fff; background: #70dc87; font-size: 19px; font-style: normal; font-weight: 700; }
 .manuscript-reward-marks i:first-child { margin-left: 0; }
 .manuscript-reward-card h3 { margin: 0; color: #f6f6f6; font-size: 15px; }

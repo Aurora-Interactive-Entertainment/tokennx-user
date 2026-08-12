@@ -623,6 +623,13 @@ function ManagedAdSlots({ entries }: { entries: HomepageEntry[] }) {
 type HomePromotionRouteModel = Pick<ModelRecord, 'id' | 'alias'>
 type HomePromotionItem = { id: string; model: HomePromotionRouteModel; name: string; company: string; discountKind: HomepageDiscountKind; input: string; output: string; availability: string }
 
+const HOME_DEFAULT_PROMOTION_MODEL = findModel('claude-sonnet-4') ?? MODEL_CATALOG[0]
+const HOME_DEFAULT_PROMOTION_ITEMS: HomePromotionItem[] = [
+  { id: 'claude-opus-promo-1', model: HOME_DEFAULT_PROMOTION_MODEL, name: 'Claude Opus 4.8', company: 'Anthropic', discountKind: 'half', input: '0.1', output: '0.1', availability: '99.82%' },
+  { id: 'claude-opus-promo-2', model: HOME_DEFAULT_PROMOTION_MODEL, name: 'Claude Opus 4.8', company: 'Anthropic', discountKind: 'free', input: '0.1', output: '0.1', availability: '99.97%' },
+  { id: 'claude-opus-promo-3', model: HOME_DEFAULT_PROMOTION_MODEL, name: 'Claude Opus 4.8', company: 'Anthropic', discountKind: 'half', input: '0.1', output: '0.1', availability: '99.91%' },
+]
+
 function homepageModelPrice(model: HomepagePromotionModel, meterKind: 'input_token' | 'output_token'): string {
   const price = model.prices.find((item) => item.meter_kind === meterKind)
   if (!price) return '--'
@@ -632,8 +639,8 @@ function homepageModelPrice(model: HomepagePromotionModel, meterKind: 'input_tok
 }
 
 function managedPromotionItems(homepage: PublicHomepage | null, language: string): HomePromotionItem[] {
-  if (!homepage?.promotion_models.length) return []
-  return homepage.promotion_models.flatMap((entry): HomePromotionItem[] => {
+  if (!homepage?.promotion_models.length) return HOME_DEFAULT_PROMOTION_ITEMS
+  const managedItems = homepage.promotion_models.flatMap((entry): HomePromotionItem[] => {
     const content = homepageTranslation(entry, language)
     if (entry.model) {
       return [{
@@ -660,6 +667,7 @@ function managedPromotionItems(homepage: PublicHomepage | null, language: string
       availability: `${model.availability.rate.toFixed(2)}%`,
     }]
   })
+  return managedItems.length ? managedItems : HOME_DEFAULT_PROMOTION_ITEMS
 }
 
 function managedPartners(homepage: PublicHomepage | null, language: string): HomePartner[] {

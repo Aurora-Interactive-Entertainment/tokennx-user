@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter, useLocation } from 'react-router'
 import { Provider } from 'react-redux'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { limitDisplayNameLength } from '@/api/profile'
+import { limitDisplayNameLength, type UserProfile } from '@/api/profile'
 import { getEnterpriseContext, type EnterpriseContext } from '@/api/enterprise-console'
 import { AppStoreProvider } from '@/data/app-state'
 import { createAppStore } from '@/store'
@@ -42,6 +42,48 @@ const DEFAULT_ENTERPRISE_CONTEXT: EnterpriseContext = {
   },
 }
 
+const ACCOUNT_PROFILE: UserProfile = {
+  id: 'user-1',
+  display_name: '测试用户',
+  avatar_url: '',
+  locale: 'zh-CN',
+  timezone: 'Asia/Shanghai',
+  status: 'active',
+  version: 1,
+  phone: { bound: true, masked_identifier: '138****8000' },
+  email: { bound: false, masked_identifier: '' },
+}
+
+function profileApiResponse(data: unknown, status = 200, code = 0, msg = 'success'): Response {
+  return new Response(JSON.stringify({ code, msg, data }), { status, headers: { 'Content-Type': 'application/json' } })
+}
+
+function mockAccountProfileApi() {
+  let profile = structuredClone(ACCOUNT_PROFILE)
+  const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, options) => {
+    const url = String(input)
+    const method = options?.method ?? 'GET'
+    if (url.endsWith('/api/user/profile') && method === 'GET') return profileApiResponse(profile)
+    if (url.endsWith('/api/user/profile/nickname') && method === 'PUT') {
+      const body = JSON.parse(String(options?.body)) as { display_name: string }
+      profile = { ...profile, display_name: body.display_name, version: profile.version + 1 }
+      return profileApiResponse(profile)
+    }
+    if (url.endsWith('/api/user/profile/contact/code')) return profileApiResponse([])
+    if (url.endsWith('/api/user/profile/phone') && method === 'PUT') {
+      profile = { ...profile, phone: { bound: true, masked_identifier: '139****9000' }, version: profile.version + 1 }
+      return profileApiResponse(profile)
+    }
+    if (url.endsWith('/api/user/profile/email') && method === 'PUT') {
+      profile = { ...profile, email: { bound: true, masked_identifier: 'n***@example.com' }, version: profile.version + 1 }
+      return profileApiResponse(profile)
+    }
+    throw new Error(`unexpected request: ${url}`)
+  })
+  saveAuthTokens({ status: 'succeeded', binding_required: false, access_token: 'profile-access-token', refresh_token: 'profile-refresh-token', refresh_expires_at: Date.UTC(2099, 0, 1), user: ACCOUNT_PROFILE })
+  return { fetchMock, getProfile: () => profile }
+}
+
 function LocationProbe() {
   const location = useLocation()
   return <output data-testid="common-location">{location.pathname}{location.search}</output>
@@ -54,6 +96,7 @@ beforeEach(() => {
 })
 afterEach(() => {
   vi.restoreAllMocks()
+  window.localStorage.removeItem('token-nx:auth:phone-code-cooldown:v1')
   clearAuthTokens()
 })
 
@@ -626,6 +669,28 @@ describe('控制台模型展示本地化', () => {
 })
 
 describe('登录验证码按钮', () => {
+  it('读取浏览器自动填充的手机号并在接口未返回脱敏号码时显示本地回退值', async () => {
+    const user = userEvent.setup()
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ code: 0, msg: 'success', data: { destination_masked: '', expires_at: '2099-01-01T00:05:00Z', retry_after_seconds: 10 } }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
+
+    render(
+      <MemoryRouter initialEntries={['/login']}>
+        <Provider store={createAppStore()}>
+          <AppStoreProvider><LoginPanel onSuccess={vi.fn()} /></AppStoreProvider>
+        </Provider>
+      </MemoryRouter>,
+    )
+
+    const phoneInput = screen.getByLabelText('手机号') as HTMLInputElement
+    const valueSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set
+    valueSetter?.call(phoneInput, '13800138000')
+    await user.click(screen.getByRole('button', { name: '获取验证码' }))
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledOnce())
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toMatchObject({ destination: '13800138000' })
+    expect(await screen.findByText('验证码已发送至 138****8000')).toBeInTheDocument()
+  })
+
   it('发送验证码后立即显示加载并阻止重复请求', async () => {
     const user = userEvent.setup()
     let resolveRequest!: (response: Response) => void
@@ -716,6 +781,7 @@ describe('已登录用户菜单', () => {
 
   it('点击用户菜单设置打开全局账户弹窗', async () => {
     const user = userEvent.setup()
+    const { fetchMock } = mockAccountProfileApi()
     const appStore = createAppStore()
     appStore.dispatch({ type: 'auth/loginWithEmail/fulfilled', payload: { id: 'user-1', display_name: '测试用户', avatar_url: '', locale: 'zh-CN', timezone: 'Asia/Shanghai', status: 'active' } })
 
@@ -730,6 +796,7 @@ describe('已登录用户菜单', () => {
     await user.hover(screen.getByRole('button', { name: '打开用户菜单' }))
     await user.click(screen.getByRole('button', { name: '账户设置' }))
     const dialog = await screen.findByRole('dialog', { name: '个人中心' })
+    await waitFor(() => expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith('/api/user/profile'))).toBe(true))
     expect(dialog).toHaveTextContent('个人资料')
     expect(dialog).toHaveTextContent('账户')
     expect(dialog).toHaveTextContent('测试用户')
@@ -740,19 +807,53 @@ describe('已登录用户菜单', () => {
     await user.clear(nameInput)
     await user.type(nameInput, '新的昵称')
     await user.click(within(dialog).getByText('头像'))
-    expect(within(dialog).queryByRole('textbox', { name: '昵称' })).toBeNull()
-    expect(dialog).toHaveTextContent('新的昵称')
+    await waitFor(() => expect(within(dialog).queryByRole('textbox', { name: '昵称' })).toBeNull())
+    expect(await within(dialog).findByText('新的昵称')).toBeInTheDocument()
+    const nicknameRequest = fetchMock.mock.calls.find(([url]) => String(url).endsWith('/api/user/profile/nickname'))
+    expect(JSON.parse(String(nicknameRequest?.[1]?.body))).toEqual({ display_name: '新的昵称' })
 
     await user.click(within(dialog).getByRole('button', { name: '手机号' }))
-    const phoneInput = within(dialog).getByRole('textbox', { name: '手机号' })
-    await user.clear(phoneInput)
-    await user.type(phoneInput, '13800138000{enter}')
+    const phoneDialog = await screen.findByRole('dialog', { name: '更换手机号' }, { timeout: 5000 })
+    expect(phoneDialog).toHaveTextContent('当前联系方式')
     expect(within(dialog).queryByRole('textbox', { name: '手机号' })).toBeNull()
-    expect(dialog).toHaveTextContent('13800138000')
+  })
+
+  it('弹窗昵称无变化时不请求，邮箱绑定成功后同步展示和认证用户', async () => {
+    const user = userEvent.setup()
+    const { fetchMock } = mockAccountProfileApi()
+    const appStore = createAppStore()
+    appStore.dispatch({ type: 'auth/loginWithEmail/fulfilled', payload: { id: 'user-1', display_name: '测试用户', avatar_url: '', locale: 'zh-CN', timezone: 'Asia/Shanghai', status: 'active' } })
+
+    render(<MemoryRouter initialEntries={['/']}><Provider store={appStore}><AppStoreProvider><PublicHeader /></AppStoreProvider></Provider></MemoryRouter>)
+    await user.hover(screen.getByRole('button', { name: '打开用户菜单' }))
+    await user.click(screen.getByRole('button', { name: '账户设置' }))
+    const dialog = await screen.findByRole('dialog', { name: '个人中心' })
+    await waitFor(() => expect(within(dialog).getByRole('button', { name: '昵称' })).toBeEnabled())
+
+    await user.click(within(dialog).getByRole('button', { name: '昵称' }))
+    const nameInput = within(dialog).getByRole('textbox', { name: '昵称' })
+    await user.click(within(dialog).getByRole('button', { name: '保存更改' }))
+    expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith('/api/user/profile/nickname'))).toBe(false)
+    expect(nameInput).not.toBeInTheDocument()
+
+    await user.click(within(dialog).getByRole('button', { name: /绑定邮箱/ }))
+    const emailDialog = await screen.findByRole('dialog', { name: '绑定邮箱' })
+    const newEmail = document.querySelector<HTMLInputElement>('#profile-email-new-destination')
+    const newCode = document.querySelector<HTMLInputElement>('#profile-email-newCode')
+    if (!newEmail || !newCode) throw new Error('邮箱绑定表单未渲染')
+    await user.type(newEmail, 'new@example.com')
+    await user.click(within(emailDialog).getByRole('button', { name: '发送新验证码' }))
+    await user.type(newCode, '654321')
+    await user.click(within(emailDialog).getByRole('button', { name: '保存联系方式' }))
+
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: '绑定邮箱' })).not.toBeInTheDocument())
+    expect(within(dialog).getByText('n***@example.com')).toBeInTheDocument()
+    expect(appStore.getState().auth.user?.email_masked).toBe('n***@example.com')
   })
 
   it('移动端打开并操作账户设置时保留底层导航和用户菜单', async () => {
     const user = userEvent.setup()
+    mockAccountProfileApi()
     const appStore = createAppStore()
     const originalInnerWidth = window.innerWidth
     Object.defineProperty(window, 'innerWidth', { configurable: true, value: 700 })
@@ -788,6 +889,18 @@ describe('已登录用户菜单', () => {
       expect(menu).toHaveClass('open')
 
       await user.click(within(dialog).getByText('头像'))
+      expect(header).toHaveClass('mobile-nav-open')
+      expect(menu).toHaveClass('open')
+
+      await user.click(within(dialog).getByRole('button', { name: /绑定邮箱/ }))
+      const emailDialog = await screen.findByRole('dialog', { name: '绑定邮箱' }, { timeout: 5000 })
+      const emailInput = document.querySelector<HTMLInputElement>('#profile-email-new-destination')
+      if (!emailInput) throw new Error('邮箱输入框未渲染')
+      await user.type(emailInput, 'new@example.com')
+      await user.click(within(emailDialog).getByRole('button', { name: '发送新验证码' }))
+      expect(header).toHaveClass('mobile-nav-open')
+      expect(menu).toHaveClass('open')
+      await user.click(within(emailDialog).getByRole('button', { name: '取消' }))
       expect(header).toHaveClass('mobile-nav-open')
       expect(menu).toHaveClass('open')
 

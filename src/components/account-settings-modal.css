@@ -1,0 +1,36 @@
+.account-settings-contact-trigger {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  text-align: right;
+  cursor: pointer;
+}
+
+.account-settings-contact-trigger:disabled {
+  cursor: wait;
+  opacity: .65;
+}
+
+.account-settings-load-error {
+  margin: 0;
+  padding: 10px 0;
+  color: #e5484d;
+  font-size: 13px;
+}
+
+.account-settings-input:focus-visible {
+  outline: none;
+}
+
+@media (max-width: 760px) {
+  .account-settings-contact-trigger {
+    max-width: 62vw;
+  }
+}

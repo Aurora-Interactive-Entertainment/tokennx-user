@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react'
+import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent as ReactKeyboardEvent, type ReactNode, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
 import type { TFunction } from 'i18next'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router'
@@ -47,11 +47,11 @@ import {
 } from '@douyinfe/semi-icons'
 import { useAppStore, type AppStoreValue, type Workspace, type WorkspaceRole } from '@/data/app-state'
 import { modelAlias, modelRouteKey, MODALITY_LABELS, type ModelRecord } from '@/data/models'
-import { getProfileEnterprises, limitDisplayNameLength, type EnterpriseMembership } from '@/api/profile'
+import { getProfileEnterprises, getProfileErrorMessage, getUserProfile, isValidDisplayName, limitDisplayNameLength, PROFILE_DISPLAY_NAME_MAX_LENGTH, updateProfileNickname, type ContactProvider, type EnterpriseMembership, type UserProfile } from '@/api/profile'
 import { getAccountOverview, type AccountOverviewResponse, type BillingContext } from '@/api/billing'
-import { completeBinding, completeWechatLogin, invalidateAuth, loginWithPhone, logoutAuth, pollWechatStatus, requestBindingCode, requestPhoneCode, requestWechatQr } from '@/store/auth-slice'
+import { completeBinding, completeWechatLogin, invalidateAuth, loginWithPhone, logoutAuth, pollWechatStatus, requestBindingCode, requestPhoneCode, requestWechatQr, updateAuthenticatedUser } from '@/store/auth-slice'
 import { useAppDispatch, useAppSelector } from '@/store/hooks'
-import { clearAuthTokens, getAccessToken } from '@/auth/token-storage'
+import { clearAuthTokens, getAccessToken, getVerifiedPhone, saveVerifiedPhone } from '@/auth/token-storage'
 import { isAuthenticationFailure } from '@/api/http'
 import { useTranslation } from 'react-i18next'
 import { cycleThemeMode, themeModeLabel, useResolvedTheme, useThemeMode } from '@/theme'
@@ -68,6 +68,12 @@ import publicMobileNavStyles from '@/public-mobile-nav.css?inline'
 import '@/public-footer.css'
 import accountBadge from '@/assets/figma-account-badge.png'
 import manuscriptFooterLogo from '@/assets/figma-home/footer-logo.png'
+import './login-panel.css'
+import './account-settings-modal.css'
+import { appToast } from './app-toast'
+import { publishProfileUpdate, subscribeProfileUpdates } from '@/profile/profile-sync'
+
+const LazyProfileContactDialog = lazy(() => import('./profile-contact-dialog').then((module) => ({ default: module.ProfileContactDialog })))
 import manuscriptCustomerQr from '@/assets/figma-home/footer-qr-customer.png'
 import manuscriptOfficialQr from '@/assets/figma-home/footer-qr-official.png'
 import manuscriptFilingIcpIcon from '@/assets/figma-home/filing-icp.png'
@@ -451,6 +457,10 @@ function normalizeLoginPhone(value: string): string {
   return value.replace(/\D/g, '')
 }
 
+function maskLoginPhone(value: string): string {
+  return value.length >= 7 ? `${value.slice(0, 3)}****${value.slice(-4)}` : value
+}
+
 function internationalLoginPhone(dialCode: string, value: string): string {
   return `${dialCode}${normalizeLoginPhone(value)}`
 }
@@ -520,6 +530,7 @@ type LoginPhoneFieldProps = {
   invalid?: boolean
   onDialCodeChange: (value: string) => void
   onPhoneChange: (value: string) => void
+  inputRef?: RefObject<HTMLInputElement | null>
 }
 
 function LoginPhoneField(props: LoginPhoneFieldProps) {
@@ -548,6 +559,7 @@ function LoginPhoneField(props: LoginPhoneFieldProps) {
           </select>
         </div>
         <input
+          ref={props.inputRef}
           className="phone-input"
           id={props.id}
           aria-label={t('login.phone')}
@@ -589,6 +601,7 @@ export function LoginPanel({ onSuccess, onAuthFailure }: { onSuccess: () => void
   const [bindingRetryAfter, setBindingRetryAfter] = useState(0)
   const [bindingCodeLoading, setBindingCodeLoading] = useState(false)
   const [bindingLoading, setBindingLoading] = useState(false)
+  const phoneInputRef = useRef<HTMLInputElement>(null)
   const dispatch = useAppDispatch()
   const navigate = useNavigate()
 
@@ -683,16 +696,18 @@ export function LoginPanel({ onSuccess, onAuthFailure }: { onSuccess: () => void
   }
 
   async function requestCode(): Promise<void> {
-    if (phoneRetryAfter > 0 || phoneCodeLoading || !validatePhone(phone, dialCode)) return
+    const currentPhone = normalizeLoginPhone(phoneInputRef.current?.value ?? phone)
+    if (currentPhone !== phone) setPhone(currentPhone)
+    if (phoneRetryAfter > 0 || phoneCodeLoading || !validatePhone(currentPhone, dialCode)) return
     setPhoneCodeLoading(true)
     setFeedback('')
     try {
-      const destination = normalizeLoginPhone(phone)
+      const destination = currentPhone
       const result = await dispatch(requestPhoneCode({ destination, countryCode: dialCode })).unwrap()
       setPhoneCodeSent(true)
       setPhoneRetryAfter(LOGIN_CODE_RETRY_SECONDS)
       savePhoneCodeCooldown(destination, dialCode)
-      setFeedback(t('login.sentTo', { destination: result.destination_masked }))
+      setFeedback(t('login.sentTo', { destination: result.destination_masked || maskLoginPhone(destination) }))
     } catch (error) {
       handleLoginError(error)
     } finally {
@@ -706,7 +721,9 @@ export function LoginPanel({ onSuccess, onAuthFailure }: { onSuccess: () => void
       setFeedback(t('login.acceptTermsRequired'))
       return
     }
-    if (!validatePhone(phone, dialCode)) return
+    const destination = normalizeLoginPhone(phoneInputRef.current?.value ?? phone)
+    if (destination !== phone) setPhone(destination)
+    if (!validatePhone(destination, dialCode)) return
     if (!/^\d{6}$/.test(code)) {
       setFeedback(t('login.validationCode'))
       return
@@ -714,7 +731,8 @@ export function LoginPanel({ onSuccess, onAuthFailure }: { onSuccess: () => void
     setPhoneLoginLoading(true)
     setFeedback('')
     try {
-      await dispatch(loginWithPhone({ destination: normalizeLoginPhone(phone), code })).unwrap()
+      const user = await dispatch(loginWithPhone({ destination, code })).unwrap()
+      saveVerifiedPhone(user.id, destination)
       onSuccess()
     } catch (error) {
       handleLoginError(error)
@@ -767,7 +785,8 @@ export function LoginPanel({ onSuccess, onAuthFailure }: { onSuccess: () => void
     setBindingLoading(true)
     setFeedback('')
     try {
-      await dispatch(completeBinding({ bindingTicket, phone: internationalLoginPhone(bindingDialCode, bindingPhone), code: bindingCode })).unwrap()
+      const user = await dispatch(completeBinding({ bindingTicket, phone: internationalLoginPhone(bindingDialCode, bindingPhone), code: bindingCode })).unwrap()
+      saveVerifiedPhone(user.id, bindingPhone)
       onSuccess()
     } catch (error) {
       handleLoginError(error)
@@ -785,7 +804,7 @@ export function LoginPanel({ onSuccess, onAuthFailure }: { onSuccess: () => void
         <div className="login-pane login-pane--phone">
           <form className="login-form" onSubmit={submitPhone} noValidate>
             <h2 className="login-panel-title" id="login-panel-heading"><label htmlFor="login-phone">{t('login.phoneLoginTitle')}</label></h2>
-            <LoginPhoneField id="login-phone" dialCode={dialCode} phone={phone} invalid={feedback === t('login.validationPhone')} onDialCodeChange={setDialCode} onPhoneChange={setPhone} />
+            <LoginPhoneField id="login-phone" dialCode={dialCode} phone={phone} invalid={feedback === t('login.validationPhone')} onDialCodeChange={setDialCode} onPhoneChange={setPhone} inputRef={phoneInputRef} />
             <div className="form-field code-field">
               <label className="public-sr-only" htmlFor="login-code">{t('login.code')}</label>
               <div className="code-input-wrapper">
@@ -1076,7 +1095,7 @@ export function PublicHeader({ enterpriseAccess, unreadNotificationCount = 0 }: 
   useEffect(() => {
     if (!mobileOpen) return undefined
     const handlePointerDown = (event: PointerEvent): void => {
-      if (accountSettingsOpen && event.target instanceof Element && event.target.closest('.account-settings-overlay')) return
+      if (accountSettingsOpen && event.target instanceof Element && event.target.closest('.account-settings-overlay, .profile-contact-modal')) return
       if (!headerRef.current?.contains(event.target as Node)) setMobileOpen(false)
     }
     const handleKeyDown = (event: KeyboardEvent): void => {
@@ -1626,30 +1645,89 @@ function UserMenu({ store, userId, userName, phone, enterpriseAccess, accountSet
 function AccountSettingsModal({ onClose }: { onClose: () => void }) {
   const { t } = useTranslation()
   const store = useAppStore()
+  const dispatch = useAppDispatch()
   const auth = useAppSelector((state) => state.auth)
-  const initialDisplayName = limitDisplayNameLength(auth.user?.display_name || store.nickname) || t('console.common.demoUser')
-  const initialPhone = auth.user?.phone_masked || store.phone || t('profile.overview.notSet')
-  const email = auth.user?.email_masked || t('profile.overview.notSet')
-  const userId = auth.user?.id || t('profile.overview.notSet')
-  const [displayName, setDisplayName] = useState(initialDisplayName)
-  const [phone, setPhone] = useState(initialPhone)
-  const [editingField, setEditingField] = useState<'name' | 'phone' | null>(null)
+  const navigate = useNavigate()
+  const fallbackDisplayName = limitDisplayNameLength(auth.user?.display_name || store.nickname) || t('console.common.demoUser')
+  const [profile, setProfile] = useState<UserProfile | null>(null)
+  const [displayName, setDisplayName] = useState(fallbackDisplayName)
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState('')
+  const [editingName, setEditingName] = useState(false)
   const [editingValue, setEditingValue] = useState('')
+  const [savingName, setSavingName] = useState(false)
+  const [contactProvider, setContactProvider] = useState<ContactProvider | null>(null)
+  const nicknameRequestPending = useRef(false)
   const initial = displayName.slice(0, 1).toUpperCase()
   const accountLabel = t('console.nav.account').replace(/管理$/, '')
+  const phone = profile?.phone.masked_identifier || auth.user?.phone_masked || store.phone || t('profile.overview.notSet')
+  const email = profile?.email.masked_identifier || auth.user?.email_masked || t('profile.overview.notSet')
+  const userId = profile?.id || auth.user?.id || t('profile.overview.notSet')
+
+  function profileAuthUser(nextProfile: UserProfile) {
+    return {
+      id: nextProfile.id,
+      display_name: limitDisplayNameLength(nextProfile.display_name),
+      avatar_url: nextProfile.avatar_url,
+      locale: nextProfile.locale,
+      timezone: nextProfile.timezone,
+      status: nextProfile.status,
+      phone_masked: nextProfile.phone.masked_identifier,
+      email_masked: nextProfile.email.masked_identifier,
+    }
+  }
+
+  function applyProfile(nextProfile: UserProfile, publish = true): void {
+    const normalizedProfile = { ...nextProfile, display_name: limitDisplayNameLength(nextProfile.display_name) }
+    setProfile(normalizedProfile)
+    setDisplayName(normalizedProfile.display_name)
+    dispatch(updateAuthenticatedUser(profileAuthUser(normalizedProfile)))
+    store.updateProfile({ nickname: normalizedProfile.display_name, phone: normalizedProfile.phone.masked_identifier, avatar: normalizedProfile.avatar_url || store.avatar })
+    if (publish) publishProfileUpdate(normalizedProfile)
+  }
+
+  function invalidateProfileSession(): void {
+    clearAuthTokens()
+    dispatch(invalidateAuth())
+    onClose()
+    navigate('/', { replace: true })
+  }
+
+  useEffect(() => {
+    let active = true
+    const accessToken = getAccessToken()
+    if (!accessToken) {
+      invalidateProfileSession()
+      return
+    }
+    setLoading(true)
+    setLoadError('')
+    void getUserProfile(accessToken).then((nextProfile) => {
+      if (active) applyProfile(nextProfile)
+    }).catch((error) => {
+      if (!active) return
+      if (isAuthenticationFailure(error)) invalidateProfileSession()
+      else setLoadError(getProfileErrorMessage(error))
+    }).finally(() => {
+      if (active) setLoading(false)
+    })
+    return () => { active = false }
+  }, [])
+
+  useEffect(() => subscribeProfileUpdates((nextProfile) => applyProfile(nextProfile, false)), [])
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose()
+      if (event.key === 'Escape' && !contactProvider && !editingName) onClose()
     }
     document.addEventListener('keydown', handleKeyDown)
     return () => {
       document.body.style.overflow = previousOverflow
       document.removeEventListener('keydown', handleKeyDown)
     }
-  }, [onClose])
+  }, [contactProvider, editingName, onClose])
 
   async function copyUserId(): Promise<void> {
     if (!userId || userId === t('profile.overview.notSet')) return
@@ -1661,50 +1739,74 @@ function AccountSettingsModal({ onClose }: { onClose: () => void }) {
     }
   }
 
-  function beginEdit(field: 'name' | 'phone'): void {
-    setEditingField(field)
-    setEditingValue(field === 'name' ? displayName : phone)
+  function beginNameEdit(): void {
+    if (loading || !profile) return
+    setEditingName(true)
+    setEditingValue(displayName)
   }
 
-  function commitEdit(field: 'name' | 'phone'): void {
+  async function commitName(): Promise<void> {
+    if (nicknameRequestPending.current || !profile) return
     const value = editingValue.trim()
-    if (value) {
-      if (field === 'name') {
-        const nextName = limitDisplayNameLength(value) || displayName
-        setDisplayName(nextName)
-        store.updateProfile({ nickname: nextName, phone: store.phone, avatar: store.avatar })
-      } else {
-        setPhone(value)
-        store.updateProfile({ nickname: store.nickname, phone: value, avatar: store.avatar })
-      }
+    if (!value) {
+      appToast.warning(t('profile.personal.emptyName'))
+      return
     }
-    setEditingField(null)
+    if (!isValidDisplayName(value)) {
+      appToast.warning(t('profile.personal.nameTooLong', { count: PROFILE_DISPLAY_NAME_MAX_LENGTH }))
+      return
+    }
+    if (value === profile.display_name) {
+      setEditingName(false)
+      return
+    }
+    const accessToken = getAccessToken()
+    if (!accessToken) {
+      invalidateProfileSession()
+      return
+    }
+    nicknameRequestPending.current = true
+    setSavingName(true)
+    try {
+      const nextProfile = await updateProfileNickname(accessToken, value)
+      applyProfile(nextProfile)
+      setEditingName(false)
+      appToast.success(t('profile.personal.saved'))
+    } catch (error) {
+      if (isAuthenticationFailure(error)) invalidateProfileSession()
+      else appToast.error(getProfileErrorMessage(error))
+    } finally {
+      nicknameRequestPending.current = false
+      setSavingName(false)
+    }
   }
 
-  function handleEditKeyDown(event: ReactKeyboardEvent<HTMLInputElement>, field: 'name' | 'phone'): void {
+  function handleNameKeyDown(event: ReactKeyboardEvent<HTMLInputElement>): void {
     if (event.key === 'Enter') {
       event.preventDefault()
-      event.currentTarget.blur()
+      void commitName()
     } else if (event.key === 'Escape') {
       event.preventDefault()
       event.stopPropagation()
-      setEditingField(null)
+      setEditingName(false)
+      setEditingValue(displayName)
     }
   }
 
-  function renderEditableValue(field: 'name' | 'phone', value: string, label: string): ReactNode {
-    if (editingField === field) {
+  function renderNickname(): ReactNode {
+    if (editingName) {
       return <span className="account-settings-value account-settings-value--editing">
-        <input className="account-settings-input" autoFocus value={editingValue} aria-label={label} onChange={(event) => setEditingValue(event.target.value)} onBlur={() => commitEdit(field)} onKeyDown={(event) => handleEditKeyDown(event, field)} />
-        <button type="button" className="account-settings-icon-button account-settings-confirm" aria-label={t('profile.personal.save')} onMouseDown={(event) => event.preventDefault()} onClick={() => commitEdit(field)}><IconTick aria-hidden="true" /></button>
+        <input className="account-settings-input" autoFocus value={editingValue} aria-label={t('profile.personal.nickname')} maxLength={PROFILE_DISPLAY_NAME_MAX_LENGTH} disabled={savingName} onChange={(event) => setEditingValue(limitDisplayNameLength(event.target.value))} onBlur={() => { void commitName() }} onKeyDown={handleNameKeyDown} />
+        <button type="button" className="account-settings-icon-button account-settings-confirm" aria-label={t('profile.personal.save')} disabled={savingName} onMouseDown={(event) => event.preventDefault()} onClick={() => { void commitName() }}><IconTick aria-hidden="true" /></button>
       </span>
     }
-    return <span className="account-settings-value">{value}<button type="button" className="account-settings-icon-button" aria-label={label} onClick={() => beginEdit(field)}><IconEditStroked aria-hidden="true" /></button></span>
+    return <span className="account-settings-value">{displayName}<button type="button" className="account-settings-icon-button" aria-label={t('profile.personal.nickname')} disabled={loading || !profile} onClick={beginNameEdit}><IconEditStroked aria-hidden="true" /></button></span>
   }
 
   return createPortal(
-    <div className="account-settings-overlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}>
-      <section className="account-settings-modal" role="dialog" aria-modal="true" aria-label={t('profile.title')}>
+    <>
+      <div className="account-settings-overlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !contactProvider) onClose() }}>
+        <section className="account-settings-modal" role="dialog" aria-modal="true" aria-label={t('profile.title')}>
         <aside className="account-settings-sidebar">
           <h2>{t('profile.personal.title')}</h2>
           <button className="account-settings-tab active" type="button"><IconUserStroked aria-hidden="true" /><span>{accountLabel}</span></button>
@@ -1717,7 +1819,7 @@ function AccountSettingsModal({ onClose }: { onClose: () => void }) {
           <div className="account-settings-fields">
             <div className="account-settings-row account-settings-row--name">
               <span className="account-settings-label">{t('profile.personal.nickname')}</span>
-              {renderEditableValue('name', displayName, t('profile.personal.nickname'))}
+              {renderNickname()}
             </div>
             <div className="account-settings-row account-settings-row--avatar">
               <span className="account-settings-label">{t('profile.personal.avatar')}</span>
@@ -1725,7 +1827,7 @@ function AccountSettingsModal({ onClose }: { onClose: () => void }) {
             </div>
             <div className="account-settings-row">
               <span className="account-settings-label">{t('profile.contact.email')}</span>
-              <span className="account-settings-value">{email}{email === t('profile.overview.notSet') ? <button type="button" className="account-settings-inline-action">{t('profile.contact.dialogEmailBind')}</button> : null}</span>
+              <button type="button" className="account-settings-contact-trigger" disabled={loading || !profile} onClick={() => setContactProvider('email')}><span>{email}</span><span className="account-settings-inline-action">{profile?.email.bound ? t('profile.contact.changeEmail') : t('profile.contact.dialogEmailBind')}</span></button>
             </div>
             <div className="account-settings-row">
               <span className="account-settings-label">{t('profile.overview.id')}</span>
@@ -1733,7 +1835,7 @@ function AccountSettingsModal({ onClose }: { onClose: () => void }) {
             </div>
             <div className="account-settings-row">
               <span className="account-settings-label">{t('login.phone')}</span>
-              {renderEditableValue('phone', phone, t('login.phone'))}
+              <button type="button" className="account-settings-contact-trigger" aria-label={t('login.phone')} disabled={loading || !profile} onClick={() => setContactProvider('phone')}><span>{phone}</span><IconEditStroked aria-hidden="true" /></button>
             </div>
             <div className="account-settings-row account-settings-row--badges">
               <span className="account-settings-label">徽章</span>
@@ -1743,10 +1845,22 @@ function AccountSettingsModal({ onClose }: { onClose: () => void }) {
               <span className="account-settings-label">删除账户</span>
               <button type="button" className="account-settings-delete">删除账户</button>
             </div>
+            {loadError ? <p className="account-settings-load-error" role="alert">{loadError}</p> : null}
           </div>
         </main>
-      </section>
-    </div>,
+        </section>
+      </div>
+      {contactProvider && profile ? <Suspense fallback={null}><LazyProfileContactDialog
+          visible
+          provider={contactProvider}
+          currentContact={profile[contactProvider]}
+          currentDestination={contactProvider === 'phone' ? getVerifiedPhone(profile.id) ?? undefined : undefined}
+          accessToken={getAccessToken()}
+          onAuthFailure={invalidateProfileSession}
+          onCancel={() => setContactProvider(null)}
+          onSaved={(nextProfile) => { applyProfile(nextProfile); setContactProvider(null) }}
+        /></Suspense> : null}
+    </>,
     document.body,
   )
 }

@@ -1,0 +1,6 @@
+:is(.login-popover, .login-card) .login-panel .code-input-wrapper .get-code-btn {
+  align-items: center;
+  justify-content: center;
+  padding-inline: 9px;
+  text-align: center;
+}

@@ -7,6 +7,7 @@ const PROFILE_PATH = '/api/user/profile'
 
 export const PROFILE_DISPLAY_NAME_MAX_LENGTH = 20
 export const PROFILE_PHONE_LENGTH = 11
+export const PROFILE_PHONE_COUNTRY_CODE = '+86'
 export const PROFILE_EMAIL_MAX_LENGTH = 254
 export const PROFILE_VERIFICATION_CODE_LENGTH = 6
 export const PROFILE_DEFAULT_RETRY_SECONDS = 60
@@ -42,14 +43,10 @@ export interface ProfileContactCodeRequest {
   provider_code: ContactProvider
   purpose: ContactPurpose
   destination: string
-  locale?: string
+  country_code?: string
 }
 
-export interface ProfileContactCodeResult {
-  destination_masked: string
-  expires_at: ApiTimeValue
-  retry_after_seconds: number
-}
+export type ProfileContactCodeResult = unknown[]
 
 export interface UpdateProfileContactRequest {
   current_destination?: string

@@ -4,6 +4,7 @@ export const REFRESH_SESSION_KEY = 'token-nx:auth:refresh:v1'
 export const DEVICE_ID_KEY = 'token-nx:auth:device:v1'
 export const AUTH_SYNC_CHANNEL_NAME = 'token-nx:auth:sync:v1'
 export const AUTH_SYNC_STORAGE_KEY = 'token-nx:auth:event:v1'
+export const VERIFIED_PHONE_KEY = 'token-nx:auth:verified-phone:v1'
 
 const MAX_SEEN_EVENT_IDS = 1_000
 
@@ -75,6 +76,38 @@ function storage(): Storage | null {
   } catch {
     return null
   }
+}
+
+function sessionStorage(): Storage | null {
+  try {
+    return typeof window === 'undefined' ? null : window.sessionStorage
+  } catch {
+    return null
+  }
+}
+
+export function saveVerifiedPhone(userId: string, phone: string): void {
+  const normalizedUserId = userId.trim()
+  const normalizedPhone = phone.replace(/\D/g, '')
+  if (!normalizedUserId || !normalizedPhone) return
+  sessionStorage()?.setItem(VERIFIED_PHONE_KEY, JSON.stringify({ userId: normalizedUserId, phone: normalizedPhone }))
+}
+
+export function getVerifiedPhone(userId: string): string | null {
+  const raw = sessionStorage()?.getItem(VERIFIED_PHONE_KEY)
+  if (!raw) return null
+  try {
+    const value = JSON.parse(raw) as { userId?: unknown; phone?: unknown }
+    if (value.userId !== userId || typeof value.phone !== 'string' || !/^\d+$/.test(value.phone)) return null
+    return value.phone
+  } catch {
+    sessionStorage()?.removeItem(VERIFIED_PHONE_KEY)
+    return null
+  }
+}
+
+export function clearVerifiedPhone(): void {
+  sessionStorage()?.removeItem(VERIFIED_PHONE_KEY)
 }
 
 function nextRevision(): SessionRevision {
@@ -211,6 +244,7 @@ function applyRemoteChange(change: AuthTokenChange): void {
   accessToken = null
   accessTokenRefreshToken = null
   lastKnownUser = undefined
+  clearVerifiedPhone()
   saved?.removeItem(REFRESH_SESSION_KEY)
   revisionClock = Math.max(revisionClock, change.revision.timestamp)
   notifyChange(change)
@@ -354,6 +388,7 @@ export function clearAuthTokens(options: ClearAuthTokensOptions = {}): void {
   accessToken = null
   accessTokenRefreshToken = null
   lastKnownUser = undefined
+  clearVerifiedPhone()
   saved?.removeItem(REFRESH_SESSION_KEY)
   if (options.broadcast !== false) publishChange(createChange({ type: 'signed-out' }, revision))
   revisionClock = Math.max(revisionClock, revision.timestamp)
