@@ -48,6 +48,7 @@ import {
 import { useAppStore, type AppStoreValue, type Workspace, type WorkspaceRole } from '@/data/app-state'
 import { modelAlias, modelRouteKey, MODALITY_LABELS, type ModelRecord } from '@/data/models'
 import { getProfileEnterprises, limitDisplayNameLength, type EnterpriseMembership } from '@/api/profile'
+import { getAccountOverview, type AccountOverviewResponse, type BillingContext } from '@/api/billing'
 import { completeBinding, completeWechatLogin, invalidateAuth, loginWithPhone, logoutAuth, pollWechatStatus, requestBindingCode, requestPhoneCode, requestWechatQr } from '@/store/auth-slice'
 import { useAppDispatch, useAppSelector } from '@/store/hooks'
 import { clearAuthTokens, getAccessToken } from '@/auth/token-storage'
@@ -63,7 +64,6 @@ import tokenNxLogo from '@/token-nx-logo.png'
 import headerLogo from '@/assets/figma-header/token-nx-header-logo.png'
 import headerTrialPill from '@/assets/figma-header/trial-pill.png'
 import headerTrialFreeTag from '@/assets/figma-header/trial-free-tag.svg'
-import headerNotificationIcon from '@/assets/figma-header/notification.svg'
 import publicMobileNavStyles from '@/public-mobile-nav.css?inline'
 import '@/public-footer.css'
 import accountBadge from '@/assets/figma-account-badge.png'
@@ -122,6 +122,32 @@ export const PUBLIC_LINKS: PublicLink[] = [
 ]
 
 const AUTHENTICATED_PUBLIC_LINK: PublicLink = { labelKey: 'nav.billing', path: '/console/billing' }
+const BILLING_OVERVIEW_HOVER_DELAY_MS = 120
+const BILLING_OVERVIEW_CACHE_MS = 8_000
+
+type BillingOverviewCacheEntry = {
+  data: AccountOverviewResponse
+  loadedAt: number
+}
+
+function billingOverviewContext(workspace: Pick<Workspace, 'id' | 'type'>): BillingContext {
+  return workspace.type === 'enterprise' ? { account_type: 'enterprise', enterprise_id: workspace.id } : { account_type: 'personal' }
+}
+
+function billingOverviewKey(context: BillingContext): string {
+  return context.account_type === 'enterprise' ? `enterprise:${context.enterprise_id ?? ''}` : 'personal'
+}
+
+function formatBillingOverviewAmount(value: string | undefined): string {
+  const match = value?.trim().match(/^([+-]?)(\d+)(?:\.(\d+))?$/)
+  if (!match) return '--'
+  const fraction = (match[3] ?? '').padEnd(3, '0')
+  let cents = BigInt(match[2]) * 100n + BigInt(fraction.slice(0, 2))
+  if (fraction[2] >= '5') cents += 1n
+  const integer = (cents / 100n).toLocaleString()
+  const decimal = String(cents % 100n).padStart(2, '0')
+  return `${match[1] === '-' && cents !== 0n ? '-' : ''}${integer}.${decimal}`
+}
 
 // 中文：登录后的默认工作页改为快速接入，控制台根路径不再承载总览页面。
 export const DEFAULT_CONSOLE_PATH = '/console/quickstart'
@@ -957,10 +983,20 @@ export function PublicHeader({ enterpriseAccess, unreadNotificationCount = 0 }: 
   const [mobileOpen, setMobileOpen] = useState(false)
   const [billingMenuOpen, setBillingMenuOpen] = useState(false)
   const [billingBalanceVisible, setBillingBalanceVisible] = useState(true)
+  const [billingOverview, setBillingOverview] = useState<AccountOverviewResponse | null>(null)
   const [accountSettingsOpen, setAccountSettingsOpen] = useState(false)
   const headerRef = useRef<HTMLElement | null>(null)
-  const billingBalance = '348.62'
-  const maskedBillingBalance = billingBalance.replace(/\D/g, '').replace(/\d/g, '*')
+  const billingOverviewCacheRef = useRef(new Map<string, BillingOverviewCacheEntry>())
+  const billingOverviewRequestsRef = useRef(new Map<string, Promise<AccountOverviewResponse>>())
+  const billingHoverRequestTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const billingContext = billingOverviewContext(store.activeWorkspace)
+  const billingContextCacheKey = billingOverviewKey(billingContext)
+  const billingContextCacheKeyRef = useRef(billingContextCacheKey)
+  billingContextCacheKeyRef.current = billingContextCacheKey
+  const billingBalance = formatBillingOverviewAmount(billingOverview?.account_balance_yuan)
+  const billingInvitationReward = formatBillingOverviewAmount(billingOverview?.invitation_reward_yuan)
+  const billingInvoiceableAmount = formatBillingOverviewAmount(billingOverview?.invoiceable_amount_yuan)
+  const maskedBillingBalance = billingBalance === '--' ? '--' : billingBalance.replace(/\D/g, '').replace(/\d/g, '*')
   const billingHoverCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const currentPath = location.pathname
   const publicLinks = auth.status === 'authenticated' ? [...PUBLIC_LINKS, AUTHENTICATED_PUBLIC_LINK] : PUBLIC_LINKS
@@ -973,6 +1009,7 @@ export function PublicHeader({ enterpriseAccess, unreadNotificationCount = 0 }: 
   }
 
   useLayoutEffect(() => {
+    clearBillingHoverRequestTimer()
     setMobileOpen(false)
     setBillingMenuOpen(false)
   }, [currentPath])
@@ -983,20 +1020,58 @@ export function PublicHeader({ enterpriseAccess, unreadNotificationCount = 0 }: 
     billingHoverCloseTimerRef.current = null
   }
 
+  function clearBillingHoverRequestTimer(): void {
+    if (billingHoverRequestTimerRef.current === null) return
+    clearTimeout(billingHoverRequestTimerRef.current)
+    billingHoverRequestTimerRef.current = null
+  }
+
+  function loadBillingOverview(context: BillingContext, contextKey: string): void {
+    const cached = billingOverviewCacheRef.current.get(contextKey)
+    if (cached && Date.now() - cached.loadedAt < BILLING_OVERVIEW_CACHE_MS) {
+      setBillingOverview(cached.data)
+      return
+    }
+    const pending = billingOverviewRequestsRef.current.get(contextKey)
+    const request = pending ?? getAccountOverview(context)
+    if (!pending) billingOverviewRequestsRef.current.set(contextKey, request)
+    void request.then((data) => {
+      billingOverviewCacheRef.current.set(contextKey, { data, loadedAt: Date.now() })
+      if (billingContextCacheKeyRef.current === contextKey) setBillingOverview(data)
+    }).catch((error: unknown) => {
+      if (isAuthenticationFailure(error)) dispatch(invalidateAuth())
+    }).finally(() => {
+      if (billingOverviewRequestsRef.current.get(contextKey) === request) billingOverviewRequestsRef.current.delete(contextKey)
+    })
+  }
+
   function openBillingMenu(): void {
     clearBillingHoverCloseTimer()
     setBillingMenuOpen(true)
+    clearBillingHoverRequestTimer()
+    billingHoverRequestTimerRef.current = setTimeout(() => {
+      billingHoverRequestTimerRef.current = null
+      loadBillingOverview(billingContext, billingContextCacheKey)
+    }, BILLING_OVERVIEW_HOVER_DELAY_MS)
   }
 
   function scheduleBillingMenuClose(): void {
     clearBillingHoverCloseTimer()
+    clearBillingHoverRequestTimer()
     billingHoverCloseTimerRef.current = setTimeout(() => {
       billingHoverCloseTimerRef.current = null
       setBillingMenuOpen(false)
     }, 160)
   }
 
-  useEffect(() => () => clearBillingHoverCloseTimer(), [])
+  useEffect(() => {
+    setBillingOverview(billingOverviewCacheRef.current.get(billingContextCacheKey)?.data ?? null)
+  }, [billingContextCacheKey])
+
+  useEffect(() => () => {
+    clearBillingHoverCloseTimer()
+    clearBillingHoverRequestTimer()
+  }, [])
 
   useEffect(() => {
     if (!mobileOpen) return undefined
@@ -1037,13 +1112,13 @@ export function PublicHeader({ enterpriseAccess, unreadNotificationCount = 0 }: 
                 {billingBalanceVisible ? <IconEyeOpenedStroked aria-hidden="true" /> : <IconEyeClosedStroked aria-hidden="true" />}
               </button>
             </div>
-            <strong className={billingBalanceVisible ? '' : 'is-hidden'}>{billingBalanceVisible ? billingBalance : maskedBillingBalance}</strong>
+            <strong className={billingBalanceVisible ? '' : 'is-hidden'} title={billingBalanceVisible ? billingOverview?.account_balance_yuan : undefined}>{billingBalanceVisible ? billingBalance : maskedBillingBalance}</strong>
           </div>
-          <Link className="billing-hover-recharge" to="/console/billing" onClick={() => setBillingMenuOpen(false)}>{t('console.billing.rechargeNow')}</Link>
+          <Link className="billing-hover-recharge" to="/console/billing" onClick={() => setBillingMenuOpen(false)}><span>{t('console.billing.rechargeNow')}</span></Link>
         </div>
         <div className="billing-hover-facts">
-          <div><span>{t('console.billing.promotionBalance')}</span><strong>0</strong></div>
-          <div><span>{t('console.billing.invoiceAvailable')}</span><strong>0</strong></div>
+          <div><span>{t('console.billing.promotionBalance')}</span><strong title={billingOverview?.invitation_reward_yuan}>{billingInvitationReward}</strong></div>
+          <div><span>{t('console.billing.invoiceAvailable')}</span><strong title={billingOverview?.invoiceable_amount_yuan}>{billingInvoiceableAmount}</strong></div>
         </div>
         <div className="billing-hover-divider" aria-hidden="true" />
         <Link className="billing-hover-center" to="/console/billing" onClick={() => setBillingMenuOpen(false)}>{t('console.billing.billingCenter')}</Link>
@@ -1077,7 +1152,7 @@ export function PublicHeader({ enterpriseAccess, unreadNotificationCount = 0 }: 
           <div className="header-tools">
             <ThemeToggleButton />
             <button className="header-tool header-tool-badge" type="button" title={t('nav.notifications')} aria-label={t('nav.notifications')} onClick={() => requestSupportWidget('notifications')}>
-              <img className="header-notification-icon" src={headerNotificationIcon} alt="" aria-hidden="true" />
+              <IconBellStroked className="header-notification-icon" aria-hidden="true" />
               {unreadNotificationCount > 0 ? <i className="header-notification-dot" aria-hidden="true" /> : null}
             </button>
             <LanguageToggleButton />
@@ -1109,7 +1184,7 @@ export function PublicHeader({ enterpriseAccess, unreadNotificationCount = 0 }: 
         <div className="public-mobile-tools">
           <ThemeToggleButton />
           <button className="header-tool header-tool-badge" type="button" title={t('nav.notifications')} aria-label={t('nav.notifications')} onClick={() => { setMobileOpen(false); requestSupportWidget('notifications') }}>
-            <img className="header-notification-icon" src={headerNotificationIcon} alt="" aria-hidden="true" />
+            <IconBellStroked className="header-notification-icon" aria-hidden="true" />
             {unreadNotificationCount > 0 ? <i className="header-notification-dot" aria-hidden="true" /> : null}
           </button>
           <LanguageToggleButton mobile />

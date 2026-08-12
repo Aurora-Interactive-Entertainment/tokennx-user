@@ -389,6 +389,12 @@ describe('公共 Header 布局', () => {
     const user = userEvent.setup()
     const appStore = createAppStore()
     appStore.dispatch({ type: 'auth/loginWithEmail/fulfilled', payload: { id: 'user-1', display_name: '测试用户', avatar_url: '', locale: 'zh-CN', timezone: 'Asia/Shanghai', status: 'active' } })
+    saveAuthTokens({ status: 'succeeded', binding_required: false, access_token: 'overview-access-token', refresh_token: 'overview-refresh-token', refresh_expires_at: Date.UTC(2099, 0, 1) })
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => new Response(JSON.stringify({
+      code: 0,
+      msg: 'success',
+      data: { account_balance_yuan: '128.500000000', invitation_reward_yuan: '20.000000000', invoiceable_amount_yuan: '88.00' },
+    }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
 
     render(
       <MemoryRouter initialEntries={['/']}>
@@ -399,16 +405,30 @@ describe('公共 Header 布局', () => {
     )
 
     const navigation = screen.getByRole('navigation', { name: '公开导航' })
-    await user.hover(within(navigation).getByRole('link', { name: '费用' }))
+    const billingLink = within(navigation).getByRole('link', { name: '费用' })
+    await user.hover(billingLink)
     const dialog = await screen.findByRole('dialog', { name: '账户余额' })
-    expect(within(dialog).getByText('348.62')).toBeInTheDocument()
+    expect(await within(dialog).findByText('128.50')).toBeInTheDocument()
+    expect(within(dialog).getByText('20.00')).toBeInTheDocument()
+    expect(within(dialog).getByText('88.00')).toBeInTheDocument()
+    const overviewCalls = () => fetchMock.mock.calls.filter(([input]) => new URL(String(input), window.location.origin).pathname === '/api/user/account/overview')
+    expect(overviewCalls()).toHaveLength(1)
+    const overviewURL = new URL(String(overviewCalls()[0]?.[0]), window.location.origin)
+    expect(overviewURL.pathname).toBe('/api/user/account/overview')
+    expect(overviewURL.searchParams.get('account_type')).toBe('personal')
+    expect(new Headers(overviewCalls()[0]?.[1]?.headers).get('Authorization')).toBe('Bearer overview-access-token')
 
     await user.click(within(dialog).getByRole('button', { name: '隐藏余额' }))
     expect(within(dialog).getByText('*****')).toBeInTheDocument()
     expect(within(dialog).getByRole('button', { name: '显示余额' })).toBeInTheDocument()
 
     await user.click(within(dialog).getByRole('button', { name: '显示余额' }))
-    expect(within(dialog).getByText('348.62')).toBeInTheDocument()
+    expect(within(dialog).getByText('128.50')).toBeInTheDocument()
+
+    await user.unhover(billingLink)
+    await user.hover(billingLink)
+    await new Promise((resolve) => setTimeout(resolve, 160))
+    expect(overviewCalls()).toHaveLength(1)
   })
 
   it('公开 Header 的模型、排名、应用和文档入口可点击，桌面和移动导航仅禁用私有化', async () => {

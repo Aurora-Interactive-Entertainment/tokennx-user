@@ -234,9 +234,12 @@ export function ProfileContactDialog(props: ProfileContactDialogProps) {
 
   return (
     <Modal
+      className="profile-contact-modal"
+      centered
       title={title}
       visible={props.visible}
       width={560}
+      zIndex={1400}
       maskClosable={!saving}
       closable={!saving}
       footer={

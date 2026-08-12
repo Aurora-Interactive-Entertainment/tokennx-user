@@ -423,8 +423,11 @@ export function SettingsPage() {
         onSaved={(nextProfile) => { applyProfile(nextProfile); setContactProvider(null) }}
       />
       <Modal
+        className="profile-security-modal"
+        centered
         title={t('profile.security.dialogTitle')}
         visible={deactivateVisible}
+        zIndex={1400}
         onCancel={() => setDeactivateVisible(false)}
         onOk={() => { setDeactivateVisible(false); Toast.warning(t('profile.security.dialogPending')) }}
         okText={t('profile.security.dialogContinue')}

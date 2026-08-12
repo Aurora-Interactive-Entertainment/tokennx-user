@@ -2847,6 +2847,56 @@ body { --semi-color-focus-border: var(--color-border-neutral-l3); }
 .profile-error-content { display: flex; align-items: center; gap: var(--spacing-12); flex-wrap: wrap; }
 .profile-error-content span { min-width: 0; }
 .profile-contact-dialog { display: flex; flex-direction: column; gap: var(--spacing-20); }
+.profile-contact-modal .semi-modal,
+.profile-security-modal .semi-modal { max-height: calc(100dvh - 48px); }
+body:has(.profile-contact-modal) { width: 100% !important; }
+.profile-contact-modal .semi-modal-content,
+.profile-security-modal .semi-modal-content {
+  display: flex;
+  max-height: calc(100dvh - 48px);
+  flex-direction: column;
+  border-color: #404247;
+  color: #e8e9ed;
+  background: #242529;
+  box-shadow: 0 20px 56px rgba(0, 0, 0, .52);
+}
+.profile-contact-modal .semi-modal-header,
+.profile-contact-modal .semi-modal-body-wrapper,
+.profile-contact-modal .semi-modal-footer,
+.profile-security-modal .semi-modal-header,
+.profile-security-modal .semi-modal-body-wrapper,
+.profile-security-modal .semi-modal-footer { background: transparent; }
+.profile-contact-modal .semi-modal-body-wrapper,
+.profile-security-modal .semi-modal-body-wrapper { min-height: 0; overflow-y: auto; }
+.profile-contact-modal .semi-modal-title,
+.profile-security-modal .semi-modal-title { color: #f4f4f5; }
+.profile-contact-modal .semi-modal-close,
+.profile-security-modal .semi-modal-close { color: #b4b7c0; }
+html[data-theme="light"] .profile-contact-modal .semi-modal-content,
+html[data-theme="light"] .profile-security-modal .semi-modal-content {
+  border-color: #dedede;
+  color: #4f4f4f;
+  background: #fff;
+  box-shadow: 0 20px 56px rgba(23, 24, 27, .2);
+}
+html[data-theme="light"] .profile-contact-modal .semi-modal-title,
+html[data-theme="light"] .profile-security-modal .semi-modal-title { color: #17181b; }
+html[data-theme="light"] .profile-contact-modal .semi-modal-close,
+html[data-theme="light"] .profile-security-modal .semi-modal-close { color: #656a73; }
+.profile-contact-modal .semi-input-wrapper {
+  border: 1px solid #4b4e55;
+  background: #1f2024;
+}
+.profile-contact-modal .semi-input-wrapper:hover { border-color: #6b6f78; background: #1f2024; }
+.profile-contact-modal .semi-input-wrapper-focus,
+.profile-contact-modal .semi-input-wrapper-focus:hover { border-color: #d8dae0; background: #1f2024; }
+html[data-theme="light"] .profile-contact-modal .semi-input-wrapper {
+  border-color: #cfd2d7;
+  background: #fff;
+}
+html[data-theme="light"] .profile-contact-modal .semi-input-wrapper:hover { border-color: #9ea3ab; background: #fff; }
+html[data-theme="light"] .profile-contact-modal .semi-input-wrapper-focus,
+html[data-theme="light"] .profile-contact-modal .semi-input-wrapper-focus:hover { border-color: #555b65; background: #fff; }
 .profile-dialog-intro { color: var(--color-text-secondary); font-size: 12px; }
 .profile-dialog-group { display: grid; gap: var(--spacing-16); padding-top: var(--spacing-16); border-top: 1px solid var(--color-border-neutral-l1); }
 .profile-field { display: block; min-width: 0; }
@@ -3071,8 +3121,22 @@ body { --semi-color-focus-border: var(--color-border-neutral-l3); }
   .profile-contact-row, .profile-notification-row { align-items: flex-start; }
   .profile-contact-row { flex-direction: column; }
   .profile-contact-action { width: 100%; justify-content: space-between; }
+  .profile-contact-modal .semi-modal,
+  .profile-security-modal .semi-modal { width: calc(100vw - var(--spacing-32)) !important; max-width: none; max-height: calc(100dvh - var(--spacing-32)); margin: auto; }
+  .profile-contact-modal .semi-modal-content,
+  .profile-security-modal .semi-modal-content { max-height: calc(100dvh - var(--spacing-32)); padding-inline: var(--spacing-16); }
+  .profile-contact-modal .semi-modal-header,
+  .profile-security-modal .semi-modal-header { margin: var(--spacing-16) 0; }
+  .profile-contact-modal .semi-modal-body-wrapper,
+  .profile-security-modal .semi-modal-body-wrapper { margin: 0 0 var(--spacing-16); }
+  .profile-contact-modal .semi-modal-footer,
+  .profile-security-modal .semi-modal-footer { margin: 0 0 var(--spacing-16); }
   .profile-contact-code-row { grid-template-columns: 1fr; }
   .profile-code-button { width: 100%; }
+  .profile-dialog-footer { width: 100%; }
+  .profile-dialog-footer .semi-button { min-width: 0; flex: 1; }
+  .profile-security-modal .semi-modal-footer { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--spacing-8); }
+  .profile-security-modal .semi-modal-footer .semi-button { width: 100%; margin: 0; }
   .enterprise-log-filters, .enterprise-analytics-page .enterprise-log-filters { grid-template-columns: 1fr; max-width: none; }
   .enterprise-toolbar > .semi-button { width: 100%; }
   .custom-amount { align-items: stretch; flex-direction: column; }
@@ -3768,7 +3832,10 @@ html[data-theme="light"] .app-loading-screen__logo-shell .brand-logo-image { fil
 .public-header .theme-switcher:hover,
 .public-header .header-tool-badge:hover { background: #333; box-shadow: 0 3px 10px rgba(0, 0, 0, .28); }
 .public-header .header-tool-badge { position: relative; }
-.public-header .header-tool-badge .header-notification-icon { display: block; width: 18px; height: 18px; }
+.public-header .theme-switcher .tool-icon,
+.public-header .header-tool-badge .header-notification-icon { display: grid; width: 18px; height: 18px; flex: 0 0 18px; place-items: center; line-height: 0; }
+.public-header .theme-switcher .tool-icon svg,
+.public-header .header-tool-badge .header-notification-icon svg { display: block; width: 18px; height: 18px; }
 .public-header .header-tool-badge:hover .header-notification-icon { animation: header-notification-ring .58s ease-in-out; transform-origin: 50% 12%; }
 .public-header--home .header-notification-dot { border-color: #050505; }
 .public-header .language-switcher { width: 74px; min-width: 74px; height: 30px; overflow: hidden; padding: 3px; border: 1px solid rgba(255, 255, 255, .16); border-radius: 15px; color: #28292d; background: #d8d8d9; box-shadow: inset 0 1px 1px rgba(255, 255, 255, .42), 0 2px 8px rgba(0, 0, 0, .16); transition: border-color .2s ease, background-color .2s ease, box-shadow .2s ease; }
@@ -4827,7 +4894,7 @@ html[data-theme="light"] .public-layout--manuscript-home .manuscript-partner-gri
 .public-layout--manuscript-home .manuscript-partners { padding-bottom: 60px; }
 .public-layout--manuscript-home .manuscript-partners .manuscript-section-heading { margin-bottom: 26px; }
 .public-layout--manuscript-home .manuscript-partners .manuscript-section-heading p { font-size: var(--ui-header-nav-size); }
-.public-layout--manuscript-home .manuscript-partner-grid { --partner-item-width: 246px; position: relative; left: 50%; width: min(1480px, calc(100vw - 96px)); max-width: none; margin: 0; overflow: hidden; border: 0; background: #121212; transform: translateX(-50%); }
+.public-layout--manuscript-home .manuscript-partner-grid { --partner-item-width: 246px; position: relative; left: 50%; width: min(1540px, calc(100vw - 96px)); max-width: none; margin: 0; overflow: hidden; border: 0; background: #121212; transform: translateX(-50%); }
 .public-layout--manuscript-home .manuscript-partner-row.is-scrolling::before,
 .public-layout--manuscript-home .manuscript-partner-row.is-scrolling::after { position: absolute; top: 0; bottom: 0; z-index: 2; width: 180px; content: ''; pointer-events: none; }
 .public-layout--manuscript-home .manuscript-partner-row.is-scrolling::before { left: 0; background: linear-gradient(90deg, #121212 0%, rgba(18, 18, 18, .86) 32%, transparent 100%); }
@@ -5992,8 +6059,9 @@ html:has(.login-page) { overflow-y: hidden; scrollbar-gutter: auto; }
 .billing-hover-balance strong { display: block; min-width: 159px; height: 57px; margin-top: 0; color: #fff; font-family: "League Gothic", "Arial Narrow", sans-serif; font-size: 48px; font-weight: 400; letter-spacing: 0; line-height: 57px; }
 .billing-hover-balance strong.is-hidden { font-family: "Source Han Sans CN", "Noto Sans SC", sans-serif; font-size: 20px; letter-spacing: 2px; }
 .billing-hover-recharge { position: relative; isolation: isolate; display: grid; width: 127px; height: 34px; flex: 0 0 127px; place-items: center; overflow: hidden; margin-top: 24px; border-radius: 4px; color: #fff; background: linear-gradient(90deg, #ffb912 0%, #eb69ff 50%, #4c0dfb 100%); font-family: "Source Han Sans CN", "Noto Sans SC", sans-serif; font-size: 16px; font-weight: 700; text-decoration: none; }
-.billing-hover-recharge::before { position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: linear-gradient(90deg, #ffe312 0%, #f758ff 50%, #700dfb 100%); content: ""; opacity: 0; transition: opacity .25s ease; }
-.billing-hover-recharge:hover { color: #fff; filter: brightness(1.08); }
+.billing-hover-recharge::before { position: absolute; inset: 0; z-index: 0; display: block; border-radius: inherit; background: linear-gradient(90deg, #ffe312 0%, #f758ff 50%, #700dfb 100%); content: ""; opacity: 0; pointer-events: none; transition: opacity .24s ease; }
+.billing-hover-recharge > span { position: relative; z-index: 1; }
+.billing-hover-recharge:hover { color: #fff; background: linear-gradient(90deg, #ffb912 0%, #eb69ff 50%, #4c0dfb 100%); filter: none; }
 .billing-hover-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 19px; margin-top: 35px; }
 .billing-hover-facts > div { display: flex; height: 86px; flex-direction: column; align-items: center; padding: 9px 12px 7px; border-radius: 4px; color: #8b8b8b; background: #444; }
 .billing-hover-facts span { align-self: flex-start; font-family: "Source Han Sans CN", "Noto Sans SC", sans-serif; font-size: 16px; font-weight: 400; line-height: 23px; }
@@ -6005,6 +6073,11 @@ html:has(.login-page) { overflow-y: hidden; scrollbar-gutter: auto; }
 
 /* The public-nav anchor rule also matches links inside the billing card. */
 .public-header .header-nav .billing-hover-recharge { display: flex; min-height: 0; align-items: center; justify-content: center; padding: 0; border-radius: 4px; font-size: 16px; font-weight: 700; line-height: 24px; text-align: center; }
+.public-header .header-nav a.billing-hover-recharge,
+.public-header .header-nav a.billing-hover-recharge:hover,
+.public-header .header-nav a.billing-hover-recharge:active,
+.public-header .header-nav a.billing-hover-recharge:visited,
+.public-header .header-nav a.billing-hover-recharge > span { color: #fff; -webkit-text-fill-color: #fff; }
 .public-header .public-nav button.billing-hover-eye { width: 20px; min-width: 20px; height: 20px; min-height: 0; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
 .public-header .public-nav button.billing-hover-eye:hover, .public-header .public-nav button.billing-hover-eye:focus-visible { color: #b3b3b3; background: transparent; box-shadow: none; }
 .public-header .header-nav .billing-hover-recharge:hover { color: #fff; background: linear-gradient(90deg, #ffb912 0%, #eb69ff 50%, #4c0dfb 100%); filter: none; }
@@ -6044,7 +6117,7 @@ html:has(.login-page) { overflow-y: hidden; scrollbar-gutter: auto; }
   .public-layout--manuscript-home .manuscript-partners {
     position: relative;
     left: 50%;
-    width: min(1480px, calc(100vw - 96px));
+    width: min(1580px, calc(100vw - 96px));
     max-width: none;
     transform: translateX(-50%);
   }
@@ -6241,3 +6314,99 @@ html[data-theme="light"] :is(.login-popover, .login-card) .login-switch-btn {
   background: #fff;
 }
 html[data-theme="light"] :is(.login-popover, .login-card) .login-switch-btn:hover { border-color: #cfcfcf; color: #131212; background: #f6f6f6; }
+
+/* The partner marquee uses a dark Figma strip by default. In light mode the
+   strip and its edge fades must blend into the white page instead. */
+html[data-theme="light"] .public-layout--manuscript-home .manuscript-partner-grid {
+  background: #fff;
+}
+html[data-theme="light"] .public-layout--manuscript-home .manuscript-partner-item {
+  color: #17181b;
+}
+html[data-theme="light"] .public-layout--manuscript-home .manuscript-partner-logo,
+html[data-theme="light"] .public-layout--manuscript-home .manuscript-partner-logo svg {
+  color: #17181b;
+  fill: currentColor;
+}
+html[data-theme="light"] .public-layout--manuscript-home .manuscript-partner-image {
+  filter: brightness(0);
+}
+html[data-theme="light"] .public-layout--manuscript-home .manuscript-partner-row.is-scrolling::before {
+  background: linear-gradient(90deg,
+    #fff 0%,
+    #fff 18%,
+    rgba(255, 255, 255, .98) 38%,
+    rgba(255, 255, 255, .78) 58%,
+    rgba(255, 255, 255, .38) 80%,
+    rgba(255, 255, 255, 0) 100%);
+}
+html[data-theme="light"] .public-layout--manuscript-home .manuscript-partner-row.is-scrolling::after {
+  background: linear-gradient(270deg,
+    #fff 0%,
+    #fff 18%,
+    rgba(255, 255, 255, .98) 38%,
+    rgba(255, 255, 255, .78) 58%,
+    rgba(255, 255, 255, .38) 80%,
+    rgba(255, 255, 255, 0) 100%);
+}
+
+/* Mobile partner tiles are intentionally borderless in both themes. */
+@media (max-width: 720px) {
+  .public-layout--manuscript-home .manuscript-partner-grid,
+  .public-layout--manuscript-home .manuscript-partner-row,
+  .public-layout--manuscript-home .manuscript-partner-item,
+  .public-layout--manuscript-home .manuscript-partner-item::after {
+    border: 0;
+  }
+}
+
+/* Desktop billing popover follows the light public-page surface palette. */
+html[data-theme="light"] .billing-hover-card {
+  border: 1px solid #dedede;
+  color: #17181b;
+  background: #fff;
+  box-shadow: 0 18px 48px rgba(23, 24, 27, .16);
+}
+html[data-theme="light"] .billing-hover-label,
+html[data-theme="light"] .billing-hover-balance strong,
+html[data-theme="light"] .billing-hover-facts strong {
+  color: #17181b;
+}
+html[data-theme="light"] .billing-hover-label span:nth-child(2),
+html[data-theme="light"] .billing-hover-facts > div {
+  color: #8b8b8b;
+}
+html[data-theme="light"] .billing-hover-eye {
+  color: #8b8b8b;
+}
+html[data-theme="light"] .billing-hover-eye:hover,
+html[data-theme="light"] .billing-hover-eye:focus-visible,
+html[data-theme="light"] .public-header .public-nav button.billing-hover-eye:hover,
+html[data-theme="light"] .public-header .public-nav button.billing-hover-eye:focus-visible {
+  color: #4f4f4f;
+}
+html[data-theme="light"] .billing-hover-facts > div {
+  border: 1px solid #dedede;
+  background: #f6f6f6;
+}
+html[data-theme="light"] .billing-hover-divider::before {
+  background: #dedede;
+}
+html[data-theme="light"] .billing-hover-center {
+  color: #4f4f4f;
+}
+html[data-theme="light"] .billing-hover-center:hover {
+  color: #5c2fdc;
+}
+html[data-theme="light"] .public-layout--manuscript-home .public-header--home .header-nav .billing-hover-recharge {
+  color: #fff;
+}
+html[data-theme="light"] .public-layout--manuscript-home .public-header--home .header-nav .billing-hover-recharge:hover {
+  color: #fff;
+  background: linear-gradient(90deg, #ffb912 0%, #eb69ff 50%, #4c0dfb 100%);
+}
+html[data-theme="light"] .public-header .header-nav a.billing-hover-recharge,
+html[data-theme="light"] .public-header .header-nav a.billing-hover-recharge:hover,
+html[data-theme="light"] .public-header .header-nav a.billing-hover-recharge:active,
+html[data-theme="light"] .public-header .header-nav a.billing-hover-recharge:visited,
+html[data-theme="light"] .public-header .header-nav a.billing-hover-recharge > span { color: #fff; -webkit-text-fill-color: #fff; }

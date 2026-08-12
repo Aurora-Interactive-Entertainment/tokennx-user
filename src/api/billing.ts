@@ -4,6 +4,7 @@ import type { ApiTimeValue } from '@/utils/format'
 import i18n from '@/i18n'
 
 const BILLING_PATH = '/api/user/billing'
+const ACCOUNT_OVERVIEW_PATH = '/api/user/account/overview'
 
 export const BILLING_FIRST_PAGE = 1
 export const BILLING_PAGE_SIZE = 20
@@ -13,6 +14,12 @@ export type BillingAccountType = 'personal' | 'enterprise'
 export interface BillingContext {
   account_type: BillingAccountType
   enterprise_id?: string
+}
+
+export interface AccountOverviewResponse {
+  account_balance_yuan: string
+  invitation_reward_yuan: string
+  invoiceable_amount_yuan: string
 }
 
 export interface BillingRequestOptions extends Pick<FetchJsonOptions, 'accessToken' | 'signal'> {
@@ -321,6 +328,11 @@ function requestOptions(options: BillingRequestOptions): Pick<BillingRequestOpti
 export function getBillingWallet(context: BillingContext, options: Pick<BillingRequestOptions, 'accessToken' | 'signal'> = {}): Promise<BillingWalletResponse> {
   const query = createBillingQuery(context)
   return fetchAuthenticatedJson<BillingWalletResponse>(`${BILLING_PATH}/wallet?${query}`, options)
+}
+
+export function getAccountOverview(context: BillingContext, options: Pick<BillingRequestOptions, 'accessToken' | 'signal'> = {}): Promise<AccountOverviewResponse> {
+  const query = createBillingQuery(context)
+  return fetchAuthenticatedJson<AccountOverviewResponse>(`${ACCOUNT_OVERVIEW_PATH}?${query}`, options)
 }
 
 export function getBillingSummary(context: BillingContext, options: Pick<BillingRequestOptions, 'accessToken' | 'signal'> = {}): Promise<BillingSummaryResponse> {
