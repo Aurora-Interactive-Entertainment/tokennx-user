@@ -1,6 +1,7 @@
 import '@/i18n'
 import type { ReactNode } from 'react'
 import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router'
 import { Provider } from 'react-redux'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -22,6 +23,48 @@ function renderPage(page: ReactNode, initialEntry: string): void {
       </Provider>
     </MemoryRouter>,
   )
+}
+
+const DOCS_ROOT_ID = '01K00000000000000000000000'
+const DOCS_DOCUMENT_ID = '01K00000000000000000000001'
+const API_DOCS_ROOT_ID = '01K00000000000000000000002'
+const API_DOCS_DIRECTORY_ID = '01K00000000000000000000003'
+const API_DOCS_DOCUMENT_ID = '01K00000000000000000000004'
+
+function renderDocsPage(initialEntry = '/docs'): void {
+  render(
+    <MemoryRouter initialEntries={[initialEntry]}>
+      <Provider store={createAppStore()}>
+        <AppStoreProvider>
+          <LocationProbe />
+          <Routes>
+            <Route path="/docs" element={<DocsPage />} />
+            <Route path="/docs/:publicId/:slug?" element={<DocsPage />} />
+          </Routes>
+        </AppStoreProvider>
+      </Provider>
+    </MemoryRouter>,
+  )
+}
+
+function mockPublicDocs(markdown = '# 快速开始\n\n## 使用 Token NX API\n\n正文'): void {
+  vi.mocked(globalThis.fetch).mockImplementation(async (input) => {
+    const url = String(input)
+    if (url.includes('/api/docs/tree')) return new Response(JSON.stringify({
+      code: 0,
+      msg: 'success',
+      data: [
+        { id: DOCS_ROOT_ID, parent_id: '', type: 'directory', slug: 'guide', title: '文档' },
+        { id: DOCS_DOCUMENT_ID, parent_id: DOCS_ROOT_ID, type: 'document', slug: 'quick-start', title: '快速开始' },
+      ],
+    }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+    if (url.includes(`/api/docs/${DOCS_DOCUMENT_ID}`)) return new Response(JSON.stringify({
+      code: 0,
+      msg: 'success',
+      data: { id: DOCS_DOCUMENT_ID, slug: 'quick-start', title: '快速开始', content_markdown: markdown, updated_at: 1786406400000 },
+    }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+    return new Response(JSON.stringify({ code: 0, msg: 'success', data: {} }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+  })
 }
 
 describe('公开模型页面', () => {
@@ -84,10 +127,53 @@ describe('公开模型页面', () => {
   })
 
   it('公开文档示例使用模型别名', () => {
-    renderPage(<DocsPage />, '/docs')
+    mockPublicDocs('# 快速开始\n\n## 使用 Token NX API\n\n正文')
+    renderDocsPage(`/docs/${DOCS_DOCUMENT_ID}/old-slug`)
 
-    expect(screen.getByText(/"model":"deepseek-public"/)).toBeInTheDocument()
-    expect(screen.queryByText(/deepseek-chat/)).toBeNull()
+    return waitFor(() => {
+      expect(screen.getAllByRole('link', { name: '文档' }).find((link) => link.classList.contains('is-active'))).toBeInTheDocument()
+      expect(screen.getAllByRole('link', { name: '快速开始' }).find((link) => link.classList.contains('is-active'))).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: '快速开始' })).toBeInTheDocument()
+      expect(screen.getByRole('complementary', { name: '本页目录' })).toHaveTextContent('使用 Token NX API')
+      expect(screen.getByTestId('location')).toHaveTextContent(`/docs/${DOCS_DOCUMENT_ID}/quick-start`)
+    })
+  })
+
+  it('可以切换到多级子目录下的文档', async () => {
+    const user = userEvent.setup()
+    vi.mocked(globalThis.fetch).mockImplementation(async (input) => {
+      const url = String(input)
+      if (url.includes('/api/docs/tree')) return new Response(JSON.stringify({
+        code: 0,
+        msg: 'success',
+        data: [
+          { id: DOCS_ROOT_ID, parent_id: '', type: 'directory', slug: 'guide', title: '使用指南' },
+          { id: API_DOCS_ROOT_ID, parent_id: '', type: 'directory', slug: 'api', title: 'API 文档' },
+          { id: DOCS_DOCUMENT_ID, parent_id: DOCS_ROOT_ID, type: 'document', slug: 'quick-start', title: '开始使用' },
+          { id: API_DOCS_DIRECTORY_ID, parent_id: API_DOCS_ROOT_ID, type: 'directory', slug: 'api-directory', title: 'API 子目录' },
+          { id: API_DOCS_DOCUMENT_ID, parent_id: API_DOCS_DIRECTORY_ID, type: 'document', slug: 'api-document', title: 'API 接口' },
+        ],
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+      const isApiDocument = url.includes(`/api/docs/${API_DOCS_DOCUMENT_ID}`)
+      return new Response(JSON.stringify({
+        code: 0,
+        msg: 'success',
+        data: isApiDocument
+          ? { id: API_DOCS_DOCUMENT_ID, slug: 'api-document', title: 'API 接口', content_markdown: '# API 接口\n\n正文', updated_at: 1786406400000 }
+          : { id: DOCS_DOCUMENT_ID, slug: 'quick-start', title: '开始使用', content_markdown: '# 开始使用\n\n正文', updated_at: 1786406400000 },
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+    })
+    renderDocsPage(`/docs/${DOCS_DOCUMENT_ID}/quick-start`)
+
+    const apiDocsLink = await screen.findByRole('link', { name: 'API 文档' })
+    expect(apiDocsLink).toHaveAttribute('href', `/docs/${API_DOCS_DOCUMENT_ID}/api-document`)
+    await user.click(apiDocsLink)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('location')).toHaveTextContent(`/docs/${API_DOCS_DOCUMENT_ID}/api-document`)
+      expect(apiDocsLink).toHaveClass('is-active')
+      expect(screen.getByRole('heading', { name: 'API 接口' })).toBeInTheDocument()
+    })
   })
 
   it('应用页展示热门工具、使用趋势和排行榜', () => {
@@ -135,13 +221,12 @@ describe('公开模型页面', () => {
 
   it('文档页切换英文后翻译产品导航、目录和正文固定文案', async () => {
     await i18n.changeLanguage('en-US')
-    renderPage(<DocsPage />, '/docs')
+    mockPublicDocs('# Quickstart\n\n## Using the API\n\nEnglish content')
+    renderDocsPage(`/docs/${DOCS_DOCUMENT_ID}/quick-start`)
 
     expect(screen.getByRole('navigation', { name: 'Documentation categories' })).toBeInTheDocument()
     expect(screen.getByRole('complementary', { name: 'Documentation navigation' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Quickstart' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Using third-party SDKs' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Building with an AI assistant' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Quickstart' })).toBeInTheDocument()
     expect(screen.getByRole('complementary', { name: 'On this page navigation' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Copy page' })).toBeInTheDocument()
   })

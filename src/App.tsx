@@ -120,6 +120,7 @@ export default function App({ onBootReady }: { onBootReady: () => void }) {
               <Route path="/rankings" element={<RankingsPage />} />
               <Route path="/apps" element={<AppsPage />} />
               <Route path="/docs" element={<DocsPage />} />
+              <Route path="/docs/:publicId/:slug?" element={<DocsPage />} />
               <Route path="/pricing" element={<PricingPage />} />
               <Route path="/status" element={<StatusPage />} />
               <Route path="/about" element={<AboutPage />} />

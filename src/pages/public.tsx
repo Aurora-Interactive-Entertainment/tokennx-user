@@ -3,17 +3,21 @@ import type { TFunction } from 'i18next'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
 import Toast from '@douyinfe/semi-ui/lib/es/toast'
 import Skeleton from '@douyinfe/semi-ui/lib/es/skeleton'
-import { IconChevronDown, IconCopyStroked, IconFile } from '@douyinfe/semi-icons'
+import { IconBookOpenStroked, IconChevronDown, IconCopyStroked, IconFile } from '@douyinfe/semi-icons'
 import { LoginPanel, LoginRequiredAction, ManuscriptSupportWidget, PublicLayout, ModelLogo, normalizeLoginReturnPath } from '@/components/common'
 import modelCardArt from '@/assets/figma-home/model-card-art.png'
 import promoModelLogo from '@/assets/figma-home/promo-model-logo.svg'
 import promoBannerArt from '@/assets/figma-home/promo-banner.png'
 import promoArticleArt from '@/assets/figma-home/promo-article.png'
 import mobileHomeStyles from '@/mobile-home.css?inline'
+import '@/docs-page.css'
 import hermesAgentImage from '@/assets/figma-apps/hermes-agent.png'
 import mimoXiaomiImage from '@/assets/figma-ranking/mimo-xiaomi.png'
 import { ModelPriceSummary } from '@/components/money'
+import { MarkdownContent } from '@/components/markdown-content'
 import { getPublicHomepage, getPublicHomepageAssetURL, getPublicHomepageStats, type HomepageDiscountKind, type HomepageEntry, type HomepagePromotionModel, type HomepageTranslation, type PublicHomepage } from '@/api/homepage'
+import { getPublicDocument, getPublicDocumentAssetUrl, getPublicDocsTree, publicDocumentHref, type PublicDocument, type PublicDocsLocale, type PublicDocsNode } from '@/api/public-docs'
+import { isApiError } from '@/api/http'
 import { filterModels, findModel, modelAlias, modelRouteKey, MODEL_CATALOG, MODALITY_LABELS, type ModelModality, type ModelPrice, type ModelRecord } from '@/data/models'
 import { getAccessToken } from '@/auth/token-storage'
 import { useAppSelector } from '@/store/hooks'
@@ -1142,7 +1146,7 @@ export function AppsPage() {
   )
 }
 
-export function DocsPage() {
+function LegacyDocsPage() {
   const { t } = useTranslation()
   const code = quickstartCodeSample({ protocol: 'openai', language: 'curl', modelAlias: 'deepseek-public' })
   const [copied, setCopied] = useState<'code' | 'page' | 'mcp' | null>(null)
@@ -1266,6 +1270,280 @@ export function DocsPage() {
           <a href="#openai-sdk">{t('public.docs.manuscript.onPage.openaiSdk')}</a>
           <a href="#third-party-sdk">{t('public.docs.manuscript.onPage.thirdPartySdk')}</a>
           <a href="#ai-assistant">{t('public.docs.manuscript.onPage.aiAssistant')}</a>
+        </aside>
+      </div>
+    </PublicLayout>
+  )
+}
+
+interface DocsHeading {
+  id: string
+  text: string
+  level: number
+}
+
+interface DocsHeadingNode extends DocsHeading {
+  children: DocsHeadingNode[]
+}
+
+function docsLocale(language: string): PublicDocsLocale {
+  return language.toLowerCase().startsWith('en') ? 'en-US' : 'zh-CN'
+}
+
+function documentDescendants(rootId: string, nodes: PublicDocsNode[]): PublicDocsNode[] {
+  const descendantIds = new Set([rootId])
+  let changed = true
+  while (changed) {
+    changed = false
+    nodes.forEach((node) => {
+      if (descendantIds.has(node.parent_id) && !descendantIds.has(node.id)) {
+        descendantIds.add(node.id)
+        changed = true
+      }
+    })
+  }
+  return nodes.filter((node) => node.type === 'document' && descendantIds.has(node.parent_id))
+}
+
+function headingAnchor(text: string, index: number): string {
+  const normalized = text.trim().toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-+|-+$/g, '')
+  return `docs-${normalized || 'section'}-${index + 1}`
+}
+
+function buildDocsHeadingTree(headings: DocsHeading[]): DocsHeadingNode[] {
+  const roots: DocsHeadingNode[] = []
+  const stack: DocsHeadingNode[] = []
+
+  headings.forEach((heading) => {
+    const node: DocsHeadingNode = { ...heading, children: [] }
+    while (stack.length && (stack[stack.length - 1]?.level ?? 0) >= node.level) stack.pop()
+    const parent = stack[stack.length - 1]
+    if (parent) parent.children.push(node)
+    else roots.push(node)
+    stack.push(node)
+  })
+
+  return roots
+}
+
+function collapsibleDocsHeadingIds(nodes: DocsHeadingNode[]): string[] {
+  return nodes.flatMap((node) => [
+    ...(node.children.length ? [node.id] : []),
+    ...collapsibleDocsHeadingIds(node.children),
+  ])
+}
+
+function docsHeadingAncestors(nodes: DocsHeadingNode[], targetId: string, ancestors: string[] = []): string[] | null {
+  for (const node of nodes) {
+    if (node.id === targetId) return ancestors
+    const nested = docsHeadingAncestors(node.children, targetId, [...ancestors, node.id])
+    if (nested) return nested
+  }
+  return null
+}
+
+function DocsTocNodes({ nodes, activeHeading, collapsedHeadings, locale, onToggle }: {
+  nodes: DocsHeadingNode[]
+  activeHeading: string
+  collapsedHeadings: Set<string>
+  locale: PublicDocsLocale
+  onToggle: (headingId: string) => void
+}) {
+  return nodes.map((node) => {
+    const hasChildren = node.children.length > 0
+    const collapsed = hasChildren && collapsedHeadings.has(node.id)
+    const actionLabel = locale === 'en-US'
+      ? `${collapsed ? 'Expand' : 'Collapse'} ${node.text}`
+      : `${collapsed ? '展开' : '折叠'} ${node.text}`
+    return <div className="docs-toc-item" key={node.id}>
+      <div className="docs-toc-row" style={{ '--docs-toc-depth': Math.max(0, node.level - 1) } as CSSProperties}>
+        {hasChildren ? <button className={collapsed ? 'is-collapsed' : ''} type="button" aria-expanded={!collapsed} aria-label={actionLabel} title={actionLabel} onClick={() => onToggle(node.id)} /> : <span className="docs-toc-spacer" aria-hidden="true" />}
+        <a className={activeHeading === node.id ? 'is-active' : ''} href={`#${node.id}`}>{node.text}</a>
+      </div>
+      {hasChildren ? <div className={`docs-toc-children${collapsed ? ' is-collapsed' : ''}`} aria-hidden={collapsed} inert={collapsed ? true : undefined}><div className="docs-toc-children-inner"><DocsTocNodes nodes={node.children} activeHeading={activeHeading} collapsedHeadings={collapsedHeadings} locale={locale} onToggle={onToggle} /></div></div> : null}
+    </div>
+  })
+}
+
+function resolveDocsImageUrl(url: string): string | undefined {
+  const normalized = url.trim()
+  if (/^https:\/\//i.test(normalized)) return normalized
+  const objectId = normalized.replace(/^\/?api\/docs\/assets\//, '').replace(/^docs-asset:/, '')
+  return getPublicDocumentAssetUrl(objectId)
+}
+
+export function DocsPage() {
+  const { t, i18n } = useTranslation()
+  const { publicId, slug } = useParams()
+  const navigate = useNavigate()
+  const articleRef = useRef<HTMLElement>(null)
+  const locale = docsLocale(i18n.resolvedLanguage ?? i18n.language)
+  const [tree, setTree] = useState<PublicDocsNode[]>([])
+  const [currentDocument, setCurrentDocument] = useState<PublicDocument | null>(null)
+  const [treeLoading, setTreeLoading] = useState(true)
+  const [documentLoading, setDocumentLoading] = useState(false)
+  const [error, setError] = useState<{ message: string; requestId: string | null } | null>(null)
+  const [headings, setHeadings] = useState<DocsHeading[]>([])
+  const [activeHeading, setActiveHeading] = useState('')
+  const [collapsedHeadings, setCollapsedHeadings] = useState<Set<string>>(() => new Set())
+
+  const rootNodes = useMemo(() => tree.filter((node) => !node.parent_id), [tree])
+  const selectedNode = useMemo(() => tree.find((node) => node.type === 'document' && node.id === publicId), [publicId, tree])
+  const activeRoot = useMemo(() => {
+    if (selectedNode) return rootNodes.find((root) => documentDescendants(root.id, tree).some((node) => node.id === selectedNode.id)) ?? rootNodes[0]
+    return rootNodes[0]
+  }, [rootNodes, selectedNode, tree])
+  const sidebarDocuments = useMemo(() => activeRoot ? documentDescendants(activeRoot.id, tree) : [], [activeRoot, tree])
+  const headingTree = useMemo(() => buildDocsHeadingTree(headings), [headings])
+
+  useEffect(() => {
+    const controller = new AbortController()
+    setTreeLoading(true)
+    setError(null)
+    void getPublicDocsTree(locale, controller.signal).then((nodes) => {
+      setTree(nodes)
+      setTreeLoading(false)
+    }).catch((caught) => {
+      if (controller.signal.aborted) return
+      setTree([])
+      setCurrentDocument(null)
+      setTreeLoading(false)
+      setError({ message: caught instanceof Error ? caught.message : t('api.http.requestFailed'), requestId: isApiError(caught) ? caught.requestId : null })
+    })
+    return () => controller.abort()
+  }, [locale, t])
+
+  useEffect(() => {
+    if (treeLoading || error || !tree.length) return
+    if (!publicId) {
+      const firstDocument = rootNodes.flatMap((root) => documentDescendants(root.id, tree))[0]
+      if (firstDocument) navigate(publicDocumentHref(firstDocument), { replace: true })
+      return
+    }
+    if (!selectedNode) {
+      setCurrentDocument(null)
+      setError({ message: locale === 'en-US' ? 'Document not found' : '文档不存在', requestId: null })
+    }
+  }, [error, locale, navigate, publicId, rootNodes, selectedNode, tree, treeLoading])
+
+  useEffect(() => {
+    if (!selectedNode) return
+    const controller = new AbortController()
+    setDocumentLoading(true)
+    setCurrentDocument(null)
+    setHeadings([])
+    setError(null)
+    void getPublicDocument(selectedNode.id, locale, controller.signal).then((document) => {
+      setCurrentDocument(document)
+      setDocumentLoading(false)
+      if (!navigator.userAgent.includes('jsdom')) window.scrollTo({ top: 0, behavior: 'auto' })
+    }).catch((caught) => {
+      if (controller.signal.aborted) return
+      setDocumentLoading(false)
+      setError({ message: caught instanceof Error ? caught.message : t('api.http.requestFailed'), requestId: isApiError(caught) ? caught.requestId : null })
+    })
+    return () => controller.abort()
+  }, [locale, selectedNode, t])
+
+  useEffect(() => {
+    if (currentDocument && currentDocument.id === publicId && slug !== currentDocument.slug) navigate(publicDocumentHref(currentDocument), { replace: true })
+  }, [currentDocument, navigate, publicId, slug])
+
+  useLayoutEffect(() => {
+    const root = articleRef.current
+    if (!root || !currentDocument) return
+    const elements = Array.from(root.querySelectorAll<HTMLElement>('.docs-markdown h1, .docs-markdown h2, .docs-markdown h3, .docs-markdown h4'))
+    const nextHeadings = elements.map((element, index) => {
+      const id = headingAnchor(element.textContent ?? '', index)
+      element.id = id
+      return { id, text: element.textContent?.trim() || currentDocument.title, level: Number(element.tagName.slice(1)) }
+    })
+    setHeadings(nextHeadings)
+    setActiveHeading(nextHeadings[0]?.id ?? '')
+  }, [currentDocument])
+
+  useEffect(() => {
+    if (!headings.length) return
+    const updateActiveHeading = () => {
+      const current = headings.reduce((active, heading) => {
+        const element = document.getElementById(heading.id)
+        return element && element.getBoundingClientRect().top <= 140 ? heading.id : active
+      }, headings[0]?.id ?? '')
+      setActiveHeading(current)
+    }
+    updateActiveHeading()
+    window.addEventListener('scroll', updateActiveHeading, { passive: true })
+    return () => window.removeEventListener('scroll', updateActiveHeading)
+  }, [headings])
+
+  useEffect(() => {
+    const collapsibleIds = collapsibleDocsHeadingIds(headingTree)
+    if (headings.length <= 18) {
+      setCollapsedHeadings(new Set())
+      return
+    }
+    setCollapsedHeadings(new Set(collapsibleIds.filter((id) => id !== headingTree[0]?.id)))
+  }, [headingTree, headings.length])
+
+  useEffect(() => {
+    if (!activeHeading) return
+    const ancestors = docsHeadingAncestors(headingTree, activeHeading)
+    if (!ancestors?.length) return
+    setCollapsedHeadings((current) => {
+      if (!ancestors.some((id) => current.has(id))) return current
+      const next = new Set(current)
+      ancestors.forEach((id) => next.delete(id))
+      return next
+    })
+  }, [activeHeading, headingTree])
+
+  const toggleHeading = useCallback((headingId: string) => {
+    setCollapsedHeadings((current) => {
+      const next = new Set(current)
+      if (next.has(headingId)) next.delete(headingId)
+      else next.add(headingId)
+      return next
+    })
+  }, [])
+
+  async function copyMarkdown(): Promise<void> {
+    if (!currentDocument) return
+    try {
+      await navigator.clipboard.writeText(currentDocument.content_markdown)
+      Toast.success({ content: t('public.docs.manuscript.copyPageSuccess'), className: 'docs-copy-toast', duration: 2 })
+    } catch {
+      Toast.error({ content: t('public.docs.manuscript.copyUnsupported'), className: 'docs-copy-toast', duration: 3 })
+    }
+  }
+
+  const loading = treeLoading || documentLoading
+  return (
+    <PublicLayout mainClassName="docs-page--manuscript">
+      <nav className="docs-product-nav" aria-label={t('public.docs.manuscript.productNavLabel')}>
+        <div className="docs-product-nav-inner">
+          {rootNodes.map((root) => {
+            const firstDocument = documentDescendants(root.id, tree)[0]
+            return firstDocument ? <Link className={activeRoot?.id === root.id ? 'is-active' : ''} to={publicDocumentHref(firstDocument)} key={root.id}><IconBookOpenStroked aria-hidden="true" />{root.title}</Link> : null
+          })}
+        </div>
+      </nav>
+
+      <div className="docs-shell" aria-busy={loading || undefined}>
+        <aside className="docs-sidebar" aria-label={t('public.docs.manuscript.sidebarLabel')}>
+          <nav>{sidebarDocuments.map((document) => <Link className={selectedNode?.id === document.id ? 'is-active' : ''} to={publicDocumentHref(document)} key={document.id}><IconFile aria-hidden="true" />{document.title}</Link>)}</nav>
+        </aside>
+
+        <article className="docs-article" ref={articleRef}>
+          {currentDocument ? <div className="docs-article-toolbar"><button className="docs-copy-page" type="button" onClick={() => void copyMarkdown()}><IconCopyStroked aria-hidden="true" />{t('public.docs.manuscript.copyPage')}</button></div> : null}
+          {loading ? <div className="docs-state" role="status"><Skeleton placeholder={<><Skeleton.Title /><Skeleton.Paragraph rows={8} /></>} loading /></div> : null}
+          {!loading && error ? <div className="docs-state docs-state--error" role="alert"><h1>{locale === 'en-US' ? 'Unable to load documentation' : '文档加载失败'}</h1><p>{error.message}</p>{error.requestId ? <code>Request ID: {error.requestId}</code> : null}</div> : null}
+          {!loading && !error && !currentDocument && !tree.length ? <div className="docs-state"><h1>{locale === 'en-US' ? 'No public documentation' : '暂无公开文档'}</h1></div> : null}
+          {currentDocument ? <MarkdownContent className="docs-markdown" content={currentDocument.content_markdown} resolveImageUrl={resolveDocsImageUrl} /> : null}
+        </article>
+
+        <aside className="docs-on-page" aria-label={t('public.docs.manuscript.onPageLabel')}>
+          <strong>{t('public.docs.manuscript.onPageTitle')}</strong>
+          <div className="docs-on-page-scroll"><DocsTocNodes nodes={headingTree} activeHeading={activeHeading} collapsedHeadings={collapsedHeadings} locale={locale} onToggle={toggleHeading} /></div>
         </aside>
       </div>
     </PublicLayout>

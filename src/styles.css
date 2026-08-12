@@ -3807,7 +3807,7 @@ html[data-theme="light"] .app-loading-screen__logo-shell .brand-logo-image { fil
 .header-trial-pill { position: absolute; inset: 0; display: block; width: 112px; height: 28px; }
 .header-trial-glass { position: absolute; inset: 0; z-index: 1; overflow: hidden; border: 1px solid rgba(255, 255, 255, .16); border-radius: inherit; background: linear-gradient(105deg, rgba(255, 255, 255, .08), rgba(118, 65, 139, .16) 52%, rgba(255, 255, 255, .05)); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .16); backdrop-filter: blur(8px) saturate(120%); pointer-events: none; }
 .header-trial-glass::after { position: absolute; top: -40%; left: -55%; width: 22%; height: 180%; background: linear-gradient(105deg, transparent 0%, rgba(255, 255, 255, .08) 25%, rgba(255, 255, 255, .6) 50%, rgba(255, 255, 255, .08) 75%, transparent 100%); content: ''; filter: blur(.4px); transform: skewX(-18deg); animation: header-trial-sheen var(--header-trial-cycle) ease-in-out infinite; }
-.header-trial-badge strong { position: relative; z-index: 2; font-family: "Noto Sans SC", "Source Han Sans CN", sans-serif; font-size: 14px; font-weight: 600; line-height: 1; background: linear-gradient(91deg, #fff 5.62%, #e792f6 96.81%); background-clip: text; opacity: 1; transform-origin: center; animation: header-trial-copy-cycle var(--header-trial-cycle) ease-in-out infinite; -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.header-trial-badge strong { position: relative; z-index: 2; font-family: "Noto Sans SC", "Source Han Sans CN", sans-serif; font-size: 14px; font-weight: 400; line-height: 1; background: linear-gradient(91deg, #fff 5.62%, #e792f6 96.81%); background-clip: text; opacity: 1; transform-origin: center; animation: header-trial-copy-cycle var(--header-trial-cycle) ease-in-out infinite; -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
 .header-trial-subscription { position: absolute; inset: 0; z-index: 3; display: grid; place-items: center; border: 1px solid rgba(255, 255, 255, .22); border-radius: inherit; color: #fff; background: linear-gradient(105deg, rgba(255, 255, 255, .1), rgba(147, 112, 175, .22) 48%, rgba(255, 201, 138, .12)); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .2), 0 4px 12px rgba(25, 16, 35, .22); backdrop-filter: blur(12px) saturate(125%); font-family: "Noto Sans SC", "Source Han Sans CN", sans-serif; font-size: 14px; font-weight: 600; line-height: 1; opacity: 0; pointer-events: none; transform: scale(.9); transform-origin: center; animation: header-trial-subscription-cycle var(--header-trial-cycle) ease-in-out infinite; }
 .header-trial-free { position: absolute; top: -4px; right: -25px; z-index: 4; width: 42px; height: 25px; }
 .header-trial-free img { position: absolute; inset: 0; display: block; width: 42px; height: 25px; }
@@ -4311,48 +4311,6 @@ html[data-theme="light"] .public-layout--manuscript-home .manuscript-ad-slot { b
 .docs-sidebar a span { width: 14px; flex: 0 0 14px; color: currentColor; font-size: 12px; text-align: center; }
 .docs-article { position: relative; min-width: 0; padding: 98px 0 98px; }
 .docs-article-toolbar { position: absolute; top: 72px; right: 0; z-index: 12; }
-.docs-copy-control { position: relative; }
-.docs-copy-control > button { width: 135px; height: 34px; display: grid; grid-template-columns: 17px 1fr 13px; align-items: center; gap: 7px; padding: 0 10px; border: 1px solid #353535; border-radius: 4px; color: #fff; background: #181818; font-size: 14px; text-align: left; cursor: pointer; }
-.docs-copy-control > button:hover { border-color: #565656; background: #202020; }
-.docs-copy-control > button .semi-icon { width: 15px; height: 15px; color: #8b8b8b; }
-.docs-copy-control > button .semi-icon:last-child { width: 12px; height: 12px; color: #fff; }
-.docs-copy-menu { position: absolute; top: 40px; right: 0; width: 232px; display: grid; gap: 8px; padding: 9px; border: 1px solid #353535; border-radius: 4px; background: #181818; box-shadow: 0 18px 48px rgba(0, 0, 0, .42); }
-.docs-copy-menu > button, .docs-copy-menu > a { min-height: 39px; display: grid; grid-template-columns: 30px 1fr; grid-template-rows: auto auto; column-gap: 9px; align-items: center; padding: 0; border: 0; color: #fff; background: transparent; text-align: left; cursor: pointer; }
-.docs-copy-menu > button:hover, .docs-copy-menu > a:hover { background: rgba(255, 255, 255, .035); }
-.docs-copy-menu > button > span, .docs-copy-menu > a > span { width: 29px; height: 29px; display: grid; grid-row: 1 / 3; place-items: center; border-radius: 4px; color: #181818; background: #656565; font-size: 11px; font-weight: 700; }
-.docs-copy-menu .semi-icon { width: 17px; height: 17px; }
-.docs-copy-menu strong { align-self: end; color: #fff; font-size: 14px; font-weight: 400; line-height: 1.3; }
-.docs-copy-menu small { align-self: start; overflow: hidden; color: #646464; font-size: 10px; line-height: 1.3; text-overflow: ellipsis; white-space: nowrap; }
-.docs-article-head > span { display: block; margin-bottom: 14px; color: #946dff; font-size: 12px; }
-.docs-article-head h1 { max-width: calc(100% - 160px); margin: 0; color: #fff; font-size: 30px; font-weight: 500; line-height: 1.3; letter-spacing: 0; }
-.docs-article-head p { margin: 11px 0 0; color: #8b8b8b; font-size: 16px; line-height: 1.5; }
-.docs-section { margin-top: 48px; scroll-margin-top: 96px; }
-.docs-section p { margin: 0 0 25px; color: #8b8b8b; font-size: 16px; line-height: 1.75; }
-.docs-section a { color: #a77dff; text-decoration: underline; text-underline-offset: 3px; }
-.docs-section h2 { margin: 0 0 18px; color: #fff; font-size: 28px; font-weight: 500; line-height: 1.35; letter-spacing: 0; }
-.docs-method-table { display: grid; margin-top: 44px; border-top: 1px solid #353535; }
-.docs-method-table > div { min-height: 66px; display: grid; grid-template-columns: 34% 66%; align-items: center; border-bottom: 1px solid #353535; }
-.docs-method-table strong { color: #fff; font-size: 14px; font-weight: 500; }
-.docs-method-table a, .docs-method-table span { color: #8b8b8b; font-size: 14px; }
-.docs-method-table a { text-decoration: underline; text-underline-offset: 3px; }
-.docs-api-section { margin-top: 76px; }
-.docs-code-block { overflow: hidden; border: 1px solid #353535; border-radius: 3px; background: #171717; }
-.docs-code-head { height: 34px; display: flex; align-items: center; justify-content: space-between; padding: 0 11px 0 14px; border-bottom: 1px solid #353535; color: #bababa; background: #212121; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 11px; }
-.docs-code-head button, .docs-mcp-url button { width: 28px; height: 28px; display: grid; place-items: center; padding: 0; border: 0; color: #8b8b8b; background: transparent; cursor: pointer; }
-.docs-code-head button:hover, .docs-mcp-url button:hover { color: #fff; }
-.docs-code-block pre { min-height: 76px; overflow-x: auto; margin: 0; padding: 20px 18px; color: #b9b9b9; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 12px; line-height: 1.7; white-space: pre-wrap; }
-.docs-note { min-height: 49px; display: flex; align-items: center; gap: 22px; margin-top: 48px; padding: 0 20px; color: #fff; background: linear-gradient(90deg, #7631e3, #5a12d1); font-size: 13px; }
-.docs-note strong { flex: 0 0 auto; }
-.docs-note span { color: rgba(255, 255, 255, .88); }
-.docs-api-section > p { margin-top: 58px; }
-.docs-section#client-sdk { margin-top: 112px; }
-.docs-section#proxy-sdk { margin-top: 78px; }
-.docs-section#proxy-sdk p { max-width: 760px; }
-.docs-mcp-url { min-height: 72px; display: flex; align-items: center; justify-content: space-between; gap: 20px; margin: 106px 0 65px; padding: 0 20px; color: #fff; background: linear-gradient(90deg, #7832e5, #5c14d3); }
-.docs-mcp-url code { color: #fff; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 13px; }
-.docs-mcp-url button { color: rgba(255, 255, 255, .72); }
-.docs-next-link { position: absolute; right: 0; bottom: 84px; display: inline-flex; align-items: center; gap: 7px; color: #8b8b8b; font-size: 14px; }
-.docs-next-link:hover { color: #fff; }
 .docs-copy-status { position: fixed; right: 24px; bottom: 24px; z-index: 60; min-height: 18px; color: #fff; font-size: 12px; pointer-events: none; }
 .docs-on-page { position: sticky; top: 116px; display: grid; align-content: start; gap: 20px; padding-top: 72px; }
 .docs-on-page strong { color: #8b8b8b; font-size: 13px; font-weight: 500; }

@@ -17,4 +17,25 @@ describe('模型回复 Markdown 渲染', () => {
     expect(container.querySelector('script')).toBeNull()
     expect(container.querySelector('img')).toBeNull()
   })
+  it('allows callers to resolve trusted markdown image URLs', () => {
+    render(<MarkdownContent content="![diagram](01K00000000000000000000001)" resolveImageUrl={(url) => `/api/docs/assets/${url}`} />)
+
+    expect(screen.getByRole('img', { name: 'diagram' })).toHaveAttribute('src', '/api/docs/assets/01K00000000000000000000001')
+  })
+
+  it('repairs an image appended to a GFM table delimiter', () => {
+    const content = [
+      '| 接口 | 文档 |',
+      "| --- | --- |![output.png](/api/docs/assets/01KZQVP2SVX2ZCRXQVQ4Q6TKES 'output.png')",
+      '| `POST /api/auth/email/code` | [发送邮箱验证码](发送邮箱验证码.md) |',
+      '| `POST /api/auth/email/login` | [邮箱验证码登录](邮箱验证码登录.md) |',
+    ].join('\n')
+
+    render(<MarkdownContent content={content} resolveImageUrl={(url) => url} />)
+
+    expect(screen.getByRole('columnheader', { name: '接口' })).toBeInTheDocument()
+    expect(screen.getByRole('cell', { name: 'POST /api/auth/email/code' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: '发送邮箱验证码' })).toHaveAttribute('href', encodeURI('发送邮箱验证码.md'))
+    expect(screen.getByRole('img', { name: 'output.png' })).toHaveAttribute('src', '/api/docs/assets/01KZQVP2SVX2ZCRXQVQ4Q6TKES')
+  })
 })
