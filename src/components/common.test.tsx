@@ -9,7 +9,7 @@ import { AppStoreProvider } from '@/data/app-state'
 import { createAppStore } from '@/store'
 import { synchronizeAuthenticatedUser } from '@/store/auth-slice'
 import { clearAuthTokens, saveAuthTokens } from '@/auth/token-storage'
-import { activeNavKey, ConsoleLayout, consoleNavGroupsFor, DEFAULT_CONSOLE_PATH, isEnterpriseOwner, isEnterprisePermissionPath, LoginPanel, localizeConsoleLabel, normalizeLoginReturnPath, PublicFooter, PublicHeader, PUBLIC_LINKS } from './common'
+import { activeNavKey, ConsoleLayout, consoleNavGroupsFor, DEFAULT_CONSOLE_PATH, isEnterpriseOwner, isEnterprisePermissionPath, LoginPanel, localizeConsoleLabel, normalizeLoginReturnPath, PublicFooter, PublicHeader, PublicLayout, PUBLIC_LINKS } from './common'
 import { NEW_ENTERPRISE_CREATE_PATH } from '@/api/enterprise-certification'
 import i18n from '@/i18n'
 
@@ -55,6 +55,46 @@ beforeEach(() => {
 afterEach(() => {
   vi.restoreAllMocks()
   clearAuthTokens()
+})
+
+it('uses the shared mobile header host in public and console layouts', async () => {
+  const publicView = render(
+    <MemoryRouter initialEntries={['/models']}>
+      <Provider store={createAppStore()}>
+        <AppStoreProvider><PublicLayout><span>Public page</span></PublicLayout></AppStoreProvider>
+      </Provider>
+    </MemoryRouter>,
+  )
+
+  expect(document.querySelector('.public-layout')).toHaveClass('public-header-host')
+  expect(document.querySelectorAll('.public-header')).toHaveLength(1)
+  expect(document.querySelectorAll('.mobile-menu-button')).toHaveLength(1)
+  expect(document.querySelectorAll('.public-mobile-nav')).toHaveLength(1)
+  publicView.unmount()
+
+  const user = userEvent.setup()
+  render(
+    <MemoryRouter initialEntries={['/console/models']}>
+      <Provider store={createAppStore()}>
+        <AppStoreProvider><ConsoleLayout><span>Console detail page</span></ConsoleLayout></AppStoreProvider>
+      </Provider>
+    </MemoryRouter>,
+  )
+
+  const consoleFrame = document.querySelector('.console-frame') as HTMLElement
+  const header = consoleFrame.querySelector('.public-header') as HTMLElement
+  const menuButton = consoleFrame.querySelector('.mobile-menu-button') as HTMLButtonElement
+  const mobileNav = consoleFrame.querySelector('.public-mobile-nav') as HTMLElement
+  expect(consoleFrame).toHaveClass('public-header-host')
+  expect(consoleFrame.querySelectorAll('.public-header')).toHaveLength(1)
+  expect(consoleFrame.querySelectorAll('.mobile-menu-button')).toHaveLength(1)
+  expect(consoleFrame.querySelectorAll('.public-mobile-nav')).toHaveLength(1)
+
+  await user.click(menuButton)
+
+  expect(header).toHaveClass('mobile-nav-open')
+  expect(menuButton).toHaveAttribute('aria-expanded', 'true')
+  expect(mobileNav).not.toHaveAttribute('hidden')
 })
 
 describe('控制台导航路径匹配', () => {
@@ -689,6 +729,84 @@ describe('已登录用户菜单', () => {
     await user.type(phoneInput, '13800138000{enter}')
     expect(within(dialog).queryByRole('textbox', { name: '手机号' })).toBeNull()
     expect(dialog).toHaveTextContent('13800138000')
+  })
+
+  it('移动端打开并操作账户设置时保留底层导航和用户菜单', async () => {
+    const user = userEvent.setup()
+    const appStore = createAppStore()
+    const originalInnerWidth = window.innerWidth
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 700 })
+    appStore.dispatch({ type: 'auth/loginWithEmail/fulfilled', payload: { id: 'user-1', display_name: '测试用户', avatar_url: '', locale: 'zh-CN', timezone: 'Asia/Shanghai', status: 'active' } })
+
+    try {
+      render(
+        <MemoryRouter initialEntries={['/']}>
+          <Provider store={appStore}>
+            <AppStoreProvider><PublicHeader /></AppStoreProvider>
+          </Provider>
+        </MemoryRouter>,
+      )
+
+      const mobileMenuButton = document.querySelector('.mobile-menu-button') as HTMLButtonElement
+      await user.click(mobileMenuButton)
+      const header = document.querySelector('.public-header') as HTMLElement
+      expect(header).toHaveClass('mobile-nav-open')
+
+      await user.click(screen.getByRole('button', { name: '打开用户菜单' }))
+      const menu = screen.getByRole('menu', { name: '用户菜单' })
+      await user.click(screen.getByRole('button', { name: '账户设置' }))
+      const dialog = await screen.findByRole('dialog', { name: '个人中心' })
+      expect(header).toHaveClass('mobile-nav-open')
+      expect(menu).toHaveClass('open')
+
+      fireEvent.mouseLeave(menu.closest('.user-menu-shell') as HTMLElement)
+      await new Promise((resolve) => window.setTimeout(resolve, 200))
+      expect(menu).toHaveClass('open')
+
+      fireEvent.pointerDown(dialog)
+      expect(header).toHaveClass('mobile-nav-open')
+      expect(menu).toHaveClass('open')
+
+      await user.click(within(dialog).getByText('头像'))
+      expect(header).toHaveClass('mobile-nav-open')
+      expect(menu).toHaveClass('open')
+
+      await user.click(within(dialog).getByRole('button', { name: /关闭/ }))
+      expect(header).toHaveClass('mobile-nav-open')
+    } finally {
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalInnerWidth })
+    }
+  })
+
+  it('closes the mobile header and user menu before navigating from a user menu item', async () => {
+    const user = userEvent.setup()
+    const appStore = createAppStore()
+    appStore.dispatch({ type: 'auth/loginWithEmail/fulfilled', payload: { id: 'user-1', display_name: 'Mobile user', avatar_url: '', locale: 'zh-CN', timezone: 'Asia/Shanghai', status: 'active' } })
+
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <Provider store={appStore}>
+          <AppStoreProvider><LocationProbe /><PublicHeader /></AppStoreProvider>
+        </Provider>
+      </MemoryRouter>,
+    )
+
+    const header = document.querySelector('.public-header') as HTMLElement
+    const mobileMenuButton = document.querySelector('.mobile-menu-button') as HTMLButtonElement
+    await user.click(mobileMenuButton)
+    await user.click(document.querySelector('.user-menu-trigger') as HTMLButtonElement)
+
+    const userMenu = document.querySelector('.user-dropdown') as HTMLElement
+    const quickstartLink = userMenu.querySelector('a[href="/console/quickstart"]') as HTMLAnchorElement
+    expect(header).toHaveClass('mobile-nav-open')
+    expect(userMenu).toHaveClass('open')
+
+    await user.click(quickstartLink)
+
+    expect(screen.getByTestId('common-location')).toHaveTextContent('/console/quickstart')
+    expect(header).not.toHaveClass('mobile-nav-open')
+    expect(mobileMenuButton).toHaveAttribute('aria-expanded', 'false')
+    expect(userMenu).not.toHaveClass('open')
   })
 
   it('登录没有指定返回地址时进入快速接入而不是总览', () => {

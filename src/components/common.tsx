@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import type { TFunction } from 'i18next'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router'
@@ -965,9 +965,17 @@ export function PublicHeader({ enterpriseAccess, unreadNotificationCount = 0 }: 
   const currentPath = location.pathname
   const publicLinks = auth.status === 'authenticated' ? [...PUBLIC_LINKS, AUTHENTICATED_PUBLIC_LINK] : PUBLIC_LINKS
   function go(path: string): void {
-    setMobileOpen(false)
+    if (path === currentPath) {
+      setMobileOpen(false)
+      return
+    }
     navigate(path)
   }
+
+  useLayoutEffect(() => {
+    setMobileOpen(false)
+    setBillingMenuOpen(false)
+  }, [currentPath])
 
   function clearBillingHoverCloseTimer(): void {
     if (billingHoverCloseTimerRef.current === null) return
@@ -993,9 +1001,11 @@ export function PublicHeader({ enterpriseAccess, unreadNotificationCount = 0 }: 
   useEffect(() => {
     if (!mobileOpen) return undefined
     const handlePointerDown = (event: PointerEvent): void => {
+      if (accountSettingsOpen && event.target instanceof Element && event.target.closest('.account-settings-overlay')) return
       if (!headerRef.current?.contains(event.target as Node)) setMobileOpen(false)
     }
     const handleKeyDown = (event: KeyboardEvent): void => {
+      if (accountSettingsOpen) return
       if (event.key === 'Escape') setMobileOpen(false)
     }
     document.addEventListener('pointerdown', handlePointerDown)
@@ -1004,7 +1014,7 @@ export function PublicHeader({ enterpriseAccess, unreadNotificationCount = 0 }: 
       document.removeEventListener('pointerdown', handlePointerDown)
       document.removeEventListener('keydown', handleKeyDown)
     }
-  }, [mobileOpen])
+  }, [accountSettingsOpen, mobileOpen])
 
   function renderPublicLink(link: PublicLink, mobile = false): ReactNode {
     const isActive = !link.disabled && currentPath.startsWith(link.path)
@@ -1014,7 +1024,7 @@ export function PublicHeader({ enterpriseAccess, unreadNotificationCount = 0 }: 
     if (link.disabled) {
       return <span key={`${link.path}-${link.labelKey}`} className={className} aria-disabled="true">{linkContent}</span>
     }
-    const linkNode = <Link key={`${link.path}-${link.labelKey}`} className={className} to={link.path} onClick={mobile ? () => setMobileOpen(false) : undefined} onFocus={!mobile && link.labelKey === 'nav.billing' ? openBillingMenu : undefined} aria-haspopup={!mobile && link.labelKey === 'nav.billing' ? 'dialog' : undefined}>{linkContent}</Link>
+    const linkNode = <Link key={`${link.path}-${link.labelKey}`} className={className} to={link.path} onClick={mobile ? (event) => { event.preventDefault(); go(link.path) } : undefined} onFocus={!mobile && link.labelKey === 'nav.billing' ? openBillingMenu : undefined} aria-haspopup={!mobile && link.labelKey === 'nav.billing' ? 'dialog' : undefined}>{linkContent}</Link>
     if (mobile || link.labelKey !== 'nav.billing') return linkNode
     return <div className="public-billing-menu-shell" key={`${link.path}-${link.labelKey}`} onMouseEnter={openBillingMenu} onMouseLeave={scheduleBillingMenuClose}>
       {linkNode}
@@ -1080,6 +1090,7 @@ export function PublicHeader({ enterpriseAccess, unreadNotificationCount = 0 }: 
                 userName={auth.user?.display_name || store.nickname}
                 phone={auth.user?.phone_masked || store.phone}
                 enterpriseAccess={enterpriseAccess}
+                accountSettingsOpen={accountSettingsOpen}
                 onNavigate={go}
                 onOpenSettings={() => setAccountSettingsOpen(true)}
                 onLogout={() => { void dispatch(logoutAuth()).finally(() => go('/')) }}
@@ -1287,6 +1298,7 @@ type UserMenuProps = {
   userName: string
   phone: string
   enterpriseAccess?: EnterpriseMenuAccess
+  accountSettingsOpen?: boolean
   onNavigate: (path: string) => void
   onOpenSettings: () => void
   onLogout: () => void
@@ -1313,7 +1325,7 @@ const WORKSPACE_MENU_VIEWPORT_GAP_PX = 12
 const WORKSPACE_MENU_GAP_PX = 1
 
 // 中文：登录后的用户菜单与参考站保持同一层级，空间切换和控制台入口共用当前工作空间状态。
-function UserMenu({ store, userId, userName, phone, enterpriseAccess, onNavigate, onOpenSettings, onLogout }: UserMenuProps) {
+function UserMenu({ store, userId, userName, phone, enterpriseAccess, accountSettingsOpen = false, onNavigate, onOpenSettings, onLogout }: UserMenuProps) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [workspaceOpen, setWorkspaceOpen] = useState(false)
@@ -1329,6 +1341,7 @@ function UserMenu({ store, userId, userName, phone, enterpriseAccess, onNavigate
   const initial = (displayName || store.avatar || '用').slice(0, 1).toUpperCase()
   const activeWorkspace = store.activeWorkspace
   const groups = userMenuGroupsFor(activeWorkspace, enterpriseAccess?.permissions)
+  const keepMenuOpenForSettings = accountSettingsOpen && typeof window !== 'undefined' && window.innerWidth <= 760
 
   function clearHoverCloseTimer(): void {
     if (hoverCloseTimerRef.current === null) return
@@ -1342,6 +1355,7 @@ function UserMenu({ store, userId, userName, phone, enterpriseAccess, onNavigate
   }
 
   function scheduleHoverClose(): void {
+    if (keepMenuOpenForSettings) return
     clearHoverCloseTimer()
     hoverCloseTimerRef.current = setTimeout(() => {
       hoverCloseTimerRef.current = null
@@ -1350,6 +1364,12 @@ function UserMenu({ store, userId, userName, phone, enterpriseAccess, onNavigate
   }
 
   useEffect(() => () => clearHoverCloseTimer(), [])
+
+  useEffect(() => {
+    if (!keepMenuOpenForSettings) return
+    clearHoverCloseTimer()
+    setOpen(true)
+  }, [keepMenuOpenForSettings])
 
   useEffect(() => {
     let mounted = true
@@ -1367,19 +1387,21 @@ function UserMenu({ store, userId, userName, phone, enterpriseAccess, onNavigate
   }, [store.replaceEnterpriseWorkspaces, userId])
 
   function updateWorkspaceMenuPosition(): void {
-    const anchor = dropdownRef.current?.getBoundingClientRect() ?? workspaceTriggerRef.current?.getBoundingClientRect()
+    const trigger = workspaceTriggerRef.current?.getBoundingClientRect()
+    const compactViewport = window.innerWidth <= 760
+    const anchor = compactViewport ? trigger : (dropdownRef.current?.getBoundingClientRect() ?? trigger)
     const menu = workspaceMenuRef.current
     if (!anchor || !menu) return
     const menuWidth = menu.offsetWidth
     const menuHeight = menu.offsetHeight
-    const left = Math.min(
-      Math.max(WORKSPACE_MENU_VIEWPORT_GAP_PX, anchor.left - menuWidth - WORKSPACE_MENU_GAP_PX),
-      Math.max(WORKSPACE_MENU_VIEWPORT_GAP_PX, window.innerWidth - menuWidth - WORKSPACE_MENU_VIEWPORT_GAP_PX),
-    )
-    const top = Math.min(
-      Math.max(WORKSPACE_MENU_VIEWPORT_GAP_PX, anchor.top),
-      Math.max(WORKSPACE_MENU_VIEWPORT_GAP_PX, window.innerHeight - menuHeight - WORKSPACE_MENU_VIEWPORT_GAP_PX),
-    )
+    const maxLeft = Math.max(WORKSPACE_MENU_VIEWPORT_GAP_PX, window.innerWidth - menuWidth - WORKSPACE_MENU_VIEWPORT_GAP_PX)
+    const maxTop = Math.max(WORKSPACE_MENU_VIEWPORT_GAP_PX, window.innerHeight - menuHeight - WORKSPACE_MENU_VIEWPORT_GAP_PX)
+    const left = compactViewport
+      ? Math.min(Math.max(WORKSPACE_MENU_VIEWPORT_GAP_PX, anchor.left), maxLeft)
+      : Math.min(Math.max(WORKSPACE_MENU_VIEWPORT_GAP_PX, anchor.left - menuWidth - WORKSPACE_MENU_GAP_PX), maxLeft)
+    const top = compactViewport
+      ? Math.min(Math.max(WORKSPACE_MENU_VIEWPORT_GAP_PX, anchor.bottom + 8), maxTop)
+      : Math.min(Math.max(WORKSPACE_MENU_VIEWPORT_GAP_PX, anchor.top), maxTop)
     setWorkspaceMenuPosition({ top, left })
   }
 
@@ -1415,9 +1437,11 @@ function UserMenu({ store, userId, userName, phone, enterpriseAccess, onNavigate
   useEffect(() => {
     if (!open) return undefined
     function handlePointerDown(event: PointerEvent): void {
+      if (keepMenuOpenForSettings) return
       if (event.target instanceof Node && !shellRef.current?.contains(event.target) && !workspaceMenuRef.current?.contains(event.target)) closeMenu()
     }
     function handleKeyDown(event: KeyboardEvent): void {
+      if (keepMenuOpenForSettings) return
       if (event.key !== 'Escape') return
       event.preventDefault()
       if (workspaceOpen) {
@@ -1433,11 +1457,16 @@ function UserMenu({ store, userId, userName, phone, enterpriseAccess, onNavigate
       document.removeEventListener('pointerdown', handlePointerDown)
       document.removeEventListener('keydown', handleKeyDown)
     }
-  }, [open, workspaceOpen])
+  }, [keepMenuOpenForSettings, open, workspaceOpen])
 
   function navigateFromMenu(path: string): void {
     closeMenu()
     onNavigate(path)
+  }
+
+  function openAccountSettings(): void {
+    if (window.innerWidth > 760) closeMenu()
+    onOpenSettings()
   }
 
   function switchWorkspace(workspace: Workspace): void {
@@ -1485,7 +1514,8 @@ function UserMenu({ store, userId, userName, phone, enterpriseAccess, onNavigate
   function renderMenuItem(item: ConsoleNavItem): ReactNode {
     const icon = <ConsoleNavIcon name={item.icon} className="dropdown-icon" />
     if (!item.actionOnly) {
-      return <Link className="dropdown-link" role="menuitem" key={item.key} to={item.path ?? item.key} onClick={() => closeMenu()}>{icon}<span>{localizeConsoleNavLabel(t, item.label)}</span></Link>
+      const path = item.path ?? item.key
+      return <Link className="dropdown-link" role="menuitem" key={item.key} to={path} onClick={(event) => { event.preventDefault(); navigateFromMenu(path) }}>{icon}<span>{localizeConsoleNavLabel(t, item.label)}</span></Link>
     }
     return <button className="dropdown-link dropdown-link-soon" role="menuitem" key={item.key} type="button" onClick={() => { closeMenu(); Toast.info(item.soon ? t('console.common.comingSoon', { name: localizeConsoleNavLabel(t, item.label) }) : t('console.common.actionReceived')) }}>{icon}<span>{localizeConsoleNavLabel(t, item.label)}</span>{item.soon ? <span className="nav-soon-badge">{t('console.common.comingSoonShort')}</span> : null}</button>
   }
@@ -1503,7 +1533,7 @@ function UserMenu({ store, userId, userName, phone, enterpriseAccess, onNavigate
             <span className="user-dropdown-identity-avatar">{initial}</span>
             <span className="user-dropdown-identity-copy"><strong>{displayName}</strong><span>{activeWorkspace.type === 'personal' ? t('console.common.personalWorkspace') : activeWorkspace.name}</span><IconChevronDown className="icon-svg user-dropdown-identity-chevron" /><span className="public-sr-only">{phoneLabel}</span><span className="public-sr-only">{t('console.common.currentWorkspace')} · {activeWorkspace.type === 'personal' ? displayName : activeWorkspace.name}</span><span className="public-sr-only">{t('console.common.switchWorkspace')}</span></span>
           </button>
-          <button className="user-dropdown-settings" type="button" aria-label={t('nav.settings')} onClick={() => { closeMenu(); onOpenSettings() }}><IconSettingStroked aria-hidden="true" /></button>
+          <button className="user-dropdown-settings" type="button" aria-label={t('nav.settings')} onClick={openAccountSettings}><IconSettingStroked aria-hidden="true" /></button>
         </div>
         {groups.map((group) => <div className="user-dropdown-section" key={group.key}>{group.items.map(renderMenuItem)}</div>)}
         <div className="user-dropdown-section">
@@ -1684,7 +1714,7 @@ export function ConsoleLayout({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className={`console-frame${sidebarOpen ? ' console-frame--sidebar-open' : ''}${location.pathname === '/console/quickstart' ? ' console-frame--quickstart' : ''}`}>
+    <div className={`console-frame public-header-host${sidebarOpen ? ' console-frame--sidebar-open' : ''}${location.pathname === '/console/quickstart' ? ' console-frame--quickstart' : ''}`}>
       <PublicHeader enterpriseAccess={enterpriseAccess} />
       <Layout className="console-layout">
         <Layout.Sider className="console-sider">
@@ -1942,7 +1972,7 @@ export function ManuscriptSupportWidget() {
 export function PublicLayout({ children, mainClassName = '' }: { children: ReactNode; mainClassName?: string }) {
   const manuscript = mainClassName.includes('home-page--manuscript') || mainClassName.includes('docs-page--manuscript') || mainClassName.includes('apps-page--manuscript') || mainClassName.includes('rankings-page--manuscript')
   const layoutClassName = manuscript ? ' public-layout--manuscript-home' : ''
-  return <div className={`public-layout${layoutClassName}`}><PublicHeader /><main className={`public-main${mainClassName ? ` ${mainClassName}` : ''}`}>{children}</main><PublicFooter /></div>
+  return <div className={`public-layout public-header-host${layoutClassName}`}><PublicHeader /><main className={`public-main${mainClassName ? ` ${mainClassName}` : ''}`}>{children}</main><PublicFooter /></div>
 }
 
 export function BannerNotice({ children, tone = 'info' }: { children: ReactNode; tone?: 'info' | 'warning' | 'success' }) {

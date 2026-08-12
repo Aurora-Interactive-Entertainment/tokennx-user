@@ -7,7 +7,6 @@ import { IconChevronDown, IconCopyStroked, IconFile } from '@douyinfe/semi-icons
 import { LoginPanel, LoginRequiredAction, ManuscriptSupportWidget, PublicLayout, ModelLogo, normalizeLoginReturnPath } from '@/components/common'
 import modelCardArt from '@/assets/figma-home/model-card-art.png'
 import promoModelLogo from '@/assets/figma-home/promo-model-logo.svg'
-import promoRewardAvatars from '@/assets/figma-home/promo-reward-avatars.png'
 import promoBannerArt from '@/assets/figma-home/promo-banner.png'
 import promoArticleArt from '@/assets/figma-home/promo-article.png'
 import mobileHomeStyles from '@/mobile-home.css?inline'
@@ -37,6 +36,7 @@ const HOME_REWARD_STATS = [
   { value: '00', unit: '人', labelKey: 'rewardApproved' },
   { value: '00', unit: '次', labelKey: 'rewardRejected' },
 ] as const
+const HOME_REWARD_AVATAR_COUNT = 6
 type HomePartner = { name: string; logoMarkup?: string; logoUrl?: string; href?: string; logoKind: 'wordmark' | 'mark' | 'css' }
 const PUBLIC_COMPANY_KEYS: Record<string, string> = {
   阿里云: 'aliyun',
@@ -849,7 +849,7 @@ export function HomePage({ onInitialScoreboardReady }: { onInitialScoreboardRead
 
         <section className="manuscript-section manuscript-promotion" aria-labelledby="homePromotionTitle">
           <div className="manuscript-section-heading"><div><h2 id="homePromotionTitle">{t('home.rebuild.promotionTitle')}</h2><p>{t('home.rebuild.manuscriptPromotionDescription')}</p></div></div>
-          <div className="manuscript-promotion-grid" role={isHomepageLoading ? 'status' : undefined} aria-busy={isHomepageLoading || undefined}>{isHomepageLoading ? <><span className="public-sr-only">正在加载推广与资讯</span><HomePromotionSkeleton /></> : <><article className="manuscript-reward-card"><h3>{t('home.rebuild.rewardTitle')}</h3><p>{t('home.rebuild.rewardDescription')}</p><div className="manuscript-reward-marks" aria-hidden="true"><img src={promoRewardAvatars} alt="" loading="lazy" decoding="async" width={327} height={68} /></div><div className="manuscript-reward-login"><span>{t('home.rebuild.rewardLoginHint')}</span><LoginRequiredAction returnPath="/console/invitations">{t('home.rebuild.rewardLoginAction')}</LoginRequiredAction></div><div className="manuscript-reward-stats">{HOME_REWARD_STATS.map(({ value, unit, labelKey }) => <span key={labelKey}><strong className={value.length > 2 ? 'is-long' : undefined}>{value}<em>{unit}</em></strong><small>{t(`home.rebuild.${labelKey}`)}</small></span>)}</div></article><div className="manuscript-news-column">
+          <div className="manuscript-promotion-grid" role={isHomepageLoading ? 'status' : undefined} aria-busy={isHomepageLoading || undefined}>{isHomepageLoading ? <><span className="public-sr-only">正在加载推广与资讯</span><HomePromotionSkeleton /></> : <><article className="manuscript-reward-card"><h3>{t('home.rebuild.rewardTitle')}</h3><p>{t('home.rebuild.rewardDescription')}</p><div className="manuscript-reward-marks" aria-hidden="true">{Array.from({ length: HOME_REWARD_AVATAR_COUNT }, (_, index) => <span className="manuscript-reward-avatar" aria-hidden="true" key={`reward-avatar-${index}`} />)}</div><div className="manuscript-reward-login"><span>{t('home.rebuild.rewardLoginHint')}</span><LoginRequiredAction returnPath="/console/invitations">{t('home.rebuild.rewardLoginAction')}</LoginRequiredAction></div><div className="manuscript-reward-stats">{HOME_REWARD_STATS.map(({ value, unit, labelKey }) => <span key={labelKey}><strong className={value.length > 2 ? 'is-long' : undefined}>{value}<em>{unit}</em></strong><small>{t(`home.rebuild.${labelKey}`)}</small></span>)}</div></article><div className="manuscript-news-column">
             {homepage?.ad_slots.length ? <ManagedAdSlots entries={homepage.ad_slots} /> : null}
             <div className="manuscript-news-grid">{managedNews.map((entry, index) => <ManagedNewsCard entry={entry} index={index} key={entry.id} />)}</div>
           </div></>}</div>
@@ -1073,7 +1073,6 @@ const APPS_POPULAR_ITEMS = [
   { id: 'hermes-agent-3' },
   { id: 'hermes-agent-4' },
 ] as const
-
 const APPS_USAGE_POINTS = Array.from({ length: 48 }, (_, index) => {
   const early = index < 18 ? 28 + Math.sin(index / 3) * 10 : 0
   const ramp = index >= 18 && index < 29 ? (index - 17) * 10 : 0
