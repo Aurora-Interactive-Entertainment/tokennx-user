@@ -67,6 +67,40 @@ function mockPublicDocs(markdown = '# 快速开始\n\n## 使用 Token NX API\n\n
   })
 }
 
+function mockRankings(): ReturnType<typeof vi.spyOn> {
+  return vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+    const url = String(input)
+    if (url.includes('/api/homepage/model-usage/leaderboard')) return new Response(JSON.stringify({
+      code: 0,
+      msg: 'success',
+      data: {
+        period: url.includes('period=month') ? 'month' : 'day',
+        started_at: '2026-08-13T00:00:00Z',
+        ended_at: '2026-08-13T08:00:00Z',
+        previous_from: '2026-08-12T00:00:00Z',
+        previous_to: '2026-08-13T00:00:00Z',
+        items: [
+          { rank: 1, code: 'model-a', name: '模型 A', total_tokens: 120000, request_count: 32, previous_tokens: 100000, change_rate: 20 },
+          { rank: 2, code: 'model-b', name: '模型 B', total_tokens: 80000, request_count: 24, previous_tokens: 0, change_rate: null },
+          { rank: 3, code: 'model-c', name: '模型 C', total_tokens: 40000, request_count: 12, previous_tokens: 50000, change_rate: -20 },
+        ],
+      },
+    }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+    if (url.includes('/api/homepage/model-usage/recent')) return new Response(JSON.stringify({
+      code: 0,
+      msg: 'success',
+      data: {
+        months: ['2026-03', '2026-04', '2026-05', '2026-06', '2026-07', '2026-08'],
+        items: [
+          { rank: 1, code: 'model-a', name: '模型 A', total_tokens: 120000, request_count: 32, monthly_usage: [{ month: '2026-07', total_tokens: 50000, request_count: 12 }, { month: '2026-08', total_tokens: 70000, request_count: 20 }] },
+          { rank: 2, code: 'model-b', name: '模型 B', total_tokens: 80000, request_count: 24, monthly_usage: [{ month: '2026-07', total_tokens: 30000, request_count: 10 }, { month: '2026-08', total_tokens: 50000, request_count: 14 }] },
+        ],
+      },
+    }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+    return new Response(JSON.stringify({ code: 0, msg: 'success', data: {} }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+  })
+}
+
 describe('公开模型页面', () => {
   beforeEach(() => {
     void i18n.changeLanguage('zh-CN')
@@ -186,14 +220,20 @@ describe('公开模型页面', () => {
     expect(screen.getByLabelText('排行榜时间范围')).toHaveValue('today')
   })
 
-  it('排名页展示 TOP10 图表、图例和模型排行榜', () => {
+  it('排名页展示接口返回的完整榜单并默认查询今天', async () => {
+    const fetchMock = mockRankings()
     renderPage(<RankingsPage />, '/rankings')
 
     expect(screen.getByRole('heading', { name: 'TOP10 模型排名' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: '大模型排行榜' })).toBeInTheDocument()
-    expect(screen.getByLabelText('图表图例')).toBeInTheDocument()
-    expect(document.querySelectorAll('.ranking-model-row')).toHaveLength(8)
-    expect(screen.getByRole('combobox', { name: '本周' })).toHaveAttribute('aria-expanded', 'false')
+    expect(await screen.findByLabelText('图表图例')).toBeInTheDocument()
+    await waitFor(() => expect(document.querySelectorAll('.ranking-model-row')).toHaveLength(3))
+    const periodSelect = screen.getByRole('combobox', { name: '查询周期' })
+    expect(periodSelect).toHaveAttribute('aria-expanded', 'false')
+    expect(periodSelect).toHaveTextContent('今天')
+    expect(screen.queryByText('热门话题')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /展示更多/ })).not.toBeInTheDocument()
+    expect(fetchMock.mock.calls.some((call: unknown[]) => String(call[0]).includes('period=day'))).toBe(true)
   })
 
   it('应用页切换英文后翻译标题、说明、筛选器和排行内容', async () => {
@@ -209,14 +249,17 @@ describe('公开模型页面', () => {
 
   it('排名页切换英文后翻译页签、目录、标题和筛选器', async () => {
     await i18n.changeLanguage('en-US')
+    mockRankings()
     renderPage(<RankingsPage />, '/rankings')
 
     expect(screen.getByRole('navigation', { name: 'Model types' })).toBeInTheDocument()
     expect(screen.getByRole('complementary', { name: 'Rankings navigation' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Top 10 Model Rankings' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Large Model Leaderboard' })).toBeInTheDocument()
-    expect(screen.getByLabelText('Chart legend')).toBeInTheDocument()
-    expect(screen.getByRole('combobox', { name: 'This Week' })).toHaveAttribute('aria-expanded', 'false')
+    expect(await screen.findByLabelText('Chart legend')).toBeInTheDocument()
+    const periodSelect = screen.getByRole('combobox', { name: 'Query period' })
+    expect(periodSelect).toHaveAttribute('aria-expanded', 'false')
+    expect(periodSelect).toHaveTextContent('Today')
   })
 
   it('文档页切换英文后翻译产品导航、目录和正文固定文案', async () => {

@@ -13,17 +13,20 @@ import promoArticleArt from '@/assets/figma-home/promo-article.png'
 import mobileHomeStyles from '@/mobile-home.css?inline'
 import '@/docs-page.css'
 import hermesAgentImage from '@/assets/figma-apps/hermes-agent.png'
-import mimoXiaomiImage from '@/assets/figma-ranking/mimo-xiaomi.png'
 import { ModelPriceSummary } from '@/components/money'
 import { MarkdownContent } from '@/components/markdown-content'
 import { getPublicHomepage, getPublicHomepageAssetURL, getPublicHomepageStats, type HomepageDiscountKind, type HomepageEntry, type HomepagePromotionModel, type HomepageTranslation, type PublicHomepage } from '@/api/homepage'
+import { getModelUsageLeaderboard, getRecentModelUsage, type ModelUsageLeaderboard, type ModelUsagePeriod, type RecentModelUsage } from '@/api/model-rankings'
+import { getToolUsageClients, getToolUsageLeaderboard, type ToolUsageClients, type ToolUsageLeaderboard, type ToolUsagePeriod } from '@/api/tool-usage'
 import { getPublicDocument, getPublicDocumentAssetUrl, getPublicDocsTree, publicDocumentHref, type PublicDocument, type PublicDocsLocale, type PublicDocsNode } from '@/api/public-docs'
 import { isApiError } from '@/api/http'
-import { filterModels, findModel, modelAlias, modelRouteKey, MODEL_CATALOG, MODALITY_LABELS, type ModelModality, type ModelPrice, type ModelRecord } from '@/data/models'
+import { filterModels, findModel, findModelInList, modelAlias, modelRouteKey, MODEL_CATALOG, MODALITY_LABELS, type ModelModality, type ModelPrice, type ModelRecord } from '@/data/models'
 import { getAccessToken } from '@/auth/token-storage'
 import { useAppSelector } from '@/store/hooks'
 import { QUICKSTART_API_BASE_URL, quickstartCodeSample } from '@/utils/quickstart'
 import { useTranslation } from 'react-i18next'
+import { formatRankingTokens, RankingRecentUsageChart } from '@/components/ranking-usage-chart'
+import { formatToolUsageTokens, ToolUsageClientsChart } from '@/components/tool-usage-chart'
 
 function formatPublicPrice(price: ModelPrice): ReactNode {
   return <ModelPriceSummary price={price} />
@@ -994,29 +997,49 @@ export function ModelDetailPage() {
   )
 }
 
-const RANKING_SERIES_COLORS = ['#f476b7', '#c6a4ff', '#3981ec', '#ddd784', '#ebb849', '#f47154', '#b86bbd', '#d64f25', '#678032', '#e7834f'] as const
-const RANKING_USAGE_POINTS = Array.from({ length: 46 }, (_, index) => {
-  const base = index < 18 ? 8 + Math.sin(index / 3) * 3 : 8 + (index - 17) * 3.1
-  const surge = index > 31 ? (index - 31) * 2.6 : 0
-  const peak = index > 41 ? (index % 2 === 0 ? 24 : 9) : 0
-  const total = Math.max(6, base + surge + peak)
-  return RANKING_SERIES_COLORS.map((_, seriesIndex) => Math.max(1.5, total * (.11 + ((seriesIndex * 7 + index) % 5) * .018)))
-})
-
-const RANKING_MODELS = Array.from({ length: 10 }, (_, index) => ({
-  id: `mimo-ranking-${index + 1}`,
-  name: 'MiMo-V2.5',
-  provider: 'by xiaomi',
-  tokens: index < 8 ? '8.9T tokens' : `${(8.7 - (index - 8) * .3).toFixed(1)}T tokens`,
-  trend: index === 8 ? '↑4%' : '↓9%',
-}))
+function RankingModelLogo({ code, name }: { code: string; name: string }) {
+  const matchedModel = findModelInList(MODEL_CATALOG, code)
+  return matchedModel
+    ? <ModelLogo model={matchedModel} className="ranking-model-logo" />
+    : <span className="ranking-model-logo ranking-model-logo-fallback" aria-hidden="true">{name.trim().slice(0, 1).toUpperCase()}</span>
+}
 
 export function RankingsPage() {
   const { t } = useTranslation()
-  const [rankingRange, setRankingRange] = useState('week')
-  const [showAll, setShowAll] = useState(false)
-  const visibleModels = showAll ? RANKING_MODELS : RANKING_MODELS.slice(0, 8)
-  const rankingRanges = ['today', 'week', 'month', 'popular'] as const
+  const [rankingRange, setRankingRange] = useState<ModelUsagePeriod>('day')
+  const [leaderboard, setLeaderboard] = useState<ModelUsageLeaderboard | null>(null)
+  const [recentUsage, setRecentUsage] = useState<RecentModelUsage | null>(null)
+  const [leaderboardLoading, setLeaderboardLoading] = useState(true)
+  const [recentLoading, setRecentLoading] = useState(true)
+  const [leaderboardError, setLeaderboardError] = useState('')
+  const [recentError, setRecentError] = useState('')
+  const rankingRanges = ['day', 'week', 'month', 'year'] as const
+
+  useEffect(() => {
+    const controller = new AbortController()
+    setLeaderboardLoading(true)
+    setLeaderboardError('')
+    getModelUsageLeaderboard(rankingRange, controller.signal).then(setLeaderboard).catch((reason: unknown) => {
+      if (!controller.signal.aborted) setLeaderboardError(reason instanceof Error ? reason.message : t('public.rankings.loadFailed'))
+    }).finally(() => { if (!controller.signal.aborted) setLeaderboardLoading(false) })
+    return () => controller.abort()
+  }, [rankingRange, t])
+
+  useEffect(() => {
+    const controller = new AbortController()
+    setRecentLoading(true)
+    setRecentError('')
+    getRecentModelUsage(controller.signal).then(setRecentUsage).catch((reason: unknown) => {
+      if (!controller.signal.aborted) setRecentError(reason instanceof Error ? reason.message : t('public.rankings.loadFailed'))
+    }).finally(() => { if (!controller.signal.aborted) setRecentLoading(false) })
+    return () => controller.abort()
+  }, [t])
+
+  function trendLabel(changeRate: number | null): string {
+    if (changeRate === null) return t('public.rankings.noComparison')
+    if (changeRate === 0) return '0.00%'
+    return `${changeRate > 0 ? '↑' : '↓'} ${Math.abs(changeRate).toFixed(2)}%`
+  }
 
   return (
     <PublicLayout mainClassName="rankings-page--manuscript">
@@ -1034,41 +1057,25 @@ export function RankingsPage() {
         <main className="ranking-content">
           <section id="top-models" className="ranking-top-section">
             <header><h1>{t('public.rankings.topTitle')}</h1><p>{t('public.rankings.topDescription')}</p></header>
-            <div className="ranking-chart-layout">
-              <div className="ranking-chart" role="img" aria-label={t('public.rankings.chartLabel')}>
-                <div className="ranking-chart-y-axis" aria-hidden="true"><span>80T</span><span>60T</span><span>40T</span><span>20T</span></div>
-                <div className="ranking-chart-plot" aria-hidden="true">
-                  <i className="ranking-grid-line" /><i className="ranking-grid-line" /><i className="ranking-grid-line" /><i className="ranking-grid-line" />
-                  <div className="ranking-chart-bars">{RANKING_USAGE_POINTS.map((segments, pointIndex) => <span className="ranking-chart-bar" key={pointIndex}>{segments.map((height, seriesIndex) => <i key={seriesIndex} style={{ height: `${height}px`, backgroundColor: RANKING_SERIES_COLORS[seriesIndex] }} />)}</span>)}</div>
-                </div>
-                <div className="ranking-chart-x-axis" aria-hidden="true">{Array.from({ length: 8 }, (_, index) => <span key={index}>{t(`public.rankings.dates.${index}`)}</span>)}</div>
-              </div>
-
-              <aside className="ranking-legend" aria-label={t('public.rankings.legendLabel')}>
-                <time dateTime="2026-07-13">{t('public.rankings.legendDate')}</time>
-                <div className="ranking-legend-list">{RANKING_SERIES_COLORS.map((color, index) => <span className={index === 1 ? 'is-active' : ''} key={color}><i style={{ backgroundColor: color }} /><strong>{t('public.rankings.other')}</strong><em>19T</em></span>)}</div>
-                <div className="ranking-legend-total"><strong>{t('public.rankings.all')}</strong><em>19T</em></div>
-              </aside>
-            </div>
+            <div className="ranking-chart-layout">{recentLoading && !recentUsage ? <div className="ranking-data-state" role="status">{t('public.rankings.loading')}</div> : recentError && !recentUsage ? <div className="ranking-data-state is-error" role="alert">{recentError}</div> : recentUsage && recentUsage.months.length && recentUsage.items.length ? <RankingRecentUsageChart data={recentUsage} /> : <div className="ranking-data-state">{t('public.rankings.empty')}</div>}</div>
           </section>
 
           <section id="model-ranking" className="ranking-list-section">
             <div className="ranking-list-head"><div><h2>{t('public.rankings.leaderboardTitle')}</h2><p>{t('public.rankings.leaderboardDescription')}</p></div>
               <div className="ranking-filters">
                 <span className="sr-only" id="ranking-range-label">{t('public.rankings.comparisonRange')}</span>
-                <Select className="ranking-range-select" size="large" value={rankingRange} onChange={(value) => setRankingRange(String(value))} aria-labelledby="ranking-range-label">
+                <Select className="ranking-range-select" size="large" value={rankingRange} onChange={(value) => setRankingRange(String(value) as ModelUsagePeriod)} aria-labelledby="ranking-range-label">
                   {rankingRanges.map((value) => <Select.Option value={value} key={value}>{t(`public.rankings.ranges.${value}`)}</Select.Option>)}
                 </Select>
               </div>
             </div>
 
-            <div className="ranking-model-list" aria-live="polite">{visibleModels.map((model, index) => <article className="ranking-model-row" key={model.id}>
-              <span className="ranking-model-number">{index + 1}.</span>
-              <span className="ranking-model-logo"><img src={mimoXiaomiImage} alt="" /></span>
-              <div className="ranking-model-name"><strong>{model.name}</strong><span>{model.provider}</span></div>
-              <div className="ranking-model-metric"><strong>{model.tokens}</strong><span className={model.trend.startsWith('↑') ? 'is-up' : ''}>{model.trend}</span></div>
-            </article>)}</div>
-            <button className="ranking-show-more" type="button" aria-expanded={showAll} onClick={() => setShowAll((shown) => !shown)}>{t(showAll ? 'public.rankings.collapse' : 'public.rankings.showMore')} <span aria-hidden="true">{showAll ? '⌃' : '⌄'}</span></button>
+            <div className="ranking-model-list" aria-live="polite">{leaderboardLoading && !leaderboard ? <div className="ranking-data-state" role="status">{t('public.rankings.loading')}</div> : leaderboardError && !leaderboard ? <div className="ranking-data-state is-error" role="alert">{leaderboardError}</div> : leaderboard?.items.length ? leaderboard.items.map((model) => <article className="ranking-model-row" key={model.code}>
+              <span className="ranking-model-number">{model.rank}.</span>
+              <RankingModelLogo code={model.code} name={model.name} />
+              <div className="ranking-model-name"><strong>{model.name}</strong><span>{model.code}</span></div>
+              <div className="ranking-model-metric"><strong>{formatRankingTokens(model.total_tokens)} tokens</strong><span className={model.change_rate !== null && model.change_rate > 0 ? 'is-up' : model.change_rate === 0 ? 'is-flat' : ''}>{trendLabel(model.change_rate)}</span></div>
+            </article>) : <div className="ranking-data-state">{t('public.rankings.empty')}</div>}</div>
           </section>
         </main>
       </div>
@@ -1082,23 +1089,33 @@ const APPS_POPULAR_ITEMS = [
   { id: 'hermes-agent-3' },
   { id: 'hermes-agent-4' },
 ] as const
-const APPS_USAGE_POINTS = Array.from({ length: 48 }, (_, index) => {
-  const early = index < 18 ? 28 + Math.sin(index / 3) * 10 : 0
-  const ramp = index >= 18 && index < 29 ? (index - 17) * 10 : 0
-  const late = index >= 29 ? 76 + Math.sin(index / 2.4) * 22 + (index > 40 ? 34 : 0) : 0
-  const total = Math.max(18, early + ramp + late)
-  return [total * .18, total * .16, total * .27, total * .31, total * .08]
-})
-
-const APPS_RANKING_ITEMS = Array.from({ length: 12 }, (_, index) => ({
-  id: `hermes-ranking-${index + 1}`,
-  tokenBillions: index < 3 ? 9700 : Math.max(41, 92 - index * 4) * 100,
-}))
+const APPS_RANKING_ITEMS = Array.from({ length: 12 }, (_, index) => ({ id: `hermes-ranking-${index + 1}`, tool: 'Hermes Agent', tokenBillions: index < 3 ? 9700 : Math.max(41, 92 - index * 4) * 100 }))
+const APPS_PERIODS = ['today', 'week', 'month', 'year'] as const
 
 export function AppsPage() {
   const { t } = useTranslation()
-  const [timeRange, setTimeRange] = useState('today')
+  const [timeRange, setTimeRange] = useState<(typeof APPS_PERIODS)[number]>('today')
+  const [leaderboard, setLeaderboard] = useState<ToolUsageLeaderboard | null>(null)
+  const [yearLeaderboard, setYearLeaderboard] = useState<ToolUsageLeaderboard | null>(null)
+  const [clients, setClients] = useState<ToolUsageClients | null>(null)
+  const [loadError, setLoadError] = useState('')
   const activeRangeLabel = t(`public.apps.ranges.${timeRange}`)
+
+  useEffect(() => {
+    const controller = new AbortController()
+    setLoadError('')
+    getToolUsageLeaderboard(timeRange === 'today' ? 'day' : timeRange, controller.signal).then(setLeaderboard).catch((reason: unknown) => { if (!controller.signal.aborted) setLoadError(reason instanceof Error ? reason.message : t('public.apps.loadFailed')) })
+    return () => controller.abort()
+  }, [t, timeRange])
+
+  useEffect(() => {
+    const controller = new AbortController()
+    Promise.all([getToolUsageLeaderboard('year', controller.signal), getToolUsageClients(controller.signal)]).then(([year, recent]) => { setYearLeaderboard(year); setClients(recent) }).catch((reason: unknown) => { if (!controller.signal.aborted) setLoadError(reason instanceof Error ? reason.message : t('public.apps.loadFailed')) })
+    return () => controller.abort()
+  }, [t])
+
+  const popularItems = (yearLeaderboard?.items ?? []).slice(0, 4)
+  const rankingItems = (leaderboard?.items ?? []).slice(0, 20)
 
   return (
     <PublicLayout mainClassName="apps-page--manuscript">
@@ -1109,41 +1126,30 @@ export function AppsPage() {
         </header>
 
         <section className="apps-popular-grid" aria-label={t('public.apps.popularLabel')}>
-          {APPS_POPULAR_ITEMS.map((item) => <article className="apps-popular-card" key={item.id}>
-            <div className="apps-popular-title"><h2>{t('public.apps.agentName')}</h2><span className="apps-agent-logo"><img src={hermesAgentImage} alt="" /></span></div>
+          {(popularItems.length ? popularItems : APPS_POPULAR_ITEMS.map((item) => ({ ...item, tool: t('public.apps.agentName'), total_tokens: 32_100_000_000_000, request_count: 0 }))).map((item, index) => <article className="apps-popular-card" key={'rank' in item ? `${item.tool}-${item.rank}` : item.id}>
+            <div className="apps-popular-title"><h2>{'tool' in item ? item.tool : t('public.apps.agentName')}</h2><span className="apps-agent-logo"><img src={hermesAgentImage} alt="" /></span></div>
             <p>{t('public.apps.agentSummary')}</p>
-            <strong>{t('public.apps.popularTokens')}</strong>
+            <strong>{'rank' in item ? formatToolUsageTokens(item.total_tokens) : t('public.apps.popularTokens')}</strong>
           </article>)}
         </section>
 
         <section className="apps-chart-panel" aria-labelledby="appsChartTitle">
-          <div className="apps-chart-heading"><h2 id="appsChartTitle">{t('public.apps.chartTitle')}</h2><span>{t('public.apps.pastThirtyDays')}</span></div>
-          <div className="apps-chart" role="img" aria-label={t('public.apps.chartLabel')}>
-            <div className="apps-chart-y-axis" aria-hidden="true"><span>1.6T</span><span>1.2T</span><span>800B</span><span>400B</span></div>
-            <div className="apps-chart-plot">
-              <span className="apps-chart-grid-line" /><span className="apps-chart-grid-line" /><span className="apps-chart-grid-line" /><span className="apps-chart-grid-line" />
-              <div className="apps-chart-bars" aria-hidden="true">{APPS_USAGE_POINTS.map((segments, pointIndex) => <span className="apps-chart-bar" key={pointIndex}>{segments.map((height, segmentIndex) => <i key={segmentIndex} style={{ height: `${height}px` }} />)}</span>)}</div>
-            </div>
-            <div className="apps-chart-x-axis" aria-hidden="true">{Array.from({ length: 8 }, (_, index) => <span key={index}>{t(`public.apps.dates.${index}`)}</span>)}</div>
-          </div>
+          <div className="apps-chart-heading"><h2 id="appsChartTitle">{t('public.apps.chartTitle')}</h2><span>{t('public.apps.pastSixMonths')}</span></div>
+          {clients ? <ToolUsageClientsChart data={clients} /> : <div className="apps-chart-state" role="status">{loadError || t('public.apps.loading')}</div>}
         </section>
 
         <div className="apps-ranking-filter">
           <label className="public-sr-only" htmlFor="apps-time-range">{t('public.apps.rangeLabel')}</label>
-          <select id="apps-time-range" value={timeRange} onChange={(event) => setTimeRange(event.target.value)}>
-            <option value="today">{t('public.apps.ranges.today')}</option>
-            <option value="week">{t('public.apps.ranges.week')}</option>
-            <option value="month">{t('public.apps.ranges.month')}</option>
-          </select>
+          <select id="apps-time-range" value={timeRange} onChange={(event) => setTimeRange(event.target.value as (typeof APPS_PERIODS)[number])}>{APPS_PERIODS.map((period) => <option value={period} key={period}>{t(`public.apps.ranges.${period}`)}</option>)}</select>
         </div>
 
         <section className="apps-ranking-list" aria-label={t('public.apps.rankingLabel', { range: activeRangeLabel })}>
-          {APPS_RANKING_ITEMS.map((item, index) => <article className="apps-ranking-row" key={item.id}>
-            <span className="apps-ranking-number">{index + 1}.</span>
+          {(rankingItems.length ? rankingItems : APPS_RANKING_ITEMS).map((item, index) => <article className="apps-ranking-row" key={'rank' in item ? `${item.tool}-${item.rank}` : item.id}>
+            <span className="apps-ranking-number">{'rank' in item ? item.rank : index + 1}.</span>
             <i className="apps-ranking-dot" aria-hidden="true" />
             <span className="apps-agent-logo apps-agent-logo--small"><img src={hermesAgentImage} alt="" /></span>
-            <div><h2>{t('public.apps.agentName')}</h2><p>{t('public.apps.agentDescription')}</p></div>
-            <strong>{t('public.apps.rankingTokens', { count: item.tokenBillions })}</strong>
+            <div><h2>{'tool' in item ? item.tool : t('public.apps.agentName')}</h2><p>{t('public.apps.agentDescription')}</p></div>
+            <strong>{'rank' in item ? formatToolUsageTokens(item.total_tokens) : t('public.apps.rankingTokens', { count: item.tokenBillions })}</strong>
           </article>)}
         </section>
       </div>
