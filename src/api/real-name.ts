@@ -59,6 +59,8 @@ export function isRealNameConflict(error: unknown): boolean {
 
 export function getRealNameErrorMessage(error: unknown): string {
 	if (!isApiError(error)) return i18n.t('api.realName.requestFailed')
+	const serverMessage = error.message.trim()
+	if (serverMessage) return serverMessage
 	const messageKeys: Record<number, string> = {
 		100001: 'api.realName.invalidInput',
 		100002: 'api.realName.unavailable',
@@ -69,5 +71,5 @@ export function getRealNameErrorMessage(error: unknown): string {
 		110020: 'api.realName.unavailable',
 		110021: 'api.realName.requestFailed',
 	}
-	return messageKeys[error.code] ? i18n.t(messageKeys[error.code]) : error.message
+	return messageKeys[error.code] ? i18n.t(messageKeys[error.code]) : i18n.t('api.realName.requestFailed')
 }

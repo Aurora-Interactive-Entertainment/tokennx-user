@@ -193,7 +193,7 @@ describe('公开模型页面', () => {
     expect(screen.getByRole('heading', { name: '大模型排行榜' })).toBeInTheDocument()
     expect(screen.getByLabelText('图表图例')).toBeInTheDocument()
     expect(document.querySelectorAll('.ranking-model-row')).toHaveLength(8)
-    expect(screen.getByRole('button', { name: /本星期/ })).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByRole('combobox', { name: '本周' })).toHaveAttribute('aria-expanded', 'false')
   })
 
   it('应用页切换英文后翻译标题、说明、筛选器和排行内容', async () => {
@@ -216,7 +216,7 @@ describe('公开模型页面', () => {
     expect(screen.getByRole('heading', { name: 'Top 10 Model Rankings' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Large Model Leaderboard' })).toBeInTheDocument()
     expect(screen.getByLabelText('Chart legend')).toBeInTheDocument()
-    expect(screen.getAllByRole('button', { name: /This Week/ }).find((button) => button.getAttribute('aria-expanded') === 'true')).toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: 'This Week' })).toHaveAttribute('aria-expanded', 'false')
   })
 
   it('文档页切换英文后翻译产品导航、目录和正文固定文案', async () => {

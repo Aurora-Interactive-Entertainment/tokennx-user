@@ -1,4 +1,5 @@
 import '@douyinfe/semi-ui/react19-adapter'
+import '@douyinfe/semi-ui/lib/es/_base/base.css'
 import { useCallback } from 'react'
 import { Provider } from 'react-redux'
 import ReactDOM from 'react-dom/client'

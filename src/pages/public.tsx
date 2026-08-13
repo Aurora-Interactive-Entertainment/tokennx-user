@@ -3,6 +3,7 @@ import type { TFunction } from 'i18next'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
 import Toast from '@douyinfe/semi-ui/lib/es/toast'
 import Skeleton from '@douyinfe/semi-ui/lib/es/skeleton'
+import { Select } from '@douyinfe/semi-ui'
 import { IconBookOpenStroked, IconChevronDown, IconCopyStroked, IconFile } from '@douyinfe/semi-icons'
 import { LoginPanel, LoginRequiredAction, ManuscriptSupportWidget, PublicLayout, ModelLogo, normalizeLoginReturnPath } from '@/components/common'
 import modelCardArt from '@/assets/figma-home/model-card-art.png'
@@ -1013,26 +1014,21 @@ const RANKING_MODELS = Array.from({ length: 10 }, (_, index) => ({
 export function RankingsPage() {
   const { t } = useTranslation()
   const [rankingRange, setRankingRange] = useState('week')
-  const [rangeMenuOpen, setRangeMenuOpen] = useState(true)
   const [showAll, setShowAll] = useState(false)
   const visibleModels = showAll ? RANKING_MODELS : RANKING_MODELS.slice(0, 8)
-  const rankingModalities = [
-    ['text', 'T'], ['image', '▧'], ['embedding', '⌘'], ['rerank', '⇅'], ['video', '▣'], ['speech', '♙'], ['transcription', '♩'],
-  ] as const
   const rankingRanges = ['today', 'week', 'month', 'popular'] as const
 
   return (
     <PublicLayout mainClassName="rankings-page--manuscript">
       <nav className="ranking-modality-nav" aria-label={t('public.rankings.modalityLabel')}>
         <div className="ranking-modality-nav-inner">
-          {rankingModalities.map(([key, icon], index) => <button className={index === 0 ? 'is-active' : ''} type="button" key={key}><span aria-hidden="true">{icon}</span>{t(`public.rankings.modalities.${key}`)}</button>)}
+          <button className="is-active" type="button"><span aria-hidden="true">T</span>{t('public.rankings.modalities.text')}</button>
         </div>
       </nav>
 
       <div className="ranking-shell">
         <aside className="ranking-sidebar" aria-label={t('public.rankings.pageNavLabel')}>
           <a className="is-active" href="#top-models"><span aria-hidden="true">▥</span>{t('public.rankings.topModelsNav')}</a>
-          <a href="#model-ranking"><span aria-hidden="true">♧</span>{t('public.rankings.leaderboardNav')}</a>
         </aside>
 
         <main className="ranking-content">
@@ -1059,9 +1055,10 @@ export function RankingsPage() {
           <section id="model-ranking" className="ranking-list-section">
             <div className="ranking-list-head"><div><h2>{t('public.rankings.leaderboardTitle')}</h2><p>{t('public.rankings.leaderboardDescription')}</p></div>
               <div className="ranking-filters">
-                <button type="button">{t('public.rankings.comparisonRange')} <span aria-hidden="true">⌄</span></button>
-                <button type="button" aria-haspopup="menu" aria-expanded={rangeMenuOpen} onClick={() => setRangeMenuOpen((open) => !open)}>{t(`public.rankings.ranges.${rankingRange}`)}<span aria-hidden="true">⌄</span></button>
-                {rangeMenuOpen ? <div className="ranking-range-menu" role="menu">{rankingRanges.map((value) => <button className={rankingRange === value ? 'is-active' : ''} type="button" role="menuitemradio" aria-checked={rankingRange === value} key={value} onClick={() => { setRankingRange(value); setRangeMenuOpen(false) }}><span aria-hidden="true">{rankingRange === value ? '✓' : ''}</span>{t(`public.rankings.ranges.${value}`)}</button>)}</div> : null}
+                <span className="sr-only" id="ranking-range-label">{t('public.rankings.comparisonRange')}</span>
+                <Select className="ranking-range-select" size="large" value={rankingRange} onChange={(value) => setRankingRange(String(value))} aria-labelledby="ranking-range-label">
+                  {rankingRanges.map((value) => <Select.Option value={value} key={value}>{t(`public.rankings.ranges.${value}`)}</Select.Option>)}
+                </Select>
               </div>
             </div>
 

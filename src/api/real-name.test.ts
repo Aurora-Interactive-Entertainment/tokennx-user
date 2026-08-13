@@ -28,9 +28,11 @@ describe('实名认证 API 封装', () => {
     expect(JSON.parse(String(fetchMock.mock.calls.at(-1)?.[1]?.body))).toEqual({ name: '张三', id_type: 'id-card', id_number: '110101199001011234', consent: true })
   })
 
-  it('映射认证接口错误并保留未知错误信息', () => {
-    expect(getRealNameErrorMessage(new ApiError('请求参数无效', 400, 100001, 'request-1'))).toBe('请检查姓名、证件类型和证件号码')
-    expect(getRealNameErrorMessage(new ApiError('认证信息无效', 401, 110001, 'request-2'))).toBe('登录状态已失效，请重新登录')
+  it('优先显示认证接口返回的 msg，并为非接口异常提供兜底文案', () => {
+    expect(getRealNameErrorMessage(new ApiError('请求参数无效', 400, 100001, 'request-1'))).toBe('请求参数无效')
+    expect(getRealNameErrorMessage(new ApiError('认证信息无效', 401, 110001, 'request-2'))).toBe('认证信息无效')
+    expect(getRealNameErrorMessage(new ApiError('当前账号不可用', 403, 110001, 'request-3'))).toBe('当前账号不可用')
+    expect(getRealNameErrorMessage(new ApiError('人脸核身未通过', 409, 110023, 'request-4'))).toBe('人脸核身未通过')
     expect(getRealNameErrorMessage(new Error('offline'))).toBe('实名认证请求失败，请稍后重试')
   })
 
