@@ -88,9 +88,9 @@ export const loginWithEmail = createAsyncThunk<AuthUser, { destination: string; 
   }
 })
 
-export const loginWithPhone = createAsyncThunk<AuthUser, { destination: string; code: string }, ThunkConfig>('auth/loginWithPhone', async ({ destination, code }, { rejectWithValue }) => {
+export const loginWithPhone = createAsyncThunk<AuthUser, { destination: string; code: string; inviteCode?: string }, ThunkConfig>('auth/loginWithPhone', async ({ destination, code, inviteCode }, { rejectWithValue }) => {
   try {
-    return completeAuth(await loginByPhone(destination, code))
+    return completeAuth(await loginByPhone(destination, code, inviteCode))
   } catch (error) {
     return rejectWithValue(authError(error))
   }

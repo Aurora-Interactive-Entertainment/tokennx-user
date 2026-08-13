@@ -21,6 +21,7 @@ import { isAuthenticationFailure } from '@/api/http'
 import { invalidateAuth } from '@/store/auth-slice'
 import { useAppDispatch } from '@/store/hooks'
 import { apiTimeToISOString, formatApiTime, type ApiTimeValue } from '@/utils/format'
+import { getInvitationOverview, type InvitationOverview } from '@/api/invitation'
 
 type ApiKeyExpiryPreset = 'never' | '30days' | '90days' | '365days' | 'current'
 
@@ -337,10 +338,35 @@ export function SettingsPage() {
 
 export function InvitationsPage() {
   const { t } = useTranslation()
+  const navigate = useNavigate()
+  const dispatch = useAppDispatch()
   const [copied, setCopied] = useState(false)
-  const inviteLink = 'https://tokennx.invalid/invite/usr_han_001'
+  const [overview, setOverview] = useState<InvitationOverview | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const inviteLink = overview ? `${window.location.origin}/invite?invite_code=${encodeURIComponent(overview.invite_code)}` : ''
+
+  useEffect(() => {
+    const controller = new AbortController()
+    setLoading(true)
+    getInvitationOverview({ signal: controller.signal }).then(setOverview).catch((reason: unknown) => {
+      if (controller.signal.aborted) return
+      if (isAuthenticationFailure(reason)) {
+        dispatch(invalidateAuth())
+        navigate('/', { replace: true })
+        return
+      }
+      setError(reason instanceof Error ? reason.message : t('console.invitations.loadFailed'))
+    }).finally(() => { if (!controller.signal.aborted) setLoading(false) })
+    return () => controller.abort()
+  }, [dispatch, navigate, t])
+
   function copyLink(): void { navigator.clipboard.writeText(inviteLink).then(() => { setCopied(true); Toast.success(t('console.invitations.copied')); window.setTimeout(() => setCopied(false), 1500) }).catch(() => Toast.error(t('console.common.copyFailed'))) }
-  return <div className="invite-page"><header className="invite-hero"><span className="invite-hero-icon"><IconGift /></span><div><h1>{t('console.invitations.title')}</h1><p>{t('console.invitations.description')}</p></div></header><section className="invite-summary"><article><IconCreditCard /><span>{t('console.invitations.pending')}</span><strong><MoneyText value="12.800000" /></strong></article><article><IconBarChartHStroked /><span>{t('console.invitations.total')}</span><strong><MoneyText value="36.500000" /></strong></article><article><IconUserGroup /><span>{t('console.invitations.count')}</span><strong>3</strong></article></section><section className="invite-link-card"><div className="invite-section-heading"><span className="invite-section-icon"><IconKey /></span><div><h2>{t('console.invitations.link')}</h2><p>{t('console.invitations.linkHint')}</p></div></div><div className="invite-link-row"><Input value={inviteLink} readOnly /><Button theme="solid" type="primary" icon={<IconCopy />} onClick={copyLink}>{copied ? t('console.invitations.copied') : t('console.invitations.copy')}</Button></div></section><section className="invite-records"><div className="invite-section-heading"><div><h2>{t('console.invitations.records')}</h2><p>{t('console.invitations.recordsHint')}</p></div></div><div className="source-table-scroll"><table className="invite-table"><thead><tr><th>{t('console.invitations.member')}</th><th>{t('console.invitations.role')}</th><th>{t('console.invitations.status')}</th><th>{t('console.invitations.joinedAt')}</th><th>{t('console.invitations.operation')}</th></tr></thead><tbody>{[['林舟', 'lin***@demo.invalid', '2026/07/15 16:42:18'], ['周然', 'zhou***@demo.invalid', '2026/07/13 11:08:36'], ['陈屿', 'chen***@demo.invalid', '2026/07/10 09:25:04']].map(([name, email, time]) => <tr key={name}><td><strong>{name}</strong><small>{email}</small></td><td><em>{t('console.invitations.developer')}</em></td><td><span className="invite-status">{t('console.invitations.joined')}</span></td><td>{time}</td><td>{t('console.invitations.noAction')}</td></tr>)}</tbody></table></div></section><section className="invite-rules"><h2>{t('console.invitations.rules')}</h2><ol><li>{t('console.invitations.ruleSource')}</li><li>{t('console.invitations.ruleStatus')}</li><li>{t('console.invitations.ruleSettlement')}</li></ol></section></div>
+
+  if (loading) return <div className="invite-page"><div className="public-invitation-loading" role="status"><span className="records-loading-spinner" />{t('console.common.loading')}</div></div>
+  if (error || !overview) return <div className="invite-page"><div className="public-invitation-empty" role="alert"><strong>{error || t('console.invitations.loadFailed')}</strong></div></div>
+
+  return <div className="invite-page"><header className="invite-hero"><span className="invite-hero-icon"><IconGift /></span><div><h1>{t('console.invitations.title')}</h1><p>{t('console.invitations.description')}</p></div></header><section className="invite-summary"><article><IconCreditCard /><span>{t('console.invitations.pending')}</span><strong><MoneyText value="0" digits={2} /></strong></article><article><IconBarChartHStroked /><span>{t('console.invitations.total')}</span><strong><MoneyText value={overview.total_reward_yuan} digits={2} /></strong></article><article><IconUserGroup /><span>{t('console.invitations.count')}</span><strong>{overview.invited_count}</strong></article></section><section className="invite-link-card"><div className="invite-section-heading"><span className="invite-section-icon"><IconKey /></span><div><h2>{t('console.invitations.link')}</h2><p>{t('console.invitations.linkHint')}</p></div></div><div className="invite-link-row"><Input value={inviteLink} readOnly /><Button theme="solid" type="primary" icon={<IconCopy />} onClick={copyLink}>{copied ? t('console.invitations.copied') : t('console.invitations.copy')}</Button></div></section><section className="invite-records"><div className="invite-section-heading"><div><h2>{t('console.invitations.records')}</h2><p>{t('console.invitations.recordsHint')}</p></div></div><div className="source-table-scroll"><table className="invite-table"><thead><tr><th>{t('console.invitations.member')}</th><th>{t('console.invitations.status')}</th><th>{t('console.invitations.joinedAt')}</th></tr></thead><tbody>{overview.records.map((record) => <tr key={record.id}><td><strong>{record.display_name}</strong></td><td><span className="invite-status">{record.status === 'joined' ? t('console.invitations.joined') : record.status}</span></td><td>{formatApiTime(record.joined_at)}</td></tr>)}</tbody></table></div></section><section className="invite-rules"><h2>{t('console.invitations.rules')}</h2><ol><li>{t('console.invitations.ruleSource')}</li><li>{t('console.invitations.ruleStatus')}</li><li>{t('console.invitations.ruleSettlement')}</li></ol></section></div>
 }
 
 export function EnterpriseCreatePage() {

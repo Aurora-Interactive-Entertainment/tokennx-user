@@ -25,6 +25,7 @@ const AboutPage = lazy(() => loadPublicPages().then(({ AboutPage }) => ({ defaul
 const LegalPage = lazy(() => loadPublicPages().then(({ LegalPage }) => ({ default: LegalPage })))
 const LoginPage = lazy(() => loadPublicPages().then(({ LoginPage }) => ({ default: LoginPage })))
 const JoinPage = lazy(() => loadInvitationPage().then(({ JoinPage }) => ({ default: JoinPage })))
+const InviteLandingPage = lazy(() => import('@/pages/invite').then(({ InviteLandingPage }) => ({ default: InviteLandingPage })))
 
 const ConsoleModelsPage = lazy(() => loadConsoleCorePages().then(({ ConsoleModelsPage }) => ({ default: ConsoleModelsPage })))
 const PlaygroundPage = lazy(() => loadConsoleCorePages().then(({ PlaygroundPage }) => ({ default: PlaygroundPage })))
@@ -128,6 +129,7 @@ export default function App({ onBootReady }: { onBootReady: () => void }) {
               <Route path="/privacy" element={<LegalPage kind="privacy" />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/join" element={<JoinPage />} />
+              <Route path="/invite" element={<InviteLandingPage />} />
               <Route path="/console" element={<ConsoleOutlet />}>
                 <Route index element={<ConsoleHomeRedirect />} />
                 <Route path="models" element={<ConsoleModelsPage />} />

@@ -48,13 +48,25 @@ describe('认证 Redux 状态', () => {
   })
 
   it('手机号登录成功后保存令牌并进入 authenticated', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(apiResponse(authResult()))
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(apiResponse(authResult()))
     const appStore = createAppStore()
 
     await appStore.dispatch(loginWithPhone({ destination: '13800138000', code: '482915' })).unwrap()
 
+    expect(new URL(String(fetchMock.mock.calls[0][0]), 'https://example.com').search).toBe('')
     expect(appStore.getState().auth).toMatchObject({ status: 'authenticated', user: { id: 'user-1' }, error: null })
     expect(getAccessToken()).toBe('access-token')
+  })
+
+  it('邀请手机号登录只在请求地址追加 invite_code', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(apiResponse(authResult()))
+    const appStore = createAppStore()
+
+    await appStore.dispatch(loginWithPhone({ destination: '13800138000', code: '482915', inviteCode: 'invite/code' })).unwrap()
+
+    const [url, options] = fetchMock.mock.calls[0]
+    expect(String(url)).toContain('/api/auth/phone/login?invite_code=invite%2Fcode')
+    expect(JSON.parse(String(options?.body))).toEqual({ destination: '13800138000', code: '482915' })
   })
 
   it('邮箱登录成功后保存令牌并进入 authenticated', async () => {

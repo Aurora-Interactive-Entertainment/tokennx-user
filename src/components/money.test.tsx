@@ -21,4 +21,10 @@ describe('金额展示组件', () => {
     expect(container.querySelector('[data-money-value]')).toHaveTextContent('0.126')
     expect(container.querySelector('[data-money-value]')).toHaveAttribute('title', '0.1256')
   })
+
+  it('允许业务页面单独指定两位小数', () => {
+    const { container } = render(<MoneyText value="12.345" digits={2} />)
+    expect(container.querySelector('[data-money-value]')).toHaveTextContent('¥12.35')
+    expect(container.querySelector('[data-money-value]')).toHaveAttribute('title', '¥12.345')
+  })
 })

@@ -77,8 +77,9 @@ export function sendPhoneCode(destination: string, countryCode = '+86'): Promise
   })
 }
 
-export function loginByPhone(destination: string, code: string): Promise<AuthResult> {
-  return fetchJson<AuthResult>('/api/auth/phone/login', {
+export function loginByPhone(destination: string, code: string, inviteCode?: string): Promise<AuthResult> {
+  const query = inviteCode?.trim() ? `?invite_code=${encodeURIComponent(inviteCode.trim())}` : ''
+  return fetchJson<AuthResult>(`/api/auth/phone/login${query}`, {
     method: 'POST',
     body: { destination, code },
   })

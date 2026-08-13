@@ -3,6 +3,8 @@ export const apiResources = {
     api: {
       auth: {
         sessionExpired: '登录状态已失效，请重新登录',
+        expired: '认证单据已过期，请重新发起认证',
+        faceFailed: '人脸认证未通过，请重新发起认证',
       },
       http: {
         serviceUnavailable: '服务暂时不可用，请稍后重试',
@@ -140,6 +142,8 @@ export const apiResources = {
     api: {
       auth: {
         sessionExpired: 'Your session has expired. Please sign in again.',
+        expired: 'The verification request expired. Start again.',
+        faceFailed: 'Face verification failed. Start again.',
       },
       http: {
         serviceUnavailable: 'The service is temporarily unavailable. Try again later.',

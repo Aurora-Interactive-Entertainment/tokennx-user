@@ -34,7 +34,13 @@ describe('认证接口封装', () => {
 
     fetchMock.mockResolvedValue(response({ status: 'succeeded', binding_required: false }))
     await loginByPhone('13800138000', '482915')
+    expect(new URL(String(fetchMock.mock.calls[1][0]), 'https://example.com').search).toBe('')
     expect(JSON.parse(String(fetchMock.mock.calls[1][1]?.body))).toEqual({ destination: '13800138000', code: '482915' })
+
+    fetchMock.mockResolvedValue(response({ status: 'succeeded', binding_required: false }))
+    await loginByPhone('13800138000', '482915', 'invite/code')
+    expect(String(fetchMock.mock.calls[2][0])).toContain('/api/auth/phone/login?invite_code=invite%2Fcode')
+    expect(JSON.parse(String(fetchMock.mock.calls[2][1]?.body))).toEqual({ destination: '13800138000', code: '482915' })
   })
 
   it('正确编码微信状态并合并并发 refresh 请求', async () => {

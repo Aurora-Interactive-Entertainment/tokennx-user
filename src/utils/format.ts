@@ -102,8 +102,8 @@ export function isZeroYuan(value: MoneyValue): boolean {
   return normalized !== null && /^[-+]?0(?:\.0*)?$/.test(normalized)
 }
 
-export function formatSignedYuan(value: MoneyValue, direction: 'income' | 'expense' | 'adjustment'): string {
-  const formatted = formatYuan(value)
+export function formatSignedYuan(value: MoneyValue, direction: 'income' | 'expense' | 'adjustment', digits = MONEY_DISPLAY_DECIMAL_PLACES): string {
+  const formatted = formatYuan(value, digits)
   if (formatted === '--' || direction === 'adjustment') return formatted
   return `${direction === 'income' ? '+' : '-'}${formatted}`
 }

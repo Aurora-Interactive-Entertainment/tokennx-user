@@ -10,6 +10,7 @@ type MoneyTextProps = {
   rawValue?: MoneyValue
   direction?: MoneyDirection
   withCurrency?: boolean
+  digits?: number
   className?: string
 }
 
@@ -17,8 +18,8 @@ function removeCurrency(value: string): string {
   return value.replace('¥', '')
 }
 
-export function MoneyText({ value, rawValue = value, direction, withCurrency = true, className = '' }: MoneyTextProps) {
-  const displayValue = direction ? formatSignedYuan(value, direction) : formatYuan(value)
+export function MoneyText({ value, rawValue = value, direction, withCurrency = true, digits, className = '' }: MoneyTextProps) {
+  const displayValue = direction ? formatSignedYuan(value, direction, digits) : formatYuan(value, digits)
   const exactValue = direction ? formatSignedYuanExact(rawValue, direction) : formatYuanExact(rawValue)
   const visibleValue = withCurrency ? displayValue : removeCurrency(displayValue)
   const titleValue = withCurrency ? exactValue : removeCurrency(exactValue)

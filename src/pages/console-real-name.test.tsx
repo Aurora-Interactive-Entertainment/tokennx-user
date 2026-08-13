@@ -8,16 +8,17 @@ import { clearAuthTokens, saveAuthTokens } from '@/auth/token-storage'
 import type { AuthResult } from '@/api/auth'
 import type { RealNameProfile } from '@/api/real-name'
 import { createAppStore } from '@/store'
-import { getRealNameProfile, submitRealName } from '@/api/real-name'
+import { confirmRealName, getRealNameProfile, submitRealName } from '@/api/real-name'
 import { RealNamePage, validateRealNameForm } from './console-real-name'
 
 vi.mock('@/api/real-name', async () => {
   const actual = await vi.importActual<typeof import('@/api/real-name')>('@/api/real-name')
-  return { ...actual, getRealNameProfile: vi.fn(), submitRealName: vi.fn() }
+  return { ...actual, confirmRealName: vi.fn(), getRealNameProfile: vi.fn(), submitRealName: vi.fn() }
 })
 
 const getRealNameProfileMock = vi.mocked(getRealNameProfile)
 const submitRealNameMock = vi.mocked(submitRealName)
+const confirmRealNameMock = vi.mocked(confirmRealName)
 
 const AUTH_RESULT: AuthResult = {
   status: 'succeeded', binding_required: false, access_token: 'real-name-token', refresh_token: 'real-name-refresh', refresh_expires_at: Date.UTC(2099, 0, 1),
@@ -40,6 +41,7 @@ describe('实名认证页面', () => {
 		window.localStorage.clear()
 		saveAuthTokens(AUTH_RESULT)
 		getRealNameProfileMock.mockResolvedValue(UNVERIFIED_PROFILE)
+		confirmRealNameMock.mockResolvedValue(UNVERIFIED_PROFILE)
 	})
 
   it('校验姓名、证件号和信息处理同意状态', () => {
@@ -65,7 +67,7 @@ describe('实名认证页面', () => {
 		await user.click(screen.getByRole('checkbox', { name: /我理解并同意/ }))
 		await user.click(screen.getByRole('button', { name: '提交认证' }))
 
-		await waitFor(() => expect(submitRealNameMock).toHaveBeenCalledWith('real-name-token', { name: '测试用户', id_type: 'id-card', id_number: '110101199001011234', consent: true }))
+		await waitFor(() => expect(submitRealNameMock).toHaveBeenCalledWith('real-name-token', { name: '测试用户', id_type: 'id-card', id_number: '110101199001011234', consent: true, return_url: window.location.href }))
 		expect(await screen.findByText('认证已完成')).toBeInTheDocument()
 		expect(screen.getByText('1101**********1234')).toBeInTheDocument()
 	})
@@ -76,6 +78,28 @@ describe('实名认证页面', () => {
 		expect(await screen.findByText('认证已完成')).toBeInTheDocument()
 		expect(screen.getByText('当前认证方式：测试认证')).toBeInTheDocument()
 		expect(screen.getByRole('button', { name: '更新认证资料' })).toBeInTheDocument()
+	})
+
+	it('手动确认只立即查询一次 GET 状态并直接使用查询结果', async () => {
+		const user = userEvent.setup()
+		const waiting: RealNameProfile = { status: 'waiting', id: 'certify-1', certify_url: 'https://example.com/certify', expires_at: '2099-01-01T00:00:00Z' }
+		const verified: RealNameProfile = { status: 'verified', id_type: 'id-card', verification_level: 'identity', masked_id_number: '1101**********1234' }
+		getRealNameProfileMock.mockReset().mockResolvedValue(UNVERIFIED_PROFILE)
+		submitRealNameMock.mockResolvedValue(waiting)
+		confirmRealNameMock.mockReset().mockResolvedValueOnce(waiting).mockResolvedValueOnce(verified)
+		renderPage()
+
+		await user.type(await screen.findByRole('textbox', { name: '真实姓名' }), '测试用户')
+		await user.type(screen.getByRole('textbox', { name: '证件号码' }), '110101199001011234')
+		await user.click(screen.getByRole('checkbox', { name: /我理解并同意/ }))
+		await user.click(screen.getByRole('button', { name: '提交认证' }))
+		const confirmButton = await screen.findByRole('button', { name: '确认实名认证' })
+		await waitFor(() => expect(confirmRealNameMock).toHaveBeenCalledWith('real-name-token', 'certify-1'))
+
+		await user.click(confirmButton)
+
+		expect(await screen.findByText('认证已完成')).toBeInTheDocument()
+		expect(confirmRealNameMock).toHaveBeenCalledTimes(2)
 	})
 
 	it('字段校验失败时不调用提交接口', async () => {

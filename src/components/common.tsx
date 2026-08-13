@@ -26,6 +26,7 @@ import {
   IconEyeClosedStroked,
   IconEyeOpenedStroked,
   IconFile,
+  IconGiftStroked,
   IconIdCardStroked,
   IconImage,
   IconKeyStroked,
@@ -578,7 +579,7 @@ function LoginPhoneField(props: LoginPhoneFieldProps) {
   )
 }
 
-export function LoginPanel({ onSuccess, onAuthFailure }: { onSuccess: () => void; onAuthFailure?: () => void }) {
+export function LoginPanel({ onSuccess, onAuthFailure, inviteCode }: { onSuccess: () => void; onAuthFailure?: () => void; inviteCode?: string }) {
   const { t } = useTranslation()
   const [tab, setTab] = useState<'phone' | 'wechat'>('phone')
   const [dialCode, setDialCode] = useState('+86')
@@ -731,7 +732,7 @@ export function LoginPanel({ onSuccess, onAuthFailure }: { onSuccess: () => void
     setPhoneLoginLoading(true)
     setFeedback('')
     try {
-      const user = await dispatch(loginWithPhone({ destination, code })).unwrap()
+      const user = await dispatch(loginWithPhone({ destination, code, inviteCode })).unwrap()
       saveVerifiedPhone(user.id, destination)
       onSuccess()
     } catch (error) {
@@ -862,9 +863,10 @@ type LoginDialogProps = {
   onClose: () => void
   onSuccess: () => void
   dialogId?: string
+  inviteCode?: string
 }
 
-export function LoginDialog({ open, onClose, onSuccess, dialogId = 'login-popover' }: LoginDialogProps) {
+export function LoginDialog({ open, onClose, onSuccess, dialogId = 'login-popover', inviteCode }: LoginDialogProps) {
   const { t } = useTranslation()
   const [mounted, setMounted] = useState(open)
   const closeTimerRef = useRef<number | undefined>(undefined)
@@ -915,14 +917,14 @@ export function LoginDialog({ open, onClose, onSuccess, dialogId = 'login-popove
         <button className="login-popover-close" type="button" aria-label={t('login.close')} title={t('login.close')} onClick={onClose}>
           <IconClose aria-hidden="true" />
         </button>
-        <LoginPanel onSuccess={handleSuccess} onAuthFailure={onClose} />
+        <LoginPanel inviteCode={inviteCode} onSuccess={handleSuccess} onAuthFailure={onClose} />
       </div>
     </>,
     document.body,
   )
 }
 
-export function LoginPopover({ onSuccess }: { onSuccess: () => void }) {
+export function LoginPopover({ onSuccess, inviteCode }: { onSuccess: () => void; inviteCode?: string }) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
 
@@ -932,7 +934,7 @@ export function LoginPopover({ onSuccess }: { onSuccess: () => void }) {
         <span className="header-login-label header-login-label--desktop">{t('login.trigger')}</span>
         <span className="header-login-label header-login-label--mobile">{t('login.loginRegister')}</span>
       </button>
-      <LoginDialog open={open} onClose={() => setOpen(false)} onSuccess={onSuccess} />
+      <LoginDialog open={open} onClose={() => setOpen(false)} onSuccess={onSuccess} inviteCode={inviteCode} />
     </div>
   )
 }
@@ -1008,6 +1010,7 @@ export function PublicHeader({ enterpriseAccess, unreadNotificationCount = 0 }: 
   const billingOverviewCacheRef = useRef(new Map<string, BillingOverviewCacheEntry>())
   const billingOverviewRequestsRef = useRef(new Map<string, Promise<AccountOverviewResponse>>())
   const billingHoverRequestTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const inviteCode = new URLSearchParams(location.search).get('invite_code')?.trim() || undefined
   const billingContext = billingOverviewContext(store.activeWorkspace)
   const billingContextCacheKey = billingOverviewKey(billingContext)
   const billingContextCacheKeyRef = useRef(billingContextCacheKey)
@@ -1194,7 +1197,10 @@ export function PublicHeader({ enterpriseAccess, unreadNotificationCount = 0 }: 
               </button>
             </>
           ) : (
-            <LoginPopover onSuccess={() => setMobileOpen(false)} />
+            <LoginPopover inviteCode={inviteCode} onSuccess={() => {
+              setMobileOpen(false)
+              if (inviteCode) navigate('/', { replace: true })
+            }} />
           )}
         </div>
       </div>
@@ -1215,7 +1221,7 @@ export function PublicHeader({ enterpriseAccess, unreadNotificationCount = 0 }: 
   )
 }
 
-type ConsoleNavIconName = 'quickstart' | 'models' | 'model-test' | 'video' | 'api-keys' | 'usage' | 'records' | 'billing' | 'real-name' | 'settings' | 'account' | 'members' | 'governance' | 'bell' | 'pie' | 'logout' | 'workspace'
+type ConsoleNavIconName = 'quickstart' | 'models' | 'model-test' | 'video' | 'api-keys' | 'usage' | 'records' | 'billing' | 'real-name' | 'settings' | 'account' | 'members' | 'governance' | 'bell' | 'pie' | 'logout' | 'workspace' | 'gift'
 
 type ConsoleNavItem = {
   key: string
@@ -1252,6 +1258,7 @@ const CONSOLE_NAV_ICONS: Record<ConsoleNavIconName, (props: { className?: string
   pie: (props) => <IconPieChartStroked {...props} />,
   logout: (props) => <IconExit {...props} />,
   workspace: (props) => <IconBriefcaseStroked {...props} />,
+  gift: (props) => <IconGiftStroked {...props} />,
 }
 
 function ConsoleNavIcon({ name, className = '' }: { name: ConsoleNavIconName; className?: string }) {
@@ -1292,6 +1299,14 @@ const personalNavGroups: ConsoleNavGroup[] = [
       { key: '/console/settings', label: '个人中心', icon: 'account' },
       { key: '/console/billing', label: '费用管理', icon: 'billing' },
       { key: '/console/api-keys', label: 'API 密钥管理', icon: 'api-keys' },
+    ],
+  },
+  {
+    key: 'activity',
+    label: '活动中心',
+    items: [
+      { key: '/console/invitations', label: '邀请返现', icon: 'gift' },
+      { key: '/console/real-name-reward', label: '认证返现', icon: 'gift', actionOnly: true, soon: true },
     ],
   },
   {
@@ -1365,6 +1380,7 @@ const CONSOLE_NAV_LABEL_KEYS: Record<string, string> = {
   'API 密钥管理': 'console.nav.apiKeys', '企业中心': 'console.nav.enterpriseCenter', '企业入驻': 'console.nav.enterpriseCreate', '企业管理': 'console.nav.enterpriseManagement',
   '人员管理': 'console.nav.members', '用量管理': 'console.nav.enterpriseUsage', '操作日志': 'console.nav.audit', '我的数据': 'console.nav.myData',
   '企业设置': 'console.nav.enterpriseSettings', '通用设置': 'console.nav.settings', '模型管理': 'console.nav.enterpriseModels', '权限与标签': 'console.nav.governance', '账号信息': 'console.nav.accountInfo',
+  '活动中心': 'console.nav.activityCenter', '邀请返现': 'console.nav.invitationReward', '认证返现': 'console.nav.realNameReward',
 }
 
 function localizeConsoleNavLabel(t: TFunction, value: string): string {
