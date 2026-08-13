@@ -49,10 +49,20 @@ describe('认证令牌存储', () => {
 
     expect(getVerifiedPhone('user-1')).toBe('13800138000')
     expect(getVerifiedPhone('user-2')).toBeNull()
-    expect(window.sessionStorage.getItem(VERIFIED_PHONE_KEY)).not.toBeNull()
+    expect(window.localStorage.getItem(VERIFIED_PHONE_KEY)).not.toBeNull()
+    expect(window.sessionStorage.getItem(VERIFIED_PHONE_KEY)).toBeNull()
 
     clearAuthTokens()
     expect(getVerifiedPhone('user-1')).toBeNull()
+    expect(window.localStorage.getItem(VERIFIED_PHONE_KEY)).toBeNull()
+  })
+
+  it('兼容旧标签页的临时手机号并迁移到跨标签页缓存', () => {
+    window.sessionStorage.setItem(VERIFIED_PHONE_KEY, JSON.stringify({ userId: 'user-1', phone: '13800138000' }))
+
+    expect(getVerifiedPhone('user-1')).toBe('13800138000')
+    expect(window.localStorage.getItem(VERIFIED_PHONE_KEY)).not.toBeNull()
+    expect(window.sessionStorage.getItem(VERIFIED_PHONE_KEY)).toBeNull()
   })
 
   it('只把 refresh token 写入 localStorage，access token 保留在内存', () => {

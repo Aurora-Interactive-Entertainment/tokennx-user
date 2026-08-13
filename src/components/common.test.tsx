@@ -8,7 +8,7 @@ import { getEnterpriseContext, type EnterpriseContext } from '@/api/enterprise-c
 import { AppStoreProvider } from '@/data/app-state'
 import { createAppStore } from '@/store'
 import { synchronizeAuthenticatedUser } from '@/store/auth-slice'
-import { clearAuthTokens, saveAuthTokens } from '@/auth/token-storage'
+import { clearAuthTokens, getVerifiedPhone, saveAuthTokens, saveVerifiedPhone } from '@/auth/token-storage'
 import { activeNavKey, ConsoleLayout, consoleNavGroupsFor, DEFAULT_CONSOLE_PATH, isEnterpriseOwner, isEnterprisePermissionPath, LoginPanel, localizeConsoleLabel, normalizeLoginReturnPath, PublicFooter, PublicHeader, PublicLayout, PUBLIC_LINKS } from './common'
 import { NEW_ENTERPRISE_CREATE_PATH } from '@/api/enterprise-certification'
 import i18n from '@/i18n'
@@ -784,6 +784,8 @@ describe('已登录用户菜单', () => {
     const { fetchMock } = mockAccountProfileApi()
     const appStore = createAppStore()
     appStore.dispatch({ type: 'auth/loginWithEmail/fulfilled', payload: { id: 'user-1', display_name: '测试用户', avatar_url: '', locale: 'zh-CN', timezone: 'Asia/Shanghai', status: 'active' } })
+    saveVerifiedPhone('user-1', '13800138000')
+    expect(getVerifiedPhone('user-1')).toBe('13800138000')
 
     render(
       <MemoryRouter initialEntries={['/']}>
@@ -811,10 +813,12 @@ describe('已登录用户菜单', () => {
     expect(await within(dialog).findByText('新的昵称')).toBeInTheDocument()
     const nicknameRequest = fetchMock.mock.calls.find(([url]) => String(url).endsWith('/api/user/profile/nickname'))
     expect(JSON.parse(String(nicknameRequest?.[1]?.body))).toEqual({ display_name: '新的昵称' })
+    expect(getVerifiedPhone('user-1')).toBe('13800138000')
 
     await user.click(within(dialog).getByRole('button', { name: '手机号' }))
     const phoneDialog = await screen.findByRole('dialog', { name: '更换手机号' }, { timeout: 5000 })
     expect(phoneDialog).toHaveTextContent('当前联系方式')
+    expect(phoneDialog.querySelector('#profile-phone-current-destination')).toHaveValue('13800138000')
     expect(within(dialog).queryByRole('textbox', { name: '手机号' })).toBeNull()
   })
 

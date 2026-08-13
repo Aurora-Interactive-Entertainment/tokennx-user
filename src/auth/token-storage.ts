@@ -90,23 +90,30 @@ export function saveVerifiedPhone(userId: string, phone: string): void {
   const normalizedUserId = userId.trim()
   const normalizedPhone = phone.replace(/\D/g, '')
   if (!normalizedUserId || !normalizedPhone) return
-  sessionStorage()?.setItem(VERIFIED_PHONE_KEY, JSON.stringify({ userId: normalizedUserId, phone: normalizedPhone }))
+  storage()?.setItem(VERIFIED_PHONE_KEY, JSON.stringify({ userId: normalizedUserId, phone: normalizedPhone }))
+  sessionStorage()?.removeItem(VERIFIED_PHONE_KEY)
 }
 
 export function getVerifiedPhone(userId: string): string | null {
-  const raw = sessionStorage()?.getItem(VERIFIED_PHONE_KEY)
+  const saved = storage()
+  const temporary = sessionStorage()
+  const raw = saved?.getItem(VERIFIED_PHONE_KEY) ?? temporary?.getItem(VERIFIED_PHONE_KEY)
   if (!raw) return null
   try {
     const value = JSON.parse(raw) as { userId?: unknown; phone?: unknown }
     if (value.userId !== userId || typeof value.phone !== 'string' || !/^\d+$/.test(value.phone)) return null
+    if (!saved?.getItem(VERIFIED_PHONE_KEY)) saved?.setItem(VERIFIED_PHONE_KEY, raw)
+    temporary?.removeItem(VERIFIED_PHONE_KEY)
     return value.phone
   } catch {
-    sessionStorage()?.removeItem(VERIFIED_PHONE_KEY)
+    saved?.removeItem(VERIFIED_PHONE_KEY)
+    temporary?.removeItem(VERIFIED_PHONE_KEY)
     return null
   }
 }
 
 export function clearVerifiedPhone(): void {
+  storage()?.removeItem(VERIFIED_PHONE_KEY)
   sessionStorage()?.removeItem(VERIFIED_PHONE_KEY)
 }
 

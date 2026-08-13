@@ -77,7 +77,7 @@ function contactRequestErrorMessage(error: unknown): string {
 
 export function ProfileContactDialog(props: ProfileContactDialogProps) {
   const { t } = useTranslation()
-  const [values, setValues] = useState<ContactFormValues>(initialValues)
+  const [values, setValues] = useState<ContactFormValues>(() => initialValues(props.currentDestination))
   const [codeStates, setCodeStates] = useState<ContactCodeStates>(initialCodeStates)
   const [errors, setErrors] = useState<ContactErrors>({})
   const [saving, setSaving] = useState(false)
