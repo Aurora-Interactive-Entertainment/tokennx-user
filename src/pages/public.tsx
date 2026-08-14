@@ -1041,6 +1041,11 @@ export function RankingsPage() {
     return `${changeRate > 0 ? '↑' : '↓'} ${Math.abs(changeRate).toFixed(2)}%`
   }
 
+  function trendClass(changeRate: number | null): string {
+    if (changeRate === null || changeRate === 0) return 'is-flat'
+    return changeRate > 0 ? 'is-up' : 'is-down'
+  }
+
   return (
     <PublicLayout mainClassName="rankings-page--manuscript">
       <nav className="ranking-modality-nav" aria-label={t('public.rankings.modalityLabel')}>
@@ -1074,7 +1079,7 @@ export function RankingsPage() {
               <span className="ranking-model-number">{model.rank}.</span>
               <RankingModelLogo code={model.code} name={model.name} />
               <div className="ranking-model-name"><strong>{model.name}</strong><span>{model.code}</span></div>
-              <div className="ranking-model-metric"><strong>{formatRankingTokens(model.total_tokens)} tokens</strong><span className={model.change_rate !== null && model.change_rate > 0 ? 'is-up' : model.change_rate === 0 ? 'is-flat' : ''}>{trendLabel(model.change_rate)}</span></div>
+              <div className="ranking-model-metric"><strong>{formatRankingTokens(model.total_tokens)} tokens</strong><span className={trendClass(model.change_rate)}>{trendLabel(model.change_rate)}</span></div>
             </article>) : <div className="ranking-data-state">{t('public.rankings.empty')}</div>}</div>
           </section>
         </main>
@@ -1139,8 +1144,10 @@ export function AppsPage() {
         </section>
 
         <div className="apps-ranking-filter">
-          <label className="public-sr-only" htmlFor="apps-time-range">{t('public.apps.rangeLabel')}</label>
-          <select id="apps-time-range" value={timeRange} onChange={(event) => setTimeRange(event.target.value as (typeof APPS_PERIODS)[number])}>{APPS_PERIODS.map((period) => <option value={period} key={period}>{t(`public.apps.ranges.${period}`)}</option>)}</select>
+          <span className="public-sr-only" id="apps-time-range-label">{t('public.apps.rangeLabel')}</span>
+          <Select className="apps-range-select" dropdownClassName="apps-range-select-dropdown" size="large" value={timeRange} onChange={(value) => setTimeRange(String(value) as (typeof APPS_PERIODS)[number])} aria-labelledby="apps-time-range-label">
+            {APPS_PERIODS.map((period) => <Select.Option value={period} key={period}>{t(`public.apps.ranges.${period}`)}</Select.Option>)}
+          </Select>
         </div>
 
         <section className="apps-ranking-list" aria-label={t('public.apps.rankingLabel', { range: activeRangeLabel })}>

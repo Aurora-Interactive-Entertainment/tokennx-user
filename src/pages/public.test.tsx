@@ -217,7 +217,9 @@ describe('公开模型页面', () => {
     expect(screen.getByRole('heading', { name: 'Token NX 平台智能体客户端整体使用情况' })).toBeInTheDocument()
     expect(document.querySelectorAll('.apps-popular-card')).toHaveLength(4)
     expect(document.querySelectorAll('.apps-ranking-row')).toHaveLength(12)
-    expect(screen.getByLabelText('排行榜时间范围')).toHaveValue('today')
+    const periodSelect = screen.getByRole('combobox', { name: '排行榜时间范围' })
+    expect(periodSelect).toHaveAttribute('aria-expanded', 'false')
+    expect(periodSelect).toHaveTextContent('今天')
   })
 
   it('排名页展示接口返回的完整榜单并默认查询今天', async () => {
@@ -228,6 +230,9 @@ describe('公开模型页面', () => {
     expect(screen.getByRole('heading', { name: '大模型排行榜' })).toBeInTheDocument()
     expect(await screen.findByLabelText('图表图例')).toBeInTheDocument()
     await waitFor(() => expect(document.querySelectorAll('.ranking-model-row')).toHaveLength(3))
+    expect(screen.getByText('↑ 20.00%')).toHaveClass('is-up')
+    expect(screen.getByText('↓ 20.00%')).toHaveClass('is-down')
+    expect(screen.getByText('暂无对比数据')).toHaveClass('is-flat')
     const periodSelect = screen.getByRole('combobox', { name: '查询周期' })
     expect(periodSelect).toHaveAttribute('aria-expanded', 'false')
     expect(periodSelect).toHaveTextContent('今天')
@@ -242,7 +247,9 @@ describe('公开模型页面', () => {
 
     expect(screen.getByRole('heading', { name: 'Most Popular AI Tools' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Overall Token NX Agent Client Usage' })).toBeInTheDocument()
-    expect(screen.getByLabelText('Leaderboard time range')).toHaveValue('today')
+    const periodSelect = screen.getByRole('combobox', { name: 'Leaderboard time range' })
+    expect(periodSelect).toHaveAttribute('aria-expanded', 'false')
+    expect(periodSelect).toHaveTextContent('Today')
     expect(screen.getAllByRole('heading', { name: 'Hermes Agent' })).toHaveLength(16)
     expect(screen.getAllByText('32.1T tokens')).toHaveLength(4)
   })
