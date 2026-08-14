@@ -27,11 +27,21 @@ function monthLabel(month: string, language: string): string {
     : `${year}年${monthNumber}月`
 }
 
+function compactMonthLabel(month: string, language: string): string {
+  const [, monthNumber] = month.split('-').map(Number)
+  if (!monthNumber) return month
+  if (language.startsWith('en')) {
+    return new Intl.DateTimeFormat('en-US', { month: 'short', timeZone: 'UTC' }).format(new Date(Date.UTC(2000, monthNumber - 1, 1)))
+  }
+  return `${monthNumber}月`
+}
+
 export function RankingRecentUsageChart({ data }: { data: RecentModelUsage }) {
   const { t, i18n } = useTranslation()
   const chartRef = useRef<HTMLDivElement>(null)
   const theme = useResolvedTheme()
   const [selectedMonthIndex, setSelectedMonthIndex] = useState(Math.max(0, data.months.length - 1))
+  const [legendVisible, setLegendVisible] = useState(false)
   const usageByModel = useMemo(() => data.items.map((item) => {
     const monthly = new Map(item.monthly_usage.map((usage) => [usage.month, usage.total_tokens]))
     return data.months.map((month) => monthly.get(month) ?? 0)
@@ -39,27 +49,47 @@ export function RankingRecentUsageChart({ data }: { data: RecentModelUsage }) {
 
   useEffect(() => {
     setSelectedMonthIndex(Math.max(0, data.months.length - 1))
+    setLegendVisible(false)
   }, [data.months])
 
   useEffect(() => {
     const node = chartRef.current
     if (!node || data.months.length === 0 || data.items.length === 0) return undefined
-    const chart = echarts.init(node, undefined, { renderer: 'svg', width: node.clientWidth || 720, height: node.clientHeight || 508 })
+    const chart = echarts.init(node, undefined, { renderer: 'svg' })
     const light = theme === 'light'
+    const responsiveOption = () => {
+      const mobile = node.clientWidth <= 560
+      return {
+        grid: mobile
+          ? { left: 8, right: 8, top: 18, bottom: 38, containLabel: true }
+          : { left: 72, right: 12, top: 18, bottom: 58 },
+        xAxis: {
+          data: data.months.map((month) => mobile ? compactMonthLabel(month, i18n.language) : monthLabel(month, i18n.language)),
+          axisLabel: {
+            color: light ? '#737984' : '#8b8b8b',
+            fontSize: mobile ? 10 : 12,
+            interval: 0,
+            margin: mobile ? 12 : 18,
+            showMinLabel: true,
+            showMaxLabel: true,
+          },
+        },
+      }
+    }
+    const initialResponsiveOption = responsiveOption()
     chart.setOption({
       animationDuration: 420,
       color: [...RANKING_SERIES_COLORS],
-      grid: { left: 72, right: 12, top: 18, bottom: 58 },
+      grid: initialResponsiveOption.grid,
       tooltip: {
         show: false,
         confine: true,
       },
       xAxis: {
         type: 'category',
-        data: data.months.map((month) => monthLabel(month, i18n.language)),
         axisLine: { lineStyle: { color: light ? 'rgba(23,24,27,.16)' : 'rgba(255,255,255,.14)' } },
         axisTick: { show: false },
-        axisLabel: { color: light ? '#737984' : '#8b8b8b', fontSize: 12, margin: 18 },
+        ...initialResponsiveOption.xAxis,
       },
       yAxis: {
         type: 'value',
@@ -96,14 +126,53 @@ export function RankingRecentUsageChart({ data }: { data: RecentModelUsage }) {
       })
       setSelectedMonthIndex(nearestIndex)
     }
+    const hoverMedia = window.matchMedia('(hover: hover) and (pointer: fine)')
+    const supportsHover = () => hoverMedia.matches && node.clientWidth > 560
+    let hoverInteraction = supportsHover()
+    const handlePointerMove = (event: { offsetX: number }) => {
+      if (!hoverInteraction) return
+      selectNearestMonth(event)
+      setLegendVisible(true)
+    }
+    const handlePointerOut = () => {
+      if (hoverInteraction) setLegendVisible(false)
+    }
+    const handleChartTap = (event: { offsetX: number }) => {
+      if (hoverInteraction) return
+      selectNearestMonth(event)
+      setLegendVisible(true)
+    }
+    const handleOutsideTap = (event: PointerEvent) => {
+      const layout = node.closest('.ranking-chart-layout')
+      if (!hoverInteraction && event.target instanceof Node && !layout?.contains(event.target)) setLegendVisible(false)
+    }
     chart.on('mouseover', selectMonth)
     chart.on('click', selectMonth)
-    chart.getZr().on('mousemove', selectNearestMonth)
-    const resizeObserver = typeof ResizeObserver === 'function' ? new ResizeObserver(() => chart.resize()) : null
+    chart.getZr().on('mousemove', handlePointerMove)
+    chart.getZr().on('globalout', handlePointerOut)
+    chart.getZr().on('click', handleChartTap)
+    document.addEventListener('pointerdown', handleOutsideTap, true)
+    let mobile = node.clientWidth <= 560
+    const resizeObserver = typeof ResizeObserver === 'function' ? new ResizeObserver(() => {
+      chart.resize()
+      const nextMobile = node.clientWidth <= 560
+      if (nextMobile !== mobile) {
+        mobile = nextMobile
+        chart.setOption(responsiveOption())
+      }
+      const nextHoverInteraction = supportsHover()
+      if (nextHoverInteraction !== hoverInteraction) {
+        hoverInteraction = nextHoverInteraction
+        setLegendVisible(false)
+      }
+    }) : null
     resizeObserver?.observe(node)
     return () => {
       resizeObserver?.disconnect()
-      chart.getZr().off('mousemove', selectNearestMonth)
+      document.removeEventListener('pointerdown', handleOutsideTap, true)
+      chart.getZr().off('mousemove', handlePointerMove)
+      chart.getZr().off('globalout', handlePointerOut)
+      chart.getZr().off('click', handleChartTap)
       chart.dispose()
     }
   }, [data.items, data.months, i18n.language, theme, usageByModel])
@@ -119,7 +188,7 @@ export function RankingRecentUsageChart({ data }: { data: RecentModelUsage }) {
 
   return <>
     <div className="ranking-chart ranking-echart" ref={chartRef} role="img" aria-label={t('public.rankings.chartLabel')} />
-    <aside className="ranking-legend" aria-label={t('public.rankings.legendLabel')}>
+    <aside className={`ranking-legend${legendVisible ? ' is-visible' : ''}`} aria-hidden={!legendVisible} aria-label={t('public.rankings.legendLabel')}>
       <time dateTime={selectedMonth}>{monthLabel(selectedMonth, i18n.language)}</time>
       <div className="ranking-legend-list">{selectedValues.map((item) => <span key={item.code}><i style={{ backgroundColor: item.color }} /><strong title={item.name}>{item.name}</strong><em>{formatRankingTokens(item.value)}</em></span>)}</div>
       <div className="ranking-legend-total"><strong>{t('public.rankings.all')}</strong><em>{formatRankingTokens(total)}</em></div>

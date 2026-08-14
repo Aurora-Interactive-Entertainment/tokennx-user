@@ -25,6 +25,15 @@ function monthLabel(month: string, language: string): string {
   return `${year}年${monthNumber}月`
 }
 
+function compactMonthLabel(month: string, language: string): string {
+  const [, monthNumber] = month.split('-').map(Number)
+  if (!monthNumber) return month
+  if (language.startsWith('en')) {
+    return new Intl.DateTimeFormat('en-US', { month: 'short', timeZone: 'UTC' }).format(new Date(Date.UTC(2000, monthNumber - 1, 1)))
+  }
+  return `${monthNumber}月`
+}
+
 export function ToolUsageClientsChart({ data }: { data: ToolUsageClients }) {
   const { t, i18n } = useTranslation()
   const chartRef = useRef<HTMLDivElement>(null)
@@ -39,15 +48,43 @@ export function ToolUsageClientsChart({ data }: { data: ToolUsageClients }) {
     if (!node || data.months.length === 0 || seriesData.length === 0) return undefined
     const chart = echarts.init(node, undefined, { renderer: 'svg' })
     const light = theme === 'light'
+    const responsiveOption = () => {
+      const mobile = node.clientWidth <= 560
+      return {
+        grid: mobile
+          ? { left: 8, right: 8, top: 20, bottom: 38, containLabel: true }
+          : { left: 58, right: 20, top: 24, bottom: 54, containLabel: true },
+        xAxis: {
+          data: data.months.map((month) => mobile ? compactMonthLabel(month, i18n.language) : monthLabel(month, i18n.language)),
+          axisLabel: {
+            color: light ? '#737984' : '#8b8b8b',
+            fontSize: mobile ? 10 : 12,
+            interval: 0,
+            margin: mobile ? 12 : 16,
+            showMinLabel: true,
+            showMaxLabel: true,
+          },
+        },
+      }
+    }
+    const initialResponsiveOption = responsiveOption()
     chart.setOption({
       animationDuration: 420,
-      grid: { left: 58, right: 20, top: 24, bottom: 54, containLabel: true },
-      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, valueFormatter: (value: string | number) => formatToolUsageTokens(Number(value)) },
-      xAxis: { type: 'category', data: data.months.map((month) => monthLabel(month, i18n.language)), axisLine: { lineStyle: { color: light ? 'rgba(23,24,27,.16)' : 'rgba(255,255,255,.14)' } }, axisTick: { show: false }, axisLabel: { color: light ? '#737984' : '#8b8b8b', fontSize: 12, margin: 16 } },
+      grid: initialResponsiveOption.grid,
+      tooltip: { trigger: 'axis', confine: true, axisPointer: { type: 'shadow' }, valueFormatter: (value: string | number) => formatToolUsageTokens(Number(value)) },
+      xAxis: { type: 'category', axisLine: { lineStyle: { color: light ? 'rgba(23,24,27,.16)' : 'rgba(255,255,255,.14)' } }, axisTick: { show: false }, ...initialResponsiveOption.xAxis },
       yAxis: { type: 'value', min: 0, splitNumber: 4, axisLine: { show: false }, axisTick: { show: false }, axisLabel: { color: light ? '#737984' : '#8b8b8b', fontSize: 12, formatter: (value: number) => formatToolUsageTokens(value) }, splitLine: { lineStyle: { color: light ? 'rgba(23,24,27,.08)' : 'rgba(255,255,255,.07)' } } },
       series: seriesData.map((item, index) => ({ name: item.name, type: 'bar', stack: 'tokens', barMaxWidth: 42, emphasis: { focus: 'series' }, itemStyle: { color: TOOL_COLORS[index % TOOL_COLORS.length] }, data: item.values })),
     })
-    const resizeObserver = typeof ResizeObserver === 'function' ? new ResizeObserver(() => chart.resize()) : null
+    let mobile = node.clientWidth <= 560
+    const resizeObserver = typeof ResizeObserver === 'function' ? new ResizeObserver(() => {
+      chart.resize()
+      const nextMobile = node.clientWidth <= 560
+      if (nextMobile !== mobile) {
+        mobile = nextMobile
+        chart.setOption(responsiveOption())
+      }
+    }) : null
     resizeObserver?.observe(node)
     return () => { resizeObserver?.disconnect(); chart.dispose() }
   }, [data.months, i18n.language, seriesData, theme])
