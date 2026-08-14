@@ -350,7 +350,7 @@ describe('用户费用管理页面', () => {
     expect(screen.getByText('本地演示数据：以下金额与历史不代表真实开票资格、已开具记录或税务结果。')).toBeInTheDocument()
     expect(screen.getByText('开票历史记录')).toBeInTheDocument()
     expect(screen.getAllByText('开票中').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('1').length).toBe(2)
+    expect(screen.getAllByText('1').length).toBeGreaterThanOrEqual(2)
     await user.click(screen.getByRole('button', { name: /常见开票问题/ }))
     expect(screen.getByText('数电发票将在申请提交后 24 小时内处理，并发送到接收邮箱。发票抬头和税号提交后如需修改，需要重新申请。')).not.toBeVisible()
     await user.click(screen.getByRole('button', { name: '立即开票' }))

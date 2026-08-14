@@ -120,9 +120,9 @@ export const apiResources = {
       },
       modelRuntime: {
         unknownError: '模型服务返回了无法识别的错误',
-        requestFailed: '模型请求失败，请检查 API Key、模型权限和后端服务状态',
+        requestFailed: '模型请求失败，请稍后重试',
         invalidStream: '模型服务返回了无法解析的流式数据',
-        apiKeyRequired: '请先选择一个可用的 API Key',
+        accessTokenRequired: '登录状态已失效，请重新登录',
         invalidRequest: '模型和测试内容不能为空',
         timeout: '模型响应超时，请检查后端服务和上游模型状态',
         networkFailure: '无法连接模型服务，请检查后端 Base URL 和网络状态',
@@ -259,9 +259,9 @@ export const apiResources = {
       },
       modelRuntime: {
         unknownError: 'The model service returned an unreadable error.',
-        requestFailed: 'The model request failed. Check the API key, model permissions, and backend status.',
+        requestFailed: 'The model request failed. Try again later.',
         invalidStream: 'The model service returned an unreadable streaming response.',
-        apiKeyRequired: 'Select an available API key first.',
+        accessTokenRequired: 'Your session has expired. Sign in again.',
         invalidRequest: 'The model and test content are required.',
         timeout: 'The model response timed out. Check the backend and upstream model status.',
         networkFailure: 'Unable to connect to the model service. Check the backend Base URL and network.',

@@ -2,8 +2,11 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router'
 import Button from '@douyinfe/semi-ui/lib/es/button'
+import DatePicker from '@douyinfe/semi-ui/lib/es/datePicker'
+import Radio from '@douyinfe/semi-ui/lib/es/radio'
 import { IconRefresh } from '@douyinfe/semi-icons'
 import { BannerNotice, PageTitle } from '@/components/common'
+import { CompatSelect as Select } from '@/components/semi-compat'
 import { MoneyText } from '@/components/money'
 import { UsageDistributionChart, UsageTrendChart, type UsageTrendMetric } from '@/components/usage-charts'
 import { getAccessToken } from '@/auth/token-storage'
@@ -96,7 +99,8 @@ function modelOption(options: UsageSummaryResponse['filters']['models'], selecte
 }
 
 function UsageSelect({ id, label, value, onChange, children }: { id: string; label: string; value: string; onChange: (value: string) => void; children: ReactNode }) {
-  return <label className="usage-reference-filter" htmlFor={id}><span>{label}</span><select id={id} value={value} onChange={(event) => onChange(event.target.value)}>{children}</select></label>
+  const labelID = `${id}-label`
+  return <div className="usage-reference-filter"><span id={labelID}>{label}</span><Select id={id} value={value} onChange={(nextValue) => onChange(String(nextValue))} onSelect={(nextValue) => onChange(String(nextValue))} block aria-labelledby={labelID}>{children}</Select></div>
 }
 
 function UsageMetric({ label, value, unit, primary = false }: { label: string; value: ReactNode; unit?: string; primary?: boolean }) {
@@ -188,6 +192,11 @@ function UsageSummaryPage({ enterpriseRoute }: { enterpriseRoute: boolean }) {
     setTrendMetric('requests')
   }
 
+  function updateCustomDateRange(dateStrings?: string | string[] | Date | Date[]): void {
+    const [startDate = '', endDate = ''] = Array.isArray(dateStrings) ? dateStrings.map(String) : []
+    setFilters((previous) => ({ ...previous, startDate, endDate }))
+  }
+
   const apiKeyOptions = selectOption(data?.filters.api_keys ?? [], filters.apiKeyID, t('console.usage.currentKey'))
   const modelOptions = modelOption(data?.filters.models ?? [], filters.model)
   const memberOptions = selectOption(data?.filters.members ?? [], filters.memberID, t('console.usage.currentMember'))
@@ -195,6 +204,12 @@ function UsageSummaryPage({ enterpriseRoute }: { enterpriseRoute: boolean }) {
   const modelRows = data?.model_rows ?? []
   const trendData = data?.trend ?? []
   const hasVisibleData = Boolean(metrics?.request_count)
+  const rangeOptions = [
+    { label: t('console.usage.today'), value: DATE_RANGE_TODAY },
+    { label: t('console.usage.recent7Days'), value: DATE_RANGE_WEEK },
+    { label: t('console.usage.recent30Days'), value: DATE_RANGE_MONTH },
+    { label: t('console.usage.custom'), value: DATE_RANGE_CUSTOM },
+  ]
 
   useEffect(() => {
     if (!data || filters.model === 'all') return
@@ -205,17 +220,16 @@ function UsageSummaryPage({ enterpriseRoute }: { enterpriseRoute: boolean }) {
   }, [data, filters.model])
 
   return <div className="page-stack usage-reference-page" aria-busy={loading}>
-    <PageTitle title={enterpriseRoute ? t('console.usage.enterpriseTitle') : t('console.usage.title')} description={enterpriseRoute ? t('console.usage.enterpriseDescription') : t('console.usage.description')} actions={<Button theme="borderless" icon={<IconRefresh />} aria-label={t('console.usage.refresh')} title={t('console.usage.refresh')} onClick={() => setReloadToken((value) => value + 1)} />} />
-    {error ? <BannerNotice tone="warning"><span className="usage-error-copy"><strong>{error.message}</strong>{error.requestId ? <small>{t('console.common.requestIdValue', { requestId: error.requestId })}</small> : null}</span><Button theme="borderless" size="small" icon={<IconRefresh />} onClick={() => setReloadToken((value) => value + 1)}>{t('console.usage.reload')}</Button></BannerNotice> : null}
+    <PageTitle title={enterpriseRoute ? t('console.usage.enterpriseTitle') : t('console.usage.title')} description={enterpriseRoute ? t('console.usage.enterpriseDescription') : t('console.usage.description')} />
     <section className="usage-reference-filters" aria-label={t('console.usage.filter')}>
-      <div className="usage-reference-time-filter"><span className="usage-reference-filter-label">{t('console.usage.timeRange')}</span><div className="usage-reference-range-tabs" role="group" aria-label={t('console.usage.timeRange')}><button type="button" className={filters.range === DATE_RANGE_TODAY ? 'active' : ''} aria-pressed={filters.range === DATE_RANGE_TODAY} onClick={() => updateRange(DATE_RANGE_TODAY)}>{t('console.usage.today')}</button><button type="button" className={filters.range === DATE_RANGE_WEEK ? 'active' : ''} aria-pressed={filters.range === DATE_RANGE_WEEK} onClick={() => updateRange(DATE_RANGE_WEEK)}>{t('console.usage.recent7Days')}</button><button type="button" className={filters.range === DATE_RANGE_MONTH ? 'active' : ''} aria-pressed={filters.range === DATE_RANGE_MONTH} onClick={() => updateRange(DATE_RANGE_MONTH)}>{t('console.usage.recent30Days')}</button><button type="button" className={filters.range === DATE_RANGE_CUSTOM ? 'active' : ''} aria-pressed={filters.range === DATE_RANGE_CUSTOM} onClick={() => updateRange(DATE_RANGE_CUSTOM)}>{t('console.usage.custom')}</button></div></div>
+      <div className="usage-reference-time-filter"><span className="usage-reference-filter-label">{t('console.usage.timeRange')}</span><Radio.Group className="usage-reference-range-tabs" type="button" buttonSize="middle" value={filters.range} options={rangeOptions} onChange={(event) => updateRange(event.target.value as UsageSummaryRange)} aria-label={t('console.usage.timeRange')} /></div>
       <div className="usage-reference-filter-grid">
-        <UsageSelect id="usage-model-filter" label={t('console.usage.model')} value={modelOptions.some((option) => option.alias === filters.model) ? filters.model : 'all'} onChange={(value) => updateFilter('model', value)}><option value="all">{t('console.usage.allModels')}</option>{modelOptions.map((option) => <option value={option.alias} key={option.alias}>{t('console.common.modelWithAlias', { name: option.name, alias: option.alias })}</option>)}</UsageSelect>
-        <UsageSelect id="usage-key-filter" label={t('console.usage.apiKey')} value={filters.apiKeyID} onChange={(value) => updateFilter('apiKeyID', value)}><option value="all">{t('console.usage.allKeys')}</option>{apiKeyOptions.map((option) => <option value={option.id} key={option.id}>{option.name}</option>)}</UsageSelect>
-        <UsageSelect id="usage-source-filter" label={t('console.usage.source')} value={filters.source} onChange={(value) => updateFilter('source', value as UsageRecordsSource)}><option value="all">{t('console.usage.allSources')}</option><option value="console-test">{t('console.usage.consoleTest')}</option><option value="api">{t('console.usage.apiCall')}</option></UsageSelect>
-        <UsageSelect id="usage-status-filter" label={t('console.usage.status')} value={filters.status} onChange={(value) => updateFilter('status', value as UsageRecordsStatus)}><option value="all">{t('console.usage.allStatuses')}</option><option value="success">{t('console.usage.successStatus')}</option><option value="error">{t('console.usage.errorStatus')}</option><option value="cancelled">{t('console.usage.cancelledStatus')}</option></UsageSelect>
-        {data?.can_filter_members ? <UsageSelect id="usage-member-filter" label={t('console.usage.member')} value={filters.memberID} onChange={(value) => updateFilter('memberID', value)}><option value="all">{t('console.usage.allMembers')}</option>{memberOptions.map((option) => <option value={option.id} key={option.id}>{option.name}</option>)}</UsageSelect> : null}
-        {filters.range === DATE_RANGE_CUSTOM ? <div className="usage-reference-date-range"><label htmlFor="usage-start-date">{t('console.usage.startDate')}<input id="usage-start-date" type="date" value={filters.startDate} onChange={(event) => updateFilter('startDate', event.target.value)} /></label><label htmlFor="usage-end-date">{t('console.usage.endDate')}<input id="usage-end-date" type="date" value={filters.endDate} onChange={(event) => updateFilter('endDate', event.target.value)} /></label></div> : null}
+        <UsageSelect id="usage-model-filter" label={t('console.usage.model')} value={modelOptions.some((option) => option.alias === filters.model) ? filters.model : 'all'} onChange={(value) => updateFilter('model', value)}><Select.Option value="all">{t('console.usage.allModels')}</Select.Option>{modelOptions.map((option) => <Select.Option value={option.alias} key={option.alias}>{t('console.common.modelWithAlias', { name: option.name, alias: option.alias })}</Select.Option>)}</UsageSelect>
+        <UsageSelect id="usage-key-filter" label={t('console.usage.apiKey')} value={filters.apiKeyID} onChange={(value) => updateFilter('apiKeyID', value)}><Select.Option value="all">{t('console.usage.allKeys')}</Select.Option>{apiKeyOptions.map((option) => <Select.Option value={option.id} key={option.id}>{option.name}</Select.Option>)}</UsageSelect>
+        <UsageSelect id="usage-source-filter" label={t('console.usage.source')} value={filters.source} onChange={(value) => updateFilter('source', value as UsageRecordsSource)}><Select.Option value="all">{t('console.usage.allSources')}</Select.Option><Select.Option value="console-test">{t('console.usage.consoleTest')}</Select.Option><Select.Option value="api">{t('console.usage.apiCall')}</Select.Option></UsageSelect>
+        <UsageSelect id="usage-status-filter" label={t('console.usage.status')} value={filters.status} onChange={(value) => updateFilter('status', value as UsageRecordsStatus)}><Select.Option value="all">{t('console.usage.allStatuses')}</Select.Option><Select.Option value="success">{t('console.usage.successStatus')}</Select.Option><Select.Option value="error">{t('console.usage.errorStatus')}</Select.Option><Select.Option value="cancelled">{t('console.usage.cancelledStatus')}</Select.Option></UsageSelect>
+        {data?.can_filter_members ? <UsageSelect id="usage-member-filter" label={t('console.usage.member')} value={filters.memberID} onChange={(value) => updateFilter('memberID', value)}><Select.Option value="all">{t('console.usage.allMembers')}</Select.Option>{memberOptions.map((option) => <Select.Option value={option.id} key={option.id}>{option.name}</Select.Option>)}</UsageSelect> : null}
+        {filters.range === DATE_RANGE_CUSTOM ? <div className="usage-reference-date-range"><span className="usage-reference-filter-label">{t('console.usage.custom')}</span><DatePicker type="dateRange" format="yyyy-MM-dd" value={[filters.startDate, filters.endDate]} placeholder={[t('console.usage.startDate'), t('console.usage.endDate')]} onChange={(_, dateStrings) => updateCustomDateRange(dateStrings)} showClear className="usage-reference-date-picker" aria-label={t('console.usage.custom')} /></div> : null}
       </div>
       <Button className="usage-reference-reset" theme="borderless" icon={<IconRefresh />} onClick={resetFilters}>{t('console.usage.resetFilters')}</Button>
     </section>

@@ -8,7 +8,7 @@ const MAX_ERROR_BODY_LENGTH = 4_096
 export { MODEL_API_BASE_URL }
 
 export interface StreamChatCompletionInput {
-  apiKey: string
+  accessToken: string
   model: string
   messages?: ChatCompletionMessage[]
   /** 兼容旧调用方，新的智能会话请求应传递完整 messages。 */
@@ -246,11 +246,11 @@ export async function streamChatCompletion(input: StreamChatCompletionInput): Pr
   const startedAt = performance.now()
   const requestId = createRequestId()
   const requestController = createRequestController(input.signal)
-  const apiKey = input.apiKey.trim()
+  const accessToken = input.accessToken.trim()
   const messages = requestMessages(input)
-  if (!apiKey) {
+  if (!accessToken) {
     requestController.clear()
-    throw new ModelRuntimeError(i18n.t('api.modelRuntime.apiKeyRequired'), 401, 'api_key_required', requestId)
+    throw new ModelRuntimeError(i18n.t('api.modelRuntime.accessTokenRequired'), 401, 'access_token_required', requestId)
   }
   if (!input.model.trim() || messages.length === 0 || messages.some((message) => !message.content.trim())) {
     requestController.clear()
@@ -264,8 +264,9 @@ export async function streamChatCompletion(input: StreamChatCompletionInput): Pr
       signal: requestController.controller.signal,
       headers: {
         Accept: 'text/event-stream, application/json',
-        Authorization: `Bearer ${apiKey}`,
+        Authorization: `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
+        'X-ThinkGo-User-Session': '1',
         'X-Request-ID': requestId,
         'X-App-Lang': getActiveLanguage(),
       },

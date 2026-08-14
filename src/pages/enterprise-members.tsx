@@ -6,6 +6,7 @@ import Toast from '@douyinfe/semi-ui/lib/es/toast'
 import { IconCopy, IconDeleteStroked, IconEditStroked, IconPlus, IconSearch } from '@douyinfe/semi-icons'
 import { CompatInput as Input, CompatSelect as Select } from '@/components/semi-compat'
 import { MoneyText } from '@/components/money'
+import { AppPagination } from '@/components/app-pagination'
 import {
   createEnterpriseInvitation,
   createEnterpriseTag,
@@ -65,13 +66,13 @@ type PaginationProps = {
   pageSize: number
   total: number
   onChange: (page: number) => void
+  onPageSizeChange: (pageSize: number) => void
 }
 
-function Pagination({ page, pageSize, total, onChange }: PaginationProps) {
+function MembersPagination({ page, pageSize, total, onChange, onPageSizeChange }: PaginationProps) {
   const { t } = useTranslation()
   const pageCount = Math.max(1, Math.ceil(total / pageSize))
-  if (total <= pageSize) return null
-  return <div className="enterprise-pagination"><span>{t('console.enterprise.members.pageSummary', { total: formatEnterpriseNumber(total), page, pageCount })}</span><div><Button theme="outline" size="small" disabled={page <= 1} onClick={() => onChange(page - 1)}>{t('console.enterprise.members.previous')}</Button><Button theme="outline" size="small" disabled={page >= pageCount} onClick={() => onChange(page + 1)}>{t('console.enterprise.members.next')}</Button></div></div>
+  return <AppPagination ariaLabel={t('console.enterprise.members.pageSummary', { total: formatEnterpriseNumber(total), page, pageCount })} currentPage={page} pageSize={pageSize} total={total} summary={t('console.enterprise.members.pageSummary', { total: formatEnterpriseNumber(total), page, pageCount })} onPageChange={onChange} onPageSizeChange={onPageSizeChange} />
 }
 
 function statusClass(value: string): string {
@@ -394,6 +395,7 @@ function MembersContent({ context }: { context: EnterpriseContext }) {
   const requestContext = { enterprise_id: context.id }
   const [tab, setTab] = useState<MembersTab>('members')
   const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(DEFAULT_MEMBER_PAGE_SIZE)
   const [keyword, setKeyword] = useState('')
   const [role, setRole] = useState('all')
   const [status, setStatus] = useState('all')
@@ -449,13 +451,13 @@ function MembersContent({ context }: { context: EnterpriseContext }) {
     async function loadTabData(): Promise<void> {
       try {
         if (tab === 'members') {
-          const result = await getEnterpriseMembers(requestContext, { page, page_size: DEFAULT_MEMBER_PAGE_SIZE, keyword, role, status, signal: controller.signal })
+          const result = await getEnterpriseMembers(requestContext, { page, page_size: pageSize, keyword, role, status, signal: controller.signal })
           if (active) setMembers({ ...result, items: result.items.map(normalizeMember) })
         } else if (tab === 'requests') {
-          const result = await getEnterpriseJoinRequests(requestContext, { page, page_size: DEFAULT_MEMBER_PAGE_SIZE, status: 'pending', signal: controller.signal })
+          const result = await getEnterpriseJoinRequests(requestContext, { page, page_size: pageSize, status: 'pending', signal: controller.signal })
           if (active) setRequests(result)
         } else {
-          const result = await getEnterpriseInvitations(requestContext, { page, page_size: DEFAULT_MEMBER_PAGE_SIZE, signal: controller.signal })
+          const result = await getEnterpriseInvitations(requestContext, { page, page_size: pageSize, signal: controller.signal })
           if (active) setInvitations(result)
         }
       } catch (reason: unknown) {
@@ -471,7 +473,7 @@ function MembersContent({ context }: { context: EnterpriseContext }) {
       active = false
       controller.abort()
     }
-  }, [context.id, handleError, keyword, page, reloadToken, role, status, tab])
+  }, [context.id, handleError, keyword, page, pageSize, reloadToken, role, status, tab])
 
   function refresh(): void {
     setReloadToken((value) => value + 1)
@@ -638,7 +640,7 @@ function MembersContent({ context }: { context: EnterpriseContext }) {
     <div className="enterprise-members-toolbar"><div className="enterprise-tabs" role="tablist" aria-label={t('console.enterprise.members.title')}><button className={tab === 'members' ? 'active' : ''} type="button" role="tab" aria-selected={tab === 'members'} onClick={() => changeTab('members')}>{t('console.enterprise.members.members')}</button><button className={tab === 'requests' ? 'active' : ''} type="button" role="tab" aria-selected={tab === 'requests'} onClick={() => changeTab('requests')}>{t('console.enterprise.members.requests')}{pendingCount > 0 ? <span>{pendingCount}</span> : null}</button><button className={tab === 'invitations' ? 'active' : ''} type="button" role="tab" aria-selected={tab === 'invitations'} onClick={() => changeTab('invitations')}>{t('console.enterprise.members.invitations')}</button></div><div className="enterprise-page-actions"><EnterpriseRefreshButton onClick={refresh} label={t('console.enterprise.members.refresh')} />{context.capabilities.can_manage_tags ? <Button theme="outline" onClick={() => setTagManagerVisible(true)}>{t('console.enterprise.members.tags')}</Button> : null}{tab === 'members' ? <EnterpriseExportButton onClick={exportMembers} disabled={!members?.items.length} label={t('console.enterprise.members.export')} /> : null}{tab === 'invitations' && context.capabilities.can_manage_members ? <Button aria-label={t('console.enterprise.members.createInvite')} theme="solid" type="primary" icon={<IconPlus />} onClick={() => { setCreatedInvitation(null); setInviteVisible(true) }}>{t('console.enterprise.members.createInvite')}</Button> : null}</div></div>
     {tab === 'members' ? <div className="enterprise-filter-toolbar"><label className="enterprise-search-field"><IconSearch aria-hidden="true" /><Input value={keyword} onChange={(value) => { setKeyword(value); setPage(1) }} placeholder={t('console.enterprise.members.searchPlaceholder')} aria-label={t('console.enterprise.members.searchPlaceholder')} /></label><label className="enterprise-filter-field"><span>{t('console.enterprise.members.roleFilter')}</span><select className="source-input" value={role} onChange={(event) => { setRole(event.target.value); setPage(1) }}><option value="all">{t('console.enterprise.members.allRoles')}</option>{roleOptions.map((option) => <option value={option.code} key={option.code}>{option.name}</option>)}</select></label><label className="enterprise-filter-field"><span>{t('console.enterprise.members.statusFilter')}</span><select className="source-input" value={status} onChange={(event) => { setStatus(event.target.value); setPage(1) }}><option value="all">{t('console.enterprise.members.allStatuses')}</option><option value="active">{t('console.enterprise.memberActive')}</option><option value="suspended">{t('console.enterprise.memberSuspended')}</option><option value="removed">{t('console.enterprise.memberRemoved')}</option></select></label>{context.capabilities.can_manage_members ? <Button theme="solid" type="primary" onClick={() => { setCreatedInvitation(null); setInviteVisible(true) }} disabled={!assignableRoleOptions(roleOptions).length}>{t('console.enterprise.members.inviteMember')}</Button> : null}</div> : null}
     {content}
-    <Pagination page={tab === 'members' ? members?.page ?? page : tab === 'requests' ? requests?.page ?? page : invitations?.page ?? page} pageSize={tab === 'members' ? members?.page_size ?? DEFAULT_MEMBER_PAGE_SIZE : tab === 'requests' ? requests?.page_size ?? DEFAULT_MEMBER_PAGE_SIZE : invitations?.page_size ?? DEFAULT_MEMBER_PAGE_SIZE} total={tab === 'members' ? members?.total ?? 0 : tab === 'requests' ? requests?.total ?? 0 : invitations?.total ?? 0} onChange={setPage} />
+    <MembersPagination page={tab === 'members' ? members?.page ?? page : tab === 'requests' ? requests?.page ?? page : invitations?.page ?? page} pageSize={tab === 'members' ? members?.page_size ?? pageSize : tab === 'requests' ? requests?.page_size ?? pageSize : invitations?.page_size ?? pageSize} total={tab === 'members' ? members?.total ?? 0 : tab === 'requests' ? requests?.total ?? 0 : invitations?.total ?? 0} onChange={setPage} onPageSizeChange={(nextPageSize) => { setPageSize(nextPageSize); setPage(1) }} />
     <MemberDetailModal member={selectedMember} tags={tags} roleOptions={roleOptions} context={context} visible={Boolean(selectedMember) || memberDetailLoading} loading={memberDetailLoading} onClose={() => { setSelectedMember(null); setMemberDetailError('') }} onUpdated={updateMember} />
     {memberDetailError ? <Modal title={t('console.enterprise.members.memberDetail')} visible={Boolean(memberDetailError)} onCancel={() => setMemberDetailError('')} footer={null}><EnterpriseError message={memberDetailError} requestId={null} onRetry={() => { setMemberDetailError(''); const member = selectedMember; if (member) void openMember(member) }} /></Modal> : null}
     <TagManagerModal visible={tagManagerVisible} tags={tags} canManage={context.capabilities.can_manage_tags} onCancel={() => setTagManagerVisible(false)} onCreate={() => setTagEditor(null)} onEdit={(tag) => setTagEditor(tag)} onDelete={(tag) => { void removeTag(tag) }} loading={tagsLoading} />

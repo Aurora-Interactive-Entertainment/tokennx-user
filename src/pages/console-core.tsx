@@ -5,26 +5,24 @@ import { Link, useSearchParams, useNavigate } from 'react-router'
 import Button from '@douyinfe/semi-ui/lib/es/button'
 import Modal from '@douyinfe/semi-ui/lib/es/modal'
 import Toast from '@douyinfe/semi-ui/lib/es/toast'
-import { IconArrowRight, IconCode, IconCopy, IconEdit, IconSearch, IconSend, IconSetting, IconStop } from '@douyinfe/semi-icons'
-import { BannerNotice, EmptyPanel, ModelCard, ModelLogo, PageTitle } from '@/components/common'
+import { IconAlertTriangle, IconArrowRight, IconCode, IconCopy, IconEdit, IconSearch, IconSend, IconSetting, IconStop } from '@douyinfe/semi-icons'
+import { EmptyPanel, ModelCard, ModelLogo, PageTitle } from '@/components/common'
 import { ModelDetailDrawer } from '@/components/model-detail-drawer'
 import { MarkdownContent } from '@/components/markdown-content'
 import { MoneyText } from '@/components/money'
+import { AppPagination } from '@/components/app-pagination'
 import { CompatCard as Card, CompatInput as Input, CompatSelect as Select } from '@/components/semi-compat'
 import { useAppStore, type PlaygroundMessage } from '@/data/app-state'
 import { findModelInList, modelAlias, type ModelRecord } from '@/data/models'
 import { useUserModelDetail, useUserModels } from '@/data/user-models'
-import { getUserApiKeys, type UserApiKey, type UserApiKeyContext } from '@/api/user-api-keys'
 import { ModelRuntimeError, streamChatCompletion, type ChatCompletionMessage } from '@/api/model-runtime'
 import { normalizeQuickstartLanguage, normalizeQuickstartProtocol, quickstartCodeSample, QUICKSTART_API_BASE_URL, type QuickstartLanguage, type QuickstartProtocol } from '@/utils/quickstart'
 import { formatNumber } from '@/utils/format'
 import { canStartPlaygroundRound, limitPlaygroundPrompt, playgroundCharacterCount, PLAYGROUND_MAX_INPUT_CHARACTERS } from '@/utils/playground'
-import { getAccessToken } from '@/auth/token-storage'
-import { isAuthenticationFailure } from '@/api/http'
+import { clearAuthTokens, getAccessToken } from '@/auth/token-storage'
 import { invalidateAuth } from '@/store/auth-slice'
 import { useAppDispatch } from '@/store/hooks'
 import { DEFAULT_MODEL_PAGE_SIZE, MODEL_CATEGORIES, MODEL_PAGE_SIZES, MODEL_PRICE_FILTERS, MODEL_SORTS, filterAndSortModels, modelCategoryCounts, paginateModels, type ModelCategory, type ModelPriceFilter, type ModelSort } from '@/utils/model-filters'
-import { apiKeySupportsModel } from '@/utils/model-access'
 
 const FIRST_MODEL_PAGE = 1
 
@@ -97,15 +95,7 @@ export function ConsoleModelsPage() {
     <div className="models-subbar"><div className="modality-tabs" role="group" aria-label={t('console.common.modelType')}>{MODEL_CATEGORIES.map((tab) => <button className={`modality-tab${category === tab.value ? ' active' : ''}`} type="button" aria-pressed={category === tab.value} key={tab.value} disabled={categoryCounts[tab.value] === 0} onClick={() => updateFilter(() => setCategory(tab.value))}>{t(tab.labelKey)} <span className="tab-count">{categoryCounts[tab.value]}</span></button>)}</div><span className="models-result-count">{t('console.common.modelCount', { count: filteredModels.length })}</span></div>
     {filteredModels.length ? <>
       <div className={modelGridClassName}>{pageResult.items.map((model) => <ModelCard key={model.id} model={model} onSelect={setDetailModel} />)}</div>
-      <nav className="models-pagination" aria-label={t('console.models.modelPage')}>
-        <span className="models-pagination-info">{t('console.common.showRange', { start: pageResult.start, end: pageResult.end, total: pageResult.total })}</span>
-        <div className="models-pagination-controls">
-          <button type="button" className="models-pagination-button" aria-label={t('console.common.previous')} disabled={pageResult.page <= FIRST_MODEL_PAGE} onClick={() => setPage((value) => Math.max(FIRST_MODEL_PAGE, value - 1))}>‹</button>
-          <button type="button" className="models-pagination-button is-current" aria-current="page" disabled>{pageResult.page}</button>
-          <button type="button" className="models-pagination-button" aria-label={t('console.common.next')} disabled={pageResult.page >= pageResult.totalPages} onClick={() => setPage((value) => Math.min(pageResult.totalPages, value + 1))}>›</button>
-          <Select className="models-pagination-size" value={pageSize} onChange={(value) => { setPageSize(Number(value)); setPage(FIRST_MODEL_PAGE) }} aria-label={t('console.common.pageSize')}>{MODEL_PAGE_SIZES.map((size) => <Select.Option key={size} value={size}>{t('console.common.rowsPerPage', { size })}</Select.Option>)}</Select>
-        </div>
-      </nav>
+      <AppPagination ariaLabel={t('console.models.modelPage')} currentPage={pageResult.page} pageSize={pageSize} total={pageResult.total} pageSizeOptions={[...MODEL_PAGE_SIZES]} summary={t('console.common.showRange', { start: pageResult.start, end: pageResult.end, total: pageResult.total })} onPageChange={setPage} onPageSizeChange={(nextPageSize) => { setPageSize(nextPageSize); setPage(FIRST_MODEL_PAGE) }} />
     </> : <EmptyPanel title={t('console.models.modelNotFound')} description={t('console.common.adjustFilters')} action={<Button theme="outline" onClick={clearFilters}>{t('console.common.clearFilters')}</Button>} />}
     </> : null}
     <ModelDetailDrawer model={detailModel} detail={detailState.detail} loading={detailState.loading} error={detailState.error} visible={detailModel !== null} onClose={closeModelDetail} />
@@ -121,12 +111,6 @@ const MAX_MAX_TOKENS = 128_000
 
 function modelErrorMessage(error: unknown, t: TFunction): string {
   if (error instanceof DOMException && error.name === 'AbortError') return t('console.playground.stopped')
-  if (error instanceof ModelRuntimeError) {
-    if (error.status === 401) return t('console.playground.invalidApiKey')
-    if (error.status === 402) return t('console.playground.insufficientBalance')
-    const requestHint = error.requestId ? t('console.playground.requestIdHint', { label: t('console.common.requestId'), id: error.requestId }) : ''
-    return `${error.message}${requestHint}`
-  }
   return t('console.playground.modelCallFailed')
 }
 
@@ -146,7 +130,15 @@ function sessionMessages(session: { messages: PlaygroundMessage[] }): Playground
   return session.messages
 }
 
-// 中文：服务端以模型编码授权，页面同时兼容公开 ID 和别名，避免目录字段演进导致误过滤。
+function PlaygroundWorkspaceNotice({ message, description, action }: { message: string; description?: string; action?: ReactNode }) {
+  return <div className="workspace-notice-state playground-workspace-notice" role="alert">
+    <span className="workspace-notice-icon"><IconAlertTriangle aria-hidden="true" /></span>
+    <strong>{message}</strong>
+    {description ? <p>{description}</p> : null}
+    {action ? <div className="workspace-notice-actions">{action}</div> : null}
+  </div>
+}
+
 export { apiKeySupportsModel } from '@/utils/model-access'
 
 export function PlaygroundPage() {
@@ -164,10 +156,6 @@ export function PlaygroundPage() {
   const [paramsVisible, setParamsVisible] = useState(false)
   const [temperature, setTemperature] = useState(DEFAULT_TEMPERATURE)
   const [maxTokens, setMaxTokens] = useState(DEFAULT_MAX_TOKENS)
-  const [apiKeys, setApiKeys] = useState<UserApiKey[]>([])
-  const [selectedApiKeyId, setSelectedApiKeyId] = useState('')
-  const [apiKeysLoading, setApiKeysLoading] = useState(true)
-  const [apiKeyError, setApiKeyError] = useState('')
   const [activePrompt, setActivePrompt] = useState('')
   const [streamingResponse, setStreamingResponse] = useState('')
   const [streamingReasoning, setStreamingReasoning] = useState('')
@@ -178,29 +166,20 @@ export function PlaygroundPage() {
   const streamingResponseRef = useRef('')
   const streamingReasoningRef = useRef('')
   const abortReasonRef = useRef<'user' | 'navigation' | null>(null)
-  const workspaceContext = useMemo<UserApiKeyContext>(() => store.activeWorkspace.type === 'enterprise'
-    ? { account_type: 'enterprise', enterprise_id: store.activeWorkspace.id }
-    : { account_type: 'personal' }, [store.activeWorkspace.id, store.activeWorkspace.type])
-  const workspaceKey = `${workspaceContext.account_type}:${workspaceContext.account_type === 'enterprise' ? workspaceContext.enterprise_id : 'personal'}`
+  const workspaceKey = `${store.activeWorkspace.type}:${store.activeWorkspace.id}`
   const selectedSession = store.playgroundSessions.find((session) => session.id === selectedSessionId)
   const currentRounds = selectedSession?.rounds ?? 0
   const canContinueConversation = canStartPlaygroundRound(currentRounds)
-  const usableApiKeys = useMemo(() => apiKeys.filter((key) => key.status === 'active' && key.secret.trim()), [apiKeys])
-  const selectedApiKey = usableApiKeys.find((key) => key.id === selectedApiKeyId)
-  // 中文：未明确选择 API Key 时不推导模型，避免把工作区模型目录误当成密钥权限。
-  const selectableModels = useMemo(() => {
-    return models.filter((model) => model.modality === 'text' && Boolean(modelAlias(model)) && apiKeySupportsModel(selectedApiKey, model))
-  }, [models, selectedApiKey])
+  const selectableModels = useMemo(
+    () => models.filter((model) => model.modality === 'text' && Boolean(modelAlias(model))),
+    [models],
+  )
   const selectedModel = findModelInList(selectableModels, modelId) ?? selectableModels[0]
 
   useEffect(() => {
     requestControllerRef.current?.abort()
     requestControllerRef.current = null
     abortReasonRef.current = 'navigation'
-    setApiKeys([])
-    setSelectedApiKeyId('')
-    setApiKeysLoading(true)
-    setApiKeyError('')
     setSelectedSessionId('')
     setEditingAttemptId('')
     setRetryingAttemptId('')
@@ -211,35 +190,13 @@ export function PlaygroundPage() {
   }, [workspaceKey])
 
   useEffect(() => {
-    let active = true
-    setApiKeysLoading(true)
-    setApiKeyError('')
-    void getUserApiKeys(workspaceContext, 'active').then((result) => {
-      if (!active) return
-      setApiKeys(result.items)
-    }).catch((error: unknown) => {
-      if (!active) return
-      if (isAuthenticationFailure(error)) {
-        dispatch(invalidateAuth())
-        navigate('/', { replace: true })
-        return
-      }
-      setApiKeyError(error instanceof Error ? error.message : t('console.models.reloadKeys'))
-    }).finally(() => {
-      if (active) setApiKeysLoading(false)
-    })
-    return () => { active = false }
-  }, [dispatch, navigate, t, workspaceContext])
-
-  useEffect(() => {
-    if (!selectedApiKey) return
     if (selectableModels.some((model) => modelAlias(model) === modelId)) return
     const fallback = selectableModels[0]
     const fallbackAlias = fallback ? modelAlias(fallback) : ''
     if (modelId === fallbackAlias) return
     setModelId(fallbackAlias)
     store.setSelectedModelId(fallbackAlias)
-  }, [modelId, selectableModels, selectedApiKey, store])
+  }, [modelId, selectableModels, store])
 
   useEffect(() => () => {
     abortReasonRef.current = 'navigation'
@@ -255,21 +212,19 @@ export function PlaygroundPage() {
     abortGeneration('user')
   }
 
-  function selectApiKey(apiKeyId: string): void {
-    startNewSession()
-    setModelId('')
-    store.setSelectedModelId('')
-    setSelectedApiKeyId(apiKeyId)
-  }
-
   async function runTest(): Promise<void> {
     const trimmedPrompt = prompt.trim()
     if (running) return
     if (!trimmedPrompt) { Toast.warning(t('console.playground.promptRequired')); return }
-    if (!selectedApiKey) { Toast.warning(t('console.playground.apiKeyRequired')); return }
     if (!selectedModel || !modelAlias(selectedModel)) { Toast.warning(t('console.playground.noTextModelAlias')); return }
-    if (!apiKeySupportsModel(selectedApiKey, selectedModel)) { Toast.warning(t('console.playground.unsupportedModel')); return }
     if (!canContinueConversation) { Toast.warning(t('console.playground.newSessionLimit')); return }
+    const accessToken = getAccessToken()
+    if (!accessToken) {
+      clearAuthTokens({ force: true })
+      dispatch(invalidateAuth())
+      navigate('/', { replace: true })
+      return
+    }
     const parsedTemperature = Number(temperature)
     const parsedMaxTokens = Number(maxTokens)
     if (!Number.isFinite(parsedTemperature) || parsedTemperature < MIN_TEMPERATURE || parsedTemperature > MAX_TEMPERATURE) {
@@ -302,7 +257,7 @@ export function PlaygroundPage() {
         { role: 'user', content: trimmedPrompt },
       ]
       const result = await streamChatCompletion({
-        apiKey: selectedApiKey.secret,
+        accessToken,
         model: modelAlias(selectedModel),
         messages,
         temperature: parsedTemperature,
@@ -352,6 +307,12 @@ export function PlaygroundPage() {
         setRetryingAttemptId('')
         return
       }
+      if (error instanceof ModelRuntimeError && error.status === 401) {
+        clearAuthTokens({ force: true })
+        dispatch(invalidateAuth())
+        navigate('/', { replace: true })
+        return
+      }
       const message = modelErrorMessage(error, t)
       const failedSession = store.recordPlaygroundFailure({
         modelId: modelAlias(selectedModel),
@@ -373,7 +334,6 @@ export function PlaygroundPage() {
       setEditingAttemptId('')
       setRetryingAttemptId('')
       setRequestError(message)
-      Toast.error(message)
     } finally {
       if (requestControllerRef.current === controller) {
         requestControllerRef.current = null
@@ -452,19 +412,12 @@ export function PlaygroundPage() {
 
   if (modelsLoading) return <div className="page-stack playground-console-page"><PageTitle title={t('console.playground.title')} description={t('console.playground.description')} /><EmptyPanel title={t('console.common.loadingModels')} description={t('console.common.readingModels')} /></div>
   if (modelsError) return <div className="page-stack playground-console-page"><PageTitle title={t('console.playground.title')} description={t('console.playground.description')} /><EmptyPanel title={t('console.common.modelCatalogFailed')} description={modelsError} action={<Button theme="outline" onClick={refreshModels}>{t('console.common.reload')}</Button>} /></div>
-  if (!models.some((model) => model.modality === 'text' && modelAlias(model))) return <div className="page-stack playground-console-page"><PageTitle title={t('console.playground.title')} description={t('console.playground.description')} /><EmptyPanel title={t('console.playground.noTextModels')} description={t('console.playground.noTextModelsHint')} /></div>
 
   return <div className="page-stack playground-console-page">
     <PageTitle title={t('console.playground.title')} description={t('console.playground.detailedDescription')} />
-    <section className="playground-connection-bar" aria-label={t('console.playground.connection')}>
-      <div className="playground-connection-controls"><label htmlFor="playground-api-key">{t('console.playground.apiKey')}</label><Select className="playground-api-key-select" dropdownClassName="playground-select-dropdown" id="playground-api-key" aria-label={t('console.playground.apiKey')} value={selectedApiKey?.id ?? ''} onSelect={(value) => selectApiKey(String(value))} disabled={apiKeysLoading || usableApiKeys.length === 0}><Select.Option value="">{t('console.playground.selectApiKey')}</Select.Option>{usableApiKeys.map((key) => <Select.Option key={key.id} value={key.id}>{key.name} · {key.masked_key}</Select.Option>)}</Select><Link className="playground-key-link" to="/console/api-keys">{t('console.playground.manageApiKey')}</Link></div>
-    </section>
-    {apiKeyError ? <BannerNotice tone="warning">{apiKeyError}</BannerNotice> : null}
-    {selectedApiKey && selectableModels.length === 0 ? <BannerNotice tone="warning">{t('console.playground.apiKeyNoModels')}</BannerNotice> : null}
-    {requestError ? <BannerNotice tone="warning"><span>{requestError}</span>{requestError.includes(t('console.common.requestId')) ? null : <Button theme="borderless" size="small" onClick={() => setRequestError('')}>{t('console.playground.closeError')}</Button>}</BannerNotice> : null}
     <section className="playground-shell" aria-label={t('console.playground.title')}>
       <aside className="history-panel" aria-labelledby="history-title"><div className="history-heading"><h2 id="history-title">{t('console.playground.history')}</h2><Button theme="outline" size="small" onClick={startNewSession}>{t('console.playground.newSession')}</Button></div><div className="history-list">{store.playgroundSessions.slice(0, 7).map((session) => { const model = findModelInList(models, session.modelId); const modelName = model?.name ?? t('console.playground.unnamedModel'); const displayModelAlias = model ? modelAlias(model) || t('console.common.modelAliasUnset') : t('console.common.modelAliasUnset'); return <button type="button" className={`history-item${selectedSessionId === session.id ? ' is-active' : ''}`} key={session.id} onClick={() => selectSession(session)}><strong>{modelName}</strong><span>{displayModelAlias} · {session.createdAt}</span><small>{lastUserMessage(session)}</small></button> })}</div></aside>
-      <div className="workspace"><div className="playground-header"><div className="playground-actions"><label className="sr-only" htmlFor="playground-model">{t('console.playground.chooseModel')}</label><Select className="playground-model-select" dropdownClassName="playground-select-dropdown" id="playground-model" aria-label={t('console.playground.chooseModel')} value={selectedModel ? modelAlias(selectedModel) : ''} onChange={(value) => { const nextModelAlias = String(value); setModelId(nextModelAlias); store.setSelectedModelId(nextModelAlias); setSelectedSessionId(''); setEditingAttemptId(''); setRetryingAttemptId(''); setRequestError('') }} disabled={selectableModels.length === 0}>{selectableModels.map((model) => <Select.Option key={model.id} value={modelAlias(model)}>{t('console.playground.modelWithProvider', { name: model.name, company: model.company, alias: modelAlias(model) })}</Select.Option>)}</Select><Button className="icon-button" theme="borderless" icon={<IconSetting />} aria-label={t('console.playground.modelParams')} title={t('console.playground.modelParams')} onClick={() => setParamsVisible(true)} disabled={!selectedModel} /></div></div><div className="message-list">{selectedSession ? sessionMessages(selectedSession).filter((message) => message.attemptId !== retryingAttemptId).map((message) => renderMessage(message)) : null}{activePrompt ? <><div className="message user"><span className="message-avatar">H</span><div className="message-body"><div className="message-bubble">{activePrompt}</div><div className="message-actions"><Button className="message-icon-action" theme="borderless" size="small" icon={<IconCopy />} aria-label={t('console.playground.copyUserMessage')} title={t('console.playground.copyUserMessage')} onClick={() => copyMessage(activePrompt, t('console.playground.copiedUserMessage'))} /></div></div></div>{renderMessage({ id: 'streaming-response', attemptId: 'streaming-attempt', role: 'assistant', status: 'complete', content: '', reasoning: '', requestId: null, error: null, createdAt: '', inputTokens: null, outputTokens: null, cost: null, latency: null }, true)}</> : null}{!selectedSession && !activePrompt ? <div className="empty-state">{!selectedApiKey ? <><h3>{t('console.playground.chooseKeyFirst')}</h3><p>{t('console.playground.chooseKeyHint')}</p></> : null}{selectedApiKey && selectableModels.length === 0 ? <><h3>{t('console.playground.noKeyModels')}</h3><p>{t('console.playground.noKeyModelsHint')}</p></> : null}{selectedApiKey && selectableModels.length > 0 ? <><h3>{t('console.playground.startConversation')}</h3><p>{t('console.playground.startConversationHint')}</p></> : null}</div> : null}</div><div className="composer"><div className="composer-box"><Input.TextArea className="composer-input" value={prompt} onChange={(value) => setPrompt(limitPlaygroundPrompt(value))} maxLength={PLAYGROUND_MAX_INPUT_CHARACTERS} rows={1} disabled={running || !canContinueConversation} placeholder={canContinueConversation ? t('console.playground.promptPlaceholder') : t('console.playground.newSessionLimit')} aria-label={t('console.playground.testPrompt')} onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); if (!running) void runTest() } }} /><span className="composer-character-count" aria-live="polite">{playgroundCharacterCount(prompt)}/{PLAYGROUND_MAX_INPUT_CHARACTERS}</span><div className="composer-actions"><Button className="send-btn" theme="solid" type="primary" icon={running ? <IconStop /> : <IconSend />} aria-label={running ? t('console.playground.stop') : t('console.playground.send')} title={running ? t('console.playground.stop') : t('console.playground.send')} disabled={running ? false : !prompt.trim() || !selectedApiKey || !selectedModel || !canContinueConversation} onClick={() => { if (running) stopGeneration(); else void runTest() }} /></div></div><div className="composer-hint"><span>{t('console.playground.enterHint')}</span><span>{selectedModel ? `${selectedModel.name} · ${modelAlias(selectedModel) || t('console.common.modelAliasUnset')} · Temperature ${temperature} · Max Tokens ${maxTokens}` : selectedApiKey ? t('console.playground.noAvailableModels') : t('console.playground.selectApiKeyFirst')}</span></div></div></div>
+      <div className="workspace"><div className="playground-header"><div className="playground-actions"><label className="sr-only" htmlFor="playground-model">{t('console.playground.chooseModel')}</label><Select className="playground-model-select" dropdownClassName="playground-select-dropdown" id="playground-model" aria-label={t('console.playground.chooseModel')} value={selectedModel ? modelAlias(selectedModel) : ''} onChange={(value) => { const nextModelAlias = String(value); setModelId(nextModelAlias); store.setSelectedModelId(nextModelAlias); setSelectedSessionId(''); setEditingAttemptId(''); setRetryingAttemptId(''); setRequestError('') }} disabled={selectableModels.length === 0}>{selectableModels.map((model) => <Select.Option key={model.id} value={modelAlias(model)}>{t('console.playground.modelWithProvider', { name: model.name, company: model.company, alias: modelAlias(model) })}</Select.Option>)}</Select><Button className="icon-button" theme="borderless" icon={<IconSetting />} aria-label={t('console.playground.modelParams')} title={t('console.playground.modelParams')} onClick={() => setParamsVisible(true)} disabled={!selectedModel} /></div></div><div className="message-list">{requestError ? <PlaygroundWorkspaceNotice message={requestError} action={<Button theme="outline" size="small" onClick={() => setRequestError('')}>{t('console.playground.closeError')}</Button>} /> : <>{selectedSession ? sessionMessages(selectedSession).filter((message) => message.attemptId !== retryingAttemptId).map((message) => renderMessage(message)) : null}{activePrompt ? <><div className="message user"><span className="message-avatar">H</span><div className="message-body"><div className="message-bubble">{activePrompt}</div><div className="message-actions"><Button className="message-icon-action" theme="borderless" size="small" icon={<IconCopy />} aria-label={t('console.playground.copyUserMessage')} title={t('console.playground.copyUserMessage')} onClick={() => copyMessage(activePrompt, t('console.playground.copiedUserMessage'))} /></div></div></div>{renderMessage({ id: 'streaming-response', attemptId: 'streaming-attempt', role: 'assistant', status: 'complete', content: '', reasoning: '', requestId: null, error: null, createdAt: '', inputTokens: null, outputTokens: null, cost: null, latency: null }, true)}</> : null}{!selectedSession && !activePrompt ? selectableModels.length > 0 ? <div className="empty-state"><h3>{t('console.playground.startConversation')}</h3><p>{t('console.playground.startConversationHint')}</p></div> : <PlaygroundWorkspaceNotice message={t('console.playground.noTextModels')} description={t('console.playground.noTextModelsHint')} /> : null}</>}</div><div className="composer"><div className="composer-box"><Input.TextArea className="composer-input" value={prompt} onChange={(value) => setPrompt(limitPlaygroundPrompt(value))} maxLength={PLAYGROUND_MAX_INPUT_CHARACTERS} rows={1} disabled={running || !canContinueConversation} placeholder={canContinueConversation ? t('console.playground.promptPlaceholder') : t('console.playground.newSessionLimit')} aria-label={t('console.playground.testPrompt')} onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); if (!running) void runTest() } }} /><span className="composer-character-count" aria-live="polite">{playgroundCharacterCount(prompt)}/{PLAYGROUND_MAX_INPUT_CHARACTERS}</span><div className="composer-actions"><Button className="send-btn" theme="solid" type="primary" icon={running ? <IconStop /> : <IconSend />} aria-label={running ? t('console.playground.stop') : t('console.playground.send')} title={running ? t('console.playground.stop') : t('console.playground.send')} disabled={running ? false : !prompt.trim() || !selectedModel || !canContinueConversation} onClick={() => { if (running) stopGeneration(); else void runTest() }} /></div></div><div className="composer-hint"><span>{t('console.playground.enterHint')}</span><span>{selectedModel ? `${selectedModel.name} · ${modelAlias(selectedModel) || t('console.common.modelAliasUnset')} · Temperature ${temperature} · Max Tokens ${maxTokens}` : t('console.playground.noAvailableModels')}</span></div></div></div>
     </section>
     <Modal title={t('console.playground.parameters')} visible={paramsVisible} onCancel={() => setParamsVisible(false)} onOk={() => setParamsVisible(false)} okText={t('console.playground.done')} cancelText={t('console.common.cancel')}><div className="params-dialog"><label className="field-label" htmlFor="temperature">{t('console.playground.temperature')}</label><Input id="temperature" value={temperature} onChange={setTemperature} suffix={t('console.playground.randomness')} inputMode="decimal" /><span className="params-field-hint">{t('console.playground.parameterRange', { min: MIN_TEMPERATURE, max: MAX_TEMPERATURE })}</span><label className="field-label" htmlFor="max-tokens">{t('console.playground.maxTokens')}</label><Input id="max-tokens" value={maxTokens} onChange={(value) => setMaxTokens(value.replace(/\D/g, ''))} suffix="tokens" inputMode="numeric" /><span className="params-field-hint">{t('console.playground.tokenRange', { min: MIN_MAX_TOKENS, max: MAX_MAX_TOKENS })}</span></div></Modal>
   </div>

@@ -218,9 +218,6 @@ export function ModelTags({ model }: { model: ModelRecord }) {
 }
 
 const MODEL_UNAVAILABLE_LABEL = '后端未提供'
-const MODEL_AVAILABILITY_BAR_COUNT = 24
-const MODEL_AVAILABILITY_MAX_WARN_BARS = 4
-const MODEL_AVAILABILITY_WARN_SCALE = 2
 const MODEL_IO_TYPES: Record<ModelRecord['modality'], [string, string]> = {
   text: ['文本', '文本'],
   image: ['文本', '图片'],
@@ -291,13 +288,6 @@ function modelCardSpecs(model: ModelRecord): { contextLabel: string; contextValu
   return { contextLabel: '模型规格', contextValue: model.context ?? MODEL_UNAVAILABLE_LABEL, outputLabel: '输出限制', outputValue: model.maxOutput ?? MODEL_UNAVAILABLE_LABEL }
 }
 
-function availabilityBars(rate: number): ReactNode {
-  if (!Number.isFinite(rate) || rate <= 0 || rate > 100) return null
-  const warnBars = Math.min(MODEL_AVAILABILITY_MAX_WARN_BARS, Math.max(0, Math.round((100 - rate) * MODEL_AVAILABILITY_WARN_SCALE)))
-  const warnInterval = warnBars > 0 ? Math.ceil(MODEL_AVAILABILITY_BAR_COUNT / warnBars) : MODEL_AVAILABILITY_BAR_COUNT
-  return <span className="availability-bars">{Array.from({ length: MODEL_AVAILABILITY_BAR_COUNT }, (_, index) => <i className={`availability-bar ${warnBars > 0 && index % warnInterval === 0 ? 'is-warn' : 'is-up'}`} key={index} />)}</span>
-}
-
 export function ModelCard({ model, compact = false, onSelect }: { model: ModelRecord; compact?: boolean; onSelect?: (model: ModelRecord) => void }) {
   const { t } = useTranslation()
   const [copied, setCopied] = useState(false)
@@ -328,8 +318,6 @@ export function ModelCard({ model, compact = false, onSelect }: { model: ModelRe
   const specs = modelCardSpecs(model)
   const inputMark = MODEL_TYPE_MARKS[inputTypeValue] ?? '?'
   const outputMark = MODEL_TYPE_MARKS[outputTypeValue] ?? '?'
-  const hasAvailability = Number.isFinite(model.availability.rate) && model.availability.rate > 0 && model.availability.rate <= 100
-
   const cardBody = (
       <>
         <div className="model-card-topline">
@@ -360,10 +348,6 @@ export function ModelCard({ model, compact = false, onSelect }: { model: ModelRe
         <div className="model-card-spec-grid" aria-label={`${localizeConsoleLabel(t, specs.contextLabel)} / ${localizeConsoleLabel(t, specs.outputLabel)}`}>
           <div className="model-card-spec-cell"><span>{localizeConsoleLabel(t, specs.contextLabel)}:</span><strong>{specs.contextValue === MODEL_UNAVAILABLE_LABEL ? t('console.common.unavailable') : specs.contextValue}</strong></div>
           <div className="model-card-spec-cell"><span>{localizeConsoleLabel(t, specs.outputLabel)}:</span><strong>{specs.outputValue === MODEL_UNAVAILABLE_LABEL ? t('console.common.unavailable') : specs.outputValue}</strong></div>
-        </div>
-        <div className="model-card-foot">
-          <span className="model-card-providers">{t('console.common.providers', { count: model.providerCount })}</span>
-          <span className={`model-card-availability${hasAvailability ? '' : ' is-unavailable'}`}><span>{hasAvailability ? `${localizeConsoleLabel(t, model.availability.window)} ${model.availability.rate}%` : t('console.common.unavailable')}</span>{availabilityBars(model.availability.rate)}</span>
         </div>
       </>
   )
@@ -1298,7 +1282,7 @@ const personalNavGroups: ConsoleNavGroup[] = [
       { key: '/console/real-name', label: '实名认证', icon: 'real-name' },
       { key: '/console/settings', label: '个人中心', icon: 'account' },
       { key: '/console/billing', label: '费用管理', icon: 'billing' },
-      { key: '/console/api-keys', label: 'API 密钥管理', icon: 'api-keys' },
+      { key: '/console/api-keys', label: '密钥管理', icon: 'api-keys' },
     ],
   },
   {
@@ -1368,16 +1352,19 @@ const enterpriseNavGroups: ConsoleNavGroup[] = [
     label: '账户管理',
     items: [
       { key: '/console/settings', label: '账号信息', icon: 'account' },
-      { key: '/console/api-keys', label: 'API 密钥管理', icon: 'api-keys' },
+      { key: '/console/api-keys', label: '密钥管理', icon: 'api-keys' },
     ],
   },
 ]
+
+// 视频生成能力尚未开放，暂时只隐藏控制台导航入口并保留页面与路由实现。
+const VIDEO_GENERATION_NAV_ENABLED = false
 
 const CONSOLE_NAV_LABEL_KEYS: Record<string, string> = {
   '模型使用': 'console.nav.modelUse', '快速接入': 'console.nav.quickstart', '模型广场': 'console.nav.models', '体验中心': 'console.nav.experience',
   '智能对话': 'console.nav.playground', '视频生成': 'console.nav.video', '数据分析': 'console.nav.analytics', '用量统计': 'console.nav.usage', '调用记录': 'console.nav.records',
   '账户管理': 'console.nav.account', '实名认证': 'console.nav.realName', '个人中心': 'console.nav.profile', '费用管理': 'console.nav.billing',
-  'API 密钥管理': 'console.nav.apiKeys', '企业中心': 'console.nav.enterpriseCenter', '企业入驻': 'console.nav.enterpriseCreate', '企业管理': 'console.nav.enterpriseManagement',
+  'API 密钥管理': 'console.nav.apiKeys', '密钥管理': 'console.nav.apiKeys', '企业中心': 'console.nav.enterpriseCenter', '企业入驻': 'console.nav.enterpriseCreate', '企业管理': 'console.nav.enterpriseManagement',
   '人员管理': 'console.nav.members', '用量管理': 'console.nav.enterpriseUsage', '操作日志': 'console.nav.audit', '我的数据': 'console.nav.myData',
   '企业设置': 'console.nav.enterpriseSettings', '通用设置': 'console.nav.settings', '模型管理': 'console.nav.enterpriseModels', '权限与标签': 'console.nav.governance', '账号信息': 'console.nav.accountInfo',
   '活动中心': 'console.nav.activityCenter', '邀请返现': 'console.nav.invitationReward', '认证返现': 'console.nav.realNameReward',
@@ -1394,7 +1381,10 @@ export function consoleNavGroupsFor(workspace: Pick<Workspace, 'type' | 'role'>,
   const owner = isEnterpriseOwner(workspace)
   return source.map((group) => ({
     ...group,
-    items: group.items.filter((item) => !item.permissionScope || owner || hasEnterpriseMenuPermission(permissions, item.permissionScope)),
+    items: group.items.filter((item) => (
+      (VIDEO_GENERATION_NAV_ENABLED || item.key !== '/console/video')
+      && (!item.permissionScope || owner || hasEnterpriseMenuPermission(permissions, item.permissionScope))
+    )),
   })).filter((group) => group.items.length > 0)
 }
 

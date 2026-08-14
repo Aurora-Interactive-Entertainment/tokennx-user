@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { MODEL_API_BASE_URL, ModelRuntimeError, type StreamChatCompletionInput, streamChatCompletion } from './model-runtime'
 
 const DEFAULT_INPUT: StreamChatCompletionInput = {
-  apiKey: 'nx_live_test_key',
+  accessToken: 'user-access-token',
   model: 'deepseek-chat',
   prompt: '你好',
   temperature: 0.7,
@@ -25,7 +25,7 @@ function sseResponse(chunks: string[], requestId = 'server-request-id'): Respons
 describe('模型运行时请求', () => {
   beforeEach(() => vi.restoreAllMocks())
 
-  it('使用配置的后端 Base URL、Bearer API Key 并解析流式响应', async () => {
+  it('使用配置的后端 Base URL、登录令牌并解析流式响应', async () => {
     const deltas: string[] = []
     const reasoningDeltas: string[] = []
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(sseResponse([
@@ -50,7 +50,11 @@ describe('模型运行时请求', () => {
     expect(options?.method).toBe('POST')
     expect(options?.credentials).toBe('omit')
     const headers = new Headers(options?.headers)
-    expect(headers.get('Authorization')).toBe('Bearer nx_live_test_key')
+    expect(headers.get('Authorization')).toBe('Bearer user-access-token')
+    expect(headers.get('X-ThinkGo-User-Session')).toBe('1')
+    expect(headers.get('X-ThinkGo-Api-Key')).toBeNull()
+    expect(headers.get('X-Api-Key')).toBeNull()
+    expect(headers.get('X-Goog-Api-Key')).toBeNull()
     expect(headers.get('X-Request-ID')).toBeTruthy()
     expect(headers.get('X-App-Lang')).toBe('zh-CN')
     expect(JSON.parse(String(options?.body))).toMatchObject({
@@ -105,10 +109,10 @@ describe('模型运行时请求', () => {
     })
   })
 
-  it('拒绝缺少 API Key 或请求内容的调用而不发起网络请求', async () => {
+  it('拒绝缺少登录令牌或请求内容的调用而不发起网络请求', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch')
 
-    await expect(streamChatCompletion({ ...DEFAULT_INPUT, apiKey: '  ' })).rejects.toMatchObject({ name: 'ModelRuntimeError', status: 401, code: 'api_key_required' })
+    await expect(streamChatCompletion({ ...DEFAULT_INPUT, accessToken: '  ' })).rejects.toMatchObject({ name: 'ModelRuntimeError', status: 401, code: 'access_token_required' })
     await expect(streamChatCompletion({ ...DEFAULT_INPUT, prompt: '  ' })).rejects.toMatchObject({ name: 'ModelRuntimeError', status: 400, code: 'invalid_request' })
     expect(fetchMock).not.toHaveBeenCalled()
   })

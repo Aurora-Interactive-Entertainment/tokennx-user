@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { Provider } from 'react-redux'
@@ -88,7 +88,8 @@ describe('用户用量统计页面', () => {
 
     await user.click(screen.getByRole('button', { name: '费用' }))
     expect(screen.getByTestId('usage-trend-metric')).toHaveTextContent('cost')
-    await user.selectOptions(screen.getByLabelText('模型'), 'gpt-public')
+    await user.click(screen.getByRole('combobox', { name: '模型' }))
+    fireEvent.click(await screen.findByRole('option', { name: /测试模型.*gpt-public/ }))
     await waitFor(() => expect(getUsageSummaryMock).toHaveBeenCalledWith(expect.objectContaining({ account_type: 'personal' }), expect.objectContaining({ model: 'gpt-public' })))
   })
 
@@ -97,11 +98,13 @@ describe('用户用量统计页面', () => {
     getUsageSummaryMock.mockRejectedValueOnce(new ApiError('summary failed', 503, 100002, 'summary-request-id'))
     renderPage()
 
-    expect((await screen.findAllByText('用量统计服务暂时不可用，请稍后重试')).length).toBeGreaterThanOrEqual(1)
+    expect(await screen.findByText('用量统计服务暂时不可用，请稍后重试')).toBeInTheDocument()
+    expect(screen.getAllByText('用量统计服务暂时不可用，请稍后重试')).toHaveLength(1)
+    expect(screen.queryByRole('button', { name: '刷新用量统计' })).toBeNull()
     expect((await screen.findAllByText('请求 ID：summary-request-id')).length).toBeGreaterThanOrEqual(1)
-    await user.click(screen.getByRole('button', { name: '自定义' }))
-    expect(screen.getByLabelText('开始日期')).toBeInTheDocument()
-    expect(screen.getByLabelText('结束日期')).toBeInTheDocument()
+    await user.click(screen.getByRole('radio', { name: '自定义' }))
+    expect(screen.getByPlaceholderText('开始日期')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('结束日期')).toBeInTheDocument()
   })
 
   it('企业路由使用真实企业上下文并展示成员筛选', async () => {
@@ -113,7 +116,7 @@ describe('用户用量统计页面', () => {
     renderEnterprisePage()
 
     expect(await screen.findByText('企业用量管理')).toBeInTheDocument()
-    expect(screen.getByLabelText('成员')).toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: '成员' })).toBeInTheDocument()
     expect(getUsageSummaryMock).toHaveBeenCalledWith(expect.objectContaining({ account_type: 'enterprise', enterprise_id: 'enterprise-1' }), expect.objectContaining({ range: '7d', source: 'all' }))
   })
 

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Toast from '@douyinfe/semi-ui/lib/es/toast'
 import { BannerNotice } from '@/components/common'
+import { AppPagination } from '@/components/app-pagination'
 import { getEnterpriseModels, updateEnterpriseModel, type EnterpriseContext, type EnterpriseModel, type EnterpriseModelPage } from '@/api/enterprise-console'
 import { isApiError } from '@/api/http'
 import { EnterpriseEmpty, EnterpriseError, EnterpriseLoading, EnterprisePageShell, EnterpriseRefreshButton, useEnterpriseErrorHandler, type EnterpriseRequestError } from './enterprise-console-shared'
@@ -30,11 +31,6 @@ function modalityLabel(value: string, t: (key: string) => string): string {
 
 function modalityInitial(value: string): string {
   return MODEL_MODALITY_INITIALS[value] ?? '?'
-}
-
-function pageCount(data: EnterpriseModelPage | null): number {
-  if (!data || data.page_size <= 0) return 1
-  return Math.max(1, Math.ceil(data.total / data.page_size))
 }
 
 function applyModelUpdate(data: EnterpriseModelPage, updated: EnterpriseModel): EnterpriseModelPage {
@@ -77,12 +73,11 @@ function ModelsTable({ data, canManage, savingModelID, onToggle }: { data: Enter
 
 function ModelsPagination({ data, page, pageSize, onPageChange, onPageSizeChange }: { data: EnterpriseModelPage; page: number; pageSize: number; onPageChange: (nextPage: number) => void; onPageSizeChange: (nextPageSize: number) => void }) {
   const { t } = useTranslation()
-  const totalPages = pageCount(data)
   if (!data.total) return null
   const currentPageSize = data.page_size > 0 ? data.page_size : pageSize
   const rangeStart = (page - 1) * currentPageSize + 1
   const rangeEnd = Math.min(page * currentPageSize, data.total)
-  return <nav className="enterprise-models-pagination" aria-label={t('console.enterprise.model.page')}><span className="enterprise-models-pagination-info">{t('console.enterprise.model.showRange', { start: rangeStart, end: rangeEnd, total: data.total })}</span><div className="enterprise-models-pagination-controls"><button className="enterprise-models-pagination-button" type="button" aria-label={t('console.enterprise.model.previous')} title={t('console.enterprise.model.previous')} disabled={page <= 1} onClick={() => onPageChange(page - 1)}>‹</button><button className="enterprise-models-pagination-button is-current" type="button" aria-current="page" aria-label={t('console.enterprise.model.currentPage', { page })}>{page}</button><button className="enterprise-models-pagination-button" type="button" aria-label={t('console.enterprise.model.next')} title={t('console.enterprise.model.next')} disabled={page >= totalPages} onClick={() => onPageChange(page + 1)}>›</button><select className="enterprise-models-pagination-size" value={currentPageSize} aria-label={t('console.common.pageSize')} onChange={(event) => onPageSizeChange(Number(event.target.value))}>{MODEL_PAGE_SIZES.map((size) => <option value={size} key={size}>{t('console.enterprise.model.rowsPerPage', { size })}</option>)}</select></div></nav>
+  return <AppPagination ariaLabel={t('console.enterprise.model.page')} currentPage={page} pageSize={currentPageSize} total={data.total} pageSizeOptions={[...MODEL_PAGE_SIZES]} summary={t('console.enterprise.model.showRange', { start: rangeStart, end: rangeEnd, total: data.total })} onPageChange={onPageChange} onPageSizeChange={onPageSizeChange} />
 }
 
 function ModelsContent({ context }: { context: EnterpriseContext }) {
@@ -124,7 +119,7 @@ function ModelsContent({ context }: { context: EnterpriseContext }) {
       signal: controller.signal,
     }).then((result) => {
       if (!active) return
-      const lastPage = pageCount(result)
+      const lastPage = Math.max(1, Math.ceil(result.total / Math.max(1, result.page_size)))
       if (result.total > 0 && result.page > lastPage) {
         setPage(lastPage)
         return

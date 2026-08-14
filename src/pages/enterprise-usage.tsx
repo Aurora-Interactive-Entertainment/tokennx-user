@@ -4,6 +4,7 @@ import { Link } from 'react-router'
 import Button from '@douyinfe/semi-ui/lib/es/button'
 import { IconSearch } from '@douyinfe/semi-icons'
 import { MoneyText } from '@/components/money'
+import { AppPagination } from '@/components/app-pagination'
 import {
   getEnterpriseTags,
   getEnterpriseUsage,
@@ -63,14 +64,14 @@ function customRangeDefaults(): Pick<UsageFilters, 'startDate' | 'endDate'> {
   return { startDate: formatLocalDateInput(shiftLocalDate(today, -DEFAULT_CUSTOM_RANGE_DAYS)), endDate: formatLocalDateInput(today) }
 }
 
-export function enterpriseUsageQuery(filters: UsageFilters, page = 1): { range: string; start_at?: number; end_at?: number; member_id?: string; page: number; page_size: number } {
+export function enterpriseUsageQuery(filters: UsageFilters, page = 1, pageSize = DEFAULT_USAGE_PAGE_SIZE): { range: string; start_at?: number; end_at?: number; member_id?: string; page: number; page_size: number } {
   return {
     range: filters.range,
     start_at: filters.range === 'custom' ? localDateToTimestamp(filters.startDate) : undefined,
     end_at: filters.range === 'custom' ? localDateToTimestamp(filters.endDate, true) : undefined,
     member_id: filters.memberID === 'all' ? undefined : filters.memberID,
     page: Math.max(1, page),
-    page_size: DEFAULT_USAGE_PAGE_SIZE,
+    page_size: pageSize,
   }
 }
 
@@ -235,12 +236,11 @@ function MemberUsageTable({ members, visibleMembers, roleOptions, tagsByID, tags
   })}</tbody></table></div>
 }
 
-function UsagePagination({ page, pageSize, total, onChange }: { page: number; pageSize: number; total: number; onChange: (page: number) => void }) {
+function UsagePagination({ page, pageSize, total, onChange, onPageSizeChange }: { page: number; pageSize: number; total: number; onChange: (page: number) => void; onPageSizeChange: (pageSize: number) => void }) {
   const { t } = useTranslation()
   const safePageSize = pageSize > 0 ? pageSize : DEFAULT_USAGE_PAGE_SIZE
   const pageCount = Math.max(1, Math.ceil(total / safePageSize))
-  if (total <= safePageSize) return null
-  return <div className="enterprise-pagination enterprise-usage-pagination"><span>{t('console.enterprise.usage.memberSummary', { total: formatEnterpriseNumber(total), page, pageCount })}</span><div><Button theme="outline" size="small" disabled={page <= 1} onClick={() => onChange(page - 1)}>{t('console.common.previous')}</Button><Button theme="outline" size="small" disabled={page >= pageCount} onClick={() => onChange(page + 1)}>{t('console.common.next')}</Button></div></div>
+  return <AppPagination ariaLabel={t('console.enterprise.usage.memberSummary', { total: formatEnterpriseNumber(total), page, pageCount })} currentPage={page} pageSize={safePageSize} total={total} summary={t('console.enterprise.usage.memberSummary', { total: formatEnterpriseNumber(total), page, pageCount })} onPageChange={onChange} onPageSizeChange={onPageSizeChange} />
 }
 
 function UsageTabs({ activeTab, onChange }: { activeTab: UsageTab; onChange: (tab: UsageTab) => void }) {
@@ -315,6 +315,7 @@ function UsageContent({ context, onPeriodChange }: { context: EnterpriseContext;
   const [boardFilters, setBoardFilters] = useState<BoardFilters>(defaultBoardFilters)
   const [activeTab, setActiveTab] = useState<UsageTab>('board')
   const [memberPage, setMemberPage] = useState(1)
+  const [memberPageSize, setMemberPageSize] = useState(DEFAULT_USAGE_PAGE_SIZE)
   const [data, setData] = useState<EnterpriseUsageResponse | null>(null)
   const [memberOptions, setMemberOptions] = useState<EnterpriseMemberUsage[]>([])
   const [tags, setTags] = useState<EnterpriseTag[]>([])
@@ -324,7 +325,7 @@ function UsageContent({ context, onPeriodChange }: { context: EnterpriseContext;
   const [error, setError] = useState<{ message: string; requestId: string | null } | null>(null)
   const [reloadToken, setReloadToken] = useState(0)
   const roleOptions = context.role_options ?? []
-  const query = useMemo(() => enterpriseUsageQuery(filters, memberPage), [filters, memberPage])
+  const query = useMemo(() => enterpriseUsageQuery(filters, memberPage, memberPageSize), [filters, memberPage, memberPageSize])
   const dateRangeError = filters.range === 'custom' ? validateEnterpriseDateRange(filters.startDate, filters.endDate) : ''
   const tagsByID = useMemo(() => new Map(tags.map((tag) => [tag.id, tag])), [tags])
   const selectableMembers = memberOptions.length ? memberOptions : data?.members ?? []
@@ -441,7 +442,7 @@ function UsageContent({ context, onPeriodChange }: { context: EnterpriseContext;
     {error ? <div className="enterprise-filter-error"><EnterpriseError message={error.message} requestId={error.requestId} onRetry={() => setReloadToken((value) => value + 1)} /></div> : null}
     {loading && !data && !dateRangeError ? <EnterpriseLoading label={t('console.enterprise.usage.loading')} /> : null}
     {data && !dateRangeError ? <>
-      <section id="enterprise-usage-panel-board" className="enterprise-usage-tab-panel" role="tabpanel" aria-labelledby="enterprise-usage-tab-board" hidden={showDetail}><UsageMetrics data={data} /><p className="enterprise-data-note">{t('console.enterprise.usage.quotaCallout')}</p><UsageQuotaCallout /><UsageBoardToolbar tags={tags} roleOptions={roleOptions} filters={boardFilters} onChange={(patch) => { setMemberPage(1); setBoardFilters((previous) => ({ ...previous, ...patch })) }} /><MemberUsageTable members={data.members} visibleMembers={visibleMembers} roleOptions={roleOptions} tagsByID={tagsByID} tagsUnavailable={tagsUnavailable} selectedID={filters.memberID} onSelect={openMemberDetail} /><UsagePagination page={data.page} pageSize={data.page_size} total={data.total_members} onChange={setMemberPage} /></section>
+      <section id="enterprise-usage-panel-board" className="enterprise-usage-tab-panel" role="tabpanel" aria-labelledby="enterprise-usage-tab-board" hidden={showDetail}><UsageMetrics data={data} /><p className="enterprise-data-note">{t('console.enterprise.usage.quotaCallout')}</p><UsageQuotaCallout /><UsageBoardToolbar tags={tags} roleOptions={roleOptions} filters={boardFilters} onChange={(patch) => { setMemberPage(1); setBoardFilters((previous) => ({ ...previous, ...patch })) }} /><MemberUsageTable members={data.members} visibleMembers={visibleMembers} roleOptions={roleOptions} tagsByID={tagsByID} tagsUnavailable={tagsUnavailable} selectedID={filters.memberID} onSelect={openMemberDetail} /><UsagePagination page={data.page} pageSize={data.page_size} total={data.total_members} onChange={setMemberPage} onPageSizeChange={(nextPageSize) => { setMemberPageSize(nextPageSize); setMemberPage(1) }} /></section>
       <section id="enterprise-usage-panel-detail" className="enterprise-usage-tab-panel" role="tabpanel" aria-labelledby="enterprise-usage-tab-detail" hidden={!showDetail}><UsageDetailControls members={selectableMembers} roleOptions={roleOptions} filters={filters} onSelect={selectMember} onRangeChange={updateRange} onStartDateChange={(value) => setFilters((previous) => ({ ...previous, startDate: value }))} onEndDateChange={(value) => setFilters((previous) => ({ ...previous, endDate: value }))} />{loading && !detailData ? <EnterpriseLoading label={t('console.enterprise.usage.loadingDetail')} /> : filters.memberID === 'all' ? <EnterpriseEmpty title={t('console.enterprise.usage.noMemberSelected')} description={t('console.enterprise.usage.noMemberSelectedHint')} /> : detailData ? <MemberUsageDetail data={detailData} memberID={filters.memberID} filters={filters} /> : <EnterpriseEmpty title={t('console.enterprise.usage.noMemberUsage')} description={t('console.enterprise.usage.noMemberUsageHint')} />}</section>
     </> : null}
     {!loading && !data && !dateRangeError && !error ? <EnterpriseEmpty title={t('console.enterprise.usage.noEnterpriseUsage')} description={t('console.enterprise.usage.noEnterpriseUsageHint')} /> : null}

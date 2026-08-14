@@ -177,4 +177,13 @@ describe('视频生成页面', () => {
     expect(screen.getByText('准备开始生成')).toBeInTheDocument()
     expect(document.querySelector('.video-history-panel')).toBeInTheDocument()
   })
+
+  it('工作区缺少可用密钥时在结果区内显示提示', async () => {
+    vi.mocked(getUserApiKeys).mockResolvedValue({ items: [], available_models: [] })
+    renderVideoPage()
+
+    await waitFor(() => expect(document.querySelector('.video-workspace-notice')).toBeInTheDocument())
+    expect(document.querySelector('.video-workspace.experience-workbench')).toBeInTheDocument()
+    expect(document.querySelector('.video-console-page > .banner-notice')).toBeNull()
+  })
 })

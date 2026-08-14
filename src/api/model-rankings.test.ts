@@ -40,6 +40,28 @@ describe('公开模型用量排名接口', () => {
     expect(result.ended_at).toBe(1786620082973)
   })
 
+  it('将后端省略的涨跌率视为暂无对比', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(response({
+      period: 'month',
+      started_at: 1785542400000,
+      ended_at: 1786706814035,
+      previous_from: 1782864000000,
+      previous_to: 1785542400000,
+      items: [{
+        rank: 3,
+        code: 'model.01kzx9ed4d0jypzmkp94q9w03c',
+        name: 'kimi-k3',
+        total_tokens: 133503,
+        request_count: 41,
+        previous_tokens: 0,
+      }],
+    }))
+
+    const result = await getModelUsageLeaderboard('month')
+
+    expect(result.items[0].change_rate).toBeNull()
+  })
+
   it('读取最近六个月及逐月模型用量', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(response({
       months: ['2026-03', '2026-04'],

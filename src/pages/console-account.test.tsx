@@ -154,7 +154,7 @@ function renderPage(observeLocation = false, initialEntry = '/console/api-keys',
   }
 }
 
-describe('API 密钥管理页面', () => {
+describe('密钥管理页面', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
     clearAuthTokens()
@@ -166,7 +166,7 @@ describe('API 密钥管理页面', () => {
     mockApiKeyApi()
     renderPage()
 
-    expect(await screen.findByRole('heading', { name: 'API 密钥管理' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: '密钥管理' })).toBeInTheDocument()
     expect(screen.queryByText(/安全提示|本地演示模式/)).not.toBeInTheDocument()
     expect(screen.getByText('默认密钥')).toBeInTheDocument()
     expect(screen.getByText('¥12.500')).toBeInTheDocument()
@@ -253,7 +253,7 @@ describe('API 密钥管理页面', () => {
     }))
     renderPage()
 
-    await screen.findByRole('heading', { name: 'API 密钥管理' })
+    await screen.findByRole('heading', { name: '密钥管理' })
     await user.click(screen.getAllByRole('button', { name: /创建 API 密钥/ })[0])
     await user.click(screen.getByRole('radio', { name: '指定模型' }))
 

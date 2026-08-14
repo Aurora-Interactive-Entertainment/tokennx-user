@@ -75,7 +75,7 @@ function parseTime(value: unknown): ApiTimestamp {
 }
 
 function parseChangeRate(value: unknown): number | null {
-  if (value === null) return null
+  if (value === null || value === undefined) return null
   if (typeof value !== 'number' || !Number.isFinite(value)) invalidResponse()
   return value
 }

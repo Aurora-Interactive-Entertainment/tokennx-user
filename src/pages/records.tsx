@@ -7,6 +7,7 @@ import Toast from '@douyinfe/semi-ui/lib/es/toast'
 import { IconCopy, IconRefresh, IconSearch } from '@douyinfe/semi-icons'
 import { BannerNotice, EmptyPanel, PageTitle } from '@/components/common'
 import { MoneyText } from '@/components/money'
+import { AppPagination } from '@/components/app-pagination'
 import { CompatInput as Input } from '@/components/semi-compat'
 import { getAccessToken } from '@/auth/token-storage'
 import { getUsageRecords, getUsageRecordsErrorMessage, getUsageRecordsRequestId, RECORDS_PAGE_SIZE, type UsageRecordItem, type UsageRecordsQuery, type UsageRecordsResponse, type UsageRecordsSource, type UsageRecordsStatus } from '@/api/usage-records'
@@ -247,6 +248,7 @@ export function RecordsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [filters, setFilters] = useState<RecordsFilterState>(() => initialFilterState(searchParams))
   const [page, setPage] = useState(RECORDS_PAGE_MIN)
+  const [pageSize, setPageSize] = useState(RECORDS_PAGE_SIZE)
   const [data, setData] = useState<UsageRecordsResponse | null>(null)
   const [selected, setSelected] = useState<UsageRecordItem | null>(null)
   const [loading, setLoading] = useState(true)
@@ -279,7 +281,7 @@ export function RecordsPage() {
     const range = dateRangeQuery(filters)
     return {
       page,
-      page_size: RECORDS_PAGE_SIZE,
+      page_size: pageSize,
       api_key_id: filters.apiKeyID === 'all' ? undefined : filters.apiKeyID,
       model: filters.model === 'all' ? undefined : filters.model,
       source: filters.source,
@@ -288,7 +290,7 @@ export function RecordsPage() {
       request_id: filters.requestID.trim() || undefined,
       ...range,
     }
-  }, [filters, page])
+  }, [filters, page, pageSize])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -374,8 +376,8 @@ export function RecordsPage() {
   const apiKeyOptions = initialOption(data?.filters.api_keys ?? [], filters.apiKeyID, t('console.usage.currentKey'))
   const modelOptions = initialModelOption(data)
   const memberOptions = initialOption(data?.filters.members ?? [], filters.memberID, t('console.usage.currentMember'))
-  const totalPages = Math.max(RECORDS_PAGE_MIN, Math.ceil((data?.total ?? 0) / (data?.page_size || RECORDS_PAGE_SIZE)))
   const currentItems = data?.items ?? []
+  const currentPageSize = data?.page_size || pageSize
 
   return <div className="page-stack records-console-page usage-records-page">
     <PageTitle title={t('console.records.title')} description={t('console.records.description')} actions={<Button theme="borderless" icon={<IconRefresh />} aria-label={t('console.records.refresh')} title={t('console.records.refresh')} onClick={() => setReloadToken((value) => value + 1)} />} />
@@ -395,7 +397,7 @@ export function RecordsPage() {
       <div className="source-table-scroll records-table-scroll" role="region" aria-label={t('console.records.title')} tabIndex={0}>
     <table className="records-source-table records-api-table"><thead><tr><th>{t('console.records.timeRange')}</th><th>{t('console.records.requestId')}</th><th>{t('console.records.model')}</th><th>{t('console.records.platform')}</th><th>{t('console.records.status')}</th><th>{t('console.records.inputTokens')}</th><th>{t('console.records.outputTokens')}</th><th>{t('console.records.cacheHitRate')}</th><th>{t('console.records.latency')}</th><th>{t('console.records.firstToken')}</th><th>{t('console.records.cost')}</th><th>{t('console.records.operation')}</th></tr></thead><tbody>{currentItems.map((record) => <tr key={record.id}><td><time dateTime={semanticDateTime(record.occurred_at)}>{formatApiTime(record.occurred_at)}</time></td><td><span className="records-request-cell"><code>{record.request_id}</code><button type="button" className="records-icon-button" aria-label={t('console.records.copyRequestLabel', { requestId: record.request_id })} title={t('console.records.copyRequest')} onClick={() => void copyRequestID(record.request_id)}><IconCopy /></button></span></td><td><span className="records-model-cell"><strong>{record.model_name || t('console.records.unnamedModel')}</strong><small>{record.model_alias || t('console.records.noAlias')}</small></span></td><td>{clientPlatformLabel(record.client_platform)}</td><td><span className={`records-status records-status--${statusClass(record.status)}`}><i aria-hidden="true" />{statusLabel(record.status)}</span></td><td>{formatInteger(record.input_tokens)}</td><td>{formatInteger(record.output_tokens)}</td><td>{formatRate(record.cache_hit_rate)}</td><td>{formatLatency(record.latency_ms)}</td><td>{formatFirstToken(record.first_token_ms)}</td><td>{formatCost(record.cost_yuan, data?.can_view_billing ?? false)}</td><td><Button theme="borderless" size="small" onClick={() => setSelected(record)}>{t('console.records.details')}</Button></td></tr>)}</tbody></table>
       </div>
-      <div className="source-pagination records-pagination"><span>{t('console.records.rangeSummary', { start: (page - 1) * (data?.page_size || RECORDS_PAGE_SIZE) + 1, end: Math.min(page * (data?.page_size || RECORDS_PAGE_SIZE), data?.total ?? 0), total: data?.total ?? 0 })}</span><Button theme="outline" size="small" disabled={page <= RECORDS_PAGE_MIN} onClick={() => setPage((value) => Math.max(RECORDS_PAGE_MIN, value - 1))}>{t('console.common.previous')}</Button><span className="records-page-count">{t('console.records.pageOf', { page, totalPages })}</span><Button theme="outline" size="small" disabled={page >= totalPages} onClick={() => setPage((value) => Math.min(totalPages, value + 1))}>{t('console.common.next')}</Button></div>
+      <AppPagination ariaLabel={t('console.records.page')} currentPage={page} pageSize={currentPageSize} total={data?.total ?? 0} summary={t('console.records.rangeSummary', { start: (page - 1) * currentPageSize + 1, end: Math.min(page * currentPageSize, data?.total ?? 0), total: data?.total ?? 0 })} disabled={loading} onPageChange={setPage} onPageSizeChange={(nextPageSize) => { setPageSize(nextPageSize); setPage(RECORDS_PAGE_MIN) }} />
     </>}
     <Modal title={selected ? `${t('console.records.requestDetail')} · ${selected.request_id}` : t('console.records.requestDetail')} visible={Boolean(selected)} onCancel={() => setSelected(null)} footer={null} width="720px"><div className="records-detail-modal">{selected ? <RecordDetail record={selected} canViewBilling={data?.can_view_billing ?? false} onClose={() => setSelected(null)} /> : null}</div></Modal>
   </div>
