@@ -172,6 +172,7 @@ describe('real-name verification page', () => {
 
     const refreshButton = await screen.findByRole('button', { name: i18n.t('console.realName.refreshQr') })
     expect(await screen.findByText(i18n.t('console.realName.qrExpired'))).toBeInTheDocument()
+    expect(refreshButton).toHaveClass('real-name-refresh-qr-action')
     expect(screen.getByRole('button', { name: i18n.t('console.realName.confirm') })).toBeDisabled()
     fireEvent.click(refreshButton)
 

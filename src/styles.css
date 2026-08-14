@@ -1867,6 +1867,11 @@ body { --semi-color-focus-border: var(--color-border-neutral-l3); }
   color: var(--color-action-on-primary);
   opacity: .72;
 }
+.real-name-verification-dialog .real-name-refresh-qr-action.semi-button,
+.real-name-verification-dialog .real-name-refresh-qr-action.semi-button:hover:not(:disabled),
+.real-name-verification-dialog .real-name-refresh-qr-action.semi-button:focus,
+.real-name-verification-dialog .real-name-refresh-qr-action.semi-button:disabled,
+.real-name-verification-dialog .real-name-refresh-qr-action.semi-button.semi-button-disabled { color: #fff; }
 .real-name-verification-modal .semi-modal-wrap { display: flex; align-items: center; justify-content: center; padding: var(--spacing-24) 0; overflow-y: auto; }
 .real-name-verification-modal .semi-modal { max-height: calc(90dvh - var(--spacing-24)); margin: 0; background: transparent; }
 .real-name-verification-modal .semi-modal-content { isolation: isolate; overflow: hidden; background-color: #202226 !important; border: 1px solid var(--color-border-neutral-l2); border-radius: var(--radius-8); box-shadow: 0 24px 80px rgba(0, 0, 0, .42); opacity: 1; }

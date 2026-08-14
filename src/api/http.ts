@@ -105,18 +105,26 @@ export async function fetchResponse(path: string, options: FetchJsonOptions = {}
 		controller.abort()
 	}, REQUEST_TIMEOUT_MS)
   const headers = new Headers(options.headers)
+  const isFormDataBody = typeof FormData !== 'undefined' && options.body instanceof FormData
   const requestId = createRequestId()
   headers.set('Accept', 'application/json')
   headers.set('X-Request-ID', requestId)
   headers.set('X-App-Lang', getActiveLanguage())
-  if (options.body !== undefined) headers.set('Content-Type', 'application/json')
+  if (isFormDataBody) headers.delete('Content-Type')
+  else if (options.body !== undefined) headers.set('Content-Type', 'application/json')
   if (options.accessToken) headers.set('Authorization', `Bearer ${options.accessToken}`)
+
+  const requestBody: BodyInit | undefined = options.body === undefined
+    ? undefined
+    : isFormDataBody
+      ? options.body as FormData
+      : JSON.stringify(options.body)
 
 	let response: Response
   try {
     response = await fetch(makeApiUrl(path), {
       ...options,
-      body: options.body === undefined ? undefined : JSON.stringify(options.body),
+      body: requestBody,
       credentials: 'omit',
       headers,
       signal: controller.signal,

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
 import { getActiveLocale } from '@/i18n'
@@ -7,21 +7,21 @@ import Button from '@douyinfe/semi-ui/lib/es/button'
 import Modal from '@douyinfe/semi-ui/lib/es/modal'
 import Switch from '@douyinfe/semi-ui/lib/es/switch'
 import Toast from '@douyinfe/semi-ui/lib/es/toast'
-import { IconArrowRight, IconBarChartHStroked, IconCheckCircleStroked, IconCopy, IconDeleteStroked, IconEditStroked, IconGift, IconKey, IconMinusCircleStroked, IconPlus, IconPlusCircleStroked, IconSearch, IconUserGroup } from '@douyinfe/semi-icons'
-import { BannerNotice, EmptyPanel, MetricCard, ModelLogo, PageTitle, SectionHeading, workspacesFromMemberships } from '@/components/common'
+import { IconArrowRight, IconBarChartHStroked, IconCopy, IconDeleteStroked, IconEditStroked, IconGift, IconKey, IconMinusCircleStroked, IconPlus, IconPlusCircleStroked, IconSearch, IconUserGroup } from '@douyinfe/semi-icons'
+import { BannerNotice, EmptyPanel, MetricCard, ModelLogo, PageTitle, SectionHeading } from '@/components/common'
 import { MoneyText } from '@/components/money'
 import { CompatCard as Card, CompatInput as Input, CompatSelect as Select } from '@/components/semi-compat'
 import { useAppStore } from '@/data/app-state'
 import { modelAlias } from '@/data/models'
-import { getAccessToken } from '@/auth/token-storage'
-import { getProfileEnterprises } from '@/api/profile'
-import { ENTERPRISE_CREDIT_CODE_LENGTH, ENTERPRISE_LEGAL_REPRESENTATIVE_MAX_LENGTH, ENTERPRISE_NAME_MAX_LENGTH, NEW_ENTERPRISE_CREATE_PATH, getEnterpriseCertification, getEnterpriseCertificationErrorMessage, normalizeEnterpriseCreditCode, submitEnterpriseCertification, validateEnterpriseCertificationForm, type EnterpriseApplicantType, type EnterpriseCertification, type EnterpriseCertificationFormInput, type EnterpriseCertificationValidationErrors, type SubmitEnterpriseCertificationRequest } from '@/api/enterprise-certification'
+import { NEW_ENTERPRISE_CREATE_PATH } from '@/api/enterprise-certification'
 import { getUserApiKeyErrorMessage, getUserApiKeys, createUserApiKey, updateUserApiKey, enableUserApiKey, disableUserApiKey, revokeUserApiKey, type ApiKeyScope, type ApiKeyStatusFilter, type CreatedUserApiKey, type UserApiKey, type UserApiKeyContext, type UserApiKeyList, type UserApiKeyMutation } from '@/api/user-api-keys'
 import { isAuthenticationFailure } from '@/api/http'
 import { invalidateAuth } from '@/store/auth-slice'
 import { useAppDispatch } from '@/store/hooks'
 import { formatApiTime, type ApiTimeValue } from '@/utils/format'
 import { getInvitationOverview, type InvitationOverview } from '@/api/invitation'
+
+export { EnterpriseCreatePage } from './enterprise-create'
 
 type ApiKeyExpiryPreset = 'never' | '30days' | '90days' | '365days' | 'current'
 
@@ -367,213 +367,6 @@ export function InvitationsPage() {
   if (error || !overview) return <div className="invite-page"><div className="public-invitation-empty" role="alert"><strong>{error || t('console.invitations.loadFailed')}</strong></div></div>
 
   return <div className="invite-page"><header className="invite-hero"><span className="invite-hero-icon"><IconGift /></span><div><h1>{t('console.invitations.title')}</h1><p>{t('console.invitations.description')}</p></div></header><section className="invite-summary"><article><IconBarChartHStroked /><span>{t('console.invitations.total')}</span><strong><MoneyText value={overview.total_reward_yuan} digits={2} /></strong></article><article><IconUserGroup /><span>{t('console.invitations.count')}</span><strong>{overview.invited_count}</strong></article></section><section className="invite-link-card"><div className="invite-section-heading"><span className="invite-section-icon"><IconKey /></span><div><h2>{t('console.invitations.link')}</h2><p>{t('console.invitations.linkHint')}</p></div></div><div className="invite-link-row"><Input value={inviteLink} readOnly /><Button theme="solid" type="primary" icon={<IconCopy />} onClick={copyLink}>{copied ? t('console.invitations.copied') : t('console.invitations.copy')}</Button></div></section><section className="invite-records"><div className="invite-section-heading"><div><h2>{t('console.invitations.records')}</h2><p>{t('console.invitations.recordsHint')}</p></div></div><div className="source-table-scroll"><table className="invite-table"><thead><tr><th>{t('console.invitations.member')}</th><th>{t('console.invitations.status')}</th><th>{t('console.invitations.joinedAt')}</th></tr></thead><tbody>{overview.records.map((record) => <tr key={record.id}><td><strong>{record.display_name}</strong></td><td><span className="invite-status">{record.status === 'joined' ? t('console.invitations.joined') : record.status}</span></td><td>{formatApiTime(record.joined_at)}</td></tr>)}</tbody></table></div></section><section className="invite-rules"><h2>{t('console.invitations.rules')}</h2><ol><li>{t('console.invitations.ruleSource')}</li><li>{t('console.invitations.ruleStatus')}</li><li>{t('console.invitations.ruleSettlement')}</li></ol></section></div>
-}
-
-export function EnterpriseCreatePage() {
-  const { t } = useTranslation()
-  const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
-  const dispatch = useAppDispatch()
-  const { replaceEnterpriseWorkspaces } = useAppStore()
-  const isNewApplication = searchParams.get('mode') === 'new'
-  const [certification, setCertification] = useState<EnterpriseCertification | null>(null)
-  const [enterpriseName, setEnterpriseName] = useState('')
-  const [creditCode, setCreditCode] = useState('')
-  const [legalRepresentative, setLegalRepresentative] = useState('')
-  const [applicantType, setApplicantType] = useState<EnterpriseApplicantType>('legal_representative')
-  const [consent, setConsent] = useState(false)
-  const [errors, setErrors] = useState<EnterpriseCertificationValidationErrors>({})
-  const [loading, setLoading] = useState(true)
-  const [submitting, setSubmitting] = useState(false)
-  const [errorMessage, setErrorMessage] = useState('')
-  const [workspaceRefreshError, setWorkspaceRefreshError] = useState('')
-  const [newApplicationSubmitted, setNewApplicationSubmitted] = useState(false)
-
-  const invalidateSession = useCallback((): void => {
-    dispatch(invalidateAuth())
-    navigate('/', { replace: true })
-  }, [dispatch, navigate])
-
-  const loadCertification = useCallback(async (): Promise<void> => {
-    const accessToken = getAccessToken()
-    if (!accessToken) {
-      invalidateSession()
-      setLoading(false)
-      return
-    }
-    if (isNewApplication) {
-      setCertification(null)
-      setErrorMessage('')
-      setWorkspaceRefreshError('')
-      setLoading(false)
-      return
-    }
-    setLoading(true)
-    setErrorMessage('')
-    try {
-      setCertification(await getEnterpriseCertification(accessToken))
-    } catch (requestError: unknown) {
-      if (isAuthenticationFailure(requestError)) {
-        invalidateSession()
-      } else {
-        setErrorMessage(getEnterpriseCertificationErrorMessage(requestError))
-      }
-    } finally {
-      setLoading(false)
-    }
-  }, [invalidateSession, isNewApplication])
-
-  const refreshEnterpriseWorkspaces = useCallback(async (accessToken: string): Promise<void> => {
-    setWorkspaceRefreshError('')
-    try {
-      const memberships = await getProfileEnterprises(getAccessToken() ?? accessToken)
-      replaceEnterpriseWorkspaces(workspacesFromMemberships(memberships))
-    } catch (requestError: unknown) {
-      if (isAuthenticationFailure(requestError)) {
-        invalidateSession()
-        return
-      }
-      setWorkspaceRefreshError(t('console.enterpriseCreate.workspaceRefreshError'))
-    }
-  }, [invalidateSession, replaceEnterpriseWorkspaces, t])
-
-  useEffect(() => {
-    if (!isNewApplication) return
-    setCertification(null)
-    setEnterpriseName('')
-    setCreditCode('')
-    setLegalRepresentative('')
-    setApplicantType('legal_representative')
-    setConsent(false)
-    setErrors({})
-    setNewApplicationSubmitted(false)
-  }, [isNewApplication])
-
-  const visibleCertification = isNewApplication && !newApplicationSubmitted ? null : certification
-
-  useEffect(() => {
-    void loadCertification()
-  }, [loadCertification])
-
-  useEffect(() => {
-    if (visibleCertification?.status !== 'approved') return
-    const accessToken = getAccessToken()
-    if (!accessToken) {
-      invalidateSession()
-      return
-    }
-    void refreshEnterpriseWorkspaces(accessToken)
-  }, [invalidateSession, refreshEnterpriseWorkspaces, visibleCertification])
-
-  function submit(event: FormEvent<HTMLFormElement>): void {
-    event.preventDefault()
-    const input: EnterpriseCertificationFormInput = { enterpriseName, creditCode, legalRepresentative, applicantType, consent }
-    const nextErrors = validateEnterpriseCertificationForm(input)
-    setErrors(nextErrors)
-    if (Object.keys(nextErrors).length > 0) return
-    const accessToken = getAccessToken()
-    if (!accessToken) {
-      invalidateSession()
-      return
-    }
-    const request: SubmitEnterpriseCertificationRequest = {
-      enterprise_name: enterpriseName.trim(),
-      credit_code: normalizeEnterpriseCreditCode(creditCode),
-      legal_representative: legalRepresentative.trim(),
-      applicant_type: applicantType,
-      consent,
-    }
-    setSubmitting(true)
-    setErrorMessage('')
-    void submitEnterpriseCertification(accessToken, request).then((result) => {
-      if (isNewApplication) setNewApplicationSubmitted(true)
-      setCertification(result)
-    }).catch((requestError: unknown) => {
-      if (isAuthenticationFailure(requestError)) {
-        invalidateSession()
-        return
-      }
-      setErrorMessage(getEnterpriseCertificationErrorMessage(requestError))
-    }).finally(() => {
-      setSubmitting(false)
-    })
-  }
-
-  if (loading && !visibleCertification) {
-    return <div className="page-stack enterprise-create-page"><PageTitle title={t('console.enterpriseCreate.title')} description={t('console.enterpriseCreate.description')} /><div className="profile-state-panel" role="status">{t('console.enterpriseCreate.loading')}</div></div>
-  }
-
-  const approved = visibleCertification?.status === 'approved'
-  const showForm = !visibleCertification || visibleCertification.status === 'unsubmitted' || visibleCertification.status === 'rejected' || visibleCertification.status === 'cancelled'
-  return <div className="page-stack enterprise-create-page">
-    <PageTitle title={t('console.enterpriseCreate.title')} description={t('console.enterpriseCreate.description')} />
-    {errorMessage ? <BannerNotice tone="warning"><div className="profile-error-content"><span>{errorMessage}</span><Button theme="borderless" size="small" loading={loading} disabled={loading} onClick={() => { void loadCertification() }}>{t('console.enterpriseCreate.reload')}</Button></div></BannerNotice> : null}
-    {!approved && visibleCertification?.status === 'rejected' ? <BannerNotice tone="warning">{t('console.enterpriseCreate.rejected')}</BannerNotice> : null}
-    <div className="enterprise-create-layout">
-      <Card className="enterprise-create-card">
-        <span className="eyebrow">{t('console.enterpriseCreate.eyebrow')}</span>
-        {approved ? <>
-          <h2>{t('console.enterpriseCreate.approvedTitle')}</h2>
-          <p>{t('console.enterpriseCreate.approvedHint')}</p>
-          {workspaceRefreshError ? <BannerNotice tone="warning">{workspaceRefreshError}</BannerNotice> : null}
-          <div className="real-name-status" aria-label={t('console.enterpriseCreate.resultLabel')}>
-            <div className="real-name-status-row"><span>{t('console.enterpriseCreate.enterpriseName')}</span><strong>{visibleCertification?.enterprise_name || t('console.enterpriseCreate.verifiedEnterprise')}</strong></div>
-            <div className="real-name-status-row"><span>{t('console.enterpriseCreate.creditCode')}</span><strong>{visibleCertification?.credit_code_masked || t('console.enterpriseCreate.protected')}</strong></div>
-            <div className="real-name-status-row"><span>{t('console.enterpriseCreate.legalRepresentative')}</span><strong>{visibleCertification?.legal_representative_masked || t('console.enterpriseCreate.protected')}</strong></div>
-            <div className="real-name-status-row"><span>{t('console.enterpriseCreate.applicantType')}</span><strong>{visibleCertification?.applicant_type === 'authorized_agent' ? t('console.enterpriseCreate.authorizedAgent') : t('console.enterpriseCreate.legalRepresentativeApplicant')}</strong></div>
-            <div className="real-name-status-row"><span>{t('console.enterpriseCreate.workspace')}</span><strong>{t('console.enterpriseCreate.created')}</strong></div>
-          </div>
-        </> : showForm ? <>
-          <h2>{t('console.enterpriseCreate.formTitle')}</h2>
-          <p>{t('console.enterpriseCreate.formHint')}</p>
-          <form className="real-name-form" onSubmit={submit} noValidate>
-            <label className="real-name-field" htmlFor="enterprise-name">
-              <span>{t('console.enterpriseCreate.enterpriseName')}</span>
-              <Input id="enterprise-name" value={enterpriseName} onChange={(value) => { setEnterpriseName(value); setErrors((previous) => ({ ...previous, enterpriseName: undefined })) }} maxLength={ENTERPRISE_NAME_MAX_LENGTH} placeholder={t('console.enterpriseCreate.namePlaceholder')} aria-invalid={Boolean(errors.enterpriseName)} aria-describedby={errors.enterpriseName ? 'enterprise-name-error' : undefined} />
-              {errors.enterpriseName ? <span className="profile-field-error" id="enterprise-name-error" role="alert">{errors.enterpriseName}</span> : null}
-            </label>
-            <label className="real-name-field" htmlFor="enterprise-credit-code">
-              <span>{t('console.enterpriseCreate.creditCode')}</span>
-              <Input id="enterprise-credit-code" value={creditCode} onChange={(value) => { setCreditCode(normalizeEnterpriseCreditCode(value)); setErrors((previous) => ({ ...previous, creditCode: undefined })) }} maxLength={ENTERPRISE_CREDIT_CODE_LENGTH} placeholder={t('console.enterpriseCreate.creditCodePlaceholder')} aria-invalid={Boolean(errors.creditCode)} aria-describedby={errors.creditCode ? 'enterprise-credit-code-error' : undefined} />
-              {errors.creditCode ? <span className="profile-field-error" id="enterprise-credit-code-error" role="alert">{errors.creditCode}</span> : null}
-            </label>
-            <label className="real-name-field" htmlFor="enterprise-legal-representative">
-              <span>{t('console.enterpriseCreate.legalRepresentative')}</span>
-              <Input id="enterprise-legal-representative" value={legalRepresentative} onChange={(value) => { setLegalRepresentative(value); setErrors((previous) => ({ ...previous, legalRepresentative: undefined })) }} maxLength={ENTERPRISE_LEGAL_REPRESENTATIVE_MAX_LENGTH} placeholder={t('console.enterpriseCreate.legalRepresentativePlaceholder')} aria-invalid={Boolean(errors.legalRepresentative)} aria-describedby={errors.legalRepresentative ? 'enterprise-legal-representative-error' : undefined} />
-              {errors.legalRepresentative ? <span className="profile-field-error" id="enterprise-legal-representative-error" role="alert">{errors.legalRepresentative}</span> : null}
-            </label>
-            <label className="real-name-field" htmlFor="enterprise-applicant-type">
-              <span>{t('console.enterpriseCreate.applicantType')}</span>
-              <select className="source-input real-name-select" id="enterprise-applicant-type" value={applicantType} onChange={(event) => { setApplicantType(event.target.value as EnterpriseApplicantType); setErrors((previous) => ({ ...previous, applicantType: undefined })) }} aria-invalid={Boolean(errors.applicantType)} aria-describedby={errors.applicantType ? 'enterprise-applicant-type-error' : undefined}>
-                <option value="legal_representative">{t('console.enterpriseCreate.legalRepresentativeApplicant')}</option>
-                <option value="authorized_agent">{t('console.enterpriseCreate.authorizedAgent')}</option>
-              </select>
-              {errors.applicantType ? <span className="profile-field-error" id="enterprise-applicant-type-error" role="alert">{errors.applicantType}</span> : null}
-            </label>
-            <label className="real-name-consent" htmlFor="enterprise-certification-consent">
-              <input id="enterprise-certification-consent" type="checkbox" checked={consent} onChange={(event) => { setConsent(event.target.checked); if (event.target.checked) setErrors((previous) => ({ ...previous, consent: undefined })) }} aria-invalid={Boolean(errors.consent)} aria-describedby={errors.consent ? 'enterprise-certification-consent-error' : undefined} />
-              <span>{t('console.enterpriseCreate.consent')}</span>
-            </label>
-            {errors.consent ? <span className="profile-field-error" id="enterprise-certification-consent-error" role="alert">{errors.consent}</span> : null}
-            <Button className="real-name-submit" htmlType="submit" theme="solid" type="primary" loading={submitting} disabled={submitting}>{t('console.enterpriseCreate.submit')}</Button>
-          </form>
-          <p className="real-name-demo-note">{t('console.enterpriseCreate.demoNote')}</p>
-        </> : <>
-          <h2>{t('console.enterpriseCreate.pendingTitle')}</h2>
-          <p>{t('console.enterpriseCreate.pendingHint')}</p>
-          <Button theme="outline" loading={loading} disabled={loading} onClick={() => { void loadCertification() }}>{t('console.enterpriseCreate.refreshStatus')}</Button>
-        </>}
-      </Card>
-      <aside className="enterprise-create-aside">
-        <h3>{t('console.enterpriseCreate.afterTitle')}</h3>
-        <div><IconCheckCircleStroked /><span>{t('console.enterpriseCreate.afterWorkspace')}</span></div>
-        <div><IconCheckCircleStroked /><span>{t('console.enterpriseCreate.afterOwner')}</span></div>
-        <div><IconCheckCircleStroked /><span>{t('console.enterpriseCreate.afterMembers')}</span></div>
-        <div><IconCheckCircleStroked /><span>{t('console.enterpriseCreate.afterResources')}</span></div>
-        <Button theme="borderless" icon={<IconArrowRight />} onClick={() => navigate('/about')}>{t('console.enterpriseCreate.about')}</Button>
-      </aside>
-    </div>
-  </div>
 }
 
 export function EnterpriseSettingsPage() {

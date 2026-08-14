@@ -2,6 +2,7 @@ import i18n from 'i18next'
 import { initReactI18next } from 'react-i18next'
 import { apiResources } from './api'
 import { consoleResources } from './console'
+import { enterpriseCreateResources } from './enterprise-create'
 import { publicResources } from './public'
 
 export const LANGUAGE_STORAGE_KEY = 'token-nx:locale'
@@ -523,6 +524,13 @@ const resources = {
       ...publicResources['zh-CN'],
       ...apiResources['zh-CN'],
       ...consoleResources['zh-CN'],
+      console: {
+        ...consoleResources['zh-CN'].console,
+        enterpriseCreate: {
+          ...consoleResources['zh-CN'].console.enterpriseCreate,
+          ...enterpriseCreateResources['zh-CN'],
+        },
+      },
     },
   },
   'en-US': {
@@ -707,6 +715,13 @@ const resources = {
       ...publicResources['en-US'],
       ...apiResources['en-US'],
       ...consoleResources['en-US'],
+      console: {
+        ...consoleResources['en-US'].console,
+        enterpriseCreate: {
+          ...consoleResources['en-US'].console.enterpriseCreate,
+          ...enterpriseCreateResources['en-US'],
+        },
+      },
     },
   },
 } as const
