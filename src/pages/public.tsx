@@ -27,6 +27,7 @@ import { QUICKSTART_API_BASE_URL, quickstartCodeSample } from '@/utils/quickstar
 import { useTranslation } from 'react-i18next'
 import { formatRankingTokens, RankingRecentUsageChart } from '@/components/ranking-usage-chart'
 import { formatToolUsageTokens, ToolUsageClientsChart } from '@/components/tool-usage-chart'
+import { apiTimeToDate } from '@/utils/format'
 
 function formatPublicPrice(price: ModelPrice): ReactNode {
   return <ModelPriceSummary price={price} />
@@ -139,10 +140,10 @@ function homepageHref(value: string | undefined, fallback: string): string {
   return fallback
 }
 
-function homepageDate(value: number | string | undefined, language: string): string {
+function homepageDate(value: number | undefined, language: string): string {
   if (value === undefined) return ''
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return ''
+  const date = apiTimeToDate(value)
+  if (!date) return ''
   return date.toLocaleDateString(homepageLocale(language), { year: 'numeric', month: '2-digit', day: '2-digit' })
 }
 

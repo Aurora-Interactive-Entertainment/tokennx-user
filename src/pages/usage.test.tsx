@@ -31,7 +31,7 @@ function makeSummary(): UsageSummaryResponse {
       models: [{ code: 'gpt-test', alias: 'gpt-public', name: '测试模型', vendor: '测试厂商' }],
       members: [],
     },
-    period: { range: '7d', start_at: '2026-07-18T00:00:00Z', end_at: '2026-07-24T23:59:59Z', label: '最近 7 天' },
+    period: { range: '7d', start_at: Date.parse('2026-07-18T00:00:00Z'), end_at: Date.parse('2026-07-24T23:59:59Z'), label: '最近 7 天' },
     metrics: {
       request_count: 12,
       success_count: 11,

@@ -20,7 +20,7 @@ describe('实名认证 API 封装', () => {
     expect(fetchMock.mock.calls.at(-1)?.[1]?.method).toBe('GET')
     expect(new Headers(fetchMock.mock.calls.at(-1)?.[1]?.headers).get('Authorization')).toBe('Bearer real-name-token')
 
-    const verified: RealNameProfile = { status: 'verified', id_type: 'id-card', verification_level: 'test', masked_id_number: '1101**********1234', verified_at: '2026-07-24T08:00:00Z' }
+    const verified: RealNameProfile = { status: 'verified', id_type: 'id-card', verification_level: 'test', masked_id_number: '1101**********1234', verified_at: Date.parse('2026-07-24T08:00:00Z') }
     fetchMock.mockResolvedValue(response(verified))
     await expect(submitRealName('real-name-token', { name: '张三', id_type: 'id-card', id_number: '110101199001011234', consent: true })).resolves.toEqual(verified)
     expect(fetchMock.mock.calls.at(-1)?.[0]).toBe('/api/user/real-name')

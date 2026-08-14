@@ -12,7 +12,7 @@ import { invalidateAuth } from '@/store/auth-slice'
 import { useAppDispatch } from '@/store/hooks'
 import { useAppStore } from '@/data/app-state'
 import i18n from '@/i18n'
-import { formatLocalDateInput, localDateToISOString, shiftLocalDate } from '@/utils/format'
+import { formatLocalDateInput, localDateToTimestamp, shiftLocalDate } from '@/utils/format'
 import {
   getUsageSummary,
   getUsageSummaryErrorMessage,
@@ -52,15 +52,15 @@ function customDateDefaults(): Pick<UsageFilterState, 'startDate' | 'endDate'> {
 function dateRangeQuery(filters: UsageFilterState): Pick<UsageSummaryQuery, 'start_at' | 'end_at'> {
   if (filters.range === DATE_RANGE_CUSTOM) {
     return {
-      start_at: filters.startDate ? localDateToISOString(filters.startDate) : undefined,
-      end_at: filters.endDate ? localDateToISOString(filters.endDate, true) : undefined,
+      start_at: filters.startDate ? localDateToTimestamp(filters.startDate) : undefined,
+      end_at: filters.endDate ? localDateToTimestamp(filters.endDate, true) : undefined,
     }
   }
   const today = new Date()
   const end = formatLocalDateInput(today)
   const days = filters.range === DATE_RANGE_TODAY ? 0 : filters.range === DATE_RANGE_WEEK ? DEFAULT_CUSTOM_RANGE_DAYS : 29
   const start = formatLocalDateInput(shiftLocalDate(today, -days))
-  return { start_at: localDateToISOString(start), end_at: localDateToISOString(end, true) }
+  return { start_at: localDateToTimestamp(start), end_at: localDateToTimestamp(end, true) }
 }
 
 function createDefaultFilters(): UsageFilterState {

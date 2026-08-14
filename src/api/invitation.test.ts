@@ -10,7 +10,7 @@ describe('邀请返现接口', () => {
   beforeEach(() => { vi.restoreAllMocks(); clearAuthTokens() })
 
   it('读取邀请概览时携带访问令牌', async () => {
-    saveAuthTokens({ status: 'succeeded', binding_required: false, access_token: 'invite-token', refresh_token: 'refresh', access_expires_at: 1999999999, refresh_expires_at: 1999999999 })
+    saveAuthTokens({ status: 'succeeded', binding_required: false, access_token: 'invite-token', refresh_token: 'refresh', access_expires_at: Date.UTC(2099, 0, 1), refresh_expires_at: Date.UTC(2099, 1, 1) })
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(response({ invite_code: 'code-1', invited_count: 0, visit_count: 0, total_reward_yuan: '0', records: [] }))
     await getInvitationOverview()
     expect(String(fetchMock.mock.calls[0][0])).toContain('/api/user/invitation/overview')

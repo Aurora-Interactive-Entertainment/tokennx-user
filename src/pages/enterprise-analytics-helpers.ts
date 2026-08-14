@@ -6,10 +6,11 @@ import type {
 } from "@/api/enterprise-console";
 import i18n from "@/i18n";
 import {
+  apiTimeToDate,
   formatCount,
   formatLocalDateInput,
   formatYuan,
-  localDateToISOString,
+  localDateToTimestamp,
   shiftLocalDate,
 } from "@/utils/format";
 
@@ -38,8 +39,8 @@ export type AnalyticsFilters = {
 
 export type AnalyticsQuery = {
   range: AnalyticsRange;
-  start_at?: string;
-  end_at?: string;
+  start_at?: number;
+  end_at?: number;
   member_id?: string;
 };
 
@@ -129,11 +130,11 @@ export function analyticsQuery(filters: AnalyticsFilters): AnalyticsQuery {
     range: filters.range,
     start_at:
       filters.range === "custom"
-        ? localDateToISOString(filters.startDate)
+        ? localDateToTimestamp(filters.startDate)
         : undefined,
     end_at:
       filters.range === "custom"
-        ? localDateToISOString(filters.endDate, true)
+        ? localDateToTimestamp(filters.endDate, true)
         : undefined,
     member_id: filters.memberID === "all" ? undefined : filters.memberID,
   };
@@ -404,10 +405,9 @@ export function analyticsDistributionRows(
   });
 }
 
-function apiDateOnly(value: string | number | null | undefined): string {
-  if (value === null || value === undefined) return "";
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? "" : date.toISOString().slice(0, 10);
+function apiDateOnly(value: number | null | undefined): string {
+  const date = apiTimeToDate(value);
+  return date ? date.toISOString().slice(0, 10) : "";
 }
 
 function appendRangeParams(

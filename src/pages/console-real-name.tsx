@@ -13,6 +13,7 @@ import { confirmRealName, getRealNameErrorMessage, getRealNameProfile, isRealNam
 import { invalidateAuth } from '@/store/auth-slice'
 import { useAppDispatch, useAppSelector } from '@/store/hooks'
 import i18n from '@/i18n'
+import { apiTimeToMilliseconds } from '@/utils/format'
 
 const REAL_NAME_NAME_MAX_LENGTH = 30
 const REAL_NAME_ID_NUMBER_LENGTH = 18
@@ -51,17 +52,6 @@ function isVerified(profile: RealNameProfile | null): boolean { return profile?.
 function realNameVerificationLabel(profile: RealNameProfile): string { return profile.verification_level === 'test' ? i18n.t('console.realName.testVerification') : i18n.t('console.realName.identityVerification') }
 function isMobileDevice(): boolean { return typeof window !== 'undefined' && window.matchMedia?.('(max-width: 700px)').matches }
 function isRealNameLoginExpired(error: unknown): boolean { return isApiError(error) ? error.status === 401 : isAuthenticationFailure(error) }
-function timeValueToMilliseconds(value: unknown): number | null {
-  if (typeof value === 'number' && Number.isFinite(value)) return value
-  if (typeof value === 'string' && value.trim()) {
-    const numeric = Number(value)
-    if (Number.isFinite(numeric)) return numeric
-    const parsed = Date.parse(value)
-    return Number.isFinite(parsed) ? parsed : null
-  }
-  return null
-}
-
 function readStoredSession(userId: string): StoredRealNameSession | null {
   try {
     const raw = window.sessionStorage.getItem(REAL_NAME_SESSION_KEY)
@@ -86,7 +76,7 @@ function saveStoredSession(userId: string, receipt: RealNameProfile, qrExpiresAt
   const id = receipt.id?.trim()
   const certifyUrl = receipt.certify_url?.trim()
   if (!id || !certifyUrl) return
-  const serverExpiresAt = timeValueToMilliseconds(receipt.expires_at) ?? qrExpiresAt
+  const serverExpiresAt = apiTimeToMilliseconds(receipt.expires_at) ?? qrExpiresAt
   try {
     window.sessionStorage.setItem(REAL_NAME_SESSION_KEY, JSON.stringify({ user_id: userId, id, certify_url: certifyUrl, expires_at: serverExpiresAt, qr_expires_at: qrExpiresAt } satisfies StoredRealNameSession))
   } catch { /* The active in-memory session remains usable. */ }
@@ -132,7 +122,7 @@ export function RealNamePage() {
   }, [])
 
   const applyReceipt = useCallback((next: RealNameProfile) => {
-    const serverExpiresAt = timeValueToMilliseconds(next.expires_at)
+    const serverExpiresAt = apiTimeToMilliseconds(next.expires_at)
     const fiveMinutesFromNow = Date.now() + QR_VALIDITY_MS
     const nextQrExpiresAt = serverExpiresAt === null ? fiveMinutesFromNow : Math.min(serverExpiresAt, fiveMinutesFromNow)
     setReceipt(next)

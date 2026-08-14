@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { formatApiTime, formatApiTimeField, formatCount, formatCurrency, formatDecimal, formatLocalDateInput, formatNumber, formatSignedYuan, formatYuan, formatYuanExact, isApiTimeFieldName, isZeroYuan, localDateToISOString, modelPriceSummary, relativeTime, shiftLocalDate, usageTotal } from './format'
+import { apiTimeToMilliseconds, formatApiTime, formatApiTimeField, formatCount, formatCurrency, formatDecimal, formatLocalDateInput, formatNumber, formatSignedYuan, formatYuan, formatYuanExact, isApiTimeFieldName, isApiTimestamp, isZeroYuan, localDateToTimestamp, modelPriceSummary, relativeTime, shiftLocalDate, usageTotal } from './format'
 import { normalizeQuickstartLanguage, normalizeQuickstartProtocol, quickstartCodeSample } from './quickstart'
 import { findModel } from '@/data/models'
 
@@ -50,9 +50,12 @@ describe('展示格式与用量聚合', () => {
     const localDate = new Date(2026, 6, 30, 12, 0, 0, 0)
     expect(formatLocalDateInput(localDate)).toBe('2026-07-30')
     expect(formatLocalDateInput(shiftLocalDate(localDate, -1))).toBe('2026-07-29')
-    expect(localDateToISOString('2026-07-30')).toBe(new Date(2026, 6, 30, 0, 0, 0, 0).toISOString())
-    expect(localDateToISOString('2026-07-30', true)).toBe(new Date(2026, 6, 30, 23, 59, 59, 999).toISOString())
-    expect(localDateToISOString('2026-02-30')).toBeUndefined()
+    expect(localDateToTimestamp('2026-07-30')).toBe(new Date(2026, 6, 30, 0, 0, 0, 0).getTime())
+    expect(localDateToTimestamp('2026-07-30', true)).toBe(new Date(2026, 6, 30, 23, 59, 59, 999).getTime())
+    expect(localDateToTimestamp('2026-02-30')).toBeUndefined()
+    expect(isApiTimestamp(Date.UTC(2026, 6, 30))).toBe(true)
+    expect(isApiTimestamp(Date.UTC(2026, 6, 30) / 1000)).toBe(false)
+    expect(apiTimeToMilliseconds(Date.UTC(2026, 6, 30))).toBe(Date.UTC(2026, 6, 30))
     expect(isApiTimeFieldName('expires_at')).toBe(true)
     expect(isApiTimeFieldName('date')).toBe(false)
     expect(formatApiTimeField('expires_at', Date.parse('2026-07-23T08:30:00Z'))).toContain('2026-07-23')

@@ -50,7 +50,7 @@ import {
   roleVisualClass,
   useEnterpriseErrorHandler,
 } from './enterprise-console-shared'
-import { formatLocalDateInput, localDateToISOString } from '@/utils/format'
+import { formatLocalDateInput, localDateToTimestamp } from '@/utils/format'
 import { resolveInvitationURL } from '@/utils/invitation'
 import i18n from '@/i18n'
 
@@ -141,9 +141,9 @@ function nullableMoney(value: string): string | null {
   return trimmed || null
 }
 
-function dateToISO(value: string): string | null {
+function dateToTimestamp(value: string): number | null {
   if (!value) return null
-  return localDateToISOString(value, true) ?? null
+  return localDateToTimestamp(value, true) ?? null
 }
 
 function tagInputFromForm(form: TagFormState): EnterpriseTagInput | null {
@@ -353,7 +353,7 @@ function BannerInlineError({ message }: { message: string }) {
   return <div className="enterprise-inline-error" role="alert">{message}</div>
 }
 
-function InviteModal({ visible, saving, roleOptions, onCancel, onCreate, created }: { visible: boolean; saving: boolean; roleOptions: EnterpriseRoleOption[]; onCancel: () => void; onCreate: (input: { role: string; max_uses: number; expires_at: string | null }) => void; created: EnterpriseInvitation | null }) {
+function InviteModal({ visible, saving, roleOptions, onCancel, onCreate, created }: { visible: boolean; saving: boolean; roleOptions: EnterpriseRoleOption[]; onCancel: () => void; onCreate: (input: { role: string; max_uses: number; expires_at: number | null }) => void; created: EnterpriseInvitation | null }) {
   const { t } = useTranslation()
   const [role, setRole] = useState('')
   const [maxUses, setMaxUses] = useState(String(DEFAULT_INVITATION_MAX_USES))
@@ -366,7 +366,7 @@ function InviteModal({ visible, saving, roleOptions, onCancel, onCreate, created
   }, [roleOptions, visible])
   const createdURL = created ? resolveInvitationURL(created.invite_url, window.location.origin) : ''
   if (created) return <Modal title={t('console.enterprise.members.inviteCreated')} visible={visible} onCancel={onCancel} footer={null}><div className="enterprise-invite-created"><p>{t('console.enterprise.members.inviteCreatedHint')}</p><div className="enterprise-copy-row"><input className="source-input" readOnly value={createdURL} aria-label={t('console.enterprise.members.inviteLink')} /><Button theme="solid" type="primary" icon={<IconCopy />} disabled={!createdURL} onClick={() => copyText(createdURL)}>{t('console.enterprise.members.copyLink')}</Button></div><dl><div><dt>{t('console.enterprise.members.role')}</dt><dd>{created.role_name || roleLabel(created.role, roleOptions)}</dd></div><div><dt>{t('console.enterprise.members.maxUses')}</dt><dd>{created.max_uses}</dd></div><div><dt>{t('console.enterprise.members.validUntil')}</dt><dd>{created.expires_at ? formatEnterpriseTime(created.expires_at) : t('console.join.forever')}</dd></div></dl><Button theme="outline" onClick={onCancel}>{t('console.enterprise.members.complete')}</Button></div></Modal>
-  return <Modal title={t('console.enterprise.members.createInvite')} visible={visible} onCancel={onCancel} onOk={() => { const parsed = Number(maxUses); if (!role) { Toast.warning(t('console.enterprise.members.roleRequired')); return } if (!Number.isInteger(parsed) || parsed <= 0) { Toast.warning(t('console.enterprise.members.usesPositive')); return } onCreate({ role, max_uses: parsed, expires_at: dateToISO(expiresAt) }) }} okText={t('console.enterprise.members.createLink')} cancelText={t('console.enterprise.members.cancel')} okButtonProps={{ loading: saving, disabled: saving || !role }}><div className="enterprise-form-grid enterprise-invitation-form"><label>{t('console.enterprise.members.role')}<Select value={role} onChange={(value) => setRole(String(value))} block disabled={!assignableRoleOptions(roleOptions).length}>{assignableRoleOptions(roleOptions).map((option) => <Select.Option value={option.code} key={option.code}>{option.name}</Select.Option>)}</Select></label><label>{t('console.enterprise.members.maxUses')}<Input value={maxUses} onChange={(value) => setMaxUses(value.replace(/\D/g, ''))} inputMode="numeric" placeholder={t('console.enterprise.members.maxUsesPlaceholder')} /></label><label>{t('console.enterprise.members.expiresOptional')}<input className="source-input" type="date" value={expiresAt} onChange={(event) => setExpiresAt(event.target.value)} /></label><p className="enterprise-form-hint">{t('console.enterprise.members.inviteHint')}</p></div></Modal>
+  return <Modal title={t('console.enterprise.members.createInvite')} visible={visible} onCancel={onCancel} onOk={() => { const parsed = Number(maxUses); if (!role) { Toast.warning(t('console.enterprise.members.roleRequired')); return } if (!Number.isInteger(parsed) || parsed <= 0) { Toast.warning(t('console.enterprise.members.usesPositive')); return } onCreate({ role, max_uses: parsed, expires_at: dateToTimestamp(expiresAt) }) }} okText={t('console.enterprise.members.createLink')} cancelText={t('console.enterprise.members.cancel')} okButtonProps={{ loading: saving, disabled: saving || !role }}><div className="enterprise-form-grid enterprise-invitation-form"><label>{t('console.enterprise.members.role')}<Select value={role} onChange={(value) => setRole(String(value))} block disabled={!assignableRoleOptions(roleOptions).length}>{assignableRoleOptions(roleOptions).map((option) => <Select.Option value={option.code} key={option.code}>{option.name}</Select.Option>)}</Select></label><label>{t('console.enterprise.members.maxUses')}<Input value={maxUses} onChange={(value) => setMaxUses(value.replace(/\D/g, ''))} inputMode="numeric" placeholder={t('console.enterprise.members.maxUsesPlaceholder')} /></label><label>{t('console.enterprise.members.expiresOptional')}<input className="source-input" type="date" value={expiresAt} onChange={(event) => setExpiresAt(event.target.value)} /></label><p className="enterprise-form-hint">{t('console.enterprise.members.inviteHint')}</p></div></Modal>
 }
 
 function JoinRequestReviewModal({ request, visible, saving, roleOptions, onCancel, onReview }: { request: EnterpriseJoinRequest | null; visible: boolean; saving: boolean; roleOptions: EnterpriseRoleOption[]; onCancel: () => void; onReview: (input: { action: string; role?: string; rejection_reason?: string }) => void }) {
@@ -525,7 +525,7 @@ function MembersContent({ context }: { context: EnterpriseContext }) {
     }
   }
 
-  async function createInvitation(input: { role: string; max_uses: number; expires_at: string | null }): Promise<void> {
+  async function createInvitation(input: { role: string; max_uses: number; expires_at: number | null }): Promise<void> {
     setInviteSaving(true)
     try {
       const created = await createEnterpriseInvitation(requestContext, input)

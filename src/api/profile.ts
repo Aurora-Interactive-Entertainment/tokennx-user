@@ -1,6 +1,6 @@
 import { fetchAuthenticatedJson } from './authenticated'
 import { ApiError, isApiError } from './http'
-import type { ApiTimeValue } from '@/utils/format'
+import type { ApiTimestamp } from '@/utils/format'
 import i18n from '@/i18n'
 
 const PROFILE_PATH = '/api/user/profile'
@@ -64,8 +64,8 @@ export interface EnterpriseMembership {
   join_source: string
   roles: string[]
   owner: boolean
-  joined_at: ApiTimeValue
-  exited_at?: ApiTimeValue | null
+  joined_at: ApiTimestamp
+  exited_at?: ApiTimestamp | null
   version: number
 }
 

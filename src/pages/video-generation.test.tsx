@@ -82,7 +82,7 @@ function activeApiKey(overrides: Partial<UserApiKey> = {}): UserApiKey {
   return {
     id: 'key-video-test', name: '视频联调密钥', masked_key: 'nx_live_••••••••test', secret: 'nx_live_video_secret', status: 'active', scope: 'all', model_ids: null, models: [], tags: [], billing_source: 'balance',
     limits: { enabled: true, cost_limit_yuan: null, used_amount_yuan: '0', rpm: null, tpm: null, concurrency: null },
-    creator: { id: 'user-video-test', display_name: '测试用户', masked_phone: '138****0000' }, created_at: '2026-07-30T10:00:00Z', expires_at: null, last_used_at: null,
+    creator: { id: 'user-video-test', display_name: '测试用户', masked_phone: '138****0000' }, created_at: Date.parse('2026-07-30T10:00:00Z'), expires_at: null, last_used_at: null,
     ...overrides,
   }
 }

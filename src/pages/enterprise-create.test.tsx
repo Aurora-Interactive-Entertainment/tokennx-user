@@ -40,7 +40,7 @@ const APPROVED: EnterpriseCertification = {
 }
 const MEMBERSHIP: EnterpriseMembership = {
   id: 'mem_test', enterprise_id: 'ent_test', enterprise_name: '测试企业', enterprise_code: 'ent_test', member_status: 'active',
-  join_source: 'certification', roles: ['owner'], owner: true, joined_at: '2026-07-29T00:00:00Z', exited_at: null, version: 1,
+  join_source: 'certification', roles: ['owner'], owner: true, joined_at: Date.parse('2026-07-29T00:00:00Z'), exited_at: null, version: 1,
 }
 
 function LocationProbe() {

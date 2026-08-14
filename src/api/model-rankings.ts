@@ -1,4 +1,5 @@
 import i18n from '@/i18n'
+import { isApiTimestamp, type ApiTimestamp } from '@/utils/format'
 import { ApiError, fetchJson } from './http'
 
 export const MODEL_USAGE_LEADERBOARD_PATH = '/api/homepage/model-usage/leaderboard'
@@ -18,10 +19,10 @@ export interface ModelUsageLeaderboardItem {
 
 export interface ModelUsageLeaderboard {
   period: ModelUsagePeriod
-  started_at: string | number
-  ended_at: string | number
-  previous_from: string | number
-  previous_to: string | number
+  started_at: ApiTimestamp
+  ended_at: ApiTimestamp
+  previous_from: ApiTimestamp
+  previous_to: ApiTimestamp
   items: ModelUsageLeaderboardItem[]
 }
 
@@ -68,9 +69,8 @@ function parseString(value: unknown): string {
   return value.trim()
 }
 
-function parseTime(value: unknown): string | number {
-  if (typeof value === 'string' && value.trim()) return value.trim()
-  if (typeof value === 'number' && Number.isFinite(value) && value >= 0) return value
+function parseTime(value: unknown): ApiTimestamp {
+  if (isApiTimestamp(value)) return value
   return invalidResponse()
 }
 

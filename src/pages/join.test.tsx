@@ -94,7 +94,7 @@ describe('企业邀请页面', () => {
   })
 
   it('已过期邀请显示失效原因且不提供申请按钮', async () => {
-    getInvitationPreviewMock.mockResolvedValueOnce({ ...PREVIEW, status: 'expired', expires_at: '2026-07-01T00:00:00Z' })
+    getInvitationPreviewMock.mockResolvedValueOnce({ ...PREVIEW, status: 'expired', expires_at: Date.parse('2026-07-01T00:00:00Z') })
     renderJoin(true)
 
     expect(await screen.findByText('已过期')).toBeInTheDocument()

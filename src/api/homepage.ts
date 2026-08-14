@@ -1,4 +1,5 @@
 import i18n from '@/i18n'
+import { isApiTimestamp, type ApiTimestamp } from '@/utils/format'
 import { ApiError, fetchJson, makeApiUrl } from './http'
 
 declare global {
@@ -64,7 +65,7 @@ export interface HomepageEntry {
     discount_kind?: HomepageDiscountKind
     [key: string]: unknown
   }
-  updated_at?: number | string
+  updated_at?: ApiTimestamp
 }
 
 export interface PublicHomepage {
@@ -143,7 +144,7 @@ function parseEntry(value: unknown, expectedKind: HomepageKind): HomepageEntry |
     ...(typeof value.model_id === 'string' ? { model_id: value.model_id } : {}),
     ...(model ? { model } : {}),
     data: value.data as HomepageEntry['data'],
-    ...(typeof value.updated_at === 'number' || typeof value.updated_at === 'string' ? { updated_at: value.updated_at } : {}),
+    ...(isApiTimestamp(value.updated_at) ? { updated_at: value.updated_at } : {}),
   }
 }
 

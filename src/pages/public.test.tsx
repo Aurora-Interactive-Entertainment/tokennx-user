@@ -75,10 +75,10 @@ function mockRankings(): ReturnType<typeof vi.spyOn> {
       msg: 'success',
       data: {
         period: url.includes('period=month') ? 'month' : 'day',
-        started_at: '2026-08-13T00:00:00Z',
-        ended_at: '2026-08-13T08:00:00Z',
-        previous_from: '2026-08-12T00:00:00Z',
-        previous_to: '2026-08-13T00:00:00Z',
+        started_at: Date.UTC(2026, 7, 13),
+        ended_at: Date.UTC(2026, 7, 13, 8),
+        previous_from: Date.UTC(2026, 7, 12),
+        previous_to: Date.UTC(2026, 7, 13),
         items: [
           { rank: 1, code: 'model-a', name: '模型 A', total_tokens: 120000, request_count: 32, previous_tokens: 100000, change_rate: 20 },
           { rank: 2, code: 'model-b', name: '模型 B', total_tokens: 80000, request_count: 24, previous_tokens: 0, change_rate: null },

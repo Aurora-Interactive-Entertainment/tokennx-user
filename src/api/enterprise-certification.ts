@@ -1,7 +1,7 @@
 import { fetchAuthenticatedJson } from './authenticated'
 import { isApiError } from './http'
 import i18n from '@/i18n'
-import type { ApiTimeValue } from '@/utils/format'
+import type { ApiTimestamp } from '@/utils/format'
 
 const ENTERPRISE_CERTIFICATION_PATH = '/api/user/enterprise/certification'
 
@@ -26,10 +26,10 @@ export interface EnterpriseCertification {
   enterprise_certification_status?: string
   credit_code_masked?: string
   legal_representative_masked?: string
-  submitted_at?: ApiTimeValue | null
-  completed_at?: ApiTimeValue | null
-  created_at?: ApiTimeValue
-  updated_at?: ApiTimeValue
+  submitted_at?: ApiTimestamp | null
+  completed_at?: ApiTimestamp | null
+  created_at?: ApiTimestamp
+  updated_at?: ApiTimestamp
   version?: number | string
 }
 

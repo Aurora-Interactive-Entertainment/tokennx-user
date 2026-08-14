@@ -20,7 +20,7 @@ import { getUserApiKeyErrorMessage, getUserApiKeys, createUserApiKey, updateUser
 import { isAuthenticationFailure } from '@/api/http'
 import { invalidateAuth } from '@/store/auth-slice'
 import { useAppDispatch } from '@/store/hooks'
-import { apiTimeToISOString, formatApiTime, type ApiTimeValue } from '@/utils/format'
+import { formatApiTime, type ApiTimeValue } from '@/utils/format'
 import { getInvitationOverview, type InvitationOverview } from '@/api/invitation'
 
 type ApiKeyExpiryPreset = 'never' | '30days' | '90days' | '365days' | 'current'
@@ -28,7 +28,7 @@ type ApiKeyExpiryPreset = 'never' | '30days' | '90days' | '365days' | 'current'
 type ApiKeyFormState = {
   name: string
   tagsText: string
-  expiresAt: string | null
+  expiresAt: number | null
   scope: ApiKeyScope
   modelIds: string[]
   billingSource: 'balance' | 'subscription'
@@ -149,7 +149,7 @@ export function ApiKeysPage() {
   function openEdit(key: UserApiKey): void {
     setEditingKey(key)
     setForm({
-      name: key.name, tagsText: key.tags.join(', '), expiresAt: apiTimeToISOString(key.expires_at), scope: key.scope, modelIds: key.model_ids ?? [],
+      name: key.name, tagsText: key.tags.join(', '), expiresAt: key.expires_at, scope: key.scope, modelIds: key.model_ids ?? [],
       billingSource: key.billing_source, limitsEnabled: key.limits.enabled, costLimitYuan: key.limits.cost_limit_yuan ?? '',
       rpm: key.limits.rpm === null ? '' : String(key.limits.rpm), tpm: key.limits.tpm === null ? '' : String(key.limits.tpm),
       concurrency: key.limits.concurrency === null ? '' : String(key.limits.concurrency),
@@ -175,13 +175,13 @@ export function ApiKeysPage() {
     // 中文：编辑时允许恢复到打开表单时的原始到期日。
     if (value === 'current') {
       setExpiryPreset('current')
-      updateForm({ expiresAt: apiTimeToISOString(editingKey?.expires_at) })
+      updateForm({ expiresAt: editingKey?.expires_at ?? null })
       return
     }
     const days = value === '30days' ? 30 : value === '90days' ? 90 : value === '365days' ? 365 : 0
     if (days > 0) {
       setExpiryPreset(value as ApiKeyExpiryPreset)
-      updateForm({ expiresAt: new Date(Date.now() + days * API_KEY_DAY_MS).toISOString() })
+      updateForm({ expiresAt: Date.now() + days * API_KEY_DAY_MS })
     }
   }
 

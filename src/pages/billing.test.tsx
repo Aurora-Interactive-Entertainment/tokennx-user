@@ -51,7 +51,7 @@ function makeAnalysis(enterprise = false, walletOverrides: Partial<BillingAnalys
       total_balance_yuan: enterprise ? '210.000000000' : '110.000000000',
       ...walletOverrides,
     },
-    period: { value: '2026-07', label: '2026年7月', start: '2026-07-01T00:00:00Z', end: '2026-08-01T00:00:00Z' },
+    period: { value: '2026-07', label: '2026年7月', start: Date.parse('2026-07-01T00:00:00Z'), end: Date.parse('2026-08-01T00:00:00Z') },
     filters: {
       periods: [
         { value: '2026-07', label: '2026年7月' },
@@ -81,7 +81,7 @@ function makeAnalysis(enterprise = false, walletOverrides: Partial<BillingAnalys
       items: [
         {
           id: 'ledger-usage',
-          occurred_at: '2026-07-23T08:30:00Z',
+          occurred_at: Date.parse('2026-07-23T08:30:00Z'),
           kind: 'model_consume',
           channel: 'OpenAI 渠道',
           description: '模型消费',
@@ -95,7 +95,7 @@ function makeAnalysis(enterprise = false, walletOverrides: Partial<BillingAnalys
         },
         {
           id: 'ledger-recharge',
-          occurred_at: '2026-07-22T08:30:00Z',
+          occurred_at: Date.parse('2026-07-22T08:30:00Z'),
           kind: 'recharge',
           channel: '充值',
           description: '充值到账',
@@ -106,7 +106,7 @@ function makeAnalysis(enterprise = false, walletOverrides: Partial<BillingAnalys
         },
         {
           id: 'ledger-reward',
-          occurred_at: '2026-07-21T08:30:00Z',
+          occurred_at: Date.parse('2026-07-21T08:30:00Z'),
           kind: 'reward',
           channel: '赠送',
           description: '奖励发放: 注册奖励',
@@ -131,7 +131,7 @@ function makeInvoice(overrides: Partial<BillingInvoiceItem> = {}): BillingInvoic
     status: 'submitted',
     status_label: '开票中',
     title_masked: '本地演示工作区',
-    submitted_at: '2026-07-23T08:30:00Z',
+    submitted_at: Date.parse('2026-07-23T08:30:00Z'),
     completed_at: null,
     invoice_type: 'normal',
     file_type: '',

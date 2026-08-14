@@ -44,7 +44,7 @@ function activeApiKey(): UserApiKey {
     billing_source: 'balance',
     limits: { enabled: true, cost_limit_yuan: null, used_amount_yuan: '0', rpm: null, tpm: null, concurrency: null },
     creator: { id: 'user-test', display_name: '测试用户', masked_phone: '138****0000' },
-    created_at: '2026-07-27T10:00:00Z',
+    created_at: Date.parse('2026-07-27T10:00:00Z'),
     expires_at: null,
     last_used_at: null,
   }

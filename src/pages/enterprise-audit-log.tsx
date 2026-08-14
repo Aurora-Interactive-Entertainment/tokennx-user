@@ -4,7 +4,7 @@ import Button from '@douyinfe/semi-ui/lib/es/button'
 import Modal from '@douyinfe/semi-ui/lib/es/modal'
 import i18n from '@/i18n'
 import { getEnterpriseAuditLog, getEnterpriseAuditLogs, type EnterpriseAuditLog, type EnterpriseAuditLogPage, type EnterpriseContext } from '@/api/enterprise-console'
-import { formatApiTimeField, formatLocalDateInput, localDateToISOString, shiftLocalDate } from '@/utils/format'
+import { formatApiTimeField, formatLocalDateInput, localDateToTimestamp, shiftLocalDate } from '@/utils/format'
 import { EnterpriseEmpty, EnterpriseError, EnterpriseExportButton, EnterpriseLoading, EnterprisePageShell, EnterpriseRefreshButton, EnterpriseValidationError, exportEnterpriseCsv, formatEnterpriseTime, auditResultLabel, useEnterpriseErrorHandler, validateEnterpriseDateRange } from './enterprise-console-shared'
 
 type AuditFilters = {
@@ -35,12 +35,12 @@ function defaultFilters(): AuditFilters {
   return { category: 'all', action: 'all', actorID: 'all', result: 'all', range: 'all', startDate: '', endDate: '' }
 }
 
-function auditTimeQuery(filters: AuditFilters): { start_at?: string; end_at?: string } {
-  if (filters.range === 'custom') return { start_at: localDateToISOString(filters.startDate), end_at: localDateToISOString(filters.endDate, true) }
+function auditTimeQuery(filters: AuditFilters): { start_at?: number; end_at?: number } {
+  if (filters.range === 'custom') return { start_at: localDateToTimestamp(filters.startDate), end_at: localDateToTimestamp(filters.endDate, true) }
   if (filters.range === 'all') return {}
   const today = new Date()
   const days = filters.range === '7d' ? 6 : 29
-  return { start_at: localDateToISOString(formatLocalDateInput(shiftLocalDate(today, -days))), end_at: localDateToISOString(formatLocalDateInput(today), true) }
+  return { start_at: localDateToTimestamp(formatLocalDateInput(shiftLocalDate(today, -days))), end_at: localDateToTimestamp(formatLocalDateInput(today), true) }
 }
 
 function categoryLabel(value: string): string {

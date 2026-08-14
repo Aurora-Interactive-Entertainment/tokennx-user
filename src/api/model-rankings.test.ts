@@ -11,10 +11,10 @@ describe('公开模型用量排名接口', () => {
   it('按指定周期查询排行榜并保留空的对比涨跌率', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(response({
       period: 'month',
-      started_at: '2026-08-01T00:00:00Z',
-      ended_at: '2026-08-13T08:00:00Z',
-      previous_from: '2026-07-01T00:00:00Z',
-      previous_to: '2026-08-01T00:00:00Z',
+      started_at: Date.UTC(2026, 7, 1),
+      ended_at: Date.UTC(2026, 7, 13, 8),
+      previous_from: Date.UTC(2026, 6, 1),
+      previous_to: Date.UTC(2026, 7, 1),
       items: [{ rank: 1, code: 'gpt-test', name: '测试模型', total_tokens: 120000, request_count: 320, previous_tokens: 0, change_rate: null }],
     }))
 
@@ -24,7 +24,7 @@ describe('公开模型用量排名接口', () => {
     expect(result.items[0]).toMatchObject({ code: 'gpt-test', total_tokens: 120000, change_rate: null })
   })
 
-  it('兼容后端返回毫秒时间戳', async () => {
+  it('保留后端返回的毫秒时间戳', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(response({
       period: 'day',
       started_at: 1786579200000,

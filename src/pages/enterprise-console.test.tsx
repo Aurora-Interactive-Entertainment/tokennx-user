@@ -168,7 +168,7 @@ const MEMBER: EnterpriseMember = {
   masked_contact: '138****0001',
   status: 'active',
   join_source: '企业邀请',
-  joined_at: '2026-07-01T08:00:00Z',
+  joined_at: Date.parse('2026-07-01T08:00:00Z'),
   role: 'engineering',
   roles: ['engineering'],
   tags: [{ id: 'tag_dev', name: '研发' }],
@@ -189,8 +189,8 @@ const TAG: EnterpriseTag = {
   allowed_models: ['gpt-4o'],
   member_count: 1,
   version: 1,
-  created_at: '2026-07-01T08:00:00Z',
-  updated_at: '2026-07-01T08:00:00Z',
+  created_at: Date.parse('2026-07-01T08:00:00Z'),
+  updated_at: Date.parse('2026-07-01T08:00:00Z'),
 }
 
 const JOIN_REQUEST: EnterpriseJoinRequest = {
@@ -201,8 +201,8 @@ const JOIN_REQUEST: EnterpriseJoinRequest = {
   requested_role: 'data_analyst',
   request_message: '申请加入研发团队',
   status: 'pending',
-  created_at: '2026-07-02T08:00:00Z',
-  updated_at: '2026-07-02T08:00:00Z',
+  created_at: Date.parse('2026-07-02T08:00:00Z'),
+  updated_at: Date.parse('2026-07-02T08:00:00Z'),
   version: 1,
 }
 
@@ -215,8 +215,8 @@ const INVITATION: EnterpriseInvitation = {
   expires_at: null,
   status: 'active',
   inviter_name: '测试用户',
-  created_at: '2026-07-03T08:00:00Z',
-  updated_at: '2026-07-03T08:00:00Z',
+  created_at: Date.parse('2026-07-03T08:00:00Z'),
+  updated_at: Date.parse('2026-07-03T08:00:00Z'),
   invite_url: 'https://example.invalid/invite/test',
   version: 1,
 }
@@ -255,8 +255,8 @@ const METRICS = {
 
 const PERIOD = {
   range: '30d',
-  start_at: '2026-07-01T00:00:00Z',
-  end_at: '2026-07-30T23:59:59Z',
+  start_at: Date.parse('2026-07-01T00:00:00Z'),
+  end_at: Date.parse('2026-07-30T23:59:59Z'),
   label: '近 30 天',
 }
 
@@ -309,7 +309,7 @@ const AUDIT_EVENT: EnterpriseAuditLog = {
   before: { role: 'engineering' },
   after: { role: 'data_analyst' },
   request_id: 'request_audit_test',
-  occurred_at: '2026-07-29T08:00:00Z',
+  occurred_at: Date.parse('2026-07-29T08:00:00Z'),
 }
 
 function auditPage(overrides: Partial<EnterpriseAuditLogResponsePage> = {}): EnterpriseAuditLogResponsePage {
@@ -596,7 +596,7 @@ describe('企业人员管理页面', () => {
     await user.click(await screen.findByRole('button', { name: '创建邀请链接' }))
     fireEvent.change(screen.getByLabelText('有效期（可选）'), { target: { value: '2026-07-30' } })
     await user.click(screen.getByRole('button', { name: 'confirm' }))
-    const expectedInvitationExpiry = new Date(2026, 6, 30, 23, 59, 59, 999).toISOString()
+    const expectedInvitationExpiry = new Date(2026, 6, 30, 23, 59, 59, 999).getTime()
     await waitFor(() => expect(createEnterpriseInvitationMock).toHaveBeenCalledWith(expect.objectContaining({ enterprise_id: ENTERPRISE_ID }), { role: defaultAssignableRole, max_uses: 10, expires_at: expectedInvitationExpiry }))
     const expectedInvitationURL = `${window.location.origin}/join?token=token%2Fabc`
     expect(await screen.findByRole('textbox', { name: '邀请链接' })).toHaveValue(expectedInvitationURL)

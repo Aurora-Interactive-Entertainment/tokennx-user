@@ -1,12 +1,12 @@
 import { fetchJson } from './http'
-import type { ApiTimeValue } from '@/utils/format'
+import { isApiTimestamp, type ApiTimestamp } from '@/utils/format'
 
 // 中文：认证接口统一使用 Unix 毫秒时间戳表示访问令牌和刷新令牌的过期时间。
 export type AuthTimestamp = number
 
 // 中文：只接受安全整数时间戳，避免非法数值进入令牌续期流程。
 export function isAuthTimestamp(value: unknown): value is AuthTimestamp {
-  return typeof value === 'number' && Number.isSafeInteger(value) && value > 0
+  return isApiTimestamp(value)
 }
 
 export interface AuthUser {
@@ -22,7 +22,7 @@ export interface AuthUser {
 
 export interface VerificationCodeResult {
   destination_masked: string
-  expires_at: ApiTimeValue
+  expires_at: ApiTimestamp
   retry_after_seconds: number
 }
 
@@ -43,7 +43,7 @@ export interface AuthResult {
 export interface WechatQrResult {
   state: string
   authorize_url: string
-  expires_at: ApiTimeValue
+  expires_at: ApiTimestamp
 }
 
 export interface WechatStatusResult {

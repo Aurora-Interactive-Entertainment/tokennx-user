@@ -15,7 +15,7 @@ import { invalidateAuth } from '@/store/auth-slice'
 import { useAppDispatch } from '@/store/hooks'
 import { useAppStore } from '@/data/app-state'
 import i18n from '@/i18n'
-import { apiTimeToISOString, formatApiTime, formatLocalDateInput, localDateToISOString, shiftLocalDate } from '@/utils/format'
+import { apiTimeToISOString, formatApiTime, formatLocalDateInput, localDateToTimestamp, shiftLocalDate } from '@/utils/format'
 
 const RECORDS_PAGE_MIN = 1
 const DATE_RANGE_ALL = 'all'
@@ -140,12 +140,12 @@ function clientPlatformLabel(platform: string): string {
 }
 
 function dateRangeQuery(filters: RecordsFilterState): Pick<UsageRecordsQuery, 'start_at' | 'end_at'> {
-  if (filters.range === DATE_RANGE_CUSTOM) return { start_at: localDateToISOString(filters.startDate), end_at: localDateToISOString(filters.endDate, true) }
+  if (filters.range === DATE_RANGE_CUSTOM) return { start_at: localDateToTimestamp(filters.startDate), end_at: localDateToTimestamp(filters.endDate, true) }
   if (filters.range === DATE_RANGE_ALL) return {}
   const today = new Date()
   const end = formatLocalDateInput(today)
   const start = filters.range === DATE_RANGE_TODAY ? end : formatLocalDateInput(shiftLocalDate(today, -(filters.range === DATE_RANGE_WEEK ? 6 : 29)))
-  return { start_at: localDateToISOString(start), end_at: localDateToISOString(end, true) }
+  return { start_at: localDateToTimestamp(start), end_at: localDateToTimestamp(end, true) }
 }
 
 function initialOption<T extends { id: string; name: string }>(options: T[], selected: string, fallbackLabel: string): T[] {

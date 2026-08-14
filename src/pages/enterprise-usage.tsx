@@ -15,7 +15,7 @@ import {
   type EnterpriseUsageResponse,
   type EnterpriseUsageTrendPoint,
 } from '@/api/enterprise-console'
-import { formatLocalDateInput, localDateToISOString, shiftLocalDate } from '@/utils/format'
+import { apiTimeToDate, formatLocalDateInput, localDateToTimestamp, shiftLocalDate } from '@/utils/format'
 import { analyticsDimensionLabel } from './enterprise-analytics-helpers'
 import i18n from '@/i18n'
 import {
@@ -63,11 +63,11 @@ function customRangeDefaults(): Pick<UsageFilters, 'startDate' | 'endDate'> {
   return { startDate: formatLocalDateInput(shiftLocalDate(today, -DEFAULT_CUSTOM_RANGE_DAYS)), endDate: formatLocalDateInput(today) }
 }
 
-export function enterpriseUsageQuery(filters: UsageFilters, page = 1): { range: string; start_at?: string; end_at?: string; member_id?: string; page: number; page_size: number } {
+export function enterpriseUsageQuery(filters: UsageFilters, page = 1): { range: string; start_at?: number; end_at?: number; member_id?: string; page: number; page_size: number } {
   return {
     range: filters.range,
-    start_at: filters.range === 'custom' ? localDateToISOString(filters.startDate) : undefined,
-    end_at: filters.range === 'custom' ? localDateToISOString(filters.endDate, true) : undefined,
+    start_at: filters.range === 'custom' ? localDateToTimestamp(filters.startDate) : undefined,
+    end_at: filters.range === 'custom' ? localDateToTimestamp(filters.endDate, true) : undefined,
     member_id: filters.memberID === 'all' ? undefined : filters.memberID,
     page: Math.max(1, page),
     page_size: DEFAULT_USAGE_PAGE_SIZE,
@@ -99,9 +99,9 @@ function formatUsageMoney(value: string | null | undefined): ReactNode {
   return <MoneyText value={value} />
 }
 
-function usagePeriodMonth(value: string | number): string {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return ''
+function usagePeriodMonth(value: EnterpriseUsageResponse['period']['start_at']): string {
+  const date = apiTimeToDate(value)
+  if (!date) return ''
   return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`
 }
 
