@@ -16,6 +16,11 @@ function CurrentPath() {
   return <output data-testid="current-path">{location.pathname}</output>
 }
 
+function CurrentLocation() {
+  const location = useLocation()
+  return <output data-testid="current-location">{location.pathname}{location.search}</output>
+}
+
 function renderConsolePage(page: React.ReactNode, initialEntries: string[] = ['/console']): void {
   render(<MemoryRouter initialEntries={initialEntries}><Provider store={createAppStore()}><AppStoreProvider>{page}</AppStoreProvider></Provider></MemoryRouter>)
 }
@@ -86,6 +91,30 @@ function visibleModelsResponse(): { items: Array<Record<string, unknown>> } {
         description: '来自用户模型目录的无价格模型', capabilities: null, provider_count: 0, prices: null,
       },
     ],
+  }
+}
+
+function modelDetailResponse(): Record<string, unknown> {
+  return {
+    model: {
+      id: 'deepseek-chat', alias: 'deepseek-public', name: 'DeepSeek 详情', company: '详情厂商', modality: 'text', billing_mode: 'token', context_window_tokens: 1000000,
+      description: '接口返回的详情介绍', capabilities: ['chat', 'reasoning'], provider_count: 3, total_tokens: '7237576',
+      prices: [
+        { meter_code: 'input_token', meter_kind: 'input_token', purpose: 'input', unit: 'token', currency: 'CNY', unit_quantity: 1000000, unit_price_yuan: '1.000000000000', tier_no: 0 },
+        { meter_code: 'output_token', meter_kind: 'output_token', purpose: 'output', unit: 'token', currency: 'CNY', unit_quantity: 1000000, unit_price_yuan: '2.000000000000', tier_no: 0 },
+        { meter_code: 'cache_token', meter_kind: 'cache_token', purpose: 'cache_hit', unit: 'token', currency: 'CNY', unit_quantity: 1000000, unit_price_yuan: '0.020000000000', tier_no: 0 },
+        { meter_code: 'cache_creation', meter_kind: 'cache_token', purpose: 'cache_creation', unit: 'token', currency: 'CNY', unit_quantity: 1000000, unit_price_yuan: '0.030000000000', tier_no: 0 },
+      ],
+    },
+    tags: [{ label: '接口标签', color: '#22946e' }],
+    specifications: { max_output_tokens: 65536, input_modalities: ['text'], output_modalities: ['text'], recommended_protocol: { code: 'openai_chat_completions', name: 'OpenAI Chat Completions' }, capability_limits: {} },
+    metrics: {
+      activity: { unit: 'token', points: Array.from({ length: 7 }, (_, index) => ({ timestamp: 1786147200000 + index * 86400000, value: index * 100 })) },
+      throughput: { unit: 'tokens/s', statistic: 'p50', points: Array.from({ length: 7 }, (_, index) => ({ timestamp: 1786147200000 + index * 86400000, value: index ? index * 12.5 : null })) },
+      first_token_latency: { unit: 'ms', statistic: 'p95', points: Array.from({ length: 7 }, (_, index) => ({ timestamp: 1786147200000 + index * 86400000, value: index ? 120 - index : null })) },
+      availability: { rate: 98.5, success_requests: 197, valid_requests: 200 },
+      cumulative_usage: { value: '7237576', unit: 'token' },
+    },
   }
 }
 
@@ -166,6 +195,7 @@ describe('控制台模型接入页面', () => {
     await user.click(screen.getByRole('button', { name: '复制模型 Base URL' }))
 
     expect(clipboardWriteText).toHaveBeenCalledWith(MODEL_API_BASE_URL)
+    expect(screen.getByRole('link', { name: '模型详情' })).toHaveAttribute('href', '/console/models?model=deepseek-public')
   })
 
   it('将接口返回的全部用户可见模型展示在模型广场', async () => {
@@ -184,6 +214,43 @@ describe('控制台模型接入页面', () => {
 
     await user.click(screen.getByRole('button', { name: '复制 后端 DeepSeek 模型别名' }))
     expect(clipboardWriteText).toHaveBeenCalledWith('deepseek-public')
+  })
+
+  it('模型广场支持通过查询参数打开抽屉，并在关闭后清除参数', async () => {
+    const user = userEvent.setup()
+    renderConsolePage(<><ConsoleModelsPage /><CurrentLocation /></>, ['/console/models?model=deepseek-public'])
+
+    await waitFor(() => expect(screen.getByText('3 个模型')).toBeInTheDocument())
+    const detailPanel = await waitFor(() => {
+      const panel = document.querySelector('[data-model-detail-content]')
+      if (!panel) throw new Error('模型详情抽屉尚未打开')
+      return panel
+    })
+    expect(detailPanel).toHaveTextContent('后端 DeepSeek')
+
+    const closeButton = document.querySelector<HTMLButtonElement>('.model-detail-close')
+    expect(closeButton).not.toBeNull()
+    await user.click(closeButton as HTMLButtonElement)
+    expect(screen.getByTestId('current-location')).toHaveTextContent('/console/models')
+    expect(document.querySelector('[data-model-detail-content]')).toBeNull()
+  })
+
+  it('打开模型详情时显示详情接口返回的价格、规格和指标', async () => {
+    const detail = modelDetailResponse()
+    vi.mocked(globalThis.fetch).mockImplementation(async (input) => {
+      if (String(input).includes('/api/user/models/deepseek-public')) return new Response(JSON.stringify({ code: 0, msg: 'success', data: detail }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+      return new Response(JSON.stringify({ code: 0, msg: 'success', data: visibleModelsResponse() }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+    })
+    renderConsolePage(<ConsoleModelsPage />, ['/console/models?model=deepseek-public'])
+
+    expect(await screen.findByText('接口返回的详情介绍')).toBeInTheDocument()
+    expect(screen.getByText('详情厂商')).toBeInTheDocument()
+    expect(screen.getByText('0.020')).toBeInTheDocument()
+    expect(screen.getByText('1M')).toBeInTheDocument()
+    expect(screen.getByText('98.5%')).toBeInTheDocument()
+    expect(screen.getByText('7,237,576')).toBeInTheDocument()
+    expect(document.querySelectorAll('.model-detail-chart-bars')).toHaveLength(1)
+    expect(document.querySelectorAll('.model-detail-chart-line')).toHaveLength(2)
   })
 
   it('分页后切换搜索会回到第一页，并按当前结果显示范围', async () => {

@@ -20,6 +20,7 @@ export interface UserModelPrice {
   unit_price_yuan: string
   tier_no: number
   selector_meter_code?: string
+  purpose?: string
 }
 
 export interface UserModelItem {
@@ -42,6 +43,49 @@ export interface UserModelList {
   items: UserModelItem[]
 }
 
+export interface UserModelTag {
+  label: string
+  color?: string
+}
+
+export interface UserModelSpecifications {
+  max_output_tokens?: number
+  input_modalities: string[]
+  output_modalities: string[]
+  recommended_protocol?: { code: string; name: string } | null
+  capability_limits: Record<string, Record<string, unknown>>
+}
+
+export interface UserModelMetricPoint {
+  timestamp: number
+  value: number | null
+}
+
+export interface UserModelActivity {
+  unit: string
+  points: UserModelMetricPoint[]
+}
+
+export interface UserModelMetricSeries extends UserModelActivity {
+  statistic: string
+}
+
+export interface UserModelMetrics {
+  window?: { start_at: number; end_at: number; granularity: string; timezone: string }
+  activity: UserModelActivity
+  throughput: UserModelMetricSeries
+  first_token_latency: UserModelMetricSeries
+  availability: { rate: number; success_requests: number; valid_requests: number }
+  cumulative_usage: { value: string; unit: string }
+}
+
+export interface UserModelDetail {
+  model: UserModelItem
+  tags: UserModelTag[] | null
+  specifications: UserModelSpecifications
+  metrics: UserModelMetrics
+}
+
 function buildUserModelsPath(query: UserModelsQuery): string {
   const params = new URLSearchParams({ account_type: query.account_type })
   if (query.account_type === 'enterprise' && query.enterprise_id?.trim()) {
@@ -59,6 +103,27 @@ function isUserModelList(value: unknown): value is UserModelList {
 export function getUserModels(query: UserModelsQuery): Promise<UserModelList> {
   return fetchAuthenticatedJson<unknown>(buildUserModelsPath(query)).then((value) => {
     if (!isUserModelList(value)) throw new ApiError(i18n.t('api.models.invalidResponse'), 502, 100002, null)
+    return value
+  })
+}
+
+function buildUserModelDetailPath(model: string, query: UserModelsQuery): string {
+  const params = new URLSearchParams({ account_type: query.account_type })
+  if (query.account_type === 'enterprise' && query.enterprise_id?.trim()) {
+    params.set('enterprise_id', query.enterprise_id.trim())
+  }
+  return `${USER_MODELS_PATH}/${encodeURIComponent(model.trim())}?${params.toString()}`
+}
+
+function isUserModelDetail(value: unknown): value is UserModelDetail {
+  if (!value || typeof value !== 'object') return false
+  const candidate = value as Partial<UserModelDetail>
+  return Boolean(candidate.model && typeof candidate.model === 'object' && candidate.specifications && candidate.metrics)
+}
+
+export function getUserModelDetail(model: string, query: UserModelsQuery): Promise<UserModelDetail> {
+  return fetchAuthenticatedJson<unknown>(buildUserModelDetailPath(model, query)).then((value) => {
+    if (!isUserModelDetail(value)) throw new ApiError(i18n.t('api.models.invalidResponse'), 502, 100002, null)
     return value
   })
 }

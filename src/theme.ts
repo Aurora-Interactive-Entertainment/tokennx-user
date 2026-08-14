@@ -2,9 +2,15 @@ import { useSyncExternalStore } from 'react'
 
 export type ThemeMode = 'light' | 'dark' | 'system'
 
+export interface ThemeTransitionOrigin {
+  x: number
+  y: number
+}
+
 export const THEME_STORAGE_KEY = 'token-nx:theme'
 
 const THEME_CHANGE_EVENT = 'token-nx-theme-change'
+const NEXT_THEME_MODE: Record<ThemeMode, ThemeMode> = { system: 'light', light: 'dark', dark: 'system' }
 
 let themeMode: ThemeMode = readStoredThemeMode()
 const listeners = new Set<() => void>()
@@ -89,8 +95,61 @@ export function setThemeMode(mode: ThemeMode): void {
 }
 
 export function cycleThemeMode(): void {
-  const nextMode: Record<ThemeMode, ThemeMode> = { system: 'light', light: 'dark', dark: 'system' }
-  setThemeMode(nextMode[themeMode])
+  setThemeMode(NEXT_THEME_MODE[themeMode])
+}
+
+function prefersReducedMotion(): boolean {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false
+  try {
+    return window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  } catch {
+    return false
+  }
+}
+
+function transitionGeometry(origin?: ThemeTransitionOrigin): { x: number; y: number; radius: number } {
+  const x = Math.min(window.innerWidth, Math.max(0, origin?.x ?? window.innerWidth - 32))
+  const y = Math.min(window.innerHeight, Math.max(0, origin?.y ?? 32))
+  return {
+    x,
+    y,
+    radius: Math.hypot(Math.max(x, window.innerWidth - x), Math.max(y, window.innerHeight - y)),
+  }
+}
+
+function radialThemeTransition(origin: ThemeTransitionOrigin | undefined, previousResolvedTheme: string | undefined): void {
+  const { x, y, radius } = transitionGeometry(origin)
+  const overlay = document.createElement('div')
+  overlay.className = 'theme-transition-overlay'
+  overlay.dataset.theme = previousResolvedTheme === 'light' ? 'light' : 'dark'
+  overlay.style.setProperty('--theme-transition-x', `${x}px`)
+  overlay.style.setProperty('--theme-transition-y', `${y}px`)
+  overlay.style.setProperty('--theme-transition-radius', `${radius}px`)
+  const removeOverlay = () => overlay.remove()
+  overlay.addEventListener('animationend', removeOverlay, { once: true })
+  document.body.appendChild(overlay)
+  window.setTimeout(removeOverlay, 1200)
+}
+
+export function cycleThemeModeWithTransition(origin?: ThemeTransitionOrigin): void {
+  if (typeof document === 'undefined' || typeof window === 'undefined') {
+    cycleThemeMode()
+    return
+  }
+
+  const previousResolvedTheme = document.documentElement.dataset.theme
+  const nextMode = NEXT_THEME_MODE[themeMode]
+  if (resolvedTheme(nextMode) === previousResolvedTheme) {
+    setThemeMode(nextMode)
+    return
+  }
+  if (prefersReducedMotion()) {
+    setThemeMode(nextMode)
+    return
+  }
+
+  radialThemeTransition(origin, previousResolvedTheme)
+  setThemeMode(nextMode)
 }
 
 export function useThemeMode(): ThemeMode {

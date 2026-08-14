@@ -55,7 +55,7 @@ import { useAppDispatch, useAppSelector } from '@/store/hooks'
 import { clearAuthTokens, getAccessToken, getVerifiedPhone, saveVerifiedPhone } from '@/auth/token-storage'
 import { isAuthenticationFailure } from '@/api/http'
 import { useTranslation } from 'react-i18next'
-import { cycleThemeMode, themeModeLabel, useResolvedTheme, useThemeMode } from '@/theme'
+import { cycleThemeModeWithTransition, themeModeLabel, useResolvedTheme, useThemeMode } from '@/theme'
 import { getMockSupportReply, MOCK_SUPPORT_REPLY_DELAY_MS, type SupportChatMessage, type SupportLocale, type SupportMessageRole } from './support-chat'
 import { MoneyText } from './money'
 import { enterpriseMenuPermissionKeyForPath, hasEnterpriseMenuPermission, isEnterpriseOwner, type EnterpriseMenuAccess, type EnterpriseMenuPermissionKey, useEnterpriseMenuAccess } from './enterprise-menu-access'
@@ -970,7 +970,7 @@ export function ThemeToggleButton() {
       : <IconSunStroked className="icon-svg tool-icon" />
   const label = t(themeModeLabel(mode))
 
-  return <button className="header-tool theme-switcher" type="button" title={`${t('theme.switch')} · ${label}`} aria-label={`${t('theme.switch')} · ${label}`} onClick={cycleThemeMode}>{icon}</button>
+  return <button className="header-tool theme-switcher" type="button" title={`${t('theme.switch')} · ${label}`} aria-label={`${t('theme.switch')} · ${label}`} onClick={(event) => { const rect = event.currentTarget.getBoundingClientRect(); cycleThemeModeWithTransition({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }) }}>{icon}</button>
 }
 
 function LanguageToggleButton({ mobile = false }: { mobile?: boolean }) {

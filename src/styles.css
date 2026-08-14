@@ -45,6 +45,32 @@
 * { box-sizing: border-box; }
 html { min-width: 320px; background: var(--bg-base); scroll-behavior: smooth; }
 body { margin: 0; min-width: 320px; min-height: 100vh; background: var(--bg-base); color: var(--text-default); font-size: 14px; line-height: 1.55; }
+
+@property --theme-transition-progress {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+
+.theme-transition-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483647;
+  pointer-events: none;
+  background: #17181b;
+  -webkit-mask-image: radial-gradient(circle at var(--theme-transition-x) var(--theme-transition-y), transparent var(--theme-transition-progress), #000 calc(var(--theme-transition-progress) + 1px));
+  mask-image: radial-gradient(circle at var(--theme-transition-x) var(--theme-transition-y), transparent var(--theme-transition-progress), #000 calc(var(--theme-transition-progress) + 1px));
+  contain: strict;
+  will-change: -webkit-mask-image, mask-image;
+  animation: theme-transition-reveal .7s cubic-bezier(.2, .72, .2, 1) forwards;
+}
+
+.theme-transition-overlay[data-theme="light"] { background: #f5f6f8; }
+
+@keyframes theme-transition-reveal {
+  to { --theme-transition-progress: var(--theme-transition-radius); }
+}
+
 button, input, textarea, select { font: inherit; }
 button { color: inherit; }
 a { color: inherit; text-decoration: none; }
@@ -4587,7 +4613,7 @@ html[data-theme="light"] .apps-chart-state { color: #626975; }
 .ranking-modality-nav button.is-active::after { position: absolute; right: 0; bottom: -1px; left: 0; height: 1px; background: #8866e7; content: ''; }
 .ranking-modality-nav button span { min-width: 18px; color: currentColor; font-size: 14px; text-align: center; }
 .ranking-shell { width: min(1280px, calc(100% - 48px)); min-height: 1810px; display: grid; grid-template-columns: 186px minmax(0, 1fr); align-items: start; gap: 43px; margin: 0 auto; }
-.ranking-sidebar { position: sticky; top: 112px; display: grid; align-content: start; gap: 20px; padding-top: 72px; }
+.ranking-sidebar { position: static; display: grid; align-content: start; gap: 20px; padding-top: 72px; }
 .ranking-sidebar a { min-height: 43px; display: flex; align-items: center; gap: 10px; padding: 0 14px; border-radius: 4px; color: #8b8b8b; font-size: 14px; }
 .ranking-sidebar a:hover { color: #d8d8d8; background: rgba(255, 255, 255, .035); }
 .ranking-sidebar a.is-active { color: #fff; background: linear-gradient(90deg, #551cce, #3b0d9a); }
@@ -4671,7 +4697,7 @@ html[data-theme="light"] .ranking-sidebar a.is-active { color: #fff; }
   .ranking-modality-nav-inner { width: max-content; min-width: 100%; gap: 2px; padding: 0 12px; }
   .ranking-modality-nav button { height: 52px; padding: 0 12px 16px; font-size: 14px; }
   .ranking-shell { width: 100%; min-height: 0; display: block; }
-  .ranking-sidebar { position: sticky; top: 58px; z-index: 16; display: flex; gap: 6px; overflow-x: auto; padding: 9px 16px; border-bottom: 1px solid #353535; background: #121212; scrollbar-width: none; }
+  .ranking-sidebar { position: static; z-index: auto; display: flex; gap: 6px; overflow-x: auto; padding: 9px 16px; border-bottom: 1px solid #353535; background: #121212; scrollbar-width: none; }
   .ranking-sidebar a { min-width: max-content; min-height: 36px; }
   .ranking-content { padding: 40px 16px 72px; }
   .ranking-top-section > header h1, .ranking-list-head h2 { font-size: 30px; }

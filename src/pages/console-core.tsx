@@ -13,7 +13,7 @@ import { MoneyText } from '@/components/money'
 import { CompatCard as Card, CompatInput as Input, CompatSelect as Select } from '@/components/semi-compat'
 import { useAppStore, type PlaygroundMessage } from '@/data/app-state'
 import { findModelInList, modelAlias, type ModelRecord } from '@/data/models'
-import { useUserModels } from '@/data/user-models'
+import { useUserModelDetail, useUserModels } from '@/data/user-models'
 import { getUserApiKeys, type UserApiKey, type UserApiKeyContext } from '@/api/user-api-keys'
 import { ModelRuntimeError, streamChatCompletion, type ChatCompletionMessage } from '@/api/model-runtime'
 import { normalizeQuickstartLanguage, normalizeQuickstartProtocol, quickstartCodeSample, QUICKSTART_API_BASE_URL, type QuickstartLanguage, type QuickstartProtocol } from '@/utils/quickstart'
@@ -31,6 +31,7 @@ const FIRST_MODEL_PAGE = 1
 export function ConsoleModelsPage() {
   const { t } = useTranslation()
   const { models: userModels, loading, error, refresh } = useUserModels()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [query, setQuery] = useState('')
   const [company, setCompany] = useState('all')
   const [priceFilter, setPriceFilter] = useState<ModelPriceFilter>('all')
@@ -39,12 +40,21 @@ export function ConsoleModelsPage() {
   const [page, setPage] = useState(FIRST_MODEL_PAGE)
   const [pageSize, setPageSize] = useState<number>(DEFAULT_MODEL_PAGE_SIZE)
   const [detailModel, setDetailModel] = useState<ModelRecord | null>(null)
+  const detailState = useUserModelDetail(detailModel ? modelAlias(detailModel) : null)
   const companies = useMemo(() => [...new Set(userModels.map((model) => model.company))].sort((left, right) => left.localeCompare(right, 'zh-CN')), [userModels])
   const filteredModels = useMemo(() => filterAndSortModels(userModels, { query, company, category, priceFilter, sort }), [category, company, priceFilter, query, sort, userModels])
   const categoryCounts = useMemo(() => modelCategoryCounts(userModels, { query, company, priceFilter }), [company, priceFilter, query, userModels])
   const pageResult = useMemo(() => paginateModels(filteredModels, page, pageSize), [filteredModels, page, pageSize])
   // 中文：单卡页面限制卡片宽度，多卡页面继续由网格平均分配可用空间。
   const modelGridClassName = pageResult.items.length === 1 ? 'model-card-grid model-card-grid--single' : 'model-card-grid'
+
+  const requestedModelAlias = searchParams.get('model')
+
+  useEffect(() => {
+    if (!requestedModelAlias) return
+    const requestedModel = findModelInList(userModels, requestedModelAlias)
+    if (requestedModel) setDetailModel(requestedModel)
+  }, [requestedModelAlias, userModels])
 
   useEffect(() => {
     if (pageResult.page !== page) setPage(pageResult.page)
@@ -62,6 +72,14 @@ export function ConsoleModelsPage() {
     setCategory('all')
     setSort('default')
     setPage(FIRST_MODEL_PAGE)
+  }
+
+  function closeModelDetail(): void {
+    setDetailModel(null)
+    if (!requestedModelAlias) return
+    const nextSearchParams = new URLSearchParams(searchParams)
+    nextSearchParams.delete('model')
+    setSearchParams(nextSearchParams, { replace: true })
   }
 
   return <div className="page-stack models-console-page">
@@ -90,7 +108,7 @@ export function ConsoleModelsPage() {
       </nav>
     </> : <EmptyPanel title={t('console.models.modelNotFound')} description={t('console.common.adjustFilters')} action={<Button theme="outline" onClick={clearFilters}>{t('console.common.clearFilters')}</Button>} />}
     </> : null}
-    <ModelDetailDrawer model={detailModel} visible={detailModel !== null} onClose={() => setDetailModel(null)} />
+    <ModelDetailDrawer model={detailModel} detail={detailState.detail} loading={detailState.loading} error={detailState.error} visible={detailModel !== null} onClose={closeModelDetail} />
   </div>
 }
 
@@ -515,7 +533,7 @@ export function QuickstartPage() {
           <div className="quickstart-control-group"><span className="quickstart-control-label">{t('console.quickstart.apiStyle')}</span><div className="quickstart-segmented" role="group" aria-label={t('console.quickstart.apiStyle')}><button className={protocol === 'openai' ? 'active' : ''} type="button" aria-pressed={protocol === 'openai'} disabled={!supportsCodeSample} onClick={() => { setProtocol('openai'); syncContext(modelAlias(model), 'openai') }}>{t('console.quickstart.openai')}</button><button className={protocol === 'anthropic' ? 'active' : ''} type="button" aria-pressed={protocol === 'anthropic'} disabled={!supportsCodeSample} onClick={() => { setProtocol('anthropic'); syncContext(modelAlias(model), 'anthropic') }}>{t('console.quickstart.claude')}</button></div></div>
           <div className="quickstart-control-group"><span className="quickstart-control-label">{t('console.quickstart.language')}</span><div className="quickstart-segmented quickstart-segmented--language" role="group" aria-label={t('console.quickstart.codeSampleLanguage')}><button className={language === 'python' ? 'active' : ''} type="button" aria-pressed={language === 'python'} disabled={!supportsCodeSample} onClick={() => { setLanguage('python'); syncContext(modelAlias(model), protocol, 'python') }}>{t('console.quickstart.python')}</button><button className={language === 'node' ? 'active' : ''} type="button" aria-pressed={language === 'node'} disabled={!supportsCodeSample} onClick={() => { setLanguage('node'); syncContext(modelAlias(model), protocol, 'node') }}>Node.js</button><button className={language === 'curl' ? 'active' : ''} type="button" aria-pressed={language === 'curl'} disabled={!supportsCodeSample} onClick={() => { setLanguage('curl'); syncContext(modelAlias(model), protocol, 'curl') }}>{t('console.quickstart.curl')}</button></div></div>
           <div className="quickstart-endpoint-list"><div className="quickstart-endpoint-item"><span>{t('console.quickstart.apiBaseUrl')}</span><div className="quickstart-endpoint-value"><code>{QUICKSTART_API_BASE_URL}</code><Button theme="borderless" size="small" icon={<IconCopy />} aria-label={t('console.quickstart.copyBaseUrl')} title={t('console.quickstart.copyBaseUrl')} onClick={copyBaseUrl} /></div></div><div className="quickstart-endpoint-item"><span>API Key</span><code>YOUR_TOKEN_NX_API_KEY</code></div></div>
-          <div className="quickstart-actions"><Link className="btn btn-secondary" to={'/console/playground?model=' + encodeURIComponent(modelAlias(model))}>{t('console.quickstart.onlineTest')}</Link><Link className="btn btn-secondary" to={'/console/models/' + encodeURIComponent(modelAlias(model))}>{t('console.quickstart.modelDetails')}</Link></div>
+          <div className="quickstart-actions"><Link className="btn btn-secondary" to={'/console/playground?model=' + encodeURIComponent(modelAlias(model))}>{t('console.quickstart.onlineTest')}</Link><Link className="btn btn-secondary" to={'/console/models?model=' + encodeURIComponent(modelAlias(model))}>{t('console.quickstart.modelDetails')}</Link></div>
         </aside>
         <section className="quickstart-code-panel" aria-labelledby="quickstart-code-title">
           <div className="quickstart-code-panel-head"><strong id="quickstart-code-title">{supportsCodeSample ? t('console.quickstart.executableSample') : t('console.quickstart.samplePending')}</strong><Button theme="outline" className="btn btn-secondary btn-sm" onClick={copyCode} disabled={!supportsCodeSample}>{t('console.quickstart.copySample')}</Button></div>

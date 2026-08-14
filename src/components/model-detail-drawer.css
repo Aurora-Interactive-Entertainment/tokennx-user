@@ -1,0 +1,107 @@
+.model-detail-chart-bars {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  align-items: end;
+  gap: 6px;
+  min-height: 168px;
+  padding: 14px 8px 4px;
+}
+
+.model-detail-chart-bars > span {
+  display: grid;
+  grid-template-rows: 1fr auto;
+  align-items: end;
+  min-width: 0;
+  height: 100%;
+  gap: 6px;
+}
+
+.model-detail-chart-bars i {
+  display: block;
+  width: 100%;
+  min-height: 2px;
+  height: var(--model-metric-height);
+  border-radius: 3px 3px 1px 1px;
+  background: var(--color-brand-primary, #72b8e8);
+  opacity: .86;
+}
+
+.model-detail-chart-bars .is-missing i {
+  height: 2px;
+  background: var(--color-border-neutral-l1);
+  opacity: 1;
+}
+
+.model-detail-chart-bars small {
+  overflow: hidden;
+  color: var(--color-text-tertiary);
+  font-size: 9px;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.model-detail-chart-line {
+  display: grid;
+  grid-template-rows: 1fr auto;
+  min-height: 168px;
+  padding: 8px 4px 4px;
+}
+
+.model-detail-chart-line svg {
+  width: 100%;
+  height: 140px;
+  overflow: visible;
+}
+
+.model-detail-chart-line polyline {
+  fill: none;
+  stroke: var(--color-brand-primary, #72b8e8);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.model-detail-chart-line circle {
+  fill: var(--color-bg-base-tertiary);
+  stroke: var(--color-brand-primary, #72b8e8);
+  stroke-width: 3;
+  vector-effect: non-scaling-stroke;
+}
+
+.model-detail-chart-grid-line {
+  stroke: var(--color-border-neutral-l1);
+  stroke-width: 1;
+  stroke-dasharray: 4 6;
+  vector-effect: non-scaling-stroke;
+}
+
+.model-detail-chart-line-labels {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.model-detail-chart-line-labels small {
+  overflow: hidden;
+  color: var(--color-text-tertiary);
+  font-size: 9px;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.model-detail-load-state {
+  margin: 0 0 var(--spacing-12);
+  padding: var(--spacing-8) var(--spacing-12);
+  border: 1px solid var(--color-border-neutral-l1);
+  border-radius: var(--radius-4);
+  color: var(--color-text-secondary);
+  background: var(--color-bg-base-tertiary);
+  font-size: 12px;
+}
+
+.model-detail-load-state.is-error {
+  color: var(--color-danger, #e5484d);
+}

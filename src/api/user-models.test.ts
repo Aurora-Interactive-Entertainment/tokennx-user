@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { clearAuthTokens, saveAuthTokens } from '@/auth/token-storage'
 import type { AuthResult } from './auth'
 import { ApiError } from './http'
-import { getUserModels, getUserModelsErrorMessage } from './user-models'
+import { getUserModelDetail, getUserModels, getUserModelsErrorMessage } from './user-models'
 
 function response(data: unknown, status = 200, code = 0, msg = 'success'): Response {
   return new Response(JSON.stringify({ code, msg, data }), {
@@ -45,6 +45,25 @@ describe('用户模型目录接口封装', () => {
 
     await getUserModels({ account_type: 'enterprise', enterprise_id: ' enterprise-1 ' })
     expect(String(fetchMock.mock.calls[1]?.[0])).toBe('/api/user/models?account_type=enterprise&enterprise_id=enterprise-1')
+  })
+
+  it('使用编码后的模型别名请求当前工作空间详情', async () => {
+    const detail = {
+      model: { id: 'model-1', name: '模型一', company: '厂商', modality: 'text', billing_mode: 'token', description: '', capabilities: [], provider_count: 1, prices: [] },
+      tags: [],
+      specifications: { input_modalities: ['text'], output_modalities: ['text'], recommended_protocol: null, capability_limits: {} },
+      metrics: {
+        activity: { unit: 'token', points: [] },
+        throughput: { unit: 'tokens/s', statistic: 'p50', points: [] },
+        first_token_latency: { unit: 'ms', statistic: 'p95', points: [] },
+        availability: { rate: 0, success_requests: 0, valid_requests: 0 },
+        cumulative_usage: { value: '0', unit: 'token' },
+      },
+    }
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(response(detail))
+
+    await expect(getUserModelDetail(' model/alias ', { account_type: 'enterprise', enterprise_id: ' enterprise-1 ' })).resolves.toEqual(detail)
+    expect(String(fetchMock.mock.calls[0]?.[0])).toBe('/api/user/models/model%2Falias?account_type=enterprise&enterprise_id=enterprise-1')
   })
 
   it('拒绝无法识别的响应并映射稳定业务错误', async () => {
