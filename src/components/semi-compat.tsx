@@ -22,10 +22,12 @@ type CompatSelectComponent = {
   OptGroup: typeof SemiSelect.OptGroup;
 };
 
-const CompatSelect = (({ block, style, ...props }: CompatSelectProps) => {
+const CompatSelect = (({ block, style, className, dropdownClassName, ...props }: CompatSelectProps) => {
   // 兼容旧版 block 语义，同时保留调用方显式传入的其他样式。
   const mergedStyle = block ? { ...style, width: "100%" } : style;
-  return <SemiSelect {...props} style={mergedStyle} />;
+  const mergedClassName = className ? `app-select ${className}` : "app-select";
+  const mergedDropdownClassName = dropdownClassName ? `app-select-dropdown ${dropdownClassName}` : "app-select-dropdown";
+  return <SemiSelect {...props} className={mergedClassName} dropdownClassName={mergedDropdownClassName} style={mergedStyle} />;
 }) as CompatSelectComponent;
 
 CompatSelect.Option = SemiSelect.Option;

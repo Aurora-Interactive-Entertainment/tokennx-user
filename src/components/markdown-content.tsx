@@ -1,4 +1,5 @@
 import ReactMarkdown from 'react-markdown'
+import { useState } from 'react'
 import { defaultSchema } from 'hast-util-sanitize'
 import rehypeSanitize from 'rehype-sanitize'
 import remarkGfm from 'remark-gfm'
@@ -106,16 +107,33 @@ function normalizeMalformedTableImages(content: string): string {
   return normalized.join('\n')
 }
 
+function MarkdownImage({ src, alt, resolveImageUrl }: { src?: string; alt?: string; resolveImageUrl?: (url: string) => string | undefined }) {
+  const resolvedSrc = typeof src === 'string' ? (resolveImageUrl ? resolveImageUrl(src) : src) : undefined
+  const [failedSrc, setFailedSrc] = useState<string | null>(null)
+  const [loadedSrc, setLoadedSrc] = useState<string | null>(null)
+
+  if (!resolvedSrc || failedSrc === resolvedSrc) return null
+  const isLoaded = loadedSrc === resolvedSrc
+  return (
+    <img
+      className={isLoaded ? undefined : 'markdown-image--loading'}
+      src={resolvedSrc}
+      alt={alt ?? ''}
+      loading="lazy"
+      onLoad={() => setLoadedSrc(resolvedSrc)}
+      onError={(event) => {
+        event.currentTarget.hidden = true
+        setFailedSrc(resolvedSrc)
+      }}
+    />
+  )
+}
+
 export function MarkdownContent({ content, className, enhancedCodeBlocks = false, resolveImageUrl }: MarkdownContentProps) {
   const rootClassName = className ? `markdown-content ${className}` : 'markdown-content'
   const normalizedContent = normalizeMalformedTableImages(content)
   const components = {
-    ...(resolveImageUrl ? {
-      img: ({ src, alt }: { src?: string; alt?: string }) => {
-        const resolvedSrc = typeof src === 'string' ? resolveImageUrl(src) : undefined
-        return resolvedSrc ? <img src={resolvedSrc} alt={alt ?? ''} loading="lazy" /> : null
-      },
-    } : {}),
+    img: ({ src, alt }: { src?: string; alt?: string }) => <MarkdownImage src={src} alt={alt} resolveImageUrl={resolveImageUrl} />,
     ...(enhancedCodeBlocks ? {
       pre: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
       code: ({ className: codeClassName, children }: { className?: string; children?: React.ReactNode }) => {

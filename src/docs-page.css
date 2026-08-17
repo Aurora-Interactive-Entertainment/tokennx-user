@@ -61,7 +61,8 @@ html[data-theme="light"] .docs-page--manuscript .docs-sidebar a:not(.is-active):
 html[data-theme="light"] .semi-toast.docs-copy-toast .semi-toast-content { border-color: #d8dadd; color: #17181b; background: #fff; box-shadow: 0 8px 28px rgba(24, 28, 36, .16); }
 html[data-theme="light"] .docs-state h1, html[data-theme="light"] .docs-markdown h1, html[data-theme="light"] .docs-markdown h2, html[data-theme="light"] .docs-markdown h3, html[data-theme="light"] .docs-markdown h4, html[data-theme="light"] .docs-markdown th { color: #17181b; }
 html[data-theme="light"] .docs-markdown { color: #626975; }
-html[data-theme="light"] .docs-markdown blockquote, html[data-theme="light"] .docs-markdown :not(pre) > code, html[data-theme="light"] .docs-markdown th { background: #eef0f2; }
+html[data-theme="light"] .docs-markdown blockquote, html[data-theme="light"] .docs-markdown th { background: #eef0f2; }
+html[data-theme="light"] .docs-markdown :not(pre) > code { color: #6241bd; background: #ece8f7; }
 html[data-theme="light"] .docs-markdown pre { border-color: #d8dadd; color: #353a43; background: #eef0f2; }
 html[data-theme="light"] .docs-markdown th, html[data-theme="light"] .docs-markdown td { border-color: #d8dadd; }
 html[data-theme="light"] .docs-markdown td { color: #626975; }

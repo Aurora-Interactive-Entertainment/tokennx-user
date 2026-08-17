@@ -464,9 +464,11 @@ describe('公共 Header 布局', () => {
     await user.click(within(dialog).getByRole('button', { name: '隐藏余额' }))
     expect(within(dialog).getByText('*****')).toBeInTheDocument()
     expect(within(dialog).getByRole('button', { name: '显示余额' })).toBeInTheDocument()
+    expect(window.localStorage.getItem('token-nx:billing-balance-visible:v1')).toBe('hidden')
 
     await user.click(within(dialog).getByRole('button', { name: '显示余额' }))
     expect(within(dialog).getByText('128.50')).toBeInTheDocument()
+    expect(window.localStorage.getItem('token-nx:billing-balance-visible:v1')).toBe('visible')
 
     await user.unhover(billingLink)
     await user.hover(billingLink)

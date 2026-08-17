@@ -12,7 +12,7 @@ import type { UserModelDetail, UserModelMetricPoint, UserModelPrice, UserModelTa
 import { modelAlias, modelRouteKey, type ModelPrice, type ModelRecord } from '@/data/models'
 import { formatCount, formatNumber } from '@/utils/format'
 
-const MODEL_UNAVAILABLE_LABEL = '后端未提供'
+const MODEL_UNAVAILABLE_LABEL = '暂无数据'
 const TOKEN_QUANTITY = 1_000_000
 const MODALITY_IO: Record<ModelRecord['modality'], [string, string]> = {
   text: ['文本', '文本'],
@@ -298,7 +298,6 @@ export function ModelDetailDrawer({ model, detail, loading, error, visible, onCl
               <div><dt>{t('console.common.maxOutput')}</dt><dd>{formatTokenLimit(specifications?.max_output_tokens) ?? model.maxOutput ?? noDataLabel}</dd></div>
               <div><dt>{t('console.common.inputType')}</dt><dd>{inputType}</dd></div>
               <div><dt>{t('console.common.outputType')}</dt><dd>{outputType}</dd></div>
-              <div><dt>{t('console.common.providerCount')}</dt><dd>{detailModel?.provider_count ?? model.providerCount}</dd></div>
               <div><dt>{t('console.modelDetail.recommendedProtocol')}</dt><dd>{specifications ? specifications.recommended_protocol?.name ?? noDataLabel : model.modality === 'text' ? 'OpenAI Chat Completions' : noDataLabel}</dd></div>
             </dl>
             <div className="model-detail-capabilities">{capabilities.map((capability) => <span className="model-detail-tag model-detail-tag--accent" key={capability}>{localizeConsoleLabel(t, capability)}</span>)}</div>

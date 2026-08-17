@@ -3,7 +3,6 @@ import type { TFunction } from 'i18next'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
 import Toast from '@douyinfe/semi-ui/lib/es/toast'
 import Skeleton from '@douyinfe/semi-ui/lib/es/skeleton'
-import { Select } from '@douyinfe/semi-ui'
 import { IconBookOpenStroked, IconChevronDown, IconCopyStroked, IconFile } from '@douyinfe/semi-icons'
 import { LoginPanel, LoginRequiredAction, ManuscriptSupportWidget, PublicLayout, ModelLogo, normalizeLoginReturnPath } from '@/components/common'
 import modelCardArt from '@/assets/figma-home/model-card-art.png'
@@ -15,6 +14,7 @@ import '@/docs-page.css'
 import hermesAgentImage from '@/assets/figma-apps/hermes-agent.png'
 import { ModelPriceSummary } from '@/components/money'
 import { MarkdownContent } from '@/components/markdown-content'
+import { CompatSelect as Select } from '@/components/semi-compat'
 import { getPublicHomepage, getPublicHomepageAssetURL, getPublicHomepageStats, type HomepageDiscountKind, type HomepageEntry, type HomepagePromotionModel, type HomepageTranslation, type PublicHomepage } from '@/api/homepage'
 import { getModelUsageLeaderboard, getRecentModelUsage, type ModelUsageLeaderboard, type ModelUsagePeriod, type RecentModelUsage } from '@/api/model-rankings'
 import { getToolUsageClients, getToolUsageLeaderboard, type ToolUsageClients, type ToolUsageLeaderboard, type ToolUsagePeriod } from '@/api/tool-usage'
@@ -848,9 +848,8 @@ export function HomePage({ onInitialScoreboardReady }: { onInitialScoreboardRead
         </section>
 
         <section className="manuscript-section manuscript-pricing" aria-labelledby="homePricingTitle">
-          <div className="manuscript-section-heading"><div><h2 id="homePricingTitle">{t('home.pricing.manuscriptTitle')}</h2><p>{t('home.pricing.manuscriptSubtitle')}</p></div></div>
+          <div className="manuscript-section-heading manuscript-section-heading--title-only"><div><h2 id="homePricingTitle">{t('home.pricing.manuscriptTitle')}</h2></div></div>
           <div className="manuscript-price-grid" role={isHomepageLoading ? 'status' : undefined} aria-busy={isHomepageLoading || undefined}>{isHomepageLoading ? <><span className="public-sr-only">正在加载优惠模型</span><HomePriceSkeletons /></> : promotionItems.map((item, itemIndex) => <article className={`manuscript-price-card${item.input.length > 5 || item.output.length > 5 ? ' has-long-price' : ''}`} key={item.id}>
-            <span className="manuscript-price-card-kicker">{t('home.pricing.manuscriptSubtitle')}</span>
             <div className="manuscript-price-card-head"><Link className="manuscript-price-model" to={modelPublicHref(item.model) ?? '/models'}><span className="manuscript-price-model-logo"><img src={promoModelLogo} alt="" aria-hidden="true" loading="lazy" decoding="async" width={30} height={24} /></span><span><strong>{item.name}</strong><small>{t('home.rebuild.providedBy', { company: item.company })}</small></span></Link><span className={`manuscript-price-badge${item.discountKind === 'free' ? ' is-equal' : ''}`}>{t(`public.home.discount${item.discountKind === 'free' ? 'Free' : item.discountKind === 'custom' ? 'Custom' : 'Half'}`)}</span></div>
             <div className="manuscript-price-divider" />
             <div className="manuscript-price-values"><div><span>{t('home.rebuild.inputPrice')}</span><strong>{item.input}<small>{t('public.home.priceUnit')}</small></strong></div><div><span>{t('home.rebuild.outputPrice')}</span><strong>{item.output}<small>{t('public.home.priceUnit')}</small></strong></div></div>
@@ -932,7 +931,7 @@ export function ModelsPublicPage() {
         <form onSubmit={(event) => event.preventDefault()} role="search">
           <div className="public-models-filter-grid">
             <div className="public-models-search-field"><label htmlFor="modelSearch">{t('public.models.searchLabel')}</label><div className="public-models-search-control"><input className="input" id="modelSearch" type="search" value={query} onChange={(event) => updateSearch(event.target.value)} autoComplete="off" placeholder={t('public.models.searchPlaceholder')} /><button className="btn btn-secondary" type="submit">{t('public.models.searchButton')}</button></div></div>
-            <div className="public-models-company-field"><label htmlFor="companyFilter">{t('public.models.companyLabel')}</label><select className="input" id="companyFilter" value={company} onChange={(event) => updateCompany(event.target.value)}><option value="">{t('public.models.allCompanies')}</option>{companyOptions.map((option) => <option key={option} value={option}>{publicCompanyLabel(t, option)}</option>)}</select></div>
+            <div className="public-models-company-field"><label htmlFor="companyFilter">{t('public.models.companyLabel')}</label><Select id="companyFilter" value={company} onChange={(value) => updateCompany(String(value))} block><Select.Option value="">{t('public.models.allCompanies')}</Select.Option>{companyOptions.map((option) => <Select.Option key={option} value={option}>{publicCompanyLabel(t, option)}</Select.Option>)}</Select></div>
           </div>
           <div className="public-models-filter-row">
             <div className="public-models-modality" role="group" aria-label={t('public.models.modalityLabel')}>

@@ -31,6 +31,7 @@ import { BannerNotice, EmptyPanel, PageTitle } from '@/components/common'
 import { AppPagination } from '@/components/app-pagination'
 import { MoneyText } from '@/components/money'
 import { PaymentQRCodeFrame } from '@/components/payment-qr-frame'
+import { CompatSelect as Select } from '@/components/semi-compat'
 import { useAppStore, type Workspace } from '@/data/app-state'
 import { invalidateAuth } from '@/store/auth-slice'
 import { useAppDispatch } from '@/store/hooks'
@@ -256,12 +257,169 @@ function AnalysisTab({ state, periodValue, apiKeyID, model, source, requestedRec
     models: data.filters.models.flatMap((option) => {
       const alias = option.alias?.trim() || ''
       if (!alias) return []
-      return [{ ...option, code: alias, name: `${option.name || i18n.t('console.playground.unnamedModel')}（${option.vendor || i18n.t('console.common.unknown')} · ${alias}）` }]
+      return [
+        {
+          ...option,
+          code: alias,
+          name: `${option.name || i18n.t('console.playground.unnamedModel')}（${option.vendor || i18n.t('console.common.unknown')} · ${alias}）`,
+        },
+      ]
     }),
   }
   const visibleItems = requestedRecordId ? ledger.items.filter((item) => item.request_id === requestedRecordId) : ledger.items
   const visibleTotal = requestedRecordId ? visibleItems.length : ledger.total
-  return <section id="billing-analysis" className="billing-analysis" aria-labelledby="analysisHeading"><div className="analysis-header"><h2 className="analysis-heading" id="analysisHeading">{i18n.t('console.billing.analysis')}</h2><div className="analysis-actions"><span className="balance-inline">{i18n.t('console.billing.balance')}<strong><MoneyText value={wallet.total_balance_yuan || wallet.total_available_yuan} /></strong></span><Button theme="solid" type="primary" size="small" onClick={onRecharge}>{i18n.t('console.billing.rechargeNow')}</Button><Button theme="outline" size="small" onClick={onSubscription}>{i18n.t('console.billing.subscriptionManage')}</Button></div></div><div className="billing-filter-grid" aria-label={i18n.t('console.billing.filterLabel')}><label className="billing-filter-field"><span className="billing-filter-label">{i18n.t('console.billing.billingPeriod')}</span><select className="input billing-filter" value={periodValue} onChange={(event) => onFilterChange('period', event.target.value)}>{filters.periods.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}</select></label><label className="billing-filter-field"><span className="billing-filter-label">{i18n.t('console.billing.apiKey')}</span><select className="input billing-filter" value={apiKeyID} onChange={(event) => onFilterChange('apiKey', event.target.value)}><option value="">{i18n.t('console.billing.allApiKeys')}</option>{filters.api_keys.map((option) => <option value={option.id} key={option.id}>{option.name} · {option.masked_key}</option>)}</select></label><label className="billing-filter-field"><span className="billing-filter-label">{i18n.t('console.billing.model')}</span><select className="input billing-filter" value={model} onChange={(event) => onFilterChange('model', event.target.value)}><option value="">{i18n.t('console.billing.allModels')}</option>{filters.models.map((option) => <option value={option.code} key={option.code}>{option.name || option.code}</option>)}</select></label></div><div className="metric-grid billing-metrics-grid"><Metric label={i18n.t('console.billing.currentCost')} value={<MoneyText value={metrics.total_cost_yuan} />} note={i18n.t('console.billing.modelSpend')} tone="highlight" /><Metric label={i18n.t('console.billing.inputCost')} value={<MoneyText value={metrics.input_cost_yuan} />} note={i18n.t('console.billing.textInput')} /><Metric label={i18n.t('console.billing.outputCost')} value={<MoneyText value={metrics.output_cost_yuan} />} note={i18n.t('console.billing.textOutput')} /><Metric label={i18n.t('console.billing.imageCount')} value={i18n.t('console.billing.imageQuantity', { count: formatCount(metrics.image_count) })} note={<>{i18n.t('console.billing.cost')} <MoneyText value={metrics.image_cost_yuan} /></>} /><Metric label={i18n.t('console.billing.audioCount')} value={i18n.t('console.billing.audioQuantity', { count: formatCount(metrics.audio_count) })} note={<>{i18n.t('console.billing.cost')} <MoneyText value={metrics.audio_cost_yuan} /></>} /><Metric label={i18n.t('console.billing.videoCount')} value={i18n.t('console.billing.videoQuantity', { count: formatCount(metrics.video_count) })} note={<>{i18n.t('console.billing.cost')} <MoneyText value={metrics.video_cost_yuan} /></>} /><Metric label={i18n.t('console.billing.averageRequestCost')} value={<MoneyText value={metrics.average_request_cost_yuan} />} note={i18n.t('console.billing.billedSuccessRequests')} /><Metric label={i18n.t('console.billing.averageMillionTokenCost')} value={<MoneyText value={metrics.average_million_token_yuan} />} note={i18n.t('console.billing.textCallsOnly')} /><Metric label={i18n.t('console.billing.availableAmount')} value={<MoneyText value={metrics.billable_amount_yuan} />} note={i18n.t('console.billing.billableBalance')} tone="highlight" action={<Button className="metric-card-action" theme="outline" size="small" onClick={onInvoice}>{i18n.t('console.billing.goInvoice')}</Button>} /> </div><section className="analysis-section" id="ledgerSection" aria-labelledby="ledgerHeading"><div className="section-heading"><div><h2 id="ledgerHeading" tabIndex={-1}>{i18n.t('console.billing.ledger')}</h2></div><div className="ledger-toolbar"><span className="section-meta">{i18n.t('console.billing.billedRequestCount', { count: formatCount(metrics.request_count) })}</span><label className="ledger-filter-field"><span className="billing-filter-label">{i18n.t('console.billing.consumptionType')}</span><select className="input billing-filter" aria-label={i18n.t('console.billing.consumptionType')} value={source} onChange={(event) => onSourceChange(event.target.value as BillingSource)}><option value="all">{i18n.t('console.billing.all')}</option><option value="model_consume">{i18n.t('console.billing.modelConsumption')}</option><option value="recharge">{i18n.t('console.billing.recharge')}</option><option value="reward">{i18n.t('console.billing.gift')}</option></select></label><Button theme="outline" size="small" icon={<IconDownload />} onClick={onExport} disabled={visibleItems.length === 0}>{i18n.t('console.billing.exportCsv')}</Button></div></div>{visibleItems.length === 0 ? <EmptyPanel title={i18n.t('console.billing.noLedger')} description={i18n.t('console.billing.adjustLedger')} /> : <div className="table-scroll"><LedgerTable items={visibleItems} /></div>}<BillingPagination page={page} total={visibleTotal} pageSize={ledger.page_size || pageSize} label={i18n.t('console.billing.ledgerPagination')} disabled={state.status !== 'success'} onPageChange={onPageChange} onPageSizeChange={onPageSizeChange} /></section></section>
+  return (
+    <section id="billing-analysis" className="billing-analysis" aria-labelledby="analysisHeading">
+      <div className="analysis-header">
+        <h2 className="analysis-heading" id="analysisHeading">
+          {i18n.t('console.billing.analysis')}
+        </h2>
+        <div className="analysis-actions">
+          <span className="balance-inline">
+            {i18n.t('console.billing.balance')}
+            <strong>
+              <MoneyText value={wallet.total_balance_yuan || wallet.total_available_yuan} />
+            </strong>
+          </span>
+          <Button theme="solid" type="primary" size="small" onClick={onRecharge}>
+            {i18n.t('console.billing.rechargeNow')}
+          </Button>
+          <Button theme="outline" size="small" onClick={onSubscription}>
+            {i18n.t('console.billing.subscriptionManage')}
+          </Button>
+        </div>
+      </div>
+      <div className="billing-filter-grid" aria-label={i18n.t('console.billing.filterLabel')}>
+        <label className="billing-filter-field" htmlFor="billing-period-filter">
+          <span id="billing-period-filter-label" className="billing-filter-label">
+            {i18n.t('console.billing.billingPeriod')}
+          </span>
+          <Select id="billing-period-filter" className="billing-filter" aria-labelledby="billing-period-filter-label" value={periodValue} onChange={(value) => onFilterChange('period', String(value))} onSelect={(value) => onFilterChange('period', String(value))} block>
+            {filters.periods.map((option) => (
+              <Select.Option value={option.value} key={option.value}>
+                {option.label}
+              </Select.Option>
+            ))}
+          </Select>
+        </label>
+        <label className="billing-filter-field" htmlFor="billing-api-key-filter">
+          <span id="billing-api-key-filter-label" className="billing-filter-label">
+            {i18n.t('console.billing.apiKey')}
+          </span>
+          <Select id="billing-api-key-filter" className="billing-filter" aria-labelledby="billing-api-key-filter-label" value={apiKeyID} onChange={(value) => onFilterChange('apiKey', String(value))} onSelect={(value) => onFilterChange('apiKey', String(value))} block>
+            <Select.Option value="">{i18n.t('console.billing.allApiKeys')}</Select.Option>
+            {filters.api_keys.map((option) => (
+              <Select.Option value={option.id} key={option.id}>
+                {option.name} · {option.masked_key}
+              </Select.Option>
+            ))}
+          </Select>
+        </label>
+        <label className="billing-filter-field" htmlFor="billing-model-filter">
+          <span id="billing-model-filter-label" className="billing-filter-label">
+            {i18n.t('console.billing.model')}
+          </span>
+          <Select id="billing-model-filter" className="billing-filter" aria-labelledby="billing-model-filter-label" value={model} onChange={(value) => onFilterChange('model', String(value))} onSelect={(value) => onFilterChange('model', String(value))} block>
+            <Select.Option value="">{i18n.t('console.billing.allModels')}</Select.Option>
+            {filters.models.map((option) => (
+              <Select.Option value={option.code} key={option.code}>
+                {option.name || option.code}
+              </Select.Option>
+            ))}
+          </Select>
+        </label>
+      </div>
+      <div className="metric-grid billing-metrics-grid">
+        <Metric label={i18n.t('console.billing.currentCost')} value={<MoneyText value={metrics.total_cost_yuan} />} note={i18n.t('console.billing.modelSpend')} tone="highlight" />
+        <Metric label={i18n.t('console.billing.inputCost')} value={<MoneyText value={metrics.input_cost_yuan} />} note={i18n.t('console.billing.textInput')} />
+        <Metric label={i18n.t('console.billing.outputCost')} value={<MoneyText value={metrics.output_cost_yuan} />} note={i18n.t('console.billing.textOutput')} />
+        <Metric
+          label={i18n.t('console.billing.imageCount')}
+          value={i18n.t('console.billing.imageQuantity', {
+            count: formatCount(metrics.image_count),
+          })}
+          note={
+            <>
+              {i18n.t('console.billing.cost')} <MoneyText value={metrics.image_cost_yuan} />
+            </>
+          }
+        />
+        <Metric
+          label={i18n.t('console.billing.audioCount')}
+          value={i18n.t('console.billing.audioQuantity', {
+            count: formatCount(metrics.audio_count),
+          })}
+          note={
+            <>
+              {i18n.t('console.billing.cost')} <MoneyText value={metrics.audio_cost_yuan} />
+            </>
+          }
+        />
+        <Metric
+          label={i18n.t('console.billing.videoCount')}
+          value={i18n.t('console.billing.videoQuantity', {
+            count: formatCount(metrics.video_count),
+          })}
+          note={
+            <>
+              {i18n.t('console.billing.cost')} <MoneyText value={metrics.video_cost_yuan} />
+            </>
+          }
+        />
+        <Metric label={i18n.t('console.billing.averageRequestCost')} value={<MoneyText value={metrics.average_request_cost_yuan} />} note={i18n.t('console.billing.billedSuccessRequests')} />
+        <Metric label={i18n.t('console.billing.averageMillionTokenCost')} value={<MoneyText value={metrics.average_million_token_yuan} />} note={i18n.t('console.billing.textCallsOnly')} />
+        <Metric
+          label={i18n.t('console.billing.availableAmount')}
+          value={<MoneyText value={metrics.billable_amount_yuan} />}
+          note={i18n.t('console.billing.billableBalance')}
+          tone="highlight"
+          action={
+            <Button className="metric-card-action" theme="outline" size="small" onClick={onInvoice}>
+              {i18n.t('console.billing.goInvoice')}
+            </Button>
+          }
+        />{' '}
+      </div>
+      <section className="analysis-section" id="ledgerSection" aria-labelledby="ledgerHeading">
+        <div className="section-heading">
+          <div>
+            <h2 id="ledgerHeading" tabIndex={-1}>
+              {i18n.t('console.billing.ledger')}
+            </h2>
+          </div>
+          <div className="ledger-toolbar">
+            <span className="section-meta">
+              {i18n.t('console.billing.billedRequestCount', {
+                count: formatCount(metrics.request_count),
+              })}
+            </span>
+            <label className="ledger-filter-field" htmlFor="billing-source-filter">
+              <span id="billing-source-filter-label" className="billing-filter-label">
+                {i18n.t('console.billing.consumptionType')}
+              </span>
+              <Select id="billing-source-filter" className="billing-filter" aria-labelledby="billing-source-filter-label" value={source} onChange={(value) => onSourceChange(String(value) as BillingSource)} onSelect={(value) => onSourceChange(String(value) as BillingSource)}>
+                <Select.Option value="all">{i18n.t('console.billing.all')}</Select.Option>
+                <Select.Option value="model_consume">{i18n.t('console.billing.modelConsumption')}</Select.Option>
+                <Select.Option value="recharge">{i18n.t('console.billing.recharge')}</Select.Option>
+                <Select.Option value="reward">{i18n.t('console.billing.gift')}</Select.Option>
+              </Select>
+            </label>
+            <Button theme="outline" size="small" icon={<IconDownload />} onClick={onExport} disabled={visibleItems.length === 0}>
+              {i18n.t('console.billing.exportCsv')}
+            </Button>
+          </div>
+        </div>
+        {visibleItems.length === 0 ? (
+          <EmptyPanel title={i18n.t('console.billing.noLedger')} description={i18n.t('console.billing.adjustLedger')} />
+        ) : (
+          <div className="table-scroll">
+            <LedgerTable items={visibleItems} />
+          </div>
+        )}
+        <BillingPagination page={page} total={visibleTotal} pageSize={ledger.page_size || pageSize} label={i18n.t('console.billing.ledgerPagination')} disabled={state.status !== 'success'} onPageChange={onPageChange} onPageSizeChange={onPageSizeChange} />
+      </section>
+    </section>
+  )
 }
 
 function RechargeTab({ context, onOrderUpdated, onAuthFailure }: { context: BillingContext; onOrderUpdated: () => void; onAuthFailure: () => void }) {

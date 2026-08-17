@@ -1,5 +1,4 @@
 import { useEffect, useId, useState } from 'react'
-import { IconCopyStroked } from '@douyinfe/semi-icons'
 import { Toast } from '@douyinfe/semi-ui'
 import { Highlight, type Language, type PrismTheme } from 'prism-react-renderer'
 import { useTranslation } from 'react-i18next'
@@ -118,7 +117,7 @@ export function MarkdownCodeBlock({ variants }: { variants: MarkdownCodeVariant[
       {safeVariants.length > 1 ? <div className="markdown-code-reader-tabs" role="tablist" aria-label={t('public.docs.manuscript.codeLanguages')}>
         {safeVariants.map((variant, index) => <button id={`${tabId}-tab-${index}`} className={activeIndex === index ? 'is-active' : ''} type="button" role="tab" aria-selected={activeIndex === index} aria-controls={`${tabId}-panel`} key={`${variant.language}-${index}`} onClick={() => setActiveIndex(index)}>{languageLabel(variant.language)}</button>)}
       </div> : <span className="markdown-code-reader-language">{languageLabel(activeVariant.language)}</span>}
-      <button className="markdown-code-reader-copy" type="button" aria-label={t('public.docs.manuscript.copyCode')} title={t('public.docs.manuscript.copyCode')} onClick={() => void copyCode()}><IconCopyStroked aria-hidden="true" /></button>
+      <button className="markdown-code-reader-copy" type="button" aria-label={t('public.docs.manuscript.copyCode')} title={t('public.docs.manuscript.copyCode')} onClick={() => void copyCode()}><span className="markdown-code-reader-copy-icon" aria-hidden="true" /></button>
     </header>
     <div className="markdown-code-reader-scroll" id={`${tabId}-panel`} role="tabpanel" aria-labelledby={safeVariants.length > 1 ? `${tabId}-tab-${activeIndex}` : undefined}>
       <Highlight prism={Prism} code={activeVariant.code.replace(/\n$/, '')} language={normalizedLanguage(activeVariant.language)} theme={theme === 'light' ? LIGHT_DOCS_CODE_THEME : DARK_DOCS_CODE_THEME}>

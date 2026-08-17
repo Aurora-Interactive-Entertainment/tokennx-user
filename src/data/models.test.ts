@@ -73,6 +73,6 @@ describe('模型目录业务规则', () => {
     expect(million.throughput).toEqual({ value: 1.2, unit: 'M tokens' })
     expect(thousand.throughput).toEqual({ value: 1.2, unit: 'K tokens' })
     expect(small.throughput).toEqual({ value: 999, unit: 'token' })
-    expect(invalid.throughput).toEqual({ value: 0, unit: '后端未提供' })
+    expect(invalid.throughput).toEqual({ value: 0, unit: '暂无数据' })
   })
 })

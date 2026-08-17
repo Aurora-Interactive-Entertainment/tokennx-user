@@ -130,6 +130,7 @@ export const PUBLIC_LINKS: PublicLink[] = [
 const AUTHENTICATED_PUBLIC_LINK: PublicLink = { labelKey: 'nav.billing', path: '/console/billing' }
 const BILLING_OVERVIEW_HOVER_DELAY_MS = 120
 const BILLING_OVERVIEW_CACHE_MS = 8_000
+const BILLING_BALANCE_VISIBILITY_STORAGE_KEY = 'token-nx:billing-balance-visible:v1'
 
 type BillingOverviewCacheEntry = {
   data: AccountOverviewResponse
@@ -142,6 +143,23 @@ function billingOverviewContext(workspace: Pick<Workspace, 'id' | 'type'>): Bill
 
 function billingOverviewKey(context: BillingContext): string {
   return context.account_type === 'enterprise' ? `enterprise:${context.enterprise_id ?? ''}` : 'personal'
+}
+
+function initialBillingBalanceVisible(): boolean {
+  if (typeof window === 'undefined') return true
+  try {
+    return window.localStorage.getItem(BILLING_BALANCE_VISIBILITY_STORAGE_KEY) !== 'hidden'
+  } catch {
+    return true
+  }
+}
+
+function persistBillingBalanceVisible(visible: boolean): void {
+  try {
+    window.localStorage.setItem(BILLING_BALANCE_VISIBILITY_STORAGE_KEY, visible ? 'visible' : 'hidden')
+  } catch {
+    // Keep the in-memory preference when storage is unavailable.
+  }
 }
 
 function formatBillingOverviewAmount(value: string | undefined): string {
@@ -216,7 +234,7 @@ export function ModelTags({ model }: { model: ModelRecord }) {
   )
 }
 
-const MODEL_UNAVAILABLE_LABEL = '后端未提供'
+const MODEL_UNAVAILABLE_LABEL = '暂无数据'
 const MODEL_IO_TYPES: Record<ModelRecord['modality'], [string, string]> = {
   text: ['文本', '文本'],
   image: ['文本', '图片'],
@@ -232,6 +250,7 @@ const MODEL_TYPE_MARKS: Record<string, string> = { 文本: 'T', 图片: 'I', 视
 
 const CONSOLE_LABEL_KEYS: Record<string, string> = {
   '后端未提供': 'console.common.unavailable',
+  '暂无数据': 'console.common.unavailable',
   '上下文': 'console.common.context',
   '最大输出': 'console.common.maxOutput',
   '图像尺寸': 'console.common.imageSize',
@@ -328,7 +347,7 @@ export function ModelCard({ model, compact = false, onSelect }: { model: ModelRe
         </div>
         <div className="model-id-row"><code>{displayAlias}</code>{copied ? <span className="copy-hint">{t('console.common.copied')}</span> : null}</div>
         <div className="model-card-highlight-row">
-          <span className="model-card-throughput"><strong>{model.throughput.unit === '后端未提供' ? t('console.common.unavailable') : `${model.throughput.value}${model.throughput.unit === 'B tokens' ? 'B token' : ` ${model.throughput.unit}`}`}</strong></span>
+          <span className="model-card-throughput"><strong>{model.throughput.unit === MODEL_UNAVAILABLE_LABEL ? t('console.common.unavailable') : `${model.throughput.value}${model.throughput.unit === 'B tokens' ? 'B token' : ` ${model.throughput.unit}`}`}</strong></span>
           <div className="model-card-tags">{model.labels.slice(0, 4).map((label) => <span className={`model-card-tag model-card-tag--${label === '折扣' ? 'warning' : label === '多模态' ? 'accent' : label === '代码' ? 'info' : 'neutral'}`} key={label}>{localizeConsoleLabel(t, label)}</span>)}</div>
         </div>
         <p className="model-card-description">{model.description}</p>
@@ -985,7 +1004,7 @@ export function PublicHeader({ enterpriseAccess, unreadNotificationCount = 0 }: 
   const [mobileOpen, setMobileOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
   const [billingMenuOpen, setBillingMenuOpen] = useState(false)
-  const [billingBalanceVisible, setBillingBalanceVisible] = useState(true)
+  const [billingBalanceVisible, setBillingBalanceVisible] = useState(initialBillingBalanceVisible)
   const [billingOverview, setBillingOverview] = useState<AccountOverviewResponse | null>(null)
   const [accountSettingsOpen, setAccountSettingsOpen] = useState(false)
   const headerRef = useRef<HTMLElement | null>(null)
@@ -1073,6 +1092,14 @@ export function PublicHeader({ enterpriseAccess, unreadNotificationCount = 0 }: 
     }, BILLING_OVERVIEW_HOVER_DELAY_MS)
   }
 
+  function toggleBillingBalanceVisibility(): void {
+    setBillingBalanceVisible((visible) => {
+      const nextVisible = !visible
+      persistBillingBalanceVisible(nextVisible)
+      return nextVisible
+    })
+  }
+
   function scheduleBillingMenuClose(): void {
     clearBillingHoverCloseTimer()
     clearBillingHoverRequestTimer()
@@ -1126,7 +1153,7 @@ export function PublicHeader({ enterpriseAccess, unreadNotificationCount = 0 }: 
           <div className="billing-hover-balance">
             <div className="billing-hover-label">
               <span>{t('console.billing.balance')}</span><span>{t('console.billing.currency')}</span>
-              <button className="billing-hover-eye" type="button" aria-label={t(billingBalanceVisible ? 'console.billing.hideBalance' : 'console.billing.showBalance')} title={t(billingBalanceVisible ? 'console.billing.hideBalance' : 'console.billing.showBalance')} onClick={() => setBillingBalanceVisible((visible) => !visible)}>
+              <button className="billing-hover-eye" type="button" aria-label={t(billingBalanceVisible ? 'console.billing.hideBalance' : 'console.billing.showBalance')} title={t(billingBalanceVisible ? 'console.billing.hideBalance' : 'console.billing.showBalance')} onClick={toggleBillingBalanceVisibility}>
                 {billingBalanceVisible ? <IconEyeOpenedStroked aria-hidden="true" /> : <IconEyeClosedStroked aria-hidden="true" />}
               </button>
             </div>
@@ -1643,7 +1670,8 @@ function UserMenu({ store, userId, userName, phone, enterpriseAccess, accountSet
         <div className="user-dropdown-header">
           <button ref={workspaceTriggerRef} className="user-dropdown-identity" type="button" role="menuitem" aria-label={t('console.common.switchWorkspace')} aria-controls="workspace-menu" aria-expanded={workspaceOpen} onClick={() => setWorkspaceOpen((value) => !value)}>
             <span className="user-dropdown-identity-avatar">{initial}</span>
-            <span className="user-dropdown-identity-copy"><strong>{displayName}</strong><span>{activeWorkspace.type === 'personal' ? t('console.common.personalWorkspace') : activeWorkspace.name}</span><span className={`user-dropdown-identity-chevron${workspaceOpen ? ' is-open' : ''}`} aria-hidden="true" /><span className="public-sr-only">{phoneLabel}</span><span className="public-sr-only">{t('console.common.currentWorkspace')} · {activeWorkspace.type === 'personal' ? displayName : activeWorkspace.name}</span><span className="public-sr-only">{t('console.common.switchWorkspace')}</span></span>
+            <span className="user-dropdown-identity-copy"><strong>{displayName}</strong><span>{activeWorkspace.type === 'personal' ? t('console.common.personalWorkspace') : activeWorkspace.name}</span><span className="public-sr-only">{phoneLabel}</span><span className="public-sr-only">{t('console.common.currentWorkspace')} · {activeWorkspace.type === 'personal' ? displayName : activeWorkspace.name}</span><span className="public-sr-only">{t('console.common.switchWorkspace')}</span></span>
+            <span className={`user-dropdown-identity-chevron${workspaceOpen ? ' is-open' : ''}`} aria-hidden="true"><IconChevronDown className="user-dropdown-identity-chevron-icon" /></span>
           </button>
           <button className="user-dropdown-settings" type="button" aria-label={t('nav.settings')} onClick={openAccountSettings}><IconSettingStroked aria-hidden="true" /></button>
         </div>

@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import '@/i18n'
@@ -22,7 +22,21 @@ describe('模型回复 Markdown 渲染', () => {
   it('allows callers to resolve trusted markdown image URLs', () => {
     render(<MarkdownContent content="![diagram](01K00000000000000000000001)" resolveImageUrl={(url) => `/api/docs/assets/${url}`} />)
 
-    expect(screen.getByRole('img', { name: 'diagram' })).toHaveAttribute('src', '/api/docs/assets/01K00000000000000000000001')
+    const image = screen.getByRole('img', { name: 'diagram' })
+    expect(image).toHaveAttribute('src', '/api/docs/assets/01K00000000000000000000001')
+    expect(image).toHaveClass('markdown-image--loading')
+
+    fireEvent.load(image)
+
+    expect(image).not.toHaveClass('markdown-image--loading')
+  })
+
+  it('removes markdown images when the resolved asset fails to load', () => {
+    render(<MarkdownContent content="![missing diagram](missing.png)" resolveImageUrl={(url) => `/api/docs/assets/${url}`} />)
+
+    fireEvent.error(screen.getByRole('img', { name: 'missing diagram' }))
+
+    expect(screen.queryByRole('img', { name: 'missing diagram' })).not.toBeInTheDocument()
   })
 
   it('repairs an image appended to a GFM table delimiter', () => {

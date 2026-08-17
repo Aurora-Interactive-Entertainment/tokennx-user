@@ -1,5 +1,5 @@
 import '@/i18n'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { Provider } from 'react-redux'
@@ -259,13 +259,17 @@ describe('用户费用管理页面', () => {
     })
     const { fetchMock } = renderBilling({ paymentStatus: 'paying' })
     await screen.findByRole('heading', { name: '费用分析' })
-    await user.selectOptions(screen.getByLabelText('API 密钥'), 'key-public-1')
-    await user.selectOptions(screen.getByLabelText('模型'), 'gpt-public')
-    await user.selectOptions(screen.getByLabelText('账期'), '2026-06')
-    await user.selectOptions(screen.getByLabelText('消费类型'), 'recharge')
+    await user.click(screen.getByRole('combobox', { name: 'API 密钥' }))
+    fireEvent.click(await screen.findByRole('option', { name: /主密钥/ }))
+    await user.click(await screen.findByRole('combobox', { name: '模型' }))
+    fireEvent.click(await screen.findByRole('option', { name: /测试模型/ }))
+    await user.click(await screen.findByRole('combobox', { name: '账期' }))
+    fireEvent.click(await screen.findByRole('option', { name: /2026年6月/ }))
+    await user.click(await screen.findByRole('combobox', { name: '消费类型' }))
+    fireEvent.click(await screen.findByRole('option', { name: /充值/ }))
     await waitFor(() => {
       const calls = fetchMock.mock.calls.map(([input]) => new URL(String(input), window.location.origin)).filter((url) => url.pathname.endsWith('/analysis'))
-      expect(calls.some((url) => url.searchParams.get('api_key_id') === 'key-public-1' && url.searchParams.get('model') === 'gpt-public' && url.searchParams.get('period') === '2026-06' && url.searchParams.get('source') === 'recharge')).toBe(true)
+      expect(calls.map((url) => Object.fromEntries(url.searchParams))).toContainEqual(expect.objectContaining({ api_key_id: 'key-public-1', model: 'gpt-public', period: '2026-06', source: 'recharge' }))
     })
 
     await user.click(screen.getByRole('tab', { name: '充值' }))

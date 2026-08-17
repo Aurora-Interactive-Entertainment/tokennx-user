@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import Toast from '@douyinfe/semi-ui/lib/es/toast'
 import { BannerNotice } from '@/components/common'
 import { AppPagination } from '@/components/app-pagination'
+import { CompatSelect as Select } from '@/components/semi-compat'
 import { getEnterpriseModels, updateEnterpriseModel, type EnterpriseContext, type EnterpriseModel, type EnterpriseModelPage } from '@/api/enterprise-console'
 import { isApiError } from '@/api/http'
 import { EnterpriseEmpty, EnterpriseError, EnterpriseLoading, EnterprisePageShell, EnterpriseRefreshButton, useEnterpriseErrorHandler, type EnterpriseRequestError } from './enterprise-console-shared'
@@ -56,7 +57,7 @@ function ModelsSummary({ data }: { data: EnterpriseModelPage }) {
 
 function ModelsToolbar({ keyword, modality, onKeywordChange, onModalityChange }: { keyword: string; modality: ModelModalityFilter; onKeywordChange: (value: string) => void; onModalityChange: (value: ModelModalityFilter) => void }) {
   const { t } = useTranslation()
-  return <form className="enterprise-models-toolbar" role="search" onSubmit={(event) => event.preventDefault()}><input className="enterprise-models-search" value={keyword} onChange={(event) => onKeywordChange(event.target.value)} placeholder={t('console.enterprise.model.searchPlaceholder')} aria-label={t('console.enterprise.model.searchLabel')} /><select className="enterprise-models-filter" value={modality} onChange={(event) => onModalityChange(event.target.value as ModelModalityFilter)} aria-label={t('console.enterprise.model.modalityFilter')}>{MODEL_MODALITY_OPTIONS.map((value) => <option value={value} key={value}>{modalityLabel(value, t)}</option>)}</select></form>
+  return <form className="enterprise-models-toolbar" role="search" onSubmit={(event) => event.preventDefault()}><input className="enterprise-models-search" value={keyword} onChange={(event) => onKeywordChange(event.target.value)} placeholder={t('console.enterprise.model.searchPlaceholder')} aria-label={t('console.enterprise.model.searchLabel')} /><Select className="enterprise-models-filter" value={modality} onChange={(value) => onModalityChange(String(value) as ModelModalityFilter)} aria-label={t('console.enterprise.model.modalityFilter')}>{MODEL_MODALITY_OPTIONS.map((value) => <Select.Option value={value} key={value}>{modalityLabel(value, t)}</Select.Option>)}</Select></form>
 }
 
 function ModelStateControl({ model, canManage, saving, onToggle }: { model: EnterpriseModel; canManage: boolean; saving: boolean; onToggle: (model: EnterpriseModel) => void }) {

@@ -46,15 +46,20 @@
   margin-right: 6px;
   border: 0;
   border-radius: 4px;
-  color: #676d75;
+  color: #777d85;
   background: transparent;
   cursor: pointer;
   transition: color .16s ease, background-color .16s ease;
 }
 
 .markdown-code-reader-copy:hover,
-.markdown-code-reader-copy:focus-visible { color: #e7ebf0; background: rgba(255, 255, 255, .07); }
-.markdown-code-reader-copy .semi-icon { width: 18px; height: 18px; }
+.markdown-code-reader-copy:focus-visible { color: #e7ebf0; background: transparent; }
+.markdown-code-reader-copy:focus-visible { outline: 2px solid currentColor; outline-offset: -5px; }
+.markdown-code-reader-copy-icon { position: relative; display: block; width: 19px; height: 19px; }
+.markdown-code-reader-copy-icon::before,
+.markdown-code-reader-copy-icon::after { position: absolute; width: 10px; height: 10px; border: 1.5px solid currentColor; border-radius: 3px; content: ''; }
+.markdown-code-reader-copy-icon::before { top: 2px; left: 6px; }
+.markdown-code-reader-copy-icon::after { top: 6px; left: 2px; background: #111516; }
 .markdown-code-reader-scroll { max-width: 100%; overflow: auto; scrollbar-color: #4c5054 transparent; scrollbar-width: thin; }
 .markdown-code-reader pre { width: max-content; min-width: 100%; margin: 0; padding: 18px 0; border: 0; border-radius: 0; font: 13px/1.75 var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace); }
 .markdown-code-reader pre code { display: table; min-width: 100%; color: inherit; font: inherit; white-space: pre; }
@@ -68,9 +73,10 @@ html[data-theme="light"] .markdown-code-reader-language,
 html[data-theme="light"] .markdown-code-reader-tabs button { color: #656c76; }
 html[data-theme="light"] .markdown-code-reader-tabs button:hover { color: #17181b; }
 html[data-theme="light"] .markdown-code-reader-tabs button.is-active { color: #5c2fdc; }
-html[data-theme="light"] .markdown-code-reader-copy { color: #9a9fa7; }
+html[data-theme="light"] .markdown-code-reader-copy { color: #a1a6ae; }
 html[data-theme="light"] .markdown-code-reader-copy:hover,
-html[data-theme="light"] .markdown-code-reader-copy:focus-visible { color: #24272d; background: rgba(23, 24, 27, .07); }
+html[data-theme="light"] .markdown-code-reader-copy:focus-visible { color: #353941; background: transparent; }
+html[data-theme="light"] .markdown-code-reader-copy-icon::after { background: #f0f1f3; }
 html[data-theme="light"] .markdown-code-reader-scroll { scrollbar-color: #b7bbc1 transparent; }
 html[data-theme="light"] .markdown-code-reader-line-number { color: #989ea7; }
 

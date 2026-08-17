@@ -85,7 +85,7 @@ const USER_MODEL_TOKEN_THOUSAND = 1_000
 const USER_MODEL_TOKEN_BILLION = 1_000_000_000
 const USER_MODEL_UNKNOWN_AVAILABILITY = 0
 const USER_MODEL_UNKNOWN_THROUGHPUT = 0
-const USER_MODEL_UNKNOWN_DATA_LABEL = '后端未提供'
+const USER_MODEL_UNKNOWN_DATA_LABEL = '暂无数据'
 
 const KNOWN_MODALITIES = new Set<ModelModality>(['text', 'image', 'video', 'audio', 'embedding', 'rerank', 'speech', 'transcription'])
 

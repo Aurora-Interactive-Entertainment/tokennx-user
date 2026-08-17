@@ -3,7 +3,13 @@ import { useTranslation } from "react-i18next";
 import Button from "@douyinfe/semi-ui/lib/es/button";
 import Modal from "@douyinfe/semi-ui/lib/es/modal";
 import i18n from "@/i18n";
+import {
+  AnalyticsTimeRangePicker,
+  type TimeRangePreset,
+  type TimeRangeValue,
+} from "@/components/analytics-time-range-picker";
 import { AppPagination } from "@/components/app-pagination";
+import { CompatSelect as Select } from "@/components/semi-compat";
 import {
   getEnterpriseAuditLog,
   getEnterpriseAuditLogs,
@@ -32,12 +38,14 @@ import {
   validateEnterpriseDateRange,
 } from "./enterprise-console-shared";
 
+type AuditRange = "all" | "7d" | "30d" | "custom";
+
 type AuditFilters = {
   category: string;
   action: string;
   actorID: string;
   result: string;
-  range: "all" | "7d" | "30d" | "custom";
+  range: AuditRange;
   startDate: string;
   endDate: string;
 };
@@ -65,6 +73,13 @@ function defaultFilters(): AuditFilters {
     range: "all",
     startDate: "",
     endDate: "",
+  };
+}
+
+function auditCustomRangeDefaults(): Pick<AuditFilters, "startDate" | "endDate"> {
+  return {
+    startDate: formatLocalDateInput(shiftLocalDate(new Date(), -6)),
+    endDate: formatLocalDateInput(new Date()),
   };
 }
 
@@ -462,6 +477,12 @@ function AuditContent({ context }: { context: EnterpriseContext }) {
       ),
     [data],
   );
+  const rangePresets: readonly TimeRangePreset<AuditRange>[] = [
+    { value: "all", label: t("console.enterprise.audit.allTimeRange") },
+    { value: "7d", label: t("console.enterprise.audit.last7Days") },
+    { value: "30d", label: t("console.enterprise.audit.last30Days") },
+    { value: "custom", label: t("console.enterprise.audit.custom") },
+  ];
 
   function updateFilter<Key extends keyof AuditFilters>(
     key: Key,
@@ -471,15 +492,8 @@ function AuditContent({ context }: { context: EnterpriseContext }) {
     setPage(1);
   }
 
-  function updateRange(value: AuditFilters["range"]): void {
-    const custom =
-      value === "custom"
-        ? {
-            startDate: formatLocalDateInput(shiftLocalDate(new Date(), -6)),
-            endDate: formatLocalDateInput(new Date()),
-          }
-        : { startDate: "", endDate: "" };
-    setFilters((previous) => ({ ...previous, range: value, ...custom }));
+  function updateTimeRange(value: TimeRangeValue<AuditRange>): void {
+    setFilters((previous) => ({ ...previous, ...value }));
     setPage(1);
   }
 
@@ -558,138 +572,95 @@ function AuditContent({ context }: { context: EnterpriseContext }) {
         aria-label={t("console.enterprise.audit.filter")}
       >
         <label className="enterprise-filter-field">
-          <span>{t("console.enterprise.audit.category")}</span>
-          <select
-            className="source-input"
+          <span id="enterprise-audit-category-label">{t("console.enterprise.audit.category")}</span>
+          <Select
             value={filters.category}
-            onChange={(event) => updateFilter("category", event.target.value)}
+            onChange={(value) => updateFilter("category", String(value))}
+            onSelect={(value) => updateFilter("category", String(value))}
+            aria-labelledby="enterprise-audit-category-label"
+            block
           >
-            <option value="all">
+            <Select.Option value="all">
               {t("console.enterprise.audit.allTypes")}
-            </option>
+            </Select.Option>
             {categoryOptions.map((value) => (
-              <option value={value} key={value}>
+              <Select.Option value={value} key={value}>
                 {categoryLabel(value)}
-              </option>
+              </Select.Option>
             ))}
-          </select>
+          </Select>
         </label>
         <label className="enterprise-filter-field">
-          <span>{t("console.enterprise.audit.concreteActionFilter")}</span>
-          <select
-            className="source-input"
+          <span id="enterprise-audit-action-label">{t("console.enterprise.audit.concreteActionFilter")}</span>
+          <Select
             value={filters.action}
-            onChange={(event) => updateFilter("action", event.target.value)}
+            onChange={(value) => updateFilter("action", String(value))}
+            onSelect={(value) => updateFilter("action", String(value))}
+            aria-labelledby="enterprise-audit-action-label"
+            block
           >
-            <option value="all">
+            <Select.Option value="all">
               {t("console.enterprise.audit.allActions")}
-            </option>
+            </Select.Option>
             {actionOptions.map((value) => (
-              <option value={value} key={value}>
+              <Select.Option value={value} key={value}>
                 {actionLabel(value)}
-              </option>
+              </Select.Option>
             ))}
-          </select>
+          </Select>
         </label>
         <label className="enterprise-filter-field">
-          <span>{t("console.enterprise.audit.operator")}</span>
-          <select
-            className="source-input"
+          <span id="enterprise-audit-operator-label">{t("console.enterprise.audit.operator")}</span>
+          <Select
             value={filters.actorID}
-            onChange={(event) => updateFilter("actorID", event.target.value)}
+            onChange={(value) => updateFilter("actorID", String(value))}
+            onSelect={(value) => updateFilter("actorID", String(value))}
+            aria-labelledby="enterprise-audit-operator-label"
+            block
           >
-            <option value="all">
+            <Select.Option value="all">
               {t("console.enterprise.audit.allOperators")}
-            </option>
+            </Select.Option>
             {actorOptions.map(([value, label]) => (
-              <option value={value} key={value}>
+              <Select.Option value={value} key={value}>
                 {label}
-              </option>
+              </Select.Option>
             ))}
-          </select>
+          </Select>
         </label>
         <label className="enterprise-filter-field">
-          <span>{t("console.enterprise.audit.result")}</span>
-          <select
-            className="source-input"
+          <span id="enterprise-audit-result-label">{t("console.enterprise.audit.result")}</span>
+          <Select
             value={filters.result}
-            onChange={(event) => updateFilter("result", event.target.value)}
+            onChange={(value) => updateFilter("result", String(value))}
+            onSelect={(value) => updateFilter("result", String(value))}
+            aria-labelledby="enterprise-audit-result-label"
+            block
           >
-            <option value="all">
+            <Select.Option value="all">
               {t("console.enterprise.audit.allResults")}
-            </option>
-            <option value="success">
+            </Select.Option>
+            <Select.Option value="success">
               {t("console.enterprise.audit.success")}
-            </option>
-            <option value="failed">
+            </Select.Option>
+            <Select.Option value="failed">
               {t("console.enterprise.audit.failed")}
-            </option>
-          </select>
+            </Select.Option>
+          </Select>
         </label>
-        <div
-          className="enterprise-range-tabs enterprise-range-tabs-compact"
-          role="group"
-          aria-label={t("console.enterprise.audit.dateRange")}
-        >
-          <button
-            className={filters.range === "all" ? "active" : ""}
-            type="button"
-            aria-pressed={filters.range === "all"}
-            onClick={() => updateRange("all")}
-          >
-            {t("console.enterprise.audit.allTimeRange")}
-          </button>
-          <button
-            className={filters.range === "7d" ? "active" : ""}
-            type="button"
-            aria-pressed={filters.range === "7d"}
-            onClick={() => updateRange("7d")}
-          >
-            {t("console.enterprise.audit.last7Days")}
-          </button>
-          <button
-            className={filters.range === "30d" ? "active" : ""}
-            type="button"
-            aria-pressed={filters.range === "30d"}
-            onClick={() => updateRange("30d")}
-          >
-            {t("console.enterprise.audit.last30Days")}
-          </button>
-          <button
-            className={filters.range === "custom" ? "active" : ""}
-            type="button"
-            aria-pressed={filters.range === "custom"}
-            onClick={() => updateRange("custom")}
-          >
-            {t("console.enterprise.audit.custom")}
-          </button>
+        <div className="enterprise-audit-time-filter">
+          <span>{t("console.enterprise.audit.dateRange")}</span>
+          <AnalyticsTimeRangePicker
+            value={{
+              range: filters.range,
+              startDate: filters.startDate,
+              endDate: filters.endDate,
+            }}
+            presets={rangePresets}
+            defaultCustomValue={auditCustomRangeDefaults()}
+            onChange={updateTimeRange}
+          />
         </div>
-        {filters.range === "custom" ? (
-          <div className="enterprise-date-range">
-            <label htmlFor="enterprise-audit-start">
-              {t("console.enterprise.usage.startDate")}
-              <input
-                id="enterprise-audit-start"
-                type="date"
-                value={filters.startDate}
-                onChange={(event) =>
-                  updateFilter("startDate", event.target.value)
-                }
-              />
-            </label>
-            <label htmlFor="enterprise-audit-end">
-              {t("console.enterprise.usage.endDate")}
-              <input
-                id="enterprise-audit-end"
-                type="date"
-                value={filters.endDate}
-                onChange={(event) =>
-                  updateFilter("endDate", event.target.value)
-                }
-              />
-            </label>
-          </div>
-        ) : null}
       </section>
       {dateRangeError ? (
         <EnterpriseValidationError message={dateRangeError} />
