@@ -2452,6 +2452,7 @@ html[data-theme="light"] .real-name-qr-expired-overlay span { color: #20242b; }
 .records-request-input.semi-input-wrapper:hover { border-color: #D2C8F3; }
 .records-request-input.semi-input-wrapper-focus,
 .records-request-input.semi-input-wrapper-focus:hover { border-color: #D2C8F3; box-shadow: 0 0 0 1px #D2C8F3; }
+.records-request-input .semi-input { font-size: 13px; }
 .records-request-input .semi-input-suffix { color: var(--color-text-tertiary); }
 .records-custom-dates { display: grid; flex: 1 1 340px; grid-template-columns: repeat(2, minmax(130px, 1fr)); gap: var(--spacing-12); }
 .records-custom-dates label { display: grid; gap: var(--spacing-6); }
@@ -5320,7 +5321,7 @@ html[data-theme="light"] .manuscript-support-notifications strong { color: #1718
 .app-standard-input.semi-input-wrapper:hover { border-color: #D2C8F3; background: var(--color-bg-base-secondary); }
 .app-standard-input.semi-input-wrapper-focus,
 .app-standard-input.semi-input-wrapper-focus:hover { border-color: #D2C8F3; background: var(--color-bg-base-secondary); box-shadow: 0 0 0 1px #D2C8F3; }
-.app-standard-input .semi-input { background: transparent; }
+.app-standard-input .semi-input { background: transparent; font-size: 13px; }
 html[data-theme="light"] .app-standard-input.semi-input-wrapper,
 html[data-theme="light"] .app-standard-input.semi-input-wrapper:hover,
 html[data-theme="light"] .app-standard-input.semi-input-wrapper-focus,
