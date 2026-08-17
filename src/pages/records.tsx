@@ -5,6 +5,7 @@ import Button from '@douyinfe/semi-ui/lib/es/button'
 import Modal from '@douyinfe/semi-ui/lib/es/modal'
 import Toast from '@douyinfe/semi-ui/lib/es/toast'
 import { IconCopy, IconRefresh, IconSearch } from '@douyinfe/semi-icons'
+import { AnalyticsTimeRangePicker, type TimeRangePreset, type TimeRangeValue } from '@/components/analytics-time-range-picker'
 import { BannerNotice, EmptyPanel, PageTitle } from '@/components/common'
 import { MoneyText } from '@/components/money'
 import { AppPagination } from '@/components/app-pagination'
@@ -25,6 +26,7 @@ const DATE_RANGE_WEEK = '7d'
 const DATE_RANGE_MONTH = '30d'
 const DATE_RANGE_CUSTOM = 'custom'
 const DATE_RANGE_VALUES = new Set([DATE_RANGE_ALL, DATE_RANGE_TODAY, DATE_RANGE_WEEK, DATE_RANGE_MONTH, DATE_RANGE_CUSTOM])
+const RECORDS_CUSTOM_RANGE_DAYS = 6
 const RECORDS_SOURCE_VALUES = new Set<UsageRecordsSource>(['all', 'api', 'console-test'])
 const RECORDS_STATUS_VALUES = new Set<UsageRecordsStatus>(['all', 'success', 'error', 'cancelled'])
 
@@ -44,6 +46,11 @@ type RecordsStatus = 'success' | 'error' | 'cancelled' | string
 
 function createDefaultFilterState(): RecordsFilterState {
   return { range: DATE_RANGE_ALL, model: 'all', source: 'all', status: 'all', apiKeyID: 'all', memberID: 'all', requestID: '', startDate: '', endDate: '' }
+}
+
+function customDateDefaults(): Pick<RecordsFilterState, 'startDate' | 'endDate'> {
+  const today = new Date()
+  return { startDate: formatLocalDateInput(shiftLocalDate(today, -RECORDS_CUSTOM_RANGE_DAYS)), endDate: formatLocalDateInput(today) }
 }
 
 function normalizeFilterValue<T extends string>(value: string | null, allowed: Set<T>, fallback: T): T {
@@ -378,13 +385,32 @@ export function RecordsPage() {
   const memberOptions = initialOption(data?.filters.members ?? [], filters.memberID, t('console.usage.currentMember'))
   const currentItems = data?.items ?? []
   const currentPageSize = data?.page_size || pageSize
+  const rangePresets: readonly TimeRangePreset<string>[] = [
+    { label: t('console.records.allTime'), value: DATE_RANGE_ALL },
+    { label: t('console.records.today'), value: DATE_RANGE_TODAY },
+    { label: t('console.records.recent7Days'), value: DATE_RANGE_WEEK },
+    { label: t('console.records.recent30Days'), value: DATE_RANGE_MONTH },
+    { label: t('console.records.custom'), value: DATE_RANGE_CUSTOM },
+  ]
+
+  function updateTimeRange(value: TimeRangeValue<string>): void {
+    const patch: Partial<Record<keyof RecordsFilterState, string>> = {
+      range: value.range,
+      startDate: value.range === DATE_RANGE_CUSTOM ? value.startDate : '',
+      endDate: value.range === DATE_RANGE_CUSTOM ? value.endDate : '',
+    }
+    setFilters((previous) => ({ ...previous, range: value.range, startDate: patch.startDate ?? '', endDate: patch.endDate ?? '' }))
+    setSelected(null)
+    setSearchParams(updateSearchParameters(searchParams, patch), { replace: true })
+    setPage(RECORDS_PAGE_MIN)
+  }
 
   return <div className="page-stack records-console-page usage-records-page">
-    <PageTitle title={t('console.records.title')} description={t('console.records.description')} actions={<Button theme="borderless" icon={<IconRefresh />} aria-label={t('console.records.refresh')} title={t('console.records.refresh')} onClick={() => setReloadToken((value) => value + 1)} />} />
+    <PageTitle title={t('console.records.title')} description={t('console.records.description')} />
     {error && data ? <BannerNotice tone="warning"><span className="records-error-copy"><strong>{error.message}</strong>{error.requestId ? <small>{t('console.common.requestIdValue', { requestId: error.requestId })}</small> : null}</span><Button theme="borderless" size="small" icon={<IconRefresh />} onClick={() => setReloadToken((value) => value + 1)}>{t('console.records.retry')}</Button></BannerNotice> : null}
     <section className="records-filters-panel" aria-label={t('console.records.filter')}>
       <div className="records-filter-main-row">
-        <label className="records-filter-field" htmlFor="records-range"><span>{t('console.records.timeRange')}</span><Select id="records-range" value={filters.range} onChange={(value) => updateFilter('range', String(value))} block><Select.Option value={DATE_RANGE_ALL}>{t('console.records.allTime')}</Select.Option><Select.Option value={DATE_RANGE_TODAY}>{t('console.records.today')}</Select.Option><Select.Option value={DATE_RANGE_WEEK}>{t('console.records.recent7Days')}</Select.Option><Select.Option value={DATE_RANGE_MONTH}>{t('console.records.recent30Days')}</Select.Option><Select.Option value={DATE_RANGE_CUSTOM}>{t('console.records.custom')}</Select.Option></Select></label>
+        <div className="records-filter-field records-filter-field--range"><span>{t('console.records.timeRange')}</span><AnalyticsTimeRangePicker value={{ range: filters.range, startDate: filters.startDate, endDate: filters.endDate }} presets={rangePresets} defaultCustomValue={customDateDefaults()} onChange={updateTimeRange} /></div>
         <label className="records-filter-field" htmlFor="records-model"><span>{t('console.records.model')}</span><Select id="records-model" value={modelOptions.some((option) => option.alias === filters.model) ? filters.model : 'all'} onChange={(value) => updateFilter('model', String(value))} block><Select.Option value="all">{t('console.records.allModels')}</Select.Option>{modelOptions.map((option) => <Select.Option value={option.alias} key={option.alias}>{t('console.common.modelWithAlias', { name: option.name, alias: option.alias })}</Select.Option>)}</Select></label>
         <label className="records-filter-field" htmlFor="records-source"><span>{t('console.records.callSource')}</span><Select id="records-source" value={filters.source} onChange={(value) => updateFilter('source', String(value) as UsageRecordsSource)} block><Select.Option value="all">{t('console.records.allSources')}</Select.Option><Select.Option value="console-test">{t('console.records.consoleTest')}</Select.Option><Select.Option value="api">{t('console.records.apiCall')}</Select.Option></Select></label>
         <label className="records-filter-field" htmlFor="records-status"><span>{t('console.records.status')}</span><Select id="records-status" value={filters.status} onChange={(value) => updateFilter('status', String(value) as UsageRecordsStatus)} block><Select.Option value="all">{t('console.records.allStatuses')}</Select.Option><Select.Option value="success">{t('console.records.successStatus')}</Select.Option><Select.Option value="error">{t('console.records.errorStatus')}</Select.Option><Select.Option value="cancelled">{t('console.records.cancelledStatus')}</Select.Option></Select></label>
@@ -393,7 +419,6 @@ export function RecordsPage() {
         <label className="records-filter-field records-filter-field--request" htmlFor="records-request"><span>{t('console.records.requestId')}</span><div className="records-request-control"><Input id="records-request" value={filters.requestID} onChange={(value) => updateFilter('requestID', value)} placeholder={t('console.records.exactRequest')} aria-label={t('console.records.requestId')} /><IconSearch aria-hidden="true" /></div></label>
         <Button className="records-reset-button" theme="borderless" icon={<IconRefresh />} onClick={resetFilters}>{t('console.records.resetFilters')}</Button>
       </div>
-      {filters.range === DATE_RANGE_CUSTOM ? <div className="records-custom-dates"><label htmlFor="records-start-date">{t('console.usage.startDate')}<input id="records-start-date" type="date" value={filters.startDate} onChange={(event) => updateFilter('startDate', event.target.value)} /></label><label htmlFor="records-end-date">{t('console.usage.endDate')}<input id="records-end-date" type="date" value={filters.endDate} onChange={(event) => updateFilter('endDate', event.target.value)} /></label></div> : null}
     </section>
     {error && !data ? <section className="records-error-state" role="alert"><strong>{error.message}</strong>{error.requestId ? <small>{t('console.common.requestIdValue', { requestId: error.requestId })}</small> : null}<Button theme="outline" icon={<IconRefresh />} onClick={() => setReloadToken((value) => value + 1)}>{t('console.records.retry')}</Button></section> : loading ? <div className="records-loading" role="status"><span className="records-loading-spinner" />{t('console.records.loading')}</div> : currentItems.length === 0 ? <EmptyPanel title={t('console.records.noRecords')} description={t('console.records.noVisibleRecords')} action={<Button theme="outline" onClick={resetFilters}>{t('console.records.clearFilters')}</Button>} /> : <>
       <div className="source-table-scroll records-table-scroll" role="region" aria-label={t('console.records.title')} tabIndex={0}>

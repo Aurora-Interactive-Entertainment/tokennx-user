@@ -1670,8 +1670,7 @@ function UserMenu({ store, userId, userName, phone, enterpriseAccess, accountSet
         <div className="user-dropdown-header">
           <button ref={workspaceTriggerRef} className="user-dropdown-identity" type="button" role="menuitem" aria-label={t('console.common.switchWorkspace')} aria-controls="workspace-menu" aria-expanded={workspaceOpen} onClick={() => setWorkspaceOpen((value) => !value)}>
             <span className="user-dropdown-identity-avatar">{initial}</span>
-            <span className="user-dropdown-identity-copy"><strong>{displayName}</strong><span>{activeWorkspace.type === 'personal' ? t('console.common.personalWorkspace') : activeWorkspace.name}</span><span className="public-sr-only">{phoneLabel}</span><span className="public-sr-only">{t('console.common.currentWorkspace')} · {activeWorkspace.type === 'personal' ? displayName : activeWorkspace.name}</span><span className="public-sr-only">{t('console.common.switchWorkspace')}</span></span>
-            <span className={`user-dropdown-identity-chevron${workspaceOpen ? ' is-open' : ''}`} aria-hidden="true"><IconChevronDown className="user-dropdown-identity-chevron-icon" /></span>
+            <span className="user-dropdown-identity-copy"><strong>{displayName}</strong><span className="user-dropdown-workspace-line"><span>{activeWorkspace.type === 'personal' ? t('console.common.personalWorkspace') : activeWorkspace.name}</span><span className={`user-dropdown-identity-chevron${workspaceOpen ? ' is-open' : ''}`} aria-hidden="true"><IconChevronDown className="user-dropdown-identity-chevron-icon" /></span></span><span className="public-sr-only">{phoneLabel}</span><span className="public-sr-only">{t('console.common.currentWorkspace')} · {activeWorkspace.type === 'personal' ? displayName : activeWorkspace.name}</span><span className="public-sr-only">{t('console.common.switchWorkspace')}</span></span>
           </button>
           <button className="user-dropdown-settings" type="button" aria-label={t('nav.settings')} onClick={openAccountSettings}><IconSettingStroked aria-hidden="true" /></button>
         </div>
@@ -1954,12 +1953,6 @@ export function ConsoleLayout({ children }: { children: ReactNode }) {
       <Layout className="console-layout">
         <Layout.Sider className="console-sider">
           <aside className="console-sidebar" aria-label={t('console.common.consoleNav')}>
-            <div className="workspace-switcher-wrap">
-              <div className="workspace-switcher" role="status" aria-label={t('console.common.currentWorkspace')} title={activeWorkspace.name}>
-                <Avatar size="small" color="grey">{activeWorkspace.name.slice(0, 1).toUpperCase()}</Avatar>
-                <span className="workspace-switcher-copy"><strong title={activeWorkspace.name}>{activeWorkspace.name}</strong></span>
-              </div>
-            </div>
             <nav className="console-nav-custom" aria-label={t('console.common.consoleNav')}>
               {groups.map((group) => (
                 <section className="console-nav-section" key={group.key}>
@@ -2205,9 +2198,11 @@ export function ManuscriptSupportWidget() {
 }
 
 export function PublicLayout({ children, mainClassName = '' }: { children: ReactNode; mainClassName?: string }) {
+  const store = useAppStore()
+  const enterpriseAccess = useEnterpriseMenuAccess(store.activeWorkspace)
   const manuscript = mainClassName.includes('home-page--manuscript') || mainClassName.includes('docs-page--manuscript') || mainClassName.includes('apps-page--manuscript') || mainClassName.includes('rankings-page--manuscript')
   const layoutClassName = manuscript ? ' public-layout--manuscript-home' : ''
-  return <div className={`public-layout public-header-host${layoutClassName}`}><PublicHeader /><main className={`public-main${mainClassName ? ` ${mainClassName}` : ''}`}>{children}</main><PublicFooter /></div>
+  return <div className={`public-layout public-header-host${layoutClassName}`}><PublicHeader enterpriseAccess={enterpriseAccess} /><main className={`public-main${mainClassName ? ` ${mainClassName}` : ''}`}>{children}</main><PublicFooter /></div>
 }
 
 export function BannerNotice({ children, tone = 'info' }: { children: ReactNode; tone?: 'info' | 'warning' | 'success' }) {

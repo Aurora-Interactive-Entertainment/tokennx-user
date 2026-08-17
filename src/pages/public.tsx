@@ -1145,7 +1145,7 @@ export function AppsPage() {
 
         <div className="apps-ranking-filter">
           <span className="public-sr-only" id="apps-time-range-label">{t('public.apps.rangeLabel')}</span>
-          <Select className="apps-range-select" dropdownClassName="apps-range-select-dropdown" size="large" value={timeRange} onChange={(value) => setTimeRange(String(value) as (typeof APPS_PERIODS)[number])} aria-labelledby="apps-time-range-label">
+          <Select className="apps-range-select" size="large" value={timeRange} onChange={(value) => setTimeRange(String(value) as (typeof APPS_PERIODS)[number])} aria-labelledby="apps-time-range-label">
             {APPS_PERIODS.map((period) => <Select.Option value={period} key={period}>{t(`public.apps.ranges.${period}`)}</Select.Option>)}
           </Select>
         </div>
