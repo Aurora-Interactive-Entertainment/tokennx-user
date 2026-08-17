@@ -236,6 +236,7 @@ function AnalyticsToolbar({
         <span className="analytics-filter-label">{i18n.t('console.enterprise.analytics.timeRange')}</span>
         <AnalyticsTimeRangePicker
           value={filters}
+          dateRestriction="last-90-days"
           onChange={(value) => onFilterChange({ ...filters, ...value })}
         />
       </div>

@@ -206,6 +206,8 @@ describe('公开模型页面', () => {
     await waitFor(() => {
       expect(screen.getByTestId('location')).toHaveTextContent(`/docs/${API_DOCS_DOCUMENT_ID}/api-document`)
       expect(apiDocsLink).toHaveClass('is-active')
+      expect(document.querySelector('.docs-sidebar-directory')).not.toBeNull()
+      expect(document.querySelector('.docs-sidebar-document.is-active')).not.toBeNull()
       expect(screen.getByRole('heading', { name: 'API 接口' })).toBeInTheDocument()
     })
   })

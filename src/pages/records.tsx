@@ -5,7 +5,7 @@ import Button from '@douyinfe/semi-ui/lib/es/button'
 import Modal from '@douyinfe/semi-ui/lib/es/modal'
 import Toast from '@douyinfe/semi-ui/lib/es/toast'
 import { IconCopy, IconRefresh, IconSearch } from '@douyinfe/semi-icons'
-import { AnalyticsTimeRangePicker, type TimeRangePreset, type TimeRangeValue } from '@/components/analytics-time-range-picker'
+import { AnalyticsTimeRangePicker, isTimeRangeAllowed, type TimeRangePreset, type TimeRangeValue } from '@/components/analytics-time-range-picker'
 import { BannerNotice, EmptyPanel, PageTitle } from '@/components/common'
 import { MoneyText } from '@/components/money'
 import { AppPagination } from '@/components/app-pagination'
@@ -20,12 +20,11 @@ import i18n from '@/i18n'
 import { apiTimeToISOString, formatApiTime, formatLocalDateInput, localDateToTimestamp, shiftLocalDate } from '@/utils/format'
 
 const RECORDS_PAGE_MIN = 1
-const DATE_RANGE_ALL = 'all'
 const DATE_RANGE_TODAY = 'today'
 const DATE_RANGE_WEEK = '7d'
 const DATE_RANGE_MONTH = '30d'
 const DATE_RANGE_CUSTOM = 'custom'
-const DATE_RANGE_VALUES = new Set([DATE_RANGE_ALL, DATE_RANGE_TODAY, DATE_RANGE_WEEK, DATE_RANGE_MONTH, DATE_RANGE_CUSTOM])
+const DATE_RANGE_VALUES = new Set([DATE_RANGE_TODAY, DATE_RANGE_WEEK, DATE_RANGE_MONTH, DATE_RANGE_CUSTOM])
 const RECORDS_CUSTOM_RANGE_DAYS = 6
 const RECORDS_SOURCE_VALUES = new Set<UsageRecordsSource>(['all', 'api', 'console-test'])
 const RECORDS_STATUS_VALUES = new Set<UsageRecordsStatus>(['all', 'success', 'error', 'cancelled'])
@@ -45,7 +44,7 @@ type RecordsFilterState = {
 type RecordsStatus = 'success' | 'error' | 'cancelled' | string
 
 function createDefaultFilterState(): RecordsFilterState {
-  return { range: DATE_RANGE_ALL, model: 'all', source: 'all', status: 'all', apiKeyID: 'all', memberID: 'all', requestID: '', startDate: '', endDate: '' }
+  return { range: DATE_RANGE_MONTH, model: 'all', source: 'all', status: 'all', apiKeyID: 'all', memberID: 'all', requestID: '', startDate: '', endDate: '' }
 }
 
 function customDateDefaults(): Pick<RecordsFilterState, 'startDate' | 'endDate'> {
@@ -58,7 +57,12 @@ function normalizeFilterValue<T extends string>(value: string | null, allowed: S
 }
 
 function initialFilterState(searchParams: URLSearchParams): RecordsFilterState {
-  const range = normalizeFilterValue(searchParams.get('range'), DATE_RANGE_VALUES, DATE_RANGE_ALL)
+  const requestedRange = normalizeFilterValue(searchParams.get('range'), DATE_RANGE_VALUES, DATE_RANGE_MONTH)
+  const requestedStartDate = searchParams.get('startDate')?.trim() || ''
+  const requestedEndDate = searchParams.get('endDate')?.trim() || ''
+  const range = requestedRange === DATE_RANGE_CUSTOM && !isTimeRangeAllowed(requestedStartDate, requestedEndDate, 'last-90-days')
+    ? DATE_RANGE_MONTH
+    : requestedRange
   return {
     range,
     model: searchParams.get('model')?.trim() || 'all',
@@ -67,8 +71,8 @@ function initialFilterState(searchParams: URLSearchParams): RecordsFilterState {
     apiKeyID: searchParams.get('keyId')?.trim() || searchParams.get('api_key_id')?.trim() || 'all',
     memberID: searchParams.get('member_id')?.trim() || 'all',
     requestID: searchParams.get('request')?.trim() || searchParams.get('request_id')?.trim() || '',
-    startDate: searchParams.get('startDate')?.trim() || '',
-    endDate: searchParams.get('endDate')?.trim() || '',
+    startDate: range === DATE_RANGE_CUSTOM ? requestedStartDate : '',
+    endDate: range === DATE_RANGE_CUSTOM ? requestedEndDate : '',
   }
 }
 
@@ -149,7 +153,6 @@ function clientPlatformLabel(platform: string): string {
 
 function dateRangeQuery(filters: RecordsFilterState): Pick<UsageRecordsQuery, 'start_at' | 'end_at'> {
   if (filters.range === DATE_RANGE_CUSTOM) return { start_at: localDateToTimestamp(filters.startDate), end_at: localDateToTimestamp(filters.endDate, true) }
-  if (filters.range === DATE_RANGE_ALL) return {}
   const today = new Date()
   const end = formatLocalDateInput(today)
   const start = filters.range === DATE_RANGE_TODAY ? end : formatLocalDateInput(shiftLocalDate(today, -(filters.range === DATE_RANGE_WEEK ? 6 : 29)))
@@ -386,7 +389,6 @@ export function RecordsPage() {
   const currentItems = data?.items ?? []
   const currentPageSize = data?.page_size || pageSize
   const rangePresets: readonly TimeRangePreset<string>[] = [
-    { label: t('console.records.allTime'), value: DATE_RANGE_ALL },
     { label: t('console.records.today'), value: DATE_RANGE_TODAY },
     { label: t('console.records.recent7Days'), value: DATE_RANGE_WEEK },
     { label: t('console.records.recent30Days'), value: DATE_RANGE_MONTH },
@@ -410,13 +412,13 @@ export function RecordsPage() {
     {error && data ? <BannerNotice tone="warning"><span className="records-error-copy"><strong>{error.message}</strong>{error.requestId ? <small>{t('console.common.requestIdValue', { requestId: error.requestId })}</small> : null}</span><Button theme="borderless" size="small" icon={<IconRefresh />} onClick={() => setReloadToken((value) => value + 1)}>{t('console.records.retry')}</Button></BannerNotice> : null}
     <section className="records-filters-panel" aria-label={t('console.records.filter')}>
       <div className="records-filter-main-row">
-        <div className="records-filter-field records-filter-field--range"><span>{t('console.records.timeRange')}</span><AnalyticsTimeRangePicker value={{ range: filters.range, startDate: filters.startDate, endDate: filters.endDate }} presets={rangePresets} defaultCustomValue={customDateDefaults()} onChange={updateTimeRange} /></div>
+        <div className="records-filter-field records-filter-field--range"><span>{t('console.records.timeRange')}</span><AnalyticsTimeRangePicker value={{ range: filters.range, startDate: filters.startDate, endDate: filters.endDate }} presets={rangePresets} defaultCustomValue={customDateDefaults()} dateRestriction="last-90-days" onChange={updateTimeRange} /></div>
         <label className="records-filter-field" htmlFor="records-model"><span>{t('console.records.model')}</span><Select id="records-model" value={modelOptions.some((option) => option.alias === filters.model) ? filters.model : 'all'} onChange={(value) => updateFilter('model', String(value))} block><Select.Option value="all">{t('console.records.allModels')}</Select.Option>{modelOptions.map((option) => <Select.Option value={option.alias} key={option.alias}>{t('console.common.modelWithAlias', { name: option.name, alias: option.alias })}</Select.Option>)}</Select></label>
         <label className="records-filter-field" htmlFor="records-source"><span>{t('console.records.callSource')}</span><Select id="records-source" value={filters.source} onChange={(value) => updateFilter('source', String(value) as UsageRecordsSource)} block><Select.Option value="all">{t('console.records.allSources')}</Select.Option><Select.Option value="console-test">{t('console.records.consoleTest')}</Select.Option><Select.Option value="api">{t('console.records.apiCall')}</Select.Option></Select></label>
         <label className="records-filter-field" htmlFor="records-status"><span>{t('console.records.status')}</span><Select id="records-status" value={filters.status} onChange={(value) => updateFilter('status', String(value) as UsageRecordsStatus)} block><Select.Option value="all">{t('console.records.allStatuses')}</Select.Option><Select.Option value="success">{t('console.records.successStatus')}</Select.Option><Select.Option value="error">{t('console.records.errorStatus')}</Select.Option><Select.Option value="cancelled">{t('console.records.cancelledStatus')}</Select.Option></Select></label>
         <label className="records-filter-field" htmlFor="records-api-key"><span>{t('console.records.apiKey')}</span><Select id="records-api-key" value={filters.apiKeyID} onChange={(value) => updateFilter('apiKeyID', String(value))} block><Select.Option value="all">{t('console.records.allKeys')}</Select.Option>{apiKeyOptions.map((option) => <Select.Option value={option.id} key={option.id}>{option.name}</Select.Option>)}</Select></label>
         {data?.can_filter_members ? <label className="records-filter-field" htmlFor="records-member"><span>{t('console.records.member')}</span><Select id="records-member" value={filters.memberID} onChange={(value) => updateFilter('memberID', String(value))} block><Select.Option value="all">{t('console.records.allMembers')}</Select.Option>{memberOptions.map((option) => <Select.Option value={option.id} key={option.id}>{option.name}</Select.Option>)}</Select></label> : null}
-        <label className="records-filter-field records-filter-field--request" htmlFor="records-request"><span>{t('console.records.requestId')}</span><div className="records-request-control"><Input id="records-request" value={filters.requestID} onChange={(value) => updateFilter('requestID', value)} placeholder={t('console.records.exactRequest')} aria-label={t('console.records.requestId')} /><IconSearch aria-hidden="true" /></div></label>
+        <label className="records-filter-field records-filter-field--request" htmlFor="records-request"><span>{t('console.records.requestId')}</span><Input id="records-request" className="records-request-input" size="large" value={filters.requestID} onChange={(value) => updateFilter('requestID', value)} placeholder={t('console.records.exactRequest')} aria-label={t('console.records.requestId')} suffix={<IconSearch aria-hidden="true" />} showClear /></label>
         <Button className="records-reset-button" theme="borderless" icon={<IconRefresh />} onClick={resetFilters}>{t('console.records.resetFilters')}</Button>
       </div>
     </section>

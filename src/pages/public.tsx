@@ -1323,6 +1323,33 @@ function documentDescendants(rootId: string, nodes: PublicDocsNode[]): PublicDoc
   return nodes.filter((node) => node.type === 'document' && descendantIds.has(node.parent_id))
 }
 
+function buildDocsChildrenMap(nodes: PublicDocsNode[]): Map<string, PublicDocsNode[]> {
+  return nodes.reduce((childrenByParent, node) => {
+    const siblings = childrenByParent.get(node.parent_id) ?? []
+    siblings.push(node)
+    childrenByParent.set(node.parent_id, siblings)
+    return childrenByParent
+  }, new Map<string, PublicDocsNode[]>())
+}
+
+function DocsSidebarNodes({ childrenByParent, parentId, selectedId, depth = 0 }: {
+  childrenByParent: Map<string, PublicDocsNode[]>
+  parentId: string
+  selectedId?: string
+  depth?: number
+}) {
+  return (childrenByParent.get(parentId) ?? []).map((node) => {
+    const depthStyle = { '--docs-sidebar-indent': `${depth * 14}px` } as CSSProperties
+    if (node.type === 'document') {
+      return <Link className={`docs-sidebar-node docs-sidebar-document${selectedId === node.id ? ' is-active' : ''}`} style={depthStyle} to={publicDocumentHref(node)} key={node.id}><IconFile aria-hidden="true" />{node.title}</Link>
+    }
+    return <div className="docs-sidebar-group" key={node.id}>
+      <div className="docs-sidebar-node docs-sidebar-directory" style={depthStyle}><IconBookOpenStroked aria-hidden="true" /><span>{node.title}</span></div>
+      <div className="docs-sidebar-children"><DocsSidebarNodes childrenByParent={childrenByParent} parentId={node.id} selectedId={selectedId} depth={depth + 1} /></div>
+    </div>
+  })
+}
+
 function headingAnchor(text: string, index: number): string {
   const normalized = text.trim().toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-+|-+$/g, '')
   return `docs-${normalized || 'section'}-${index + 1}`
@@ -1406,12 +1433,12 @@ export function DocsPage() {
   const [collapsedHeadings, setCollapsedHeadings] = useState<Set<string>>(() => new Set())
 
   const rootNodes = useMemo(() => tree.filter((node) => !node.parent_id), [tree])
+  const childrenByParent = useMemo(() => buildDocsChildrenMap(tree), [tree])
   const selectedNode = useMemo(() => tree.find((node) => node.type === 'document' && node.id === publicId), [publicId, tree])
   const activeRoot = useMemo(() => {
     if (selectedNode) return rootNodes.find((root) => documentDescendants(root.id, tree).some((node) => node.id === selectedNode.id)) ?? rootNodes[0]
     return rootNodes[0]
   }, [rootNodes, selectedNode, tree])
-  const sidebarDocuments = useMemo(() => activeRoot ? documentDescendants(activeRoot.id, tree) : [], [activeRoot, tree])
   const headingTree = useMemo(() => buildDocsHeadingTree(headings), [headings])
 
   useEffect(() => {
@@ -1548,7 +1575,7 @@ export function DocsPage() {
 
       <div className="docs-shell" aria-busy={loading || undefined}>
         <aside className="docs-sidebar" aria-label={t('public.docs.manuscript.sidebarLabel')}>
-          <nav>{sidebarDocuments.map((document) => <Link className={selectedNode?.id === document.id ? 'is-active' : ''} to={publicDocumentHref(document)} key={document.id}><IconFile aria-hidden="true" />{document.title}</Link>)}</nav>
+          <nav>{activeRoot ? <DocsSidebarNodes childrenByParent={childrenByParent} parentId={activeRoot.id} selectedId={selectedNode?.id} /> : null}</nav>
         </aside>
 
         <article className="docs-article" ref={articleRef}>

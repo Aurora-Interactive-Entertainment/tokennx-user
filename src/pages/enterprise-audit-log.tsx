@@ -658,6 +658,7 @@ function AuditContent({ context }: { context: EnterpriseContext }) {
             }}
             presets={rangePresets}
             defaultCustomValue={auditCustomRangeDefaults()}
+            dateRestriction="past-only"
             onChange={updateTimeRange}
           />
         </div>
