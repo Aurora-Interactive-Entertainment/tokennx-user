@@ -165,6 +165,8 @@ export function PlaygroundPage() {
   const requestControllerRef = useRef<AbortController | null>(null)
   const streamingResponseRef = useRef('')
   const streamingReasoningRef = useRef('')
+  const messageListRef = useRef<HTMLDivElement | null>(null)
+  const followMessageBottomRef = useRef(true)
   const abortReasonRef = useRef<'user' | 'navigation' | null>(null)
   const workspaceKey = `${store.activeWorkspace.type}:${store.activeWorkspace.id}`
   const selectedSession = store.playgroundSessions.find((session) => session.id === selectedSessionId)
@@ -175,6 +177,17 @@ export function PlaygroundPage() {
     [models],
   )
   const selectedModel = findModelInList(selectableModels, modelId) ?? selectableModels[0]
+
+  function handleMessageScroll(event: React.UIEvent<HTMLDivElement>): void {
+    const element = event.currentTarget
+    followMessageBottomRef.current = element.scrollHeight - element.scrollTop - element.clientHeight <= 40
+  }
+
+  useEffect(() => {
+    const element = messageListRef.current
+    if (!element || !followMessageBottomRef.current) return
+    element.scrollTop = element.scrollHeight
+  }, [activePrompt, requestError, selectedSessionId, streamingReasoning, streamingResponse])
 
   useEffect(() => {
     requestControllerRef.current?.abort()
@@ -245,6 +258,7 @@ export function PlaygroundPage() {
     setRequestError('')
     setRetryingAttemptId(replacingAttemptId ?? '')
     setActivePrompt(trimmedPrompt)
+    followMessageBottomRef.current = true
     setStreamingResponse('')
     setStreamingReasoning('')
     streamingResponseRef.current = ''
@@ -355,6 +369,7 @@ export function PlaygroundPage() {
     streamingReasoningRef.current = ''
     setRequestError('')
     setPrompt('')
+    followMessageBottomRef.current = true
   }
 
   function selectSession(session: typeof store.playgroundSessions[number]): void {
@@ -373,6 +388,7 @@ export function PlaygroundPage() {
     streamingReasoningRef.current = ''
     setRequestError('')
     setPrompt('')
+    followMessageBottomRef.current = true
   }
 
   function copyMessage(value: string, successMessage: string): void {
@@ -413,11 +429,33 @@ export function PlaygroundPage() {
   if (modelsLoading) return <div className="page-stack playground-console-page"><PageTitle title={t('console.playground.title')} description={t('console.playground.description')} /><EmptyPanel title={t('console.common.loadingModels')} description={t('console.common.readingModels')} /></div>
   if (modelsError) return <div className="page-stack playground-console-page"><PageTitle title={t('console.playground.title')} description={t('console.playground.description')} /><EmptyPanel title={t('console.common.modelCatalogFailed')} description={modelsError} action={<Button theme="outline" onClick={refreshModels}>{t('console.common.reload')}</Button>} /></div>
 
+  const centerMessageState = Boolean(requestError) || (!selectedSession && !activePrompt)
+
   return <div className="page-stack playground-console-page">
     <PageTitle title={t('console.playground.title')} description={t('console.playground.detailedDescription')} />
     <section className="playground-shell" aria-label={t('console.playground.title')}>
       <aside className="history-panel" aria-labelledby="history-title"><div className="history-heading"><h2 id="history-title">{t('console.playground.history')}</h2><Button theme="outline" size="small" onClick={startNewSession}>{t('console.playground.newSession')}</Button></div><div className="history-list">{store.playgroundSessions.slice(0, 7).map((session) => { const model = findModelInList(models, session.modelId); const modelName = model?.name ?? t('console.playground.unnamedModel'); const displayModelAlias = model ? modelAlias(model) || t('console.common.modelAliasUnset') : t('console.common.modelAliasUnset'); return <button type="button" className={`history-item${selectedSessionId === session.id ? ' is-active' : ''}`} key={session.id} onClick={() => selectSession(session)}><strong>{modelName}</strong><span>{displayModelAlias} · {session.createdAt}</span><small>{lastUserMessage(session)}</small></button> })}</div></aside>
-      <div className="workspace"><div className="playground-header"><div className="playground-actions"><label className="sr-only" htmlFor="playground-model">{t('console.playground.chooseModel')}</label><Select className="playground-model-select" dropdownClassName="playground-select-dropdown" id="playground-model" aria-label={t('console.playground.chooseModel')} value={selectedModel ? modelAlias(selectedModel) : ''} onChange={(value) => { const nextModelAlias = String(value); setModelId(nextModelAlias); store.setSelectedModelId(nextModelAlias); setSelectedSessionId(''); setEditingAttemptId(''); setRetryingAttemptId(''); setRequestError('') }} disabled={selectableModels.length === 0}>{selectableModels.map((model) => <Select.Option key={model.id} value={modelAlias(model)}>{t('console.playground.modelWithProvider', { name: model.name, company: model.company, alias: modelAlias(model) })}</Select.Option>)}</Select><Button className="icon-button" theme="borderless" icon={<IconSetting />} aria-label={t('console.playground.modelParams')} title={t('console.playground.modelParams')} onClick={() => setParamsVisible(true)} disabled={!selectedModel} /></div></div><div className="message-list">{requestError ? <PlaygroundWorkspaceNotice message={requestError} action={<Button theme="outline" size="small" onClick={() => setRequestError('')}>{t('console.playground.closeError')}</Button>} /> : <>{selectedSession ? sessionMessages(selectedSession).filter((message) => message.attemptId !== retryingAttemptId).map((message) => renderMessage(message)) : null}{activePrompt ? <><div className="message user"><span className="message-avatar">H</span><div className="message-body"><div className="message-bubble">{activePrompt}</div><div className="message-actions"><Button className="message-icon-action" theme="borderless" size="small" icon={<IconCopy />} aria-label={t('console.playground.copyUserMessage')} title={t('console.playground.copyUserMessage')} onClick={() => copyMessage(activePrompt, t('console.playground.copiedUserMessage'))} /></div></div></div>{renderMessage({ id: 'streaming-response', attemptId: 'streaming-attempt', role: 'assistant', status: 'complete', content: '', reasoning: '', requestId: null, error: null, createdAt: '', inputTokens: null, outputTokens: null, cost: null, latency: null }, true)}</> : null}{!selectedSession && !activePrompt ? selectableModels.length > 0 ? <div className="empty-state"><h3>{t('console.playground.startConversation')}</h3><p>{t('console.playground.startConversationHint')}</p></div> : <PlaygroundWorkspaceNotice message={t('console.playground.noTextModels')} description={t('console.playground.noTextModelsHint')} /> : null}</>}</div><div className="composer"><div className="composer-box"><Input.TextArea className="composer-input" value={prompt} onChange={(value) => setPrompt(limitPlaygroundPrompt(value))} maxLength={PLAYGROUND_MAX_INPUT_CHARACTERS} rows={1} disabled={running || !canContinueConversation} placeholder={canContinueConversation ? t('console.playground.promptPlaceholder') : t('console.playground.newSessionLimit')} aria-label={t('console.playground.testPrompt')} onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); if (!running) void runTest() } }} /><span className="composer-character-count" aria-live="polite">{playgroundCharacterCount(prompt)}/{PLAYGROUND_MAX_INPUT_CHARACTERS}</span><div className="composer-actions"><Button className="send-btn" theme="solid" type="primary" icon={running ? <IconStop /> : <IconSend />} aria-label={running ? t('console.playground.stop') : t('console.playground.send')} title={running ? t('console.playground.stop') : t('console.playground.send')} disabled={running ? false : !prompt.trim() || !selectedModel || !canContinueConversation} onClick={() => { if (running) stopGeneration(); else void runTest() }} /></div></div><div className="composer-hint"><span>{t('console.playground.enterHint')}</span><span>{selectedModel ? `${selectedModel.name} · ${modelAlias(selectedModel) || t('console.common.modelAliasUnset')} · Temperature ${temperature} · Max Tokens ${maxTokens}` : t('console.playground.noAvailableModels')}</span></div></div></div>
+      <div className="workspace">
+        <div className="playground-header">
+          <div className="playground-actions">
+            <label className="sr-only" htmlFor="playground-model">{t('console.playground.chooseModel')}</label>
+            <Select className="playground-model-select" dropdownClassName="playground-select-dropdown" id="playground-model" aria-label={t('console.playground.chooseModel')} value={selectedModel ? modelAlias(selectedModel) : ''} onChange={(value) => { const nextModelAlias = String(value); setModelId(nextModelAlias); store.setSelectedModelId(nextModelAlias); setSelectedSessionId(''); setEditingAttemptId(''); setRetryingAttemptId(''); setRequestError('') }} disabled={selectableModels.length === 0}>{selectableModels.map((model) => <Select.Option key={model.id} value={modelAlias(model)}>{t('console.playground.modelWithProvider', { name: model.name, company: model.company, alias: modelAlias(model) })}</Select.Option>)}</Select>
+            <Button className="icon-button" theme="borderless" icon={<IconSetting />} aria-label={t('console.playground.modelParams')} title={t('console.playground.modelParams')} onClick={() => setParamsVisible(true)} disabled={!selectedModel} />
+          </div>
+        </div>
+        <div className={`message-list${centerMessageState ? ' is-centered' : ''}`} ref={messageListRef} onScroll={handleMessageScroll}>
+          {requestError ? <PlaygroundWorkspaceNotice message={requestError} action={<Button theme="outline" size="small" onClick={() => setRequestError('')}>{t('console.playground.closeError')}</Button>} /> : <>
+            {selectedSession ? sessionMessages(selectedSession).filter((message) => message.attemptId !== retryingAttemptId).map((message) => renderMessage(message)) : null}
+            {activePrompt ? <><div className="message user"><span className="message-avatar">H</span><div className="message-body"><div className="message-bubble">{activePrompt}</div><div className="message-actions"><Button className="message-icon-action" theme="borderless" size="small" icon={<IconCopy />} aria-label={t('console.playground.copyUserMessage')} title={t('console.playground.copyUserMessage')} onClick={() => copyMessage(activePrompt, t('console.playground.copiedUserMessage'))} /></div></div></div>{renderMessage({ id: 'streaming-response', attemptId: 'streaming-attempt', role: 'assistant', status: 'complete', content: '', reasoning: '', requestId: null, error: null, createdAt: '', inputTokens: null, outputTokens: null, cost: null, latency: null }, true)}</> : null}
+            {!selectedSession && !activePrompt ? selectableModels.length > 0 ? <div className="empty-state"><h3>{t('console.playground.startConversation')}</h3><p>{t('console.playground.startConversationHint')}</p></div> : <PlaygroundWorkspaceNotice message={t('console.playground.noTextModels')} description={t('console.playground.noTextModelsHint')} /> : null}
+          </>}
+        </div>
+        <div className="composer">
+          <p className="playground-ephemeral-notice" role="note">{t('console.playground.ephemeralNotice')}</p>
+          <div className="composer-box"><Input.TextArea className="composer-input" value={prompt} onChange={(value) => setPrompt(limitPlaygroundPrompt(value))} maxLength={PLAYGROUND_MAX_INPUT_CHARACTERS} rows={1} disabled={running || !canContinueConversation} placeholder={canContinueConversation ? t('console.playground.promptPlaceholder') : t('console.playground.newSessionLimit')} aria-label={t('console.playground.testPrompt')} onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); if (!running) void runTest() } }} /><span className="composer-character-count" aria-live="polite">{playgroundCharacterCount(prompt)}/{PLAYGROUND_MAX_INPUT_CHARACTERS}</span><div className="composer-actions"><Button className="send-btn" theme="solid" type="primary" icon={running ? <IconStop /> : <IconSend />} aria-label={running ? t('console.playground.stop') : t('console.playground.send')} title={running ? t('console.playground.stop') : t('console.playground.send')} disabled={running ? false : !prompt.trim() || !selectedModel || !canContinueConversation} onClick={() => { if (running) stopGeneration(); else void runTest() }} /></div></div>
+          <div className="composer-hint"><span>{t('console.playground.enterHint')}</span><span>{selectedModel ? `${selectedModel.name} · ${modelAlias(selectedModel) || t('console.common.modelAliasUnset')} · Temperature ${temperature} · Max Tokens ${maxTokens}` : t('console.playground.noAvailableModels')}</span></div>
+        </div>
+      </div>
     </section>
     <Modal title={t('console.playground.parameters')} visible={paramsVisible} onCancel={() => setParamsVisible(false)} onOk={() => setParamsVisible(false)} okText={t('console.playground.done')} cancelText={t('console.common.cancel')}><div className="params-dialog"><label className="field-label" htmlFor="temperature">{t('console.playground.temperature')}</label><Input id="temperature" value={temperature} onChange={setTemperature} suffix={t('console.playground.randomness')} inputMode="decimal" /><span className="params-field-hint">{t('console.playground.parameterRange', { min: MIN_TEMPERATURE, max: MAX_TEMPERATURE })}</span><label className="field-label" htmlFor="max-tokens">{t('console.playground.maxTokens')}</label><Input id="max-tokens" value={maxTokens} onChange={(value) => setMaxTokens(value.replace(/\D/g, ''))} suffix="tokens" inputMode="numeric" /><span className="params-field-hint">{t('console.playground.tokenRange', { min: MIN_MAX_TOKENS, max: MAX_MAX_TOKENS })}</span></div></Modal>
   </div>
@@ -430,21 +468,19 @@ export function QuickstartPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const { models, loading: modelsLoading, error: modelsError, refresh: refreshModels } = useUserModels()
   const textModels = models.filter((item) => item.modality === 'text' && modelAlias(item))
-  const resolvedRequestedModel = findModelInList(models, searchParams.get('model'))
+  const requestedModelAlias = searchParams.get('model')
+  const resolvedRequestedModel = findModelInList(models, requestedModelAlias)
   const requestedModel = resolvedRequestedModel && modelAlias(resolvedRequestedModel) ? resolvedRequestedModel : undefined
   const firstModel = requestedModel ?? textModels[0]
   const [protocol, setProtocol] = useState<QuickstartProtocol>(normalizeQuickstartProtocol(searchParams.get('protocol')))
   const [language, setLanguage] = useState<QuickstartLanguage>(normalizeQuickstartLanguage(searchParams.get('language')))
-  const [modelId, setModelId] = useState(searchParams.get('model') ?? '')
-  const resolvedModel = findModelInList(models, modelId)
-  const model = resolvedModel && modelAlias(resolvedModel) ? resolvedModel : firstModel
+  const model = firstModel
 
   useEffect(() => {
     const alias = firstModel ? modelAlias(firstModel) : ''
-    if (!alias || (modelId === alias && searchParams.get('model') === alias)) return
-    setModelId(alias)
+    if (!alias || (requestedModel && requestedModelAlias === alias)) return
     setSearchParams({ model: alias, protocol, language }, { replace: true })
-  }, [firstModel, language, modelId, protocol, searchParams, setSearchParams])
+  }, [firstModel, language, protocol, requestedModel, requestedModelAlias, setSearchParams])
 
   function syncContext(nextModelAlias: string, nextProtocol = protocol, nextLanguage = language): void {
     setSearchParams({ model: nextModelAlias, protocol: nextProtocol, language: nextLanguage })
@@ -482,7 +518,7 @@ export function QuickstartPage() {
       </nav>
       <div className="quickstart-code-workspace">
         <aside className="quickstart-code-controls" aria-label={t('console.quickstart.sampleOptions')}>
-          <div className="quickstart-control-group"><label htmlFor="quickstart-model">{t('console.quickstart.model')}</label><Select id="quickstart-model" value={modelAlias(model)} onChange={(value) => { const nextModelAlias = String(value); setModelId(nextModelAlias); syncContext(nextModelAlias) }} block>{selectableModels.map((item) => <Select.Option key={item.id} value={modelAlias(item)}>{item.modality === 'text' ? t('console.playground.modelWithProvider', { name: item.name, company: item.company, alias: modelAlias(item) }) : t('console.playground.modelWithNoSample', { name: item.name, alias: modelAlias(item) })}</Select.Option>)}</Select></div>
+          <div className="quickstart-control-group"><label htmlFor="quickstart-model">{t('console.quickstart.model')}</label><Select id="quickstart-model" value={modelAlias(model)} onChange={(value) => { syncContext(String(value)) }} block>{selectableModels.map((item) => <Select.Option key={item.id} value={modelAlias(item)}>{item.modality === 'text' ? t('console.playground.modelWithProvider', { name: item.name, company: item.company, alias: modelAlias(item) }) : t('console.playground.modelWithNoSample', { name: item.name, alias: modelAlias(item) })}</Select.Option>)}</Select></div>
           <div className="quickstart-control-group"><span className="quickstart-control-label">{t('console.quickstart.apiStyle')}</span><div className="quickstart-segmented" role="group" aria-label={t('console.quickstart.apiStyle')}><button className={protocol === 'openai' ? 'active' : ''} type="button" aria-pressed={protocol === 'openai'} disabled={!supportsCodeSample} onClick={() => { setProtocol('openai'); syncContext(modelAlias(model), 'openai') }}>{t('console.quickstart.openai')}</button><button className={protocol === 'anthropic' ? 'active' : ''} type="button" aria-pressed={protocol === 'anthropic'} disabled={!supportsCodeSample} onClick={() => { setProtocol('anthropic'); syncContext(modelAlias(model), 'anthropic') }}>{t('console.quickstart.claude')}</button></div></div>
           <div className="quickstart-control-group"><span className="quickstart-control-label">{t('console.quickstart.language')}</span><div className="quickstart-segmented quickstart-segmented--language" role="group" aria-label={t('console.quickstart.codeSampleLanguage')}><button className={language === 'python' ? 'active' : ''} type="button" aria-pressed={language === 'python'} disabled={!supportsCodeSample} onClick={() => { setLanguage('python'); syncContext(modelAlias(model), protocol, 'python') }}>{t('console.quickstart.python')}</button><button className={language === 'node' ? 'active' : ''} type="button" aria-pressed={language === 'node'} disabled={!supportsCodeSample} onClick={() => { setLanguage('node'); syncContext(modelAlias(model), protocol, 'node') }}>Node.js</button><button className={language === 'curl' ? 'active' : ''} type="button" aria-pressed={language === 'curl'} disabled={!supportsCodeSample} onClick={() => { setLanguage('curl'); syncContext(modelAlias(model), protocol, 'curl') }}>{t('console.quickstart.curl')}</button></div></div>
           <div className="quickstart-endpoint-list"><div className="quickstart-endpoint-item"><span>{t('console.quickstart.apiBaseUrl')}</span><div className="quickstart-endpoint-value"><code>{QUICKSTART_API_BASE_URL}</code><Button theme="borderless" size="small" icon={<IconCopy />} aria-label={t('console.quickstart.copyBaseUrl')} title={t('console.quickstart.copyBaseUrl')} onClick={copyBaseUrl} /></div></div><div className="quickstart-endpoint-item"><span>API Key</span><code>YOUR_TOKEN_NX_API_KEY</code></div></div>

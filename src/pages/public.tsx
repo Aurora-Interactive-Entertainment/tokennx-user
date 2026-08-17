@@ -1486,7 +1486,7 @@ export function DocsPage() {
     const updateActiveHeading = () => {
       const current = headings.reduce((active, heading) => {
         const element = document.getElementById(heading.id)
-        return element && element.getBoundingClientRect().top <= 140 ? heading.id : active
+        return element && element.getBoundingClientRect().top <= 176 ? heading.id : active
       }, headings[0]?.id ?? '')
       setActiveHeading(current)
     }
@@ -1557,7 +1557,7 @@ export function DocsPage() {
           {loading ? <div className="docs-state" role="status"><Skeleton placeholder={<><Skeleton.Title /><Skeleton.Paragraph rows={8} /></>} loading /></div> : null}
           {!loading && error ? <div className="docs-state docs-state--error" role="alert"><h1>{locale === 'en-US' ? 'Unable to load documentation' : '文档加载失败'}</h1><p>{error.message}</p>{error.requestId ? <code>Request ID: {error.requestId}</code> : null}</div> : null}
           {!loading && !error && !currentDocument && !tree.length ? <div className="docs-state"><h1>{locale === 'en-US' ? 'No public documentation' : '暂无公开文档'}</h1></div> : null}
-          {currentDocument ? <MarkdownContent className="docs-markdown" content={currentDocument.content_markdown} resolveImageUrl={resolveDocsImageUrl} /> : null}
+          {currentDocument ? <MarkdownContent className="docs-markdown" content={currentDocument.content_markdown} enhancedCodeBlocks resolveImageUrl={resolveDocsImageUrl} /> : null}
         </article>
 
         <aside className="docs-on-page" aria-label={t('public.docs.manuscript.onPageLabel')}>

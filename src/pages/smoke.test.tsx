@@ -68,7 +68,7 @@ describe('页面主链冒烟场景', () => {
     vi.useRealTimers()
     vi.restoreAllMocks()
     void i18n.changeLanguage('zh-CN')
-    setThemeMode('system')
+    setThemeMode('dark')
   })
 
   it('公开首页严格展示手稿中的七段结构', () => {
@@ -319,20 +319,18 @@ describe('页面主链冒烟场景', () => {
     expect(languageButton).toHaveAttribute('aria-pressed', 'true')
   })
 
-  it('主题按钮按跟随系统、亮色、暗色循环并同步根节点主题', async () => {
+  it('主题按钮只在暗色和亮色之间切换并同步根节点主题', async () => {
     const user = userEvent.setup()
-    setThemeMode('system')
+    setThemeMode('dark')
     render(<MemoryRouter><Provider store={createAppStore()}><AppStoreProvider><HomePage /></AppStoreProvider></Provider></MemoryRouter>)
-    const themeButton = screen.getByRole('button', { name: '切换主题 · 跟随系统' })
-    expect(themeButton.querySelector('.semi-icon-desktop')).toBeInTheDocument()
+    const themeButton = screen.getByRole('button', { name: '切换主题 · 暗色主题' })
+    expect(themeButton.querySelector('.semi-icon-moon_stroked')).toBeInTheDocument()
     await user.click(themeButton)
     expect(screen.getByRole('button', { name: '切换主题 · 亮色主题' }).querySelector('.semi-icon-sun_stroked')).toBeInTheDocument()
     expect(document.documentElement).toHaveAttribute('data-theme', 'light')
     await user.click(screen.getByRole('button', { name: '切换主题 · 亮色主题' }))
     expect(screen.getByRole('button', { name: '切换主题 · 暗色主题' })).toBeInTheDocument()
     expect(document.documentElement).toHaveAttribute('data-theme', 'dark')
-    await user.click(screen.getByRole('button', { name: '切换主题 · 暗色主题' }))
-    expect(screen.getByRole('button', { name: '切换主题 · 跟随系统' })).toBeInTheDocument()
   })
 
   it('手机号登录未同意协议时保持可交互并阻止提交', async () => {

@@ -20,7 +20,6 @@ import {
   IconCopyStroked,
   IconCreditCardStroked,
   IconCustomerSupport,
-  IconDesktop,
   IconEditStroked,
   IconExit,
   IconEyeClosedStroked,
@@ -947,11 +946,9 @@ export function ThemeToggleButton() {
   const { t } = useTranslation()
   const mode = useThemeMode()
   const resolvedTheme = useResolvedTheme()
-  const icon = mode === 'system'
-    ? <IconDesktop className="icon-svg tool-icon" />
-    : resolvedTheme === 'dark'
-      ? <IconMoonStroked className="icon-svg tool-icon" />
-      : <IconSunStroked className="icon-svg tool-icon" />
+  const icon = resolvedTheme === 'dark'
+    ? <IconMoonStroked className="icon-svg tool-icon" />
+    : <IconSunStroked className="icon-svg tool-icon" />
   const label = t(themeModeLabel(mode))
 
   return <button className="header-tool theme-switcher" type="button" title={`${t('theme.switch')} · ${label}`} aria-label={`${t('theme.switch')} · ${label}`} onClick={(event) => { const rect = event.currentTarget.getBoundingClientRect(); cycleThemeModeWithTransition({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }) }}>{icon}</button>
@@ -986,6 +983,7 @@ export function PublicHeader({ enterpriseAccess, unreadNotificationCount = 0 }: 
   const dispatch = useAppDispatch()
   const auth = useAppSelector((state) => state.auth)
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [scrolled, setScrolled] = useState(false)
   const [billingMenuOpen, setBillingMenuOpen] = useState(false)
   const [billingBalanceVisible, setBillingBalanceVisible] = useState(true)
   const [billingOverview, setBillingOverview] = useState<AccountOverviewResponse | null>(null)
@@ -1019,6 +1017,20 @@ export function PublicHeader({ enterpriseAccess, unreadNotificationCount = 0 }: 
     setMobileOpen(false)
     setBillingMenuOpen(false)
   }, [currentPath])
+
+  useEffect(() => {
+    let animationFrame = 0
+    const syncScrollState = (): void => {
+      cancelAnimationFrame(animationFrame)
+      animationFrame = requestAnimationFrame(() => setScrolled(window.scrollY > 8))
+    }
+    syncScrollState()
+    window.addEventListener('scroll', syncScrollState, { passive: true })
+    return () => {
+      cancelAnimationFrame(animationFrame)
+      window.removeEventListener('scroll', syncScrollState)
+    }
+  }, [])
 
   function clearBillingHoverCloseTimer(): void {
     if (billingHoverCloseTimerRef.current === null) return
@@ -1135,7 +1147,7 @@ export function PublicHeader({ enterpriseAccess, unreadNotificationCount = 0 }: 
   return (
     <>
       <style>{publicMobileNavStyles}</style>
-      <header className={`app-header public-header public-header--home${mobileOpen ? ' mobile-nav-open' : ''}`} ref={headerRef}>
+      <header className={`app-header public-header public-header--home${scrolled ? ' is-scrolled' : ''}${mobileOpen ? ' mobile-nav-open' : ''}`} ref={headerRef}>
       <div className="app-header-inner app-header-full public-header-inner">
         <button className="mobile-menu-button" type="button" aria-controls="public-mobile-nav" aria-expanded={mobileOpen} aria-label={mobileOpen ? t('nav.close') : t('nav.open')} onClick={() => setMobileOpen((open) => !open)}>
           <span className="mobile-menu-icon" aria-hidden="true">
@@ -1631,7 +1643,7 @@ function UserMenu({ store, userId, userName, phone, enterpriseAccess, accountSet
         <div className="user-dropdown-header">
           <button ref={workspaceTriggerRef} className="user-dropdown-identity" type="button" role="menuitem" aria-label={t('console.common.switchWorkspace')} aria-controls="workspace-menu" aria-expanded={workspaceOpen} onClick={() => setWorkspaceOpen((value) => !value)}>
             <span className="user-dropdown-identity-avatar">{initial}</span>
-            <span className="user-dropdown-identity-copy"><strong>{displayName}</strong><span>{activeWorkspace.type === 'personal' ? t('console.common.personalWorkspace') : activeWorkspace.name}</span><IconChevronDown className="icon-svg user-dropdown-identity-chevron" /><span className="public-sr-only">{phoneLabel}</span><span className="public-sr-only">{t('console.common.currentWorkspace')} · {activeWorkspace.type === 'personal' ? displayName : activeWorkspace.name}</span><span className="public-sr-only">{t('console.common.switchWorkspace')}</span></span>
+            <span className="user-dropdown-identity-copy"><strong>{displayName}</strong><span>{activeWorkspace.type === 'personal' ? t('console.common.personalWorkspace') : activeWorkspace.name}</span><span className={`user-dropdown-identity-chevron${workspaceOpen ? ' is-open' : ''}`} aria-hidden="true" /><span className="public-sr-only">{phoneLabel}</span><span className="public-sr-only">{t('console.common.currentWorkspace')} · {activeWorkspace.type === 'personal' ? displayName : activeWorkspace.name}</span><span className="public-sr-only">{t('console.common.switchWorkspace')}</span></span>
           </button>
           <button className="user-dropdown-settings" type="button" aria-label={t('nav.settings')} onClick={openAccountSettings}><IconSettingStroked aria-hidden="true" /></button>
         </div>

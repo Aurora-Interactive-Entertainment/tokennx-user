@@ -10,9 +10,22 @@ export type AnalyticsTimeRangeValue = Pick<
   "range" | "startDate" | "endDate"
 >;
 
-type AnalyticsTimeRangePickerProps = {
-  value: AnalyticsTimeRangeValue;
-  onChange: (value: AnalyticsTimeRangeValue) => void;
+export type TimeRangeValue<Range extends string> = {
+  range: Range;
+  startDate: string;
+  endDate: string;
+};
+
+export type TimeRangePreset<Range extends string> = {
+  value: Range;
+  label: string;
+};
+
+type AnalyticsTimeRangePickerProps<Range extends string> = {
+  value: TimeRangeValue<Range>;
+  onChange: (value: TimeRangeValue<Range>) => void;
+  presets?: readonly TimeRangePreset<Range>[];
+  defaultCustomValue?: Pick<TimeRangeValue<Range>, "startDate" | "endDate">;
 };
 
 type CalendarDay = {
@@ -96,13 +109,13 @@ function calendarDays(value: string): CalendarDay[] {
   return days;
 }
 
-function valueLabel(
-  value: AnalyticsTimeRangeValue,
-  translate: (key: string) => string,
+function valueLabel<Range extends string>(
+  value: TimeRangeValue<Range>,
+  presets: readonly TimeRangePreset<Range>[],
 ): string {
   if (value.range === "custom" && value.startDate && value.endDate)
     return `${value.startDate.replaceAll("-", "/")} - ${value.endDate.replaceAll("-", "/")}`;
-  return translate(RANGE_LABEL_KEYS[value.range]);
+  return presets.find((preset) => preset.value === value.range)?.label ?? value.range;
 }
 
 function monthLabel(value: string, locale: string): string {
@@ -113,14 +126,16 @@ function monthLabel(value: string, locale: string): string {
   }).format(date);
 }
 
-function initialMonth(value: AnalyticsTimeRangeValue): string {
+function initialMonth<Range extends string>(value: TimeRangeValue<Range>): string {
   return value.startDate?.slice(0, 7) || monthValue(new Date());
 }
 
-export function AnalyticsTimeRangePicker({
+export function AnalyticsTimeRangePicker<Range extends string = AnalyticsRange>({
   value,
   onChange,
-}: AnalyticsTimeRangePickerProps) {
+  presets,
+  defaultCustomValue,
+}: AnalyticsTimeRangePickerProps<Range>) {
   const { i18n, t } = useTranslation();
   const rootRef = useRef<HTMLDivElement>(null);
   const panelID = `analytics-time-range-${useId().replaceAll(":", "")}`;
@@ -128,6 +143,12 @@ export function AnalyticsTimeRangePicker({
   const [snapshot, setSnapshot] = useState(value);
   const [draft, setDraft] = useState(value);
   const [visibleMonth, setVisibleMonth] = useState(() => initialMonth(value));
+  const availablePresets: readonly TimeRangePreset<Range>[] =
+    presets ??
+    (Object.keys(RANGE_LABEL_KEYS) as AnalyticsRange[]).map((range) => ({
+      value: range as Range,
+      label: t(RANGE_LABEL_KEYS[range]),
+    }));
 
   useEffect(() => {
     if (open) return;
@@ -165,7 +186,7 @@ export function AnalyticsTimeRangePicker({
     () => [visibleMonth, shiftMonth(visibleMonth, 1)],
     [visibleMonth],
   );
-  const currentLabel = valueLabel(value, t);
+  const currentLabel = valueLabel(value, availablePresets);
 
   function openPicker(): void {
     setSnapshot(value);
@@ -179,12 +200,13 @@ export function AnalyticsTimeRangePicker({
     setOpen(false);
   }
 
-  function choosePreset(range: AnalyticsRange): void {
+  function choosePreset(range: Range): void {
     if (range === "custom") {
+      const fallbackValue = defaultCustomValue ?? { startDate: "", endDate: "" };
       setDraft({
         range,
-        startDate: value.range === "custom" ? value.startDate : "",
-        endDate: value.range === "custom" ? value.endDate : "",
+        startDate: value.range === "custom" ? value.startDate : fallbackValue.startDate,
+        endDate: value.range === "custom" ? value.endDate : fallbackValue.endDate,
       });
       return;
     }
@@ -195,10 +217,10 @@ export function AnalyticsTimeRangePicker({
   function chooseDate(nextDate: string): void {
     const startDate = draft.startDate;
     if (!startDate || draft.endDate || nextDate < startDate) {
-      setDraft({ range: "custom", startDate: nextDate, endDate: "" });
+      setDraft({ range: "custom" as Range, startDate: nextDate, endDate: "" });
       return;
     }
-    setDraft({ range: "custom", startDate, endDate: nextDate });
+    setDraft({ range: "custom" as Range, startDate, endDate: nextDate });
   }
 
   function applyDraft(): void {
@@ -291,15 +313,15 @@ export function AnalyticsTimeRangePicker({
             role="group"
             aria-label={t("console.enterprise.analytics.quickTimeRange")}
           >
-            {(Object.keys(RANGE_LABEL_KEYS) as AnalyticsRange[]).map((range) => (
+            {availablePresets.map((preset) => (
               <button
                 className="analytics-time-range-preset"
                 type="button"
-                aria-pressed={draft.range === range}
-                key={range}
-                onClick={() => choosePreset(range)}
+                aria-pressed={draft.range === preset.value}
+                key={preset.value}
+                onClick={() => choosePreset(preset.value)}
               >
-                {t(RANGE_LABEL_KEYS[range])}
+                {preset.label}
               </button>
             ))}
           </div>
@@ -331,7 +353,7 @@ export function AnalyticsTimeRangePicker({
             <p className="analytics-time-range-summary">
               {draft.startDate && draft.endDate
                 ? t("console.enterprise.analytics.selectedRange", {
-                    range: valueLabel(draft, t),
+                    range: valueLabel(draft, availablePresets),
                   })
                 : draft.startDate
                   ? t("console.enterprise.analytics.selectedStartDate", {

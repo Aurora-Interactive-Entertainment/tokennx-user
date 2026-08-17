@@ -25,7 +25,6 @@ const resources = {
         switch: '切换主题',
         light: '亮色主题',
         dark: '暗色主题',
-        system: '跟随系统',
       },
       nav: {
         models: '模型',
@@ -536,7 +535,7 @@ const resources = {
   'en-US': {
     translation: {
       language: { label: 'Language', toggle: 'Switch language', current: 'English' },
-      theme: { label: 'Theme', switch: 'Switch theme', light: 'Light theme', dark: 'Dark theme', system: 'Use system setting' },
+      theme: { label: 'Theme', switch: 'Switch theme', light: 'Light theme', dark: 'Dark theme' },
       nav: {
         models: 'Models', private: 'Private', ranking: 'Ranking', apps: 'Apps', docs: 'Docs', pricing: 'Pricing', billing: 'Billing', status: 'Status', about: 'About', console: 'Console', settings: 'Account settings', logout: 'Sign out', notifications: 'View notifications', close: 'Close navigation', open: 'Open navigation',
       },

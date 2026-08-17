@@ -2,9 +2,8 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router'
 import Button from '@douyinfe/semi-ui/lib/es/button'
-import DatePicker from '@douyinfe/semi-ui/lib/es/datePicker'
-import Radio from '@douyinfe/semi-ui/lib/es/radio'
 import { IconRefresh } from '@douyinfe/semi-icons'
+import { AnalyticsTimeRangePicker, type TimeRangePreset, type TimeRangeValue } from '@/components/analytics-time-range-picker'
 import { BannerNotice, PageTitle } from '@/components/common'
 import { CompatSelect as Select } from '@/components/semi-compat'
 import { MoneyText } from '@/components/money'
@@ -183,18 +182,13 @@ function UsageSummaryPage({ enterpriseRoute }: { enterpriseRoute: boolean }) {
     setFilters((previous) => ({ ...previous, [key]: value }))
   }
 
-  function updateRange(value: UsageSummaryRange): void {
-    setFilters((previous) => ({ ...previous, range: value, ...(value === DATE_RANGE_CUSTOM ? customDateDefaults() : { startDate: '', endDate: '' }) }))
+  function updateTimeRange(value: TimeRangeValue<UsageSummaryRange>): void {
+    setFilters((previous) => ({ ...previous, ...value }))
   }
 
   function resetFilters(): void {
     setFilters(createDefaultFilters())
     setTrendMetric('requests')
-  }
-
-  function updateCustomDateRange(dateStrings?: string | string[] | Date | Date[]): void {
-    const [startDate = '', endDate = ''] = Array.isArray(dateStrings) ? dateStrings.map(String) : []
-    setFilters((previous) => ({ ...previous, startDate, endDate }))
   }
 
   const apiKeyOptions = selectOption(data?.filters.api_keys ?? [], filters.apiKeyID, t('console.usage.currentKey'))
@@ -204,7 +198,7 @@ function UsageSummaryPage({ enterpriseRoute }: { enterpriseRoute: boolean }) {
   const modelRows = data?.model_rows ?? []
   const trendData = data?.trend ?? []
   const hasVisibleData = Boolean(metrics?.request_count)
-  const rangeOptions = [
+  const rangePresets: readonly TimeRangePreset<UsageSummaryRange>[] = [
     { label: t('console.usage.today'), value: DATE_RANGE_TODAY },
     { label: t('console.usage.recent7Days'), value: DATE_RANGE_WEEK },
     { label: t('console.usage.recent30Days'), value: DATE_RANGE_MONTH },
@@ -222,14 +216,13 @@ function UsageSummaryPage({ enterpriseRoute }: { enterpriseRoute: boolean }) {
   return <div className="page-stack usage-reference-page" aria-busy={loading}>
     <PageTitle title={enterpriseRoute ? t('console.usage.enterpriseTitle') : t('console.usage.title')} description={enterpriseRoute ? t('console.usage.enterpriseDescription') : t('console.usage.description')} />
     <section className="usage-reference-filters" aria-label={t('console.usage.filter')}>
-      <div className="usage-reference-time-filter"><span className="usage-reference-filter-label">{t('console.usage.timeRange')}</span><Radio.Group className="usage-reference-range-tabs" type="button" buttonSize="middle" value={filters.range} options={rangeOptions} onChange={(event) => updateRange(event.target.value as UsageSummaryRange)} aria-label={t('console.usage.timeRange')} /></div>
+      <div className="usage-reference-time-filter"><span className="usage-reference-filter-label">{t('console.usage.timeRange')}</span><AnalyticsTimeRangePicker value={{ range: filters.range, startDate: filters.startDate, endDate: filters.endDate }} presets={rangePresets} defaultCustomValue={customDateDefaults()} onChange={updateTimeRange} /></div>
       <div className="usage-reference-filter-grid">
         <UsageSelect id="usage-model-filter" label={t('console.usage.model')} value={modelOptions.some((option) => option.alias === filters.model) ? filters.model : 'all'} onChange={(value) => updateFilter('model', value)}><Select.Option value="all">{t('console.usage.allModels')}</Select.Option>{modelOptions.map((option) => <Select.Option value={option.alias} key={option.alias}>{t('console.common.modelWithAlias', { name: option.name, alias: option.alias })}</Select.Option>)}</UsageSelect>
         <UsageSelect id="usage-key-filter" label={t('console.usage.apiKey')} value={filters.apiKeyID} onChange={(value) => updateFilter('apiKeyID', value)}><Select.Option value="all">{t('console.usage.allKeys')}</Select.Option>{apiKeyOptions.map((option) => <Select.Option value={option.id} key={option.id}>{option.name}</Select.Option>)}</UsageSelect>
         <UsageSelect id="usage-source-filter" label={t('console.usage.source')} value={filters.source} onChange={(value) => updateFilter('source', value as UsageRecordsSource)}><Select.Option value="all">{t('console.usage.allSources')}</Select.Option><Select.Option value="console-test">{t('console.usage.consoleTest')}</Select.Option><Select.Option value="api">{t('console.usage.apiCall')}</Select.Option></UsageSelect>
         <UsageSelect id="usage-status-filter" label={t('console.usage.status')} value={filters.status} onChange={(value) => updateFilter('status', value as UsageRecordsStatus)}><Select.Option value="all">{t('console.usage.allStatuses')}</Select.Option><Select.Option value="success">{t('console.usage.successStatus')}</Select.Option><Select.Option value="error">{t('console.usage.errorStatus')}</Select.Option><Select.Option value="cancelled">{t('console.usage.cancelledStatus')}</Select.Option></UsageSelect>
         {data?.can_filter_members ? <UsageSelect id="usage-member-filter" label={t('console.usage.member')} value={filters.memberID} onChange={(value) => updateFilter('memberID', value)}><Select.Option value="all">{t('console.usage.allMembers')}</Select.Option>{memberOptions.map((option) => <Select.Option value={option.id} key={option.id}>{option.name}</Select.Option>)}</UsageSelect> : null}
-        {filters.range === DATE_RANGE_CUSTOM ? <div className="usage-reference-date-range"><span className="usage-reference-filter-label">{t('console.usage.custom')}</span><DatePicker type="dateRange" format="yyyy-MM-dd" value={[filters.startDate, filters.endDate]} placeholder={[t('console.usage.startDate'), t('console.usage.endDate')]} onChange={(_, dateStrings) => updateCustomDateRange(dateStrings)} showClear className="usage-reference-date-picker" aria-label={t('console.usage.custom')} /></div> : null}
       </div>
       <Button className="usage-reference-reset" theme="borderless" icon={<IconRefresh />} onClick={resetFilters}>{t('console.usage.resetFilters')}</Button>
     </section>

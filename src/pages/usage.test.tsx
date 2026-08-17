@@ -102,9 +102,13 @@ describe('用户用量统计页面', () => {
     expect(screen.getAllByText('用量统计服务暂时不可用，请稍后重试')).toHaveLength(1)
     expect(screen.queryByRole('button', { name: '刷新用量统计' })).toBeNull()
     expect((await screen.findAllByText('请求 ID：summary-request-id')).length).toBeGreaterThanOrEqual(1)
-    await user.click(screen.getByRole('radio', { name: '自定义' }))
-    expect(screen.getByPlaceholderText('开始日期')).toBeInTheDocument()
-    expect(screen.getByPlaceholderText('结束日期')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /选择时间范围/ }))
+    await user.click(screen.getByRole('button', { name: '自定义' }))
+    await user.click(screen.getByRole('button', { name: '应用' }))
+    await waitFor(() => expect(getUsageSummaryMock).toHaveBeenCalledWith(
+      expect.objectContaining({ account_type: 'personal' }),
+      expect.objectContaining({ range: 'custom', start_at: expect.any(Number), end_at: expect.any(Number) }),
+    ))
   })
 
   it('企业路由使用真实企业上下文并展示成员筛选', async () => {

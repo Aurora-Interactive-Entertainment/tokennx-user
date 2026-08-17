@@ -1,5 +1,7 @@
 import { render, screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import userEvent from '@testing-library/user-event'
+import { describe, expect, it, vi } from 'vitest'
+import '@/i18n'
 import { MarkdownContent } from './markdown-content'
 
 describe('模型回复 Markdown 渲染', () => {
@@ -37,5 +39,33 @@ describe('模型回复 Markdown 渲染', () => {
     expect(screen.getByRole('cell', { name: 'POST /api/auth/email/code' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: '发送邮箱验证码' })).toHaveAttribute('href', encodeURI('发送邮箱验证码.md'))
     expect(screen.getByRole('img', { name: 'output.png' })).toHaveAttribute('src', '/api/docs/assets/01KZQVP2SVX2ZCRXQVQ4Q6TKES')
+  })
+
+  it('renders adjacent fenced code samples as a highlighted language switcher with line numbers', async () => {
+    const user = userEvent.setup()
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } })
+    render(<MarkdownContent enhancedCodeBlocks content={'```python\nprint("hello")\n```\n\n```typescript\nconsole.log("hello")\n```'} />)
+
+    expect(screen.getByRole('tab', { name: 'Python' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByText('1', { selector: '.markdown-code-reader-line-number' })).toBeInTheDocument()
+    await user.click(screen.getByRole('tab', { name: 'TypeScript' }))
+    expect(screen.getByRole('tabpanel')).toHaveTextContent('console.log("hello")')
+    await user.click(screen.getByRole('button', { name: '复制代码' }))
+    expect(writeText).toHaveBeenCalledWith('console.log("hello")')
+  })
+
+  it('preserves the language of a single fenced code sample', () => {
+    render(<MarkdownContent enhancedCodeBlocks content={'```json\n{"status":"ok"}\n```'} />)
+
+    expect(screen.getByText('JSON', { selector: '.markdown-code-reader-language' })).toBeInTheDocument()
+    expect(document.querySelector('.markdown-code-reader pre')).toHaveClass('language-json')
+  })
+
+  it('applies syntax tokens to shell code', () => {
+    const { container } = render(<MarkdownContent enhancedCodeBlocks content={'```bash\ncurl https://example.com -H "Accept: application/json"\n```'} />)
+
+    expect(container.querySelector('.markdown-code-reader .token.function')).toHaveTextContent('curl')
+    expect(container.querySelectorAll('.markdown-code-reader .token').length).toBeGreaterThan(1)
   })
 })

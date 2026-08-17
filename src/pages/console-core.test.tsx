@@ -287,6 +287,8 @@ describe('控制台模型接入页面', () => {
     })
     expect(modelSelect).toHaveAttribute('aria-disabled', 'false')
     expect(document.getElementById('playground-api-key')).toBeNull()
+    expect(screen.getByText('本页面仅作为测试用，对话内容不会被保存刷新页面后将会消失')).toBeInTheDocument()
+    expect(document.querySelector('.message-list')).toHaveClass('is-centered')
     expect(screen.queryByRole('link', { name: '管理 API Key' })).toBeNull()
     await user.click(modelSelect)
     expect(await screen.findByRole('option', { name: /后端 DeepSeek/ })).toBeInTheDocument()
@@ -428,6 +430,7 @@ describe('控制台模型接入页面', () => {
 
     expect(await screen.findByText('调用失败，请稍后重试')).toBeInTheDocument()
     expect(document.querySelector('.playground-workspace-notice')).toBeInTheDocument()
+    expect(document.querySelector('.message-list')).toHaveClass('is-centered')
     expect(screen.queryByText('请求内容包含不允许的文本')).toBeNull()
     expect(screen.queryByText(/req-failed/)).toBeNull()
     await user.click(screen.getByRole('button', { name: '关闭' }))

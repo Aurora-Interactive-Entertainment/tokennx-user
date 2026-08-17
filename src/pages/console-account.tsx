@@ -292,9 +292,10 @@ export function ApiKeysPage() {
   const filteredModels = availableModels.filter((model) => apiKeyModelLabel(model, t).toLocaleLowerCase().includes(modelSearch.trim().toLocaleLowerCase()))
   const availableModelsLoading = loading && result === null
   const workspaceLabel = store.activeWorkspace.type === 'enterprise' ? store.activeWorkspace.name : t('console.common.personalWorkspace')
+  const showCreator = store.activeWorkspace.type === 'enterprise'
 
   return (
-    <div className="page-stack api-keys-console-page">
+    <div className={`page-stack api-keys-console-page${showCreator ? '' : ' api-keys-console-page--personal'}`}>
       <PageTitle
         title={t('console.account.apiKeysTitle')}
         description={t('console.account.apiKeysDescription')}

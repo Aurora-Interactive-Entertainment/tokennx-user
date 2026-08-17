@@ -82,8 +82,10 @@ export function RankingRecentUsageChart({ data }: { data: RecentModelUsage }) {
       color: [...RANKING_SERIES_COLORS],
       grid: initialResponsiveOption.grid,
       tooltip: {
-        show: false,
+        trigger: 'axis',
+        showContent: false,
         confine: true,
+        axisPointer: { type: 'shadow' },
       },
       xAxis: {
         type: 'category',
@@ -110,9 +112,6 @@ export function RankingRecentUsageChart({ data }: { data: RecentModelUsage }) {
         data: usageByModel[index],
       })),
     })
-    const selectMonth = (params: { dataIndex?: unknown }) => {
-      if (typeof params.dataIndex === 'number') setSelectedMonthIndex(params.dataIndex)
-    }
     const selectNearestMonth = (event: { offsetX: number }) => {
       const monthPositions = data.months.map((_, index) => Number(chart.convertToPixel({ xAxisIndex: 0 }, index)))
       let nearestIndex = 0
@@ -135,7 +134,9 @@ export function RankingRecentUsageChart({ data }: { data: RecentModelUsage }) {
       setLegendVisible(true)
     }
     const handlePointerOut = () => {
-      if (hoverInteraction) setLegendVisible(false)
+      if (hoverInteraction) {
+        setLegendVisible(false)
+      }
     }
     const handleChartTap = (event: { offsetX: number }) => {
       if (hoverInteraction) return
@@ -146,8 +147,6 @@ export function RankingRecentUsageChart({ data }: { data: RecentModelUsage }) {
       const layout = node.closest('.ranking-chart-layout')
       if (!hoverInteraction && event.target instanceof Node && !layout?.contains(event.target)) setLegendVisible(false)
     }
-    chart.on('mouseover', selectMonth)
-    chart.on('click', selectMonth)
     chart.getZr().on('mousemove', handlePointerMove)
     chart.getZr().on('globalout', handlePointerOut)
     chart.getZr().on('click', handleChartTap)
