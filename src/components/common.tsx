@@ -1977,7 +1977,7 @@ export function ConsoleLayout({ children }: { children: ReactNode }) {
       window.scrollTo({ left: position.left, top: position.top, behavior: 'instant' as ScrollBehavior })
       window.requestAnimationFrame(() => { root.style.scrollBehavior = previousScrollBehavior })
     }
-    const hasVisibleModal = () => Boolean(document.querySelector('body > .semi-portal .semi-modal-wrap:not(.semi-modal-displayNone)'))
+    const hasVisibleModal = () => Boolean(document.querySelector('.semi-portal .semi-modal-wrap:not(.semi-modal-displayNone)'))
     const observer = new MutationObserver(() => {
       const nextModalVisible = hasVisibleModal()
       if (nextModalVisible && !modalVisible) restoreScrollPosition(pendingScrollPosition ?? lastScrollPosition)

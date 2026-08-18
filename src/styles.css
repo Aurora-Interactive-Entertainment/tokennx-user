@@ -85,7 +85,7 @@ pre { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
 .semi-button { border-radius: var(--radius-sm); transition: background-color .16s ease, border-color .16s ease, color .16s ease, transform .16s ease; }
 .semi-button:active { transform: translateY(1px); }
 .semi-button-primary { background: var(--brand); color: #11131a; border-color: var(--brand); }
-.semi-button-primary:hover { background: #a1b8ff; border-color: #a1b8ff; color: #11131a; }
+.semi-button-primary:hover { background: var(--color-action-primary-hover); border-color: var(--color-action-primary-hover); color: var(--color-action-on-primary); }
 .semi-button-secondary, .semi-button-tertiary { background: var(--bg-panel); border-color: var(--border-default); color: var(--text-default); }
 .semi-button-secondary:hover, .semi-button-tertiary:hover { background: var(--bg-panel-hover); border-color: var(--border-strong); color: var(--text-primary); }
 .semi-button-borderless { color: var(--text-secondary); }
@@ -725,22 +725,23 @@ body {
 }
 
 /* Semi 会在锁定滚动时缩窄 body；页面已预留稳定滚动条槽，无需重复补偿。 */
-body:has(> .semi-portal .semi-modal-wrap) {
+body:has(.semi-modal-wrap:not(.semi-modal-displayNone)) {
   width: auto !important;
 }
 
-/* Semi locks body scrolling while a dialog is open. That changes the sticky
-   header's scroll container, so a scrolled console header briefly falls back
-   into document flow. Keep it fixed and reserve its original space. */
-body:has(> .semi-portal .semi-modal-wrap) .console-frame.public-header-host::before {
+/* Semi locks body scrolling while a dialog is open. Keep the sticky shell in
+   the same visual position and reserve the exact header height in the flow;
+   the captured width prevents the scrollbar compensation from widening it. */
+body:has(.semi-modal-wrap:not(.semi-modal-displayNone)) .public-header-host::before {
   display: block;
   height: var(--public-mobile-header-height, 72px);
   content: "";
 }
-body:has(> .semi-portal .semi-modal-wrap) .console-frame.public-header-host > .app-header {
+body:has(.semi-modal-wrap:not(.semi-modal-displayNone)) .public-header-host > .app-header {
   position: fixed;
-  inset: 0 0 auto;
-  width: auto;
+  inset: 0 auto auto 0;
+  z-index: 100;
+  width: var(--modal-page-width, 100%);
 }
 
 /* Keep the page and modal on separate scroll containers. Semi's default
@@ -749,8 +750,15 @@ body:has(> .semi-portal .semi-modal-wrap) .console-frame.public-header-host > .a
 .semi-modal-wrap {
   overflow: hidden !important;
 }
+/* A non-body popup container avoids Semi's body scroll lock. Re-anchor its
+   portal to the viewport so a scrolled page cannot move the mask or dialog. */
+.semi-modal-popup .semi-modal-wrap,
+.semi-modal-popup .semi-modal-mask {
+  position: fixed !important;
+}
 .semi-modal-wrap-center {
-  padding-block: var(--spacing-24);
+  box-sizing: border-box;
+  padding: var(--spacing-24) var(--spacing-12);
 }
 .semi-modal-wrap > .semi-modal {
   max-height: calc(100dvh - var(--spacing-48));
@@ -763,8 +771,17 @@ body:has(> .semi-portal .semi-modal-wrap) .console-frame.public-header-host > .a
   overflow: hidden;
 }
 .semi-modal-wrap > .semi-modal > .semi-modal-content > .semi-modal-body-wrapper {
+  box-sizing: border-box;
   min-height: 0;
   overflow-y: auto;
+  padding-bottom: var(--spacing-12);
+}
+.semi-modal-wrap > .semi-modal > .semi-modal-content > .semi-modal-body {
+  min-height: 0;
+  overflow-y: auto;
+}
+.semi-modal-wrap > .semi-modal > .semi-modal-content:not(:has(> .semi-modal-footer)) > .semi-modal-body {
+  padding-bottom: var(--spacing-24);
 }
 
 /* Member details can be taller than the viewport; keep only the detail body
@@ -953,6 +970,34 @@ body input, body textarea { font-family: inherit; color: inherit; }
 
 /* Semi 组件沿用公开页的黑白灰色阶，品牌色只用于品牌和状态表达。 */
 body { --semi-color-focus-border: var(--color-border-neutral-l3); }
+body {
+  --semi-color-primary: var(--color-action-primary);
+  --semi-color-primary-hover: var(--color-action-primary-hover);
+  --semi-color-primary-active: var(--color-action-primary);
+  --semi-color-secondary: var(--color-bg-overlay-l3);
+  --semi-color-secondary-hover: var(--color-bg-overlay-l4);
+  --semi-color-secondary-active: var(--color-bg-overlay-l3);
+  --semi-color-fill-0: var(--color-bg-overlay-l2);
+  --semi-color-fill-1: var(--color-bg-overlay-l3);
+  --semi-color-border: var(--color-border-neutral-l2);
+  --semi-color-text-0: var(--color-text-default-hover);
+  --semi-color-text-1: var(--color-text-default);
+  --semi-color-text-2: var(--color-text-secondary);
+}
+/* Semi's theme stylesheet is injected when the first component mounts. Match
+   its theme-mode selector and mark these semantic overrides important so the
+   default blue hover token cannot return after navigation. */
+body[theme-mode] {
+  --semi-color-primary: var(--color-action-primary) !important;
+  --semi-color-primary-hover: var(--color-action-primary-hover) !important;
+  --semi-color-primary-active: var(--color-action-primary) !important;
+  --semi-color-secondary: var(--color-bg-overlay-l3) !important;
+  --semi-color-secondary-hover: var(--color-bg-overlay-l4) !important;
+  --semi-color-secondary-active: var(--color-bg-overlay-l3) !important;
+  --semi-color-fill-0: var(--color-bg-overlay-l2) !important;
+  --semi-color-fill-1: var(--color-bg-overlay-l3) !important;
+  --semi-color-border: var(--color-border-neutral-l2) !important;
+}
 
 .semi-theme,
 .semi-theme-dark {
@@ -1849,8 +1894,8 @@ body { --semi-color-focus-border: var(--color-border-neutral-l3); }
   border-color: var(--color-action-primary-hover) !important;
   background: var(--color-action-primary-hover) !important;
   color: var(--color-action-on-primary) !important;
-  box-shadow: 0 6px 16px rgba(0, 0, 0, .14);
-  transform: translateY(-1px);
+  box-shadow: none;
+  transform: none;
 }
 .real-name-form .real-name-submit.semi-button:active:not(:disabled) {
   border-color: var(--color-action-primary) !important;
@@ -3128,9 +3173,7 @@ html[data-theme="light"] .profile-contact-modal .semi-input-wrapper-focus:hover 
 .invite-link-row .semi-input-wrapper { min-width: 0; flex: 1; }
 .invite-link-row .semi-input { font-family: var(--font-mono); }
 .invite-link-row .semi-button { min-width: 112px; min-height: 40px; border-color: #65b994; background: #65b994; color: #10231c; box-shadow: 0 5px 14px rgba(101, 185, 148, .16); font-weight: 600; transition: border-color .16s ease, background-color .16s ease, color .16s ease, box-shadow .16s ease, transform .16s ease; }
-.invite-link-row .semi-button.semi-button-primary:hover:not(:disabled) { border-color: #7bc8a8; background: #7bc8a8; color: #0b1c16; box-shadow: 0 7px 18px rgba(101, 185, 148, .24); transform: translateY(-1px); }
-.invite-link-row .semi-button.semi-button-primary:active:not(:disabled) { border-color: #54a884; background: #54a884; color: #0b1c16; box-shadow: 0 2px 8px rgba(101, 185, 148, .18); transform: translateY(0); }
-.invite-link-row .semi-button.semi-button-primary:focus-visible { outline: 0; box-shadow: 0 0 0 3px rgba(101, 185, 148, .24), 0 5px 14px rgba(101, 185, 148, .16); }
+.invite-link-row .semi-button.semi-button-primary { border-color: var(--color-action-primary); background: var(--color-action-primary); color: var(--color-action-on-primary); box-shadow: none; transition: background-color .16s ease, border-color .16s ease, color .16s ease; }
 .invite-link-row .semi-button.semi-button-disabled { border-color: var(--color-border-neutral-l2); background: var(--color-bg-overlay-l3); color: var(--color-text-tertiary); box-shadow: none; transform: none; }
 .invite-table { min-width: 720px; border-radius: var(--radius-8); overflow: hidden; }
 .invite-table td strong, .invite-table td small { display: block; }
@@ -3152,10 +3195,7 @@ html[data-theme="light"] .invite-records { border-color: #d8dde3; background: #f
 html[data-theme="light"] .invite-section-icon { background: #eef1f4; color: #343a43; }
 html[data-theme="light"] .invite-link-row .semi-input-wrapper { border-color: #cfd5dc; background: #f8f9fa; }
 html[data-theme="light"] .invite-link-row .semi-input-wrapper:hover { border-color: #aeb6c0; background: #fff; }
-html[data-theme="light"] .invite-link-row .semi-button { border-color: #2f8d68; background: #2f8d68; color: #fff; box-shadow: 0 5px 14px rgba(47, 141, 104, .18); }
-html[data-theme="light"] .invite-link-row .semi-button.semi-button-primary:hover:not(:disabled) { border-color: #277a5a; background: #277a5a; color: #fff; box-shadow: 0 7px 18px rgba(47, 141, 104, .25); }
-html[data-theme="light"] .invite-link-row .semi-button.semi-button-primary:active:not(:disabled) { border-color: #22694e; background: #22694e; color: #fff; box-shadow: 0 2px 8px rgba(47, 141, 104, .2); }
-html[data-theme="light"] .invite-link-row .semi-button.semi-button-primary:focus-visible { box-shadow: 0 0 0 3px rgba(47, 141, 104, .2), 0 5px 14px rgba(47, 141, 104, .18); }
+html[data-theme="light"] .invite-link-row .semi-button { border-color: var(--color-action-primary); background: var(--color-action-primary); color: var(--color-action-on-primary); box-shadow: none; }
 html[data-theme="light"] .invite-table { border: 1px solid #e0e4e9; }
 html[data-theme="light"] .invite-table th { background: #f3f5f7; color: #5d6470; }
 html[data-theme="light"] .invite-rules { padding: var(--spacing-16) var(--spacing-8); }
@@ -5403,7 +5443,6 @@ html[data-theme="light"] .manuscript-support-notifications strong { color: #1718
 .enterprise-period-caption { min-width: 0; color: var(--color-text-tertiary); font-size: 12px; font-variant-numeric: tabular-nums; }
 .enterprise-filter-toolbar { display: flex; align-items: flex-end; gap: var(--spacing-12); min-width: 0; flex-wrap: wrap; }
 .enterprise-member-invite-button.semi-button { min-height: 38.67px; }
-.enterprise-member-invite-button.semi-button:hover:not(:disabled) { border-color: var(--color-border-neutral-l3); background: var(--color-bg-overlay-l4); color: var(--color-text-default-hover); }
 .enterprise-filter-panel { display: flex; align-items: flex-end; gap: var(--spacing-12); min-width: 0; padding: var(--spacing-16); border: 1px solid var(--color-border-neutral-l1); border-radius: var(--radius-8); background: var(--color-bg-base-secondary); flex-wrap: wrap; }
 .enterprise-filter-field { display: grid; min-width: 140px; gap: var(--spacing-6); color: var(--color-text-secondary); font-size: 12px; }
 .enterprise-filter-field > span { color: var(--color-text-tertiary); font-size: 11px; }

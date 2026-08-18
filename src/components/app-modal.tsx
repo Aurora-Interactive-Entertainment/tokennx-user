@@ -1,6 +1,8 @@
 import { useLayoutEffect, useRef } from 'react'
 import SemiModal, { type ModalReactProps } from '@douyinfe/semi-ui/lib/es/modal'
 
+const defaultModalContainer = () => document.getElementById('app-mount') ?? document.body
+
 /**
  * Shared modal defaults for the application shell. Preventing focus-driven
  * scrolling keeps the underlying console at its current position when a
@@ -16,19 +18,54 @@ export default function AppModal(props: ModalReactProps) {
   wasVisible.current = Boolean(props.visible)
 
   useLayoutEffect(() => {
-    if (!props.visible || !openingScrollPosition.current) return
-    if (document.documentElement.scrollHeight <= document.documentElement.clientHeight) return
+    const position = openingScrollPosition.current
+    if (!position || typeof window === 'undefined') return
 
-    const { left, top } = openingScrollPosition.current
-    const root = document.documentElement
-    const previousScrollBehavior = root.style.scrollBehavior
-    root.style.scrollBehavior = 'auto'
-    window.scrollTo({ left, top, behavior: 'instant' as ScrollBehavior })
-    const frame = window.requestAnimationFrame(() => {
-      root.style.scrollBehavior = previousScrollBehavior
-    })
-    return () => window.cancelAnimationFrame(frame)
+    let frameOne = 0
+    let frameTwo = 0
+    let timer = 0
+    const restore = () => {
+      const root = document.documentElement
+      const previousScrollBehavior = root.style.scrollBehavior
+      root.style.scrollBehavior = 'auto'
+      window.scrollTo({ left: position.left, top: position.top, behavior: 'instant' as ScrollBehavior })
+      frameTwo = window.requestAnimationFrame(() => {
+        root.style.scrollBehavior = previousScrollBehavior
+        if (!props.visible) openingScrollPosition.current = null
+      })
+    }
+    const schedule = () => {
+      frameOne = window.requestAnimationFrame(() => {
+        frameTwo = window.requestAnimationFrame(restore)
+      })
+    }
+
+    // Semi toggles body overflow during its mount/update lifecycle. Waiting a
+    // pair of frames lets that change settle before restoring the page anchor.
+    if (props.visible) schedule()
+    // Semi releases body scroll after its close transition (120ms).
+    else timer = window.setTimeout(schedule, 180)
+
+    return () => {
+      window.clearTimeout(timer)
+      window.cancelAnimationFrame(frameOne)
+      window.cancelAnimationFrame(frameTwo)
+    }
   }, [props.visible])
 
-  return <SemiModal {...props} preventScroll />
+  useLayoutEffect(() => {
+    if (!props.visible || typeof document === 'undefined') return
+    const pageWidth = document.body.getBoundingClientRect().width
+    document.documentElement.style.setProperty('--modal-page-width', `${pageWidth}px`)
+    return () => {
+      document.documentElement.style.removeProperty('--modal-page-width')
+    }
+  }, [props.visible])
+
+  const getPopupContainer = props.getPopupContainer ?? defaultModalContainer
+
+  // Every application dialog uses the same viewport-centred layout. Keeping
+  // this default here prevents individual pages from drifting back to Semi's
+  // top-aligned modal behavior.
+  return <SemiModal {...props} getPopupContainer={getPopupContainer} centered preventScroll />
 }
