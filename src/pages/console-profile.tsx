@@ -270,23 +270,25 @@ export function SettingsPage() {
         <div className="settings-row settings-row--name">
           <label className="settings-label" htmlFor="profile-display-name">{t('profile.personal.nickname')}</label>
           <div className="settings-control">
-            <Input
-              id="profile-display-name"
-              value={displayName}
-              onChange={(value) => setDisplayName(limitDisplayNameLength(value))}
-              onBlur={() => { void saveNickname() }}
-              onKeyDown={(event) => {
-                if (event.key !== 'Enter' || event.nativeEvent.isComposing) return
-                event.preventDefault()
-                void saveNickname()
-              }}
-              maxLength={PROFILE_DISPLAY_NAME_MAX_LENGTH}
-              autoComplete="nickname"
-              aria-describedby="profile-display-name-hint"
-              aria-busy={savingNickname}
-              disabled={savingNickname}
-            />
-            <p className="settings-hint" id="profile-display-name-hint">{t('profile.personal.nicknameHint', { count: PROFILE_DISPLAY_NAME_MAX_LENGTH })}</p>
+            <div className="settings-name-input-row">
+              <Input
+                id="profile-display-name"
+                value={displayName}
+                onChange={(value) => setDisplayName(limitDisplayNameLength(value))}
+                onBlur={() => { void saveNickname() }}
+                onKeyDown={(event) => {
+                  if (event.key !== 'Enter' || event.nativeEvent.isComposing) return
+                  event.preventDefault()
+                  void saveNickname()
+                }}
+                maxLength={PROFILE_DISPLAY_NAME_MAX_LENGTH}
+                autoComplete="nickname"
+                aria-describedby="profile-display-name-hint"
+                aria-busy={savingNickname}
+                disabled={savingNickname}
+              />
+              <p className="settings-hint" id="profile-display-name-hint">{t('profile.personal.nicknameHint', { count: PROFILE_DISPLAY_NAME_MAX_LENGTH })}</p>
+            </div>
           </div>
         </div>
         <div className="settings-row settings-row--phone">
@@ -304,7 +306,7 @@ export function SettingsPage() {
           <div className="settings-control">
             <div className="settings-inline" aria-labelledby="profile-email-label">
               <span className="settings-readonly">{currentProfile.email.bound ? currentProfile.email.masked_identifier : t('profile.contact.unboundEmail')}</span>
-              <Button className={currentProfile.email.bound ? 'settings-secondary-button' : 'settings-primary-button'} theme="outline" size="small" onClick={() => setContactProvider('email')}>{currentProfile.email.bound ? t('profile.contact.changeEmail') : t('profile.contact.bindEmail')}</Button>
+              <Button className="settings-secondary-button" theme="outline" size="small" onClick={() => setContactProvider('email')}>{currentProfile.email.bound ? t('profile.contact.changeEmail') : t('profile.contact.bindEmail')}</Button>
             </div>
             <p className="settings-hint">{t('profile.personal.emailHint')}</p>
           </div>

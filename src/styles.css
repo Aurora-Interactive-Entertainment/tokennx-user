@@ -4663,10 +4663,9 @@ html[data-theme="light"] .docs-method-table, html[data-theme="light"] .docs-meth
 .apps-page--manuscript .apps-range-select .semi-select-selection-placeholder { color: #8b8b8b; font-size: 16px; }
 .apps-page--manuscript .apps-range-select .semi-select-arrow { color: #8b8b8b; }
 .apps-ranking-list { margin-top: 32px; padding: 8px 18px; border: 1px solid #353535; border-radius: 4px; background: #181818; }
-.apps-ranking-row { min-height: 92px; display: grid; grid-template-columns: 48px 12px 48px minmax(0, 1fr) 180px; align-items: center; gap: 14px; border-bottom: 1px solid rgba(53, 53, 53, .75); }
+.apps-ranking-row { min-height: 92px; display: grid; grid-template-columns: 48px 48px minmax(0, 1fr) 180px; align-items: center; gap: 14px; border-bottom: 1px solid rgba(53, 53, 53, .75); }
 .apps-ranking-row:last-child { border-bottom: 0; }
 .apps-ranking-number { color: #946dff; font-size: 20px; text-align: right; }
-.apps-ranking-dot { width: 11px; height: 11px; border-radius: 50%; background: #6d42c6; }
 .apps-agent-logo--small { width: 46px; height: 46px; flex-basis: 46px; }
 .apps-ranking-row > div { min-width: 0; }
 .apps-ranking-row h2 { margin: 0; color: #fff; font-size: 20px; font-weight: 400; line-height: 1.35; letter-spacing: 0; }
@@ -4698,7 +4697,7 @@ html[data-theme="light"] .apps-chart-state { color: #626975; }
   .apps-chart-state { min-height: 404px; }
   .apps-chart-plot { height: 350px; }
   .apps-chart-bar i { max-height: 80px; }
-  .apps-ranking-row { grid-template-columns: 42px 10px 44px minmax(0, 1fr) 130px; gap: 12px; }
+  .apps-ranking-row { grid-template-columns: 42px 44px minmax(0, 1fr) 130px; gap: 12px; }
   .apps-ranking-row p { font-size: 14px; }
   .apps-ranking-row > strong { font-size: 14px; }
 }
@@ -4719,7 +4718,7 @@ html[data-theme="light"] .apps-chart-state { color: #626975; }
   .apps-chart-y-axis { top: 42px; bottom: 68px; }
   .apps-ranking-filter { margin-top: 24px; }
   .apps-ranking-list { padding: 4px 8px; }
-  .apps-ranking-row { min-height: 108px; grid-template-columns: 28px 8px 40px minmax(0, 1fr); gap: 9px; }
+  .apps-ranking-row { min-height: 108px; grid-template-columns: 28px 40px minmax(0, 1fr); gap: 9px; }
   .apps-ranking-number { font-size: 15px; }
   .apps-agent-logo--small { width: 40px; height: 40px; flex-basis: 40px; }
   .apps-ranking-row h2 { font-size: 17px; }

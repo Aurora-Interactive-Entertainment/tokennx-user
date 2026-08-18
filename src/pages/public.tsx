@@ -1142,7 +1142,6 @@ export function AppsPage() {
         <section className="apps-ranking-list" aria-label={t('public.apps.rankingLabel', { range: activeRangeLabel })}>
           {rankingItems.map((item) => <article className="apps-ranking-row" key={item.id}>
             <span className="apps-ranking-number">{item.rank}.</span>
-            <i className="apps-ranking-dot" aria-hidden="true" />
             <ToolUsageLogo logoUrl={item.logo_url} name={item.name} small />
             <div><h2>{item.name}</h2><p>{item.description}</p></div>
             <strong>{t('public.apps.tokenCount', { count: formatToolUsageTokens(item.total_tokens) })}</strong>

@@ -164,14 +164,35 @@
   box-shadow: none;
 }
 
-.settings-redesign-page .settings-row--name .settings-control > .semi-input-wrapper {
+.settings-redesign-page .settings-name-input-row {
+  display: flex;
+  width: min(100%, 520px);
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+}
+
+.settings-redesign-page .settings-name-input-row > .semi-input-wrapper {
+  min-width: 0;
+  flex: 1 1 420px;
   max-width: 420px;
   border: 1px solid var(--color-border-neutral-l2);
   border-radius: 8px;
   background: var(--settings-muted-bg);
 }
 
+.settings-redesign-page .settings-name-input-row > .settings-hint {
+  flex: 0 0 auto;
+  margin: 0;
+  white-space: nowrap;
+}
+
 .settings-redesign-page .settings-control > .semi-input-wrapper:hover {
+  border-color: var(--color-border-neutral-l2);
+  background: var(--settings-muted-bg);
+}
+
+.settings-redesign-page .settings-name-input-row > .semi-input-wrapper:hover {
   border-color: var(--color-border-neutral-l2);
   background: var(--settings-muted-bg);
 }
@@ -183,8 +204,8 @@
   font-weight: 550;
 }
 
-.settings-redesign-page .settings-row--name .settings-control > .semi-input-wrapper:focus-within,
-.settings-redesign-page .settings-row--name .settings-control > .semi-input-wrapper-focus {
+.settings-redesign-page .settings-name-input-row > .semi-input-wrapper:focus-within,
+.settings-redesign-page .settings-name-input-row > .semi-input-wrapper-focus {
   border-color: var(--settings-accent);
   outline: 2px solid color-mix(in srgb, var(--settings-accent) 24%, transparent);
   outline-offset: 1px;
@@ -405,6 +426,22 @@
 
   .settings-redesign-page .settings-inline .semi-button {
     align-self: flex-start;
+  }
+
+  .settings-redesign-page .settings-name-input-row {
+    width: 100%;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 4px 8px;
+  }
+
+  .settings-redesign-page .settings-name-input-row > .semi-input-wrapper {
+    flex-basis: 100%;
+    max-width: 100%;
+  }
+
+  .settings-redesign-page .settings-name-input-row > .settings-hint {
+    white-space: normal;
   }
 
   .settings-redesign-page .settings-card--security .settings-actions {
