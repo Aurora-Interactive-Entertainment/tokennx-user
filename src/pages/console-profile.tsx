@@ -34,6 +34,7 @@ import { useAppDispatch } from '@/store/hooks'
 import { useTranslation } from 'react-i18next'
 import { appToast as Toast } from '@/components/app-toast'
 import { publishProfileUpdate, subscribeProfileUpdates } from '@/profile/profile-sync'
+import './console-profile.css'
 
 const PREFERENCE_DEFINITIONS: Record<NotificationPreferenceCode, { labelKey: string; descriptionKey: string }> = {
   low_balance: { labelKey: 'profile.notifications.lowBalance', descriptionKey: 'profile.notifications.lowBalanceDescription' },
@@ -252,21 +253,21 @@ export function SettingsPage() {
 
   // 中文：企业空间和个人空间共用个人资料编辑区，保证账号展示与更新规则一致。
   function renderPersonalProfileSection(currentProfile: UserProfile): React.ReactNode {
-    return <section className="settings-section" aria-labelledby="profile-personal-title">
+    return <section className="settings-section settings-card settings-card--personal" aria-labelledby="profile-personal-title">
       <div className="settings-section-head">
         <h2 id="profile-personal-title">{t('profile.personal.title')}</h2>
         <p>{t('profile.personal.description')}</p>
         <p className="settings-hint">{t('profile.personal.dataHint')}</p>
       </div>
       <div className="settings-form">
-        <div className="settings-row">
+        <div className="settings-row settings-row--avatar">
           <span className="settings-label">{t('profile.personal.avatar')}</span>
           <div className="settings-control">
             <div className="settings-avatar" aria-label={t('profile.personal.avatar')}>{renderProfileAvatar()}</div>
             <p className="settings-hint">{t('profile.personal.avatarHint')}</p>
           </div>
         </div>
-        <div className="settings-row">
+        <div className="settings-row settings-row--name">
           <label className="settings-label" htmlFor="profile-display-name">{t('profile.personal.nickname')}</label>
           <div className="settings-control">
             <Input
@@ -288,7 +289,7 @@ export function SettingsPage() {
             <p className="settings-hint" id="profile-display-name-hint">{t('profile.personal.nicknameHint', { count: PROFILE_DISPLAY_NAME_MAX_LENGTH })}</p>
           </div>
         </div>
-        <div className="settings-row">
+        <div className="settings-row settings-row--phone">
           <span className="settings-label" id="profile-phone-label">{t('profile.contact.phone')}</span>
           <div className="settings-control">
             <div className="settings-inline" aria-labelledby="profile-phone-label">
@@ -298,17 +299,17 @@ export function SettingsPage() {
             <p className="settings-hint">{t('profile.personal.phoneHint')}</p>
           </div>
         </div>
-        <div className="settings-row">
+        <div className="settings-row settings-row--email">
           <span className="settings-label" id="profile-email-label">{t('profile.contact.email')}</span>
           <div className="settings-control">
             <div className="settings-inline" aria-labelledby="profile-email-label">
               <span className="settings-readonly">{currentProfile.email.bound ? currentProfile.email.masked_identifier : t('profile.contact.unboundEmail')}</span>
-              <Button className="settings-secondary-button" theme="outline" size="small" onClick={() => setContactProvider('email')}>{currentProfile.email.bound ? t('profile.contact.changeEmail') : t('profile.contact.bindEmail')}</Button>
+              <Button className={currentProfile.email.bound ? 'settings-secondary-button' : 'settings-primary-button'} theme="outline" size="small" onClick={() => setContactProvider('email')}>{currentProfile.email.bound ? t('profile.contact.changeEmail') : t('profile.contact.bindEmail')}</Button>
             </div>
             <p className="settings-hint">{t('profile.personal.emailHint')}</p>
           </div>
         </div>
-        <div className="settings-row">
+        <div className="settings-row settings-row--user-id">
           <span className="settings-label" id="profile-user-id-label">{t('profile.overview.id')}</span>
           <div className="settings-control">
             <div className="settings-inline" aria-labelledby="profile-user-id-label">
@@ -324,7 +325,7 @@ export function SettingsPage() {
 
   if (loading && !profile) {
     return (
-      <div className="page-stack settings-console-page">
+      <div className="page-stack settings-console-page settings-redesign-page settings-redesign-page--loading">
         <PageTitle title={t('profile.title')} description={t('profile.description')} />
         <div className="settings-page-inner"><div className="profile-state-panel" role="status">{t('profile.loading')}</div></div>
       </div>
@@ -333,7 +334,7 @@ export function SettingsPage() {
 
   if (error && !profile) {
     return (
-      <div className="page-stack settings-console-page">
+      <div className="page-stack settings-console-page settings-redesign-page settings-redesign-page--error">
         <PageTitle title={t('profile.title')} description={t('profile.description')} />
         <div className="settings-page-inner">
           <BannerNotice tone="warning" compact><div className="profile-error-content"><strong>{t('profile.loadFailed')}</strong><span>{error}</span><Button className="settings-secondary-button" theme="outline" size="small" loading={loading} disabled={loading} onClick={() => { void loadProfile() }}>{t('profile.retry')}</Button></div></BannerNotice>
@@ -359,28 +360,28 @@ export function SettingsPage() {
   }
 
   return (
-    <div className="page-stack settings-console-page">
+    <div className={`page-stack settings-console-page settings-redesign-page ${enterpriseWorkspace ? 'settings-redesign-page--enterprise' : 'settings-redesign-page--personal'}`}>
       <PageTitle title={enterpriseWorkspace ? t('profile.enterprise.title') : t('profile.title')} description={enterpriseWorkspace ? t('profile.enterprise.description') : t('profile.description')} />
       <div className="settings-page-inner">
         {error ? <BannerNotice tone="warning" compact><div className="profile-error-content"><span>{error}</span><Button className="settings-secondary-button" theme="outline" size="small" loading={loading} disabled={loading} onClick={() => { void loadProfile() }}>{t('profile.retry')}</Button></div></BannerNotice> : null}
 
         {renderPersonalProfileSection(profile)}
 
-        {enterpriseWorkspace ? <section className="settings-section" aria-labelledby="profile-enterprise-title">
+        {enterpriseWorkspace ? <section className="settings-section settings-card settings-card--enterprise" aria-labelledby="profile-enterprise-title">
           <div className="settings-section-head">
             <h2 id="profile-enterprise-title">{t('profile.enterprise.accountTitle')}</h2>
             <p>{t('profile.enterprise.accountDescription')}</p>
           </div>
           <div className="settings-form enterprise-account-form">
-            <div className="settings-row"><span className="settings-label">{t('profile.enterprise.name')}</span><div className="settings-control"><span className="settings-readonly">{enterpriseContext?.name}</span></div></div>
-            <div className="settings-row"><span className="settings-label">{t('profile.enterprise.code')}</span><div className="settings-control"><code className="settings-readonly">{enterpriseContext?.code}</code></div></div>
-            <div className="settings-row"><span className="settings-label">{t('profile.enterprise.memberId')}</span><div className="settings-control"><div className="settings-inline"><code className="settings-readonly">{enterpriseContext?.member_id}</code><Button className="settings-secondary-button" theme="outline" size="small" onClick={() => { void copyEnterpriseMemberID() }}>{t('profile.overview.copyShort')}</Button></div></div></div>
-            <div className="settings-row"><span className="settings-label">{t('profile.enterprise.role')}</span><div className="settings-control"><span className="settings-readonly">{enterpriseContext ? roleLabels(enterpriseContext.roles.length ? enterpriseContext.roles : [enterpriseContext.role], profile.locale, enterpriseContext.role_options) : '--'}</span></div></div>
-            <div className="settings-row"><span className="settings-label">{t('profile.enterprise.permissions.title')}</span><div className="settings-control"><div className="enterprise-permission-list">{enterprisePermissions.length ? enterprisePermissions.map((permission) => <span className="model-tag" key={permission}>{permission}</span>) : <span className="settings-readonly">{t('profile.enterprise.permissions.none')}</span>}</div></div></div>
+            <div className="settings-row settings-row--enterprise-name"><span className="settings-label">{t('profile.enterprise.name')}</span><div className="settings-control"><span className="settings-readonly">{enterpriseContext?.name}</span></div></div>
+            <div className="settings-row settings-row--enterprise-code"><span className="settings-label">{t('profile.enterprise.code')}</span><div className="settings-control"><code className="settings-readonly">{enterpriseContext?.code}</code></div></div>
+            <div className="settings-row settings-row--member-id"><span className="settings-label">{t('profile.enterprise.memberId')}</span><div className="settings-control"><div className="settings-inline"><code className="settings-readonly">{enterpriseContext?.member_id}</code><Button className="settings-secondary-button" theme="outline" size="small" onClick={() => { void copyEnterpriseMemberID() }}>{t('profile.overview.copyShort')}</Button></div></div></div>
+            <div className="settings-row settings-row--role"><span className="settings-label">{t('profile.enterprise.role')}</span><div className="settings-control"><span className="settings-readonly">{enterpriseContext ? roleLabels(enterpriseContext.roles.length ? enterpriseContext.roles : [enterpriseContext.role], profile.locale, enterpriseContext.role_options) : '--'}</span></div></div>
+            <div className="settings-row settings-row--permissions"><span className="settings-label">{t('profile.enterprise.permissions.title')}</span><div className="settings-control"><div className="enterprise-permission-list">{enterprisePermissions.length ? enterprisePermissions.map((permission) => <span className="model-tag" key={permission}>{permission}</span>) : <span className="settings-readonly">{t('profile.enterprise.permissions.none')}</span>}</div></div></div>
           </div>
         </section> : null}
 
-        {!enterpriseWorkspace ? <section className="settings-section" aria-labelledby="profile-notification-title">
+        {!enterpriseWorkspace ? <section className="settings-section settings-card settings-card--notifications" aria-labelledby="profile-notification-title">
           <div className="settings-section-head">
             <h2 id="profile-notification-title">{t('profile.notifications.title')}</h2>
             <p>{t('profile.notifications.description')}</p>
@@ -399,7 +400,7 @@ export function SettingsPage() {
           </div>
         </section> : null}
 
-        <section className="settings-section" aria-labelledby="profile-workspace-title">
+        <section className="settings-section settings-card settings-card--workspace" aria-labelledby="profile-workspace-title">
           <div className="settings-section-head">
             <h2 id="profile-workspace-title">{t('profile.workspace.title')}</h2>
             <p>{t('profile.workspace.description')}</p>
@@ -416,7 +417,7 @@ export function SettingsPage() {
           <p className="settings-hint">{t('profile.workspace.createHint')}</p>
         </section>
 
-        {!enterpriseWorkspace ? <section className="settings-section" aria-labelledby="profile-security-title">
+        {!enterpriseWorkspace ? <section className="settings-section settings-card settings-card--security" aria-labelledby="profile-security-title">
           <div className="settings-section-head">
             <h2 className="danger-copy" id="profile-security-title">{t('profile.security.title')}</h2>
             <p>{t('profile.security.description')}</p>

@@ -4236,7 +4236,7 @@ html[data-theme="light"] .manuscript-home-error button { border-color: #bbb; col
 .manuscript-price-model .model-logo,
 .manuscript-price-model-logo { display: grid; width: 49px; height: 49px; flex: 0 0 49px; place-items: center; border-radius: 4px; color: #292929; background: #fff; }
 .manuscript-price-model .model-logo svg { width: 30px; height: 30px; }
-.manuscript-price-model-logo img { display: block; width: 30.273px; height: 23.413px; }
+.manuscript-price-model-logo img { display: block; width: 30px; height: 30px; object-fit: contain; }
 .manuscript-price-model > span { display: grid; gap: 1px; min-width: 0; }
 .manuscript-price-model strong { overflow: hidden; color: #fff; font-size: 22px; font-weight: 400; line-height: 28px; text-overflow: ellipsis; white-space: nowrap; }
 .manuscript-price-model small { overflow: hidden; color: #fff; font-size: 16px; font-weight: 300; line-height: 20px; text-overflow: ellipsis; white-space: nowrap; }
@@ -4627,9 +4627,11 @@ html[data-theme="light"] .docs-method-table, html[data-theme="light"] .docs-meth
 .apps-popular-title { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .apps-popular-title h2 { overflow: hidden; margin: 0; color: #fff; font-size: 16px; font-weight: 400; line-height: 1.4; letter-spacing: 0; text-overflow: ellipsis; white-space: nowrap; }
 .apps-agent-logo { width: 40px; height: 40px; display: grid; flex: 0 0 40px; place-items: center; overflow: hidden; border-radius: 4px; background: #fff; }
-.apps-agent-logo img { width: 100%; height: 100%; object-fit: cover; }
+.apps-agent-logo img { width: 100%; height: 100%; object-fit: contain; }
+.apps-agent-logo > span { color: #353a43; font-size: 16px; font-weight: 600; line-height: 1; }
 .apps-popular-card > p { display: -webkit-box; min-height: 44px; margin: 15px 0 12px; overflow: hidden; color: #8b8b8b; font-size: 14px; line-height: 22px; letter-spacing: 0; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 .apps-popular-card > strong { color: #8b8b8b; font-size: 14px; font-weight: 400; line-height: 22px; }
+.apps-grid-state { min-height: 168px; display: grid; grid-column: 1 / -1; place-items: center; border: 1px solid #292929; border-radius: 4px; color: #8b8b8b; }
 .apps-chart-panel { min-height: 538px; margin-top: 72px; overflow: hidden; border: 1px solid #353535; border-radius: 4px; background: #181818; }
 .apps-chart-heading { min-height: 104px; display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; padding: 34px 30px 0; border-bottom: 1px solid #353535; }
 .apps-chart-heading h2 { margin: 0; color: #fff; font-size: 24px; font-weight: 400; line-height: 1.35; letter-spacing: 0; }
@@ -4671,10 +4673,12 @@ html[data-theme="light"] .docs-method-table, html[data-theme="light"] .docs-meth
 .apps-ranking-row p { overflow: hidden; margin: 7px 0 0; color: #8b8b8b; font-size: 16px; line-height: 1.45; text-overflow: ellipsis; white-space: nowrap; }
 .apps-ranking-row > strong { color: #8b8b8b; font-size: 17px; font-weight: 400; text-align: right; white-space: nowrap; }
 .apps-ranking-row > strong::first-line { color: #fff; }
+.apps-list-state { min-height: 140px; display: grid; place-items: center; color: #8b8b8b; }
 
 html[data-theme="light"] .apps-page--manuscript { color: #626975; background: #f6f7f8; }
 html[data-theme="light"] .apps-page-head h1, html[data-theme="light"] .apps-popular-title h2, html[data-theme="light"] .apps-chart-heading h2, html[data-theme="light"] .apps-ranking-row h2 { color: #17181b; }
 html[data-theme="light"] .apps-popular-card, html[data-theme="light"] .apps-chart-panel, html[data-theme="light"] .apps-ranking-list { border-color: #d8dadd; background: #fff; }
+html[data-theme="light"] .apps-grid-state { border-color: #d8dadd; color: #626975; background: #fff; }
 html[data-theme="light"] .apps-chart-heading, html[data-theme="light"] .apps-ranking-row { border-color: #d8dadd; }
 html[data-theme="light"] .apps-page-head p, html[data-theme="light"] .apps-popular-card > p, html[data-theme="light"] .apps-popular-card > strong, html[data-theme="light"] .apps-chart-heading span, html[data-theme="light"] .apps-ranking-row p, html[data-theme="light"] .apps-ranking-row > strong { color: #626975; }
 html[data-theme="light"] .apps-page--manuscript .apps-range-select.semi-select { border-color: #d8dadd; color: #626975; background: #fff; }
@@ -4701,13 +4705,14 @@ html[data-theme="light"] .apps-chart-state { color: #626975; }
 
 @media (max-width: 640px) {
   .apps-shell { width: calc(100% - 32px); padding: 42px 0 72px; }
-  .apps-page-head h1 { font-size: 30px; }
+  .apps-page-head h1 { font-size: 26px; }
   .apps-page-head p { font-size: 16px; }
   .apps-popular-grid { grid-template-columns: 1fr; gap: 12px; margin-top: 30px; }
   .apps-popular-card { min-height: 162px; }
   .apps-chart-panel { min-height: 454px; margin-top: 48px; }
-  .apps-chart-heading { min-height: 84px; padding: 24px 20px 0; }
+  .apps-chart-heading { min-height: 96px; display: grid; align-content: center; justify-content: stretch; gap: 6px; padding: 16px 20px; }
   .apps-chart-heading h2 { font-size: 19px; }
+  .apps-chart-heading span { padding-top: 0; }
   .apps-echart { width: 100%; min-width: 0; height: 368px; padding: 0; }
   .apps-chart-state { min-height: 368px; }
   .apps-chart-plot { height: 300px; }

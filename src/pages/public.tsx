@@ -11,14 +11,13 @@ import promoBannerArt from '@/assets/figma-home/promo-banner.png'
 import promoArticleArt from '@/assets/figma-home/promo-article.png'
 import mobileHomeStyles from '@/mobile-home.css?inline'
 import '@/docs-page.css'
-import hermesAgentImage from '@/assets/figma-apps/hermes-agent.png'
 import { ModelPriceSummary } from '@/components/money'
 import { ModelAvailability } from '@/components/model-availability'
 import { MarkdownContent } from '@/components/markdown-content'
 import { CompatSelect as Select } from '@/components/semi-compat'
 import { getPublicHomepage, getPublicHomepageAssetURL, getPublicHomepageStats, type HomepageDiscountKind, type HomepageEntry, type HomepagePromotionModel, type HomepageTranslation, type PublicHomepage } from '@/api/homepage'
 import { getModelUsageLeaderboard, getRecentModelUsage, type ModelUsageLeaderboard, type ModelUsagePeriod, type RecentModelUsage } from '@/api/model-rankings'
-import { getToolUsageClients, getToolUsageLeaderboard, type ToolUsageClients, type ToolUsageLeaderboard, type ToolUsagePeriod } from '@/api/tool-usage'
+import { getToolUsageClients, getToolUsageLeaderboard, type ToolUsageClients, type ToolUsageLeaderboard } from '@/api/tool-usage'
 import { getPublicDocument, getPublicDocumentAssetUrl, getPublicDocsTree, publicDocumentHref, type PublicDocument, type PublicDocsLocale, type PublicDocsNode } from '@/api/public-docs'
 import { isApiError } from '@/api/http'
 import { filterModels, findModel, findModelInList, modelAlias, modelRouteKey, MODEL_CATALOG, MODALITY_LABELS, type ModelAvailabilityHour, type ModelModality, type ModelPrice, type ModelRecord } from '@/data/models'
@@ -42,9 +41,9 @@ function modelPublicHref(model: { id: string; alias?: string }): string | undefi
 
 const HOME_MODEL_MOSAIC_COLUMNS = 6
 const HOME_REWARD_STATS = [
-  { value: '00', unit: '元', labelKey: 'rewardPending' },
-  { value: '00', unit: '人', labelKey: 'rewardApproved' },
-  { value: '00', unit: '次', labelKey: 'rewardRejected' },
+  { value: '00', unitKey: 'rewardPendingUnit', labelKey: 'rewardPending' },
+  { value: '00', unitKey: 'rewardApprovedUnit', labelKey: 'rewardApproved' },
+  { value: '00', unitKey: 'rewardRejectedUnit', labelKey: 'rewardRejected' },
 ] as const
 const HOME_REWARD_AVATAR_COUNT = 6
 type HomePartner = { name: string; logoMarkup?: string; logoUrl?: string; href?: string; logoKind: 'wordmark' | 'mark' | 'css' }
@@ -614,7 +613,7 @@ function ManagedAdSlots({ entries }: { entries: HomepageEntry[] }) {
 }
 
 type HomePromotionRouteModel = Pick<ModelRecord, 'id' | 'alias'>
-type HomePromotionItem = { id: string; model: HomePromotionRouteModel; name: string; company: string; discountKind: HomepageDiscountKind; input: string; output: string; availability?: number; hourly: ModelAvailabilityHour[] }
+type HomePromotionItem = { id: string; model: HomePromotionRouteModel; name: string; company: string; logoUrl?: string; discountKind: HomepageDiscountKind; input: string; output: string; availability?: number; hourly: ModelAvailabilityHour[] }
 
 const HOME_DEFAULT_PROMOTION_MODEL = findModel('claude-sonnet-4') ?? MODEL_CATALOG[0]
 const HOME_DEFAULT_PROMOTION_ITEMS: HomePromotionItem[] = [
@@ -641,6 +640,7 @@ function managedPromotionItems(homepage: PublicHomepage | null, language: string
         model: entry.model,
         name: content.title?.trim() || entry.model.name,
         company: entry.model.company,
+        logoUrl: entry.model.logo_url,
         discountKind: entry.data.discount_kind ?? 'half',
         input: homepageModelPrice(entry.model, 'input_token'),
         output: homepageModelPrice(entry.model, 'output_token'),
@@ -838,14 +838,14 @@ export function HomePage({ onInitialScoreboardReady }: { onInitialScoreboardRead
           <div className="manuscript-wave-field" aria-hidden="true"><HomeSilkCanvas /></div>
           <h2 className="public-sr-only" id="homeFeaturesTitle">{t('home.rebuild.featuresTitle')}</h2>
           <div className="manuscript-feature-grid" role={isHomepageLoading ? 'status' : undefined} aria-busy={isHomepageLoading || undefined}>
-            {isHomepageLoading ? <><span className="public-sr-only">正在加载首页功能</span><HomeFeatureSkeletons /></> : managedCards.map((entry, index) => <ManagedFeatureCard key={entry.id} entry={entry} index={index} />)}
+            {isHomepageLoading ? <><span className="public-sr-only">{t('home.rebuild.loadingFeatures')}</span><HomeFeatureSkeletons /></> : managedCards.map((entry, index) => <ManagedFeatureCard key={entry.id} entry={entry} index={index} />)}
           </div>
         </section>
 
         <section className="manuscript-section manuscript-pricing" aria-labelledby="homePricingTitle">
           <div className="manuscript-section-heading manuscript-section-heading--title-only"><div><h2 id="homePricingTitle">{t('home.pricing.manuscriptTitle')}</h2></div></div>
-          <div className="manuscript-price-grid" role={isHomepageLoading ? 'status' : undefined} aria-busy={isHomepageLoading || undefined}>{isHomepageLoading ? <><span className="public-sr-only">正在加载优惠模型</span><HomePriceSkeletons /></> : promotionItems.map((item) => <article className={`manuscript-price-card${item.input.length > 5 || item.output.length > 5 ? ' has-long-price' : ''}`} key={item.id}>
-            <div className="manuscript-price-card-head"><Link className="manuscript-price-model" to={modelPublicHref(item.model) ?? '/models'}><span className="manuscript-price-model-logo"><img src={promoModelLogo} alt="" aria-hidden="true" loading="lazy" decoding="async" width={30} height={24} /></span><span><strong>{item.name}</strong><small>{t('home.rebuild.providedBy', { company: item.company })}</small></span></Link><span className={`manuscript-price-badge${item.discountKind === 'free' ? ' is-equal' : ''}`}>{t(`public.home.discount${item.discountKind === 'free' ? 'Free' : item.discountKind === 'custom' ? 'Custom' : 'Half'}`)}</span></div>
+          <div className="manuscript-price-grid" role={isHomepageLoading ? 'status' : undefined} aria-busy={isHomepageLoading || undefined}>{isHomepageLoading ? <><span className="public-sr-only">{t('home.rebuild.loadingModels')}</span><HomePriceSkeletons /></> : promotionItems.map((item) => <article className={`manuscript-price-card${item.input.length > 5 || item.output.length > 5 ? ' has-long-price' : ''}`} key={item.id}>
+            <div className="manuscript-price-card-head"><Link className="manuscript-price-model" to={modelPublicHref(item.model) ?? '/models'}><span className="manuscript-price-model-logo"><img src={item.logoUrl || promoModelLogo} alt="" aria-hidden="true" loading="lazy" decoding="async" width={30} height={24} /></span><span><strong>{item.name}</strong><small>{t('home.rebuild.providedBy', { company: item.company })}</small></span></Link><span className={`manuscript-price-badge${item.discountKind === 'free' ? ' is-equal' : ''}`}>{t(`public.home.discount${item.discountKind === 'free' ? 'Free' : item.discountKind === 'custom' ? 'Custom' : 'Half'}`)}</span></div>
             <div className="manuscript-price-divider" />
             <div className="manuscript-price-values"><div><span>{t('home.rebuild.inputPrice')}</span><strong>{item.input}<small>{t('public.home.priceUnit')}</small></strong></div><div><span>{t('home.rebuild.outputPrice')}</span><strong>{item.output}<small>{t('public.home.priceUnit')}</small></strong></div></div>
             <ModelAvailability className="manuscript-price-availability" hourly={item.hourly} summaryRate={item.availability} label={t('home.rebuild.availability')} />
@@ -854,7 +854,7 @@ export function HomePage({ onInitialScoreboardReady }: { onInitialScoreboardRead
 
         <section className="manuscript-section manuscript-promotion" aria-labelledby="homePromotionTitle">
           <div className="manuscript-section-heading"><div><h2 id="homePromotionTitle">{t('home.rebuild.promotionTitle')}</h2><p>{t('home.rebuild.manuscriptPromotionDescription')}</p></div></div>
-          <div className="manuscript-promotion-grid" role={isHomepageLoading ? 'status' : undefined} aria-busy={isHomepageLoading || undefined}>{isHomepageLoading ? <><span className="public-sr-only">正在加载推广与资讯</span><HomePromotionSkeleton /></> : <><article className="manuscript-reward-card"><h3>{t('home.rebuild.rewardTitle')}</h3><p>{t('home.rebuild.rewardDescription')}</p><div className="manuscript-reward-marks" aria-hidden="true">{Array.from({ length: HOME_REWARD_AVATAR_COUNT }, (_, index) => <span className="manuscript-reward-avatar" aria-hidden="true" key={`reward-avatar-${index}`} />)}</div><div className="manuscript-reward-login"><span>{t('home.rebuild.rewardLoginHint')}</span><LoginRequiredAction returnPath="/console/invitations">{t('home.rebuild.rewardLoginAction')}</LoginRequiredAction></div><div className="manuscript-reward-stats">{HOME_REWARD_STATS.map(({ value, unit, labelKey }) => <span key={labelKey}><strong className={value.length > 2 ? 'is-long' : undefined}>{value}<em>{unit}</em></strong><small>{t(`home.rebuild.${labelKey}`)}</small></span>)}</div></article><div className="manuscript-news-column">
+          <div className="manuscript-promotion-grid" role={isHomepageLoading ? 'status' : undefined} aria-busy={isHomepageLoading || undefined}>{isHomepageLoading ? <><span className="public-sr-only">{t('home.rebuild.loadingPromotions')}</span><HomePromotionSkeleton /></> : <><article className="manuscript-reward-card"><h3>{t('home.rebuild.rewardTitle')}</h3><p>{t('home.rebuild.rewardDescription')}</p><div className="manuscript-reward-marks" aria-hidden="true">{Array.from({ length: HOME_REWARD_AVATAR_COUNT }, (_, index) => <span className="manuscript-reward-avatar" aria-hidden="true" key={`reward-avatar-${index}`} />)}</div><div className="manuscript-reward-login"><span>{t('home.rebuild.rewardLoginHint')}</span><LoginRequiredAction returnPath="/console/invitations">{t('home.rebuild.rewardLoginAction')}</LoginRequiredAction></div><div className="manuscript-reward-stats">{HOME_REWARD_STATS.map(({ value, unitKey, labelKey }) => <span key={labelKey}><strong className={value.length > 2 ? 'is-long' : undefined}>{value}<em>{t(`home.rebuild.${unitKey}`)}</em></strong><small>{t(`home.rebuild.${labelKey}`)}</small></span>)}</div></article><div className="manuscript-news-column">
             {homepage?.ad_slots.length ? <ManagedAdSlots entries={homepage.ad_slots} /> : null}
             <div className="manuscript-news-grid">{managedNews.map((entry, index) => <ManagedNewsCard entry={entry} index={index} key={entry.id} />)}</div>
           </div></>}</div>
@@ -862,7 +862,7 @@ export function HomePage({ onInitialScoreboardReady }: { onInitialScoreboardRead
 
         <section className="manuscript-section manuscript-partners" aria-labelledby="homePartnersTitle">
           <div className="manuscript-section-heading"><div><h2 id="homePartnersTitle">{t('home.rebuild.partnersTitle')}</h2><p>{t('home.rebuild.partnersDescription')}</p></div></div>
-          <div className="manuscript-partner-grid" aria-label={t('home.rebuild.partnersTitle')} role={isHomepageLoading ? 'status' : undefined} aria-busy={isHomepageLoading || undefined}>{isHomepageLoading ? <><span className="public-sr-only">正在加载合作伙伴</span><HomePartnerSkeleton /></> : partnerRows.map((row, rowIndex) => <HomePartnerRow key={`partner-row-${rowIndex}`} partners={row} rowIndex={rowIndex} />)}</div>
+          <div className="manuscript-partner-grid" aria-label={t('home.rebuild.partnersTitle')} role={isHomepageLoading ? 'status' : undefined} aria-busy={isHomepageLoading || undefined}>{isHomepageLoading ? <><span className="public-sr-only">{t('home.rebuild.loadingPartners')}</span><HomePartnerSkeleton /></> : partnerRows.map((row, rowIndex) => <HomePartnerRow key={`partner-row-${rowIndex}`} partners={row} rowIndex={rowIndex} />)}</div>
         </section>
       </div>
     </PublicLayout>
@@ -1077,14 +1077,13 @@ export function RankingsPage() {
   )
 }
 
-const APPS_POPULAR_ITEMS = [
-  { id: 'hermes-agent-1' },
-  { id: 'hermes-agent-2' },
-  { id: 'hermes-agent-3' },
-  { id: 'hermes-agent-4' },
-] as const
-const APPS_RANKING_ITEMS = Array.from({ length: 12 }, (_, index) => ({ id: `hermes-ranking-${index + 1}`, tool: 'Hermes Agent', tokenBillions: index < 3 ? 9700 : Math.max(41, 92 - index * 4) * 100 }))
 const APPS_PERIODS = ['today', 'week', 'month', 'year'] as const
+
+function ToolUsageLogo({ logoUrl, name, small = false }: { logoUrl?: string; name: string; small?: boolean }) {
+  return <span className={`apps-agent-logo${small ? ' apps-agent-logo--small' : ''}`}>
+    {logoUrl ? <img src={logoUrl} alt="" loading="lazy" decoding="async" /> : <span aria-hidden="true">{name.trim().charAt(0).toUpperCase()}</span>}
+  </span>
+}
 
 export function AppsPage() {
   const { t } = useTranslation()
@@ -1120,16 +1119,17 @@ export function AppsPage() {
         </header>
 
         <section className="apps-popular-grid" aria-label={t('public.apps.popularLabel')}>
-          {(popularItems.length ? popularItems : APPS_POPULAR_ITEMS.map((item) => ({ ...item, tool: t('public.apps.agentName'), total_tokens: 32_100_000_000_000, request_count: 0 }))).map((item, index) => <article className="apps-popular-card" key={'rank' in item ? `${item.tool}-${item.rank}` : item.id}>
-            <div className="apps-popular-title"><h2>{'tool' in item ? item.tool : t('public.apps.agentName')}</h2><span className="apps-agent-logo"><img src={hermesAgentImage} alt="" /></span></div>
-            <p>{t('public.apps.agentSummary')}</p>
-            <strong>{'rank' in item ? formatToolUsageTokens(item.total_tokens) : t('public.apps.popularTokens')}</strong>
+          {popularItems.map((item) => <article className="apps-popular-card" key={item.id}>
+            <div className="apps-popular-title"><h2>{item.name}</h2><ToolUsageLogo logoUrl={item.logo_url} name={item.name} /></div>
+            <p>{item.description}</p>
+            <strong>{t('public.apps.tokenCount', { count: formatToolUsageTokens(item.total_tokens) })}</strong>
           </article>)}
+          {!yearLeaderboard ? <div className="apps-grid-state" role="status">{loadError || t('public.apps.loading')}</div> : !popularItems.length ? <div className="apps-grid-state">{t('public.apps.empty')}</div> : null}
         </section>
 
         <section className="apps-chart-panel" aria-labelledby="appsChartTitle">
           <div className="apps-chart-heading"><h2 id="appsChartTitle">{t('public.apps.chartTitle')}</h2><span>{t('public.apps.pastSixMonths')}</span></div>
-          {clients ? <ToolUsageClientsChart data={clients} /> : <div className="apps-chart-state" role="status">{loadError || t('public.apps.loading')}</div>}
+          {clients?.weeks.length && clients.items.length ? <ToolUsageClientsChart data={clients} /> : <div className="apps-chart-state" role="status">{clients ? t('public.apps.empty') : loadError || t('public.apps.loading')}</div>}
         </section>
 
         <div className="apps-ranking-filter">
@@ -1140,13 +1140,14 @@ export function AppsPage() {
         </div>
 
         <section className="apps-ranking-list" aria-label={t('public.apps.rankingLabel', { range: activeRangeLabel })}>
-          {(rankingItems.length ? rankingItems : APPS_RANKING_ITEMS).map((item, index) => <article className="apps-ranking-row" key={'rank' in item ? `${item.tool}-${item.rank}` : item.id}>
-            <span className="apps-ranking-number">{'rank' in item ? item.rank : index + 1}.</span>
+          {rankingItems.map((item) => <article className="apps-ranking-row" key={item.id}>
+            <span className="apps-ranking-number">{item.rank}.</span>
             <i className="apps-ranking-dot" aria-hidden="true" />
-            <span className="apps-agent-logo apps-agent-logo--small"><img src={hermesAgentImage} alt="" /></span>
-            <div><h2>{'tool' in item ? item.tool : t('public.apps.agentName')}</h2><p>{t('public.apps.agentDescription')}</p></div>
-            <strong>{'rank' in item ? formatToolUsageTokens(item.total_tokens) : t('public.apps.rankingTokens', { count: item.tokenBillions })}</strong>
+            <ToolUsageLogo logoUrl={item.logo_url} name={item.name} small />
+            <div><h2>{item.name}</h2><p>{item.description}</p></div>
+            <strong>{t('public.apps.tokenCount', { count: formatToolUsageTokens(item.total_tokens) })}</strong>
           </article>)}
+          {!leaderboard ? <div className="apps-list-state" role="status">{loadError || t('public.apps.loading')}</div> : !rankingItems.length ? <div className="apps-list-state">{t('public.apps.empty')}</div> : null}
         </section>
       </div>
     </PublicLayout>
@@ -1334,12 +1335,12 @@ function docsDirectoryAncestors(nodes: PublicDocsNode[], nodeId: string): string
   return ancestors
 }
 
-function DocsSidebarNodes({ childrenByParent, parentId, selectedId, expandedDirectories, locale, onToggle, depth = 0 }: {
+function DocsSidebarNodes({ childrenByParent, parentId, selectedId, expandedDirectories, labels, onToggle, depth = 0 }: {
   childrenByParent: Map<string, PublicDocsNode[]>
   parentId: string
   selectedId?: string
   expandedDirectories: Set<string>
-  locale: PublicDocsLocale
+  labels: { collapse: string; expand: string }
   onToggle: (directoryId: string) => void
   depth?: number
 }) {
@@ -1349,10 +1350,10 @@ function DocsSidebarNodes({ childrenByParent, parentId, selectedId, expandedDire
       return <Link className={`docs-sidebar-node docs-sidebar-document${selectedId === node.id ? ' is-active' : ''}`} style={depthStyle} to={publicDocumentHref(node)} key={node.id}><IconFile aria-hidden="true" /><span>{node.title}</span></Link>
     }
     const expanded = expandedDirectories.has(node.id)
-    const actionLabel = locale === 'en-US' ? `${expanded ? 'Collapse' : 'Expand'} ${node.title}` : `${expanded ? '收起' : '展开'} ${node.title}`
+    const actionLabel = `${expanded ? labels.collapse : labels.expand} ${node.title}`
     return <div className="docs-sidebar-group" key={node.id}>
       <button className={`docs-sidebar-node docs-sidebar-directory${expanded ? '' : ' is-collapsed'}`} style={depthStyle} type="button" aria-expanded={expanded} aria-label={actionLabel} onClick={() => onToggle(node.id)}><span>{node.title}</span></button>
-      <div className={`docs-sidebar-children${expanded ? '' : ' is-collapsed'}`} aria-hidden={!expanded} inert={expanded ? undefined : true}><div className="docs-sidebar-children-inner"><DocsSidebarNodes childrenByParent={childrenByParent} parentId={node.id} selectedId={selectedId} expandedDirectories={expandedDirectories} locale={locale} onToggle={onToggle} depth={depth + 1} /></div></div>
+      <div className={`docs-sidebar-children${expanded ? '' : ' is-collapsed'}`} aria-hidden={!expanded} inert={expanded ? undefined : true}><div className="docs-sidebar-children-inner"><DocsSidebarNodes childrenByParent={childrenByParent} parentId={node.id} selectedId={selectedId} expandedDirectories={expandedDirectories} labels={labels} onToggle={onToggle} depth={depth + 1} /></div></div>
     </div>
   })
 }
@@ -1394,25 +1395,23 @@ function docsHeadingAncestors(nodes: DocsHeadingNode[], targetId: string, ancest
   return null
 }
 
-function DocsTocNodes({ nodes, activeHeading, collapsedHeadings, locale, onToggle }: {
+function DocsTocNodes({ nodes, activeHeading, collapsedHeadings, labels, onToggle }: {
   nodes: DocsHeadingNode[]
   activeHeading: string
   collapsedHeadings: Set<string>
-  locale: PublicDocsLocale
+  labels: { collapse: string; expand: string }
   onToggle: (headingId: string) => void
 }) {
   return nodes.map((node) => {
     const hasChildren = node.children.length > 0
     const collapsed = hasChildren && collapsedHeadings.has(node.id)
-    const actionLabel = locale === 'en-US'
-      ? `${collapsed ? 'Expand' : 'Collapse'} ${node.text}`
-      : `${collapsed ? '展开' : '折叠'} ${node.text}`
+    const actionLabel = `${collapsed ? labels.expand : labels.collapse} ${node.text}`
     return <div className="docs-toc-item" key={node.id}>
       <div className="docs-toc-row" style={{ '--docs-toc-depth': Math.max(0, node.level - 1) } as CSSProperties}>
         {hasChildren ? <button className={collapsed ? 'is-collapsed' : ''} type="button" aria-expanded={!collapsed} aria-label={actionLabel} title={actionLabel} onClick={() => onToggle(node.id)} /> : <span className="docs-toc-spacer" aria-hidden="true" />}
         <a className={activeHeading === node.id ? 'is-active' : ''} href={`#${node.id}`}>{node.text}</a>
       </div>
-      {hasChildren ? <div className={`docs-toc-children${collapsed ? ' is-collapsed' : ''}`} aria-hidden={collapsed} inert={collapsed ? true : undefined}><div className="docs-toc-children-inner"><DocsTocNodes nodes={node.children} activeHeading={activeHeading} collapsedHeadings={collapsedHeadings} locale={locale} onToggle={onToggle} /></div></div> : null}
+      {hasChildren ? <div className={`docs-toc-children${collapsed ? ' is-collapsed' : ''}`} aria-hidden={collapsed} inert={collapsed ? true : undefined}><div className="docs-toc-children-inner"><DocsTocNodes nodes={node.children} activeHeading={activeHeading} collapsedHeadings={collapsedHeadings} labels={labels} onToggle={onToggle} /></div></div> : null}
     </div>
   })
 }
@@ -1447,6 +1446,11 @@ export function DocsPage() {
     if (selectedNode) return rootNodes.find((root) => documentDescendants(root.id, tree).some((node) => node.id === selectedNode.id)) ?? rootNodes[0]
     return rootNodes[0]
   }, [rootNodes, selectedNode, tree])
+  const isFlatSidebar = useMemo(() => {
+    if (!activeRoot) return false
+    const children = childrenByParent.get(activeRoot.id) ?? []
+    return children.length > 0 && children.every((node) => node.type === 'document')
+  }, [activeRoot, childrenByParent])
   const headingTree = useMemo(() => buildDocsHeadingTree(headings), [headings])
 
   useEffect(() => {
@@ -1475,9 +1479,9 @@ export function DocsPage() {
     }
     if (!selectedNode) {
       setCurrentDocument(null)
-      setError({ message: locale === 'en-US' ? 'Document not found' : '文档不存在', requestId: null })
+      setError({ message: t('public.docs.manuscript.documentNotFound'), requestId: null })
     }
-  }, [error, locale, navigate, publicId, rootNodes, selectedNode, tree, treeLoading])
+  }, [error, locale, navigate, publicId, rootNodes, selectedNode, t, tree, treeLoading])
 
   useEffect(() => {
     if (!selectedNode) return
@@ -1503,8 +1507,15 @@ export function DocsPage() {
   }, [currentDocument, navigate, publicId, slug])
 
   useEffect(() => {
-    setExpandedDirectories(new Set(selectedNode ? docsDirectoryAncestors(tree, selectedNode.id) : []))
-  }, [selectedNode, tree])
+    const nextExpanded = new Set(selectedNode ? docsDirectoryAncestors(tree, selectedNode.id) : [])
+    if (activeRoot) {
+      const rootChildren = childrenByParent.get(activeRoot.id) ?? []
+      rootChildren.forEach((node) => {
+        if (node.type === 'directory') nextExpanded.add(node.id)
+      })
+    }
+    setExpandedDirectories(nextExpanded)
+  }, [activeRoot, childrenByParent, selectedNode, tree])
 
   useLayoutEffect(() => {
     const root = articleRef.current
@@ -1595,21 +1606,21 @@ export function DocsPage() {
       </nav>
 
       <div className="docs-shell" aria-busy={loading || undefined}>
-        <aside className="docs-sidebar" aria-label={t('public.docs.manuscript.sidebarLabel')}>
-          <nav>{activeRoot ? <DocsSidebarNodes childrenByParent={childrenByParent} parentId={activeRoot.id} selectedId={selectedNode?.id} expandedDirectories={expandedDirectories} locale={locale} onToggle={toggleDirectory} /> : null}</nav>
+        <aside className={`docs-sidebar${isFlatSidebar ? ' docs-sidebar--flat' : ''}`} aria-label={t('public.docs.manuscript.sidebarLabel')}>
+          <nav>{activeRoot ? <DocsSidebarNodes childrenByParent={childrenByParent} parentId={activeRoot.id} selectedId={selectedNode?.id} expandedDirectories={expandedDirectories} labels={{ collapse: t('public.docs.manuscript.collapse'), expand: t('public.docs.manuscript.expand') }} onToggle={toggleDirectory} /> : null}</nav>
         </aside>
 
         <article className="docs-article" ref={articleRef}>
+          {currentDocument ? <div className="docs-article-toolbar"><button className="docs-copy-page" type="button" onClick={() => void copyMarkdown()}><IconCopyStroked aria-hidden="true" />{t('public.docs.manuscript.copyPage')}</button></div> : null}
           {loading ? <div className="docs-state" role="status"><Skeleton placeholder={<><Skeleton.Title /><Skeleton.Paragraph rows={8} /></>} loading /></div> : null}
-          {!loading && error ? <div className="docs-state docs-state--error" role="alert"><h1>{locale === 'en-US' ? 'Unable to load documentation' : '文档加载失败'}</h1><p>{error.message}</p>{error.requestId ? <code>Request ID: {error.requestId}</code> : null}</div> : null}
-          {!loading && !error && !currentDocument && !tree.length ? <div className="docs-state"><h1>{locale === 'en-US' ? 'No public documentation' : '暂无公开文档'}</h1></div> : null}
+          {!loading && error ? <div className="docs-state docs-state--error" role="alert"><h1>{t('public.docs.manuscript.loadFailed')}</h1><p>{error.message}</p>{error.requestId ? <code>{t('public.docs.manuscript.requestIdPrefix')}{error.requestId}</code> : null}</div> : null}
+          {!loading && !error && !currentDocument && !tree.length ? <div className="docs-state"><h1>{t('public.docs.manuscript.noDocuments')}</h1></div> : null}
           {currentDocument ? <MarkdownContent className="docs-markdown" content={currentDocument.content_markdown} enhancedCodeBlocks resolveImageUrl={resolveDocsImageUrl} /> : null}
         </article>
 
         <aside className="docs-on-page" aria-label={t('public.docs.manuscript.onPageLabel')}>
-          {currentDocument ? <button className="docs-copy-page" type="button" onClick={() => void copyMarkdown()}><IconCopyStroked aria-hidden="true" />{t('public.docs.manuscript.copyPage')}</button> : null}
           <strong>{t('public.docs.manuscript.onPageTitle')}</strong>
-          <div className="docs-on-page-scroll"><DocsTocNodes nodes={headingTree} activeHeading={activeHeading} collapsedHeadings={collapsedHeadings} locale={locale} onToggle={toggleHeading} /></div>
+          <div className="docs-on-page-scroll"><DocsTocNodes nodes={headingTree} activeHeading={activeHeading} collapsedHeadings={collapsedHeadings} labels={{ collapse: t('public.docs.manuscript.tocCollapse'), expand: t('public.docs.manuscript.tocExpand') }} onToggle={toggleHeading} /></div>
         </aside>
       </div>
     </PublicLayout>

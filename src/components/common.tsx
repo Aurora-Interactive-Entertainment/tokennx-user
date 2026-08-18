@@ -438,7 +438,7 @@ type VerificationCodeButtonProps = {
 
 type LoginDialCode = {
   code: string
-  label: string
+  labelKey: string
   minLength: number
   maxLength: number
   pattern?: RegExp
@@ -447,19 +447,19 @@ type LoginDialCode = {
 const LOGIN_CODE_RETRY_SECONDS = 60
 const PHONE_CODE_COOLDOWN_KEY = 'token-nx:auth:phone-code-cooldown:v1'
 const LOGIN_DIAL_CODES: readonly LoginDialCode[] = [
-  { code: '+86', label: '中国大陆', minLength: 11, maxLength: 11, pattern: /^1[3-9]\d{9}$/ },
-  { code: '+852', label: '中国香港', minLength: 8, maxLength: 8 },
-  { code: '+853', label: '中国澳门', minLength: 8, maxLength: 8 },
-  { code: '+886', label: '中国台湾', minLength: 9, maxLength: 10 },
-  { code: '+1', label: '美国/加拿大', minLength: 10, maxLength: 10 },
-  { code: '+44', label: '英国', minLength: 10, maxLength: 10 },
-  { code: '+81', label: '日本', minLength: 10, maxLength: 11 },
-  { code: '+82', label: '韩国', minLength: 9, maxLength: 11 },
-  { code: '+65', label: '新加坡', minLength: 8, maxLength: 8 },
-  { code: '+60', label: '马来西亚', minLength: 9, maxLength: 10 },
-  { code: '+61', label: '澳大利亚', minLength: 9, maxLength: 9 },
-  { code: '+49', label: '德国', minLength: 10, maxLength: 11 },
-  { code: '+33', label: '法国', minLength: 9, maxLength: 9 },
+  { code: '+86', labelKey: 'login.countryMainland', minLength: 11, maxLength: 11, pattern: /^1[3-9]\d{9}$/ },
+  { code: '+852', labelKey: 'login.countryHongKong', minLength: 8, maxLength: 8 },
+  { code: '+853', labelKey: 'login.countryMacau', minLength: 8, maxLength: 8 },
+  { code: '+886', labelKey: 'login.countryTaiwan', minLength: 9, maxLength: 10 },
+  { code: '+1', labelKey: 'login.countryUsCanada', minLength: 10, maxLength: 10 },
+  { code: '+44', labelKey: 'login.countryUnitedKingdom', minLength: 10, maxLength: 10 },
+  { code: '+81', labelKey: 'login.countryJapan', minLength: 10, maxLength: 11 },
+  { code: '+82', labelKey: 'login.countrySouthKorea', minLength: 9, maxLength: 11 },
+  { code: '+65', labelKey: 'login.countrySingapore', minLength: 8, maxLength: 8 },
+  { code: '+60', labelKey: 'login.countryMalaysia', minLength: 9, maxLength: 10 },
+  { code: '+61', labelKey: 'login.countryAustralia', minLength: 9, maxLength: 9 },
+  { code: '+49', labelKey: 'login.countryGermany', minLength: 10, maxLength: 11 },
+  { code: '+33', labelKey: 'login.countryFrance', minLength: 9, maxLength: 9 },
 ] as const
 
 function loginDialCode(value: string): LoginDialCode {
@@ -568,7 +568,7 @@ function LoginPhoneField(props: LoginPhoneFieldProps) {
             onBlur={() => setDialCodeOpen(false)}
             aria-label={t('login.countryCode')}
           >
-            {LOGIN_DIAL_CODES.map((entry) => <option key={entry.code} value={entry.code}>{entry.code} {entry.label}</option>)}
+            {LOGIN_DIAL_CODES.map((entry) => <option key={entry.code} value={entry.code}>{entry.code} {t(entry.labelKey)}</option>)}
           </select>
         </div>
         <input
@@ -1898,12 +1898,12 @@ function AccountSettingsModal({ onClose }: { onClose: () => void }) {
               <button type="button" className="account-settings-contact-trigger" aria-label={t('login.phone')} disabled={loading || !profile} onClick={() => setContactProvider('phone')}><span>{phone}</span><IconEditStroked aria-hidden="true" /></button>
             </div>
             <div className="account-settings-row account-settings-row--badges">
-              <span className="account-settings-label">徽章</span>
+              <span className="account-settings-label">{t('profile.badge')}</span>
               <span className="account-settings-badges"><img src={accountBadge} alt="" /><img src={accountBadge} alt="" /><img src={accountBadge} alt="" /></span>
             </div>
             <div className="account-settings-row account-settings-row--delete">
-              <span className="account-settings-label">删除账户</span>
-              <button type="button" className="account-settings-delete">删除账户</button>
+              <span className="account-settings-label">{t('profile.deleteAccount')}</span>
+              <button type="button" className="account-settings-delete">{t('profile.deleteAccount')}</button>
             </div>
             {loadError ? <p className="account-settings-load-error" role="alert">{loadError}</p> : null}
           </div>
@@ -2095,7 +2095,7 @@ export function PublicFooter() {
             <div className="manuscript-footer-group-links" id={panelId}>{group.links.map((link) => <Link key={`${link.path}-${link.labelKey}`} to={link.path}>{t(link.labelKey)}</Link>)}</div>
           </div>
           })}</nav>
-          <div className="public-footer-contact manuscript-footer-contact"><strong>{t('footer.contact')}</strong><a href={`tel:${PUBLIC_COMPANY_INFO.phone}`}>售前咨询：{PUBLIC_COMPANY_INFO.phone}</a><a href={`mailto:${PUBLIC_COMPANY_INFO.email}`}>商务合作：{PUBLIC_COMPANY_INFO.email}</a><div className="manuscript-footer-qr-row"><div className="public-footer-qr"><img src={manuscriptCustomerQr} alt={t('footer.qrAlt')} loading="lazy" decoding="async" /><span>{t('footer.customerQr')}</span></div><div className="public-footer-qr"><img src={manuscriptOfficialQr} alt={t('footer.officialQr')} loading="lazy" decoding="async" /><span>{t('footer.officialQr')}</span></div></div></div>
+          <div className="public-footer-contact manuscript-footer-contact"><strong>{t('footer.contact')}</strong><a href={`tel:${PUBLIC_COMPANY_INFO.phone}`}>{t('footer.salesPrefix')}{PUBLIC_COMPANY_INFO.phone}</a><a href={`mailto:${PUBLIC_COMPANY_INFO.email}`}>{t('footer.businessPrefix')}{PUBLIC_COMPANY_INFO.email}</a><div className="manuscript-footer-qr-row"><div className="public-footer-qr"><img src={manuscriptCustomerQr} alt={t('footer.qrAlt')} loading="lazy" decoding="async" /><span>{t('footer.customerQr')}</span></div><div className="public-footer-qr"><img src={manuscriptOfficialQr} alt={t('footer.officialQr')} loading="lazy" decoding="async" /><span>{t('footer.officialQr')}</span></div></div></div>
         </div>
         <div className="public-footer-bottom manuscript-footer-filing" aria-label={t('footer.filing')}><span className="manuscript-footer-filing-copy">Copyright @ 2025-{new Date().getFullYear()} {PUBLIC_COMPANY_INFO.name}</span><span className="manuscript-footer-filing-item"><img src={manuscriptFilingIcpIcon} alt="" aria-hidden="true" />{PUBLIC_COMPANY_INFO.filing}</span><span className="manuscript-footer-filing-item"><img src={manuscriptFilingSecurityIcon} alt="" aria-hidden="true" />{PUBLIC_COMPANY_INFO.securityFiling}</span><Link className="manuscript-footer-filing-item" to="/about">{t('footer.businessLicense')}</Link><Link className="manuscript-footer-filing-item" to="/terms">{t('footer.license')}</Link></div>
         <ManuscriptSupportWidget />

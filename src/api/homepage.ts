@@ -47,6 +47,7 @@ export interface HomepagePromotionModel {
   alias?: string
   name: string
   company: string
+  logo_url?: string
   modality?: string
   prices: HomepageModelPrice[]
   availability?: {
@@ -140,6 +141,7 @@ function parseHomepagePromotionModel(value: unknown): HomepagePromotionModel | u
     ...(typeof value.alias === 'string' && value.alias.trim() ? { alias: value.alias } : {}),
     name: value.name,
     company: value.company,
+    ...(typeof value.logo_url === 'string' && value.logo_url.trim() ? { logo_url: value.logo_url.trim() } : {}),
     ...(typeof value.modality === 'string' ? { modality: value.modality } : {}),
     prices: Array.isArray(value.prices) ? value.prices.flatMap((price) => {
       const parsed = parseHomepageModelPrice(price)

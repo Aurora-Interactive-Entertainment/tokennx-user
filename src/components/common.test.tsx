@@ -489,7 +489,7 @@ describe('公共 Header 布局', () => {
     const desktopNav = screen.getByRole('navigation', { name: '公开导航' })
     expect(within(desktopNav).getByRole('link', { name: '模型' })).toHaveAttribute('href', '/models')
     expect(within(desktopNav).getByRole('link', { name: '排名' })).toHaveAttribute('href', '/rankings')
-    expect(within(desktopNav).getByRole('link', { name: '应用' })).toHaveAttribute('href', '/apps')
+    expect(within(desktopNav).getByRole('link', { name: '智能体' })).toHaveAttribute('href', '/apps')
     expect(within(desktopNav).getByRole('link', { name: '文档' })).toHaveAttribute('href', '/docs')
     for (const label of ['私有化']) {
       expect(within(desktopNav).queryByRole('link', { name: label })).toBeNull()
@@ -501,7 +501,7 @@ describe('公共 Header 布局', () => {
     expect(mobileNav).not.toBeNull()
     expect(within(mobileNav as HTMLElement).getByRole('link', { name: '模型' })).toHaveAttribute('href', '/models')
     expect(within(mobileNav as HTMLElement).getByRole('link', { name: '排名' })).toHaveAttribute('href', '/rankings')
-    expect(within(mobileNav as HTMLElement).getByRole('link', { name: '应用' })).toHaveAttribute('href', '/apps')
+    expect(within(mobileNav as HTMLElement).getByRole('link', { name: '智能体' })).toHaveAttribute('href', '/apps')
     expect(within(mobileNav as HTMLElement).getByRole('link', { name: '文档' })).toHaveAttribute('href', '/docs')
     for (const label of ['私有化']) {
       expect(within(mobileNav as HTMLElement).queryByRole('link', { name: label })).toBeNull()
@@ -784,6 +784,9 @@ describe('已登录用户菜单', () => {
   it('点击用户菜单设置打开全局账户弹窗', async () => {
     const user = userEvent.setup()
     const { fetchMock } = mockAccountProfileApi()
+    const appMount = document.createElement('div')
+    appMount.id = 'app-mount'
+    document.body.appendChild(appMount)
     const appStore = createAppStore()
     appStore.dispatch({ type: 'auth/loginWithEmail/fulfilled', payload: { id: 'user-1', display_name: '测试用户', avatar_url: '', locale: 'zh-CN', timezone: 'Asia/Shanghai', status: 'active' } })
     saveVerifiedPhone('user-1', '13800138000')
@@ -821,7 +824,9 @@ describe('已登录用户菜单', () => {
     const phoneDialog = await screen.findByRole('dialog', { name: '更换手机号' }, { timeout: 5000 })
     expect(phoneDialog).toHaveTextContent('当前联系方式')
     expect(phoneDialog.querySelector('#profile-phone-current-destination')).toHaveValue('13800138000')
+    expect(phoneDialog.closest('.profile-contact-modal')?.closest('#app-mount')).toBeNull()
     expect(within(dialog).queryByRole('textbox', { name: '手机号' })).toBeNull()
+    appMount.remove()
   })
 
   it('弹窗昵称无变化时不请求，邮箱绑定成功后同步展示和认证用户', async () => {

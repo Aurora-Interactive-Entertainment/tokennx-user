@@ -217,13 +217,44 @@ describe('公开模型页面', () => {
     expect(screen.getByRole('button', { name: '展开 API 子目录' })).toHaveAttribute('aria-expanded', 'false')
   })
 
-  it('应用页展示热门工具、使用趋势和排行榜', () => {
+  it('应用页使用接口返回的智能体内容和每周趋势', async () => {
+    const tools = [
+      { id: 'tool-codex', rank: 1, name: 'Codex', description: 'OpenAI Codex 命令行和桌面客户端', logo_url: 'https://cdn.example.com/codex.png', request_count: 21, total_tokens: 3200000 },
+      { id: 'tool-claude', rank: 2, name: 'Claude Code', description: 'Anthropic Claude Code 命令行客户端', logo_url: 'https://cdn.example.com/claude.png', request_count: 18, total_tokens: 2400000 },
+      { id: 'tool-gemini', rank: 3, name: 'Gemini CLI', description: 'Google Gemini 命令行客户端', logo_url: 'https://cdn.example.com/gemini.png', request_count: 13, total_tokens: 1800000 },
+      { id: 'tool-workbody', rank: 4, name: 'workbody', description: '腾讯 code agent', logo_url: 'https://cdn.example.com/workbody.png', request_count: 8, total_tokens: 900000 },
+      { id: 'tool-trae', rank: 5, name: 'trae', description: '字节跳动 code agent', logo_url: 'https://cdn.example.com/trae.png', request_count: 5, total_tokens: 400000 },
+    ]
+    vi.mocked(globalThis.fetch).mockImplementation(async (input) => {
+      const url = String(input)
+      if (url.includes('/api/homepage/tool-usage/leaderboard')) return new Response(JSON.stringify({ code: 0, msg: 'success', data: { period: url.includes('period=year') ? 'year' : 'day', items: tools } }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+      if (url.includes('/api/homepage/tool-usage/clients')) return new Response(JSON.stringify({
+        code: 0,
+        msg: 'success',
+        data: {
+          started_at: Date.UTC(2026, 6, 27),
+          ended_at: Date.UTC(2026, 7, 10),
+          weeks: ['2026-07-27', '2026-08-03', '2026-08-10'],
+          items: tools.slice(0, 2).map((item) => ({ ...item, total_count: item.request_count, weekly_usage: [
+            { week_start: Date.UTC(2026, 6, 27), request_count: 3, total_tokens: 300000 },
+            { week_start: Date.UTC(2026, 7, 3), request_count: 4, total_tokens: 400000 },
+            { week_start: Date.UTC(2026, 7, 10), request_count: 5, total_tokens: 500000 },
+          ] })),
+        },
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+      return new Response(JSON.stringify({ code: 0, msg: 'success', data: {} }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+    })
     renderPage(<AppsPage />, '/apps')
 
     expect(screen.getByRole('heading', { name: '最受欢迎的 AI 工具排名' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Token NX 平台智能体客户端整体使用情况' })).toBeInTheDocument()
-    expect(document.querySelectorAll('.apps-popular-card')).toHaveLength(4)
-    expect(document.querySelectorAll('.apps-ranking-row')).toHaveLength(12)
+    await waitFor(() => expect(document.querySelectorAll('.apps-popular-card')).toHaveLength(4))
+    expect(document.querySelectorAll('.apps-ranking-row')).toHaveLength(5)
+    expect(screen.getAllByText('Codex')).toHaveLength(2)
+    expect(screen.getAllByText('OpenAI Codex 命令行和桌面客户端')).toHaveLength(2)
+    expect(document.querySelector('.apps-popular-card img')).toHaveAttribute('src', 'https://cdn.example.com/codex.png')
+    expect(screen.queryByText('Hermes Agent')).toBeNull()
+    expect(screen.getByRole('img', { name: '过去 6 个月智能体客户端每周 Token 使用量堆叠柱状图' })).toBeInTheDocument()
     const periodSelect = screen.getByRole('combobox', { name: '排行榜时间范围' })
     expect(periodSelect).toHaveAttribute('aria-expanded', 'false')
     expect(periodSelect).toHaveTextContent('今天')
@@ -257,8 +288,7 @@ describe('公开模型页面', () => {
     const periodSelect = screen.getByRole('combobox', { name: 'Leaderboard time range' })
     expect(periodSelect).toHaveAttribute('aria-expanded', 'false')
     expect(periodSelect).toHaveTextContent('Today')
-    expect(screen.getAllByRole('heading', { name: 'Hermes Agent' })).toHaveLength(16)
-    expect(screen.getAllByText('32.1T tokens')).toHaveLength(4)
+    expect(screen.queryByText('Hermes Agent')).toBeNull()
   })
 
   it('排名页切换英文后翻译页签、目录、标题和筛选器', async () => {
@@ -339,6 +369,7 @@ describe('公开模型页面', () => {
             alias: 'managed-model',
             name: 'managed-model',
             company: 'Managed AI',
+            logo_url: 'https://cdn.example.com/managed-model.png',
             modality: 'text',
             prices: [
               { meter_kind: 'input_token', unit_price_yuan: '1.000000000000', unit_quantity: 1_000_000 },
@@ -375,6 +406,7 @@ describe('公开模型页面', () => {
     expect(screen.getByText('后台优惠模型').closest('a')).toHaveAttribute('href', '/models/managed-model')
     const promotionCard = screen.getByText('后台优惠模型').closest('.manuscript-price-card')
     expect(promotionCard).toHaveTextContent('Managed AI')
+    expect(promotionCard?.querySelector('.manuscript-price-model-logo img')).toHaveAttribute('src', 'https://cdn.example.com/managed-model.png')
     const promotionPrices = Array.from(promotionCard?.querySelectorAll('.manuscript-price-values strong') ?? []).map((element) => element.textContent)
     expect(promotionPrices[0]).toMatch(/^1/)
     expect(promotionPrices[1]).toMatch(/^6/)

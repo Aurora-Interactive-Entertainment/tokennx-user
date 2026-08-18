@@ -2,6 +2,19 @@ export const apiResources = {
   'zh-CN': {
     api: {
       auth: {
+        requestFailed: '认证请求失败，请稍后重试',
+        invalidInput: '请求参数无效，请检查输入内容',
+        sessionConflict: '认证状态发生冲突，请重新操作',
+        unavailable: '认证服务暂时不可用，请稍后重试',
+        invalidCode: '邮箱、手机号或验证码错误，请重新确认',
+        bindingRequired: '该微信账号需要先绑定手机号',
+        phoneAlreadyBound: '手机号已绑定其他账号，暂时无法继续',
+        codeTooFrequent: '验证码发送过于频繁，请稍后再试',
+        incomplete: '认证尚未完成',
+        emailLoginFailed: '邮箱登录失败',
+        phoneLoginFailed: '手机号登录失败',
+        wechatLoginFailed: '微信登录失败',
+        phoneBindingFailed: '手机号绑定失败',
         sessionExpired: '登录状态已失效，请重新登录',
         expired: '认证单据已过期，请重新发起认证',
         faceFailed: '人脸认证未通过，请重新发起认证',
@@ -141,6 +154,19 @@ export const apiResources = {
   'en-US': {
     api: {
       auth: {
+        requestFailed: 'Authentication failed. Try again later.',
+        invalidInput: 'The request parameters are invalid. Check your input.',
+        sessionConflict: 'The authentication state changed. Try again.',
+        unavailable: 'The authentication service is temporarily unavailable. Try again later.',
+        invalidCode: 'The email, phone number, or verification code is incorrect.',
+        bindingRequired: 'This WeChat account must bind a phone number first.',
+        phoneAlreadyBound: 'This phone number is already bound to another account.',
+        codeTooFrequent: 'Verification codes are being sent too frequently. Try again later.',
+        incomplete: 'Authentication is not complete.',
+        emailLoginFailed: 'Email sign-in failed.',
+        phoneLoginFailed: 'Phone sign-in failed.',
+        wechatLoginFailed: 'WeChat sign-in failed.',
+        phoneBindingFailed: 'Phone binding failed.',
         sessionExpired: 'Your session has expired. Please sign in again.',
         expired: 'The verification request expired. Start again.',
         faceFailed: 'Face verification failed. Start again.',

@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import type { CSSProperties, ReactNode } from 'react'
+import type { TFunction } from 'i18next'
 import Button from '@douyinfe/semi-ui/lib/es/button'
 import SideSheet from '@douyinfe/semi-ui/lib/es/sideSheet'
 import Toast from '@douyinfe/semi-ui/lib/es/toast'
@@ -12,7 +13,7 @@ import type { UserModelDetail, UserModelMetricPoint, UserModelPrice, UserModelTa
 import { modelAlias, modelRouteKey, type ModelPrice, type ModelRecord } from '@/data/models'
 import { formatCount, formatNumber } from '@/utils/format'
 
-const MODEL_UNAVAILABLE_LABEL = '暂无数据'
+const MODEL_UNAVAILABLE_LABEL = '__model_unavailable__'
 const TOKEN_QUANTITY = 1_000_000
 const MODALITY_IO: Record<ModelRecord['modality'], [string, string]> = {
   text: ['文本', '文本'],
@@ -23,11 +24,12 @@ const MODALITY_IO: Record<ModelRecord['modality'], [string, string]> = {
   rerank: ['文本', '排序分数'],
   speech: ['文本', '音频'],
   transcription: ['音频', '文本'],
-  other: [MODEL_UNAVAILABLE_LABEL, MODEL_UNAVAILABLE_LABEL],
+  other: ['', ''],
 }
 
-function ioTypes(model: ModelRecord): [string, string] {
-  return MODALITY_IO[model.modality]
+function ioTypes(model: ModelRecord, t: TFunction): [string, string] {
+  const [input, output] = MODALITY_IO[model.modality]
+  return [input ? localizeConsoleLabel(t, input) : t('console.common.unavailable'), output ? localizeConsoleLabel(t, output) : t('console.common.unavailable')]
 }
 
 function PriceCell({ label, price, fallback, unavailableLabel }: { label: string; price?: UserModelPrice; fallback?: { value?: number; raw?: string; unit: string }; unavailableLabel: string }) {
@@ -57,14 +59,14 @@ function primaryOutput(price: ModelPrice): { value: number | undefined; raw?: st
   return { value: undefined }
 }
 
-function modelContextValue(model: ModelRecord): string {
-  if (model.modality === 'text') return model.context ?? MODEL_UNAVAILABLE_LABEL
-  if (model.modality === 'image') return model.params?.['尺寸']?.slice(0, 2).map(String).join(' / ') ?? MODEL_UNAVAILABLE_LABEL
-  if (model.modality === 'video') return model.params?.['时长']?.slice(0, 2).map((value) => `${value}s`).join(' / ') ?? MODEL_UNAVAILABLE_LABEL
-  if (model.modality === 'audio' || model.modality === 'speech') return model.params?.['音色']?.slice(0, 2).map(String).join(' / ') ?? MODEL_UNAVAILABLE_LABEL
-  if (model.modality === 'transcription') return model.params?.['音频格式']?.slice(0, 2).map(String).join(' / ') ?? MODEL_UNAVAILABLE_LABEL
-  if (model.modality === 'embedding') return model.params?.['向量维度']?.slice(0, 2).map(String).join(' / ') ?? MODEL_UNAVAILABLE_LABEL
-  return model.context ?? MODEL_UNAVAILABLE_LABEL
+function modelContextValue(model: ModelRecord, unavailableLabel: string): string {
+  if (model.modality === 'text') return model.context ?? unavailableLabel
+  if (model.modality === 'image') return model.params?.['尺寸']?.slice(0, 2).map(String).join(' / ') ?? unavailableLabel
+  if (model.modality === 'video') return model.params?.['时长']?.slice(0, 2).map((value) => `${value}s`).join(' / ') ?? unavailableLabel
+  if (model.modality === 'audio' || model.modality === 'speech') return model.params?.['音色']?.slice(0, 2).map(String).join(' / ') ?? unavailableLabel
+  if (model.modality === 'transcription') return model.params?.['音频格式']?.slice(0, 2).map(String).join(' / ') ?? unavailableLabel
+  if (model.modality === 'embedding') return model.params?.['向量维度']?.slice(0, 2).map(String).join(' / ') ?? unavailableLabel
+  return model.context ?? unavailableLabel
 }
 
 function formatTokenLimit(value: number | undefined): string | undefined {
@@ -220,9 +222,9 @@ export function ModelDetailDrawer({ model, detail, loading, error, visible, onCl
   const fallbackUnit = listPrice?.unit && listPrice.unit !== '不适用' ? listPrice.unit : t('console.common.notApplicable')
   const inputFallback = listPrice ? primaryInput(listPrice) : { value: undefined }
   const outputFallback = listPrice ? primaryOutput(listPrice) : { value: undefined }
-  const [fallbackInputType, fallbackOutputType] = model ? ioTypes(model) : ['--', '--']
-  const contextValue = formatTokenLimit(detailModel?.context_window_tokens) ?? (model ? modelContextValue(model) : MODEL_UNAVAILABLE_LABEL)
   const noDataLabel = t('console.modelDetail.noData')
+  const [fallbackInputType, fallbackOutputType] = model ? ioTypes(model, t) : [noDataLabel, noDataLabel]
+  const contextValue = formatTokenLimit(detailModel?.context_window_tokens) ?? (model ? modelContextValue(model, noDataLabel) : MODEL_UNAVAILABLE_LABEL)
   const displayContextValue = contextValue === MODEL_UNAVAILABLE_LABEL ? noDataLabel : contextValue
   const specifications = detail?.specifications
   const metrics = detail?.metrics

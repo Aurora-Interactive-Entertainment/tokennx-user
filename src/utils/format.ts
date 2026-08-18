@@ -1,6 +1,6 @@
 import type { UsageRecord } from '@/data/app-state'
 import type { ModelRecord } from '@/data/models'
-import { getActiveLanguage, getActiveLocale } from '@/i18n'
+import i18n, { getActiveLocale } from '@/i18n'
 
 export const MONEY_DISPLAY_DECIMAL_PLACES = 3
 export type MoneyValue = string | number | null | undefined
@@ -240,14 +240,13 @@ export function modelPriceSummary(model: ModelRecord): string {
   const formatPresent = (value: number | undefined): string | null => formatDecimal(value)
   const input = formatPresent(price.input)
   const output = formatPresent(price.output)
-  const english = getActiveLanguage() === 'en-US'
-  if (input !== null && output !== null) return english ? `Input ${input} / Output ${output} ${price.unit}` : `输入 ${input} / 输出 ${output} ${price.unit}`
+  if (input !== null && output !== null) return `${i18n.t('public.priceSummary.input')} ${input} / ${i18n.t('public.priceSummary.output')} ${output} ${price.unit}`
   const standard = formatPresent(price.standard)
   const hd = formatPresent(price.hd)
-  if (standard !== null && hd !== null) return english ? `Standard ${standard} / HD ${hd} ${price.unit}` : `标准 ${standard} / 高清 ${hd} ${price.unit}`
+  if (standard !== null && hd !== null) return `${i18n.t('public.priceSummary.standard')} ${standard} / ${i18n.t('public.priceSummary.hd')} ${hd} ${price.unit}`
   const base = formatPresent(price.base)
   if (base !== null) return `${base} ${price.unit}`
-  return english ? 'Price pending' : '价格待公布'
+  return i18n.t('public.priceSummary.pending')
 }
 
 export function usageTotal(records: UsageRecord[]): { cost: number; inputTokens: number; outputTokens: number; requests: number } {
@@ -263,13 +262,12 @@ export function relativeTime(value: ApiTimeValue): string {
   const parsed = parseApiTime(value)
   if (Number.isNaN(parsed.getTime())) return typeof value === 'number' ? String(value) : value
   const minutes = Math.max(0, Math.floor((Date.now() - parsed.getTime()) / 60000))
-  const english = getActiveLanguage() === 'en-US'
-  if (minutes < 1) return english ? 'Just now' : '刚刚'
-  if (minutes < 60) return english ? `${minutes} minute${minutes === 1 ? '' : 's'} ago` : `${minutes} 分钟前`
+  if (minutes < 1) return i18n.t('common.relativeJustNow')
+  if (minutes < 60) return i18n.t('common.relativeMinutesAgo', { count: minutes })
   const hours = Math.floor(minutes / 60)
-  if (hours < 24) return english ? `${hours} hour${hours === 1 ? '' : 's'} ago` : `${hours} 小时前`
+  if (hours < 24) return i18n.t('common.relativeHoursAgo', { count: hours })
   const days = Math.floor(hours / 24)
-  return english ? `${days} day${days === 1 ? '' : 's'} ago` : `${days} 天前`
+  return i18n.t('common.relativeDaysAgo', { count: days })
 }
 
 export function formatApiTimeField(fieldName: string, value: unknown): string | null {

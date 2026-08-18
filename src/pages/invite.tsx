@@ -13,16 +13,16 @@ export function InviteLandingPage() {
   const [error, setError] = useState('')
 
   async function visit(): Promise<void> {
-    if (!inviteCode) { setError('邀请链接缺少邀请码'); return }
+    if (!inviteCode) { setError(t('console.join.missingToken')); return }
     setError('')
     try {
       await recordInvitationVisit(inviteCode)
       navigate(`/?invite_code=${encodeURIComponent(inviteCode)}`, { replace: true })
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : '邀请链接暂时无法打开，请稍后重试')
+      setError(reason instanceof Error ? reason.message : t('console.join.openFailed'))
     }
   }
 
   useEffect(() => { void visit() }, [inviteCode])
-  return <PublicLayout mainClassName="public-page public-invitation-page"><div className="public-invitation-shell"><section className="public-invitation-empty" role={error ? 'alert' : 'status'}><IconShieldStroked aria-hidden="true" /><div><strong>{error || '正在处理邀请链接...'}</strong>{error ? <button className="btn btn-primary" type="button" onClick={() => { void visit() }}>重试</button> : null}</div></section></div></PublicLayout>
+  return <PublicLayout mainClassName="public-page public-invitation-page"><div className="public-invitation-shell"><section className="public-invitation-empty" role={error ? 'alert' : 'status'}><IconShieldStroked aria-hidden="true" /><div><strong>{error || t('console.join.loading')}</strong>{error ? <button className="btn btn-primary" type="button" onClick={() => { void visit() }}>{t('console.common.retry')}</button> : null}</div></section></div></PublicLayout>
 }

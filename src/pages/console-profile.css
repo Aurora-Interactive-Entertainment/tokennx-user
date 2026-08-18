@@ -1,0 +1,425 @@
+/* Account center surfaces: a quiet, information-first treatment shared by both workspaces. */
+.settings-redesign-page {
+  --settings-card-bg: var(--color-bg-base-secondary);
+  --settings-row-line: var(--color-border-neutral-l1);
+  --settings-muted-bg: var(--color-bg-base-tertiary);
+  --settings-accent: var(--color-brand);
+  gap: 24px;
+}
+
+.settings-redesign-page > .page-title-row,
+.settings-redesign-page > .settings-page-inner {
+  width: min(920px, calc(100% - 56px));
+}
+
+.settings-redesign-page > .page-title-row {
+  min-height: auto;
+  padding-top: 14px;
+}
+
+.settings-redesign-page .page-title {
+  font-size: 34px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.settings-redesign-page .page-description {
+  max-width: 680px;
+  margin-top: 8px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.settings-redesign-page .settings-page-inner {
+  gap: 24px;
+}
+
+.settings-redesign-page .settings-section.settings-card {
+  padding: 28px 32px 30px;
+  border: 1px solid var(--settings-row-line);
+  border-radius: 8px;
+  background: var(--settings-card-bg);
+}
+
+.settings-redesign-page .settings-section-head {
+  margin-bottom: 18px;
+}
+
+.settings-redesign-page .settings-section-head h2 {
+  margin-bottom: 4px;
+  color: var(--color-text-default-hover);
+  font-size: 20px;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+.settings-redesign-page .settings-section-head p {
+  max-width: 760px;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.settings-redesign-page .settings-section-head .settings-hint {
+  margin-top: 2px;
+  color: var(--color-text-tertiary);
+  font-size: 12px;
+}
+
+.settings-redesign-page .settings-form {
+  gap: 0;
+}
+
+.settings-redesign-page .settings-row {
+  min-width: 0;
+  grid-template-columns: 128px minmax(0, 1fr);
+  align-items: center;
+  min-height: 70px;
+  gap: 20px;
+  padding: 14px 0;
+  border-top: 1px solid var(--settings-row-line);
+}
+
+.settings-redesign-page .settings-row:first-child {
+  border-top: 0;
+}
+
+.settings-redesign-page .settings-row--avatar {
+  display: block;
+  min-height: auto;
+  padding: 0 0 22px;
+}
+
+.settings-redesign-page .settings-row--avatar > .settings-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.settings-redesign-page .settings-label {
+  padding-top: 0;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.settings-redesign-page .settings-control {
+  min-width: 0;
+}
+
+.settings-redesign-page .settings-avatar {
+  width: 76px;
+  height: 76px;
+  border: 0;
+  background: var(--color-text-default-hover);
+  color: var(--color-bg-base-default);
+  font-size: 27px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, .16);
+}
+
+.settings-redesign-page .settings-avatar-image {
+  display: block;
+}
+
+.settings-redesign-page .settings-readonly {
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--color-text-default-hover);
+  font-size: 16px;
+  font-weight: 550;
+  line-height: 1.5;
+}
+
+.settings-redesign-page code.settings-readonly {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.settings-redesign-page .settings-inline {
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+  align-items: center;
+  gap: 16px;
+}
+
+.settings-redesign-page .settings-inline .settings-readonly {
+  min-width: 0;
+  flex: 1;
+  overflow-wrap: anywhere;
+}
+
+.settings-redesign-page .settings-control > .semi-input-wrapper {
+  max-width: 520px;
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
+.settings-redesign-page .settings-row--name .settings-control > .semi-input-wrapper {
+  max-width: 420px;
+  border: 1px solid var(--color-border-neutral-l2);
+  border-radius: 8px;
+  background: var(--settings-muted-bg);
+}
+
+.settings-redesign-page .settings-control > .semi-input-wrapper:hover {
+  border-color: var(--color-border-neutral-l2);
+  background: var(--settings-muted-bg);
+}
+
+.settings-redesign-page .settings-control > .semi-input-wrapper .semi-input {
+  padding-inline: 12px;
+  color: var(--color-text-default-hover);
+  font-size: 16px;
+  font-weight: 550;
+}
+
+.settings-redesign-page .settings-row--name .settings-control > .semi-input-wrapper:focus-within,
+.settings-redesign-page .settings-row--name .settings-control > .semi-input-wrapper-focus {
+  border-color: var(--settings-accent);
+  outline: 2px solid color-mix(in srgb, var(--settings-accent) 24%, transparent);
+  outline-offset: 1px;
+}
+
+.settings-redesign-page .settings-hint {
+  margin-top: 4px;
+  color: var(--color-text-tertiary);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.settings-redesign-page .settings-row:not(.settings-row--avatar):not(.settings-row--name) > .settings-control > .settings-hint {
+  display: none;
+}
+
+.settings-redesign-page .settings-row .semi-button {
+  flex: 0 0 auto;
+  min-height: 38px;
+  padding-inline: 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.settings-redesign-page .settings-secondary-button {
+  border-color: var(--color-border-neutral-l2);
+  background: transparent;
+  color: var(--color-text-default);
+}
+
+.settings-redesign-page .settings-secondary-button:hover:not(:disabled) {
+  border-color: var(--color-border-neutral-l3);
+  background: var(--settings-muted-bg);
+  color: var(--color-text-default-hover);
+}
+
+.settings-redesign-page .settings-primary-button,
+.settings-redesign-page .settings-primary-button:hover:not(:disabled) {
+  border-color: var(--settings-accent);
+  background: var(--settings-accent);
+  color: var(--color-action-on-primary);
+}
+
+.settings-redesign-page .settings-card--notifications .settings-section-head,
+.settings-redesign-page .settings-card--workspace .settings-section-head {
+  margin-bottom: 14px;
+}
+
+.settings-redesign-page .notification-list {
+  display: grid;
+  gap: 0;
+}
+
+.settings-redesign-page .notification-row {
+  min-height: 74px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--settings-row-line);
+}
+
+.settings-redesign-page .notification-row:last-child {
+  border-bottom: 0;
+}
+
+.settings-redesign-page .notification-row strong {
+  color: var(--color-text-default-hover);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.settings-redesign-page .notification-row small {
+  margin-top: 2px;
+  color: var(--color-text-tertiary);
+  font-size: 12px;
+}
+
+.settings-redesign-page .notification-row .semi-switch {
+  flex: 0 0 auto;
+}
+
+.settings-redesign-page .workspace-list {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.settings-redesign-page .workspace-item {
+  min-height: 66px;
+  padding: 13px 16px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: var(--settings-muted-bg);
+}
+
+.settings-redesign-page .workspace-item > div {
+  min-width: 0;
+}
+
+.settings-redesign-page .workspace-item strong,
+.settings-redesign-page .workspace-item small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.settings-redesign-page .workspace-item strong {
+  color: var(--color-text-default-hover);
+  font-size: 15px;
+  font-weight: 650;
+}
+
+.settings-redesign-page .workspace-item small {
+  margin-top: 1px;
+  color: var(--color-text-tertiary);
+  font-size: 12px;
+}
+
+.settings-redesign-page .workspace-item > span {
+  flex: 0 0 auto;
+  padding: 4px 10px;
+  border: 1px solid var(--color-border-neutral-l2);
+  border-radius: 999px;
+  color: var(--color-text-secondary);
+  background: var(--settings-card-bg);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.settings-redesign-page .workspace-item > span:first-letter {
+  color: inherit;
+}
+
+.settings-redesign-page .settings-card--security {
+  border-color: color-mix(in srgb, var(--color-error, #df7b83) 32%, var(--settings-row-line));
+}
+
+.settings-redesign-page .settings-card--security .settings-section-head {
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--settings-row-line);
+}
+
+.settings-redesign-page .settings-card--security .settings-actions {
+  justify-content: space-between;
+  min-height: 52px;
+}
+
+.settings-redesign-page .settings-card--security .settings-danger-button {
+  border-color: color-mix(in srgb, var(--color-error, #df7b83) 70%, transparent);
+  color: var(--color-error, #df7b83);
+  background: transparent;
+}
+
+.settings-redesign-page .settings-card--security .settings-danger-button:hover:not(:disabled) {
+  border-color: var(--color-error, #df7b83);
+  color: var(--color-error, #df7b83);
+  background: color-mix(in srgb, var(--color-error, #df7b83) 10%, transparent);
+}
+
+.settings-redesign-page .enterprise-permission-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.settings-redesign-page .enterprise-permission-list .model-tag {
+  border-radius: 7px;
+  background: var(--settings-muted-bg);
+  color: var(--color-text-secondary);
+}
+
+.settings-redesign-page .settings-card--enterprise .settings-row:first-child {
+  border-top: 1px solid var(--settings-row-line);
+}
+
+@media (max-width: 900px) {
+  .settings-redesign-page > .page-title-row,
+  .settings-redesign-page > .settings-page-inner {
+    width: calc(100% - 40px);
+  }
+}
+
+@media (max-width: 720px) {
+  .settings-redesign-page {
+    gap: 18px;
+  }
+
+  .settings-redesign-page > .page-title-row,
+  .settings-redesign-page > .settings-page-inner {
+    width: calc(100% - 32px);
+  }
+
+  .settings-redesign-page .settings-section.settings-card {
+    padding: 22px 18px 24px;
+    border-radius: 8px;
+  }
+
+  .settings-redesign-page .settings-section-head h2 {
+    font-size: 18px;
+  }
+
+  .settings-redesign-page .settings-row {
+    grid-template-columns: 1fr;
+    align-items: start;
+    gap: 8px;
+    min-height: 0;
+    padding: 14px 0;
+  }
+
+  .settings-redesign-page .settings-label {
+    font-size: 13px;
+  }
+
+  .settings-redesign-page .settings-inline {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .settings-redesign-page .settings-inline .semi-button {
+    align-self: flex-start;
+  }
+
+  .settings-redesign-page .settings-card--security .settings-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .settings-redesign-page .settings-card--security .settings-danger-button {
+    align-self: flex-start;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .settings-redesign-page .workspace-item,
+  .settings-redesign-page .semi-button {
+    transition: none;
+  }
+}

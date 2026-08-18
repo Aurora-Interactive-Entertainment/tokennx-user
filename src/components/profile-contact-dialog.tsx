@@ -75,6 +75,10 @@ function contactRequestErrorMessage(error: unknown): string {
   return isApiError(error) && error.message ? error.message : getProfileErrorMessage(error)
 }
 
+function getContactModalContainer(): HTMLElement {
+  return document.body
+}
+
 export function ProfileContactDialog(props: ProfileContactDialogProps) {
   const { t } = useTranslation()
   const [values, setValues] = useState<ContactFormValues>(() => initialValues(props.currentDestination))
@@ -258,8 +262,9 @@ export function ProfileContactDialog(props: ProfileContactDialogProps) {
       centered
       title={title}
       visible={props.visible}
-      width={560}
+      width={528}
       zIndex={1400}
+      getPopupContainer={getContactModalContainer}
       maskClosable={!saving}
       closable={!saving}
       footer={
@@ -270,10 +275,9 @@ export function ProfileContactDialog(props: ProfileContactDialogProps) {
       }
       onCancel={props.onCancel}
     >
-      <div className="profile-contact-dialog">
-        <p className="profile-dialog-intro">{providerLabel}</p>
+      <div className={`profile-contact-dialog profile-contact-dialog--${props.provider} ${isBound ? 'is-bound' : 'is-unbound'}`}>
         {isBound ? (
-          <section className="profile-dialog-group">
+          <section className="profile-dialog-group profile-dialog-group--current">
             <label className="profile-field" htmlFor={`profile-${props.provider}-current-destination`}>
               <span>{t('profile.contact.currentDestination')}</span>
               <Input
@@ -289,8 +293,19 @@ export function ProfileContactDialog(props: ProfileContactDialogProps) {
             </label>
             {renderCodeControl('current')}
           </section>
-        ) : null}
-        <section className="profile-dialog-group">
+        ) : (
+          <section className="profile-dialog-group profile-dialog-group--status">
+            <label className="profile-field" htmlFor={`profile-${props.provider}-unbound-status`}>
+              <span>{providerLabel}</span>
+              <Input
+                id={`profile-${props.provider}-unbound-status`}
+                value={t(props.provider === 'email' ? 'profile.contact.unboundEmail' : 'profile.contact.unbound')}
+                readonly
+              />
+            </label>
+          </section>
+        )}
+        <section className="profile-dialog-group profile-dialog-group--new">
           <label className="profile-field" htmlFor={`profile-${props.provider}-new-destination`}>
             <span>{t('profile.contact.newDestination')}</span>
             <Input
