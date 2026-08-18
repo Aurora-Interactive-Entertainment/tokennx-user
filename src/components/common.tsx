@@ -10,6 +10,7 @@ import Tag from '@douyinfe/semi-ui/lib/es/tag'
 import Toast from '@douyinfe/semi-ui/lib/es/toast'
 import {
   IconApps,
+  IconAlertTriangle,
   IconBarChartVStroked,
   IconBellStroked,
   IconBriefcaseStroked,
@@ -28,6 +29,7 @@ import {
   IconGiftStroked,
   IconIdCardStroked,
   IconImage,
+  IconInfoCircle,
   IconKeyStroked,
   IconLightningStroked,
   IconMenu,
@@ -41,6 +43,7 @@ import {
   IconSend,
   IconSunStroked,
   IconTick,
+  IconTickCircle,
   IconUserGroup,
   IconUserStroked,
   IconVideo,
@@ -2205,8 +2208,10 @@ export function PublicLayout({ children, mainClassName = '' }: { children: React
   return <div className={`public-layout public-header-host${layoutClassName}`}><PublicHeader enterpriseAccess={enterpriseAccess} /><main className={`public-main${mainClassName ? ` ${mainClassName}` : ''}`}>{children}</main><PublicFooter /></div>
 }
 
-export function BannerNotice({ children, tone = 'info' }: { children: ReactNode; tone?: 'info' | 'warning' | 'success' }) {
-  return <div className={`banner-notice banner-notice--${tone}`}><span className="banner-notice-dot" />{children}</div>
+export function BannerNotice({ children, tone = 'info', compact = false }: { children: ReactNode; tone?: 'info' | 'warning' | 'success'; compact?: boolean }) {
+  if (!compact) return <div className={`banner-notice banner-notice--${tone}`}><span className="banner-notice-dot" />{children}</div>
+  const icon = tone === 'warning' ? <IconAlertTriangle /> : tone === 'success' ? <IconTickCircle /> : <IconInfoCircle />
+  return <div className={`banner-notice banner-notice--${tone} banner-notice--compact`} role={tone === 'warning' ? 'alert' : 'status'}><span className="banner-notice-icon" aria-hidden="true">{icon}</span><div className="banner-notice-compact-content">{children}</div></div>
 }
 
 export function EmptyPanel({ title, description, action }: { title: string; description: string; action?: ReactNode }) {

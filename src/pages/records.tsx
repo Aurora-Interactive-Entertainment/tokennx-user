@@ -428,6 +428,6 @@ export function RecordsPage() {
       </div>
       <AppPagination ariaLabel={t('console.records.page')} currentPage={page} pageSize={currentPageSize} total={data?.total ?? 0} summary={t('console.records.rangeSummary', { start: (page - 1) * currentPageSize + 1, end: Math.min(page * currentPageSize, data?.total ?? 0), total: data?.total ?? 0 })} disabled={loading} onPageChange={setPage} onPageSizeChange={(nextPageSize) => { setPageSize(nextPageSize); setPage(RECORDS_PAGE_MIN) }} />
     </>}
-    <Modal title={selected ? `${t('console.records.requestDetail')} · ${selected.request_id}` : t('console.records.requestDetail')} visible={Boolean(selected)} onCancel={() => setSelected(null)} footer={null} width="720px"><div className="records-detail-modal">{selected ? <RecordDetail record={selected} canViewBilling={data?.can_view_billing ?? false} onClose={() => setSelected(null)} /> : null}</div></Modal>
+    <Modal className="records-detail-dialog" centered title={selected ? `${t('console.records.requestDetail')} · ${selected.request_id}` : t('console.records.requestDetail')} visible={Boolean(selected)} onCancel={() => setSelected(null)} footer={null} width="720px"><div className="records-detail-modal">{selected ? <RecordDetail record={selected} canViewBilling={data?.can_view_billing ?? false} onClose={() => setSelected(null)} /> : null}</div></Modal>
   </div>
 }
