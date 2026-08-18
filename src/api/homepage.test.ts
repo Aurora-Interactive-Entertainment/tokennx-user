@@ -82,6 +82,13 @@ describe('公开首页内容 API', () => {
             { meter_kind: 'input_token', unit_price_yuan: '1.000000000000', unit_quantity: 1_000_000 },
             { meter_kind: 'output_token', unit_price_yuan: '2.000000000000', unit_quantity: 1_000_000 },
           ],
+          availability: {
+            rate: 79,
+            hourly: [
+              { hour_start: 1786946400000, rate: 0, sample_count: 1, success_count: 0 },
+              { hour_start: 1786950000000, rate: 79, sample_count: 100, success_count: 79 },
+            ],
+          },
         },
       }],
       ad_slots: [],
@@ -95,6 +102,13 @@ describe('公开首页内容 API', () => {
         model: {
           alias: 'moonshotai/kimi-k2.6',
           prices: [{ meter_kind: 'input_token', unit_price_yuan: '1.000000000000' }, { meter_kind: 'output_token' }],
+          availability: {
+            rate: 79,
+            hourly: [
+              { hour_start: 1786946400000, rate: 0, sample_count: 1, success_count: 0 },
+              { hour_start: 1786950000000, rate: 79, sample_count: 100, success_count: 79 },
+            ],
+          },
         },
       }],
       promotion: [{ id: 'member-promotion' }],

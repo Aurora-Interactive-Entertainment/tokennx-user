@@ -60,6 +60,7 @@ import { useTranslation } from 'react-i18next'
 import { cycleThemeModeWithTransition, themeModeLabel, useResolvedTheme, useThemeMode } from '@/theme'
 import { getMockSupportReply, MOCK_SUPPORT_REPLY_DELAY_MS, type SupportChatMessage, type SupportLocale, type SupportMessageRole } from './support-chat'
 import { MoneyText } from './money'
+import { ModelAvailability } from './model-availability'
 import { enterpriseMenuPermissionKeyForPath, hasEnterpriseMenuPermission, isEnterpriseOwner, type EnterpriseMenuAccess, type EnterpriseMenuPermissionKey, useEnterpriseMenuAccess } from './enterprise-menu-access'
 import { ENTERPRISE_CREATE_PATH, NEW_ENTERPRISE_CREATE_PATH } from '@/api/enterprise-certification'
 export { isEnterpriseOwner } from './enterprise-menu-access'
@@ -370,6 +371,12 @@ export function ModelCard({ model, compact = false, onSelect }: { model: ModelRe
           <div className="model-card-spec-cell"><span>{localizeConsoleLabel(t, specs.contextLabel)}:</span><strong>{specs.contextValue === MODEL_UNAVAILABLE_LABEL ? t('console.common.unavailable') : specs.contextValue}</strong></div>
           <div className="model-card-spec-cell"><span>{localizeConsoleLabel(t, specs.outputLabel)}:</span><strong>{specs.outputValue === MODEL_UNAVAILABLE_LABEL ? t('console.common.unavailable') : specs.outputValue}</strong></div>
         </div>
+        <ModelAvailability
+          className="model-card-availability"
+          hourly={model.availability.hourly}
+          summaryRate={model.availability.rate}
+          label={t('home.rebuild.availability')}
+        />
       </>
   )
 
@@ -1767,12 +1774,17 @@ function AccountSettingsModal({ onClose }: { onClose: () => void }) {
   useEffect(() => {
     const previousOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = previousOverflow
+    }
+  }, [onClose])
+
+  useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape' && !contactProvider && !editingName) onClose()
     }
     document.addEventListener('keydown', handleKeyDown)
     return () => {
-      document.body.style.overflow = previousOverflow
       document.removeEventListener('keydown', handleKeyDown)
     }
   }, [contactProvider, editingName, onClose])
@@ -1943,6 +1955,50 @@ export function ConsoleLayout({ children }: { children: ReactNode }) {
     || hasEnterpriseMenuPermission(enterpriseAccess.permissions, permissionScope)
 
   // 中文：受控企业页面先等待权限上下文，再决定渲染页面或回到基础工作页。
+  useEffect(() => {
+    let modalVisible = false
+    let pendingScrollPosition: { left: number; top: number } | null = null
+    let lastScrollPosition = { left: window.scrollX, top: window.scrollY }
+
+    const recordScrollPosition = () => {
+      if (!modalVisible && !pendingScrollPosition) lastScrollPosition = { left: window.scrollX, top: window.scrollY }
+    }
+    const recordInteractionPosition = () => {
+      if (!modalVisible) pendingScrollPosition = { left: window.scrollX, top: window.scrollY }
+    }
+    const clearInteractionPosition = () => {
+      if (!modalVisible) pendingScrollPosition = null
+    }
+    const restoreScrollPosition = (position: { left: number; top: number }) => {
+      if (document.documentElement.scrollHeight <= document.documentElement.clientHeight) return
+      const root = document.documentElement
+      const previousScrollBehavior = root.style.scrollBehavior
+      root.style.scrollBehavior = 'auto'
+      window.scrollTo({ left: position.left, top: position.top, behavior: 'instant' as ScrollBehavior })
+      window.requestAnimationFrame(() => { root.style.scrollBehavior = previousScrollBehavior })
+    }
+    const hasVisibleModal = () => Boolean(document.querySelector('body > .semi-portal .semi-modal-wrap:not(.semi-modal-displayNone)'))
+    const observer = new MutationObserver(() => {
+      const nextModalVisible = hasVisibleModal()
+      if (nextModalVisible && !modalVisible) restoreScrollPosition(pendingScrollPosition ?? lastScrollPosition)
+      if (!nextModalVisible) pendingScrollPosition = null
+      modalVisible = nextModalVisible
+    })
+
+    window.addEventListener('scroll', recordScrollPosition, { passive: true })
+    document.addEventListener('pointerdown', recordInteractionPosition, true)
+    document.addEventListener('pointerup', clearInteractionPosition, true)
+    document.addEventListener('keyup', clearInteractionPosition, true)
+    observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] })
+    return () => {
+      observer.disconnect()
+      window.removeEventListener('scroll', recordScrollPosition)
+      document.removeEventListener('pointerdown', recordInteractionPosition, true)
+      document.removeEventListener('pointerup', clearInteractionPosition, true)
+      document.removeEventListener('keyup', clearInteractionPosition, true)
+    }
+  }, [])
+
   if (activeWorkspace.type === 'enterprise' && permissionScope !== null && enterpriseAccess.loading) {
     return <AppLoadingScreen label={t('console.enterprise.contextLoading')} />
   }

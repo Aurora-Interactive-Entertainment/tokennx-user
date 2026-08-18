@@ -26,8 +26,8 @@ export interface ModelUsageLeaderboard {
   items: ModelUsageLeaderboardItem[]
 }
 
-export interface ModelMonthlyUsage {
-  month: string
+export interface ModelWeeklyUsage {
+  week_start: ApiTimestamp
   total_tokens: number
   request_count: number
 }
@@ -38,11 +38,11 @@ export interface RecentModelUsageItem {
   name: string
   total_tokens: number
   request_count: number
-  monthly_usage: ModelMonthlyUsage[]
+  weekly_usage: ModelWeeklyUsage[]
 }
 
 export interface RecentModelUsage {
-  months: string[]
+  weeks: string[]
   items: RecentModelUsageItem[]
 }
 
@@ -110,31 +110,31 @@ function parseLeaderboard(value: unknown): ModelUsageLeaderboard {
   }
 }
 
-function parseMonthlyUsage(value: unknown): ModelMonthlyUsage {
+function parseWeeklyUsage(value: unknown): ModelWeeklyUsage {
   if (!isRecord(value)) invalidResponse()
   return {
-    month: parseString(value.month),
+    week_start: parseTime(value.week_start),
     total_tokens: parseNonNegativeNumber(value.total_tokens),
     request_count: parseNonNegativeNumber(value.request_count),
   }
 }
 
 function parseRecentItem(value: unknown): RecentModelUsageItem {
-  if (!isRecord(value) || !Array.isArray(value.monthly_usage)) invalidResponse()
+  if (!isRecord(value) || !Array.isArray(value.weekly_usage)) invalidResponse()
   return {
     rank: parseRank(value.rank),
     code: parseString(value.code),
     name: parseString(value.name),
     total_tokens: parseNonNegativeNumber(value.total_tokens),
     request_count: parseNonNegativeNumber(value.request_count),
-    monthly_usage: value.monthly_usage.map(parseMonthlyUsage),
+    weekly_usage: value.weekly_usage.map(parseWeeklyUsage),
   }
 }
 
 function parseRecentUsage(value: unknown): RecentModelUsage {
-  if (!isRecord(value) || !Array.isArray(value.months) || !Array.isArray(value.items)) invalidResponse()
+  if (!isRecord(value) || !Array.isArray(value.weeks) || !Array.isArray(value.items)) invalidResponse()
   return {
-    months: value.months.map(parseString),
+    weeks: value.weeks.map(parseString),
     items: value.items.map(parseRecentItem),
   }
 }

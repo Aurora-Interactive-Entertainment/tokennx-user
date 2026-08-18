@@ -5,10 +5,10 @@ import { BarChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent } from 'echarts/components'
 import { SVGRenderer } from 'echarts/renderers'
 import type { ToolUsageClients } from '@/api/tool-usage'
+import { MODEL_CHART_COLORS } from '@/components/chart-colors'
 import { useResolvedTheme } from '@/theme'
 
 echarts.use([BarChart, GridComponent, TooltipComponent, SVGRenderer])
-const TOOL_COLORS = ['#ef794e', '#dc67a8', '#b9b865', '#7816ae', '#3e92d7', '#4eb5a7', '#d39c53', '#8d72d9'] as const
 
 export function formatToolUsageTokens(value: number): string {
   if (value >= 1_000_000_000_000) return `${(value / 1_000_000_000_000).toFixed(value >= 10_000_000_000_000 ? 0 : 1)}T`
@@ -74,7 +74,7 @@ export function ToolUsageClientsChart({ data }: { data: ToolUsageClients }) {
       tooltip: { trigger: 'axis', confine: true, axisPointer: { type: 'shadow' }, valueFormatter: (value: string | number) => formatToolUsageTokens(Number(value)) },
       xAxis: { type: 'category', axisLine: { lineStyle: { color: light ? 'rgba(23,24,27,.16)' : 'rgba(255,255,255,.14)' } }, axisTick: { show: false }, ...initialResponsiveOption.xAxis },
       yAxis: { type: 'value', min: 0, splitNumber: 4, axisLine: { show: false }, axisTick: { show: false }, axisLabel: { color: light ? '#737984' : '#8b8b8b', fontSize: 12, margin: 8, formatter: (value: number) => formatToolUsageTokens(value) }, splitLine: { show: false } },
-      series: seriesData.map((item, index) => ({ name: item.name, type: 'bar', stack: 'tokens', barMaxWidth: 42, emphasis: { focus: 'series' }, itemStyle: { color: TOOL_COLORS[index % TOOL_COLORS.length] }, data: item.values })),
+      series: seriesData.map((item, index) => ({ name: item.name, type: 'bar', stack: 'tokens', barMaxWidth: 42, emphasis: { focus: 'series' }, itemStyle: { color: MODEL_CHART_COLORS[index % MODEL_CHART_COLORS.length] }, data: item.values })),
     })
     let mobile = node.clientWidth <= 560
     const resizeObserver = typeof ResizeObserver === 'function' ? new ResizeObserver(() => {

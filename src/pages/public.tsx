@@ -13,6 +13,7 @@ import mobileHomeStyles from '@/mobile-home.css?inline'
 import '@/docs-page.css'
 import hermesAgentImage from '@/assets/figma-apps/hermes-agent.png'
 import { ModelPriceSummary } from '@/components/money'
+import { ModelAvailability } from '@/components/model-availability'
 import { MarkdownContent } from '@/components/markdown-content'
 import { CompatSelect as Select } from '@/components/semi-compat'
 import { getPublicHomepage, getPublicHomepageAssetURL, getPublicHomepageStats, type HomepageDiscountKind, type HomepageEntry, type HomepagePromotionModel, type HomepageTranslation, type PublicHomepage } from '@/api/homepage'
@@ -20,7 +21,7 @@ import { getModelUsageLeaderboard, getRecentModelUsage, type ModelUsageLeaderboa
 import { getToolUsageClients, getToolUsageLeaderboard, type ToolUsageClients, type ToolUsageLeaderboard, type ToolUsagePeriod } from '@/api/tool-usage'
 import { getPublicDocument, getPublicDocumentAssetUrl, getPublicDocsTree, publicDocumentHref, type PublicDocument, type PublicDocsLocale, type PublicDocsNode } from '@/api/public-docs'
 import { isApiError } from '@/api/http'
-import { filterModels, findModel, findModelInList, modelAlias, modelRouteKey, MODEL_CATALOG, MODALITY_LABELS, type ModelModality, type ModelPrice, type ModelRecord } from '@/data/models'
+import { filterModels, findModel, findModelInList, modelAlias, modelRouteKey, MODEL_CATALOG, MODALITY_LABELS, type ModelAvailabilityHour, type ModelModality, type ModelPrice, type ModelRecord } from '@/data/models'
 import { getAccessToken } from '@/auth/token-storage'
 import { useAppSelector } from '@/store/hooks'
 import { QUICKSTART_API_BASE_URL, quickstartCodeSample } from '@/utils/quickstart'
@@ -94,9 +95,6 @@ const HOME_PARTNER_NAME_KEYS: Record<string, string> = {
   Scietrain: 'scietrain',
   MetaGPT: 'metagpt',
 }
-const HOME_AVAILABILITY_BAR_COUNT = 48
-const HOME_AVAILABILITY_RATE_DECIMAL_PLACES = 2
-const HOME_AVAILABILITY_SEGMENT_OFFSETS = [-0.04, 0.02, 0.01, 0, 0.04, -0.01, 0, 0.03, -0.02, 0.01, 0.05, 0, 0.01, 0.02, 0.01, 0, 0.04, 0, 0.02, 0.01, 0.03, 0, 0.02, 0.01] as const
 const HOME_MODEL_MOSAIC_COUNT = 18
 const HOME_SCOREBOARD_ANIMATION_DURATION = 1_600
 const HOME_SCOREBOARD_DIGIT_COUNT = 8
@@ -159,16 +157,6 @@ function homepagePrice(value: string | number | undefined): string {
 
 function homepageMediaURL(objectID: string | undefined, fallbackURL: string | undefined): string | undefined {
   return getPublicHomepageAssetURL(objectID) ?? (fallbackURL?.trim() || undefined)
-}
-
-// 中文：用固定偏移生成可重复的 mock 分段数据，让每个条纹既有独立成功率又与卡片汇总值保持一致。
-function formatHomeAvailabilityRate(summaryRate: string, segmentIndex: number, itemIndex: number): string {
-  const parsedSummaryRate = Number.parseFloat(summaryRate)
-  if (!Number.isFinite(parsedSummaryRate)) return summaryRate
-
-  const offsetIndex = (segmentIndex + itemIndex * 7) % HOME_AVAILABILITY_SEGMENT_OFFSETS.length
-  const segmentRate = Math.min(100, Math.max(0, parsedSummaryRate + HOME_AVAILABILITY_SEGMENT_OFFSETS[offsetIndex]))
-  return `${segmentRate.toFixed(HOME_AVAILABILITY_RATE_DECIMAL_PLACES)}%`
 }
 
 function useHomeMetrics(): { tokenVolume: number; apiCalls: number; initialRequestFinished: boolean } {
@@ -626,13 +614,13 @@ function ManagedAdSlots({ entries }: { entries: HomepageEntry[] }) {
 }
 
 type HomePromotionRouteModel = Pick<ModelRecord, 'id' | 'alias'>
-type HomePromotionItem = { id: string; model: HomePromotionRouteModel; name: string; company: string; discountKind: HomepageDiscountKind; input: string; output: string; availability: string }
+type HomePromotionItem = { id: string; model: HomePromotionRouteModel; name: string; company: string; discountKind: HomepageDiscountKind; input: string; output: string; availability?: number; hourly: ModelAvailabilityHour[] }
 
 const HOME_DEFAULT_PROMOTION_MODEL = findModel('claude-sonnet-4') ?? MODEL_CATALOG[0]
 const HOME_DEFAULT_PROMOTION_ITEMS: HomePromotionItem[] = [
-  { id: 'claude-opus-promo-1', model: HOME_DEFAULT_PROMOTION_MODEL, name: 'Claude Opus 4.8', company: 'Anthropic', discountKind: 'half', input: '0.1', output: '0.1', availability: '99.82%' },
-  { id: 'claude-opus-promo-2', model: HOME_DEFAULT_PROMOTION_MODEL, name: 'Claude Opus 4.8', company: 'Anthropic', discountKind: 'free', input: '0.1', output: '0.1', availability: '99.97%' },
-  { id: 'claude-opus-promo-3', model: HOME_DEFAULT_PROMOTION_MODEL, name: 'Claude Opus 4.8', company: 'Anthropic', discountKind: 'half', input: '0.1', output: '0.1', availability: '99.91%' },
+  { id: 'claude-opus-promo-1', model: HOME_DEFAULT_PROMOTION_MODEL, name: 'Claude Opus 4.8', company: 'Anthropic', discountKind: 'half', input: '0.1', output: '0.1', availability: HOME_DEFAULT_PROMOTION_MODEL.availability.rate, hourly: HOME_DEFAULT_PROMOTION_MODEL.availability.hourly ?? [] },
+  { id: 'claude-opus-promo-2', model: HOME_DEFAULT_PROMOTION_MODEL, name: 'Claude Opus 4.8', company: 'Anthropic', discountKind: 'free', input: '0.1', output: '0.1', availability: HOME_DEFAULT_PROMOTION_MODEL.availability.rate, hourly: HOME_DEFAULT_PROMOTION_MODEL.availability.hourly ?? [] },
+  { id: 'claude-opus-promo-3', model: HOME_DEFAULT_PROMOTION_MODEL, name: 'Claude Opus 4.8', company: 'Anthropic', discountKind: 'half', input: '0.1', output: '0.1', availability: HOME_DEFAULT_PROMOTION_MODEL.availability.rate, hourly: HOME_DEFAULT_PROMOTION_MODEL.availability.hourly ?? [] },
 ]
 
 function homepageModelPrice(model: HomepagePromotionModel, meterKind: 'input_token' | 'output_token'): string {
@@ -656,7 +644,13 @@ function managedPromotionItems(homepage: PublicHomepage | null, language: string
         discountKind: entry.data.discount_kind ?? 'half',
         input: homepageModelPrice(entry.model, 'input_token'),
         output: homepageModelPrice(entry.model, 'output_token'),
-        availability: entry.model.availability ? `${entry.model.availability.rate.toFixed(2)}%` : '--',
+        availability: entry.model.availability?.rate,
+        hourly: (entry.model.availability?.hourly ?? []).map((point) => ({
+          hourStart: point.hour_start,
+          rate: point.rate,
+          ...(point.sample_count !== undefined ? { sampleCount: point.sample_count } : {}),
+          ...(point.success_count !== undefined ? { successCount: point.success_count } : {}),
+        })),
       }]
     }
     const model = findModel(entry.model_id)
@@ -669,7 +663,8 @@ function managedPromotionItems(homepage: PublicHomepage | null, language: string
       discountKind: entry.data.discount_kind ?? 'half',
       input: homepagePrice(model.tokenNxPrice.inputRaw ?? model.tokenNxPrice.input),
       output: homepagePrice(model.tokenNxPrice.outputRaw ?? model.tokenNxPrice.output),
-      availability: `${model.availability.rate.toFixed(2)}%`,
+      availability: model.availability.rate,
+      hourly: model.availability.hourly ?? [],
     }]
   })
   return managedItems.length ? managedItems : HOME_DEFAULT_PROMOTION_ITEMS
@@ -849,17 +844,11 @@ export function HomePage({ onInitialScoreboardReady }: { onInitialScoreboardRead
 
         <section className="manuscript-section manuscript-pricing" aria-labelledby="homePricingTitle">
           <div className="manuscript-section-heading manuscript-section-heading--title-only"><div><h2 id="homePricingTitle">{t('home.pricing.manuscriptTitle')}</h2></div></div>
-          <div className="manuscript-price-grid" role={isHomepageLoading ? 'status' : undefined} aria-busy={isHomepageLoading || undefined}>{isHomepageLoading ? <><span className="public-sr-only">正在加载优惠模型</span><HomePriceSkeletons /></> : promotionItems.map((item, itemIndex) => <article className={`manuscript-price-card${item.input.length > 5 || item.output.length > 5 ? ' has-long-price' : ''}`} key={item.id}>
+          <div className="manuscript-price-grid" role={isHomepageLoading ? 'status' : undefined} aria-busy={isHomepageLoading || undefined}>{isHomepageLoading ? <><span className="public-sr-only">正在加载优惠模型</span><HomePriceSkeletons /></> : promotionItems.map((item) => <article className={`manuscript-price-card${item.input.length > 5 || item.output.length > 5 ? ' has-long-price' : ''}`} key={item.id}>
             <div className="manuscript-price-card-head"><Link className="manuscript-price-model" to={modelPublicHref(item.model) ?? '/models'}><span className="manuscript-price-model-logo"><img src={promoModelLogo} alt="" aria-hidden="true" loading="lazy" decoding="async" width={30} height={24} /></span><span><strong>{item.name}</strong><small>{t('home.rebuild.providedBy', { company: item.company })}</small></span></Link><span className={`manuscript-price-badge${item.discountKind === 'free' ? ' is-equal' : ''}`}>{t(`public.home.discount${item.discountKind === 'free' ? 'Free' : item.discountKind === 'custom' ? 'Custom' : 'Half'}`)}</span></div>
             <div className="manuscript-price-divider" />
             <div className="manuscript-price-values"><div><span>{t('home.rebuild.inputPrice')}</span><strong>{item.input}<small>{t('public.home.priceUnit')}</small></strong></div><div><span>{t('home.rebuild.outputPrice')}</span><strong>{item.output}<small>{t('public.home.priceUnit')}</small></strong></div></div>
-            <div className="manuscript-price-availability"><span>{t('home.rebuild.availability')}</span><div>{Array.from({ length: HOME_AVAILABILITY_BAR_COUNT }, (_, index) => {
-              const rate = formatHomeAvailabilityRate(item.availability, index, itemIndex)
-              const rateLabel = t('home.rebuild.availabilitySegment', { index: index + 1, rate })
-              const offset = HOME_AVAILABILITY_SEGMENT_OFFSETS[(index + itemIndex * 7) % HOME_AVAILABILITY_SEGMENT_OFFSETS.length]
-              const segmentKind = offset <= -0.03 ? 'is-danger' : offset >= 0.04 ? 'is-warning' : 'is-up'
-              return <i className={`manuscript-price-availability-bar ${segmentKind}`} key={index} role="img" tabIndex={0} data-rate={rate} data-tooltip={rateLabel} aria-label={rateLabel} title={rateLabel} />
-            })}</div></div>
+            <ModelAvailability className="manuscript-price-availability" hourly={item.hourly} summaryRate={item.availability} label={t('home.rebuild.availability')} />
           </article>)}</div>
         </section>
 
@@ -1062,7 +1051,7 @@ export function RankingsPage() {
         <main className="ranking-content">
           <section id="top-models" className="ranking-top-section">
             <header><h1>{t('public.rankings.topTitle')}</h1><p>{t('public.rankings.topDescription')}</p></header>
-            <div className="ranking-chart-layout">{recentLoading && !recentUsage ? <div className="ranking-data-state" role="status">{t('public.rankings.loading')}</div> : recentError && !recentUsage ? <div className="ranking-data-state is-error" role="alert">{recentError}</div> : recentUsage && recentUsage.months.length && recentUsage.items.length ? <RankingRecentUsageChart data={recentUsage} /> : <div className="ranking-data-state">{t('public.rankings.empty')}</div>}</div>
+            <div className="ranking-chart-layout">{recentLoading && !recentUsage ? <div className="ranking-data-state" role="status">{t('public.rankings.loading')}</div> : recentError && !recentUsage ? <div className="ranking-data-state is-error" role="alert">{recentError}</div> : recentUsage && recentUsage.weeks.length && recentUsage.items.length ? <RankingRecentUsageChart data={recentUsage} /> : <div className="ranking-data-state">{t('public.rankings.empty')}</div>}</div>
           </section>
 
           <section id="model-ranking" className="ranking-list-section">
@@ -1332,20 +1321,38 @@ function buildDocsChildrenMap(nodes: PublicDocsNode[]): Map<string, PublicDocsNo
   }, new Map<string, PublicDocsNode[]>())
 }
 
-function DocsSidebarNodes({ childrenByParent, parentId, selectedId, depth = 0 }: {
+function docsDirectoryAncestors(nodes: PublicDocsNode[], nodeId: string): string[] {
+  const nodesById = new Map(nodes.map((node) => [node.id, node]))
+  const ancestors: string[] = []
+  let current = nodesById.get(nodeId)
+  while (current?.parent_id) {
+    const parent = nodesById.get(current.parent_id)
+    if (!parent) break
+    if (parent.type === 'directory') ancestors.unshift(parent.id)
+    current = parent
+  }
+  return ancestors
+}
+
+function DocsSidebarNodes({ childrenByParent, parentId, selectedId, expandedDirectories, locale, onToggle, depth = 0 }: {
   childrenByParent: Map<string, PublicDocsNode[]>
   parentId: string
   selectedId?: string
+  expandedDirectories: Set<string>
+  locale: PublicDocsLocale
+  onToggle: (directoryId: string) => void
   depth?: number
 }) {
   return (childrenByParent.get(parentId) ?? []).map((node) => {
-    const depthStyle = { '--docs-sidebar-indent': `${depth * 14}px` } as CSSProperties
+    const depthStyle = { '--docs-sidebar-indent': `${depth * 18}px` } as CSSProperties
     if (node.type === 'document') {
-      return <Link className={`docs-sidebar-node docs-sidebar-document${selectedId === node.id ? ' is-active' : ''}`} style={depthStyle} to={publicDocumentHref(node)} key={node.id}><IconFile aria-hidden="true" />{node.title}</Link>
+      return <Link className={`docs-sidebar-node docs-sidebar-document${selectedId === node.id ? ' is-active' : ''}`} style={depthStyle} to={publicDocumentHref(node)} key={node.id}><IconFile aria-hidden="true" /><span>{node.title}</span></Link>
     }
+    const expanded = expandedDirectories.has(node.id)
+    const actionLabel = locale === 'en-US' ? `${expanded ? 'Collapse' : 'Expand'} ${node.title}` : `${expanded ? '收起' : '展开'} ${node.title}`
     return <div className="docs-sidebar-group" key={node.id}>
-      <div className="docs-sidebar-node docs-sidebar-directory" style={depthStyle}><IconBookOpenStroked aria-hidden="true" /><span>{node.title}</span></div>
-      <div className="docs-sidebar-children"><DocsSidebarNodes childrenByParent={childrenByParent} parentId={node.id} selectedId={selectedId} depth={depth + 1} /></div>
+      <button className={`docs-sidebar-node docs-sidebar-directory${expanded ? '' : ' is-collapsed'}`} style={depthStyle} type="button" aria-expanded={expanded} aria-label={actionLabel} onClick={() => onToggle(node.id)}><span>{node.title}</span></button>
+      <div className={`docs-sidebar-children${expanded ? '' : ' is-collapsed'}`} aria-hidden={!expanded} inert={expanded ? undefined : true}><div className="docs-sidebar-children-inner"><DocsSidebarNodes childrenByParent={childrenByParent} parentId={node.id} selectedId={selectedId} expandedDirectories={expandedDirectories} locale={locale} onToggle={onToggle} depth={depth + 1} /></div></div>
     </div>
   })
 }
@@ -1431,6 +1438,7 @@ export function DocsPage() {
   const [headings, setHeadings] = useState<DocsHeading[]>([])
   const [activeHeading, setActiveHeading] = useState('')
   const [collapsedHeadings, setCollapsedHeadings] = useState<Set<string>>(() => new Set())
+  const [expandedDirectories, setExpandedDirectories] = useState<Set<string>>(() => new Set())
 
   const rootNodes = useMemo(() => tree.filter((node) => !node.parent_id), [tree])
   const childrenByParent = useMemo(() => buildDocsChildrenMap(tree), [tree])
@@ -1494,6 +1502,10 @@ export function DocsPage() {
     if (currentDocument && currentDocument.id === publicId && slug !== currentDocument.slug) navigate(publicDocumentHref(currentDocument), { replace: true })
   }, [currentDocument, navigate, publicId, slug])
 
+  useEffect(() => {
+    setExpandedDirectories(new Set(selectedNode ? docsDirectoryAncestors(tree, selectedNode.id) : []))
+  }, [selectedNode, tree])
+
   useLayoutEffect(() => {
     const root = articleRef.current
     if (!root || !currentDocument) return
@@ -1551,6 +1563,15 @@ export function DocsPage() {
     })
   }, [])
 
+  const toggleDirectory = useCallback((directoryId: string) => {
+    setExpandedDirectories((current) => {
+      const next = new Set(current)
+      if (next.has(directoryId)) next.delete(directoryId)
+      else next.add(directoryId)
+      return next
+    })
+  }, [])
+
   async function copyMarkdown(): Promise<void> {
     if (!currentDocument) return
     try {
@@ -1575,11 +1596,10 @@ export function DocsPage() {
 
       <div className="docs-shell" aria-busy={loading || undefined}>
         <aside className="docs-sidebar" aria-label={t('public.docs.manuscript.sidebarLabel')}>
-          <nav>{activeRoot ? <DocsSidebarNodes childrenByParent={childrenByParent} parentId={activeRoot.id} selectedId={selectedNode?.id} /> : null}</nav>
+          <nav>{activeRoot ? <DocsSidebarNodes childrenByParent={childrenByParent} parentId={activeRoot.id} selectedId={selectedNode?.id} expandedDirectories={expandedDirectories} locale={locale} onToggle={toggleDirectory} /> : null}</nav>
         </aside>
 
         <article className="docs-article" ref={articleRef}>
-          {currentDocument ? <div className="docs-article-toolbar"><button className="docs-copy-page" type="button" onClick={() => void copyMarkdown()}><IconCopyStroked aria-hidden="true" />{t('public.docs.manuscript.copyPage')}</button></div> : null}
           {loading ? <div className="docs-state" role="status"><Skeleton placeholder={<><Skeleton.Title /><Skeleton.Paragraph rows={8} /></>} loading /></div> : null}
           {!loading && error ? <div className="docs-state docs-state--error" role="alert"><h1>{locale === 'en-US' ? 'Unable to load documentation' : '文档加载失败'}</h1><p>{error.message}</p>{error.requestId ? <code>Request ID: {error.requestId}</code> : null}</div> : null}
           {!loading && !error && !currentDocument && !tree.length ? <div className="docs-state"><h1>{locale === 'en-US' ? 'No public documentation' : '暂无公开文档'}</h1></div> : null}
@@ -1587,6 +1607,7 @@ export function DocsPage() {
         </article>
 
         <aside className="docs-on-page" aria-label={t('public.docs.manuscript.onPageLabel')}>
+          {currentDocument ? <button className="docs-copy-page" type="button" onClick={() => void copyMarkdown()}><IconCopyStroked aria-hidden="true" />{t('public.docs.manuscript.copyPage')}</button> : null}
           <strong>{t('public.docs.manuscript.onPageTitle')}</strong>
           <div className="docs-on-page-scroll"><DocsTocNodes nodes={headingTree} activeHeading={activeHeading} collapsedHeadings={collapsedHeadings} locale={locale} onToggle={toggleHeading} /></div>
         </aside>

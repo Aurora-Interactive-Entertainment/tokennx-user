@@ -62,15 +62,15 @@ describe('公开模型用量排名接口', () => {
     expect(result.items[0].change_rate).toBeNull()
   })
 
-  it('读取最近六个月及逐月模型用量', async () => {
+  it('读取最近周及逐周模型用量', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(response({
-      months: ['2026-03', '2026-04'],
-      items: [{ rank: 1, code: 'gpt-test', name: '测试模型', total_tokens: 120000, request_count: 320, monthly_usage: [{ month: '2026-03', total_tokens: 50000, request_count: 120 }] }],
+      weeks: ['2026-03-02', '2026-03-09'],
+      items: [{ rank: 1, code: 'gpt-test', name: '测试模型', total_tokens: 120000, request_count: 320, weekly_usage: [{ week_start: 1772409600000, total_tokens: 50000, request_count: 120 }] }],
     }))
 
     const result = await getRecentModelUsage()
 
-    expect(result.months).toEqual(['2026-03', '2026-04'])
-    expect(result.items[0].monthly_usage).toEqual([{ month: '2026-03', total_tokens: 50000, request_count: 120 }])
+    expect(result.weeks).toEqual(['2026-03-02', '2026-03-09'])
+    expect(result.items[0].weekly_usage).toEqual([{ week_start: 1772409600000, total_tokens: 50000, request_count: 120 }])
   })
 })

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode 
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate, useSearchParams } from 'react-router'
 import Button from '@douyinfe/semi-ui/lib/es/button'
-import Modal from '@douyinfe/semi-ui/lib/es/modal'
+import Modal from '@/components/app-modal'
 import Toast from '@douyinfe/semi-ui/lib/es/toast'
 import { IconAlertTriangle, IconArrowUp, IconCheckCircleStroked, IconClose, IconDeleteStroked, IconDownload, IconHistory, IconImage, IconLoading, IconRefresh, IconSetting, IconStop, IconVideo } from '@douyinfe/semi-icons'
 import { EmptyPanel, PageTitle } from '@/components/common'

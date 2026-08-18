@@ -49,7 +49,15 @@ export interface HomepagePromotionModel {
   company: string
   modality?: string
   prices: HomepageModelPrice[]
-  availability?: { rate: number }
+  availability?: {
+    rate: number
+    hourly?: Array<{
+      hour_start: number
+      rate: number
+      sample_count?: number
+      success_count?: number
+    }>
+  }
 }
 
 export interface HomepageEntry {
@@ -114,7 +122,18 @@ function parseHomepagePromotionModel(value: unknown): HomepagePromotionModel | u
   if (!isRecord(value) || typeof value.id !== 'string' || !value.id.trim()) return undefined
   if (typeof value.name !== 'string' || !value.name.trim() || typeof value.company !== 'string' || !value.company.trim()) return undefined
   const availability = isRecord(value.availability) && typeof value.availability.rate === 'number' && Number.isFinite(value.availability.rate)
-    ? { rate: value.availability.rate }
+    ? {
+        rate: value.availability.rate,
+        hourly: Array.isArray(value.availability.hourly) ? value.availability.hourly.flatMap((point) => {
+          if (!isRecord(point) || typeof point.hour_start !== 'number' || !Number.isFinite(point.hour_start) || typeof point.rate !== 'number' || !Number.isFinite(point.rate)) return []
+          return [{
+            hour_start: point.hour_start,
+            rate: point.rate,
+            ...(typeof point.sample_count === 'number' && Number.isFinite(point.sample_count) ? { sample_count: point.sample_count } : {}),
+            ...(typeof point.success_count === 'number' && Number.isFinite(point.success_count) ? { success_count: point.success_count } : {}),
+          }]
+        }) : [],
+      }
     : undefined
   return {
     id: value.id,

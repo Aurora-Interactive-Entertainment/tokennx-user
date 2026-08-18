@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Button from "@douyinfe/semi-ui/lib/es/button";
-import Modal from "@douyinfe/semi-ui/lib/es/modal";
+import Modal from '@/components/app-modal'
 import i18n from "@/i18n";
 import {
   AnalyticsTimeRangePicker,

@@ -90,10 +90,10 @@ function mockRankings(): ReturnType<typeof vi.spyOn> {
       code: 0,
       msg: 'success',
       data: {
-        months: ['2026-03', '2026-04', '2026-05', '2026-06', '2026-07', '2026-08'],
+        weeks: ['2026-03-02', '2026-03-09', '2026-03-16', '2026-03-23', '2026-03-30', '2026-04-06'],
         items: [
-          { rank: 1, code: 'model-a', name: '模型 A', total_tokens: 120000, request_count: 32, monthly_usage: [{ month: '2026-07', total_tokens: 50000, request_count: 12 }, { month: '2026-08', total_tokens: 70000, request_count: 20 }] },
-          { rank: 2, code: 'model-b', name: '模型 B', total_tokens: 80000, request_count: 24, monthly_usage: [{ month: '2026-07', total_tokens: 30000, request_count: 10 }, { month: '2026-08', total_tokens: 50000, request_count: 14 }] },
+          { rank: 1, code: 'model-a', name: '模型 A', total_tokens: 120000, request_count: 32, weekly_usage: [{ week_start: 1773014400000, total_tokens: 50000, request_count: 12 }, { week_start: 1775433600000, total_tokens: 70000, request_count: 20 }] },
+          { rank: 2, code: 'model-b', name: '模型 B', total_tokens: 80000, request_count: 24, weekly_usage: [{ week_start: 1773014400000, total_tokens: 30000, request_count: 10 }, { week_start: 1775433600000, total_tokens: 50000, request_count: 14 }] },
         ],
       },
     }), { status: 200, headers: { 'Content-Type': 'application/json' } })
@@ -210,6 +210,11 @@ describe('公开模型页面', () => {
       expect(document.querySelector('.docs-sidebar-document.is-active')).not.toBeNull()
       expect(screen.getByRole('heading', { name: 'API 接口' })).toBeInTheDocument()
     })
+
+    const apiDirectory = screen.getByRole('button', { name: '收起 API 子目录' })
+    expect(apiDirectory).toHaveAttribute('aria-expanded', 'true')
+    await user.click(apiDirectory)
+    expect(screen.getByRole('button', { name: '展开 API 子目录' })).toHaveAttribute('aria-expanded', 'false')
   })
 
   it('应用页展示热门工具、使用趋势和排行榜', () => {
@@ -339,7 +344,14 @@ describe('公开模型页面', () => {
               { meter_kind: 'input_token', unit_price_yuan: '1.000000000000', unit_quantity: 1_000_000 },
               { meter_kind: 'output_token', unit_price_yuan: '6.000000000000', unit_quantity: 1_000_000 },
             ],
-            availability: { rate: 100 },
+            availability: {
+              rate: 80,
+              hourly: [
+                { hour_start: 1786946400000, rate: 0, sample_count: 1, success_count: 0 },
+                { hour_start: 1786950000000, rate: 79, sample_count: 100, success_count: 79 },
+                { hour_start: 1786953600000, rate: 80, sample_count: 100, success_count: 80 },
+              ],
+            },
           },
         }],
         ad_slots: [{ id: 'ad-1', kind: 'ad_slot', status: 'active', sort_order: 1, pinned: false, data: { translations: { 'zh-CN': { title: '后台广告位', image_object_id: '01J00000000000000000000002', link_url: '/pricing' } } } }],
@@ -366,6 +378,11 @@ describe('公开模型页面', () => {
     const promotionPrices = Array.from(promotionCard?.querySelectorAll('.manuscript-price-values strong') ?? []).map((element) => element.textContent)
     expect(promotionPrices[0]).toMatch(/^1/)
     expect(promotionPrices[1]).toMatch(/^6/)
+    const availabilityBars = promotionCard?.querySelectorAll('.model-availability-bar') ?? []
+    expect(availabilityBars).toHaveLength(3)
+    expect(availabilityBars[0]).toHaveClass('is-danger')
+    expect(availabilityBars[1]).toHaveClass('is-warning')
+    expect(availabilityBars[2]).toHaveClass('is-healthy')
     expect(screen.getByText('固定动态')).toBeInTheDocument()
     expect(screen.queryByText('未固定动态')).toBeNull()
     expect(screen.getAllByText('后台伙伴').length).toBeGreaterThan(0)

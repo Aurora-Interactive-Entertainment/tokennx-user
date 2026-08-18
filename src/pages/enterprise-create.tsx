@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState, type ChangeEvent, type FormEv
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
 import Button from '@douyinfe/semi-ui/lib/es/button'
-import Modal from '@douyinfe/semi-ui/lib/es/modal'
+import Modal from '@/components/app-modal'
 import Toast from '@douyinfe/semi-ui/lib/es/toast'
 import { IconAlertTriangle, IconArrowRight, IconCheckCircleStroked, IconDeleteStroked, IconFile, IconRefresh, IconUserGroup, IconUserStroked } from '@douyinfe/semi-icons'
 import QRCode from 'qrcode'

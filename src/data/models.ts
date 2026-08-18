@@ -20,6 +20,14 @@ export interface ModelPrice {
 export interface ModelAvailability {
   rate: number
   window: string
+  hourly?: ModelAvailabilityHour[]
+}
+
+export interface ModelAvailabilityHour {
+  hourStart: number
+  rate: number
+  sampleCount?: number
+  successCount?: number
 }
 
 export interface ModelThroughput {
@@ -191,7 +199,19 @@ export function userModelToRecord(model: UserModelItem): ModelRecord {
     officialPrice: { ...currentPrice },
     tokenNxPrice: currentPrice,
     labels,
-    availability: { rate: USER_MODEL_UNKNOWN_AVAILABILITY, window: USER_MODEL_UNKNOWN_DATA_LABEL },
+    availability: {
+      rate: typeof model.availability?.rate === 'number' && Number.isFinite(model.availability.rate) ? model.availability.rate : USER_MODEL_UNKNOWN_AVAILABILITY,
+      window: model.availability?.window_hours ? `${model.availability.window_hours}h` : USER_MODEL_UNKNOWN_DATA_LABEL,
+      hourly: (model.availability?.hourly ?? []).flatMap((point) => {
+        if (!Number.isFinite(point.hour_start) || !Number.isFinite(point.rate)) return []
+        return [{
+          hourStart: point.hour_start,
+          rate: point.rate,
+          ...(typeof point.sample_count === 'number' && Number.isFinite(point.sample_count) ? { sampleCount: point.sample_count } : {}),
+          ...(typeof point.success_count === 'number' && Number.isFinite(point.success_count) ? { successCount: point.success_count } : {}),
+        }]
+      }),
+    },
     providerCount: model.provider_count,
     throughput: formatUserModelThroughput(model.total_tokens),
   }

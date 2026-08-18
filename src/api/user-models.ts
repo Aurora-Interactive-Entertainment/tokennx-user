@@ -37,6 +37,16 @@ export interface UserModelItem {
   provider_count: number
   total_tokens?: string | number
   prices: UserModelPrice[] | null
+  availability?: {
+    rate?: number
+    window_hours?: number
+    hourly?: Array<{
+      hour_start: number
+      rate: number
+      sample_count?: number
+      success_count?: number
+    }>
+  }
 }
 
 export interface UserModelList {

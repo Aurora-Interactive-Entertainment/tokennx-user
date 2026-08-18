@@ -1,0 +1,191 @@
+.model-availability {
+  min-width: 0;
+}
+
+.model-availability-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--spacing-8);
+  min-width: 0;
+}
+
+.model-availability-heading > span {
+  min-width: 0;
+}
+
+.model-availability-heading > strong {
+  flex: 0 0 auto;
+  color: var(--color-success, #58bf91);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.model-availability-bars {
+  display: flex;
+  gap: 3px;
+  width: 100%;
+  min-width: 0;
+  margin-top: var(--spacing-8);
+}
+
+.model-availability-bar {
+  position: relative;
+  display: block;
+  flex: 1 1 0;
+  min-width: 0;
+  height: 12px;
+  border-radius: 2px;
+  cursor: help;
+}
+
+.model-availability-bar.is-healthy {
+  background: #39bf89;
+}
+.model-availability-bar.is-warning {
+  background: #d7b447;
+}
+.model-availability-bar.is-danger {
+  background: #d9565e;
+}
+
+.model-availability-tooltip {
+  max-width: min(320px, calc(100vw - 24px));
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.model-availability-bar:focus-visible {
+  z-index: 4;
+  outline: 2px solid var(--color-action-primary);
+  outline-offset: 3px;
+}
+
+.model-card-availability {
+  margin-top: var(--spacing-12);
+  padding-top: var(--spacing-12);
+  border-top: 1px solid var(--color-border-neutral-l1);
+}
+
+.model-card-availability .model-availability-heading {
+  color: var(--color-text-tertiary);
+  font-size: 12px;
+}
+
+.model-card-availability .model-availability-heading > strong {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+
+.manuscript-price-availability.model-availability {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px 8px;
+  margin-top: 36px;
+  padding-top: 35px;
+  border-top: 1px solid #414141;
+}
+
+.manuscript-price-availability.model-availability .model-availability-heading {
+  position: static;
+  display: flex;
+  grid-column: 1 / -1;
+  grid-template-columns: none;
+  width: auto;
+  max-width: none;
+  margin-top: 0;
+  background: none;
+  background-image: none;
+}
+
+.manuscript-price-availability.model-availability
+  .model-availability-heading
+  > span {
+  color: #fff;
+  font-size: 18px;
+  line-height: 27px;
+}
+
+.manuscript-price-availability.model-availability
+  .model-availability-heading
+  > strong {
+  color: #75ce9c;
+  font-size: 10px;
+}
+
+.manuscript-price-availability.model-availability .model-availability-bars {
+  display: flex;
+  grid-column: 1 / -1;
+  grid-template-columns: none;
+  width: 371px;
+  max-width: 100%;
+  margin-top: 0;
+  background: none;
+  background-image: none;
+}
+
+.manuscript-price-availability.model-availability .model-availability-bar {
+  height: 23px;
+  border-radius: 0;
+}
+
+.public-layout--manuscript-home
+  .manuscript-pricing
+  .manuscript-price-availability.model-availability
+  .model-availability-bar.is-healthy {
+  background: #39bf89;
+}
+.public-layout--manuscript-home
+  .manuscript-pricing
+  .manuscript-price-availability.model-availability
+  .model-availability-bar.is-warning {
+  background: #d7b447;
+}
+.public-layout--manuscript-home
+  .manuscript-pricing
+  .manuscript-price-availability.model-availability
+  .model-availability-bar.is-danger {
+  background: #d9565e;
+}
+
+html[data-theme="light"]
+  .public-layout--manuscript-home
+  .manuscript-price-availability.model-availability
+  .model-availability-heading
+  > span {
+  color: #4f4f4f;
+}
+html[data-theme="light"]
+  .public-layout--manuscript-home
+  .manuscript-price-availability.model-availability
+  .model-availability-heading
+  > strong {
+  color: #2f8d68;
+}
+
+@media (max-width: 720px) {
+  .model-availability-tooltip {
+    white-space: normal;
+  }
+
+  .manuscript-price-availability.model-availability {
+    margin-top: 22px;
+    padding-top: 16px;
+  }
+
+  .manuscript-price-availability.model-availability
+    .model-availability-heading
+    > span,
+  .manuscript-price-availability.model-availability
+    .model-availability-heading
+    > strong {
+    font-size: var(--home-font-body-compact, 13px);
+  }
+
+  .model-availability-bars {
+    gap: 2px;
+  }
+}

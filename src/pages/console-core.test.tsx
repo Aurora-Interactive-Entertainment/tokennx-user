@@ -75,6 +75,15 @@ function visibleModelsResponse(): { items: Array<Record<string, unknown>> } {
         id: 'deepseek-chat', alias: 'deepseek-public', name: '后端 DeepSeek', company: '后端厂商', modality: 'text', billing_mode: 'token', context_window_tokens: 64000,
         description: '来自用户模型目录的模型', capabilities: ['chat'], provider_count: 1, total_tokens: '1770000000',
         prices: [{ meter_code: 'input', meter_kind: 'input_token', unit: 'token', currency: 'CNY', unit_quantity: 1000000, unit_price_yuan: '0.10', tier_no: 0 }],
+        availability: {
+          rate: 80,
+          hourly: Array.from({ length: 48 }, (_, index) => ({
+            hour_start: 1786946400000 + index * 60 * 60 * 1000,
+            rate: index === 0 ? 0 : index === 1 ? 79 : 80,
+            sample_count: 100,
+            success_count: index === 0 ? 0 : index === 1 ? 79 : 80,
+          })),
+        },
       },
       {
         id: 'qwen-chat', alias: 'qwen-public', name: '后端 Qwen', company: '后端千问厂商', modality: 'text', billing_mode: 'token', context_window_tokens: 32000,
@@ -197,6 +206,11 @@ describe('控制台模型接入页面', () => {
     expect(screen.getByText('1.77B token')).toBeInTheDocument()
     expect(document.querySelector('.models-console-page .model-card-grid')).not.toHaveClass('model-card-grid--single')
     expect(document.querySelectorAll('.models-console-page .model-card-foot')).toHaveLength(0)
+    const availabilityBars = document.querySelectorAll('.models-console-page .model-availability-bar')
+    expect(availabilityBars).toHaveLength(48)
+    expect(availabilityBars[0]).toHaveClass('is-danger')
+    expect(availabilityBars[1]).toHaveClass('is-warning')
+    expect(availabilityBars[2]).toHaveClass('is-healthy')
 
     await user.click(screen.getByRole('button', { name: '复制 后端 DeepSeek 模型别名' }))
     expect(clipboardWriteText).toHaveBeenCalledWith('deepseek-public')

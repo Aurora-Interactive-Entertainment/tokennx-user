@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState, type KeyboardEvent, type Rea
 import { useTranslation } from 'react-i18next'
 import { Link, useLocation, useNavigate } from 'react-router'
 import Button from '@douyinfe/semi-ui/lib/es/button'
-import Modal from '@douyinfe/semi-ui/lib/es/modal'
+import Modal from '@/components/app-modal'
 import Toast from '@douyinfe/semi-ui/lib/es/toast'
 import { IconDownload, IconRefresh, IconTickCircle } from '@douyinfe/semi-icons'
 import { isAuthenticationFailure } from '@/api/http'
