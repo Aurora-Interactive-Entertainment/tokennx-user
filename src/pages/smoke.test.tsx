@@ -79,7 +79,7 @@ describe('页面主链冒烟场景', () => {
     expect(document.querySelector('.header-trial-badge em')).toHaveTextContent('免费')
     expect(screen.getByText('7天试用')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '查看通知' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: /一键接入百种模型/ })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /一键接入模型/ })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: '优惠模型' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: '推广与资讯' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: '合作伙伴' })).toBeInTheDocument()
@@ -311,7 +311,7 @@ describe('页面主链冒烟场景', () => {
     expect(languageButton.querySelector('.language-switcher-option--zh')).toHaveTextContent('中')
     expect(languageButton.querySelector('.language-switcher-thumb')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '切换语言' }))
-    expect(await screen.findByRole('heading', { name: /Connect to 100\+ models/ })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: /Connect to models/ })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Featured models' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Explore models' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Switch language' })).toBeInTheDocument()
@@ -344,24 +344,18 @@ describe('页面主链冒烟场景', () => {
     expect(loginButton).toBeEnabled()
   })
 
-  it('模型目录可以通过搜索收敛结果', async () => {
-    const user = userEvent.setup()
+  it('模型目录展示五张轮播和三组三张模型卡片', async () => {
     render(<MemoryRouter><Provider store={createAppStore()}><AppStoreProvider><ModelsPublicPage /></AppStoreProvider></Provider></MemoryRouter>)
-    expect(document.querySelector('.public-models-results-head')).toHaveTextContent('18 个模型')
-    const search = screen.getByRole('searchbox', { name: '搜索模型' })
-    await user.type(search, 'DeepSeek')
-    expect(document.querySelector('.public-models-results-head')).toHaveTextContent('1 个模型')
+    expect(screen.getAllByRole('tab')).toHaveLength(5)
+    expect(document.querySelectorAll('.models-showcase-card')).toHaveLength(9)
     expect(screen.getByRole('link', { name: 'DeepSeek V3' })).toBeInTheDocument()
   })
 
-  it('模型目录可以按类型筛选并清除筛选', async () => {
-    const user = userEvent.setup()
+  it('模型目录包含文本、视频和图片三个分组', async () => {
     render(<MemoryRouter><Provider store={createAppStore()}><AppStoreProvider><ModelsPublicPage /></AppStoreProvider></Provider></MemoryRouter>)
-    await user.click(screen.getByRole('button', { name: /图像\s*3/ }))
-    expect(screen.getByRole('heading', { name: '可用模型' })).toBeInTheDocument()
-    expect(screen.getByRole('status')).toHaveTextContent('3 个模型')
-    await user.click(screen.getByRole('button', { name: '清除筛选' }))
-    expect(screen.getByRole('status')).toHaveTextContent('18 个模型')
+    expect(screen.getByRole('heading', { name: '文本生成' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '视频生成' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '图片生成' })).toBeInTheDocument()
   })
 
   it('登录页默认只显示手机号登录并校验号码格式', async () => {

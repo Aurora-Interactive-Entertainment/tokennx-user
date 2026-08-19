@@ -20,7 +20,7 @@ import { getModelUsageLeaderboard, getRecentModelUsage, type ModelUsageLeaderboa
 import { getToolUsageClients, getToolUsageLeaderboard, type ToolUsageClients, type ToolUsageLeaderboard } from '@/api/tool-usage'
 import { getPublicDocument, getPublicDocumentAssetUrl, getPublicDocsTree, publicDocumentHref, type PublicDocument, type PublicDocsLocale, type PublicDocsNode } from '@/api/public-docs'
 import { isApiError } from '@/api/http'
-import { filterModels, findModel, findModelInList, modelAlias, modelRouteKey, MODEL_CATALOG, MODALITY_LABELS, type ModelAvailabilityHour, type ModelModality, type ModelPrice, type ModelRecord } from '@/data/models'
+import { findModel, findModelInList, modelAlias, modelRouteKey, MODEL_CATALOG, MODALITY_LABELS, type ModelAvailabilityHour, type ModelModality, type ModelPrice, type ModelRecord } from '@/data/models'
 import { getAccessToken } from '@/auth/token-storage'
 import { useAppSelector } from '@/store/hooks'
 import { QUICKSTART_API_BASE_URL, quickstartCodeSample } from '@/utils/quickstart'
@@ -28,6 +28,7 @@ import { useTranslation } from 'react-i18next'
 import { formatRankingTokens, RankingRecentUsageChart } from '@/components/ranking-usage-chart'
 import { formatToolUsageTokens, ToolUsageClientsChart } from '@/components/tool-usage-chart'
 import { apiTimeToDate } from '@/utils/format'
+import { ModelsShowcase, type ModelsShowcaseGroup } from '@/components/public-models-showcase'
 
 function formatPublicPrice(price: ModelPrice): ReactNode {
   return <ModelPriceSummary price={price} />
@@ -596,9 +597,12 @@ function ManagedFeatureCard({ entry, index }: { entry: HomepageEntry; index: num
 function ManagedNewsCard({ entry, index }: { entry: HomepageEntry; index: number }) {
   const { t, i18n } = useTranslation()
   const content = homepageTranslation(entry, i18n.language)
-  const href = homepageHref(content.link_url, '/docs')
+  // Homepage news entries always open the Markdown detail reader. The managed
+  // link_url field is intentionally ignored here so an old docs URL cannot
+  // route a news card away from /news/:id.
+  const href = `/news/${encodeURIComponent(entry.id)}`
   const card = <><div className="manuscript-news-copy"><h3>{content.title || t('home.rebuild.news.0.title')}</h3><p>{content.summary || ''}</p><small>{homepageDate(entry.updated_at, i18n.language)} <b className="manuscript-news-new">{t('public.home.newBadge')}</b></small></div><div className={`manuscript-news-art manuscript-news-art--${index % 2}`} aria-hidden="true"><img className="manuscript-news-art-image" src={promoArticleArt} alt="" loading="lazy" decoding="async" width={850} height={333} /></div></>
-  return href.startsWith('/') ? <Link className="manuscript-news-card" to={href}>{card}</Link> : <a className="manuscript-news-card" href={href} target="_blank" rel="noopener noreferrer">{card}</a>
+  return <Link className="manuscript-news-card" to={href}>{card}</Link>
 }
 
 function ManagedAdSlots({ entries }: { entries: HomepageEntry[] }) {
@@ -727,6 +731,24 @@ function HomePartnerSkeleton() {
   </div>)}</div>} />
 }
 
+function SplitTextReveal({ text, as = 'span', delayOffset = 0 }: { text: string; as?: 'span' | 'strong'; delayOffset?: number }) {
+  const Tag = as
+  return (
+    <Tag className="manuscript-hero-split" aria-label={text}>
+      {Array.from(text).map((character, index) => (
+        <span
+          className="manuscript-hero-split-char"
+          aria-hidden="true"
+          key={`${character}-${index}`}
+          style={{ '--hero-char-index': index + delayOffset } as CSSProperties}
+        >
+          {character === ' ' ? '\u00a0' : character}
+        </span>
+      ))}
+    </Tag>
+  )
+}
+
 export function HomePage({ onInitialScoreboardReady }: { onInitialScoreboardReady?: () => void } = {}) {
   const { t, i18n } = useTranslation()
   const authStatus = useAppSelector((state) => state.auth.status)
@@ -804,6 +826,8 @@ export function HomePage({ onInitialScoreboardReady }: { onInitialScoreboardRead
   const homeMetrics = useHomeMetrics()
   const animatedTokenVolume = useScoreboardValue(homeMetrics.tokenVolume)
   const animatedApiCalls = useScoreboardValue(homeMetrics.apiCalls)
+  const heroTitle = t('home.rebuild.heroTitle')
+  const heroSubtitle = t('home.rebuild.heroSubtitle')
 
   useEffect(() => {
     if (!homeMetrics.initialRequestFinished) return
@@ -817,7 +841,7 @@ export function HomePage({ onInitialScoreboardReady }: { onInitialScoreboardRead
       <div className="manuscript-home-shell">
         <section className="manuscript-hero" aria-labelledby="homeTitle">
           <div className="manuscript-hero-copy">
-            <h1 id="homeTitle"><span>{t('home.rebuild.heroTitle')}</span><strong>{t('home.rebuild.heroSubtitle')}</strong></h1>
+            <h1 id="homeTitle"><SplitTextReveal text={heroTitle} /><SplitTextReveal as="strong" text={heroSubtitle} delayOffset={Array.from(heroTitle).length} /></h1>
             <div className="manuscript-hero-actions">
               <LoginRequiredAction className="btn btn-primary" returnPath="/console/quickstart"><span>{t('home.rebuild.primaryCta')}</span></LoginRequiredAction>
               <Link className="btn btn-secondary manuscript-model-button" to="/models" aria-label={t('home.rebuild.secondaryCta')}><span>{t('home.rebuild.secondaryCta')}</span></Link>
@@ -843,7 +867,7 @@ export function HomePage({ onInitialScoreboardReady }: { onInitialScoreboardRead
         </section>
 
         <section className="manuscript-section manuscript-pricing" aria-labelledby="homePricingTitle">
-          <div className="manuscript-section-heading manuscript-section-heading--title-only"><div><h2 id="homePricingTitle">{t('home.pricing.manuscriptTitle')}</h2></div></div>
+          <div className="manuscript-section-heading manuscript-section-heading--title-only"><div><h2 id="homePricingTitle">{t('home.pricing.manuscriptTitle')}</h2><p>{t('home.pricing.latestModels')}</p></div></div>
           <div className="manuscript-price-grid" role={isHomepageLoading ? 'status' : undefined} aria-busy={isHomepageLoading || undefined}>{isHomepageLoading ? <><span className="public-sr-only">{t('home.rebuild.loadingModels')}</span><HomePriceSkeletons /></> : promotionItems.map((item) => <article className={`manuscript-price-card${item.input.length > 5 || item.output.length > 5 ? ' has-long-price' : ''}`} key={item.id}>
             <div className="manuscript-price-card-head"><Link className="manuscript-price-model" to={modelPublicHref(item.model) ?? '/models'}><span className="manuscript-price-model-logo"><img src={item.logoUrl || promoModelLogo} alt="" aria-hidden="true" loading="lazy" decoding="async" width={30} height={24} /></span><span><strong>{item.name}</strong><small>{t('home.rebuild.providedBy', { company: item.company })}</small></span></Link><span className={`manuscript-price-badge${item.discountKind === 'free' ? ' is-equal' : ''}`}>{t(`public.home.discount${item.discountKind === 'free' ? 'Free' : item.discountKind === 'custom' ? 'Custom' : 'Half'}`)}</span></div>
             <div className="manuscript-price-divider" />
@@ -870,78 +894,14 @@ export function HomePage({ onInitialScoreboardReady }: { onInitialScoreboardRead
 }
 
 export function ModelsPublicPage() {
-  const { t } = useTranslation()
-  const [searchParams, setSearchParams] = useSearchParams()
-  const [query, setQuery] = useState(searchParams.get('q') ?? '')
-  const [company, setCompany] = useState(searchParams.get('company') ?? '')
-  const [modality, setModality] = useState<ModelModality | 'all'>('all')
-  const models = useMemo(() => filterModels(query, modality).filter((model) => !company || model.company === company), [company, modality, query])
-  const companyOptions = Object.keys(PUBLIC_COMPANY_KEYS)
-  const modalityCounts = Object.fromEntries((Object.keys(MODALITY_LABELS) as ModelModality[]).map((key) => [key, MODEL_CATALOG.filter((model) => model.modality === key).length])) as Record<ModelModality, number>
-
-  function syncFilters(nextQuery: string, nextCompany: string): void {
-    const nextParams = new URLSearchParams()
-    if (nextQuery) nextParams.set('q', nextQuery)
-    if (nextCompany) nextParams.set('company', nextCompany)
-    setSearchParams(nextParams)
-  }
-
-  function updateSearch(value: string): void {
-    setQuery(value)
-    syncFilters(value, company)
-  }
-
-  function updateCompany(value: string): void {
-    setCompany(value)
-    syncFilters(query, value)
-  }
-
-  function clearFilters(): void {
-    setQuery('')
-    setCompany('')
-    setModality('all')
-    setSearchParams({})
-  }
-
+  const groups: ModelsShowcaseGroup[] = [
+    { id: 'text', titleKey: 'public.models.groups.textTitle', descriptionKey: 'public.models.groups.textDescription', models: MODEL_CATALOG.slice(0, 3) },
+    { id: 'video', titleKey: 'public.models.groups.videoTitle', descriptionKey: 'public.models.groups.videoDescription', models: MODEL_CATALOG.slice(3, 6) },
+    { id: 'image', titleKey: 'public.models.groups.imageTitle', descriptionKey: 'public.models.groups.imageDescription', models: MODEL_CATALOG.slice(6, 9) },
+  ]
   return (
     <PublicLayout mainClassName="public-models-page">
-      <header className="public-models-head">
-        <div>
-          <p className="public-models-kicker">{t('public.models.kicker')}</p>
-          <h1>{t('public.models.title')}</h1>
-          <p className="public-models-lead">{t('public.models.lead')}</p>
-          <p className="public-models-price-note">{t('public.models.priceNote')}</p>
-        </div>
-        <div className="public-models-head-meta" aria-label={t('public.models.catalogInfo')}><span className="badge">{t('public.models.catalogCount', { count: MODEL_CATALOG.length })}</span><Link to="/pricing">{t('public.models.viewPricing')}</Link></div>
-      </header>
-
-      <section className="public-models-filter" aria-labelledby="filterTitle">
-        <h2 className="public-sr-only" id="filterTitle">{t('public.models.filterTitle')}</h2>
-        <form onSubmit={(event) => event.preventDefault()} role="search">
-          <div className="public-models-filter-grid">
-            <div className="public-models-search-field"><label htmlFor="modelSearch">{t('public.models.searchLabel')}</label><div className="public-models-search-control"><input className="input" id="modelSearch" type="search" value={query} onChange={(event) => updateSearch(event.target.value)} autoComplete="off" placeholder={t('public.models.searchPlaceholder')} /><button className="btn btn-secondary" type="submit">{t('public.models.searchButton')}</button></div></div>
-            <div className="public-models-company-field"><label htmlFor="companyFilter">{t('public.models.companyLabel')}</label><Select id="companyFilter" value={company} onChange={(value) => updateCompany(String(value))} block><Select.Option value="">{t('public.models.allCompanies')}</Select.Option>{companyOptions.map((option) => <Select.Option key={option} value={option}>{publicCompanyLabel(t, option)}</Select.Option>)}</Select></div>
-          </div>
-          <div className="public-models-filter-row">
-            <div className="public-models-modality" role="group" aria-label={t('public.models.modalityLabel')}>
-              <button className="public-models-modality-button" type="button" aria-pressed={modality === 'all'} onClick={() => setModality('all')}><span>{t('public.models.allModalities')}</span><span className="public-models-modality-count">{MODEL_CATALOG.length}</span></button>
-              {(Object.keys(MODALITY_LABELS) as ModelModality[]).map((key) => <button className="public-models-modality-button" key={key} type="button" aria-pressed={modality === key} onClick={() => setModality(key)}><span>{publicModalityLabel(t, key)}</span><span className="public-models-modality-count">{modalityCounts[key]}</span></button>)}
-            </div>
-            <button className="public-models-clear" type="button" hidden={!query && !company && modality === 'all'} onClick={clearFilters}>{t('public.models.clearFilters')}</button>
-          </div>
-        </form>
-      </section>
-
-      <section className="public-models-results" aria-labelledby="resultsTitle">
-        <div className="public-models-results-head"><h2 id="resultsTitle">{t('public.models.resultTitle')}</h2><output aria-live="polite">{t('public.models.resultCount', { count: models.length })}</output></div>
-        {models.length ? <div className="public-models-grid">{models.map((model) => <article className="public-model-card" key={model.id}>
-          <div className="public-model-card-head"><ModelLogo model={model} className="public-model-logo" /><div className="public-model-identity"><h2><Link to={modelPublicHref(model) ?? '/models'}>{model.name}</Link></h2><span>{publicCompanyLabel(t, model.company)}</span></div><span className="badge">{publicModalityLabel(t, model.modality)}</span></div>
-          <ul className="public-model-capabilities" aria-label={t('public.models.capabilitiesLabel')}>{model.capabilities.slice(0, 3).map((capability) => <li key={capability}>{publicCapabilityLabel(t, capability)}</li>)}</ul>
-          <p className="public-model-specs">{model.context ? t('public.models.context', { value: model.context }) : publicModelDescription(t, model.id, model.description)}</p>
-          <dl className="public-model-prices"><div><dt>{t('public.models.tokenNxPrice')}</dt><dd className="public-models-price-highlight"><ModelPriceSummary price={model.tokenNxPrice} /></dd></div><div><dt>{t('public.models.officialPrice')}</dt><dd>{formatPublicPrice(model.officialPrice)}</dd></div></dl>
-          <div className="public-model-card-actions"><Link className="btn btn-primary btn-sm" to={modelPublicHref(model) ?? '/models'}>{t('public.models.viewDetails')}</Link></div>
-        </article>)}</div> : <div className="public-models-empty"><h2>{t('public.models.noMatchTitle')}</h2><p>{t('public.models.noMatchHint')}</p><button className="btn btn-secondary" type="button" onClick={clearFilters}>{t('public.models.clearFilters')}</button></div>}
-      </section>
+      <ModelsShowcase groups={groups} />
     </PublicLayout>
   )
 }

@@ -12,6 +12,7 @@ const loadPublicPages = () => import('@/pages/public')
 const loadInvitationPage = () => import('@/pages/join')
 const loadConsoleCorePages = () => import('@/pages/console-core')
 const loadConsoleAccountPages = () => import('@/pages/console-account')
+const loadNewsPages = () => import('@/pages/news')
 
 const HomePage = lazy(() => loadPublicPages().then(({ HomePage }) => ({ default: HomePage })))
 const ModelsPublicPage = lazy(() => loadPublicPages().then(({ ModelsPublicPage }) => ({ default: ModelsPublicPage })))
@@ -26,6 +27,8 @@ const LegalPage = lazy(() => loadPublicPages().then(({ LegalPage }) => ({ defaul
 const LoginPage = lazy(() => loadPublicPages().then(({ LoginPage }) => ({ default: LoginPage })))
 const JoinPage = lazy(() => loadInvitationPage().then(({ JoinPage }) => ({ default: JoinPage })))
 const InviteLandingPage = lazy(() => import('@/pages/invite').then(({ InviteLandingPage }) => ({ default: InviteLandingPage })))
+const NewsListPage = lazy(() => loadNewsPages().then(({ NewsListPage }) => ({ default: NewsListPage })))
+const NewsDetailPage = lazy(() => loadNewsPages().then(({ NewsDetailPage }) => ({ default: NewsDetailPage })))
 
 const ConsoleModelsPage = lazy(() => loadConsoleCorePages().then(({ ConsoleModelsPage }) => ({ default: ConsoleModelsPage })))
 const PlaygroundPage = lazy(() => loadConsoleCorePages().then(({ PlaygroundPage }) => ({ default: PlaygroundPage })))
@@ -125,6 +128,8 @@ export default function App({ onBootReady }: { onBootReady: () => void }) {
               <Route path="/pricing" element={<PricingPage />} />
               <Route path="/status" element={<StatusPage />} />
               <Route path="/about" element={<AboutPage />} />
+              <Route path="/news" element={<NewsListPage />} />
+              <Route path="/news/:id" element={<NewsDetailPage />} />
               <Route path="/terms" element={<LegalPage kind="terms" />} />
               <Route path="/privacy" element={<LegalPage kind="privacy" />} />
               <Route path="/login" element={<LoginPage />} />

@@ -129,6 +129,7 @@ export const PUBLIC_LINKS: PublicLink[] = [
   { labelKey: 'nav.ranking', path: '/rankings' },
   { labelKey: 'nav.apps', path: '/apps' },
   { labelKey: 'nav.docs', path: '/docs' },
+  { labelKey: 'nav.news', path: '/news' },
 ]
 
 const AUTHENTICATED_PUBLIC_LINK: PublicLink = { labelKey: 'nav.billing', path: '/console/billing' }
@@ -2259,7 +2260,7 @@ export function ManuscriptSupportWidget() {
 export function PublicLayout({ children, mainClassName = '' }: { children: ReactNode; mainClassName?: string }) {
   const store = useAppStore()
   const enterpriseAccess = useEnterpriseMenuAccess(store.activeWorkspace)
-  const manuscript = mainClassName.includes('home-page--manuscript') || mainClassName.includes('docs-page--manuscript') || mainClassName.includes('apps-page--manuscript') || mainClassName.includes('rankings-page--manuscript')
+  const manuscript = mainClassName.includes('home-page--manuscript') || mainClassName.includes('docs-page--manuscript') || mainClassName.includes('apps-page--manuscript') || mainClassName.includes('rankings-page--manuscript') || mainClassName.includes('news-page--manuscript')
   const layoutClassName = manuscript ? ' public-layout--manuscript-home' : ''
   return <div className={`public-layout public-header-host${layoutClassName}`}><PublicHeader enterpriseAccess={enterpriseAccess} /><main className={`public-main${mainClassName ? ` ${mainClassName}` : ''}`}>{children}</main><PublicFooter /></div>
 }
