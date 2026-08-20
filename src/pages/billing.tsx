@@ -103,6 +103,17 @@ function currentPeriod(): string {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
 }
 
+function billingPeriodLabel(option: { value: string; label: string }): string {
+  const match = /^(\d{4})-(\d{1,2})$/.exec(option.value.trim())
+  if (!match) return option.label || option.value
+  const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, 1))
+  try {
+    return new Intl.DateTimeFormat(i18n.language, { year: 'numeric', month: 'long', timeZone: 'UTC' }).format(date)
+  } catch {
+    return option.label || option.value
+  }
+}
+
 function resourceState<T>(status: ResourceStatus = 'idle', data: T | null = null): ResourceState<T> {
   return { status, data, error: '', requestId: null }
 }
@@ -297,7 +308,7 @@ function AnalysisTab({ state, periodValue, apiKeyID, model, source, requestedRec
           <Select id="billing-period-filter" className="billing-filter" aria-labelledby="billing-period-filter-label" value={periodValue} onChange={(value) => onFilterChange('period', String(value))} onSelect={(value) => onFilterChange('period', String(value))} block>
             {filters.periods.map((option) => (
               <Select.Option value={option.value} key={option.value}>
-                {option.label}
+                {billingPeriodLabel(option)}
               </Select.Option>
             ))}
           </Select>

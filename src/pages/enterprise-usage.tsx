@@ -105,7 +105,13 @@ function formatUsageMoney(value: string | null | undefined): ReactNode {
 function usagePeriodMonth(value: EnterpriseUsageResponse['period']['start_at']): string {
   const date = apiTimeToDate(value)
   if (!date) return ''
-  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`
+  const isoLabel = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`
+  if (!i18n.language.startsWith('en')) return isoLabel
+  try {
+    return new Intl.DateTimeFormat(i18n.language, { year: 'numeric', month: 'long', timeZone: 'UTC' }).format(date)
+  } catch {
+    return isoLabel
+  }
 }
 
 function usagePeriodChipLabel(period: EnterpriseUsageResponse['period']): string {
@@ -172,7 +178,7 @@ function UsageBoardToolbar({ tags, roleOptions, filters, onChange }: { tags: Ent
   const { t } = useTranslation()
   return <div className="enterprise-usage-toolbar" aria-label={t('console.enterprise.usage.memberUsageList')}>
     <Input className="app-standard-input enterprise-usage-search-input" size="large" prefix={<IconSearch aria-hidden="true" />} value={filters.search} onChange={(value) => onChange({ search: value })} placeholder={t('console.enterprise.usage.memberSearch')} aria-label={t('console.enterprise.usage.memberSearchLabel')} showClear />
-    <span id="enterprise-usage-role-filter-label" className="public-sr-only">{t('console.enterprise.usage.roleFilter')}</span><Select className="enterprise-usage-filter-input" value={filters.role} onChange={(value) => onChange({ role: String(value) })} onSelect={(value) => onChange({ role: String(value) })} aria-labelledby="enterprise-usage-role-filter-label"><Select.Option value="all">{t('console.enterprise.usage.allRoles')}</Select.Option>{roleOptions.map((option) => <Select.Option value={option.code} key={option.code}>{option.name}</Select.Option>)}</Select>
+    <span id="enterprise-usage-role-filter-label" className="public-sr-only">{t('console.enterprise.usage.roleFilter')}</span><Select className="enterprise-usage-filter-input" value={filters.role} onChange={(value) => onChange({ role: String(value) })} onSelect={(value) => onChange({ role: String(value) })} aria-labelledby="enterprise-usage-role-filter-label"><Select.Option value="all">{t('console.enterprise.usage.allRoles')}</Select.Option>{roleOptions.map((option) => <Select.Option value={option.code} key={option.code}>{roleLabel(option.code, roleOptions)}</Select.Option>)}</Select>
     <span id="enterprise-usage-quota-filter-label" className="public-sr-only">{t('console.enterprise.usage.quotaFilter')}</span><Select className="enterprise-usage-filter-input" value={filters.quota} onChange={(value) => onChange({ quota: String(value) as QuotaFilter })} onSelect={(value) => onChange({ quota: String(value) as QuotaFilter })} aria-labelledby="enterprise-usage-quota-filter-label"><Select.Option value="all">{t('console.enterprise.usage.allQuota')}</Select.Option><Select.Option value="near">{t('console.enterprise.usage.nearQuota')}</Select.Option><Select.Option value="over">{t('console.enterprise.usage.overQuota')}</Select.Option><Select.Option value="none">{t('console.enterprise.usage.noQuota')}</Select.Option></Select>
     <span id="enterprise-usage-tag-filter-label" className="public-sr-only">{t('console.enterprise.usage.tagFilter')}</span><Select className="enterprise-usage-filter-input" value={filters.tagID} onChange={(value) => onChange({ tagID: String(value) })} onSelect={(value) => onChange({ tagID: String(value) })} aria-labelledby="enterprise-usage-tag-filter-label"><Select.Option value="all">{t('console.enterprise.usage.allTags')}</Select.Option>{tags.map((tag) => <Select.Option value={tag.id} key={tag.id}>{tag.name}</Select.Option>)}</Select>
     <span id="enterprise-usage-sort-label" className="public-sr-only">{t('console.enterprise.usage.sort')}</span><Select className="enterprise-usage-filter-input" value={filters.sort} onChange={(value) => onChange({ sort: String(value) as UsageSort })} onSelect={(value) => onChange({ sort: String(value) as UsageSort })} aria-labelledby="enterprise-usage-sort-label"><Select.Option value="cost">{t('console.enterprise.usage.byCost')}</Select.Option><Select.Option value="requests">{t('console.enterprise.usage.byRequests')}</Select.Option><Select.Option value="tokens">{t('console.enterprise.usage.byTokens')}</Select.Option></Select>

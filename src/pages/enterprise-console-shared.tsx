@@ -144,6 +144,7 @@ export function EnterpriseExportButton({ onClick, disabled = false, label }: { o
 export function roleLabel(value: string, options: EnterpriseRoleOption[] = []): string {
   const code = value.trim()
   const option = options.find((item) => item.code === code)
+  if (option?.owner_role || code === 'owner') return i18n.t('console.enterpriseSettings.owner')
   return option?.name || code || i18n.t('console.enterprise.roleUnnamed')
 }
 
