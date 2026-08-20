@@ -24,6 +24,7 @@ const MODALITY_IO: Record<ModelRecord['modality'], [string, string]> = {
   rerank: ['文本', '排序分数'],
   speech: ['文本', '音频'],
   transcription: ['音频', '文本'],
+  multimodal: ['', ''],
   other: ['', ''],
 }
 

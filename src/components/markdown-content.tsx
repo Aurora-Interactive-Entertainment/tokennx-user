@@ -188,7 +188,8 @@ function MarkdownImage({ src, alt, resolveImageUrl }: { src?: string; alt?: stri
 export function MarkdownContent({ content, className, enhancedCodeBlocks = false, allowHtml = false, resolveImageUrl }: MarkdownContentProps) {
   const rootClassName = className ? `markdown-content ${className}` : 'markdown-content'
   const normalizedContent = normalizeMalformedTableImages(allowHtml ? normalizeHtmlWrappedMarkdownTables(normalizeHtmlCodeBlocks(content)) : content)
-  const components = {
+  // 中文：兼容 React Markdown 与 unified 不同版本的 AST 类型定义。
+  const components: any = {
     img: ({ src, alt }: { src?: string; alt?: string }) => <MarkdownImage src={src} alt={alt} resolveImageUrl={resolveImageUrl} />,
     ...(enhancedCodeBlocks ? {
       pre: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
@@ -202,7 +203,7 @@ export function MarkdownContent({ content, className, enhancedCodeBlocks = false
       'docs-code-group': ({ node }: { node?: MarkdownAstNode }) => <MarkdownCodeBlock variants={readCodeVariants(node?.properties?.dataVariants)} />,
     } : {}),
   }
-  const rehypePlugins = allowHtml
+  const rehypePlugins: any = allowHtml
     ? enhancedCodeBlocks ? [rehypeRaw, [rehypeSanitize, enhancedMarkdownSchema]] : [rehypeRaw, rehypeSanitize]
     : enhancedCodeBlocks ? [[rehypeSanitize, enhancedMarkdownSchema]] : [rehypeSanitize]
   return (

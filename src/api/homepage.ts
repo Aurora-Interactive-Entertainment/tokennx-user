@@ -72,6 +72,7 @@ export interface HomepageEntry {
   data: {
     translations?: Partial<Record<HomepageLocale, HomepageTranslation>>
     discount_kind?: HomepageDiscountKind
+    cover_url?: string
     [key: string]: unknown
   }
   updated_at?: ApiTimestamp
@@ -96,6 +97,14 @@ export function getPublicHomepageAssetURL(objectID: string | undefined): string 
   const normalizedObjectID = objectID?.trim() ?? ''
   if (!PUBLIC_OBJECT_ID_PATTERN.test(normalizedObjectID)) return undefined
   return makeApiUrl(`${PUBLIC_HOMEPAGE_ASSET_PATH}/${encodeURIComponent(normalizedObjectID)}`)
+}
+
+// 中文：接口可能返回相对封面地址，统一使用当前环境的 API Base URL 补全。
+export function getPublicHomepageMediaURL(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined
+  const normalizedURL = value.trim()
+  if (!normalizedURL || normalizedURL.startsWith('//')) return undefined
+  return makeApiUrl(normalizedURL)
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

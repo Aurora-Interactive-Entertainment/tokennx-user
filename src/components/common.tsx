@@ -1521,7 +1521,20 @@ export function consoleNavGroupsFor(workspace: Pick<Workspace, 'type' | 'role'>,
 }
 
 function userMenuGroupsFor(workspace: Workspace, permissions: readonly string[] = []): ConsoleNavGroup[] {
-  return consoleNavGroupsFor(workspace, permissions)
+  const itemsByPath = new Map(
+    consoleNavGroupsFor(workspace, permissions)
+      .flatMap((group) => group.items)
+      .map((item) => [item.path ?? item.key, item] as const),
+  )
+  // Keep the profile menu in the Figma order and grouping; the full console navigation remains unchanged.
+  const menuGroups = [
+    { key: 'profile-experience', label: '体验中心', paths: ['/console/playground', '/console/video'] },
+    { key: 'profile-activity', label: '数据与费用', paths: ['/console/usage', '/console/billing', '/console/records'] },
+    { key: 'profile-account', label: '账户管理', paths: ['/console/api-keys', '/console/invitations'] },
+  ]
+  return menuGroups
+    .map((group) => ({ ...group, items: group.paths.map((path) => itemsByPath.get(path)).filter((item): item is ConsoleNavItem => Boolean(item)) }))
+    .filter((group) => group.items.length > 0)
 }
 
 type UserMenuProps = {
@@ -2385,5 +2398,5 @@ export function StatusBadge({ status }: { status: 'success' | 'failed' | 'active
 }
 
 export function modalityLabel(model: ModelRecord): string {
-  return MODALITY_LABELS[model.modality]
+  return MODALITY_LABELS[model.modality] ?? model.modality
 }

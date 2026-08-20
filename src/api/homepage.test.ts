@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { getPublicHomepage, getPublicHomepageAssetURL, getPublicHomepageStats } from './homepage'
+import { getPublicHomepage, getPublicHomepageAssetURL, getPublicHomepageMediaURL, getPublicHomepageStats } from './homepage'
 
 function response(data: unknown, status = 200): Response {
   return new Response(JSON.stringify({ code: 0, msg: 'success', data }), {
@@ -18,19 +18,26 @@ describe('公开首页内容 API', () => {
     expect(getPublicHomepageAssetURL(undefined)).toBeUndefined()
   })
 
+  it('使用当前环境的 API Base URL 补全首页媒体地址', () => {
+    expect(getPublicHomepageMediaURL(' /api/homepage/assets/01M0EXCSCSZ3Q6PG39HAGEY36J ')).toBe('/api/homepage/assets/01M0EXCSCSZ3Q6PG39HAGEY36J')
+    expect(getPublicHomepageMediaURL('https://cdn.example.com/news/cover.png')).toBe('https://cdn.example.com/news/cover.png')
+    expect(getPublicHomepageMediaURL('//cdn.example.com/news/cover.png')).toBeUndefined()
+    expect(getPublicHomepageMediaURL(undefined)).toBeUndefined()
+  })
+
   it('读取五类首页内容并将空数组响应归一化', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(response({
       cards: [{ id: 'card-1', kind: 'card', status: 'active', sort_order: 1, pinned: false, data: { translations: { 'zh-CN': { title: '能力' } } } }],
       promotion_models: null,
       ad_slots: [],
-      news: [{ id: 'news-1', kind: 'news', status: 'active', sort_order: 1, pinned: true, data: { translations: { 'zh-CN': { title: '动态', summary: '摘要', content_html: '<p>正文</p>' } } } }],
+      news: [{ id: 'news-1', kind: 'news', status: 'active', sort_order: 1, pinned: true, data: { cover_url: '/api/homepage/assets/news-cover', translations: { 'zh-CN': { title: '动态', summary: '摘要', content_html: '<p>正文</p>' } } } }],
       partners: undefined,
     }))
 
     await expect(getPublicHomepage()).resolves.toMatchObject({
       cards: [{ id: 'card-1' }],
       promotion_models: [],
-      news: [{ pinned: true }],
+      news: [{ pinned: true, data: { cover_url: '/api/homepage/assets/news-cover' } }],
       partners: [],
     })
     expect(fetchMock).toHaveBeenCalledWith('/api/homepage', expect.objectContaining({ credentials: 'omit' }))

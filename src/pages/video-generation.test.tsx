@@ -107,7 +107,7 @@ describe('视频生成页面', () => {
   beforeEach(() => {
     window.localStorage.clear()
     vi.clearAllMocks()
-    vi.mocked(useUserModels).mockReturnValue({ models: [videoModel(), videoModel({ id: 'other-video', code: 'other-video', alias: 'other-video-public', name: 'Other Video' })], loading: false, error: '', refresh: vi.fn() })
+    vi.mocked(useUserModels).mockReturnValue({ models: [videoModel(), videoModel({ id: 'other-video', code: 'other-video', alias: 'other-video-public', name: 'Other Video' })], activities: [], total: null, page: null, pageSize: null, loading: false, error: '', refresh: vi.fn() })
     vi.mocked(getUserApiKeys).mockResolvedValue({ items: [activeApiKey()], available_models: [] })
   })
 

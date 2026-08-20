@@ -15,10 +15,11 @@ import { ModelPriceSummary } from '@/components/money'
 import { ModelAvailability } from '@/components/model-availability'
 import { MarkdownContent } from '@/components/markdown-content'
 import { CompatSelect as Select } from '@/components/semi-compat'
-import { getPublicHomepage, getPublicHomepageAssetURL, getPublicHomepageStats, type HomepageDiscountKind, type HomepageEntry, type HomepagePromotionModel, type HomepageTranslation, type PublicHomepage } from '@/api/homepage'
+import { getPublicHomepage, getPublicHomepageAssetURL, getPublicHomepageMediaURL, getPublicHomepageStats, type HomepageDiscountKind, type HomepageEntry, type HomepagePromotionModel, type HomepageTranslation, type PublicHomepage } from '@/api/homepage'
 import { getModelUsageLeaderboard, getRecentModelUsage, type ModelUsageLeaderboard, type ModelUsagePeriod, type RecentModelUsage } from '@/api/model-rankings'
 import { getToolUsageClients, getToolUsageLeaderboard, type ToolUsageClients, type ToolUsageLeaderboard } from '@/api/tool-usage'
 import { getPublicDocument, getPublicDocumentAssetUrl, getPublicDocsTree, publicDocumentHref, type PublicDocument, type PublicDocsLocale, type PublicDocsNode } from '@/api/public-docs'
+import { getPublicModelMarket, type PublicMarketModel, type PublicModelMarket } from '@/api/public-model-market'
 import { isApiError } from '@/api/http'
 import { findModel, findModelInList, modelAlias, modelRouteKey, MODEL_CATALOG, MODALITY_LABELS, type ModelAvailabilityHour, type ModelModality, type ModelPrice, type ModelRecord } from '@/data/models'
 import { getAccessToken } from '@/auth/token-storage'
@@ -138,6 +139,14 @@ function homepageHref(value: string | undefined, fallback: string): string {
   return fallback
 }
 
+function homepageNavigationHref(value: string): string {
+  try {
+    return new URL(value, window.location.origin).toString()
+  } catch {
+    return value
+  }
+}
+
 function homepageDate(value: number | undefined, language: string): string {
   if (value === undefined) return ''
   const date = apiTimeToDate(value)
@@ -155,8 +164,8 @@ function homepagePrice(value: string | number | undefined): string {
   return normalized.replace(/0+$/, '').replace(/\.$/, '')
 }
 
-function homepageMediaURL(objectID: string | undefined, fallbackURL: string | undefined): string | undefined {
-  return getPublicHomepageAssetURL(objectID) ?? (fallbackURL?.trim() || undefined)
+function homepageMediaURL(objectID: string | undefined, fallbackURL: unknown): string | undefined {
+  return getPublicHomepageAssetURL(objectID) ?? getPublicHomepageMediaURL(fallbackURL)
 }
 
 function useHomeMetrics(): { tokenVolume: number; apiCalls: number; initialRequestFinished: boolean } {
@@ -586,10 +595,13 @@ function ManagedFeatureCard({ entry, index }: { entry: HomepageEntry; index: num
   const description = t(`home.rebuild.featureCards.${featureIndex}.description`)
   const action = t(`home.rebuild.featureCards.${featureIndex}.action`)
   const imageURL = homepageMediaURL(content.image_object_id, content.image_url)
-  // 中文：首页三张业务卡片的目标固定，避免后台旧链接把登录态流程带到错误页面。
+  const configuredPath = content.link_url?.trim()
+  // 中文：有后台目标时走统一登录态动作；旧数据缺少链接时保留兼容入口。
   const actionElement = featureIndex === 0
-    ? <Link className="manuscript-feature-action" to="/models">{action}</Link>
-    : <LoginRequiredAction className="manuscript-feature-action" returnPath={featureIndex === 1 ? '/console/enterprise-create' : '/console/usage'}>{action}</LoginRequiredAction>
+    ? <a className="manuscript-feature-action" href={homepageNavigationHref('/models')}>{action}</a>
+    : configuredPath
+      ? <LoginRequiredAction className="manuscript-feature-action" returnPath={configuredPath}>{action}</LoginRequiredAction>
+      : <a className="manuscript-feature-action" href={homepageNavigationHref(featureIndex === 1 ? '/models' : '/pricing')}>{action}</a>
   return <article className="manuscript-feature-card">
     <div className="manuscript-feature-visual">{imageURL ? <img className="manuscript-feature-image" src={imageURL} alt="" aria-hidden="true" loading={index === 0 ? 'eager' : 'lazy'} fetchPriority={index === 0 ? 'high' : 'auto'} decoding="async" width={416} height={106} /> : <HomeFeatureArtwork priority={index === 0} />}<span>{index === 0 ? t('home.rebuild.featureModelsCount') : t('home.rebuild.featuresTitle')}</span></div>
     <div className="manuscript-feature-copy">
@@ -607,7 +619,12 @@ function ManagedNewsCard({ entry, index }: { entry: HomepageEntry; index: number
   const href = `/news/${encodeURIComponent(entry.id)}`
   const title = t(`home.rebuild.news.${newsIndex}.title`)
   const description = t(`home.rebuild.news.${newsIndex}.description`)
-  const card = <><div className="manuscript-news-copy"><h3 title={title}>{title}</h3><p title={description}>{description}</p><small>{homepageDate(entry.updated_at, i18n.language)} <b className="manuscript-news-new">{t('public.home.newBadge')}</b></small></div><div className={`manuscript-news-art manuscript-news-art--${newsIndex}`} aria-hidden="true"><img className="manuscript-news-art-image" src={promoArticleArt} alt="" loading="lazy" decoding="async" width={850} height={333} /></div></>
+  const coverURL = getPublicHomepageMediaURL(entry.data.cover_url)
+  const card = <><div className="manuscript-news-copy"><h3 title={title}>{title}</h3><p title={description}>{description}</p><small>{homepageDate(entry.updated_at, i18n.language)} <b className="manuscript-news-new">{t('public.home.newBadge')}</b></small></div><div className={`manuscript-news-art manuscript-news-art--${newsIndex}`} aria-hidden="true"><img className="manuscript-news-art-image" src={coverURL || promoArticleArt} alt="" loading="lazy" decoding="async" width={850} height={333} onError={(event) => {
+    if (event.currentTarget.getAttribute('src') !== promoArticleArt) event.currentTarget.src = promoArticleArt
+    // 中文：封面失效时回退到本地默认图，避免卡片出现破图。
+    if (event.currentTarget.getAttribute('src') !== promoArticleArt) event.currentTarget.src = promoArticleArt
+  }} /></div></>
   return <Link className="manuscript-news-card" to={href}>{card}</Link>
 }
 
@@ -615,7 +632,9 @@ function ManagedAdSlots({ entries }: { entries: HomepageEntry[] }) {
   const { t, i18n } = useTranslation()
   return <div className="manuscript-ad-slots">{entries.map((entry) => {
     const content = homepageTranslation(entry, i18n.language)
-    const imageURL = homepageMediaURL(content.image_object_id, content.image_url)
+    // 中文：广告封面以接口 image_url 为准，兼容语言内容字段与条目根字段。
+    // 中文：广告位优先使用接口 image_url，缺失时再回退到对象资源地址。
+    const imageURL = getPublicHomepageMediaURL(content.image_url ?? entry.data.image_url) ?? getPublicHomepageAssetURL(content.image_object_id)
     const ad = <img src={imageURL || promoBannerArt} alt={content.title || t('home.rebuild.adSlot')} loading="lazy" decoding="async" width={850} height={193} />
     // 中文：推广广告统一承接邀请活动，未登录时由公共登录弹窗完成后续跳转。
     return <LoginRequiredAction className="manuscript-ad-slot" key={entry.id} returnPath="/console/invitations">{ad}</LoginRequiredAction>
@@ -899,12 +918,68 @@ export function HomePage({ onInitialScoreboardReady }: { onInitialScoreboardRead
   )
 }
 
-export function ModelsPublicPage() {
-  const groups: ModelsShowcaseGroup[] = [
+function publicMarketModelToRecord(model: PublicMarketModel): ModelRecord {
+  const input = model.prices.find((price) => price.meter_kind.toLowerCase().includes('input'))
+  const output = model.prices.find((price) => price.meter_kind.toLowerCase().includes('output'))
+  const numeric = (value: string | undefined) => { const parsed = Number(value); return Number.isFinite(parsed) ? parsed : undefined }
+  const modality = (['text', 'image', 'video', 'audio', 'multimodal', 'embedding', 'rerank', 'speech', 'transcription'].includes(model.modality) ? model.modality : 'other') as ModelModality
+  const price = { input: numeric(input?.unit_price_yuan), inputRaw: input?.unit_price_yuan, output: numeric(output?.unit_price_yuan), outputRaw: output?.unit_price_yuan, unit: input?.unit || output?.unit || '1M tokens' }
+  return {
+    id: model.id,
+    alias: model.alias || model.id,
+    name: model.name,
+    company: model.company,
+    ...(model.icon_url ? { iconUrl: model.icon_url } : {}),
+    modality,
+    capabilities: [],
+    description: model.description || '',
+    officialPrice: { ...price },
+    tokenNxPrice: { ...price },
+    labels: [MODALITY_LABELS[modality] ?? modality],
+    availability: { rate: 0, window: '暂无数据' },
+    providerCount: 0,
+    throughput: { value: 0, unit: '暂无数据' },
+  }
+}
+
+function fallbackShowcaseGroups(): ModelsShowcaseGroup[] {
+  return [
     { id: 'text', titleKey: 'public.models.groups.textTitle', descriptionKey: 'public.models.groups.textDescription', models: MODEL_CATALOG.slice(0, 3) },
     { id: 'video', titleKey: 'public.models.groups.videoTitle', descriptionKey: 'public.models.groups.videoDescription', models: MODEL_CATALOG.slice(3, 6) },
     { id: 'image', titleKey: 'public.models.groups.imageTitle', descriptionKey: 'public.models.groups.imageDescription', models: MODEL_CATALOG.slice(6, 9) },
   ]
+}
+
+export function ModelsPublicPage() {
+  const { i18n } = useTranslation()
+  const [market, setMarket] = useState<PublicModelMarket | null>(null)
+  useEffect(() => {
+    const controller = new AbortController()
+    void getPublicModelMarket(controller.signal).then(setMarket).catch(() => setMarket(null))
+    return () => controller.abort()
+  }, [])
+  const groups = useMemo<ModelsShowcaseGroup[]>(() => {
+    if (!market?.topics.length) {
+      const fallback = fallbackShowcaseGroups()
+      if (market?.carousels.length) fallback[0].carousels = market.carousels
+      return fallback
+    }
+    const english = (i18n.resolvedLanguage ?? i18n.language).toLowerCase().startsWith('en')
+    const modelById = new Map<string, PublicMarketModel>()
+    market.carousels.forEach((carousel) => { if (carousel.model) modelById.set(carousel.model.id, carousel.model) })
+    market.topics.forEach((topic) => topic.models?.forEach((model) => modelById.set(model.id, model)))
+    const mappedGroups = market.topics.map((topic, index) => ({
+      id: topic.id,
+      title: english ? topic.name_en || topic.name : topic.name,
+      description: '',
+      models: (topic.models ?? topic.model_ids?.flatMap((id) => { const model = modelById.get(id); return model ? [model] : [] }) ?? []).map(publicMarketModelToRecord),
+      carousels: index === 0 ? market.carousels : [],
+    })).filter((group) => group.models.length > 0)
+    if (mappedGroups.length) return mappedGroups
+    const fallback = fallbackShowcaseGroups()
+    fallback[0].carousels = market.carousels
+    return fallback
+  }, [i18n.language, i18n.resolvedLanguage, market])
   return (
     <PublicLayout mainClassName="public-models-page">
       <ModelsShowcase groups={groups} />
@@ -1576,14 +1651,14 @@ export function DocsPage() {
         </aside>
 
         <article className="docs-article" ref={articleRef}>
-          {currentDocument ? <div className="docs-article-toolbar"><button className="docs-copy-page" type="button" onClick={() => void copyMarkdown()}><IconCopyStroked aria-hidden="true" />{t('public.docs.manuscript.copyPage')}</button></div> : null}
+          {currentDocument ? <div className="docs-article-toolbar docs-article-toolbar--mobile-copy"><button className="docs-copy-page" type="button" onClick={() => void copyMarkdown()}><IconCopyStroked aria-hidden="true" />{t('public.docs.manuscript.copyPage')}</button></div> : null}
           {loading ? <div className="docs-state" role="status"><Skeleton placeholder={<><Skeleton.Title /><Skeleton.Paragraph rows={8} /></>} loading /></div> : null}
           {!loading && error ? <div className="docs-state docs-state--error" role="alert"><h1>{t('public.docs.manuscript.loadFailed')}</h1><p>{error.message}</p>{error.requestId ? <code>{t('public.docs.manuscript.requestIdPrefix')}{error.requestId}</code> : null}</div> : null}
           {!loading && !error && !currentDocument && !tree.length ? <div className="docs-state"><h1>{t('public.docs.manuscript.noDocuments')}</h1></div> : null}
           {currentDocument ? <MarkdownContent className="docs-markdown" content={currentDocument.content_markdown} enhancedCodeBlocks resolveImageUrl={resolveDocsImageUrl} /> : null}
         </article>
 
-        <aside className="docs-on-page" aria-label={t('public.docs.manuscript.onPageLabel')}>
+        <aside className={`docs-on-page${currentDocument ? ' docs-on-page--with-copy' : ''}`} aria-label={t('public.docs.manuscript.onPageLabel')}>
           <strong>{t('public.docs.manuscript.onPageTitle')}</strong>
           <div className="docs-on-page-scroll"><DocsTocNodes nodes={headingTree} activeHeading={activeHeading} collapsedHeadings={collapsedHeadings} labels={{ collapse: t('public.docs.manuscript.tocCollapse'), expand: t('public.docs.manuscript.tocExpand') }} onToggle={toggleHeading} /></div>
         </aside>

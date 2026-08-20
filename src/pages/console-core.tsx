@@ -13,7 +13,8 @@ import { MoneyText } from '@/components/money'
 import { AppPagination } from '@/components/app-pagination'
 import { CompatCard as Card, CompatInput as Input, CompatSelect as Select } from '@/components/semi-compat'
 import { useAppStore, type PlaygroundMessage } from '@/data/app-state'
-import { findModelInList, modelAlias, type ModelRecord } from '@/data/models'
+import { findModelInList, mapUserModels, modelAlias, type ModelRecord } from '@/data/models'
+import type { UserModelModality } from '@/api/user-models'
 import { useUserModelDetail, useUserModels } from '@/data/user-models'
 import { ModelRuntimeError, streamChatCompletion, type ChatCompletionMessage } from '@/api/model-runtime'
 import { normalizeQuickstartLanguage, normalizeQuickstartProtocol, quickstartCodeSample, QUICKSTART_API_BASE_URL, type QuickstartLanguage, type QuickstartProtocol } from '@/utils/quickstart'
@@ -33,14 +34,17 @@ export function ConsoleModelsPage() {
   const [page, setPage] = useState(FIRST_MODEL_PAGE)
   const [pageSize, setPageSize] = useState<number>(DEFAULT_MODEL_PAGE_SIZE)
   const [searchParams, setSearchParams] = useSearchParams()
+  const requestedModelAlias = searchParams.get('model')
   const [query, setQuery] = useState('')
   const [company, setCompany] = useState('all')
   const [priceFilter, setPriceFilter] = useState<ModelPriceFilter>('all')
   const [sort, setSort] = useState<ModelSort>('default')
   const canUseServerPagination = !query.trim() && company === 'all' && priceFilter === 'all' && sort === 'default'
-  const { models: userModels, activities, total: apiTotal, page: apiPage, pageSize: apiPageSize, loading, error, refresh } = useUserModels({ activityId: activityId || undefined, modelType: category === 'all' ? undefined : category, ...(canUseServerPagination ? { page, pageSize } : {}) })
+  const serverModelType: UserModelModality | undefined = category === 'all' || category === 'speech' || category === 'transcription' ? undefined : category
+  const { models: userModels, activities, total: apiTotal, page: apiPage, pageSize: apiPageSize, loading, error, refresh } = useUserModels({ activityId: activityId || undefined, modelType: serverModelType, ...(canUseServerPagination ? { page, pageSize } : {}) })
   const [detailModel, setDetailModel] = useState<ModelRecord | null>(null)
-  const detailState = useUserModelDetail(detailModel ? modelAlias(detailModel) : null)
+  const requestedDetailState = useUserModelDetail(requestedModelAlias)
+  const detailState = useUserModelDetail(requestedModelAlias ?? (detailModel ? modelAlias(detailModel) : null))
   const companies = useMemo(() => [...new Set(userModels.map((model) => model.company))].sort((left, right) => left.localeCompare(right, 'zh-CN')), [userModels])
   const filteredModels = useMemo(() => filterAndSortModels(userModels, { query, company, category, priceFilter, sort }), [category, company, priceFilter, query, sort, userModels])
   const categoryCounts = useMemo(() => modelCategoryCounts(userModels, { query, company, priceFilter }), [company, priceFilter, query, userModels])
@@ -54,13 +58,20 @@ export function ConsoleModelsPage() {
   // 中文：单卡页面限制卡片宽度，多卡页面继续由网格平均分配可用空间。
   const modelGridClassName = pageResult.items.length === 1 ? 'model-card-grid model-card-grid--single' : 'model-card-grid'
 
-  const requestedModelAlias = searchParams.get('model')
-
   useEffect(() => {
     if (!requestedModelAlias) return
     const requestedModel = findModelInList(userModels, requestedModelAlias)
-    if (requestedModel) setDetailModel(requestedModel)
-  }, [requestedModelAlias, userModels])
+    if (requestedModel) {
+      setDetailModel(requestedModel)
+      return
+    }
+    const fetchedModel = requestedDetailState.detail?.model
+    if (fetchedModel) {
+      const mappedModel = mapUserModels([fetchedModel])[0] ?? null
+      setDetailModel(mappedModel)
+      setQuery((current) => current === requestedModelAlias ? current : requestedModelAlias)
+    }
+  }, [requestedDetailState.detail, requestedModelAlias, userModels])
 
   useEffect(() => {
     if (pageResult.page !== page) setPage(pageResult.page)
@@ -90,6 +101,7 @@ export function ConsoleModelsPage() {
 
   function closeModelDetail(): void {
     setDetailModel(null)
+    setQuery('')
     if (!requestedModelAlias) return
     const nextSearchParams = new URLSearchParams(searchParams)
     nextSearchParams.delete('model')
