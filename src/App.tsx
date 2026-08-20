@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { BrowserRouter, Navigate, Outlet, Route, Routes, useNavigate } from 'react-router'
+import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation, useNavigate } from 'react-router'
 import Button from '@douyinfe/semi-ui/lib/es/button'
 import { AppLoadingScreen, ConsoleLayout, DEFAULT_CONSOLE_PATH, PublicLayout } from '@/components/common'
 import { AppStoreProvider } from '@/data/app-state'
@@ -96,6 +96,21 @@ function AppLoadingFallback() {
   return <AppLoadingScreen label={t('console.common.loadingPage')} />
 }
 
+// 中文：每次切换路由后把页面滚动位置复位，避免新页面沿用上一个页面的阅读位置。
+function ScrollToTop() {
+  const { pathname, search } = useLocation()
+
+  useEffect(() => {
+    const root = document.documentElement
+    const previousScrollBehavior = root.style.scrollBehavior
+    root.style.scrollBehavior = 'auto'
+    window.scrollTo(0, 0)
+    root.style.scrollBehavior = previousScrollBehavior
+  }, [pathname, search])
+
+  return null
+}
+
 function BootReadyWatcher({ onBootReady }: { onBootReady: () => void }) {
   useEffect(() => {
     if (typeof window.requestAnimationFrame === 'function') {
@@ -113,6 +128,7 @@ function BootReadyWatcher({ onBootReady }: { onBootReady: () => void }) {
 export default function App({ onBootReady }: { onBootReady: () => void }) {
   return (
     <BrowserRouter>
+      <ScrollToTop />
       <AppStoreProvider>
         <AuthBootstrap>
           <BootReadyWatcher onBootReady={onBootReady} />
@@ -132,6 +148,7 @@ export default function App({ onBootReady }: { onBootReady: () => void }) {
               <Route path="/news/:id" element={<NewsDetailPage />} />
               <Route path="/terms" element={<LegalPage kind="terms" />} />
               <Route path="/privacy" element={<LegalPage kind="privacy" />} />
+              <Route path="/recharge-agreement" element={<LegalPage kind="recharge" />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/join" element={<JoinPage />} />
               <Route path="/invite" element={<InviteLandingPage />} />

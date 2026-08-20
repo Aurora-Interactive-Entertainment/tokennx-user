@@ -28,21 +28,29 @@ const FIRST_MODEL_PAGE = 1
 
 export function ConsoleModelsPage() {
   const { t } = useTranslation()
-  const { models: userModels, loading, error, refresh } = useUserModels()
+  const [category, setCategory] = useState<ModelCategory>('all')
+  const [activityId, setActivityId] = useState('')
+  const [page, setPage] = useState(FIRST_MODEL_PAGE)
+  const [pageSize, setPageSize] = useState<number>(DEFAULT_MODEL_PAGE_SIZE)
   const [searchParams, setSearchParams] = useSearchParams()
   const [query, setQuery] = useState('')
   const [company, setCompany] = useState('all')
   const [priceFilter, setPriceFilter] = useState<ModelPriceFilter>('all')
-  const [category, setCategory] = useState<ModelCategory>('all')
   const [sort, setSort] = useState<ModelSort>('default')
-  const [page, setPage] = useState(FIRST_MODEL_PAGE)
-  const [pageSize, setPageSize] = useState<number>(DEFAULT_MODEL_PAGE_SIZE)
+  const canUseServerPagination = !query.trim() && company === 'all' && priceFilter === 'all' && sort === 'default'
+  const { models: userModels, activities, total: apiTotal, page: apiPage, pageSize: apiPageSize, loading, error, refresh } = useUserModels({ activityId: activityId || undefined, modelType: category === 'all' ? undefined : category, ...(canUseServerPagination ? { page, pageSize } : {}) })
   const [detailModel, setDetailModel] = useState<ModelRecord | null>(null)
   const detailState = useUserModelDetail(detailModel ? modelAlias(detailModel) : null)
   const companies = useMemo(() => [...new Set(userModels.map((model) => model.company))].sort((left, right) => left.localeCompare(right, 'zh-CN')), [userModels])
   const filteredModels = useMemo(() => filterAndSortModels(userModels, { query, company, category, priceFilter, sort }), [category, company, priceFilter, query, sort, userModels])
   const categoryCounts = useMemo(() => modelCategoryCounts(userModels, { query, company, priceFilter }), [company, priceFilter, query, userModels])
-  const pageResult = useMemo(() => paginateModels(filteredModels, page, pageSize), [filteredModels, page, pageSize])
+  const pageResult = useMemo(() => {
+    if (apiTotal === null) return paginateModels(filteredModels, page, pageSize)
+    const currentPage = apiPage ?? page
+    const currentPageSize = apiPageSize ?? pageSize
+    const start = apiTotal === 0 ? 0 : (currentPage - 1) * currentPageSize + 1
+    return { items: filteredModels, page: currentPage, pageSize: currentPageSize, total: apiTotal, totalPages: apiTotal === 0 ? 0 : Math.ceil(apiTotal / currentPageSize), start, end: Math.min(currentPage * currentPageSize, apiTotal) }
+  }, [apiPage, apiPageSize, apiTotal, filteredModels, page, pageSize])
   // 中文：单卡页面限制卡片宽度，多卡页面继续由网格平均分配可用空间。
   const modelGridClassName = pageResult.items.length === 1 ? 'model-card-grid model-card-grid--single' : 'model-card-grid'
 
@@ -63,11 +71,19 @@ export function ConsoleModelsPage() {
     update()
   }
 
+  function selectActivity(activity: string): void {
+    updateFilter(() => {
+      setActivityId(activity)
+      setPriceFilter('all')
+    })
+  }
+
   function clearFilters(): void {
     setQuery('')
     setCompany('all')
     setPriceFilter('all')
     setCategory('all')
+    setActivityId('')
     setSort('default')
     setPage(FIRST_MODEL_PAGE)
   }
@@ -88,11 +104,18 @@ export function ConsoleModelsPage() {
       <Input className="app-standard-input models-search-input" size="large" prefix={<IconSearch aria-hidden="true" />} value={query} onChange={(value) => updateFilter(() => setQuery(value))} placeholder={t('console.models.searchPlaceholder')} aria-label={t('console.models.searchPlaceholder').replace('...', '')} showClear />
       <Select className="models-company-select" value={company} onChange={(value) => updateFilter(() => setCompany(String(value)))} aria-label={t('console.common.allCompanies')}><Select.Option value="all">{t('console.common.allCompanies')}</Select.Option>{companies.map((item) => <Select.Option key={item} value={item}>{item}</Select.Option>)}</Select>
       <div className="models-controls">
-        <div className="price-filters" role="group" aria-label={t('console.common.priceStatus')}>{MODEL_PRICE_FILTERS.map((filter) => <button className={`price-filter${priceFilter === filter.value ? ' active' : ''}`} type="button" aria-pressed={priceFilter === filter.value} key={filter.value} onClick={() => updateFilter(() => setPriceFilter(filter.value))}>{t(filter.labelKey)}</button>)}</div>
+        <div className="price-filters model-activity-filters" role="group" aria-label={activities.length ? t('console.models.activityFilter') : t('console.common.priceStatus')}>
+          {activities.length ? <>
+            <button className={`price-filter${activityId === '' ? ' active' : ''}`} type="button" aria-pressed={activityId === ''} onClick={() => selectActivity('')}>{t('console.common.all')}</button>
+            {activities.map((activity) => <button className={`price-filter${activityId === activity.id ? ' active' : ''}`} type="button" aria-pressed={activityId === activity.id} key={activity.id} onClick={() => selectActivity(activity.id)}>{activity.name}</button>)}
+          </> : MODEL_PRICE_FILTERS.map((filter) => <button className={`price-filter${priceFilter === filter.value ? ' active' : ''}`} type="button" aria-pressed={priceFilter === filter.value} key={filter.value} onClick={() => updateFilter(() => { setActivityId(''); setPriceFilter(filter.value) })}>{t(filter.labelKey)}</button>)}
+        </div>
         <label className="sort-control"><span>{t('console.common.sort')}</span><Select value={sort} onChange={(value) => updateFilter(() => setSort(value as ModelSort))} aria-label={t('console.common.modelSort')}>{MODEL_SORTS.map((option) => <Select.Option key={option.value} value={option.value}>{t(option.labelKey)}</Select.Option>)}</Select></label>
       </div>
     </div>
-    <div className="models-subbar"><div className="modality-tabs" role="group" aria-label={t('console.common.modelType')}>{MODEL_CATEGORIES.map((tab) => <button className={`modality-tab${category === tab.value ? ' active' : ''}`} type="button" aria-pressed={category === tab.value} key={tab.value} disabled={categoryCounts[tab.value] === 0} onClick={() => updateFilter(() => setCategory(tab.value))}>{t(tab.labelKey)} <span className="tab-count">{categoryCounts[tab.value]}</span></button>)}</div><span className="models-result-count">{t('console.common.modelCount', { count: filteredModels.length })}</span></div>
+    <div className="models-subbar">
+      <div className="modality-tabs" role="group" aria-label={t('console.common.modelType')}>{MODEL_CATEGORIES.map((tab) => <button className={`modality-tab${category === tab.value ? ' active' : ''}`} type="button" aria-pressed={category === tab.value} key={tab.value} disabled={categoryCounts[tab.value] === 0} onClick={() => updateFilter(() => setCategory(tab.value))}>{t(tab.labelKey)} <span className="tab-count">{categoryCounts[tab.value]}</span></button>)}</div><span className="models-result-count">{t('console.common.modelCount', { count: pageResult.total })}</span>
+    </div>
     {filteredModels.length ? <>
       <div className={modelGridClassName}>{pageResult.items.map((model) => <ModelCard key={model.id} model={model} onSelect={setDetailModel} />)}</div>
       <AppPagination ariaLabel={t('console.models.modelPage')} currentPage={pageResult.page} pageSize={pageSize} total={pageResult.total} pageSizeOptions={[...MODEL_PAGE_SIZES]} summary={t('console.common.showRange', { start: pageResult.start, end: pageResult.end, total: pageResult.total })} onPageChange={setPage} onPageSizeChange={(nextPageSize) => { setPageSize(nextPageSize); setPage(FIRST_MODEL_PAGE) }} />

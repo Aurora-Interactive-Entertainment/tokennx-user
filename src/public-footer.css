@@ -103,18 +103,32 @@
   font-weight: 400;
 }
 
-.public-footer--manuscript .manuscript-footer-contact > a {
+.public-footer--manuscript .manuscript-footer-contact > a,
+.public-footer--manuscript .manuscript-footer-contact > button {
   display: block;
   width: 100%;
+  padding: 0;
+  border: 0;
   color: #bbb;
+  background: transparent;
   font-size: var(--public-footer-label-size);
+  font-family: inherit;
   line-height: 1.2;
   text-align: left;
   white-space: nowrap;
+  cursor: pointer;
+  transition: color .18s ease, transform .18s ease;
 }
 
-.public-footer--manuscript .manuscript-footer-contact > strong + a,
-.public-footer--manuscript .manuscript-footer-contact > a + a { margin-top: 0; }
+.public-footer--manuscript .manuscript-footer-contact > :is(a, button):hover {
+  color: #fff;
+  transform: translateX(2px);
+}
+
+.public-footer--manuscript .manuscript-footer-contact > :is(a, button):focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 4px;
+}
 
 .public-footer--manuscript .manuscript-footer-qr-row {
   display: flex;
@@ -202,8 +216,10 @@ html[data-theme="light"] .public-footer--manuscript .public-footer-nav-group str
 html[data-theme="light"] .public-footer--manuscript .manuscript-footer-contact > strong { color: #30343b; }
 html[data-theme="light"] .public-footer--manuscript .public-footer-nav-group a,
 html[data-theme="light"] .public-footer--manuscript .manuscript-footer-contact > a,
+html[data-theme="light"] .public-footer--manuscript .manuscript-footer-contact > button,
 html[data-theme="light"] .public-footer--manuscript .public-footer-qr span { color: #4f4f4f; }
-html[data-theme="light"] .public-footer--manuscript .public-footer-nav-group a:hover { color: #17181b; }
+html[data-theme="light"] .public-footer--manuscript .public-footer-nav-group a:hover,
+html[data-theme="light"] .public-footer--manuscript .manuscript-footer-contact > :is(a, button):hover { color: #17181b; }
 html[data-theme="light"] .public-footer--manuscript .manuscript-footer-filing {
   color: #747983;
   background: #f6f6f6;
@@ -349,15 +365,16 @@ html[data-theme="light"] .public-footer--manuscript .manuscript-footer-filing-it
 
   .public-footer--manuscript .manuscript-footer-contact > strong { display: none; }
 
-  .public-footer--manuscript .manuscript-footer-contact > a {
+  .public-footer--manuscript .manuscript-footer-contact > a,
+  .public-footer--manuscript .manuscript-footer-contact > button {
     color: #bbb;
     font-size: 15px;
     line-height: 22.5px;
+    text-align: center;
     white-space: normal;
   }
 
-  .public-footer--manuscript .manuscript-footer-contact > strong + a { margin-top: 0; }
-  .public-footer--manuscript .manuscript-footer-contact > a + a { margin-top: 7px; }
+  .public-footer--manuscript .manuscript-footer-contact > :is(a, button) + :is(a, button) { margin-top: 7px; }
 
   .public-footer--manuscript .manuscript-footer-qr-row {
     order: -1;

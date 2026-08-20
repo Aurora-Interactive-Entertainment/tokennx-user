@@ -72,4 +72,17 @@ describe('用户模型目录接口封装', () => {
     expect(getUserModelsErrorMessage(new ApiError('服务错误', 403, 120003, 'request-1'))).toBe('当前用户没有查看该工作空间模型的权限')
     expect(getUserModelsErrorMessage(new Error('offline'))).toBe('模型目录加载失败，请稍后重试')
   })
+
+  it('拼接活动、类型和分页参数，并保留分页元信息', async () => {
+    const payload = { items: [], activities: [{ id: 'activity-summer', name: '夏季活动', model_count: 3, sort_order: 10 }], total: 3, page: 1, page_size: 20 }
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(response(payload))
+
+    await expect(getUserModels({ account_type: 'personal', activity_id: 'activity-summer', model_type: 'text', page: 1, page_size: 20 })).resolves.toEqual(payload)
+    expect(String(fetchMock.mock.calls[0]?.[0])).toBe('/api/user/models?account_type=personal&activity_id=activity-summer&model_type=text&page=1&page_size=20')
+  })
+
+  it('兼容未返回活动摘要的全量目录响应', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(response({ items: [] }))
+    await expect(getUserModels({ account_type: 'personal' })).resolves.toEqual({ items: [], activities: [] })
+  })
 })

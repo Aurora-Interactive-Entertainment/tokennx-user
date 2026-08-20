@@ -168,14 +168,14 @@ describe('控制台导航路径匹配', () => {
     expect(navigation).toHaveTextContent('调用记录')
     expect(navigation).not.toHaveTextContent('使用日志')
     expect(navigation).not.toHaveTextContent('企业管理')
-    expect(navigation).not.toHaveTextContent('视频生成')
+    expect(navigation).toHaveTextContent('视频生成')
     expect(navigation).toHaveTextContent('邀请返现')
     expect(navigation).toHaveTextContent('认证返现')
     expect(navigation).not.toHaveTextContent('文档中心')
     expect(navigation).not.toHaveTextContent('联系我们')
     expect(navigation).not.toHaveTextContent('在线客服')
     expect(screen.getByRole('link', { name: '实名认证' })).toHaveAttribute('href', '/console/real-name')
-    expect(screen.queryByRole('link', { name: '视频生成' })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: '视频生成' })).toHaveAttribute('href', '/console/video')
     expect(screen.getByRole('button', { name: /认证返现/ })).toHaveTextContent('即将上线')
     expect(screen.getByRole('status', { name: '当前空间' })).toHaveTextContent('个人空间')
     expect(screen.getByRole('button', { name: '打开客服' })).toBeInTheDocument()
@@ -287,7 +287,7 @@ describe('控制台导航路径匹配', () => {
       expect(navigation).toHaveTextContent('快速接入')
       expect(navigation).toHaveTextContent('模型广场')
       expect(navigation).toHaveTextContent('智能对话')
-      expect(navigation).not.toHaveTextContent('视频生成')
+      expect(navigation).toHaveTextContent('视频生成')
       expect(navigation).toHaveTextContent('用量统计')
       expect(navigation).toHaveTextContent('调用记录')
       expect(navigation).toHaveTextContent('账号信息')
@@ -315,7 +315,7 @@ describe('控制台导航路径匹配', () => {
     expect(isEnterpriseOwner({ type: 'enterprise', role: 'owner' })).toBe(true)
     expect(isEnterpriseOwner({ type: 'enterprise', role: 'member' })).toBe(false)
     expect(isEnterpriseOwner({ type: 'personal', role: 'owner' })).toBe(false)
-    expect(consoleNavGroupsFor({ type: 'enterprise', role: 'member' }).flatMap((group) => group.items).map((item) => item.label)).toEqual(['快速接入', '模型广场', '智能对话', '用量统计', '调用记录', '账号信息', '密钥管理'])
+    expect(consoleNavGroupsFor({ type: 'enterprise', role: 'member' }).flatMap((group) => group.items).map((item) => item.label)).toEqual(['快速接入', '模型广场', '智能对话', '视频生成', '用量统计', '调用记录', '账号信息', '密钥管理'])
     expect(consoleNavGroupsFor({ type: 'enterprise', role: 'member' }, ['usage.detail']).flatMap((group) => group.items).map((item) => item.label)).toContain('用量管理')
     expect(consoleNavGroupsFor({ type: 'enterprise', role: 'member' }, ['billing.view']).flatMap((group) => group.items).map((item) => item.label)).toContain('费用管理')
     expect(consoleNavGroupsFor({ type: 'enterprise', role: 'member' }, ['billing.view']).find((group) => group.key === 'enterprise-management')?.items.map((item) => item.label)).toContain('费用管理')
@@ -476,7 +476,7 @@ describe('公共 Header 布局', () => {
     expect(overviewCalls()).toHaveLength(1)
   })
 
-  it('公开 Header 的模型、排名、应用和文档入口可点击，桌面和移动导航仅禁用私有化', async () => {
+  it('公开 Header 的模型、排名、应用和文档入口可点击，桌面和移动导航隐藏私有化', async () => {
     const user = userEvent.setup()
     render(
       <MemoryRouter initialEntries={['/']}>
@@ -491,10 +491,7 @@ describe('公共 Header 布局', () => {
     expect(within(desktopNav).getByRole('link', { name: '排名' })).toHaveAttribute('href', '/rankings')
     expect(within(desktopNav).getByRole('link', { name: '智能体' })).toHaveAttribute('href', '/apps')
     expect(within(desktopNav).getByRole('link', { name: '文档' })).toHaveAttribute('href', '/docs')
-    for (const label of ['私有化']) {
-      expect(within(desktopNav).queryByRole('link', { name: label })).toBeNull()
-      expect(within(desktopNav).getByText(label)).toHaveAttribute('aria-disabled', 'true')
-    }
+    expect(within(desktopNav).queryByText('私有化')).toBeNull()
 
     await user.click(screen.getByRole('button', { name: '打开公开导航' }))
     const mobileNav = document.querySelector('.public-mobile-nav')
@@ -503,10 +500,7 @@ describe('公共 Header 布局', () => {
     expect(within(mobileNav as HTMLElement).getByRole('link', { name: '排名' })).toHaveAttribute('href', '/rankings')
     expect(within(mobileNav as HTMLElement).getByRole('link', { name: '智能体' })).toHaveAttribute('href', '/apps')
     expect(within(mobileNav as HTMLElement).getByRole('link', { name: '文档' })).toHaveAttribute('href', '/docs')
-    for (const label of ['私有化']) {
-      expect(within(mobileNav as HTMLElement).queryByRole('link', { name: label })).toBeNull()
-      expect(within(mobileNav as HTMLElement).getByText(label)).toHaveAttribute('aria-disabled', 'true')
-    }
+    expect(within(mobileNav as HTMLElement).queryByText('私有化')).toBeNull()
   })
 
   it('移动导航可通过外部点击和 Escape 收起', async () => {
@@ -631,6 +625,33 @@ describe('公共 Header 布局', () => {
 
     await user.click(docsToggle)
     expect(docsToggle).toHaveAttribute('aria-expanded', 'false')
+  })
+
+  it('公共 Footer 使用新的业务分组、登录入口和联系信息', async () => {
+    const user = userEvent.setup()
+    render(
+      <MemoryRouter>
+        <Provider store={createAppStore()}>
+          <PublicFooter />
+        </Provider>
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByRole('link', { name: '智能对话' })).toHaveAttribute('href', '/login?return=%2Fconsole%2Fplayground')
+    expect(screen.getByRole('link', { name: '视频生成' })).toHaveAttribute('href', '/login?return=%2Fconsole%2Fvideo')
+    expect(screen.getByRole('link', { name: '模型排名' })).toHaveAttribute('href', '/rankings')
+    expect(screen.getByRole('link', { name: '智能体排名' })).toHaveAttribute('href', '/apps')
+    expect(screen.getByRole('link', { name: '套餐价格' })).toHaveAttribute('href', '/login?return=%2Fconsole%2Fbilling%3Ftab%3Dsubscription')
+    expect(screen.getByRole('link', { name: i18n.t('footer.platformIntro') })).toHaveAttribute('href', '/docs/01M074Z9VZXG1V0T6KYRW7AE34/platform-overview')
+    expect(screen.getByRole('link', { name: i18n.t('footer.apiDocs') })).toHaveAttribute('href', '/docs/01M0765G0JDT3JCZ6QQXNM40TX/token-nx-api-documentation')
+    expect(screen.getByRole('link', { name: i18n.t('footer.faq') })).toHaveAttribute('href', '/docs/01M0765G0JADMQ2Y49DHV3MX70/frequently-asked-questions')
+    expect(screen.getByRole('link', { name: i18n.t('footer.userAgreement') })).toHaveAttribute('href', '/terms')
+    expect(screen.getByRole('link', { name: i18n.t('footer.privacyAgreement') })).toHaveAttribute('href', '/privacy')
+    expect(screen.getByRole('link', { name: i18n.t('footer.rechargeAgreement') })).toHaveAttribute('href', '/recharge-agreement')
+    expect(screen.getByRole('link', { name: 'wub@tokennx.com' })).toHaveAttribute('href', 'mailto:wub@tokennx.com')
+
+    await user.click(screen.getByRole('button', { name: '售前咨询：' }))
+    expect(await screen.findByRole('dialog', { name: '联系客服' })).toBeInTheDocument()
   })
 
   it('Header 和用户菜单统一限制昵称展示长度', async () => {
@@ -769,7 +790,7 @@ describe('已登录用户菜单', () => {
     expect(menu).toHaveTextContent('切换空间')
     expect(menu).toHaveTextContent('快速接入')
     expect(menu).toHaveTextContent('智能对话')
-    expect(menu).not.toHaveTextContent('视频生成')
+    expect(menu).toHaveTextContent('视频生成')
     expect(menu).toHaveTextContent('调用记录')
     expect(menu).not.toHaveTextContent('使用日志')
     expect(menu).toHaveTextContent('费用管理')

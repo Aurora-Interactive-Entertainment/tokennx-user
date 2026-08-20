@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { within } from '@testing-library/react'
 import { MemoryRouter, useLocation } from 'react-router'
 import { Provider } from 'react-redux'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -214,6 +215,34 @@ describe('控制台模型接入页面', () => {
 
     await user.click(screen.getByRole('button', { name: '复制 后端 DeepSeek 模型别名' }))
     expect(clipboardWriteText).toHaveBeenCalledWith('deepseek-public')
+  })
+
+  it('将活动放在顶部筛选区且不显示数量，并保留模型类型计数和零项禁用', async () => {
+    vi.mocked(globalThis.fetch).mockResolvedValue(new Response(JSON.stringify({
+      code: 0,
+      msg: 'success',
+      data: {
+        ...visibleModelsResponse(),
+        items: visibleModelsResponse().items.map((item, index) => index === 0 ? { ...item, tags: [{ label: '折扣', color: '#c98a35' }] } : item),
+        activities: [
+          { id: 'activity-free', name: '免费', model_count: 1, sort_order: 0 },
+          { id: 'activity-discount', name: '折扣', model_count: 1, sort_order: 1 },
+        ],
+      },
+    }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
+    renderConsolePage(<ConsoleModelsPage />, ['/console/models'])
+
+    const activityFilters = await screen.findByRole('group', { name: '活动筛选' })
+    expect(within(activityFilters).getAllByRole('button').map((button) => button.textContent)).toEqual(['全部', '免费', '折扣'])
+    expect(screen.getAllByRole('group', { name: '活动筛选' })).toHaveLength(1)
+
+    const modelTypes = screen.getByRole('group', { name: '模型类型筛选' })
+    expect(within(modelTypes).getByRole('button', { name: /全部\s*3/ })).toBeEnabled()
+    expect(within(modelTypes).getByRole('button', { name: /图片\s*1/ })).toBeEnabled()
+    expect(within(modelTypes).getByRole('button', { name: /音频\s*0/ })).toBeDisabled()
+    const coloredTag = document.querySelector<HTMLElement>('.models-console-page .model-card-tags .model-color-tag')
+    expect(coloredTag).toHaveTextContent('折扣')
+    expect(coloredTag?.style.getPropertyValue('--model-tag-color')).toBe('#c98a35')
   })
 
   it('模型广场支持通过查询参数打开抽屉，并在关闭后清除参数', async () => {

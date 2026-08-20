@@ -82,7 +82,17 @@
 @media (max-width: 560px) { .models-showcase-hero { height: 420px; min-height: 420px; } .models-showcase-hero-copy, .models-showcase-catalog { width: min(100% - 32px, 1120px); } .models-showcase-hero-copy { padding-top: 88px; } .models-showcase-hero h1 { font-size: 42px; } .models-showcase-group-head { align-items: flex-start; flex-direction: column; } .models-showcase-grid { grid-template-columns: 1fr; } .models-showcase-card { height: auto; min-height: 331px; padding: 22px 16px 62px; } .models-showcase-card-actions { right: 16px; left: 16px; opacity: 1; transform: none; } }
 html[data-theme="light"] .models-showcase { --models-surface: #fff; --models-panel: #f6f6f6; --models-muted: #6b6f79; --models-text: #17181b; background: #fff; }
 html[data-theme="light"] .models-showcase-hero { background: #1e2850; }
-html[data-theme="light"] .models-showcase-hero-overlay { background: linear-gradient(180deg, rgba(10,10,12,.08) 0%, rgba(10,10,12,.1) 66%, rgba(255,255,255,.72) 92%, #fff 100%), linear-gradient(90deg, rgba(255,255,255,.58) 0%, rgba(255,255,255,.34) 3%, rgba(255,255,255,.12) 8%, transparent 14%, transparent 86%, rgba(255,255,255,.12) 92%, rgba(255,255,255,.34) 97%, rgba(255,255,255,.58) 100%); }
+/* 浅色模式保留左侧可读性，并弱化会显出环形边界的径向光晕。 */
+html[data-theme="light"] .models-showcase-hero-art::before { opacity: .12; }
+html[data-theme="light"] .models-showcase-hero-art::after {
+  background: linear-gradient(90deg, rgba(4,7,18,.5) 0%, rgba(4,7,18,.22) 38%, rgba(4,7,18,.06) 72%, transparent 100%);
+  mix-blend-mode: normal;
+}
+html[data-theme="light"] .models-showcase-hero-overlay {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0) 68%, rgba(255,255,255,.04) 72%, rgba(255,255,255,.12) 77%, rgba(255,255,255,.24) 82%, rgba(255,255,255,.42) 87%, rgba(255,255,255,.64) 92%, rgba(255,255,255,.84) 96%, #fff 100%),
+    linear-gradient(90deg, rgba(255,255,255,.64) 0%, rgba(255,255,255,.42) 3%, rgba(255,255,255,.22) 6.5%, rgba(255,255,255,.1) 10%, rgba(255,255,255,.03) 13%, transparent 15.5%, transparent 84.5%, rgba(255,255,255,.03) 87%, rgba(255,255,255,.1) 90%, rgba(255,255,255,.22) 93.5%, rgba(255,255,255,.42) 97%, rgba(255,255,255,.64) 100%);
+}
 html[data-theme="light"] .models-showcase-card { border-color: #e6e6e9; box-shadow: 0 10px 26px rgba(31,35,42,.06); }
 html[data-theme="light"] .models-showcase-card:hover,
 html[data-theme="light"] .models-showcase-card:focus-within { border-color: #765bb4; }

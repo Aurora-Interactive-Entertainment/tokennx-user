@@ -1,0 +1,22 @@
+.legal-page {
+  width: min(1080px, calc(100% - 40px));
+  margin: 0 auto;
+  padding: 48px 0 80px;
+}
+
+.legal-page-article {
+  width: min(860px, 100%);
+  min-width: 0;
+  margin: 0 auto;
+}
+
+.legal-page-article.docs-markdown h1 {
+  max-width: none;
+}
+
+@media (max-width: 720px) {
+  .legal-page {
+    width: min(calc(100% - 28px), 1080px);
+    padding: 32px 0 56px;
+  }
+}

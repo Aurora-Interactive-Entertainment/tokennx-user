@@ -75,4 +75,19 @@ describe('模型目录业务规则', () => {
     expect(small.throughput).toEqual({ value: 999, unit: 'token' })
     expect(invalid.throughput).toEqual({ value: 0, unit: '暂无数据' })
   })
+
+  it('映射模型图标、标签、活动、输出上限和可用率统计', () => {
+    const [model] = mapUserModels([{
+      id: 'model-new-fields', name: 'New Fields', company: 'Provider', modality: 'multimodal', billing_mode: 'token', description: '', capabilities: ['chat'], provider_count: 2, prices: null,
+      icon_url: 'https://example.com/model.png', max_tokens: 8192,
+      tags: [{ label: '推荐', color: '#2563EB' }],
+      activities: [{ id: 'activity-summer', name: '夏季活动', status: 'active', sort_order: 10 }],
+      activity_ids: ['activity-summer'],
+      availability: { rate: 99.5, sample_count: 200, success_count: 199, window_hours: 48 },
+    }])
+
+    expect(model).toMatchObject({ iconUrl: 'https://example.com/model.png', modality: 'multimodal', maxOutput: '8K', activityIds: ['activity-summer'] })
+    expect(model.tags).toEqual([{ label: '推荐', color: '#2563EB' }])
+    expect(model.availability).toMatchObject({ rate: 99.5, window: '48h', sampleCount: 200, successCount: 199 })
+  })
 })

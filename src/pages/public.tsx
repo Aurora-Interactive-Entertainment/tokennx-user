@@ -581,27 +581,33 @@ function HomePartnerRow({ partners, rowIndex }: { partners: HomePartner[]; rowIn
 function ManagedFeatureCard({ entry, index }: { entry: HomepageEntry; index: number }) {
   const { t, i18n } = useTranslation()
   const content = homepageTranslation(entry, i18n.language)
-  const href = homepageHref(content.link_url, '/models')
-  const action = content.action_text?.trim() || t(`home.rebuild.featureCards.${index % 3}.action`)
+  const featureIndex = index % 3
+  const title = t(`home.rebuild.featureCards.${featureIndex}.title`)
+  const description = t(`home.rebuild.featureCards.${featureIndex}.description`)
+  const action = t(`home.rebuild.featureCards.${featureIndex}.action`)
   const imageURL = homepageMediaURL(content.image_object_id, content.image_url)
+  // 中文：首页三张业务卡片的目标固定，避免后台旧链接把登录态流程带到错误页面。
+  const actionElement = featureIndex === 0
+    ? <Link className="manuscript-feature-action" to="/models">{action}</Link>
+    : <LoginRequiredAction className="manuscript-feature-action" returnPath={featureIndex === 1 ? '/console/enterprise-create' : '/console/usage'}>{action}</LoginRequiredAction>
   return <article className="manuscript-feature-card">
     <div className="manuscript-feature-visual">{imageURL ? <img className="manuscript-feature-image" src={imageURL} alt="" aria-hidden="true" loading={index === 0 ? 'eager' : 'lazy'} fetchPriority={index === 0 ? 'high' : 'auto'} decoding="async" width={416} height={106} /> : <HomeFeatureArtwork priority={index === 0} />}<span>{index === 0 ? t('home.rebuild.featureModelsCount') : t('home.rebuild.featuresTitle')}</span></div>
     <div className="manuscript-feature-copy">
-      <h3>{content.title || t('home.rebuild.featuresTitle')}</h3>
-      <p>{content.description || ''}</p>
-      {href.startsWith('/') ? <Link className="manuscript-feature-action" to={href}>{action}</Link> : <a className="manuscript-feature-action" href={href} target="_blank" rel="noopener noreferrer">{action}</a>}
+      <h3>{title}</h3>
+      <p>{description}</p>
+      {actionElement}
     </div>
   </article>
 }
 
 function ManagedNewsCard({ entry, index }: { entry: HomepageEntry; index: number }) {
   const { t, i18n } = useTranslation()
-  const content = homepageTranslation(entry, i18n.language)
-  // Homepage news entries always open the Markdown detail reader. The managed
-  // link_url field is intentionally ignored here so an old docs URL cannot
-  // route a news card away from /news/:id.
+  const newsIndex = index % 2
+  // 中文：资讯卡固定进入对应文章详情，忽略后台遗留的文档链接，避免离开文章阅读页。
   const href = `/news/${encodeURIComponent(entry.id)}`
-  const card = <><div className="manuscript-news-copy"><h3>{content.title || t('home.rebuild.news.0.title')}</h3><p>{content.summary || ''}</p><small>{homepageDate(entry.updated_at, i18n.language)} <b className="manuscript-news-new">{t('public.home.newBadge')}</b></small></div><div className={`manuscript-news-art manuscript-news-art--${index % 2}`} aria-hidden="true"><img className="manuscript-news-art-image" src={promoArticleArt} alt="" loading="lazy" decoding="async" width={850} height={333} /></div></>
+  const title = t(`home.rebuild.news.${newsIndex}.title`)
+  const description = t(`home.rebuild.news.${newsIndex}.description`)
+  const card = <><div className="manuscript-news-copy"><h3 title={title}>{title}</h3><p title={description}>{description}</p><small>{homepageDate(entry.updated_at, i18n.language)} <b className="manuscript-news-new">{t('public.home.newBadge')}</b></small></div><div className={`manuscript-news-art manuscript-news-art--${newsIndex}`} aria-hidden="true"><img className="manuscript-news-art-image" src={promoArticleArt} alt="" loading="lazy" decoding="async" width={850} height={333} /></div></>
   return <Link className="manuscript-news-card" to={href}>{card}</Link>
 }
 
@@ -609,10 +615,10 @@ function ManagedAdSlots({ entries }: { entries: HomepageEntry[] }) {
   const { t, i18n } = useTranslation()
   return <div className="manuscript-ad-slots">{entries.map((entry) => {
     const content = homepageTranslation(entry, i18n.language)
-    const href = homepageHref(content.link_url, '/models')
     const imageURL = homepageMediaURL(content.image_object_id, content.image_url)
     const ad = <img src={imageURL || promoBannerArt} alt={content.title || t('home.rebuild.adSlot')} loading="lazy" decoding="async" width={850} height={193} />
-    return href.startsWith('/') ? <Link className="manuscript-ad-slot" key={entry.id} to={href}>{ad}</Link> : <a className="manuscript-ad-slot" key={entry.id} href={href} target="_blank" rel="noopener noreferrer">{ad}</a>
+    // 中文：推广广告统一承接邀请活动，未登录时由公共登录弹窗完成后续跳转。
+    return <LoginRequiredAction className="manuscript-ad-slot" key={entry.id} returnPath="/console/invitations">{ad}</LoginRequiredAction>
   })}</div>
 }
 
@@ -1616,13 +1622,7 @@ export function AboutPage() {
   return <PublicLayout mainClassName="public-page"><header className="public-page-head"><h1>{t('public.about.title')}</h1><p>{t('public.about.description')}</p></header><section className="public-section"><h2>{t('public.about.boundaryTitle')}</h2><div className="public-grid"><div className="public-grid-item"><h3>{t('public.about.catalogTitle')}</h3><p>{t('public.about.catalogDescription')}</p></div><div className="public-grid-item"><h3>{t('public.about.requestTitle')}</h3><p>{t('public.about.requestDescription')}</p></div><div className="public-grid-item"><h3>{t('public.about.upstreamTitle')}</h3><p>{t('public.about.upstreamDescription')}</p></div></div></section><section className="public-section"><h2>{t('public.about.stageTitle')}</h2><p>{t('public.about.stageDescription')}</p><div className="public-actions"><Link className="btn btn-primary" to="/models">{t('public.about.browseModels')}</Link><Link className="btn btn-secondary" to="/docs">{t('public.about.viewDocs')}</Link></div></section></PublicLayout>
 }
 
-export function LegalPage({ kind }: { kind: 'terms' | 'privacy' }) {
-  const { t } = useTranslation()
-  const isTerms = kind === 'terms'
-  const sectionKeys = isTerms ? ['account', 'pricing', 'pending'] as const : ['records', 'console', 'pending'] as const
-  const resourceKey = isTerms ? 'terms' : 'privacy'
-  return <PublicLayout mainClassName="public-page"><header className="public-page-head"><h1>{t(`public.legal.${resourceKey}.title`)}</h1><p>{t(`public.legal.${resourceKey}.intro`)}</p></header>{sectionKeys.map((sectionKey) => <section className="public-section" key={sectionKey}><h2>{t(`public.legal.${resourceKey}.sections.${sectionKey}.title`)}</h2><p>{t(`public.legal.${resourceKey}.sections.${sectionKey}.text`)}</p></section>)}</PublicLayout>
-}
+export { LegalPage } from './legal'
 
 export function LoginPage() {
   const navigate = useNavigate()

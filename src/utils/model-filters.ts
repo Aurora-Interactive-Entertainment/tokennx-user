@@ -10,6 +10,7 @@ export const MODEL_CATEGORIES = [
   { value: 'rerank', labelKey: 'console.common.rerank' },
   { value: 'speech', labelKey: 'console.common.speech' },
   { value: 'transcription', labelKey: 'console.common.transcription' },
+  { value: 'multimodal', labelKey: 'console.enterprise.model.multimodal' },
 ] as const
 
 export type ModelCategory = typeof MODEL_CATEGORIES[number]['value']
@@ -83,6 +84,8 @@ export function modelMatchesCategory(model: ModelRecord, category: ModelCategory
       return model.modality === category || hasCapability(model, ['语音', '语音合成', 'speech', 'tts'])
     case 'transcription':
       return model.modality === category || hasCapability(model, ['语音转写', '转写', 'transcription', 'stt'])
+    case 'multimodal':
+      return model.modality === 'multimodal' || (model.modality === 'other' && hasCapability(model, ['multimodal', '多模态']))
   }
 }
 

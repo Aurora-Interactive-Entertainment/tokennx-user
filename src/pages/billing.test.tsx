@@ -160,7 +160,7 @@ function WorkspaceControl() {
   }}>切换到企业空间</button>
 }
 
-function renderBilling(config: { analysisError?: boolean; invoiceError?: boolean; requestId?: string; paymentReturnOrderID?: string; paymentStatus?: string; invoice?: BillingInvoiceItem; analysisWallet?: Partial<BillingAnalysisResponse['wallet']>; paymentFormHTML?: string } = {}) {
+function renderBilling(config: { analysisError?: boolean; invoiceError?: boolean; requestId?: string; paymentReturnOrderID?: string; paymentStatus?: string; tab?: string; invoice?: BillingInvoiceItem; analysisWallet?: Partial<BillingAnalysisResponse['wallet']>; paymentFormHTML?: string } = {}) {
   const appStore = createAppStore()
   appStore.dispatch({ type: 'auth/loginWithEmail/fulfilled', payload: AUTH_RESULT.user })
     const analysis = makeAnalysis(false, config.analysisWallet)
@@ -200,6 +200,7 @@ function renderBilling(config: { analysisError?: boolean; invoiceError?: boolean
   const query = new URLSearchParams()
   if (config.requestId) query.set('request', config.requestId)
   if (config.paymentReturnOrderID) query.set('order_id', config.paymentReturnOrderID)
+  if (config.tab) query.set('tab', config.tab)
   const path = query.toString() ? `/console/billing?${query.toString()}` : '/console/billing'
   const view = render(<MemoryRouter initialEntries={[path]}><Provider store={appStore}><AppStoreProvider><WorkspaceControl /><BillingPage /></AppStoreProvider></Provider></MemoryRouter>)
   return { ...view, appStore, fetchMock, getPostInput: () => postInput, getPaymentOrderInput: () => paymentOrderInput, getPaymentStartInput: () => paymentStartInput }
@@ -242,6 +243,13 @@ describe('用户费用管理页面', () => {
     expect(analysisURL.searchParams.get('source')).toBe('all')
     expect(analysisURL.searchParams.get('page_size')).toBe('20')
     expect(new Headers(analysisCall?.[1]?.headers).get('X-Request-ID')).toBeTruthy()
+  })
+
+  it('套餐入口查询参数会直接打开订阅与资源包页签', () => {
+    renderBilling({ tab: 'subscription' })
+
+    expect(screen.getByRole('tab', { name: '订阅与资源包' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('heading', { name: '在线订阅暂未开放' })).toBeInTheDocument()
   })
 
   it('使用账面余额展示，不因预授权释放回升可用余额', async () => {

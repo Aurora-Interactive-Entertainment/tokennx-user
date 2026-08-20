@@ -69,6 +69,12 @@ const BILLING_TABS: readonly [BillingTab, string][] = [
   ['invoice', 'console.billing.invoice'],
 ]
 
+// 中文：页脚套餐入口通过查询参数直达对应页签，非法值统一回退到账务概览。
+function billingTabFromSearch(search: string): BillingTab {
+  const tab = new URLSearchParams(search).get('tab')
+  return BILLING_TABS.some(([key]) => key === tab) ? tab as BillingTab : 'overview'
+}
+
 const RECHARGE_OPTIONS = [100, 500, 1000, 5000] as const
 const PAYMENT_STATUS_POLL_INTERVAL_MS = 2000
 const PAYMENT_ACTIVE_STATUSES = new Set(['pending', 'paying'])
@@ -585,9 +591,10 @@ export function BillingPage() {
   const activeWorkspace = store.activeWorkspace
   const context = useMemo(() => billingContextForWorkspace(activeWorkspace), [activeWorkspace.id, activeWorkspace.type])
   const contextKey = useMemo(() => billingContextKey(context), [context])
+  const requestedTab = useMemo(() => billingTabFromSearch(location.search), [location.search])
   const requestedRecordId = useMemo(() => new URLSearchParams(location.search).get('request')?.trim() ?? '', [location.search])
   const paymentReturnOrderID = useMemo(() => new URLSearchParams(location.search).get('order_id')?.trim() ?? '', [location.search])
-  const [activeTab, setActiveTab] = useState<BillingTab>('overview')
+  const [activeTab, setActiveTab] = useState<BillingTab>(requestedTab)
   const [reloadToken, setReloadToken] = useState(0)
   const [analysisPage, setAnalysisPage] = useState(BILLING_FIRST_PAGE)
   const [analysisPageSize, setAnalysisPageSize] = useState(BILLING_PAGE_SIZE)
@@ -622,7 +629,7 @@ export function BillingPage() {
   const loadError = useCallback((error: unknown): ResourceState<never> => ({ status: 'error', data: null, error: getBillingErrorMessage(error), requestId: getBillingRequestId(error) }), [])
 
   useEffect(() => {
-    setActiveTab('overview')
+    setActiveTab(requestedTab)
     setAnalysisPage(BILLING_FIRST_PAGE)
     setAnalysisPageSize(BILLING_PAGE_SIZE)
     setInvoicePage(BILLING_FIRST_PAGE)
@@ -633,7 +640,7 @@ export function BillingPage() {
     setPeriod(currentPeriod())
     setInvoiceState(resourceState())
     setPaymentReturnState(resourceState())
-  }, [contextKey])
+  }, [contextKey, requestedTab])
 
   useEffect(() => {
     if (!paymentReturnOrderID) {

@@ -171,6 +171,32 @@ describe('页面主链冒烟场景', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 
+  it('已登录用户点击受保护的公开入口时直接进入目标页面', async () => {
+    const user = userEvent.setup()
+    const appStore = createAppStore()
+    appStore.dispatch({ type: 'auth/loginWithEmail/fulfilled', payload: authUser })
+
+    render(
+      <MemoryRouter initialEntries={['/models']}>
+        <Provider store={appStore}>
+          <AppStoreProvider>
+            <LoginRequiredAction returnPath="/about">直接进入目标页面</LoginRequiredAction>
+            <Routes><Route path="/models" element={<div>模型目录</div>} /><Route path="/about" element={<div>关于页面</div>} /></Routes>
+          </AppStoreProvider>
+        </Provider>
+      </MemoryRouter>,
+    )
+
+    const action = screen.getByRole('link', { name: '直接进入目标页面' })
+    expect(action).toHaveAttribute('href', '/about')
+    expect(action).not.toHaveAttribute('aria-haspopup')
+
+    await user.click(action)
+
+    expect(await screen.findByText('关于页面')).toBeInTheDocument()
+    expect(screen.queryByRole('dialog', { name: '登录 Token NX' })).not.toBeInTheDocument()
+  })
+
   it('首页客服浮窗打开聊天页面并支持点击空白关闭', async () => {
     const user = userEvent.setup()
     render(<MemoryRouter><Provider store={createAppStore()}><AppStoreProvider><HomePage /></AppStoreProvider></Provider></MemoryRouter>)

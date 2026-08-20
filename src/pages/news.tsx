@@ -1,14 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { useTranslation } from 'react-i18next'
-import { IconArrowRight, IconChevronLeft } from '@douyinfe/semi-icons'
+import { IconArrowLeft, IconArrowRight } from '@douyinfe/semi-icons'
 import Skeleton from '@douyinfe/semi-ui/lib/es/skeleton'
 import Spin from '@douyinfe/semi-ui/lib/es/spin'
 import { PublicLayout } from '@/components/common'
 import { MarkdownContent } from '@/components/markdown-content'
-import { getNewsList, getNewsDetail, type NewsArticle, type NewsDetail } from '@/api/news'
+import { getNewsList, getNewsDetail, resolveNewsContentImageUrl, type NewsArticle, type NewsDetail } from '@/api/news'
 import { apiTimeToDate, apiTimeToISOString, type ApiTimeValue } from '@/utils/format'
 import { isApiError } from '@/api/http'
+import newsAuthorLogo from '@/assets/figma-header/X-16.png'
 import './news-list.css'
 import './news-detail.css'
 
@@ -23,8 +24,11 @@ function newsDateTime(timestamp: ApiTimeValue): string | undefined {
   return apiTimeToISOString(timestamp) ?? undefined
 }
 
+function newsTags(article: NewsArticle): string[] {
+  return article.tags?.length ? article.tags : article.category ? [article.category] : []
+}
+
 function NewsCard({ article, language, index }: { article: NewsArticle; language: string; index: number }) {
-  const { t } = useTranslation()
   const hasCover = Boolean(article.cover_image?.trim())
   return (
     <Link to={`/news/${encodeURIComponent(article.id)}`} className="news-card">
@@ -33,14 +37,12 @@ function NewsCard({ article, language, index }: { article: NewsArticle; language
       </div>
       <div className="news-card-content">
         <div className="news-card-meta">
-          <span className="news-card-category">{article.category}</span>
-          {article.publish_date ? <time dateTime={newsDateTime(article.publish_date)}>{formatNewsDate(article.publish_date, language)}</time> : null}
+          {newsTags(article).map((tag, index) => <span className="news-card-category" key={`${tag}-${index}`}>{tag}</span>)}
         </div>
         <h2 className="news-card-title">{article.title}</h2>
         {article.description ? <p className="news-card-description">{article.description}</p> : null}
         <div className="news-card-footer">
-          {article.read_time ? <span>{t('news.readTime', { minutes: article.read_time })}</span> : <span />}
-          <span className="news-card-read-link">{t('common.viewDetails')} <IconArrowRight aria-hidden="true" /></span>
+          {article.publish_date ? <time dateTime={newsDateTime(article.publish_date)}>{formatNewsDate(article.publish_date, language)}</time> : null}
         </div>
       </div>
     </Link>
@@ -105,7 +107,6 @@ export function NewsListPage() {
     <PublicLayout mainClassName="news-page--manuscript">
       <div className="news-list-container">
         <header className="news-list-header">
-          <span className="news-list-kicker">TOKEN NX / JOURNAL</span>
           <h1 className="news-list-title">{t('news.title')}</h1>
           <p className="news-list-subtitle">{t('news.subtitle')}</p>
         </header>
@@ -158,15 +159,18 @@ export function NewsDetailPage() {
   return (
     <PublicLayout mainClassName="news-page--manuscript">
       <div className="news-detail-container">
-        <Link to="/news" className="news-detail-back"><IconChevronLeft aria-hidden="true" /><span>{t('news.backToList')}</span></Link>
+        <Link to="/news" className="news-detail-back"><IconArrowLeft aria-hidden="true" /><span>{t('news.blog')}</span></Link>
         <article className="news-detail-article">
           <header className="news-detail-header">
-            <div className="news-detail-meta"><span className="news-detail-category">{article.category}</span>{article.publish_date ? <time dateTime={newsDateTime(article.publish_date)}>{formatNewsDate(article.publish_date, i18n.language)}</time> : null}{article.read_time ? <span>{t('news.readTime', { minutes: article.read_time })}</span> : null}</div>
+            <div className="news-detail-meta">{newsTags(article).map((tag, index) => <span className="news-detail-category" key={`${tag}-${index}`}>{tag}</span>)}</div>
             <h1 className="news-detail-title">{article.title}</h1>
             {article.description ? <p className="news-detail-summary">{article.description}</p> : null}
-            {article.author ? <div className="news-detail-author"><span aria-hidden="true">{article.author.slice(0, 1).toUpperCase()}</span><span>{article.author}</span></div> : null}
+            <div className="news-detail-byline">
+              <span className="news-detail-author"><img src={newsAuthorLogo} alt="" aria-hidden="true" /><span>{article.author ?? t('news.publisher')}</span></span>
+              {article.publish_date ? <time dateTime={newsDateTime(article.publish_date)}>{formatNewsDate(article.publish_date, i18n.language)}</time> : null}
+            </div>
           </header>
-          <div className="news-detail-content"><MarkdownContent content={article.content_markdown ?? article.content} className="news-markdown" enhancedCodeBlocks /></div>
+          <div className="news-detail-content"><MarkdownContent className="docs-markdown" content={article.content_markdown ?? article.content} enhancedCodeBlocks allowHtml resolveImageUrl={resolveNewsContentImageUrl} /></div>
         </article>
       </div>
     </PublicLayout>

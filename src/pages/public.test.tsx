@@ -1,6 +1,6 @@
 import '@/i18n'
 import type { ReactNode } from 'react'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router'
 import { Provider } from 'react-redux'
@@ -199,7 +199,8 @@ describe('公开模型页面', () => {
     })
     renderDocsPage(`/docs/${DOCS_DOCUMENT_ID}/quick-start`)
 
-    const apiDocsLink = await screen.findByRole('link', { name: 'API 文档' })
+    const productNavigation = screen.getByRole('navigation', { name: '文档分类' })
+    const apiDocsLink = await within(productNavigation).findByRole('link', { name: 'API 文档' })
     expect(apiDocsLink).toHaveAttribute('href', `/docs/${API_DOCS_DOCUMENT_ID}/api-document`)
     await user.click(apiDocsLink)
 
@@ -356,7 +357,11 @@ describe('公开模型页面', () => {
       code: 0,
       msg: 'success',
       data: {
-        cards: [{ id: 'card-1', kind: 'card', status: 'active', sort_order: 1, pinned: false, data: { translations: { 'zh-CN': { title: '后台能力卡片', description: '后台描述', action_text: '进入能力', image_object_id: '01J00000000000000000000001', link_url: '/models' } } } }],
+        cards: [
+          { id: 'card-1', kind: 'card', status: 'active', sort_order: 1, pinned: false, data: { translations: { 'zh-CN': { title: '后台能力卡片', description: '后台描述', action_text: '进入能力', image_object_id: '01J00000000000000000000001', link_url: '/models' } } } },
+          { id: 'card-2', kind: 'card', status: 'active', sort_order: 2, pinned: false, data: { translations: { 'zh-CN': { title: '后台企业卡片', link_url: '/models' } } } },
+          { id: 'card-3', kind: 'card', status: 'active', sort_order: 3, pinned: false, data: { translations: { 'zh-CN': { title: '后台数据卡片', link_url: '/pricing' } } } },
+        ],
         promotion_models: [{
           id: 'promotion-1',
           kind: 'promotion_model',
@@ -399,8 +404,12 @@ describe('公开模型页面', () => {
     expect(document.querySelectorAll('.manuscript-price-card.manuscript-skeleton-card')).toHaveLength(3)
     expect(document.querySelector('.manuscript-promotion-skeleton-reward')).toBeInTheDocument()
     expect(document.querySelectorAll('.manuscript-partner-skeleton-row')).toHaveLength(2)
+    expect(screen.queryByText('一个账户，访问所有大模型')).toBeNull()
+    await waitFor(() => expect(screen.getByText('一个账户，访问所有大模型')).toBeInTheDocument())
     expect(screen.queryByText('后台能力卡片')).toBeNull()
-    await waitFor(() => expect(screen.getByText('后台能力卡片')).toBeInTheDocument())
+    expect(screen.getByRole('link', { name: '浏览全部模型' })).toHaveAttribute('href', '/models')
+    expect(screen.getByRole('link', { name: '创建企业部门' })).toHaveAttribute('href', '/login?return=%2Fconsole%2Fenterprise-create')
+    expect(screen.getByRole('link', { name: '查看数据罗盘' })).toHaveAttribute('href', '/login?return=%2Fconsole%2Fusage')
     expect(document.querySelector('.manuscript-skeleton-card')).toBeNull()
     expect(screen.getByText('后台优惠模型')).toBeInTheDocument()
     expect(screen.getByText('后台优惠模型').closest('a')).toHaveAttribute('href', '/models/managed-model')
@@ -415,14 +424,15 @@ describe('公开模型页面', () => {
     expect(availabilityBars[0]).toHaveClass('is-danger')
     expect(availabilityBars[1]).toHaveClass('is-warning')
     expect(availabilityBars[2]).toHaveClass('is-healthy')
-    expect(screen.getByText('固定动态')).toBeInTheDocument()
-    expect(screen.getByText('固定动态').closest('a')).toHaveAttribute('href', '/news/news-2')
+    expect(screen.getByText('Token NX 内测版上线，注册即送千万Token资源包')).toBeInTheDocument()
+    expect(screen.getByText('Token NX 内测版上线，注册即送千万Token资源包').closest('a')).toHaveAttribute('href', '/news/news-2')
     expect(screen.queryByText('未固定动态')).toBeNull()
     expect(screen.getAllByText('后台伙伴').length).toBeGreaterThan(0)
     expect(document.querySelector('.manuscript-feature-image')).toHaveAttribute('src', '/api/homepage/assets/01J00000000000000000000001')
     expect(document.querySelector('.manuscript-feature-image')).toHaveAttribute('loading', 'eager')
     expect(document.querySelector('.manuscript-feature-image')).toHaveAttribute('fetchpriority', 'high')
     expect(screen.getByRole('img', { name: '后台广告位' })).toHaveAttribute('src', '/api/homepage/assets/01J00000000000000000000002')
+    expect(screen.getByRole('img', { name: '后台广告位' }).closest('a')).toHaveAttribute('href', '/login?return=%2Fconsole%2Finvitations')
     expect(document.querySelector('.manuscript-partner-image')).toHaveAttribute('src', '/api/homepage/assets/01J00000000000000000000003')
     expect(document.querySelectorAll('.manuscript-partner-row')).toHaveLength(1)
     expect(document.querySelector('.manuscript-partner-row')).toHaveClass('is-static', 'is-compact')

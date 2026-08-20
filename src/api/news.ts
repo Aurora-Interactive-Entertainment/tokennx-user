@@ -45,6 +45,7 @@ interface NewsApiItem {
   summary?: unknown
   description?: unknown
   content?: unknown
+  content_markdown?: unknown
   cover_url?: unknown
   cover_image?: unknown
   tags?: unknown
@@ -74,6 +75,19 @@ function optionalNumber(value: unknown): number | undefined {
   return typeof value === 'number' && Number.isFinite(value) ? value : undefined
 }
 
+export function resolveNewsContentImageUrl(value: string, pageOrigin = typeof window === 'undefined' ? '' : window.location.origin): string | undefined {
+  const normalized = value.trim()
+  if (!normalized || (/^[a-z][a-z\d+.-]*:/i.test(normalized) && !/^https?:/i.test(normalized))) return undefined
+
+  try {
+    // 中文：开发环境沿用当前站点代理，正式环境沿用配置的 API Base URL，并统一输出绝对地址。
+    const resolved = new URL(makeApiUrl(normalized), pageOrigin || undefined)
+    return resolved.protocol === 'http:' || resolved.protocol === 'https:' ? resolved.toString() : undefined
+  } catch {
+    return undefined
+  }
+}
+
 function normalizeArticle(value: unknown, includeContent = false): NewsArticle | NewsDetail | null {
   if (!isRecord(value)) return null
   const item = value as NewsApiItem
@@ -98,7 +112,11 @@ function normalizeArticle(value: unknown, includeContent = false): NewsArticle |
     ...(optionalNumber(item.visit_count) !== undefined ? { visit_count: optionalNumber(item.visit_count) } : {}),
   }
   if (!includeContent) return article
-  return { ...article, content: typeof item.content === 'string' ? item.content : '' }
+  return {
+    ...article,
+    content: typeof item.content === 'string' ? item.content : '',
+    ...(typeof item.content_markdown === 'string' ? { content_markdown: item.content_markdown } : {}),
+  }
 }
 
 function localeValue(locale?: NewsLocale): NewsLocale {

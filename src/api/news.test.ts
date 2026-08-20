@@ -1,5 +1,5 @@
 import { afterEach, describe, it, expect, vi } from 'vitest'
-import { getNewsList, getNewsDetail, type NewsArticle, type NewsDetail } from './news'
+import { getNewsList, getNewsDetail, resolveNewsContentImageUrl, type NewsArticle, type NewsDetail } from './news'
 
 describe('news api', () => {
   afterEach(() => vi.restoreAllMocks())
@@ -67,5 +67,21 @@ describe('news api', () => {
 
     await expect(getNewsDetail('news-1', 'zh-CN')).resolves.toMatchObject({ content: '# 正文', category: '产品动态' })
     expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('/api/news/news-1?locale=zh-CN'), expect.objectContaining({ credentials: 'omit' }))
+  })
+
+  it('resolves relative news images against the active environment base URL', () => {
+    expect(resolveNewsContentImageUrl('/api/homepage/assets/01M0EXCSCSZ3Q6PG39HAGEY36J', 'http://localhost:5174')).toBe('http://localhost:5174/api/homepage/assets/01M0EXCSCSZ3Q6PG39HAGEY36J')
+    expect(resolveNewsContentImageUrl('https://cdn.example.com/news/image.jpg', 'http://localhost:5174')).toBe('https://cdn.example.com/news/image.jpg')
+    expect(resolveNewsContentImageUrl('javascript:alert(1)', 'http://localhost:5174')).toBeUndefined()
+  })
+
+  it('preserves content_markdown returned by compatible deployments', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({
+      code: 0,
+      msg: 'success',
+      data: { id: 'news-2', title: '兼容正文', summary: '', tags: ['新闻'], published_at: '2026-08-19T00:00:00Z', content_markdown: '<h2>正文</h2>' },
+    }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
+
+    await expect(getNewsDetail('news-2', 'zh-CN')).resolves.toMatchObject({ content: '', content_markdown: '<h2>正文</h2>' })
   })
 })

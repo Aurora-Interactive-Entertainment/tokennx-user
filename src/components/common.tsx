@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent as ReactKeyboardEvent, type ReactNode, type RefObject } from 'react'
+import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type FormEvent, type KeyboardEvent as ReactKeyboardEvent, type ReactNode, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
 import type { TFunction } from 'i18next'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router'
@@ -6,7 +6,6 @@ import Avatar from '@douyinfe/semi-ui/lib/es/avatar'
 import Badge from '@douyinfe/semi-ui/lib/es/badge'
 import Button from '@douyinfe/semi-ui/lib/es/button'
 import { Layout } from '@douyinfe/semi-ui/lib/es/layout'
-import Tag from '@douyinfe/semi-ui/lib/es/tag'
 import Toast from '@douyinfe/semi-ui/lib/es/toast'
 import {
   IconApps,
@@ -125,7 +124,7 @@ type PublicLink = {
 
 export const PUBLIC_LINKS: PublicLink[] = [
   { labelKey: 'nav.models', path: '/models' },
-  { labelKey: 'nav.private', path: ENTERPRISE_CREATE_PATH, disabled: true },
+  // 中文：私有化入口暂不对外展示，后续开放时再加入此列表。
   { labelKey: 'nav.ranking', path: '/rankings' },
   { labelKey: 'nav.apps', path: '/apps' },
   { labelKey: 'nav.docs', path: '/docs' },
@@ -225,22 +224,89 @@ export function ModelLogo({ model, size = 'default', className = '' }: { model: 
   const modalityIcon = model.modality === 'image' ? <IconImage /> : model.modality === 'video' ? <IconVideo /> : model.modality === 'audio' ? <IconPlayCircle /> : <span dangerouslySetInnerHTML={{ __html: FALLBACK_MODEL_LOGO }} />
   return (
     <span className={`model-logo model-logo--${size} model-logo--${model.modality} model-logo--${companyClass}${className ? ` ${className}` : ''}`} aria-hidden="true">
-      {logoMarkup ? <span dangerouslySetInnerHTML={{ __html: logoMarkup }} /> : modalityIcon}
+      {model.iconUrl ? <img src={model.iconUrl} alt="" loading="lazy" /> : logoMarkup ? <span dangerouslySetInnerHTML={{ __html: logoMarkup }} /> : modalityIcon}
     </span>
   )
 }
 
-export function ModelTags({ model }: { model: ModelRecord }) {
+type ModelTagValue = { label: string; color?: string }
+
+const MODEL_TAG_NAMED_COLORS: Record<string, string> = {
+  amber: '#c08a3e', blue: '#5c7fd8', cyan: '#4197a8', green: '#4f9b70', grey: '#7d8492',
+  indigo: '#7069c4', lime: '#7f9e46', orange: '#c17d3e', pink: '#c76c91', purple: '#9369bd',
+  red: '#c9675a', teal: '#439487', violet: '#806bc5', yellow: '#ad9138', white: '#a6abb4',
+  'light-blue': '#5792c3', 'light-green': '#65a36c',
+}
+
+function modelTagBaseColor(tag: ModelTagValue): string {
+  const backendColor = tag.color?.trim()
+  if (backendColor) {
+    const namedColor = MODEL_TAG_NAMED_COLORS[backendColor.toLowerCase()]
+    if (namedColor) return namedColor
+    if (/^#(?:[\da-f]{3}|[\da-f]{6})$/i.test(backendColor)) return backendColor
+  }
+
+  const label = tag.label.trim().toLowerCase()
+  if (/免费|free/.test(label)) return MODEL_TAG_NAMED_COLORS.green
+  if (/折扣|特价|discount|sale/.test(label)) return MODEL_TAG_NAMED_COLORS.orange
+  if (/推荐|recommend/.test(label)) return MODEL_TAG_NAMED_COLORS.blue
+  if (/多模态|multimodal/.test(label)) return MODEL_TAG_NAMED_COLORS.violet
+  if (/代码|code/.test(label)) return MODEL_TAG_NAMED_COLORS.indigo
+  return MODEL_TAG_NAMED_COLORS.grey
+}
+
+function modelTagStyle(tag: ModelTagValue): CSSProperties {
+  const baseColor = modelTagBaseColor(tag)
+  const compactHex = baseColor.slice(1)
+  const hex = compactHex.length === 3 ? [...compactHex].map((value) => value.repeat(2)).join('') : compactHex
+  const red = Number.parseInt(hex.slice(0, 2), 16) / 255
+  const green = Number.parseInt(hex.slice(2, 4), 16) / 255
+  const blue = Number.parseInt(hex.slice(4, 6), 16) / 255
+  const max = Math.max(red, green, blue)
+  const min = Math.min(red, green, blue)
+  const delta = max - min
+  const lightness = (max + min) / 2
+  const saturation = delta === 0 ? 0 : delta / (1 - Math.abs(2 * lightness - 1))
+  const hue = delta === 0
+    ? 0
+    : max === red
+      ? 60 * (((green - blue) / delta) % 6)
+      : max === green
+        ? 60 * ((blue - red) / delta + 2)
+        : 60 * ((red - green) / delta + 4)
+  const normalizedHue = Math.round((hue + 360) % 360)
+  const normalizedSaturation = Math.round(Math.min(64, Math.max(38, saturation * 72)))
+
+  // Keep the backend hue while constraining saturation/lightness to readable theme-specific ramps.
+  return {
+    '--model-tag-color': baseColor,
+    '--model-tag-dark-text': `hsl(${normalizedHue} ${normalizedSaturation}% 72%)`,
+    '--model-tag-dark-border': `hsl(${normalizedHue} ${normalizedSaturation}% 62% / .42)`,
+    '--model-tag-dark-bg': `hsl(${normalizedHue} ${normalizedSaturation}% 52% / .14)`,
+    '--model-tag-light-text': `hsl(${normalizedHue} ${normalizedSaturation}% 31%)`,
+    '--model-tag-light-border': `hsl(${normalizedHue} ${normalizedSaturation}% 42% / .38)`,
+    '--model-tag-light-bg': `hsl(${normalizedHue} ${normalizedSaturation}% 46% / .1)`,
+  } as CSSProperties
+}
+
+function ModelColorTag({ tag, className = '' }: { tag: ModelTagValue; className?: string }) {
   const { t } = useTranslation()
+  return <span className={`model-color-tag${className ? ` ${className}` : ''}`} style={modelTagStyle(tag)}>{localizeConsoleLabel(t, tag.label)}</span>
+}
+
+export function ModelTags({ model }: { model: ModelRecord }) {
   return (
     <div className="tag-row">
-      {model.labels.slice(0, 4).map((label) => <Tag key={label} color={label === '折扣' ? 'orange' : label === '多模态' ? 'violet' : 'grey'}>{localizeConsoleLabel(t, label)}</Tag>)}
+      {(model.tags?.length ? model.tags : model.labels.map((label) => ({ label }))).slice(0, 4).map((tag) => (
+        <ModelColorTag key={tag.label} tag={tag} />
+      ))}
     </div>
   )
 }
 
 const MODEL_UNAVAILABLE_LABEL = '暂无数据'
 const MODEL_IO_TYPES: Record<ModelRecord['modality'], [string, string]> = {
+  multimodal: ['多模态', '多模态'],
   text: ['文本', '文本'],
   image: ['文本', '图片'],
   video: ['文本', '视频'],
@@ -339,8 +405,8 @@ export function ModelCard({ model, compact = false, onSelect }: { model: ModelRe
   const outputPrice = model.tokenNxPrice.output ?? model.tokenNxPrice.hd
   const outputRaw = model.tokenNxPrice.output !== undefined ? model.tokenNxPrice.outputRaw : model.tokenNxPrice.hdRaw
   const specs = modelCardSpecs(model)
-  const inputMark = MODEL_TYPE_MARKS[inputTypeValue] ?? '?'
-  const outputMark = MODEL_TYPE_MARKS[outputTypeValue] ?? '?'
+  const inputMark = MODEL_TYPE_MARKS[inputTypeValue] ?? (model.modality === 'multimodal' ? 'M' : '?')
+  const outputMark = MODEL_TYPE_MARKS[outputTypeValue] ?? (model.modality === 'multimodal' ? 'M' : '?')
   const cardBody = (
       <>
         <div className="model-card-topline">
@@ -353,9 +419,18 @@ export function ModelCard({ model, compact = false, onSelect }: { model: ModelRe
         <div className="model-id-row"><code>{displayAlias}</code>{copied ? <span className="copy-hint">{t('console.common.copied')}</span> : null}</div>
         <div className="model-card-highlight-row">
           <span className="model-card-throughput"><strong>{model.throughput.unit === MODEL_UNAVAILABLE_LABEL ? t('console.common.unavailable') : `${model.throughput.value}${model.throughput.unit === 'B tokens' ? 'B token' : ` ${model.throughput.unit}`}`}</strong></span>
-          <div className="model-card-tags">{model.labels.slice(0, 4).map((label) => <span className={`model-card-tag model-card-tag--${label === '折扣' ? 'warning' : label === '多模态' ? 'accent' : label === '代码' ? 'info' : 'neutral'}`} key={label}>{localizeConsoleLabel(t, label)}</span>)}</div>
+          <div className="model-card-tags">
+            {(model.tags?.length ? model.tags : model.labels.slice(0, 4).map((label) => ({ label }))).slice(0, 4).map((tag) => (
+              <ModelColorTag key={tag.label} tag={tag} className="model-card-tag" />
+            ))}
+          </div>
         </div>
         <p className="model-card-description">{model.description}</p>
+        <div className="model-card-metrics" aria-label={t('console.modelDetail.informationTitle')}>
+          <div><span>{t('console.common.providers', { count: model.providerCount })}</span><strong>{model.providerCount}</strong></div>
+          <div><span>{t('console.modelDetail.platformTokens')}</span><strong>{model.throughput.unit === MODEL_UNAVAILABLE_LABEL ? t('console.common.unavailable') : `${model.throughput.value}${model.throughput.unit === 'B tokens' ? 'B' : ` ${model.throughput.unit}`}`}</strong></div>
+          <div><span>{t('home.rebuild.availability')}</span><strong>{model.availability.rate > 0 ? `${model.availability.rate}%` : t('console.common.unavailable')}</strong></div>
+        </div>
         <div className="model-card-io">
           <div><span className="model-card-io-label">{t('console.common.inputType')} <span className="model-card-type-mark" aria-hidden="true">{inputMark}</span></span><strong>{inputType}</strong></div>
           <div><span className="model-card-io-label">{t('console.common.outputType')} <span className="model-card-type-mark" aria-hidden="true">{outputMark}</span></span><strong>{outputType}</strong></div>
@@ -961,13 +1036,25 @@ type LoginRequiredActionProps = {
 export function LoginRequiredAction({ returnPath, children, className = '' }: LoginRequiredActionProps) {
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
+  const authStatus = useAppSelector((state) => state.auth.status)
+  const requiresLogin = authStatus !== 'authenticated'
   const safeReturnPath = normalizeLoginReturnPath(returnPath)
   const fallbackPath = `/login?return=${encodeURIComponent(safeReturnPath)}`
 
   return (
     <>
-      <Link className={className} to={fallbackPath} aria-haspopup="dialog" aria-controls="login-popover" aria-expanded={open} onClick={(event) => { event.preventDefault(); setOpen(true) }}>{children}</Link>
-      <LoginDialog open={open} onClose={() => setOpen(false)} onSuccess={() => navigate(safeReturnPath)} />
+      <Link
+        className={className}
+        to={requiresLogin ? fallbackPath : safeReturnPath}
+        aria-haspopup={requiresLogin ? 'dialog' : undefined}
+        aria-controls={requiresLogin ? 'login-popover' : undefined}
+        aria-expanded={requiresLogin ? open : undefined}
+        onClick={requiresLogin ? (event) => { event.preventDefault(); setOpen(true) } : undefined}
+      >
+        {children}
+      </Link>
+      {/* 中文：已登录用户直接进入目标页面，仅未登录时挂载登录弹窗。 */}
+      {requiresLogin ? <LoginDialog open={open} onClose={() => setOpen(false)} onSuccess={() => navigate(safeReturnPath)} /> : null}
     </>
   )
 }
@@ -1407,9 +1494,6 @@ const enterpriseNavGroups: ConsoleNavGroup[] = [
   },
 ]
 
-// 视频生成能力尚未开放，暂时只隐藏控制台导航入口并保留页面与路由实现。
-const VIDEO_GENERATION_NAV_ENABLED = false
-
 const CONSOLE_NAV_LABEL_KEYS: Record<string, string> = {
   '模型使用': 'console.nav.modelUse', '快速接入': 'console.nav.quickstart', '模型广场': 'console.nav.models', '体验中心': 'console.nav.experience',
   '智能对话': 'console.nav.playground', '视频生成': 'console.nav.video', '数据分析': 'console.nav.analytics', '用量统计': 'console.nav.usage', '调用记录': 'console.nav.records',
@@ -1425,16 +1509,14 @@ function localizeConsoleNavLabel(t: TFunction, value: string): string {
   return key ? t(key) : value
 }
 
+// 中文：视频生成已开放；个人和企业空间共用同一组体验中心入口。
 // 中文：企业所有者入口同时驱动侧栏和用户菜单，避免两个导航面板出现权限差异。
 export function consoleNavGroupsFor(workspace: Pick<Workspace, 'type' | 'role'>, permissions: readonly string[] = []): ConsoleNavGroup[] {
   const source = workspace.type === 'enterprise' ? enterpriseNavGroups : personalNavGroups
   const owner = isEnterpriseOwner(workspace)
   return source.map((group) => ({
     ...group,
-    items: group.items.filter((item) => (
-      (VIDEO_GENERATION_NAV_ENABLED || item.key !== '/console/video')
-      && (!item.permissionScope || owner || hasEnterpriseMenuPermission(permissions, item.permissionScope))
-    )),
+    items: group.items.filter((item) => !item.permissionScope || owner || hasEnterpriseMenuPermission(permissions, item.permissionScope)),
   })).filter((group) => group.items.length > 0)
 }
 
@@ -2054,17 +2136,21 @@ export function ConsoleLayout({ children }: { children: ReactNode }) {
 
 const PUBLIC_COMPANY_INFO = {
   name: '安顺佳云灵犀智能科技有限公司',
-  phone: '1892000000',
-  email: 'tokennx@120.com',
   filing: '京ICP备20011824号-24',
   securityFiling: '北京公安备 11010802041394号',
 } as const
 
+const PUBLIC_FOOTER_DOC_HREFS = {
+  platformIntro: '/docs/01M074Z9VZXG1V0T6KYRW7AE34/platform-overview',
+  apiDocs: '/docs/01M0765G0JDT3JCZ6QQXNM40TX/token-nx-api-documentation',
+  faq: '/docs/01M0765G0JADMQ2Y49DHV3MX70/frequently-asked-questions',
+} as const
+
 const MANUSCRIPT_FOOTER_GROUPS = [
-  { titleKey: 'footer.product', mobileTitleKey: 'footer.product', links: [{ labelKey: 'footer.chat', path: '/docs' }, { labelKey: 'footer.video', path: '/docs' }, { labelKey: 'footer.ranking', path: '/models' }, { labelKey: 'footer.modelPrice', path: '/pricing' }] },
-  { titleKey: 'footer.docs', mobileTitleKey: 'nav.docs', links: [{ labelKey: 'footer.chat', path: '/docs' }, { labelKey: 'footer.video', path: '/docs' }, { labelKey: 'footer.ranking', path: '/models' }, { labelKey: 'footer.modelPrice', path: '/pricing' }] },
-  { titleKey: 'footer.pricing', mobileTitleKey: 'nav.pricing', links: [{ labelKey: 'footer.apiPrice', path: '/pricing' }, { labelKey: 'footer.subscriptionPrice', path: '/pricing' }, { labelKey: 'footer.specialOffers', path: '/pricing' }] },
-  { titleKey: 'footer.about', mobileTitleKey: 'footer.about', links: [{ labelKey: 'footer.companyIntro', path: '/about' }, { labelKey: 'footer.officialQr', path: '/docs' }] },
+  { titleKey: 'footer.product', mobileTitleKey: 'footer.product', links: [{ labelKey: 'footer.chat', path: '/console/playground', requiresLogin: true }, { labelKey: 'footer.video', path: '/console/video', requiresLogin: true }, { labelKey: 'footer.ranking', path: '/rankings' }, { labelKey: 'footer.agentRanking', path: '/apps' }] },
+  { titleKey: 'footer.docs', mobileTitleKey: 'footer.docs', links: [{ labelKey: 'footer.platformIntro', path: PUBLIC_FOOTER_DOC_HREFS.platformIntro }, { labelKey: 'footer.userGuide', path: '/docs' }, { labelKey: 'footer.apiDocs', path: PUBLIC_FOOTER_DOC_HREFS.apiDocs }, { labelKey: 'footer.faq', path: PUBLIC_FOOTER_DOC_HREFS.faq }] },
+  { titleKey: 'footer.pricing', mobileTitleKey: 'footer.pricing', links: [{ labelKey: 'footer.apiPrice', path: '/models' }, { labelKey: 'footer.subscriptionPrice', path: '/console/billing?tab=subscription', requiresLogin: true }] },
+  { titleKey: 'footer.legal', mobileTitleKey: 'footer.legal', links: [{ labelKey: 'footer.userAgreement', path: '/terms' }, { labelKey: 'footer.privacyAgreement', path: '/privacy' }, { labelKey: 'footer.rechargeAgreement', path: '/recharge-agreement' }] },
 ] as const
 
 const MANUSCRIPT_SUPPORT_TRANSITION_MS = 360
@@ -2093,10 +2179,12 @@ export function PublicFooter() {
             <button className="manuscript-footer-group-toggle" type="button" aria-expanded={isOpen} aria-controls={panelId} onClick={() => setOpenManuscriptGroup((current) => current === group.titleKey ? null : group.titleKey)}>
               <span className="manuscript-footer-group-label" data-mobile-label={t(group.mobileTitleKey)}>{t(group.titleKey)}</span><span className="manuscript-footer-group-symbol" aria-hidden="true">{isOpen ? '-' : '+'}</span>
             </button>
-            <div className="manuscript-footer-group-links" id={panelId}>{group.links.map((link) => <Link key={`${link.path}-${link.labelKey}`} to={link.path}>{t(link.labelKey)}</Link>)}</div>
+            <div className="manuscript-footer-group-links" id={panelId}>{group.links.map((link) => 'requiresLogin' in link && link.requiresLogin
+              ? <LoginRequiredAction key={`${link.path}-${link.labelKey}`} returnPath={link.path}>{t(link.labelKey)}</LoginRequiredAction>
+              : <Link key={`${link.path}-${link.labelKey}`} to={link.path}>{t(link.labelKey)}</Link>)}</div>
           </div>
           })}</nav>
-          <div className="public-footer-contact manuscript-footer-contact"><strong>{t('footer.contact')}</strong><a href={`tel:${PUBLIC_COMPANY_INFO.phone}`}>{t('footer.salesPrefix')}{PUBLIC_COMPANY_INFO.phone}</a><a href={`mailto:${PUBLIC_COMPANY_INFO.email}`}>{t('footer.businessPrefix')}{PUBLIC_COMPANY_INFO.email}</a><div className="manuscript-footer-qr-row"><div className="public-footer-qr"><img src={manuscriptCustomerQr} alt={t('footer.qrAlt')} loading="lazy" decoding="async" /><span>{t('footer.customerQr')}</span></div><div className="public-footer-qr"><img src={manuscriptOfficialQr} alt={t('footer.officialQr')} loading="lazy" decoding="async" /><span>{t('footer.officialQr')}</span></div></div></div>
+          <div className="public-footer-contact manuscript-footer-contact"><strong>{t('footer.contact')}</strong><button type="button" onClick={() => requestSupportWidget('contact')}>{t('footer.salesPrefix')}</button><a href="mailto:wub@tokennx.com">wub@tokennx.com</a><div className="manuscript-footer-qr-row"><div className="public-footer-qr"><img src={manuscriptCustomerQr} alt={t('footer.qrAlt')} loading="lazy" decoding="async" /><span>{t('footer.customerQr')}</span></div><div className="public-footer-qr"><img src={manuscriptOfficialQr} alt={t('footer.officialQr')} loading="lazy" decoding="async" /><span>{t('footer.officialQr')}</span></div></div></div>
         </div>
         <div className="public-footer-bottom manuscript-footer-filing" aria-label={t('footer.filing')}><span className="manuscript-footer-filing-copy">Copyright @ 2025-{new Date().getFullYear()} {PUBLIC_COMPANY_INFO.name}</span><span className="manuscript-footer-filing-item"><img src={manuscriptFilingIcpIcon} alt="" aria-hidden="true" />{PUBLIC_COMPANY_INFO.filing}</span><span className="manuscript-footer-filing-item"><img src={manuscriptFilingSecurityIcon} alt="" aria-hidden="true" />{PUBLIC_COMPANY_INFO.securityFiling}</span><Link className="manuscript-footer-filing-item" to="/about">{t('footer.businessLicense')}</Link><Link className="manuscript-footer-filing-item" to="/terms">{t('footer.license')}</Link></div>
         <ManuscriptSupportWidget />

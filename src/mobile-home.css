@@ -462,6 +462,76 @@
   .public-layout--manuscript-home .manuscript-partner-css-logo-mark { width: 17px; height: 17px; }
 }
 
+/* 中文：资讯卡保持固定高度，超出内容以省略号收尾，悬浮时由 title 属性展示全文。 */
+.public-layout--manuscript-home .manuscript-news-card {
+  height: 335px;
+  min-height: 335px;
+  max-height: 335px;
+  align-items: stretch;
+}
+.public-layout--manuscript-home .manuscript-news-copy {
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+.public-layout--manuscript-home .manuscript-news-copy h3 {
+  display: -webkit-box;
+  height: 60px;
+  min-height: 60px;
+  max-height: 60px;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.public-layout--manuscript-home .manuscript-news-copy p {
+  display: -webkit-box;
+  height: 217px;
+  min-height: 0;
+  max-height: 217px;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 7;
+}
+.public-layout--manuscript-home .manuscript-news-art {
+  min-height: 333px;
+  align-items: center;
+  justify-items: center;
+}
+.public-layout--manuscript-home .manuscript-news-art-image {
+  width: 100%;
+  height: 335px;
+  min-height: 335px;
+  object-fit: cover;
+  object-position: center center;
+  -webkit-mask-position: center center;
+  mask-position: center center;
+}
+
+@media (max-width: 770px) {
+  .public-layout--manuscript-home .manuscript-news-card {
+    height: 273.03px;
+    min-height: 273.03px;
+    max-height: 273.03px;
+  }
+  .public-layout--manuscript-home .manuscript-news-copy h3 {
+    height: 52px;
+    min-height: 52px;
+    max-height: 52px;
+  }
+  .public-layout--manuscript-home .manuscript-news-copy p {
+    height: 177.25px;
+    max-height: 177.25px;
+    -webkit-line-clamp: 8;
+  }
+  .public-layout--manuscript-home .manuscript-news-art { min-height: 271.4px; }
+  .public-layout--manuscript-home .manuscript-news-art-image {
+    height: 273.03px;
+    min-height: 273.03px;
+    -webkit-mask-size: 69% 100%;
+    mask-size: 69% 100%;
+  }
+}
+
 @media (max-width: 360px) {
   .public-layout--manuscript-home .manuscript-hero h1,
   .public-layout--manuscript-home .manuscript-hero h1 strong { font-size: 18px; }
@@ -1371,7 +1441,6 @@
   }
 }
 
-
 /* Keep every availability segment visible in the compact three-card layout. */
 @media (min-width: 771px) and (max-width: 1099px) {
   .public-layout--manuscript-home .manuscript-pricing .manuscript-price-availability > div {
@@ -1503,6 +1572,76 @@
   .public-layout--manuscript-home .manuscript-news-art-image {
     height: 100%;
     min-height: 271.4px;
+    -webkit-mask-size: 69% 100%;
+    mask-size: 69% 100%;
+  }
+}
+
+/* 中文：资讯卡最终规则，覆盖旧版自适应样式，确保正文截断、图片居中。 */
+.public-layout--manuscript-home .manuscript-news-card {
+  height: 335px;
+  min-height: 335px;
+  max-height: 335px;
+  align-items: stretch;
+}
+.public-layout--manuscript-home .manuscript-news-copy {
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+.public-layout--manuscript-home .manuscript-news-copy h3 {
+  display: -webkit-box;
+  height: 60px;
+  min-height: 60px;
+  max-height: 60px;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.public-layout--manuscript-home .manuscript-news-copy p {
+  display: -webkit-box;
+  height: 217px;
+  min-height: 0;
+  max-height: 217px;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 7;
+}
+.public-layout--manuscript-home .manuscript-news-art {
+  min-height: 333px;
+  align-items: center;
+  justify-items: center;
+}
+.public-layout--manuscript-home .manuscript-news-art-image {
+  width: 100%;
+  height: 335px;
+  min-height: 335px;
+  object-fit: cover;
+  object-position: center center;
+  -webkit-mask-position: center center;
+  mask-position: center center;
+}
+
+@media (max-width: 770px) {
+  .public-layout--manuscript-home .manuscript-news-card {
+    height: 273.03px;
+    min-height: 273.03px;
+    max-height: 273.03px;
+  }
+  .public-layout--manuscript-home .manuscript-news-copy h3 {
+    height: 52px;
+    min-height: 52px;
+    max-height: 52px;
+  }
+  .public-layout--manuscript-home .manuscript-news-copy p {
+    height: 177.25px;
+    max-height: 177.25px;
+    -webkit-line-clamp: 8;
+  }
+  .public-layout--manuscript-home .manuscript-news-art { min-height: 271.4px; }
+  .public-layout--manuscript-home .manuscript-news-art-image {
+    height: 273.03px;
+    min-height: 273.03px;
     -webkit-mask-size: 69% 100%;
     mask-size: 69% 100%;
   }
