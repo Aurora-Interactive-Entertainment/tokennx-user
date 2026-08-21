@@ -13,9 +13,11 @@
 .docs-page--manuscript .docs-sidebar .docs-sidebar-directory.is-collapsed::before { background: currentColor; clip-path: polygon(25% 15%, 75% 50%, 25% 85%); }
 .docs-page--manuscript .docs-sidebar .docs-sidebar-directory:hover { color: #d7d7d7; background: rgba(255, 255, 255, .035); }
 .docs-page--manuscript .docs-sidebar .docs-sidebar-document { align-items: center; gap: 6px; }
-.docs-page--manuscript .docs-sidebar.docs-sidebar--flat .docs-sidebar-document:not(.is-active) { color: #a6a6aa; font-size: 13px; font-weight: 600; }
+.docs-page--manuscript .docs-sidebar.docs-sidebar--flat .docs-sidebar-document { color: #a6a6aa; font-size: 13px; font-weight: 600; line-height: 1.35; }
+.docs-page--manuscript .docs-sidebar.docs-sidebar--flat .docs-sidebar-document.is-active { color: #fff; }
 .docs-page--manuscript .docs-sidebar.docs-sidebar--flat .docs-sidebar-document:not(.is-active):hover { color: #d7d7d7; background: rgba(255, 255, 255, .035); }
 .docs-page--manuscript .docs-article-toolbar .docs-copy-page { min-width: 112px; padding-inline: 10px; }
+.docs-page--manuscript .docs-article-toolbar--desktop-copy { top: 0; right: 0; display: flex; justify-content: flex-end; }
 /* 中文：页面复制操作归入右侧页内工具区，避免覆盖正文首段。 */
 .docs-page--manuscript .docs-on-page--with-copy { padding-top: 28px; gap: 16px; }
 .docs-page--manuscript .docs-on-page--with-copy > .docs-copy-page { min-width: 112px; justify-self: start; padding-inline: 10px; }
@@ -23,7 +25,7 @@
 .docs-page--manuscript .docs-sidebar .docs-sidebar-children { min-width: 0; display: grid; grid-template-rows: 1fr; opacity: 1; transition: grid-template-rows .22s ease, opacity .16s ease; }
 .docs-page--manuscript .docs-sidebar .docs-sidebar-children.is-collapsed { grid-template-rows: 0fr; opacity: 0; pointer-events: none; }
 .docs-page--manuscript .docs-sidebar .docs-sidebar-children-inner { min-height: 0; overflow: hidden; }
-.docs-copy-page { min-width: 126px; height: 34px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 0 12px; border: 1px solid #353535; border-radius: 4px; color: #fff; background: #181818; font-size: 14px; cursor: pointer; }
+.docs-copy-page { min-width: 126px; height: 34px; margin-top: 5px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 0 12px; border: 1px solid #353535; border-radius: 4px; color: #fff; background: #181818; font-size: 14px; cursor: pointer; }
 .docs-copy-page:hover { border-color: #565656; background: #202020; }
 .docs-copy-page .semi-icon { width: 15px; height: 15px; color: #8b8b8b; }
 .semi-toast.docs-copy-toast { margin-top: 76px; pointer-events: none; }
@@ -63,7 +65,8 @@ html[data-theme="light"] .docs-toc-row a { color: #626975; }
 html[data-theme="light"] .docs-toc-row a:hover, html[data-theme="light"] .docs-toc-row a.is-active { color: #7954df; }
 html[data-theme="light"] .docs-page--manuscript .docs-sidebar .docs-sidebar-directory { color: #626975; }
 html[data-theme="light"] .docs-page--manuscript .docs-sidebar .docs-sidebar-directory:hover { color: #353a43; background: #e8eaed; }
-html[data-theme="light"] .docs-page--manuscript .docs-sidebar.docs-sidebar--flat .docs-sidebar-document:not(.is-active) { color: #626975; }
+html[data-theme="light"] .docs-page--manuscript .docs-sidebar.docs-sidebar--flat .docs-sidebar-document { color: #626975; }
+html[data-theme="light"] .docs-page--manuscript .docs-sidebar.docs-sidebar--flat .docs-sidebar-document.is-active { color: #fff; }
 html[data-theme="light"] .docs-page--manuscript .docs-sidebar.docs-sidebar--flat .docs-sidebar-document:not(.is-active):hover { color: #353a43; background: #e8eaed; }
 
 @media (max-width: 1180px) {
@@ -77,6 +80,7 @@ html[data-theme="light"] .docs-page--manuscript .docs-sidebar.docs-sidebar--flat
 @media (max-width: 720px) {
   .docs-page--manuscript .docs-sidebar { padding-top: 0; padding-bottom: 16px; }
   .docs-page--manuscript .docs-on-page--with-copy { display: none; }
+  .docs-page--manuscript .docs-article-toolbar--desktop-copy { display: none; }
   .docs-page--manuscript .docs-article-toolbar--mobile-copy { position: static; display: flex; justify-content: flex-end; margin-bottom: 18px; }
   .docs-page--manuscript .docs-sidebar .docs-sidebar-node { min-height: 32px; padding: 7px 11px 7px calc(11px + var(--docs-sidebar-indent, 0px)); line-height: 1.3; }
   .docs-page--manuscript .docs-sidebar .docs-sidebar-children { display: none; }

@@ -155,8 +155,10 @@ export function isApiError(error: unknown): error is ApiError {
 }
 
 export function isAuthenticationFailure(error: unknown): boolean {
-  if (isApiError(error)) return error.status === AUTH_UNAUTHORIZED_STATUS || error.code === AUTH_INVALID_CODE
+  // Only an HTTP 401 means that the account session is no longer authorized.
+  // Business error codes can be reused by login/form APIs and must not log out a user.
+  if (isApiError(error)) return error.status === AUTH_UNAUTHORIZED_STATUS
   if (!error || typeof error !== 'object') return false
-  const candidate = error as { status?: unknown; code?: unknown }
-  return candidate.status === AUTH_UNAUTHORIZED_STATUS || candidate.code === AUTH_INVALID_CODE
+  const candidate = error as { status?: unknown }
+  return candidate.status === AUTH_UNAUTHORIZED_STATUS
 }

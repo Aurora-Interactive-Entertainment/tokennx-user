@@ -14,6 +14,7 @@ import { invalidateAuth } from '@/store/auth-slice'
 import { useAppDispatch, useAppSelector } from '@/store/hooks'
 import i18n from '@/i18n'
 import { apiTimeToMilliseconds } from '@/utils/format'
+import { appToast } from '@/components/app-toast'
 
 const REAL_NAME_NAME_MAX_LENGTH = 30
 const REAL_NAME_ID_NUMBER_LENGTH = 18
@@ -97,7 +98,6 @@ export function RealNamePage() {
   const [submitting, setSubmitting] = useState(false)
   const [confirming, setConfirming] = useState(false)
   const [refreshingQr, setRefreshingQr] = useState(false)
-  const [error, setError] = useState('')
   const [receipt, setReceipt] = useState<RealNameProfile | null>(null)
   const [qrExpiresAt, setQrExpiresAt] = useState<number | null>(null)
   const [clock, setClock] = useState(() => Date.now())
@@ -135,7 +135,6 @@ export function RealNamePage() {
     const token = getAccessToken()
     if (!token) { invalidateSession(); setLoading(false); return }
     setLoading(true)
-    setError('')
     try {
       const next = await getRealNameProfile(token)
       setProfile(next)
@@ -153,7 +152,7 @@ export function RealNamePage() {
       }
     } catch (requestError) {
       if (isRealNameLoginExpired(requestError)) invalidateSession()
-      else setError(getRealNameErrorMessage(requestError))
+      else appToast.error(getRealNameErrorMessage(requestError))
     } finally {
       setLoading(false)
     }
@@ -263,7 +262,6 @@ export function RealNamePage() {
     if (Object.keys(nextErrors).length) return
     submitLocked.current = true
     setSubmitting(true)
-    setError('')
     const request: SubmitRealNameRequest = { name: name.trim(), id_type: 'id-card', id_number: idNumber.trim(), consent: true, return_url: `${window.location.origin}/console/real-name` }
     try { await startVerification(request) } finally { submitLocked.current = false; setSubmitting(false) }
   }
@@ -311,7 +309,6 @@ export function RealNamePage() {
   const qrExpired = Boolean(receipt && qrExpiresAt !== null && clock >= qrExpiresAt)
 
   return <div className="page-stack real-name-console-page"><PageTitle title={t('console.realName.title')} description={t('console.realName.pageDescription')} />
-    {error ? <BannerNotice tone="warning"><div className="profile-error-content"><strong>{error}</strong><Button theme="outline" size="small" loading={loading} disabled={loading} onClick={() => { setError(''); void loadProfile() }}>{t('console.realName.refresh')}</Button></div></BannerNotice> : null}
     <section className={`real-name-card${verified ? ' real-name-card--verified' : ''}`} aria-labelledby="real-name-title"><BannerNotice tone={verified ? 'success' : 'warning'}><strong id="real-name-title">{verified ? t('console.realName.completed') : t('console.realName.personalOnly')}</strong><span>{verified ? t('console.realName.completedHint') : t('console.realName.legalHint')}</span></BannerNotice>
       {verified && profile ? <div className="real-name-status" aria-label={t('console.realName.title')}><div className="real-name-status-row"><span>{t('console.realName.verificationMethod')}</span><strong>{t('console.realName.currentMethod', { method: realNameVerificationLabel(profile) })}</strong></div><div className="real-name-status-row"><span>{t('console.realName.idNumber')}</span><strong>{profile.masked_id_number || t('console.realName.protected')}</strong></div></div> : null}
       {!verified ? <><form className="real-name-form" onSubmit={submit} noValidate><label className="real-name-field" htmlFor="real-name"><span>{t('console.realName.realName')}</span><Input id="real-name" value={name} onChange={(value) => { setName(value); if (errors.name) setErrors((previous) => ({ ...previous, name: undefined })) }} size="large" maxLength={REAL_NAME_NAME_MAX_LENGTH} placeholder={t('console.realName.realNamePlaceholder')} validateStatus={errors.name ? 'error' : 'default'} aria-invalid={Boolean(errors.name)} />{errors.name ? <span className="field-error" role="alert">{errors.name}</span> : null}</label><label className="real-name-field" htmlFor="real-name-type"><span>{t('console.realName.idType')}</span><Select id="real-name-type" value={idType} onChange={(value) => setIDType(String(value))} size="large" block aria-label={t('console.realName.idType')}>{REAL_NAME_ID_TYPES.map((item) => <Select.Option value={item.value} key={item.value}>{t(item.labelKey)}</Select.Option>)}</Select></label><label className="real-name-field" htmlFor="real-name-number"><span>{t('console.realName.idNumber')}</span><Input id="real-name-number" value={idNumber} onChange={(value) => { setIDNumber(value); if (errors.idNumber) setErrors((previous) => ({ ...previous, idNumber: undefined })) }} size="large" maxLength={REAL_NAME_ID_NUMBER_LENGTH} placeholder={t('console.realName.idNumberPlaceholder')} validateStatus={errors.idNumber ? 'error' : 'default'} aria-invalid={Boolean(errors.idNumber)} />{errors.idNumber ? <span className="field-error" role="alert">{errors.idNumber}</span> : null}</label><label className="real-name-consent" htmlFor="real-name-consent"><input id="real-name-consent" type="checkbox" checked={consent} onChange={(event) => { setConsent(event.target.checked); if (event.target.checked) setErrors((previous) => ({ ...previous, consent: undefined })) }} /><span>{t('console.realName.consent')}</span></label>{errors.consent ? <span className="field-error" role="alert">{errors.consent}</span> : null}<Button className="real-name-submit" htmlType="submit" theme="solid" type="primary" loading={submitting} disabled={!consent || submitting}>{t('console.realName.submit')}</Button></form><p className="real-name-demo-note">{t('console.realName.demoNote')}</p></> : null}

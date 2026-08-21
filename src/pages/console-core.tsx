@@ -35,6 +35,7 @@ export function ConsoleModelsPage() {
   const [pageSize, setPageSize] = useState<number>(DEFAULT_MODEL_PAGE_SIZE)
   const [searchParams, setSearchParams] = useSearchParams()
   const requestedModelAlias = searchParams.get('model')
+  const requestedModelName = searchParams.get('model_name')?.trim() ?? ''
   const [query, setQuery] = useState('')
   const [company, setCompany] = useState('all')
   const [priceFilter, setPriceFilter] = useState<ModelPriceFilter>('all')
@@ -59,10 +60,17 @@ export function ConsoleModelsPage() {
   const modelGridClassName = pageResult.items.length === 1 ? 'model-card-grid model-card-grid--single' : 'model-card-grid'
 
   useEffect(() => {
-    if (!requestedModelAlias) return
-    const requestedModel = findModelInList(userModels, requestedModelAlias)
+    if (!requestedModelAlias && !requestedModelName) return
+    const requestedModel = requestedModelAlias
+      ? findModelInList(userModels, requestedModelAlias)
+      : userModels.find((model) => model.name.trim().toLocaleLowerCase() === requestedModelName.toLocaleLowerCase())
     if (requestedModel) {
       setDetailModel(requestedModel)
+      if (requestedModelName) setQuery((current) => current === requestedModelName ? current : requestedModelName)
+      return
+    }
+    if (requestedModelName) {
+      setQuery((current) => current === requestedModelName ? current : requestedModelName)
       return
     }
     const fetchedModel = requestedDetailState.detail?.model
@@ -71,7 +79,7 @@ export function ConsoleModelsPage() {
       setDetailModel(mappedModel)
       setQuery((current) => current === requestedModelAlias ? current : requestedModelAlias)
     }
-  }, [requestedDetailState.detail, requestedModelAlias, userModels])
+  }, [requestedDetailState.detail, requestedModelAlias, requestedModelName, userModels])
 
   useEffect(() => {
     if (pageResult.page !== page) setPage(pageResult.page)
@@ -102,9 +110,10 @@ export function ConsoleModelsPage() {
   function closeModelDetail(): void {
     setDetailModel(null)
     setQuery('')
-    if (!requestedModelAlias) return
+    if (!requestedModelAlias && !requestedModelName) return
     const nextSearchParams = new URLSearchParams(searchParams)
     nextSearchParams.delete('model')
+    nextSearchParams.delete('model_name')
     setSearchParams(nextSearchParams, { replace: true })
   }
 

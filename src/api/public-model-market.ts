@@ -34,7 +34,8 @@ export interface PublicMarketCarousel {
   tags: string[]
   tags_en?: string[]
   image_url?: string
-  model_id: string
+  model_id?: string
+  model_name?: string
   model?: PublicMarketModel
 }
 
@@ -84,7 +85,10 @@ function parseModel(value: unknown): PublicMarketModel | null {
 }
 
 function parseCarousel(value: unknown): PublicMarketCarousel | null {
-  if (!isRecord(value) || typeof value.id !== 'string' || typeof value.status !== 'string' || typeof value.sort_order !== 'number' || typeof value.title !== 'string' || typeof value.description !== 'string' || typeof value.model_id !== 'string') return null
+  if (!isRecord(value) || typeof value.id !== 'string' || typeof value.status !== 'string' || typeof value.sort_order !== 'number' || typeof value.title !== 'string' || typeof value.description !== 'string') return null
+  // 轮播配置允许不绑定模型；兼容接口当前返回的 model_name 字段，避免整条数据被过滤。
+  const modelId = typeof value.model_id === 'string' ? value.model_id : undefined
+  const modelName = typeof value.model_name === 'string' && value.model_name.trim() ? value.model_name.trim() : undefined
   return {
     id: value.id,
     status: value.status,
@@ -96,7 +100,8 @@ function parseCarousel(value: unknown): PublicMarketCarousel | null {
     tags: Array.isArray(value.tags) ? value.tags.filter((tag): tag is string => typeof tag === 'string') : [],
     ...(Array.isArray(value.tags_en) ? { tags_en: value.tags_en.filter((tag): tag is string => typeof tag === 'string') } : {}),
     ...(typeof value.image_url === 'string' ? { image_url: value.image_url } : {}),
-    model_id: value.model_id,
+    ...(modelId ? { model_id: modelId } : {}),
+    ...(modelName ? { model_name: modelName } : {}),
     ...(parseModel(value.model) ? { model: parseModel(value.model) ?? undefined } : {}),
   }
 }

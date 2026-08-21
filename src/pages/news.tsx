@@ -24,11 +24,13 @@ function newsDateTime(timestamp: ApiTimeValue): string | undefined {
   return apiTimeToISOString(timestamp) ?? undefined
 }
 
-function newsTags(article: NewsArticle): string[] {
-  return article.tags?.length ? article.tags : article.category ? [article.category] : []
+function newsTags(article: NewsArticle, localizedNewsLabel: string): string[] {
+  const tags = article.tags?.length ? article.tags : article.category ? [article.category] : []
+  // 接口历史数据仍可能返回“新闻”，页面统一展示新的“资讯”文案。
+  return tags.map((tag) => tag === '新闻' ? localizedNewsLabel : tag)
 }
 
-function NewsCard({ article, language, index }: { article: NewsArticle; language: string; index: number }) {
+function NewsCard({ article, language, index, localizedNewsLabel }: { article: NewsArticle; language: string; index: number; localizedNewsLabel: string }) {
   const hasCover = Boolean(article.cover_image?.trim())
   return (
     <Link to={`/news/${encodeURIComponent(article.id)}`} className="news-card">
@@ -37,7 +39,7 @@ function NewsCard({ article, language, index }: { article: NewsArticle; language
       </div>
       <div className="news-card-content">
         <div className="news-card-meta">
-          {newsTags(article).map((tag, index) => <span className="news-card-category" key={`${tag}-${index}`}>{tag}</span>)}
+          {newsTags(article, localizedNewsLabel).map((tag, index) => <span className="news-card-category" key={`${tag}-${index}`}>{tag}</span>)}
         </div>
         <h2 className="news-card-title">{article.title}</h2>
         {article.description ? <p className="news-card-description">{article.description}</p> : null}
@@ -72,6 +74,7 @@ export function NewsListPage() {
   const [error, setError] = useState<string | null>(null)
   const requestVersion = useRef(0)
   const locale = i18n.language.toLowerCase().startsWith('en') ? 'en-US' as const : 'zh-CN' as const
+  const localizedNewsLabel = t('news.title')
 
   const loadNews = useCallback(async (pageNum: number, append = false) => {
     const version = ++requestVersion.current
@@ -115,7 +118,7 @@ export function NewsListPage() {
           <div className="news-list-state news-list-error" role="alert"><p>{error}</p><button type="button" onClick={() => void loadNews(1)}>{t('news.retry')}</button></div>
         ) : articles.length ? (
           <>
-            <div className="news-list-grid">{articles.map((article, index) => <NewsCard key={article.id} article={article} language={i18n.language} index={index} />)}</div>
+            <div className="news-list-grid">{articles.map((article, index) => <NewsCard key={article.id} article={article} language={i18n.language} index={index} localizedNewsLabel={localizedNewsLabel} />)}</div>
             <div className="news-list-load-more">
               {hasMore ? <button type="button" className="news-load-more-button" onClick={handleLoadMore} disabled={loadingMore} aria-busy={loadingMore}>
                 {loadingMore ? <><Spin size="small" /><span>{t('news.loading')}</span></> : <><span>{t('news.loadMore')}</span><IconArrowRight aria-hidden="true" /></>}
@@ -136,6 +139,7 @@ export function NewsDetailPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<{ message: string; requestId: string | null } | null>(null)
   const locale = i18n.language.toLowerCase().startsWith('en') ? 'en-US' as const : 'zh-CN' as const
+  const localizedNewsLabel = t('news.title')
 
   useEffect(() => {
     if (!id) return
@@ -162,7 +166,7 @@ export function NewsDetailPage() {
         <Link to="/news" className="news-detail-back"><IconArrowLeft aria-hidden="true" /><span>{t('news.blog')}</span></Link>
         <article className="news-detail-article">
           <header className="news-detail-header">
-            <div className="news-detail-meta">{newsTags(article).map((tag, index) => <span className="news-detail-category" key={`${tag}-${index}`}>{tag}</span>)}</div>
+            <div className="news-detail-meta">{newsTags(article, localizedNewsLabel).map((tag, index) => <span className="news-detail-category" key={`${tag}-${index}`}>{tag}</span>)}</div>
             <h1 className="news-detail-title">{article.title}</h1>
             {article.description ? <p className="news-detail-summary">{article.description}</p> : null}
             <div className="news-detail-byline">

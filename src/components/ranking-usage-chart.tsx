@@ -6,6 +6,7 @@ import { GridComponent, TooltipComponent } from 'echarts/components'
 import { SVGRenderer } from 'echarts/renderers'
 import type { RecentModelUsage } from '@/api/model-rankings'
 import { MODEL_CHART_COLORS } from '@/components/chart-colors'
+import { ChartHoverLegend } from '@/components/chart-hover-legend'
 import { useResolvedTheme } from '@/theme'
 
 echarts.use([BarChart, GridComponent, TooltipComponent, SVGRenderer])
@@ -190,10 +191,14 @@ export function RankingRecentUsageChart({ data }: { data: RecentModelUsage }) {
 
   return <>
     <div className="ranking-chart ranking-echart" ref={chartRef} role="img" aria-label={t('public.rankings.chartLabel')} />
-    <aside className={`ranking-legend${legendVisible ? ' is-visible' : ''}`} aria-hidden={!legendVisible} aria-label={t('public.rankings.legendLabel')}>
-      <time dateTime={selectedWeek}>{weekLabel(selectedWeek, i18n.language, true)}</time>
-      <div className="ranking-legend-list">{selectedValues.map((item) => <span key={item.code}><i style={{ backgroundColor: item.color }} /><strong title={item.name}>{item.name}</strong><em>{formatRankingTokens(item.value)}</em></span>)}</div>
-      <div className="ranking-legend-total"><strong>{t('public.rankings.all')}</strong><em>{formatRankingTokens(total)}</em></div>
-    </aside>
+    <ChartHoverLegend
+      visible={legendVisible}
+      ariaLabel={t('public.rankings.legendLabel')}
+      dateTime={selectedWeek}
+      dateLabel={weekLabel(selectedWeek, i18n.language, true)}
+      items={selectedValues.map((item) => ({ id: item.code, name: item.name, value: formatRankingTokens(item.value), color: item.color }))}
+      totalLabel={t('public.rankings.all')}
+      totalValue={formatRankingTokens(total)}
+    />
   </>
 }

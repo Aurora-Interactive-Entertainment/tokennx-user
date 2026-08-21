@@ -128,7 +128,6 @@ export const PUBLIC_LINKS: PublicLink[] = [
   { labelKey: 'nav.ranking', path: '/rankings' },
   { labelKey: 'nav.apps', path: '/apps' },
   { labelKey: 'nav.docs', path: '/docs' },
-  { labelKey: 'nav.news', path: '/news' },
 ]
 
 const AUTHENTICATED_PUBLIC_LINK: PublicLink = { labelKey: 'nav.billing', path: '/console/billing' }
@@ -1257,7 +1256,7 @@ export function PublicHeader({ enterpriseAccess, unreadNotificationCount = 0 }: 
             </div>
             <strong className={billingBalanceVisible ? '' : 'is-hidden'} title={billingBalanceVisible ? billingOverview?.account_balance_yuan : undefined}>{billingBalanceVisible ? billingBalance : maskedBillingBalance}</strong>
           </div>
-          <Link className="billing-hover-recharge" to="/console/billing" onClick={() => setBillingMenuOpen(false)}><span>{t('console.billing.rechargeNow')}</span></Link>
+          <Link className="billing-hover-recharge" to="/console/billing?tab=recharge" onClick={() => setBillingMenuOpen(false)}><span>{t('console.billing.rechargeNow')}</span></Link>
         </div>
         <div className="billing-hover-facts">
           <div><span>{t('console.billing.promotionBalance')}</span><strong title={billingOverview?.invitation_reward_yuan}>{billingInvitationReward}</strong></div>
@@ -1568,6 +1567,8 @@ export function workspacesFromMemberships(memberships: EnterpriseMembership[]): 
 
 const WORKSPACE_MENU_VIEWPORT_GAP_PX = 12
 const WORKSPACE_MENU_GAP_PX = 1
+// 临时调试开关：固定为点击展开，样式调整完成后改为 false 即可恢复 hover 交互。
+const USER_MENU_CLICK_PINNED_MODE = false
 
 // 中文：登录后的用户菜单与参考站保持同一层级，空间切换和控制台入口共用当前工作空间状态。
 function UserMenu({ store, userId, userName, phone, enterpriseAccess, accountSettingsOpen = false, onNavigate, onOpenSettings, onLogout }: UserMenuProps) {
@@ -1595,12 +1596,13 @@ function UserMenu({ store, userId, userName, phone, enterpriseAccess, accountSet
   }
 
   function openMenuOnHover(): void {
+    if (USER_MENU_CLICK_PINNED_MODE) return
     clearHoverCloseTimer()
     setOpen(true)
   }
 
   function scheduleHoverClose(): void {
-    if (keepMenuOpenForSettings) return
+    if (USER_MENU_CLICK_PINNED_MODE || keepMenuOpenForSettings) return
     clearHoverCloseTimer()
     hoverCloseTimerRef.current = setTimeout(() => {
       hoverCloseTimerRef.current = null
@@ -1682,7 +1684,7 @@ function UserMenu({ store, userId, userName, phone, enterpriseAccess, accountSet
   useEffect(() => {
     if (!open) return undefined
     function handlePointerDown(event: PointerEvent): void {
-      if (keepMenuOpenForSettings) return
+      if (USER_MENU_CLICK_PINNED_MODE || keepMenuOpenForSettings) return
       if (event.target instanceof Node && !shellRef.current?.contains(event.target) && !workspaceMenuRef.current?.contains(event.target)) closeMenu()
     }
     function handleKeyDown(event: KeyboardEvent): void {
@@ -1707,6 +1709,14 @@ function UserMenu({ store, userId, userName, phone, enterpriseAccess, accountSet
   function navigateFromMenu(path: string): void {
     closeMenu()
     onNavigate(path)
+  }
+
+  function toggleMenuFromTrigger(): void {
+    if (!USER_MENU_CLICK_PINNED_MODE || !open) {
+      setOpen(true)
+      return
+    }
+    closeMenu()
   }
 
   function openAccountSettings(): void {
@@ -1744,7 +1754,7 @@ function UserMenu({ store, userId, userName, phone, enterpriseAccess, accountSet
           return <button className={`workspace-menu-item${active ? ' active' : ''}`} type="button" role="menuitem" key={workspace.id} aria-current={active ? 'true' : undefined} aria-pressed={active} title={workspaceName} onClick={() => switchWorkspace(workspace)}>
             <span className="workspace-avatar">{workspaceInitial}</span>
             <span className="workspace-info"><span className="workspace-name">{workspaceName}</span><span className="workspace-type">{workspace.type === 'personal' ? t('console.common.personalWorkspace') : `${workspace.name} · ${workspace.role}`}</span></span>
-            {workspace.type === 'enterprise' ? <IconChevronDown className="icon-svg workspace-menu-chevron" aria-hidden="true" /> : null}
+            {active ? <IconTick className="icon-svg workspace-menu-check" aria-hidden="true" /> : null}
           </button>
         })}
         {store.workspaces.length === 1 ? <button className="workspace-menu-item workspace-menu-create" type="button" role="menuitem" onClick={() => navigateFromMenu(NEW_ENTERPRISE_CREATE_PATH)}>
@@ -1767,7 +1777,7 @@ function UserMenu({ store, userId, userName, phone, enterpriseAccess, accountSet
 
   return (
     <div className="user-menu-shell" ref={shellRef} onMouseEnter={openMenuOnHover} onMouseLeave={scheduleHoverClose}>
-      <button ref={triggerRef} className="user-menu-trigger user-menu-trigger--avatar-only" type="button" aria-haspopup="menu" aria-controls="user-dropdown" aria-expanded={open} aria-label={open ? t('console.common.closeUserMenu') : t('console.common.openUserMenu')} onClick={() => setOpen(true)}>
+      <button ref={triggerRef} className="user-menu-trigger user-menu-trigger--avatar-only" type="button" aria-haspopup="menu" aria-controls="user-dropdown" aria-expanded={open} aria-label={open ? t('console.common.closeUserMenu') : t('console.common.openUserMenu')} onClick={toggleMenuFromTrigger}>
         <span className="user-avatar">{initial}</span>
         <span className="user-name">{displayName}</span>
         <IconChevronDown className="icon-svg user-menu-chevron" />
@@ -2155,7 +2165,8 @@ const PUBLIC_COMPANY_INFO = {
 
 const PUBLIC_FOOTER_DOC_HREFS = {
   platformIntro: '/docs/01M074Z9VZXG1V0T6KYRW7AE34/platform-overview',
-  apiDocs: '/docs/01M0765G0JDT3JCZ6QQXNM40TX/token-nx-api-documentation',
+  // 直接跳转到 API 文档中的第二项“接入概览”。
+  apiDocs: '/docs/01M0765G0JAQQMZ1WDAE1DBG87/integration-overview',
   faq: '/docs/01M0765G0JADMQ2Y49DHV3MX70/frequently-asked-questions',
 } as const
 
@@ -2197,7 +2208,7 @@ export function PublicFooter() {
               : <Link key={`${link.path}-${link.labelKey}`} to={link.path}>{t(link.labelKey)}</Link>)}</div>
           </div>
           })}</nav>
-          <div className="public-footer-contact manuscript-footer-contact"><strong>{t('footer.contact')}</strong><button type="button" onClick={() => requestSupportWidget('contact')}>{t('footer.salesPrefix')}</button><a href="mailto:wub@tokennx.com">wub@tokennx.com</a><div className="manuscript-footer-qr-row"><div className="public-footer-qr"><img src={manuscriptCustomerQr} alt={t('footer.qrAlt')} loading="lazy" decoding="async" /><span>{t('footer.customerQr')}</span></div><div className="public-footer-qr"><img src={manuscriptOfficialQr} alt={t('footer.officialQr')} loading="lazy" decoding="async" /><span>{t('footer.officialQr')}</span></div></div></div>
+          <div className="public-footer-contact manuscript-footer-contact"><strong>{t('footer.contact')}</strong><div className="manuscript-footer-contact-line"><span>{t('footer.salesPrefix')}</span><button className="manuscript-footer-online-action manuscript-footer-online-consultation" type="button" aria-label={`${t('footer.salesPrefix')}${t('footer.salesOnline')}`} onClick={() => requestSupportWidget('contact')}>{t('footer.salesOnline')}</button></div><div className="manuscript-footer-contact-line"><span>{t('footer.businessPrefix')}</span><a className="manuscript-footer-business-action manuscript-footer-business-email" href="mailto:wub@tokennx.com" aria-label={`${t('footer.businessPrefix')}wub@tokennx.com`}>wub@tokennx.com</a></div><div className="manuscript-footer-qr-row"><div className="public-footer-qr"><img src={manuscriptCustomerQr} alt={t('footer.qrAlt')} loading="lazy" decoding="async" /><span>{t('footer.customerQr')}</span></div><div className="public-footer-qr"><img src={manuscriptOfficialQr} alt={t('footer.officialQr')} loading="lazy" decoding="async" /><span>{t('footer.officialQr')}</span></div></div></div>
         </div>
         <div className="public-footer-bottom manuscript-footer-filing" aria-label={t('footer.filing')}><span className="manuscript-footer-filing-copy">Copyright @ 2025-{new Date().getFullYear()} {PUBLIC_COMPANY_INFO.name}</span><span className="manuscript-footer-filing-item"><img src={manuscriptFilingIcpIcon} alt="" aria-hidden="true" />{PUBLIC_COMPANY_INFO.filing}</span><span className="manuscript-footer-filing-item"><img src={manuscriptFilingSecurityIcon} alt="" aria-hidden="true" />{PUBLIC_COMPANY_INFO.securityFiling}</span><Link className="manuscript-footer-filing-item" to="/about">{t('footer.businessLicense')}</Link><Link className="manuscript-footer-filing-item" to="/terms">{t('footer.license')}</Link></div>
         <ManuscriptSupportWidget />
@@ -2362,7 +2373,8 @@ export function PublicLayout({ children, mainClassName = '' }: { children: React
   const store = useAppStore()
   const enterpriseAccess = useEnterpriseMenuAccess(store.activeWorkspace)
   const manuscript = mainClassName.includes('home-page--manuscript') || mainClassName.includes('docs-page--manuscript') || mainClassName.includes('apps-page--manuscript') || mainClassName.includes('rankings-page--manuscript') || mainClassName.includes('news-page--manuscript')
-  const layoutClassName = manuscript ? ' public-layout--manuscript-home' : ''
+  const modelCatalog = mainClassName.includes('public-models-page')
+  const layoutClassName = manuscript ? ' public-layout--manuscript-home' : modelCatalog ? ' public-layout--models' : ''
   return <div className={`public-layout public-header-host${layoutClassName}`}><PublicHeader enterpriseAccess={enterpriseAccess} /><main className={`public-main${mainClassName ? ` ${mainClassName}` : ''}`}>{children}</main><PublicFooter /></div>
 }
 

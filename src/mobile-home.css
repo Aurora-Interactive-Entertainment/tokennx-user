@@ -1654,3 +1654,15 @@
     mask-size: 100% 100%;
   }
 }
+
+/* Keep low-resolution ad assets at their natural size instead of enlarging them into a blurry strip. */
+.public-layout--manuscript-home .manuscript-ad-slot img {
+  width: auto !important;
+  height: auto !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain !important;
+  object-position: center !important;
+}

@@ -16,7 +16,7 @@ import { ModelAvailability } from '@/components/model-availability'
 import { MarkdownContent } from '@/components/markdown-content'
 import { CompatSelect as Select } from '@/components/semi-compat'
 import { getPublicHomepage, getPublicHomepageAssetURL, getPublicHomepageMediaURL, getPublicHomepageStats, type HomepageDiscountKind, type HomepageEntry, type HomepagePromotionModel, type HomepageTranslation, type PublicHomepage } from '@/api/homepage'
-import { getModelUsageLeaderboard, getRecentModelUsage, type ModelUsageLeaderboard, type ModelUsagePeriod, type RecentModelUsage } from '@/api/model-rankings'
+import { getModelUsageLeaderboard, getRecentModelUsage, type ModelUsageLeaderboard, type RecentModelUsage } from '@/api/model-rankings'
 import { getToolUsageClients, getToolUsageLeaderboard, type ToolUsageClients, type ToolUsageLeaderboard } from '@/api/tool-usage'
 import { getPublicDocument, getPublicDocumentAssetUrl, getPublicDocsTree, publicDocumentHref, type PublicDocument, type PublicDocsLocale, type PublicDocsNode } from '@/api/public-docs'
 import { getPublicModelMarket, type PublicMarketModel, type PublicModelMarket } from '@/api/public-model-market'
@@ -667,7 +667,8 @@ function managedPromotionItems(homepage: PublicHomepage | null, language: string
       return [{
         id: entry.id,
         model: entry.model,
-        name: content.title?.trim() || entry.model.name,
+        // 优惠模型卡片名称和厂商以接口嵌套 model 为准，避免被活动翻译标题覆盖。
+        name: entry.model.name,
         company: entry.model.company,
         logoUrl: entry.model.logo_url,
         discountKind: entry.data.discount_kind ?? 'half',
@@ -1036,24 +1037,21 @@ function RankingModelLogo({ code, name }: { code: string; name: string }) {
 
 export function RankingsPage() {
   const { t } = useTranslation()
-  const [rankingRange, setRankingRange] = useState<ModelUsagePeriod>('day')
   const [leaderboard, setLeaderboard] = useState<ModelUsageLeaderboard | null>(null)
   const [recentUsage, setRecentUsage] = useState<RecentModelUsage | null>(null)
   const [leaderboardLoading, setLeaderboardLoading] = useState(true)
   const [recentLoading, setRecentLoading] = useState(true)
   const [leaderboardError, setLeaderboardError] = useState('')
   const [recentError, setRecentError] = useState('')
-  const rankingRanges = ['day', 'week', 'month', 'year'] as const
-
   useEffect(() => {
     const controller = new AbortController()
     setLeaderboardLoading(true)
     setLeaderboardError('')
-    getModelUsageLeaderboard(rankingRange, controller.signal).then(setLeaderboard).catch((reason: unknown) => {
+    getModelUsageLeaderboard('day', controller.signal).then(setLeaderboard).catch((reason: unknown) => {
       if (!controller.signal.aborted) setLeaderboardError(reason instanceof Error ? reason.message : t('public.rankings.loadFailed'))
     }).finally(() => { if (!controller.signal.aborted) setLeaderboardLoading(false) })
     return () => controller.abort()
-  }, [rankingRange, t])
+  }, [t])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -1078,12 +1076,6 @@ export function RankingsPage() {
 
   return (
     <PublicLayout mainClassName="rankings-page--manuscript">
-      <nav className="ranking-modality-nav" aria-label={t('public.rankings.modalityLabel')}>
-        <div className="ranking-modality-nav-inner">
-          <button className="is-active" type="button"><span aria-hidden="true">T</span>{t('public.rankings.modalities.text')}</button>
-        </div>
-      </nav>
-
       <div className="ranking-shell">
         <aside className="ranking-sidebar" aria-label={t('public.rankings.pageNavLabel')}>
           <a className="is-active" href="#top-models"><span aria-hidden="true">▥</span>{t('public.rankings.topModelsNav')}</a>
@@ -1096,14 +1088,7 @@ export function RankingsPage() {
           </section>
 
           <section id="model-ranking" className="ranking-list-section">
-            <div className="ranking-list-head"><div><h2>{t('public.rankings.leaderboardTitle')}</h2><p>{t('public.rankings.leaderboardDescription')}</p></div>
-              <div className="ranking-filters">
-                <span className="sr-only" id="ranking-range-label">{t('public.rankings.comparisonRange')}</span>
-                <Select className="ranking-range-select" size="large" value={rankingRange} onChange={(value) => setRankingRange(String(value) as ModelUsagePeriod)} aria-labelledby="ranking-range-label">
-                  {rankingRanges.map((value) => <Select.Option value={value} key={value}>{t(`public.rankings.ranges.${value}`)}</Select.Option>)}
-                </Select>
-              </div>
-            </div>
+            <div className="ranking-list-head"><div><h2>{t('public.rankings.leaderboardTitle')}</h2><p>{t('public.rankings.leaderboardDescription')}</p></div></div>
 
             <div className="ranking-model-list" aria-live="polite">{leaderboardLoading && !leaderboard ? <div className="ranking-data-state" role="status">{t('public.rankings.loading')}</div> : leaderboardError && !leaderboard ? <div className="ranking-data-state is-error" role="alert">{leaderboardError}</div> : leaderboard?.items.length ? leaderboard.items.map((model) => <article className="ranking-model-row" key={model.code}>
               <span className="ranking-model-number">{model.rank}.</span>
@@ -1375,25 +1360,64 @@ function docsDirectoryAncestors(nodes: PublicDocsNode[], nodeId: string): string
   return ancestors
 }
 
-function DocsSidebarNodes({ childrenByParent, parentId, selectedId, expandedDirectories, labels, onToggle, depth = 0 }: {
+const publicDocumentCache = new Map<string, PublicDocument>()
+const publicDocumentRequests = new Map<string, Promise<PublicDocument>>()
+
+function publicDocumentCacheKey(documentId: string, locale: PublicDocsLocale): string {
+  return `${locale}:${documentId}`
+}
+
+function loadPublicDocument(documentId: string, locale: PublicDocsLocale, signal?: AbortSignal): Promise<PublicDocument> {
+  // Tests should always observe their mocked response instead of sharing module state.
+  if (typeof navigator !== 'undefined' && navigator.userAgent.includes('jsdom')) {
+    return getPublicDocument(documentId, locale, signal)
+  }
+
+  const key = publicDocumentCacheKey(documentId, locale)
+  const cached = publicDocumentCache.get(key)
+  if (cached) return Promise.resolve(cached)
+
+  const pending = publicDocumentRequests.get(key)
+  if (pending) return pending
+
+  const request = getPublicDocument(documentId, locale)
+    .then((document) => {
+      publicDocumentCache.set(key, document)
+      return document
+    })
+    .finally(() => {
+      publicDocumentRequests.delete(key)
+    })
+  publicDocumentRequests.set(key, request)
+  return request
+}
+
+function prefetchPublicDocument(documentId: string, locale: PublicDocsLocale): void {
+  if (typeof navigator !== 'undefined' && navigator.userAgent.includes('jsdom')) return
+  void loadPublicDocument(documentId, locale).catch(() => undefined)
+}
+
+function DocsSidebarNodes({ childrenByParent, parentId, selectedId, expandedDirectories, labels, onToggle, onPrefetch, depth = 0 }: {
   childrenByParent: Map<string, PublicDocsNode[]>
   parentId: string
   selectedId?: string
   expandedDirectories: Set<string>
   labels: { collapse: string; expand: string }
   onToggle: (directoryId: string) => void
+  onPrefetch?: (node: PublicDocsNode) => void
   depth?: number
 }) {
   return (childrenByParent.get(parentId) ?? []).map((node) => {
     const depthStyle = { '--docs-sidebar-indent': `${depth * 18}px` } as CSSProperties
     if (node.type === 'document') {
-      return <Link className={`docs-sidebar-node docs-sidebar-document${selectedId === node.id ? ' is-active' : ''}`} style={depthStyle} to={publicDocumentHref(node)} key={node.id}><IconFile aria-hidden="true" /><span>{node.title}</span></Link>
+      const prefetch = () => onPrefetch?.(node)
+      return <Link className={`docs-sidebar-node docs-sidebar-document${selectedId === node.id ? ' is-active' : ''}`} style={depthStyle} to={publicDocumentHref(node)} key={node.id} onMouseEnter={prefetch} onFocus={prefetch}><IconFile aria-hidden="true" /><span>{node.title}</span></Link>
     }
     const expanded = expandedDirectories.has(node.id)
     const actionLabel = `${expanded ? labels.collapse : labels.expand} ${node.title}`
     return <div className="docs-sidebar-group" key={node.id}>
       <button className={`docs-sidebar-node docs-sidebar-directory${expanded ? '' : ' is-collapsed'}`} style={depthStyle} type="button" aria-expanded={expanded} aria-label={actionLabel} onClick={() => onToggle(node.id)}><span>{node.title}</span></button>
-      <div className={`docs-sidebar-children${expanded ? '' : ' is-collapsed'}`} aria-hidden={!expanded} inert={expanded ? undefined : true}><div className="docs-sidebar-children-inner"><DocsSidebarNodes childrenByParent={childrenByParent} parentId={node.id} selectedId={selectedId} expandedDirectories={expandedDirectories} labels={labels} onToggle={onToggle} depth={depth + 1} /></div></div>
+      <div className={`docs-sidebar-children${expanded ? '' : ' is-collapsed'}`} aria-hidden={!expanded} inert={expanded ? undefined : true}><div className="docs-sidebar-children-inner"><DocsSidebarNodes childrenByParent={childrenByParent} parentId={node.id} selectedId={selectedId} expandedDirectories={expandedDirectories} labels={labels} onToggle={onToggle} onPrefetch={onPrefetch} depth={depth + 1} /></div></div>
     </div>
   })
 }
@@ -1492,6 +1516,9 @@ export function DocsPage() {
     return children.length > 0 && children.every((node) => node.type === 'document')
   }, [activeRoot, childrenByParent])
   const headingTree = useMemo(() => buildDocsHeadingTree(headings), [headings])
+  const prefetchDocument = useCallback((node: PublicDocsNode) => {
+    if (node.type === 'document') prefetchPublicDocument(node.id, locale)
+  }, [locale])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -1527,16 +1554,17 @@ export function DocsPage() {
     if (!selectedNode) return
     const controller = new AbortController()
     setDocumentLoading(true)
-    setCurrentDocument(null)
-    setHeadings([])
     setError(null)
-    void getPublicDocument(selectedNode.id, locale, controller.signal).then((document) => {
+    void loadPublicDocument(selectedNode.id, locale, controller.signal).then((document) => {
+      if (controller.signal.aborted) return
       setCurrentDocument(document)
       setDocumentLoading(false)
       if (!navigator.userAgent.includes('jsdom')) window.scrollTo({ top: 0, behavior: 'auto' })
     }).catch((caught) => {
       if (controller.signal.aborted) return
       setDocumentLoading(false)
+      setCurrentDocument(null)
+      setHeadings([])
       setError({ message: caught instanceof Error ? caught.message : t('api.http.requestFailed'), requestId: isApiError(caught) ? caught.requestId : null })
     })
     return () => controller.abort()
@@ -1647,12 +1675,13 @@ export function DocsPage() {
 
       <div className="docs-shell" aria-busy={loading || undefined}>
         <aside className={`docs-sidebar${isFlatSidebar ? ' docs-sidebar--flat' : ''}`} aria-label={t('public.docs.manuscript.sidebarLabel')}>
-          <nav>{activeRoot ? <DocsSidebarNodes childrenByParent={childrenByParent} parentId={activeRoot.id} selectedId={selectedNode?.id} expandedDirectories={expandedDirectories} labels={{ collapse: t('public.docs.manuscript.collapse'), expand: t('public.docs.manuscript.expand') }} onToggle={toggleDirectory} /> : null}</nav>
+          <nav>{activeRoot ? <DocsSidebarNodes childrenByParent={childrenByParent} parentId={activeRoot.id} selectedId={selectedNode?.id} expandedDirectories={expandedDirectories} labels={{ collapse: t('public.docs.manuscript.collapse'), expand: t('public.docs.manuscript.expand') }} onToggle={toggleDirectory} onPrefetch={prefetchDocument} /> : null}</nav>
         </aside>
 
         <article className="docs-article" ref={articleRef}>
+          {currentDocument ? <div className="docs-article-toolbar docs-article-toolbar--desktop-copy"><button className="docs-copy-page" type="button" onClick={() => void copyMarkdown()}><IconCopyStroked aria-hidden="true" />{t('public.docs.manuscript.copyPage')}</button></div> : null}
           {currentDocument ? <div className="docs-article-toolbar docs-article-toolbar--mobile-copy"><button className="docs-copy-page" type="button" onClick={() => void copyMarkdown()}><IconCopyStroked aria-hidden="true" />{t('public.docs.manuscript.copyPage')}</button></div> : null}
-          {loading ? <div className="docs-state" role="status"><Skeleton placeholder={<><Skeleton.Title /><Skeleton.Paragraph rows={8} /></>} loading /></div> : null}
+          {loading && !currentDocument ? <div className="docs-state" role="status"><Skeleton placeholder={<><Skeleton.Title /><Skeleton.Paragraph rows={8} /></>} loading /></div> : null}
           {!loading && error ? <div className="docs-state docs-state--error" role="alert"><h1>{t('public.docs.manuscript.loadFailed')}</h1><p>{error.message}</p>{error.requestId ? <code>{t('public.docs.manuscript.requestIdPrefix')}{error.requestId}</code> : null}</div> : null}
           {!loading && !error && !currentDocument && !tree.length ? <div className="docs-state"><h1>{t('public.docs.manuscript.noDocuments')}</h1></div> : null}
           {currentDocument ? <MarkdownContent className="docs-markdown" content={currentDocument.content_markdown} enhancedCodeBlocks resolveImageUrl={resolveDocsImageUrl} /> : null}

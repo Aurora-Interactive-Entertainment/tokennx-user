@@ -9,19 +9,22 @@
 .models-showcase-hero-art::before { position: absolute; inset: -12%; content: ''; z-index: 1; background: radial-gradient(circle at 72% 48%, color-mix(in srgb, var(--models-hero-accent) 24%, transparent), transparent 46%); opacity: .45; pointer-events: none; }
 .models-showcase-hero-art img { width: 100%; height: 100%; display: block; object-fit: cover; opacity: .84; filter: saturate(1.12) contrast(1.05); }
 .models-showcase-hero-overlay { z-index: -1; background: linear-gradient(180deg, rgba(10,10,12,.1) 0%, rgba(10,10,12,.18) 48%, #111113 100%), linear-gradient(90deg, rgba(17,17,19,.94) 0%, rgba(17,17,19,.62) 4%, transparent 14%, transparent 86%, rgba(17,17,19,.62) 96%, rgba(17,17,19,.94) 100%); }
-.models-showcase-hero-copy { width: min(1120px, calc(100% - 48px)); margin: 0 auto; padding-top: 112px; }
-.models-showcase-hero-copy > * { animation: models-showcase-copy-reveal 1000ms cubic-bezier(.16,1,.3,1) both; }
+.models-showcase-hero-copy { width: min(1120px, calc(100% - 48px)); margin: 0 auto; padding-top: 56px; }
+.models-showcase-hero-copy > * { --models-copy-blur: 10px; --models-copy-offset: 30px; animation: models-showcase-copy-reveal 1000ms cubic-bezier(.16,1,.3,1) both; }
 .models-showcase-hero-copy > h1 { --models-copy-blur: 15px; --models-copy-offset: 45px; animation-delay: 250ms; }
-.models-showcase-hero-tags { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 22px; }
-.models-showcase-hero-tags span { display: inline-flex; align-items: center; min-height: 34px; padding: 0 14px; border: 1px solid rgba(255,255,255,.55); border-radius: 999px; color: rgba(255,255,255,.9); font-size: 14px; line-height: 1; }
+.models-showcase-hero-tags { --models-copy-blur: 12px; --models-copy-offset: 36px; display: flex; flex-wrap: wrap; gap: 12px; margin-top: 14px; animation-delay: 350ms; }
+.models-showcase-hero-tags span { display: inline-flex; align-items: center; justify-content: center; min-height: 36px; padding: 0 14px; border: 1px solid rgba(238,238,238,.9); border-radius: 18px; color: #eee; font-size: 18px; font-weight: 500; line-height: 1; }
 .models-showcase-hero-copy > p:not(.models-showcase-hero-eyebrow) { --models-copy-blur: 10px; --models-copy-offset: 30px; animation-delay: 450ms; }
 .models-showcase-hero-copy > .models-showcase-hero-action { --models-copy-blur: 0px; --models-copy-offset: 30px; animation-delay: 650ms; }
 .models-showcase-hero-eyebrow { margin-bottom: 14px; color: #b9c5e9; font-size: 13px; letter-spacing: .08em; }
-.models-showcase-hero h1 { max-width: none; margin: 0; color: #fff; font-size: clamp(42px, 5vw, 78px); font-weight: 650; line-height: 1.03; letter-spacing: -.025em; white-space: nowrap; }
-.models-showcase-hero-copy > p:not(.models-showcase-hero-eyebrow) { max-width: 430px; margin-top: 20px; color: rgba(255,255,255,.74); font-size: 15px; line-height: 1.7; }
-.models-showcase-hero-action { display: inline-flex; align-items: center; gap: 10px; min-height: 44px; margin-top: 28px; padding: 0 22px; border: 0; border-radius: 999px; color: #fff; background: #6332df; }
-.models-showcase-hero-action:hover { color: #fff; background: #6332df; }
-.models-showcase-hero-action:focus-visible { color: #fff; background: #6332df; outline: 2px solid rgba(255,255,255,.9); outline-offset: 3px; }
+.models-showcase-hero h1 { max-width: 543px; margin: 0; color: #fff; font-size: 56px; font-weight: 500; line-height: 1.5; letter-spacing: 0; white-space: nowrap; }
+.models-showcase-hero-copy > p:not(.models-showcase-hero-eyebrow) { max-width: 543px; margin-top: 16px; color: #fff; font-size: 16px; font-weight: 500; line-height: 1.7; }
+/* Match the Figma CTA without changing the carousel behavior or navigation target. */
+.models-showcase-hero-action { position: relative; z-index: 0; isolation: isolate; display: inline-flex; width: 185px; min-height: 48px; align-items: center; justify-content: center; overflow: hidden; margin-top: 14px; padding: 0 24px; border: 0; border-radius: 30px; color: #050505; background: linear-gradient(90deg, #ff9d18 0%, #ffbc3c 30%, #f35bff 100%); font-size: 25px; font-weight: 500; line-height: 1; transition: color 240ms ease; }
+.models-showcase-hero-action::before { position: absolute; inset: 0; z-index: -1; content: ''; opacity: 0; background: linear-gradient(90deg, #FFE312 0%, #F758FF 50%, #700DFB 100%); transition: opacity 240ms ease; }
+.models-showcase-hero-action:hover { color: #050505; }
+.models-showcase-hero-action:hover::before, .models-showcase-hero-action:focus-visible::before { opacity: 1; }
+.models-showcase-hero-action:focus-visible { color: #050505; outline: 2px solid rgba(255,255,255,.9); outline-offset: 3px; }
 .models-showcase-progress { position: absolute; left: 50%; bottom: 30px; display: flex; gap: 10px; width: min(360px, calc(100% - 48px)); transform: translateX(-50%); }
 .models-showcase-progress-item { position: relative; flex: 1; height: 24px; padding: 10px 0; border: 0; background: transparent; cursor: pointer; }
 .models-showcase-progress-item::before, .models-showcase-progress-item span { position: absolute; left: 0; top: 10px; width: 100%; height: 3px; content: ''; border-radius: 999px; }
@@ -54,9 +57,11 @@
 .models-showcase-card-prices > div { min-width: 0; height: 116px; display: grid; grid-template-rows: auto 1fr; padding: 14px 10px; border-radius: 2px; background: #353537; }
 .models-showcase-card-prices dt { color: #e2e2e7; font-size: 13px; }
 .models-showcase-card-prices dd { display: grid; grid-template-rows: 16px 1fr; align-content: start; gap: 20px; min-height: 72px; margin: 0; line-height: 1; }
-.models-showcase-card-price-original, .models-showcase-card-price-currency { display: block; min-height: 16px; color: #898990; font-size: 13px; font-style: normal; line-height: 16px; margin-top: 5px;}
+.models-showcase-card-price-original { display: block; min-height: 16px; color: #898990; font-size: 13px; font-style: normal; line-height: 16px; margin-top: 5px;}
 .models-showcase-card-price-original { text-decoration-line: line-through; text-decoration-thickness: 1px; text-decoration-color: currentColor; }
+.models-showcase-card-price-original--placeholder { visibility: hidden; }
 .models-showcase-card-price-current { display: block; color: #8e62ff; font-size: 24px; font-variant-numeric: tabular-nums; font-weight: 400; line-height: 1; }
+.models-showcase-card-price-current-currency { margin-right: 2px; }
 .models-showcase-card-actions { position: absolute; z-index: 2; right: 18px; bottom: 14px; left: 22px; display: grid; grid-template-columns: repeat(2, minmax(0, 124px)); justify-content: center; gap: clamp(16px, 4.7vw, 56px); height: 34px; margin: 0; opacity: 0; transform: translateY(8px); transition: opacity .2s ease, transform .2s ease; }
 .models-showcase-card:hover .models-showcase-card-actions, .models-showcase-card:focus-within .models-showcase-card-actions { opacity: 1; transform: translateY(0); }
 .models-showcase-card-primary, .models-showcase-card-docs { display: inline-flex; align-items: center; justify-content: center; width: 100%; height: 34px; min-width: 0; padding: 0 10px; border-radius: 999px; font-size: 14px; font-weight: 500; line-height: 1; white-space: nowrap; }
@@ -78,9 +83,9 @@
   to { opacity: 1; filter: blur(0); transform: translateY(0); }
 }
 @keyframes models-showcase-progress { from { width: 0; } to { width: 100%; } }
-@media (prefers-reduced-motion: reduce) { .models-showcase-hero-art, .models-showcase-hero-copy > *, .models-showcase-progress-item span, .models-showcase-card, .models-showcase-card-actions, .models-showcase-card::before, .models-showcase-card-prices > div { animation: none; transition: none; } .models-showcase-hero-art--incoming { opacity: 1; filter: none; transform: none; } .models-showcase-hero-art--outgoing { display: none; } .models-showcase-progress-item.is-active span { width: 100%; } }
-@media (max-width: 820px) { .models-showcase-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .models-showcase-hero-copy { padding-top: 90px; } }
-@media (max-width: 560px) { .models-showcase-hero { height: 420px; min-height: 420px; } .models-showcase-hero-copy, .models-showcase-catalog { width: min(100% - 32px, 1120px); } .models-showcase-hero-copy { padding-top: 88px; } .models-showcase-hero h1 { font-size: 42px; } .models-showcase-group-head { align-items: flex-start; flex-direction: column; } .models-showcase-grid { grid-template-columns: 1fr; } .models-showcase-card { height: auto; min-height: 331px; padding: 22px 16px 62px; } .models-showcase-card-actions { right: 16px; left: 16px; opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .models-showcase-hero-art, .models-showcase-hero-copy > *, .models-showcase-hero-action::before, .models-showcase-progress-item span, .models-showcase-card, .models-showcase-card-actions, .models-showcase-card::before, .models-showcase-card-prices > div { animation: none; transition: none; } .models-showcase-hero-art--incoming { opacity: 1; filter: none; transform: none; } .models-showcase-hero-art--outgoing { display: none; } .models-showcase-progress-item.is-active span { width: 100%; } }
+@media (max-width: 820px) { .models-showcase-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .models-showcase-hero-copy { padding-top: 58px; } }
+@media (max-width: 560px) { .models-showcase-hero { height: 420px; min-height: 420px; } .models-showcase-hero-copy, .models-showcase-catalog { width: min(100% - 32px, 1120px); } .models-showcase-hero-copy { padding-top: 54px; } .models-showcase-hero h1 { font-size: 42px; line-height: 1.35; white-space: normal; } .models-showcase-hero-tags { gap: 8px; margin-top: 12px; } .models-showcase-hero-tags span { min-height: 30px; padding-inline: 11px; border-radius: 15px; font-size: 14px; } .models-showcase-hero-copy > p:not(.models-showcase-hero-eyebrow) { margin-top: 14px; font-size: 14px; line-height: 1.6; } .models-showcase-hero-action { width: 188px; min-height: 50px; margin-top: 16px; border-radius: 25px; font-size: 23px; } .models-showcase-group-head { align-items: flex-start; flex-direction: column; } .models-showcase-grid { grid-template-columns: 1fr; } .models-showcase-card { height: auto; min-height: 331px; padding: 22px 16px 62px; } .models-showcase-card-actions { right: 16px; left: 16px; opacity: 1; transform: none; } }
 html[data-theme="light"] .models-showcase { --models-surface: #fff; --models-panel: #f6f6f6; --models-muted: #6b6f79; --models-text: #17181b; background: #fff; }
 html[data-theme="light"] .models-showcase-hero { background: #1e2850; }
 /* 浅色模式保留左侧可读性，并弱化会显出环形边界的径向光晕。 */

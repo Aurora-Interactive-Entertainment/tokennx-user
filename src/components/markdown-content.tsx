@@ -1,5 +1,5 @@
 import ReactMarkdown from 'react-markdown'
-import { useState } from 'react'
+import { memo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { defaultSchema } from 'hast-util-sanitize'
 import rehypeSanitize from 'rehype-sanitize'
@@ -185,7 +185,7 @@ function MarkdownImage({ src, alt, resolveImageUrl }: { src?: string; alt?: stri
   )
 }
 
-export function MarkdownContent({ content, className, enhancedCodeBlocks = false, allowHtml = false, resolveImageUrl }: MarkdownContentProps) {
+export const MarkdownContent = memo(function MarkdownContent({ content, className, enhancedCodeBlocks = false, allowHtml = false, resolveImageUrl }: MarkdownContentProps) {
   const rootClassName = className ? `markdown-content ${className}` : 'markdown-content'
   const normalizedContent = normalizeMalformedTableImages(allowHtml ? normalizeHtmlWrappedMarkdownTables(normalizeHtmlCodeBlocks(content)) : content)
   // 中文：兼容 React Markdown 与 unified 不同版本的 AST 类型定义。
@@ -218,4 +218,4 @@ export function MarkdownContent({ content, className, enhancedCodeBlocks = false
       </ReactMarkdown>
     </div>
   )
-}
+})

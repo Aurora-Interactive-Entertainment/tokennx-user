@@ -1,6 +1,6 @@
 import { createAsyncThunk, createSlice, type PayloadAction } from '@reduxjs/toolkit'
 import { getCurrentUser, loginByEmail, loginByPhone, logout, requestWechatQr as requestWechatQrRequest, sendBindingPhoneCode, sendEmailCode, sendPhoneCode, bindWechatPhone, type AuthResult, type AuthUser, type DeviceInfo, type EmailCodeResult, type PhoneCodeResult, type WechatQrResult, type WechatStatusResult, getWechatStatus } from '@/api/auth'
-import { AUTH_INVALID_CODE, isApiError } from '@/api/http'
+import { AUTH_INVALID_CODE, isApiError, isAuthenticationFailure } from '@/api/http'
 import { clearAuthTokens, getAccessToken, getDeviceId, getDeviceName, readRefreshToken, saveAuthTokens } from '@/auth/token-storage'
 import { refreshAuthSession, withAuthSessionLock } from '@/auth/refresh-coordinator'
 import i18n from '@/i18n'
@@ -59,8 +59,10 @@ export const hydrateAuth = createAsyncThunk<AuthUser | null>('auth/hydrate', asy
     const user = result.user
     const access = getAccessToken()
     return access ? await getCurrentUser(access) : user
-  } catch {
-    clearAuthTokens({ expectedRefreshToken: refreshToken })
+  } catch (error) {
+    // Preserve the session on service/network failures; only a 401 proves that
+    // the refresh token is no longer authorized.
+    if (isAuthenticationFailure(error)) clearAuthTokens({ expectedRefreshToken: refreshToken })
     return null
   }
 })

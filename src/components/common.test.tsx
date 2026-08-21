@@ -643,14 +643,14 @@ describe('公共 Header 布局', () => {
     expect(screen.getByRole('link', { name: '智能体排名' })).toHaveAttribute('href', '/apps')
     expect(screen.getByRole('link', { name: '套餐价格' })).toHaveAttribute('href', '/login?return=%2Fconsole%2Fbilling%3Ftab%3Dsubscription')
     expect(screen.getByRole('link', { name: i18n.t('footer.platformIntro') })).toHaveAttribute('href', '/docs/01M074Z9VZXG1V0T6KYRW7AE34/platform-overview')
-    expect(screen.getByRole('link', { name: i18n.t('footer.apiDocs') })).toHaveAttribute('href', '/docs/01M0765G0JDT3JCZ6QQXNM40TX/token-nx-api-documentation')
+    expect(screen.getByRole('link', { name: i18n.t('footer.apiDocs') })).toHaveAttribute('href', '/docs/01M0765G0JAQQMZ1WDAE1DBG87/integration-overview')
     expect(screen.getByRole('link', { name: i18n.t('footer.faq') })).toHaveAttribute('href', '/docs/01M0765G0JADMQ2Y49DHV3MX70/frequently-asked-questions')
     expect(screen.getByRole('link', { name: i18n.t('footer.userAgreement') })).toHaveAttribute('href', '/terms')
     expect(screen.getByRole('link', { name: i18n.t('footer.privacyAgreement') })).toHaveAttribute('href', '/privacy')
     expect(screen.getByRole('link', { name: i18n.t('footer.rechargeAgreement') })).toHaveAttribute('href', '/recharge-agreement')
-    expect(screen.getByRole('link', { name: 'wub@tokennx.com' })).toHaveAttribute('href', 'mailto:wub@tokennx.com')
+    expect(screen.getByRole('link', { name: '商务合作：wub@tokennx.com' })).toHaveAttribute('href', 'mailto:wub@tokennx.com')
 
-    await user.click(screen.getByRole('button', { name: '售前咨询：' }))
+    await user.click(screen.getByRole('button', { name: '售前咨询：在线咨询' }))
     expect(await screen.findByRole('dialog', { name: '联系客服' })).toBeInTheDocument()
   })
 

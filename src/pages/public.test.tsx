@@ -261,7 +261,7 @@ describe('公开模型页面', () => {
     expect(periodSelect).toHaveTextContent('今天')
   })
 
-  it('排名页展示接口返回的完整榜单并默认查询今天', async () => {
+  it('排名页展示接口返回的完整榜单并固定查询今天', async () => {
     const fetchMock = mockRankings()
     renderPage(<RankingsPage />, '/rankings')
 
@@ -272,9 +272,8 @@ describe('公开模型页面', () => {
     expect(screen.getByText('↑ 20.00%')).toHaveClass('is-up')
     expect(screen.getByText('↓ 20.00%')).toHaveClass('is-down')
     expect(screen.getByText('暂无对比数据')).toHaveClass('is-flat')
-    const periodSelect = screen.getByRole('combobox', { name: '查询周期' })
-    expect(periodSelect).toHaveAttribute('aria-expanded', 'false')
-    expect(periodSelect).toHaveTextContent('今天')
+    expect(screen.queryByRole('combobox', { name: '查询周期' })).not.toBeInTheDocument()
+    expect(document.querySelector('.ranking-modality-nav')).not.toBeInTheDocument()
     expect(screen.queryByText('热门话题')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /展示更多/ })).not.toBeInTheDocument()
     expect(fetchMock.mock.calls.some((call: unknown[]) => String(call[0]).includes('period=day'))).toBe(true)
@@ -292,19 +291,17 @@ describe('公开模型页面', () => {
     expect(screen.queryByText('Hermes Agent')).toBeNull()
   })
 
-  it('排名页切换英文后翻译页签、目录、标题和筛选器', async () => {
+  it('排名页切换英文后翻译目录和标题', async () => {
     await i18n.changeLanguage('en-US')
     mockRankings()
     renderPage(<RankingsPage />, '/rankings')
 
-    expect(screen.getByRole('navigation', { name: 'Model types' })).toBeInTheDocument()
+    expect(document.querySelector('.ranking-modality-nav')).not.toBeInTheDocument()
     expect(screen.getByRole('complementary', { name: 'Rankings navigation' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Top 10 Model Rankings' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Large Model Leaderboard' })).toBeInTheDocument()
     expect(await screen.findByLabelText('Chart legend')).toBeInTheDocument()
-    const periodSelect = screen.getByRole('combobox', { name: 'Query period' })
-    expect(periodSelect).toHaveAttribute('aria-expanded', 'false')
-    expect(periodSelect).toHaveTextContent('Today')
+    expect(screen.queryByRole('combobox', { name: 'Query period' })).not.toBeInTheDocument()
   })
 
   it('文档页切换英文后翻译产品导航、目录和正文固定文案', async () => {

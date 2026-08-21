@@ -124,4 +124,16 @@ describe('认证 Redux 状态', () => {
     expect(window.localStorage.getItem(REFRESH_SESSION_KEY)).toBeNull()
     expect(appStore.getState().auth.status).toBe('unauthenticated')
   })
+
+  it('keeps local session tokens when refresh service is unavailable', async () => {
+    saveAuthTokens(authResult('old-access', 'refresh-token'))
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(apiResponse(null, 503, 120001, 'service unavailable'))
+    const appStore = createAppStore()
+
+    await appStore.dispatch(hydrateAuth()).unwrap()
+
+    expect(appStore.getState().auth).toMatchObject({ status: 'unauthenticated', user: null, error: null })
+    expect(getAccessToken()).toBe('old-access')
+    expect(window.localStorage.getItem(REFRESH_SESSION_KEY)).toContain('refresh-token')
+  })
 })

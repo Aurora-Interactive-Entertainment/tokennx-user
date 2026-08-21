@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
-import { IconArrowRight } from '@douyinfe/semi-icons'
 import { Link } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { LoginRequiredAction, ModelLogo } from '@/components/common'
@@ -27,7 +26,8 @@ type ShowcaseSlide = {
   image: string
   accent: string
   tags: string[]
-  modelId: string
+  modelId?: string
+  modelName?: string
 }
 
 const SLIDE_INTERVAL = 5600
@@ -61,6 +61,7 @@ function carouselSlide(entry: PublicMarketCarousel, index: number, language: str
     accent: FALLBACK_SLIDES[index % FALLBACK_SLIDES.length].accent,
     tags: english ? entry.tags_en || entry.tags : entry.tags,
     modelId: entry.model_id,
+    modelName: entry.model_name,
   }
 }
 
@@ -94,6 +95,11 @@ export function ModelsHeroCarousel({ carousels = [] }: { carousels?: PublicMarke
   }, [outgoingSlide, transitionSeed])
 
   const slide = slides[activeIndex] ?? FALLBACK_SLIDES[0]
+  const slideReturnPath = slide.modelName
+    ? `/console/models?model_name=${encodeURIComponent(slide.modelName)}`
+    : slide.modelId
+      ? `/console/models?model=${encodeURIComponent(slide.modelId)}`
+      : '/console/models'
   const selectSlide = (index: number) => {
     if (index === activeIndex) return
     setOutgoingSlide(slide)
@@ -109,11 +115,12 @@ export function ModelsHeroCarousel({ carousels = [] }: { carousels?: PublicMarke
       <h1 id="modelsShowcaseTitle">{slide.title}</h1>
       <div className="models-showcase-hero-tags">{slide.tags.map((tag) => <span key={tag}>{tag}</span>)}</div>
       <p>{slide.description}</p>
-      <LoginRequiredAction className="models-showcase-hero-action" returnPath={`/console/models?model=${encodeURIComponent(slide.modelId)}`}>{t('public.models.tryNow')}<IconArrowRight aria-hidden="true" /></LoginRequiredAction>
+      <LoginRequiredAction className="models-showcase-hero-action" returnPath={slideReturnPath}>{t('public.models.tryNow')}</LoginRequiredAction>
     </div>
-    <div className={`models-showcase-progress${paused ? ' models-showcase-progress--paused' : ''}`} role="tablist" aria-label={t('public.models.carouselLabel')}>
-      {slides.map((entry, index) => <button className={`models-showcase-progress-item${index === activeIndex ? ' is-active' : ''}`} key={entry.id} type="button" role="tab" aria-selected={index === activeIndex} aria-label={t('public.models.carouselSlide', { number: index + 1 })} onClick={() => selectSlide(index)}><span key={index === activeIndex ? `${entry.id}-${transitionSeed}` : entry.id} style={{ animationDuration: `${SLIDE_INTERVAL}ms` }} onAnimationEnd={(event) => { if (event.animationName !== 'models-showcase-progress' || paused || reducedMotion) return; const nextIndex = (activeIndex + 1) % slides.length; setOutgoingSlide(slide); setActiveIndex(nextIndex); setTransitionSeed((seed) => seed + 1) }} /></button>)}
-    </div>
+    {/* 单张轮播不需要进度条，也不应触发自动切换。 */}
+    {slides.length > 1 ? <div className={`models-showcase-progress${paused ? ' models-showcase-progress--paused' : ''}`} role="tablist" aria-label={t('public.models.carouselLabel')}>
+      {slides.map((entry, index) => <button className={`models-showcase-progress-item${index === activeIndex ? ' is-active' : ''}`} key={entry.id} type="button" role="tab" aria-selected={index === activeIndex} aria-label={t('public.models.carouselSlide', { number: index + 1 })} onClick={() => selectSlide(index)}><span key={index === activeIndex ? `${entry.id}-${transitionSeed}` : entry.id} style={{ animationDuration: `${SLIDE_INTERVAL}ms` }} onAnimationEnd={(event) => { if (slides.length < 2 || event.animationName !== 'models-showcase-progress' || paused || reducedMotion) return; const nextIndex = (activeIndex + 1) % slides.length; setOutgoingSlide(slide); setActiveIndex(nextIndex); setTransitionSeed((seed) => seed + 1) }} /></button>)}
+    </div> : null}
   </section>
 }
 
@@ -123,7 +130,7 @@ export function ShowcaseModelCard({ model }: { model: ModelRecord }) {
   return <article className="models-showcase-card">
     <div className="models-showcase-card-head"><Link className="models-showcase-card-identity" to={modelHref} aria-label={model.name}><ModelLogo model={model} className="models-showcase-card-logo" /><span><strong>{model.name}</strong><small>{t('public.models.releaseDate', { date: '2026年7月3日' })}</small></span></Link></div>
     <p className="models-showcase-card-description">{model.description}</p>
-    <dl className="models-showcase-card-prices"><div><dt>{t('public.models.inputPrice')}</dt><dd>{hasDiscount(model, 'input') ? <del className="models-showcase-card-price-original"><span>{t('public.models.priceBase')}</span>{priceValue(model, 'input', 'officialPrice')}</del> : <span className="models-showcase-card-price-currency">{t('public.models.priceBase')}</span>}<strong className="models-showcase-card-price-current">{priceValue(model, 'input')}</strong></dd></div><div><dt>{t('public.models.outputPrice')}</dt><dd>{hasDiscount(model, 'output') ? <del className="models-showcase-card-price-original"><span>{t('public.models.priceBase')}</span>{priceValue(model, 'output', 'officialPrice')}</del> : <span className="models-showcase-card-price-currency">{t('public.models.priceBase')}</span>}<strong className="models-showcase-card-price-current">{priceValue(model, 'output')}</strong></dd></div></dl>
+    <dl className="models-showcase-card-prices"><div><dt>{t('public.models.inputPrice')}</dt><dd>{hasDiscount(model, 'input') ? <del className="models-showcase-card-price-original"><span>{t('public.models.priceBase')}</span>{priceValue(model, 'input', 'officialPrice')}</del> : <span className="models-showcase-card-price-original models-showcase-card-price-original--placeholder" aria-hidden="true" />}<strong className="models-showcase-card-price-current"><span className="models-showcase-card-price-current-currency">{t('public.models.priceBase')}</span>{priceValue(model, 'input')}</strong></dd></div><div><dt>{t('public.models.outputPrice')}</dt><dd>{hasDiscount(model, 'output') ? <del className="models-showcase-card-price-original"><span>{t('public.models.priceBase')}</span>{priceValue(model, 'output', 'officialPrice')}</del> : <span className="models-showcase-card-price-original models-showcase-card-price-original--placeholder" aria-hidden="true" />}<strong className="models-showcase-card-price-current"><span className="models-showcase-card-price-current-currency">{t('public.models.priceBase')}</span>{priceValue(model, 'output')}</strong></dd></div></dl>
     <div className="models-showcase-card-actions"><LoginRequiredAction className="models-showcase-card-primary" returnPath={`/console/models?model=${encodeURIComponent(model.id)}`}>{t('public.models.tryNow')}</LoginRequiredAction><Link className="models-showcase-card-docs" to="/docs/01M0765G0JDT3JCZ6QQXNM40TX/token-nx-api-documentation">{t('public.models.apiDocs')}</Link></div>
   </article>
 }

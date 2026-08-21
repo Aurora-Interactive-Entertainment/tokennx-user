@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import i18n from '@/i18n'
-import { ApiError, fetchJson, fetchResponse, resolveBackendBaseUrl } from './http'
+import { ApiError, fetchJson, fetchResponse, isAuthenticationFailure, resolveBackendBaseUrl } from './http'
 
 function response(data: unknown, status = 200, code = 0, msg = 'success'): Response {
   return new Response(JSON.stringify({ code, msg, data }), {
@@ -91,6 +91,12 @@ describe('认证 HTTP 客户端', () => {
     external.abort()
     rejectFetch?.(new DOMException('Aborted', 'AbortError'))
     await expect(request).rejects.toMatchObject({ name: 'ApiError', status: 0 })
+  })
+
+  it('only treats HTTP 401 as an expired session', () => {
+    expect(isAuthenticationFailure(new ApiError('invalid input', 400, 110001, null))).toBe(false)
+    expect(isAuthenticationFailure(new ApiError('unauthorized', 401, 110001, null))).toBe(true)
+    expect(isAuthenticationFailure({ status: 403, code: 110001 })).toBe(false)
   })
 
   it('external AbortSignal requests still honor the 15 second timeout', async () => {
