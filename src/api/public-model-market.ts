@@ -69,11 +69,12 @@ function parsePrice(value: unknown): PublicMarketPrice | null {
 }
 
 function parseModel(value: unknown): PublicMarketModel | null {
-  if (!isRecord(value) || typeof value.id !== 'string' || typeof value.name !== 'string' || typeof value.company !== 'string' || typeof value.modality !== 'string') return null
+  if (!isRecord(value) || typeof value.name !== 'string' || typeof value.company !== 'string' || typeof value.modality !== 'string') return null
+  const id = typeof value.id === 'string' ? value.id : value.name
   const prices = Array.isArray(value.prices) ? value.prices.flatMap((price) => { const parsed = parsePrice(price); return parsed ? [parsed] : [] }) : []
   return {
-    id: value.id,
-    alias: typeof value.alias === 'string' && value.alias.trim() ? value.alias : value.id,
+    id,
+    alias: typeof value.alias === 'string' && value.alias.trim() ? value.alias : id,
     name: value.name,
     company: value.company,
     modality: value.modality,
