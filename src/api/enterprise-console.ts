@@ -564,6 +564,15 @@ export function getEnterpriseUsage(context: EnterpriseRequestContext, options: E
 
 export function getEnterpriseAnalytics(context: EnterpriseRequestContext, options: EnterpriseUsageRequest = {}): Promise<EnterpriseAnalyticsResponse> {
   return fetchAuthenticatedJson<EnterpriseAnalyticsResponse>(`${enterpriseBasePath(context)}/analytics?${createUsageQuery(options)}`, requestOptions(options))
+    // 中文：后端在暂无用量等场景可能省略数组字段，统一兜底为空数组，避免页面读取 undefined.length 崩溃。
+    .then((response) => ({
+      ...response,
+      trend: response.trend ?? [],
+      members: response.members ?? [],
+      models: response.models ?? [],
+      api_keys: response.api_keys ?? [],
+      sources: response.sources ?? [],
+    }))
 }
 
 export function getEnterpriseAuditLogs(context: EnterpriseRequestContext, options: EnterpriseAuditLogsRequest = {}): Promise<EnterpriseAuditLogPage> {

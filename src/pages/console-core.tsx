@@ -74,7 +74,8 @@ export function ConsoleModelsPage() {
       return
     }
     const fetchedModel = requestedDetailState.detail?.model
-    if (fetchedModel) {
+    // requestedModelAlias 可能为 null，需确保写入 query 的是字符串，避免类型错误。
+    if (fetchedModel && requestedModelAlias) {
       const mappedModel = mapUserModels([fetchedModel])[0] ?? null
       setDetailModel(mappedModel)
       setQuery((current) => current === requestedModelAlias ? current : requestedModelAlias)
