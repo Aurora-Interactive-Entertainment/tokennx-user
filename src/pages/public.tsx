@@ -612,9 +612,8 @@ function ManagedFeatureCard({ entry, index }: { entry: HomepageEntry; index: num
   </article>
 }
 
-function ManagedNewsCard({ entry, index }: { entry: HomepageEntry; index: number }) {
+function ManagedNewsCard({ entry, newsIndex }: { entry: HomepageEntry; newsIndex: number }) {
   const { t, i18n } = useTranslation()
-  const newsIndex = index % 2
   // 中文：资讯卡固定进入对应文章详情，忽略后台遗留的文档链接，避免离开文章阅读页。
   const href = `/news/${encodeURIComponent(entry.id)}`
   const title = t(`home.rebuild.news.${newsIndex}.title`)
@@ -812,6 +811,23 @@ export function HomePage({ onInitialScoreboardReady }: { onInitialScoreboardRead
     const pinned = news.filter((entry) => entry.pinned)
     return (pinned.length ? pinned : news).slice(0, 2)
   }, [homepage])
+  // 资讯文案为 i18n 固定内容、封面图来自接口条目；按接口翻译标题匹配文案槽位，
+  // 避免接口排序与 i18n 顺序不一致时文案与封面错配；未匹配条目按顺序回填剩余槽位。
+  const managedNewsSlots = useMemo(() => {
+    const titles = [t('home.rebuild.news.0.title'), t('home.rebuild.news.1.title')]
+    const matched = managedNews.map((entry) => {
+      const title = homepageTranslation(entry, i18n.language).title?.trim() ?? ''
+      return title ? titles.indexOf(title) : -1
+    })
+    const used = new Set(matched.filter((slot) => slot >= 0))
+    let next = 0
+    return matched.map((slot) => {
+      if (slot >= 0) return slot
+      while (used.has(next)) next += 1
+      used.add(next)
+      return next
+    })
+  }, [managedNews, i18n.language, t])
   const managedPartnerItems = useMemo(() => managedPartners(homepage, i18n.language), [homepage, i18n.language])
   const partnerItems = managedPartnerItems
   const partnerRows = useMemo(() => {
@@ -897,7 +913,7 @@ export function HomePage({ onInitialScoreboardReady }: { onInitialScoreboardRead
           <div className="manuscript-price-grid" role={isHomepageLoading ? 'status' : undefined} aria-busy={isHomepageLoading || undefined}>{isHomepageLoading ? <><span className="public-sr-only">{t('home.rebuild.loadingModels')}</span><HomePriceSkeletons /></> : promotionItems.map((item) => <article className={`manuscript-price-card${item.input.length > 5 || item.output.length > 5 ? ' has-long-price' : ''}`} key={item.id}>
             <div className="manuscript-price-card-head"><Link className="manuscript-price-model" to={modelPublicHref(item.model) ?? '/models'}><span className="manuscript-price-model-logo"><img src={item.logoUrl || promoModelLogo} alt="" aria-hidden="true" loading="lazy" decoding="async" width={30} height={24} /></span><span><strong>{item.name}</strong><small>{t('home.rebuild.providedBy', { company: item.company })}</small></span></Link><span className={`manuscript-price-badge${item.discountKind === 'free' ? ' is-equal' : ''}`}>{t(`public.home.discount${item.discountKind === 'free' ? 'Free' : item.discountKind === 'custom' ? 'Custom' : 'Half'}`)}</span></div>
             <div className="manuscript-price-divider" />
-            <div className="manuscript-price-values"><div><span>{t('home.rebuild.inputPrice')}</span><strong>{item.input}<small>{t('public.home.priceUnit')}</small></strong></div><div><span>{t('home.rebuild.outputPrice')}</span><strong>{item.output}<small>{t('public.home.priceUnit')}</small></strong></div></div>
+            <div className="manuscript-price-values"><div><span>{t('home.rebuild.inputPrice')}</span><strong><small>¥</small>{item.input}<small>{t('public.home.priceUnit')}</small></strong></div><div><span>{t('home.rebuild.outputPrice')}</span><strong><small>¥</small>{item.output}<small>{t('public.home.priceUnit')}</small></strong></div></div>
             <ModelAvailability className="manuscript-price-availability" hourly={item.hourly} summaryRate={item.availability} label={t('home.rebuild.availability')} />
           </article>)}</div>
         </section>
@@ -906,7 +922,7 @@ export function HomePage({ onInitialScoreboardReady }: { onInitialScoreboardRead
           <div className="manuscript-section-heading"><div><h2 id="homePromotionTitle">{t('home.rebuild.promotionTitle')}</h2><p>{t('home.rebuild.manuscriptPromotionDescription')}</p></div></div>
           <div className="manuscript-promotion-grid" role={isHomepageLoading ? 'status' : undefined} aria-busy={isHomepageLoading || undefined}>{isHomepageLoading ? <><span className="public-sr-only">{t('home.rebuild.loadingPromotions')}</span><HomePromotionSkeleton /></> : <><article className="manuscript-reward-card"><h3>{t('home.rebuild.rewardTitle')}</h3><p>{t('home.rebuild.rewardDescription')}</p><div className="manuscript-reward-marks" aria-hidden="true">{Array.from({ length: HOME_REWARD_AVATAR_COUNT }, (_, index) => <span className="manuscript-reward-avatar" aria-hidden="true" key={`reward-avatar-${index}`} />)}</div><div className="manuscript-reward-login"><span>{t('home.rebuild.rewardLoginHint')}</span><LoginRequiredAction returnPath="/console/invitations">{t('home.rebuild.rewardLoginAction')}</LoginRequiredAction></div><div className="manuscript-reward-stats">{HOME_REWARD_STATS.map(({ value, unitKey, labelKey }) => <span key={labelKey}><strong className={value.length > 2 ? 'is-long' : undefined}>{value}<em>{t(`home.rebuild.${unitKey}`)}</em></strong><small>{t(`home.rebuild.${labelKey}`)}</small></span>)}</div></article><div className="manuscript-news-column">
             {homepage?.ad_slots.length ? <ManagedAdSlots entries={homepage.ad_slots} /> : null}
-            <div className="manuscript-news-grid">{managedNews.map((entry, index) => <ManagedNewsCard entry={entry} index={index} key={entry.id} />)}</div>
+            <div className="manuscript-news-grid">{managedNews.map((entry, index) => <ManagedNewsCard entry={entry} newsIndex={managedNewsSlots[index] ?? index % 2} key={entry.id} />)}</div>
           </div></>}</div>
         </section>
 
@@ -1687,7 +1703,7 @@ export function DocsPage() {
           {currentDocument ? <MarkdownContent className="docs-markdown" content={currentDocument.content_markdown} enhancedCodeBlocks resolveImageUrl={resolveDocsImageUrl} /> : null}
         </article>
 
-        <aside className={`docs-on-page${currentDocument ? ' docs-on-page--with-copy' : ''}`} aria-label={t('public.docs.manuscript.onPageLabel')}>
+        <aside className={`docs-on-page${currentDocument ? ' docs-on-page--with-copy' : ''}`} aria-label={t('public.docs.manuscript.onPageLabel')} style={{ '--docs-toc-depth': Math.max(0, (headingTree[0]?.level ?? 1) - 1) } as CSSProperties}>
           <strong>{t('public.docs.manuscript.onPageTitle')}</strong>
           <div className="docs-on-page-scroll"><DocsTocNodes nodes={headingTree} activeHeading={activeHeading} collapsedHeadings={collapsedHeadings} labels={{ collapse: t('public.docs.manuscript.tocCollapse'), expand: t('public.docs.manuscript.tocExpand') }} onToggle={toggleHeading} /></div>
         </aside>

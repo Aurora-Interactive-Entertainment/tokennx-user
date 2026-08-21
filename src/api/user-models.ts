@@ -12,6 +12,8 @@ export interface UserModelsQuery {
   enterprise_id?: string
   activity_id?: string
   model_type?: UserModelModality
+  // 搜索关键词，由后端对模型目录做服务端检索。
+  keyword?: string
   page?: number
   page_size?: number
 }
@@ -136,6 +138,7 @@ function buildUserModelsPath(query: UserModelsQuery): string {
   }
   if (query.activity_id?.trim()) params.set('activity_id', query.activity_id.trim())
   if (query.model_type) params.set('model_type', query.model_type)
+  if (query.keyword?.trim()) params.set('keyword', query.keyword.trim())
   if (query.page !== undefined) params.set('page', String(Math.max(1, Math.floor(query.page))))
   if (query.page_size !== undefined) params.set('page_size', String(Math.min(100, Math.max(1, Math.floor(query.page_size)))))
   return `${USER_MODELS_PATH}?${params.toString()}`

@@ -34,6 +34,8 @@ function workspaceQuery(accountType: UserModelAccountType, workspaceId: string):
 export interface UseUserModelsOptions {
   activityId?: string
   modelType?: UserModelModality
+  // 搜索关键词：有值时直接发起服务端检索请求，不走本地全量目录缓存。
+  keyword?: string
   page?: number
   pageSize?: number
 }
@@ -56,16 +58,29 @@ export function useUserModels(options: UseUserModelsOptions = {}): UserModelsSta
     const accessToken = getAccessToken()
     if (!accessToken) return () => { active = false }
 
-    const cachedDirectory = fullDirectoryCache.current.get(directoryKey)
+    const trimmedKeyword = options.keyword?.trim() ?? ''
+    // 关键词检索结果不是全量目录，既不能命中缓存，也不能写回缓存。
+    const cacheable = !trimmedKeyword
+    const cachedDirectory = cacheable ? fullDirectoryCache.current.get(directoryKey) : undefined
     if (cachedDirectory) {
       setState({ ...cachedDirectory, loading: false, error: '' })
       return () => { active = false }
     }
-    setState({ models: [], activities: [], total: null, page: null, pageSize: null, loading: Boolean(accessToken), error: '' })
-    const query: UserModelsQuery = { ...workspaceQuery(workspaceType, workspaceId), ...(options.activityId ? { activity_id: options.activityId } : {}), ...(options.modelType ? { model_type: options.modelType } : {}), ...(options.page !== undefined ? { page: options.page } : {}), ...(options.pageSize !== undefined ? { page_size: options.pageSize } : {}) }
+    // 重新请求时保留已有列表数据、仅首次请求进入 loading 态（后台静默刷新），
+    // 避免关闭抽屉、切换搜索词时搜索栏/筛选栏随整页一起闪烁。
+    setState((current) => ({
+      models: current.models,
+      activities: current.activities,
+      total: current.total,
+      page: current.page,
+      pageSize: current.pageSize,
+      loading: current.models.length === 0,
+      error: '',
+    }))
+    const query: UserModelsQuery = { ...workspaceQuery(workspaceType, workspaceId), ...(options.activityId ? { activity_id: options.activityId } : {}), ...(options.modelType ? { model_type: options.modelType } : {}), ...(trimmedKeyword ? { keyword: trimmedKeyword } : {}), ...(options.page !== undefined ? { page: options.page } : {}), ...(options.pageSize !== undefined ? { page_size: options.pageSize } : {}) }
     void getUserModels(query).then((result) => {
       const nextState = { models: mapUserModels(result.items), activities: result.activities, total: result.total ?? null, page: result.page ?? null, pageSize: result.page_size ?? null, loading: false, error: '' }
-      if (result.page === undefined && result.page_size === undefined) {
+      if (cacheable && result.page === undefined && result.page_size === undefined) {
         fullDirectoryCache.current.set(directoryKey, { models: nextState.models, activities: nextState.activities, total: null, page: null, pageSize: null })
       }
       if (active) setState(nextState)
@@ -79,7 +94,7 @@ export function useUserModels(options: UseUserModelsOptions = {}): UserModelsSta
       setState({ models: [], activities: [], total: null, page: null, pageSize: null, loading: false, error: getUserModelsErrorMessage(error) })
     })
     return () => { active = false }
-  }, [dispatch, navigate, options.activityId, options.modelType, options.page, options.pageSize, reloadToken, workspaceId, workspaceType])
+  }, [dispatch, navigate, options.activityId, options.keyword, options.modelType, options.page, options.pageSize, reloadToken, workspaceId, workspaceType])
 
   const refresh = useCallback(() => {
     fullDirectoryCache.current.delete(directoryKey)

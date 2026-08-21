@@ -4258,6 +4258,8 @@ html[data-theme="light"] .manuscript-home-error button { border-color: #bbb; col
 .manuscript-price-values span, .manuscript-price-source span { color: #fff; font-size: 18px; line-height: 27px; }
 .manuscript-price-values strong { color: #8866e7; font-size: 24px; font-weight: 700; line-height: 36px; }
 .manuscript-price-values strong small { margin-left: 3px; color: #fff; font-size: 18px; font-weight: 400; }
+/* 货币符号位于价格数字前：去掉左侧间距，与数字保持 1px 间隔 */
+.manuscript-price-values strong small:first-child { margin-right: 1px; margin-left: 0; }
 .manuscript-price-source { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 7px; margin-top: 10px; padding-top: 8px; border-top: 1px solid #626262; }
 .manuscript-price-source em { overflow: hidden; color: #d1d1d1; font-size: 8px; font-style: normal; text-overflow: ellipsis; white-space: nowrap; }
 .manuscript-price-availability { display: grid; grid-template-columns: 1fr auto; gap: 4px 8px; margin-top: 36px; padding-top: 35px; border-top: 1px solid #414141; }
@@ -5166,7 +5168,8 @@ html[data-theme="light"] .login-popover .login-tab.active { border-bottom-color:
 .public-layout--manuscript-home .manuscript-ad-slots { height: 193px; gap: 0; }
 .public-layout--manuscript-home .manuscript-ad-slot { position: relative; display: grid; width: 850px; height: 193px; min-height: 193px; box-sizing: border-box; place-items: center; overflow: hidden; border: 1px solid #292929; border-radius: 15px; color: #fff; background: #121212; -webkit-mask: url('./assets/figma-home/promo-banner-mask.svg') center / 850px 193px no-repeat; mask: url('./assets/figma-home/promo-banner-mask.svg') center / 850px 193px no-repeat; }
 .public-layout--manuscript-home .manuscript-ad-slot strong { position: relative; z-index: 1; font-size: 22px; font-weight: 400; }
-.public-layout--manuscript-home .manuscript-ad-slot img { position: relative; z-index: 1; width: auto; height: auto; max-width: 100%; max-height: 100%; object-fit: contain; }
+/* 广告图铺满广告位，避免比例不符时出现大黑边 */
+.public-layout--manuscript-home .manuscript-ad-slot img { position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%; object-fit: cover; }
 .public-layout--manuscript-home .manuscript-news-grid { grid-template-columns: repeat(2, 416px); gap: 16px; margin-top: 16px; }
 .public-layout--manuscript-home .manuscript-news-card { align-self: start; grid-template-columns: minmax(0, 1fr) 156px; width: 416px; height: 335px; min-height: 335px; max-height: 335px; box-sizing: border-box; border: 1px solid #292929; border-radius: 4px; background: #181818; }
 .public-layout--manuscript-home .manuscript-news-copy { min-height: 0; overflow: hidden; padding: 18px 12px 18px 24px; background: #181818; }
@@ -6526,15 +6529,13 @@ html[data-theme="light"] .public-layout--manuscript-home .manuscript-ad-slot {
   line-height: 0;
   background: transparent;
 }
+/* 浅色模式同样保持广告图铺满 */
 html[data-theme="light"] .public-layout--manuscript-home .manuscript-ad-slot img {
   display: block;
-  position: relative;
-  inset: auto;
-  width: auto;
-  height: auto;
-  max-width: 100%;
-  max-height: 100%;
-  min-height: 0;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
 }
 
 html[data-theme="light"] .user-dropdown,

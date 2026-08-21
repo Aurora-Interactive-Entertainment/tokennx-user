@@ -5,7 +5,8 @@ export const publicResources = {
         navigation: '页脚导航',
       },
       home: {
-        priceUnit: '¥/M token',
+        // 货币符号已移到价格数字前单独渲染，这里只保留计量单位
+        priceUnit: '/M token',
         discountHalf: '5折',
         discountFree: '免费',
         discountCustom: '优惠',
@@ -367,7 +368,8 @@ export const publicResources = {
         navigation: 'Footer navigation',
       },
       home: {
-        priceUnit: 'CNY/M token',
+        // Currency symbol is rendered before the price number; keep only the metering unit here
+        priceUnit: '/M token',
         discountHalf: '50% off',
         discountFree: 'Free',
         discountCustom: 'Custom offer',

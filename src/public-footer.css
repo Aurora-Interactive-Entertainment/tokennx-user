@@ -133,7 +133,7 @@
 }
 
 .public-footer--manuscript .manuscript-footer-contact-line > span {
-  color: inherit;
+  font-size: 15px;
 }
 
 .public-footer--manuscript .manuscript-footer-contact-line :is(a, button) {
@@ -264,6 +264,8 @@ html[data-theme="light"] .public-footer--manuscript .manuscript-footer-contact >
 html[data-theme="light"] .public-footer--manuscript .manuscript-footer-contact-line > a,
 html[data-theme="light"] .public-footer--manuscript .manuscript-footer-contact-line > button,
 html[data-theme="light"] .public-footer--manuscript .public-footer-qr span { color: #4f4f4f; }
+/* 浅色模式下“售前咨询/商务合作”前缀与同行链接同色，避免继承页脚浅灰显得过淡。 */
+html[data-theme="light"] .public-footer--manuscript .manuscript-footer-contact-line > span { color: #4f4f4f; }
 html[data-theme="light"] .public-footer--manuscript .public-footer-nav-group a:hover { color: #17181b; }
 html[data-theme="light"] .public-footer--manuscript .manuscript-footer-contact-line > :is(a, button):hover { color: #17181b; }
 html[data-theme="light"] .public-footer--manuscript .manuscript-footer-filing {

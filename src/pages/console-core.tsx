@@ -35,20 +35,34 @@ export function ConsoleModelsPage() {
   const [pageSize, setPageSize] = useState<number>(DEFAULT_MODEL_PAGE_SIZE)
   const [searchParams, setSearchParams] = useSearchParams()
   const requestedModelAlias = searchParams.get('model')
-  const requestedModelName = searchParams.get('model_name')?.trim() ?? ''
-  const [query, setQuery] = useState('')
+  // 搜索词初始值取 URL 的 keyword 参数（模型广场“立即体验”跳转时携带）。
+  const [query, setQuery] = useState(() => searchParams.get('keyword')?.trim() ?? '')
   const [company, setCompany] = useState('all')
   const [priceFilter, setPriceFilter] = useState<ModelPriceFilter>('all')
   const [sort, setSort] = useState<ModelSort>('default')
-  const canUseServerPagination = !query.trim() && company === 'all' && priceFilter === 'all' && sort === 'default'
+  // 防抖后的搜索关键词：作为 keyword 参数交给后端做服务端搜索，避免每次按键都发请求。
+  const [debouncedKeyword, setDebouncedKeyword] = useState(() => searchParams.get('keyword')?.trim() ?? '')
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setDebouncedKeyword((current) => {
+        const next = query.trim()
+        return next === current ? current : next
+      })
+    }, 300)
+    return () => window.clearTimeout(timer)
+  }, [query])
+  // 关键词搜索由后端完成，此时不能启用服务端分页参数（结果集已被检索过滤）。
+  const canUseServerPagination = !debouncedKeyword && company === 'all' && priceFilter === 'all' && sort === 'default'
   const serverModelType: UserModelModality | undefined = category === 'all' || category === 'speech' || category === 'transcription' ? undefined : category
-  const { models: userModels, activities, total: apiTotal, page: apiPage, pageSize: apiPageSize, loading, error, refresh } = useUserModels({ activityId: activityId || undefined, modelType: serverModelType, ...(canUseServerPagination ? { page, pageSize } : {}) })
+  const { models: userModels, activities, total: apiTotal, page: apiPage, pageSize: apiPageSize, loading, error, refresh } = useUserModels({ activityId: activityId || undefined, modelType: serverModelType, ...(debouncedKeyword ? { keyword: debouncedKeyword } : {}), ...(canUseServerPagination ? { page, pageSize } : {}) })
   const [detailModel, setDetailModel] = useState<ModelRecord | null>(null)
   const requestedDetailState = useUserModelDetail(requestedModelAlias)
   const detailState = useUserModelDetail(requestedModelAlias ?? (detailModel ? modelAlias(detailModel) : null))
   const companies = useMemo(() => [...new Set(userModels.map((model) => model.company))].sort((left, right) => left.localeCompare(right, 'zh-CN')), [userModels])
-  const filteredModels = useMemo(() => filterAndSortModels(userModels, { query, company, category, priceFilter, sort }), [category, company, priceFilter, query, sort, userModels])
-  const categoryCounts = useMemo(() => modelCategoryCounts(userModels, { query, company, priceFilter }), [company, priceFilter, query, userModels])
+  // 关键词搜索已由服务端 keyword 参数完成，本地不再按 query 二次过滤，避免匹配字段差异造成误过滤。
+  const localQuery = debouncedKeyword ? '' : query
+  const filteredModels = useMemo(() => filterAndSortModels(userModels, { query: localQuery, company, category, priceFilter, sort }), [category, company, localQuery, priceFilter, sort, userModels])
+  const categoryCounts = useMemo(() => modelCategoryCounts(userModels, { query: localQuery, company, priceFilter }), [company, localQuery, priceFilter, userModels])
   const pageResult = useMemo(() => {
     if (apiTotal === null) return paginateModels(filteredModels, page, pageSize)
     const currentPage = apiPage ?? page
@@ -60,27 +74,38 @@ export function ConsoleModelsPage() {
   const modelGridClassName = pageResult.items.length === 1 ? 'model-card-grid model-card-grid--single' : 'model-card-grid'
 
   useEffect(() => {
-    if (!requestedModelAlias && !requestedModelName) return
-    const requestedModel = requestedModelAlias
-      ? findModelInList(userModels, requestedModelAlias)
-      : userModels.find((model) => model.name.trim().toLocaleLowerCase() === requestedModelName.toLocaleLowerCase())
+    if (!requestedModelAlias) return
+    const requestedModel = findModelInList(userModels, requestedModelAlias)
     if (requestedModel) {
       setDetailModel(requestedModel)
-      if (requestedModelName) setQuery((current) => current === requestedModelName ? current : requestedModelName)
       return
     }
-    if (requestedModelName) {
-      setQuery((current) => current === requestedModelName ? current : requestedModelName)
-      return
-    }
+    // 当前列表里找不到时，用接口详情兜底构造一条本地记录打开抽屉。
     const fetchedModel = requestedDetailState.detail?.model
-    // requestedModelAlias 可能为 null，需确保写入 query 的是字符串，避免类型错误。
-    if (fetchedModel && requestedModelAlias) {
+    if (fetchedModel) {
       const mappedModel = mapUserModels([fetchedModel])[0] ?? null
       setDetailModel(mappedModel)
-      setQuery((current) => current === requestedModelAlias ? current : requestedModelAlias)
     }
-  }, [requestedDetailState.detail, requestedModelAlias, requestedModelName, userModels])
+  }, [requestedDetailState.detail, requestedModelAlias, userModels])
+
+  // keyword 跳转（模型广场“立即体验”）：搜索结果返回后自动打开对应模型的详情侧边栏。
+  const requestedKeyword = searchParams.get('keyword')?.trim() ?? ''
+  const autoOpenedKeywordRef = useRef('')
+  useEffect(() => {
+    // URL keyword 被清除（如关闭抽屉）时重置标记，保证下次带参跳转仍能自动打开。
+    if (!requestedKeyword) {
+      autoOpenedKeywordRef.current = ''
+      return
+    }
+    // model 参数优先定位详情；同一 keyword 只自动打开一次，避免用户输入时反复弹抽屉。
+    if (requestedModelAlias || loading || error || autoOpenedKeywordRef.current === requestedKeyword) return
+    const loweredKeyword = requestedKeyword.toLocaleLowerCase()
+    const exactMatch = userModels.find((model) => model.name.trim().toLocaleLowerCase() === loweredKeyword || modelAlias(model).toLocaleLowerCase() === loweredKeyword)
+    const target = exactMatch ?? (userModels.length === 1 ? userModels[0] : undefined)
+    if (!target) return
+    autoOpenedKeywordRef.current = requestedKeyword
+    setDetailModel(target)
+  }, [error, loading, requestedKeyword, requestedModelAlias, userModels])
 
   useEffect(() => {
     if (pageResult.page !== page) setPage(pageResult.page)
@@ -111,10 +136,11 @@ export function ConsoleModelsPage() {
   function closeModelDetail(): void {
     setDetailModel(null)
     setQuery('')
-    if (!requestedModelAlias && !requestedModelName) return
+    if (!requestedModelAlias && !searchParams.get('keyword')) return
+    // 关闭抽屉时清掉 model 定位参数和 keyword 搜索词（原 model_name 定位语义已迁移到 keyword）。
     const nextSearchParams = new URLSearchParams(searchParams)
     nextSearchParams.delete('model')
-    nextSearchParams.delete('model_name')
+    nextSearchParams.delete('keyword')
     setSearchParams(nextSearchParams, { replace: true })
   }
 
