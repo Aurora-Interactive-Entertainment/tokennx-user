@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { LoginRequiredAction, ModelLogo } from '@/components/common'
@@ -24,7 +24,6 @@ type ShowcaseSlide = {
   title: string
   description: string
   image: string
-  accent: string
   tags: string[]
   modelId?: string
   modelName?: string
@@ -33,11 +32,11 @@ type ShowcaseSlide = {
 const SLIDE_INTERVAL = 5600
 const SLIDE_TRANSITION_DURATION = 1500
 const FALLBACK_SLIDES: ShowcaseSlide[] = [
-  { id: 'deepseek-v4', title: 'Deepseek V4 Pro', description: '新一代通用智能模型，面向复杂推理、代码和多模态任务。', image: promoBannerArt, accent: '#2d80ff', tags: ['深度思考', '文本生成', '视频生成'], modelId: 'deepseek-public' },
-  { id: 'claude-sonnet', title: 'Claude Sonnet 4', description: '稳定的长上下文分析与结构化协作能力。', image: promoArticleArt, accent: '#8a5cf6', tags: ['文本生成'], modelId: 'claude-public' },
-  { id: 'gpt-4o', title: 'GPT-4o', description: '文本、视觉与音频在一条工作流中自然协同。', image: modelCardArt, accent: '#00b7c7', tags: ['文本生成', '图片生成'], modelId: 'gpt-public' },
-  { id: 'qwen3', title: 'Qwen3 235B', description: '面向中文场景和代码任务的高性能大模型。', image: promoBannerArt, accent: '#ef6a9b', tags: ['文本生成'], modelId: 'qwen-public' },
-  { id: 'glm', title: 'GLM-4.5', description: '为开发者准备的快速、稳定、可控的推理能力。', image: promoArticleArt, accent: '#f6a531', tags: ['文本生成'], modelId: 'glm-public' },
+  { id: 'deepseek-v4', title: 'Deepseek V4 Pro', description: '新一代通用智能模型，面向复杂推理、代码和多模态任务。', image: promoBannerArt, tags: ['深度思考', '文本生成', '视频生成'], modelId: 'deepseek-public' },
+  { id: 'claude-sonnet', title: 'Claude Sonnet 4', description: '稳定的长上下文分析与结构化协作能力。', image: promoArticleArt, tags: ['文本生成'], modelId: 'claude-public' },
+  { id: 'gpt-4o', title: 'GPT-4o', description: '文本、视觉与音频在一条工作流中自然协同。', image: modelCardArt, tags: ['文本生成', '图片生成'], modelId: 'gpt-public' },
+  { id: 'qwen3', title: 'Qwen3 235B', description: '面向中文场景和代码任务的高性能大模型。', image: promoBannerArt, tags: ['文本生成'], modelId: 'qwen-public' },
+  { id: 'glm', title: 'GLM-4.5', description: '为开发者准备的快速、稳定、可控的推理能力。', image: promoArticleArt, tags: ['文本生成'], modelId: 'glm-public' },
 ]
 
 function priceValue(model: ModelRecord, side: 'input' | 'output', source: 'tokenNxPrice' | 'officialPrice' = 'tokenNxPrice'): string {
@@ -58,7 +57,6 @@ function carouselSlide(entry: PublicMarketCarousel, index: number, language: str
     title: english ? entry.title_en || entry.title : entry.title,
     description: english ? entry.description_en || entry.description : entry.description,
     image: entry.image_url || FALLBACK_SLIDES[index % FALLBACK_SLIDES.length].image,
-    accent: FALLBACK_SLIDES[index % FALLBACK_SLIDES.length].accent,
     tags: english ? entry.tags_en || entry.tags : entry.tags,
     modelId: entry.model_id,
     modelName: entry.model_name,
@@ -109,8 +107,8 @@ export function ModelsHeroCarousel({ carousels = [] }: { carousels?: PublicMarke
   }
 
   return <section className="models-showcase-hero" aria-labelledby="modelsShowcaseTitle" onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)} onFocus={() => setPaused(true)} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setPaused(false) }}>
-    {outgoingSlide ? <div className="models-showcase-hero-art models-showcase-hero-art--outgoing" style={{ '--models-hero-accent': outgoingSlide.accent } as CSSProperties} key={`outgoing-${transitionSeed}`}><img src={outgoingSlide.image} alt="" aria-hidden="true" /></div> : null}
-    <div className="models-showcase-hero-art models-showcase-hero-art--incoming" style={{ '--models-hero-accent': slide.accent } as CSSProperties} key={`incoming-${slide.id}-${transitionSeed}`}><img src={slide.image} alt="" aria-hidden="true" /></div>
+    {outgoingSlide ? <div className="models-showcase-hero-art models-showcase-hero-art--outgoing" key={`outgoing-${transitionSeed}`}><img src={outgoingSlide.image} alt="" aria-hidden="true" /></div> : null}
+    <div className="models-showcase-hero-art models-showcase-hero-art--incoming" key={`incoming-${slide.id}-${transitionSeed}`}><img src={slide.image} alt="" aria-hidden="true" /></div>
     <div className="models-showcase-hero-overlay" />
     <div className="models-showcase-hero-copy" key={`copy-${slide.id}-${transitionSeed}`}>
       <h1 id="modelsShowcaseTitle">{slide.title}</h1>

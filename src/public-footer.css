@@ -27,18 +27,17 @@
 .public-footer--manuscript .manuscript-footer-logo {
   display: inline-flex;
   width: 270px;
-  height: 67px;
   align-items: center;
   padding: 0;
   background: transparent;
 }
 
+/* 中文：logo 源图比例约 5.45:1，高度随宽度自适应（height: auto）完整显示，避免 cover 裁切左右两侧 */
 .public-footer--manuscript .manuscript-footer-logo img {
   display: block;
-  width: 270px;
-  height: 67px;
+  width: 100%;
+  height: auto;
   max-width: none;
-  object-fit: cover;
 }
 
 .public-footer--manuscript .manuscript-footer-brand > span:not(.manuscript-footer-logo) {
@@ -128,6 +127,7 @@
 
 .public-footer--manuscript .manuscript-footer-contact-line {
   display: flex;
+  color: #bbb;
   align-items: baseline;
   white-space: nowrap;
 }
@@ -301,10 +301,14 @@ html[data-theme="light"] .public-footer--manuscript .manuscript-footer-filing-it
     margin-bottom: 32px;
   }
 
-  .public-footer--manuscript .manuscript-footer-logo,
-  .public-footer--manuscript .manuscript-footer-logo img {
+  .public-footer--manuscript .manuscript-footer-logo {
     width: 119px;
-    height: 29.5px;
+  }
+
+  /* 中文：移动端同桌面端，高度自适应保证 logo 完整 */
+  .public-footer--manuscript .manuscript-footer-logo img {
+    width: 100%;
+    height: auto;
   }
 
   .public-footer--manuscript .manuscript-footer-brand > span:not(.manuscript-footer-logo) { display: none; }
