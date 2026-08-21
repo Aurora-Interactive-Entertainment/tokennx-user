@@ -48,7 +48,8 @@
 .models-showcase-card-head { position: relative; z-index: 1; padding-bottom: 30px; border-bottom: 1px solid rgba(255,255,255,.08); }
 .models-showcase-card-identity { display: flex; align-items: center; gap: 12px; min-width: 0; color: #fff; }
 .models-showcase-card-identity:hover { color: #fff; }
-.models-showcase-card-logo { width: 48px; height: 48px; display: grid; place-items: center; flex: 0 0 48px; border: 1px solid transparent; border-radius: 2px; background: var(--models-panel); }
+/* 中文：logo 统一白色背景突出品牌图标；兜底图标用 currentColor，指定深色避免白底不可见 */
+.models-showcase-card-logo { width: 48px; height: 48px; display: grid; place-items: center; flex: 0 0 48px; border: 1px solid transparent; border-radius: 9px; background: #fff; color: #17181b; }
 .models-showcase-card-logo svg { width: 30px; height: 30px; }
 .models-showcase-card-identity > span:last-child { min-width: 0; display: grid; gap: 3px; }
 .models-showcase-card-identity strong { overflow: hidden; font-size: 22px; font-weight: 400; text-overflow: ellipsis; white-space: nowrap; }

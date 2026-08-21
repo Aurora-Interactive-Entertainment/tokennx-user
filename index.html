@@ -156,11 +156,12 @@
         transform-origin: center;
       }
 
+      /* 中文：logo 源图比例约 5.45:1，高度自适应完整显示，与 React 接管后的加载页样式保持一致 */
       .app-loading-shell__logo-shell .app-loading-shell__logo {
         display: block;
-        width: 178px;
-        height: 40px;
-        object-fit: cover;
+        width: 220px;
+        max-width: calc(100vw - 96px);
+        height: auto;
       }
 
       @keyframes boot-loader-logo-breathe {

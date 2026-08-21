@@ -3974,7 +3974,8 @@ html[data-theme="light"] .home-access-action::after { background: rgba(255, 255,
   transform-origin: center;
 }
 
-.app-loading-screen__logo-shell .brand-logo-image { width: 178px; height: 40px; }
+/* 中文：logo 源图比例约 5.45:1，宽 220px 时高约 40px，与设计稿高度一致且完整显示；窄屏限宽兜底 */
+.app-loading-screen__logo-shell .brand-logo-image { width: 220px; max-width: calc(100vw - 96px); height: auto; }
 
 @keyframes app-loading-screen-logo-breathe {
   0%, 100% { opacity: .7; filter: drop-shadow(0 0 4px var(--loading-logo-glow)); transform: scale(.98); }
