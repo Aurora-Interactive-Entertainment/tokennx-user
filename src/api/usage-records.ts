@@ -1,5 +1,5 @@
 import { getAccessToken } from '@/auth/token-storage'
-import type { ApiTimeValue } from '@/utils/format'
+import type { ApiTimestamp } from '@/utils/format'
 import { fetchAuthenticatedJson } from './authenticated'
 import { ApiError, isApiError, type FetchJsonOptions } from './http'
 import i18n from '@/i18n'
@@ -30,8 +30,8 @@ export type UsageRecordsQuery = {
   status?: UsageRecordsStatus
   member_id?: string
   request_id?: string
-  start_at?: string
-  end_at?: string
+  start_at?: ApiTimestamp
+  end_at?: ApiTimestamp
 }
 
 export type UsageSummaryQuery = {
@@ -43,8 +43,8 @@ export type UsageSummaryQuery = {
   source?: UsageRecordsSource
   status?: UsageRecordsStatus
   member_id?: string
-  start_at?: string
-  end_at?: string
+  start_at?: ApiTimestamp
+  end_at?: ApiTimestamp
 }
 
 export interface UsageRecordsAccount {
@@ -81,7 +81,7 @@ export interface UsageRecordItem {
   id: string
   request_id: string
   event_type: string
-  occurred_at: ApiTimeValue
+  occurred_at: ApiTimestamp
   model_code: string
   model_alias: string
   model_name: string
@@ -123,8 +123,8 @@ export interface UsageRecordsResponse {
 
 export interface UsageSummaryPeriod {
   range: UsageSummaryRange | string
-  start_at: ApiTimeValue
-  end_at: ApiTimeValue
+  start_at: ApiTimestamp
+  end_at: ApiTimestamp
   label: string
 }
 

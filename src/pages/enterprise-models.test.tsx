@@ -199,16 +199,18 @@ describe('企业模型管理页面', () => {
     renderPage()
 
     expect(await screen.findByRole('navigation', { name: '表格分页' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '上一页' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: '下一页' })).toBeEnabled()
-    expect(screen.getByRole('combobox', { name: '每页条数' })).toHaveValue('10')
+    expect(screen.getByRole('button', { name: '上一页' })).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByRole('button', { name: '下一页' })).toHaveAttribute('aria-disabled', 'false')
+    const pageSizeSelect = within(screen.getByRole('navigation', { name: '表格分页' })).getByRole('combobox')
+    expect(pageSizeSelect).toHaveTextContent('10')
 
-    await user.selectOptions(screen.getByRole('combobox', { name: '每页条数' }), '20')
+    await user.click(pageSizeSelect)
+    await user.click(await screen.findByRole('option', { name: /20/ }))
     await waitFor(() => expect(getEnterpriseModelsMock).toHaveBeenCalledWith(
       { enterprise_id: ENTERPRISE_ID },
       expect.objectContaining({ page: 1, page_size: 20 }),
     ))
-    expect(screen.getByRole('combobox', { name: '每页条数' })).toHaveValue('20')
+    expect(within(screen.getByRole('navigation', { name: '表格分页' })).getByRole('combobox')).toHaveTextContent('20')
   })
 
   it('按当前版本提交模型启用状态并更新页面状态', async () => {

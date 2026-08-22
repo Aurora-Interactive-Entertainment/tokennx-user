@@ -1,9 +1,10 @@
 import { fetchAuthenticatedJson, fetchAuthenticatedResponse } from './authenticated'
 import { ApiError, isApiError, type FetchJsonOptions } from './http'
-import type { ApiTimeValue } from '@/utils/format'
+import type { ApiTimestamp } from '@/utils/format'
 import i18n from '@/i18n'
 
 const BILLING_PATH = '/api/user/billing'
+const ACCOUNT_OVERVIEW_PATH = '/api/user/account/overview'
 
 export const BILLING_FIRST_PAGE = 1
 export const BILLING_PAGE_SIZE = 20
@@ -13,6 +14,12 @@ export type BillingAccountType = 'personal' | 'enterprise'
 export interface BillingContext {
   account_type: BillingAccountType
   enterprise_id?: string
+}
+
+export interface AccountOverviewResponse {
+  account_balance_yuan: string
+  invitation_reward_yuan: string
+  invoiceable_amount_yuan: string
 }
 
 export interface BillingRequestOptions extends Pick<FetchJsonOptions, 'accessToken' | 'signal'> {
@@ -49,11 +56,11 @@ export interface BillingBonusGrant {
   total_amount_yuan: string
   available_amount_yuan: string
   consumed_amount_yuan: string
-  expires_at: ApiTimeValue | null
+  expires_at: ApiTimestamp | null
   status: BillingBonusGrantStatus
-  created_at: ApiTimeValue
+  created_at: ApiTimestamp
   frozen_amount_yuan?: string
-  updated_at?: ApiTimeValue
+  updated_at?: ApiTimestamp
 }
 
 export interface BillingWalletResponse {
@@ -83,13 +90,13 @@ export interface BillingRewardIssuance {
   available_amount_yuan: string
   revoked_amount_yuan: string
   grant_id: string | null
-  grant_expires_at: ApiTimeValue | null
+  grant_expires_at: ApiTimestamp | null
   status: BillingRewardStatus
   skip_reason_code: string | null
   failure_reason_code: string | null
   version: string
-  created_at: ApiTimeValue
-  updated_at: ApiTimeValue
+  created_at: ApiTimestamp
+  updated_at: ApiTimestamp
 }
 
 export type BillingStatementDirection = 'income' | 'expense' | 'adjustment'
@@ -103,7 +110,7 @@ export interface BillingStatementLine {
   direction: BillingStatementDirection
   amount_yuan: string
   balance_after_yuan: string
-  occurred_at: ApiTimeValue
+  occurred_at: ApiTimestamp
   request_id: string | null
 }
 
@@ -169,7 +176,7 @@ export type BillingLedgerKind = 'model_consume' | 'recharge' | 'reward' | string
 
 export interface BillingLedgerItem {
   id: string
-  occurred_at: ApiTimeValue
+  occurred_at: ApiTimestamp
   kind: BillingLedgerKind
   channel: string
   description: string
@@ -185,7 +192,7 @@ export interface BillingLedgerItem {
 export interface BillingAnalysisResponse {
   account: BillingAccount
   wallet: Pick<BillingWallet, 'currency' | 'status' | 'paid_available_yuan' | 'bonus_available_yuan' | 'total_available_yuan' | 'total_balance_yuan' | 'debt_yuan'>
-  period: { value: string; label: string; start: ApiTimeValue; end: ApiTimeValue }
+  period: { value: string; label: string; start: ApiTimestamp; end: ApiTimestamp }
   filters: BillingAnalysisFilters
   metrics: BillingAnalysisMetrics
   ledger: BillingPageResult<BillingLedgerItem>
@@ -201,8 +208,8 @@ export interface BillingInvoiceItem {
   status_label: string
   title_masked: string
   invoice_type: 'normal' | 'special' | string
-  submitted_at: ApiTimeValue
-  completed_at: ApiTimeValue | null
+  submitted_at: ApiTimestamp
+  completed_at: ApiTimestamp | null
   file_type: string
   download_url: string
   rejection_reason?: string
@@ -242,11 +249,11 @@ export interface BillingPaymentTransaction {
   provider_transaction_no?: string
   provider_order_no?: string
   payment_url?: string
-  expires_at: ApiTimeValue | null
-  succeeded_at: ApiTimeValue | null
-  closed_at: ApiTimeValue | null
-  created_at: ApiTimeValue
-  updated_at: ApiTimeValue
+  expires_at: ApiTimestamp | null
+  succeeded_at: ApiTimestamp | null
+  closed_at: ApiTimestamp | null
+  created_at: ApiTimestamp
+  updated_at: ApiTimestamp
   version: number | string
 }
 
@@ -263,11 +270,11 @@ export interface BillingPaymentOrder {
   billing_account_id: string
   user_id?: string
   user_display_name?: string
-  expires_at: ApiTimeValue | null
-  paid_at: ApiTimeValue | null
-  closed_at: ApiTimeValue | null
-  created_at: ApiTimeValue
-  updated_at: ApiTimeValue
+  expires_at: ApiTimestamp | null
+  paid_at: ApiTimestamp | null
+  closed_at: ApiTimestamp | null
+  created_at: ApiTimestamp
+  updated_at: ApiTimestamp
   version: number | string
   transactions?: BillingPaymentTransaction[]
 }
@@ -321,6 +328,11 @@ function requestOptions(options: BillingRequestOptions): Pick<BillingRequestOpti
 export function getBillingWallet(context: BillingContext, options: Pick<BillingRequestOptions, 'accessToken' | 'signal'> = {}): Promise<BillingWalletResponse> {
   const query = createBillingQuery(context)
   return fetchAuthenticatedJson<BillingWalletResponse>(`${BILLING_PATH}/wallet?${query}`, options)
+}
+
+export function getAccountOverview(context: BillingContext, options: Pick<BillingRequestOptions, 'accessToken' | 'signal'> = {}): Promise<AccountOverviewResponse> {
+  const query = createBillingQuery(context)
+  return fetchAuthenticatedJson<AccountOverviewResponse>(`${ACCOUNT_OVERVIEW_PATH}?${query}`, options)
 }
 
 export function getBillingSummary(context: BillingContext, options: Pick<BillingRequestOptions, 'accessToken' | 'signal'> = {}): Promise<BillingSummaryResponse> {

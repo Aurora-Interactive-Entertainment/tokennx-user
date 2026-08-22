@@ -17,6 +17,7 @@ import type {
 import { getEnterpriseAnalytics } from "@/api/enterprise-console";
 import { AnalyticsTimeRangePicker } from "@/components/analytics-time-range-picker";
 import { EnterpriseAnalyticsTrendChart } from "@/components/enterprise-analytics-trend-chart";
+import { CompatSelect as Select } from "@/components/semi-compat";
 import {
   ANALYTICS_METRIC_OPTIONS,
   analyticsDimensionLabel,
@@ -214,26 +215,28 @@ function AnalyticsToolbar({
         >
           {i18n.t('console.enterprise.analytics.memberScope')}
         </label>
-        <select
-          className="input analytics-member-filter"
+        <Select
+          className="analytics-member-filter"
           id="analytics-member-filter"
           value={filters.memberID}
-          onChange={(event) =>
-            onFilterChange({ ...filters, memberID: event.target.value })
+          onChange={(value) =>
+            onFilterChange({ ...filters, memberID: String(value) })
           }
+          block
         >
-          <option value="all">{i18n.t('console.enterprise.analytics.allMembers')}</option>
+          <Select.Option value="all">{i18n.t('console.enterprise.analytics.allMembers')}</Select.Option>
           {options.map(([value, label]) => (
-            <option key={value} value={value}>
+            <Select.Option key={value} value={value}>
               {label}
-            </option>
+            </Select.Option>
           ))}
-        </select>
+        </Select>
       </div>
       <div className="analytics-filter-group">
         <span className="analytics-filter-label">{i18n.t('console.enterprise.analytics.timeRange')}</span>
         <AnalyticsTimeRangePicker
           value={filters}
+          dateRestriction="last-90-days"
           onChange={(value) => onFilterChange({ ...filters, ...value })}
         />
       </div>

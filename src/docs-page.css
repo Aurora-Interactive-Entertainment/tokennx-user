@@ -1,0 +1,94 @@
+.docs-product-nav .semi-icon { width: 16px; height: 16px; flex: 0 0 16px; }
+.docs-sidebar a .semi-icon { width: 14px; height: 14px; flex: 0 0 14px; }
+.docs-page--manuscript .docs-shell { grid-template-columns: 240px minmax(0, 720px) minmax(210px, 1fr); gap: 28px; }
+.docs-page--manuscript .docs-sidebar { padding-top: 54px; padding-bottom: 56px; }
+.docs-page--manuscript .docs-sidebar nav { gap: 6px; }
+.docs-page--manuscript .docs-sidebar .docs-sidebar-node { min-width: 0; min-height: 34px; height: auto; padding: 8px 12px 8px calc(12px + var(--docs-sidebar-indent, 0px)); overflow: hidden; font-size: 13px; line-height: 1.35; text-align: left; white-space: nowrap; }
+.docs-page--manuscript .docs-sidebar .docs-sidebar-node .semi-icon { width: 13px; height: 13px; flex: 0 0 13px; }
+.docs-page--manuscript .docs-sidebar .docs-sidebar-directory { position: relative; width: 100%; justify-content: flex-start; border: 0; color: #a6a6aa; background: transparent; font-family: inherit; font-size: 13px; font-weight: 600; line-height: 1.35; cursor: pointer; }
+.docs-page--manuscript .docs-sidebar .docs-sidebar-directory { align-items: center; gap: 6px; }
+.docs-page--manuscript .docs-sidebar .docs-sidebar-directory > span:last-child,
+.docs-page--manuscript .docs-sidebar .docs-sidebar-document > span { min-width: 0; width: auto; flex: 1; overflow: hidden; text-align: left; text-overflow: ellipsis; white-space: nowrap; }
+.docs-page--manuscript .docs-sidebar .docs-sidebar-directory::before { width: 12px; height: 12px; flex: 0 0 12px; margin: 0; background: currentColor; content: ''; clip-path: polygon(15% 25%, 85% 25%, 50% 75%); }
+.docs-page--manuscript .docs-sidebar .docs-sidebar-directory.is-collapsed::before { background: currentColor; clip-path: polygon(25% 15%, 75% 50%, 25% 85%); }
+.docs-page--manuscript .docs-sidebar .docs-sidebar-directory:hover { color: #d7d7d7; background: rgba(255, 255, 255, .035); }
+.docs-page--manuscript .docs-sidebar .docs-sidebar-document { align-items: center; gap: 6px; }
+.docs-page--manuscript .docs-sidebar.docs-sidebar--flat .docs-sidebar-document { color: #a6a6aa; font-size: 13px; font-weight: 600; line-height: 1.35; }
+.docs-page--manuscript .docs-sidebar.docs-sidebar--flat .docs-sidebar-document.is-active { color: #fff; }
+.docs-page--manuscript .docs-sidebar.docs-sidebar--flat .docs-sidebar-document:not(.is-active):hover { color: #d7d7d7; background: rgba(255, 255, 255, .035); }
+.docs-page--manuscript .docs-article-toolbar .docs-copy-page { min-width: 112px; padding-inline: 10px; }
+.docs-page--manuscript .docs-article-toolbar--desktop-copy { top: 0; right: 0; display: flex; justify-content: flex-end; }
+/* 中文：页面复制操作归入右侧页内工具区，避免覆盖正文首段。 */
+.docs-page--manuscript .docs-on-page--with-copy { padding-top: 28px; gap: 16px; }
+.docs-page--manuscript .docs-on-page--with-copy > .docs-copy-page { min-width: 112px; justify-self: start; padding-inline: 10px; }
+.docs-page--manuscript .docs-article-toolbar--mobile-copy { display: none; }
+.docs-page--manuscript .docs-sidebar .docs-sidebar-children { min-width: 0; display: grid; grid-template-rows: 1fr; opacity: 1; transition: grid-template-rows .22s ease, opacity .16s ease; }
+.docs-page--manuscript .docs-sidebar .docs-sidebar-children.is-collapsed { grid-template-rows: 0fr; opacity: 0; pointer-events: none; }
+.docs-page--manuscript .docs-sidebar .docs-sidebar-children-inner { min-height: 0; overflow: hidden; }
+.docs-copy-page { min-width: 126px; height: 34px; margin-top: 5px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 0 12px; border: 1px solid #353535; border-radius: 4px; color: #fff; background: #181818; font-size: 14px; cursor: pointer; }
+.docs-copy-page:hover { border-color: #565656; background: #202020; }
+.docs-copy-page .semi-icon { width: 15px; height: 15px; color: #8b8b8b; }
+.semi-toast.docs-copy-toast { margin-top: 76px; pointer-events: none; }
+.semi-toast.docs-copy-toast .semi-toast-content { max-width: min(420px, calc(100vw - 32px)); border: 1px solid #353535; border-radius: 8px; color: #fff; background: #242424; box-shadow: 0 8px 28px rgba(0, 0, 0, .36); pointer-events: none; }
+.docs-state { min-height: 420px; padding-top: 22px; }
+.docs-state h1 { margin: 0 0 14px; color: #fff; font-size: 28px; font-weight: 500; }
+.docs-state p { color: #8b8b8b; line-height: 1.7; }
+.docs-state code { display: inline-block; margin-top: 10px; color: #a77dff; font-size: 12px; overflow-wrap: anywhere; }
+.docs-page--manuscript .docs-on-page { max-height: calc(100vh - 140px); grid-template-rows: auto minmax(0, 1fr); gap: 14px; overflow: hidden; }
+/* 标题缩进 = 24px（18px 折叠箭头列 + 6px 列间距）+ 层级缩进，与下方 TOC 首行导航文字对齐 */
+.docs-page--manuscript .docs-on-page > strong { padding-left: calc(24px + var(--docs-toc-depth, 0) * 10px); }
+.docs-on-page-scroll { min-height: 0; overflow-y: auto; padding: 2px 10px 18px 0; scrollbar-color: #454545 transparent; scrollbar-width: thin; overscroll-behavior: contain; }
+.docs-toc-item { min-width: 0; }
+.docs-toc-row { min-height: 31px; display: grid; grid-template-columns: 18px minmax(0, 1fr); column-gap: 6px; align-items: center; padding-left: calc(var(--docs-toc-depth) * 10px); }
+.docs-toc-row button { position: relative; width: 18px; height: 24px; display: block; padding: 0; border: 0; color: #6f6f6f; background: transparent; cursor: pointer; }
+.docs-toc-row button::before { position: absolute; top: 50%; left: 50%; width: 0; height: 0; border-top: 5px solid currentColor; border-right: 4px solid transparent; border-left: 4px solid transparent; content: ''; transform: translate(-50%, -42%); }
+.docs-toc-row button:hover { color: #c5c5c5; }
+.docs-toc-row button.is-collapsed::before { border-top: 4px solid transparent; border-bottom: 4px solid transparent; border-left: 5px solid currentColor; transform: translate(-38%, -50%); }
+.docs-toc-spacer { width: 18px; }
+.docs-toc-row a { min-width: 0; display: block; overflow: hidden; color: #8b8b8b; font-size: 13px; line-height: 1.35; text-overflow: ellipsis; white-space: nowrap; }
+.docs-toc-row a:hover, .docs-toc-row a.is-active { color: #946dff; }
+.docs-toc-children { min-width: 0; display: grid; grid-template-rows: 1fr; opacity: 1; transition: grid-template-rows .22s ease, opacity .16s ease; }
+.docs-toc-children.is-collapsed { grid-template-rows: 0fr; opacity: 0; pointer-events: none; }
+.docs-toc-children-inner { min-height: 0; overflow: hidden; }
+
+@media (prefers-reduced-motion: reduce) {
+  .docs-toc-children { transition: none; }
+}
+
+html[data-theme="light"] .docs-copy-page { border-color: #d8dadd; color: #17181b; background: #fff; }
+html[data-theme="light"] .docs-copy-page:hover { border-color: #b9bdc3; background: #f0f1f3; }
+html[data-theme="light"] .docs-page--manuscript .docs-sidebar a:not(.is-active):hover { color: #353a43; background: #e8eaed; }
+html[data-theme="light"] .semi-toast.docs-copy-toast .semi-toast-content { border-color: #d8dadd; color: #17181b; background: #fff; box-shadow: 0 8px 28px rgba(24, 28, 36, .16); }
+html[data-theme="light"] .docs-state h1 { color: #17181b; }
+html[data-theme="light"] .docs-on-page-scroll { scrollbar-color: #c4c7cb transparent; }
+html[data-theme="light"] .docs-toc-row button { color: #8c929b; }
+html[data-theme="light"] .docs-toc-row button:hover { color: #353a43; }
+html[data-theme="light"] .docs-toc-row a { color: #626975; }
+html[data-theme="light"] .docs-toc-row a:hover, html[data-theme="light"] .docs-toc-row a.is-active { color: #7954df; }
+html[data-theme="light"] .docs-page--manuscript .docs-sidebar .docs-sidebar-directory { color: #626975; }
+html[data-theme="light"] .docs-page--manuscript .docs-sidebar .docs-sidebar-directory:hover { color: #353a43; background: #e8eaed; }
+html[data-theme="light"] .docs-page--manuscript .docs-sidebar.docs-sidebar--flat .docs-sidebar-document { color: #626975; }
+html[data-theme="light"] .docs-page--manuscript .docs-sidebar.docs-sidebar--flat .docs-sidebar-document.is-active { color: #fff; }
+html[data-theme="light"] .docs-page--manuscript .docs-sidebar.docs-sidebar--flat .docs-sidebar-document:not(.is-active):hover { color: #353a43; background: #e8eaed; }
+
+@media (max-width: 1180px) {
+  .docs-page--manuscript .docs-shell { grid-template-columns: 220px minmax(0, 1fr); gap: 28px; position: relative; }
+  .docs-page--manuscript .docs-article { padding-top: 76px; }
+  .docs-page--manuscript .docs-on-page { position: absolute; top: 18px; right: 0; display: block; width: min(220px, 42%); max-height: none; padding-top: 0; }
+  .docs-page--manuscript .docs-on-page--with-copy > .docs-copy-page { margin-left: auto; }
+  .docs-page--manuscript .docs-on-page > strong, .docs-page--manuscript .docs-on-page-scroll { display: none; }
+}
+
+@media (max-width: 720px) {
+  .docs-page--manuscript .docs-sidebar { padding-top: 0; padding-bottom: 16px; }
+  .docs-page--manuscript .docs-on-page--with-copy { display: none; }
+  .docs-page--manuscript .docs-article-toolbar--desktop-copy { display: none; }
+  .docs-page--manuscript .docs-article-toolbar--mobile-copy { position: static; display: flex; justify-content: flex-end; margin-bottom: 18px; }
+  .docs-page--manuscript .docs-sidebar .docs-sidebar-node { min-height: 32px; padding: 7px 11px 7px calc(11px + var(--docs-sidebar-indent, 0px)); line-height: 1.3; }
+  .docs-page--manuscript .docs-sidebar .docs-sidebar-children { display: none; }
+  .docs-page--manuscript .docs-sidebar .docs-sidebar-children:not(.is-collapsed) { display: contents; }
+}
+
+@media (min-width: 721px) and (max-width: 1180px) {
+  .docs-page--manuscript .docs-shell { grid-template-columns: 220px minmax(0, 1fr); gap: 28px; }
+}

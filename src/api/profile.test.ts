@@ -48,24 +48,29 @@ describe('个人中心 API 封装', () => {
   })
 
   it('按接口文档提交昵称、联系方式验证码和联系方式更换', async () => {
-    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => response({}))
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => response([]))
 
-    await updateProfileNickname('profile-token', '新的昵称')
-    expect(lastRequest(fetchMock).url).toBe('/api/user/profile/nickname')
-    expect(JSON.parse(String(lastRequest(fetchMock).options?.body))).toEqual({ display_name: '新的昵称' })
+    await updateProfileNickname('profile-token', '  新的昵称  ')
+    const nicknameRequest = lastRequest(fetchMock)
+    const nicknameHeaders = new Headers(nicknameRequest.options?.headers)
+    expect(nicknameRequest.url).toBe('/api/user/profile/nickname')
+    expect(nicknameRequest.options?.method).toBe('PUT')
+    expect(nicknameHeaders.get('Authorization')).toBe('Bearer profile-token')
+    expect(nicknameHeaders.get('Content-Type')).toBe('application/json')
+    expect(JSON.parse(String(nicknameRequest.options?.body))).toEqual({ display_name: '新的昵称' })
 
     await sendProfileContactCode('profile-token', {
       provider_code: 'phone',
       purpose: 'current',
       destination: '13812345678',
-      locale: 'zh-CN',
+      country_code: '+86',
     })
     expect(lastRequest(fetchMock).url).toBe('/api/user/profile/contact/code')
     expect(JSON.parse(String(lastRequest(fetchMock).options?.body))).toEqual({
       provider_code: 'phone',
       purpose: 'current',
       destination: '13812345678',
-      locale: 'zh-CN',
+      country_code: '+86',
     })
 
     await updateProfileContact('profile-token', 'email', {

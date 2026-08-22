@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react'
+import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type FormEvent, type KeyboardEvent as ReactKeyboardEvent, type ReactNode, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
 import type { TFunction } from 'i18next'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router'
@@ -6,24 +6,29 @@ import Avatar from '@douyinfe/semi-ui/lib/es/avatar'
 import Badge from '@douyinfe/semi-ui/lib/es/badge'
 import Button from '@douyinfe/semi-ui/lib/es/button'
 import { Layout } from '@douyinfe/semi-ui/lib/es/layout'
-import Tag from '@douyinfe/semi-ui/lib/es/tag'
 import Toast from '@douyinfe/semi-ui/lib/es/toast'
 import {
   IconApps,
+  IconAlertTriangle,
   IconBarChartVStroked,
   IconBellStroked,
   IconBriefcaseStroked,
   IconChevronDown,
+  IconChevronRight,
   IconClose,
   IconCommentStroked,
   IconCopyStroked,
   IconCreditCardStroked,
   IconCustomerSupport,
-  IconDesktop,
+  IconEditStroked,
   IconExit,
+  IconEyeClosedStroked,
+  IconEyeOpenedStroked,
   IconFile,
+  IconGiftStroked,
   IconIdCardStroked,
   IconImage,
+  IconInfoCircle,
   IconKeyStroked,
   IconLightningStroked,
   IconMenu,
@@ -36,26 +41,47 @@ import {
   IconSettingStroked,
   IconSend,
   IconSunStroked,
+  IconTick,
+  IconTickCircle,
   IconUserGroup,
   IconUserStroked,
   IconVideo,
 } from '@douyinfe/semi-icons'
 import { useAppStore, type AppStoreValue, type Workspace, type WorkspaceRole } from '@/data/app-state'
 import { modelAlias, modelRouteKey, MODALITY_LABELS, type ModelRecord } from '@/data/models'
-import { getProfileEnterprises, limitDisplayNameLength, type EnterpriseMembership } from '@/api/profile'
-import { completeBinding, completeWechatLogin, invalidateAuth, loginWithEmail, loginWithPhone, logoutAuth, pollWechatStatus, requestBindingCode, requestEmailCode, requestPhoneCode, requestWechatQr } from '@/store/auth-slice'
+import { getProfileEnterprises, getProfileErrorMessage, getUserProfile, isValidDisplayName, limitDisplayNameLength, PROFILE_DISPLAY_NAME_MAX_LENGTH, updateProfileNickname, type ContactProvider, type EnterpriseMembership, type UserProfile } from '@/api/profile'
+import { getAccountOverview, type AccountOverviewResponse, type BillingContext } from '@/api/billing'
+import { completeBinding, completeWechatLogin, invalidateAuth, loginWithPhone, logoutAuth, pollWechatStatus, requestBindingCode, requestPhoneCode, requestWechatQr, updateAuthenticatedUser } from '@/store/auth-slice'
 import { useAppDispatch, useAppSelector } from '@/store/hooks'
-import { clearAuthTokens, getAccessToken } from '@/auth/token-storage'
+import { clearAuthTokens, getAccessToken, getVerifiedPhone, saveVerifiedPhone } from '@/auth/token-storage'
 import { isAuthenticationFailure } from '@/api/http'
-import i18n from '@/i18n'
 import { useTranslation } from 'react-i18next'
-import { cycleThemeMode, themeModeLabel, useThemeMode } from '@/theme'
+import { cycleThemeModeWithTransition, themeModeLabel, useResolvedTheme, useThemeMode } from '@/theme'
 import { getMockSupportReply, MOCK_SUPPORT_REPLY_DELAY_MS, type SupportChatMessage, type SupportLocale, type SupportMessageRole } from './support-chat'
 import { MoneyText } from './money'
+import { ModelAvailability } from './model-availability'
 import { enterpriseMenuPermissionKeyForPath, hasEnterpriseMenuPermission, isEnterpriseOwner, type EnterpriseMenuAccess, type EnterpriseMenuPermissionKey, useEnterpriseMenuAccess } from './enterprise-menu-access'
 import { ENTERPRISE_CREATE_PATH, NEW_ENTERPRISE_CREATE_PATH } from '@/api/enterprise-certification'
 export { isEnterpriseOwner } from './enterprise-menu-access'
 import tokenNxLogo from '@/token-nx-logo.png'
+import headerLogo from '@/assets/figma-header/token-nx-header-logo.png'
+import headerTrialPill from '@/assets/figma-header/trial-pill.png'
+import headerTrialFreeTag from '@/assets/figma-header/trial-free-tag.svg'
+import publicMobileNavStyles from '@/public-mobile-nav.css?inline'
+import '@/public-footer.css'
+import accountBadge from '@/assets/figma-account-badge.png'
+import manuscriptFooterLogo from '@/assets/figma-home/footer-logo.png'
+import './login-panel.css'
+import './account-settings-modal.css'
+import { appToast } from './app-toast'
+import { publishProfileUpdate, subscribeProfileUpdates } from '@/profile/profile-sync'
+
+const LazyProfileContactDialog = lazy(() => import('./profile-contact-dialog').then((module) => ({ default: module.ProfileContactDialog })))
+import manuscriptCustomerQr from '@/assets/figma-home/footer-qr-customer.png'
+import manuscriptOfficialQr from '@/assets/figma-home/footer-qr-official.png'
+import manuscriptFilingIcpIcon from '@/assets/figma-home/filing-icp.png'
+import manuscriptFilingSecurityIcon from '@/assets/figma-home/filing-security.png'
+import wechatIcon from '@/assets/figma-home/wechat.png'
 import deepseekLogo from '@lobehub/icons-static-svg/icons/deepseek-color.svg?raw'
 import anthropicLogo from '@lobehub/icons-static-svg/icons/claude-color.svg?raw'
 import openaiLogo from '@lobehub/icons-static-svg/icons/openai.svg?raw'
@@ -98,11 +124,57 @@ type PublicLink = {
 
 export const PUBLIC_LINKS: PublicLink[] = [
   { labelKey: 'nav.models', path: '/models' },
-  { labelKey: 'nav.private', path: ENTERPRISE_CREATE_PATH, disabled: true },
-  { labelKey: 'nav.ranking', path: '/models', disabled: true },
-  { labelKey: 'nav.apps', path: '/docs', disabled: true },
-  { labelKey: 'nav.docs', path: '/docs', disabled: true },
+  // 中文：私有化入口暂不对外展示，后续开放时再加入此列表。
+  { labelKey: 'nav.ranking', path: '/rankings' },
+  { labelKey: 'nav.apps', path: '/apps' },
+  { labelKey: 'nav.docs', path: '/docs' },
 ]
+
+const AUTHENTICATED_PUBLIC_LINK: PublicLink = { labelKey: 'nav.billing', path: '/console/billing' }
+const BILLING_OVERVIEW_HOVER_DELAY_MS = 120
+const BILLING_OVERVIEW_CACHE_MS = 8_000
+const BILLING_BALANCE_VISIBILITY_STORAGE_KEY = 'token-nx:billing-balance-visible:v1'
+
+type BillingOverviewCacheEntry = {
+  data: AccountOverviewResponse
+  loadedAt: number
+}
+
+function billingOverviewContext(workspace: Pick<Workspace, 'id' | 'type'>): BillingContext {
+  return workspace.type === 'enterprise' ? { account_type: 'enterprise', enterprise_id: workspace.id } : { account_type: 'personal' }
+}
+
+function billingOverviewKey(context: BillingContext): string {
+  return context.account_type === 'enterprise' ? `enterprise:${context.enterprise_id ?? ''}` : 'personal'
+}
+
+function initialBillingBalanceVisible(): boolean {
+  if (typeof window === 'undefined') return true
+  try {
+    return window.localStorage.getItem(BILLING_BALANCE_VISIBILITY_STORAGE_KEY) !== 'hidden'
+  } catch {
+    return true
+  }
+}
+
+function persistBillingBalanceVisible(visible: boolean): void {
+  try {
+    window.localStorage.setItem(BILLING_BALANCE_VISIBILITY_STORAGE_KEY, visible ? 'visible' : 'hidden')
+  } catch {
+    // Keep the in-memory preference when storage is unavailable.
+  }
+}
+
+function formatBillingOverviewAmount(value: string | undefined): string {
+  const match = value?.trim().match(/^([+-]?)(\d+)(?:\.(\d+))?$/)
+  if (!match) return '--'
+  const fraction = (match[3] ?? '').padEnd(3, '0')
+  let cents = BigInt(match[2]) * 100n + BigInt(fraction.slice(0, 2))
+  if (fraction[2] >= '5') cents += 1n
+  const integer = (cents / 100n).toLocaleString()
+  const decimal = String(cents % 100n).padStart(2, '0')
+  return `${match[1] === '-' && cents !== 0n ? '-' : ''}${integer}.${decimal}`
+}
 
 // 中文：登录后的默认工作页改为快速接入，控制台根路径不再承载总览页面。
 export const DEFAULT_CONSOLE_PATH = '/console/quickstart'
@@ -151,25 +223,89 @@ export function ModelLogo({ model, size = 'default', className = '' }: { model: 
   const modalityIcon = model.modality === 'image' ? <IconImage /> : model.modality === 'video' ? <IconVideo /> : model.modality === 'audio' ? <IconPlayCircle /> : <span dangerouslySetInnerHTML={{ __html: FALLBACK_MODEL_LOGO }} />
   return (
     <span className={`model-logo model-logo--${size} model-logo--${model.modality} model-logo--${companyClass}${className ? ` ${className}` : ''}`} aria-hidden="true">
-      {logoMarkup ? <span dangerouslySetInnerHTML={{ __html: logoMarkup }} /> : modalityIcon}
+      {model.iconUrl ? <img src={model.iconUrl} alt="" loading="lazy" /> : logoMarkup ? <span dangerouslySetInnerHTML={{ __html: logoMarkup }} /> : modalityIcon}
     </span>
   )
 }
 
-export function ModelTags({ model }: { model: ModelRecord }) {
+type ModelTagValue = { label: string; color?: string }
+
+const MODEL_TAG_NAMED_COLORS: Record<string, string> = {
+  amber: '#c08a3e', blue: '#5c7fd8', cyan: '#4197a8', green: '#4f9b70', grey: '#7d8492',
+  indigo: '#7069c4', lime: '#7f9e46', orange: '#c17d3e', pink: '#c76c91', purple: '#9369bd',
+  red: '#c9675a', teal: '#439487', violet: '#806bc5', yellow: '#ad9138', white: '#a6abb4',
+  'light-blue': '#5792c3', 'light-green': '#65a36c',
+}
+
+function modelTagBaseColor(tag: ModelTagValue): string {
+  const backendColor = tag.color?.trim()
+  if (backendColor) {
+    const namedColor = MODEL_TAG_NAMED_COLORS[backendColor.toLowerCase()]
+    if (namedColor) return namedColor
+    if (/^#(?:[\da-f]{3}|[\da-f]{6})$/i.test(backendColor)) return backendColor
+  }
+
+  const label = tag.label.trim().toLowerCase()
+  if (/免费|free/.test(label)) return MODEL_TAG_NAMED_COLORS.green
+  if (/折扣|特价|discount|sale/.test(label)) return MODEL_TAG_NAMED_COLORS.orange
+  if (/推荐|recommend/.test(label)) return MODEL_TAG_NAMED_COLORS.blue
+  if (/多模态|multimodal/.test(label)) return MODEL_TAG_NAMED_COLORS.violet
+  if (/代码|code/.test(label)) return MODEL_TAG_NAMED_COLORS.indigo
+  return MODEL_TAG_NAMED_COLORS.grey
+}
+
+function modelTagStyle(tag: ModelTagValue): CSSProperties {
+  const baseColor = modelTagBaseColor(tag)
+  const compactHex = baseColor.slice(1)
+  const hex = compactHex.length === 3 ? [...compactHex].map((value) => value.repeat(2)).join('') : compactHex
+  const red = Number.parseInt(hex.slice(0, 2), 16) / 255
+  const green = Number.parseInt(hex.slice(2, 4), 16) / 255
+  const blue = Number.parseInt(hex.slice(4, 6), 16) / 255
+  const max = Math.max(red, green, blue)
+  const min = Math.min(red, green, blue)
+  const delta = max - min
+  const lightness = (max + min) / 2
+  const saturation = delta === 0 ? 0 : delta / (1 - Math.abs(2 * lightness - 1))
+  const hue = delta === 0
+    ? 0
+    : max === red
+      ? 60 * (((green - blue) / delta) % 6)
+      : max === green
+        ? 60 * ((blue - red) / delta + 2)
+        : 60 * ((red - green) / delta + 4)
+  const normalizedHue = Math.round((hue + 360) % 360)
+  const normalizedSaturation = Math.round(Math.min(64, Math.max(38, saturation * 72)))
+
+  // Keep the backend hue while constraining saturation/lightness to readable theme-specific ramps.
+  return {
+    '--model-tag-color': baseColor,
+    '--model-tag-dark-text': `hsl(${normalizedHue} ${normalizedSaturation}% 72%)`,
+    '--model-tag-dark-border': `hsl(${normalizedHue} ${normalizedSaturation}% 62% / .42)`,
+    '--model-tag-dark-bg': `hsl(${normalizedHue} ${normalizedSaturation}% 52% / .14)`,
+    '--model-tag-light-text': `hsl(${normalizedHue} ${normalizedSaturation}% 31%)`,
+    '--model-tag-light-border': `hsl(${normalizedHue} ${normalizedSaturation}% 42% / .38)`,
+    '--model-tag-light-bg': `hsl(${normalizedHue} ${normalizedSaturation}% 46% / .1)`,
+  } as CSSProperties
+}
+
+function ModelColorTag({ tag, className = '' }: { tag: ModelTagValue; className?: string }) {
   const { t } = useTranslation()
+  return <span className={`model-color-tag${className ? ` ${className}` : ''}`} style={modelTagStyle(tag)}>{localizeConsoleLabel(t, tag.label)}</span>
+}
+
+export function ModelTags({ model }: { model: ModelRecord }) {
   return (
     <div className="tag-row">
-      {model.labels.slice(0, 4).map((label) => <Tag key={label} color={label === '折扣' ? 'orange' : label === '多模态' ? 'violet' : 'grey'}>{localizeConsoleLabel(t, label)}</Tag>)}
+      {(model.tags?.length ? model.tags : model.labels.map((label) => ({ label }))).slice(0, 4).map((tag) => (
+        <ModelColorTag key={tag.label} tag={tag} />
+      ))}
     </div>
   )
 }
 
-const MODEL_UNAVAILABLE_LABEL = '后端未提供'
-const MODEL_AVAILABILITY_BAR_COUNT = 24
-const MODEL_AVAILABILITY_MAX_WARN_BARS = 4
-const MODEL_AVAILABILITY_WARN_SCALE = 2
+const MODEL_UNAVAILABLE_LABEL = '暂无数据'
 const MODEL_IO_TYPES: Record<ModelRecord['modality'], [string, string]> = {
+  multimodal: ['多模态', '多模态'],
   text: ['文本', '文本'],
   image: ['文本', '图片'],
   video: ['文本', '视频'],
@@ -184,6 +320,7 @@ const MODEL_TYPE_MARKS: Record<string, string> = { 文本: 'T', 图片: 'I', 视
 
 const CONSOLE_LABEL_KEYS: Record<string, string> = {
   '后端未提供': 'console.common.unavailable',
+  '暂无数据': 'console.common.unavailable',
   '上下文': 'console.common.context',
   '最大输出': 'console.common.maxOutput',
   '图像尺寸': 'console.common.imageSize',
@@ -239,13 +376,6 @@ function modelCardSpecs(model: ModelRecord): { contextLabel: string; contextValu
   return { contextLabel: '模型规格', contextValue: model.context ?? MODEL_UNAVAILABLE_LABEL, outputLabel: '输出限制', outputValue: model.maxOutput ?? MODEL_UNAVAILABLE_LABEL }
 }
 
-function availabilityBars(rate: number): ReactNode {
-  if (!Number.isFinite(rate) || rate <= 0 || rate > 100) return null
-  const warnBars = Math.min(MODEL_AVAILABILITY_MAX_WARN_BARS, Math.max(0, Math.round((100 - rate) * MODEL_AVAILABILITY_WARN_SCALE)))
-  const warnInterval = warnBars > 0 ? Math.ceil(MODEL_AVAILABILITY_BAR_COUNT / warnBars) : MODEL_AVAILABILITY_BAR_COUNT
-  return <span className="availability-bars">{Array.from({ length: MODEL_AVAILABILITY_BAR_COUNT }, (_, index) => <i className={`availability-bar ${warnBars > 0 && index % warnInterval === 0 ? 'is-warn' : 'is-up'}`} key={index} />)}</span>
-}
-
 export function ModelCard({ model, compact = false, onSelect }: { model: ModelRecord; compact?: boolean; onSelect?: (model: ModelRecord) => void }) {
   const { t } = useTranslation()
   const [copied, setCopied] = useState(false)
@@ -274,10 +404,8 @@ export function ModelCard({ model, compact = false, onSelect }: { model: ModelRe
   const outputPrice = model.tokenNxPrice.output ?? model.tokenNxPrice.hd
   const outputRaw = model.tokenNxPrice.output !== undefined ? model.tokenNxPrice.outputRaw : model.tokenNxPrice.hdRaw
   const specs = modelCardSpecs(model)
-  const inputMark = MODEL_TYPE_MARKS[inputTypeValue] ?? '?'
-  const outputMark = MODEL_TYPE_MARKS[outputTypeValue] ?? '?'
-  const hasAvailability = Number.isFinite(model.availability.rate) && model.availability.rate > 0 && model.availability.rate <= 100
-
+  const inputMark = MODEL_TYPE_MARKS[inputTypeValue] ?? (model.modality === 'multimodal' ? 'M' : '?')
+  const outputMark = MODEL_TYPE_MARKS[outputTypeValue] ?? (model.modality === 'multimodal' ? 'M' : '?')
   const cardBody = (
       <>
         <div className="model-card-topline">
@@ -289,10 +417,19 @@ export function ModelCard({ model, compact = false, onSelect }: { model: ModelRe
         </div>
         <div className="model-id-row"><code>{displayAlias}</code>{copied ? <span className="copy-hint">{t('console.common.copied')}</span> : null}</div>
         <div className="model-card-highlight-row">
-          <span className="model-card-throughput"><strong>{model.throughput.unit === '后端未提供' ? t('console.common.unavailable') : `${model.throughput.value}${model.throughput.unit === 'B tokens' ? 'B token' : ` ${model.throughput.unit}`}`}</strong></span>
-          <div className="model-card-tags">{model.labels.slice(0, 4).map((label) => <span className={`model-card-tag model-card-tag--${label === '折扣' ? 'warning' : label === '多模态' ? 'accent' : label === '代码' ? 'info' : 'neutral'}`} key={label}>{localizeConsoleLabel(t, label)}</span>)}</div>
+          <span className="model-card-throughput"><strong>{model.throughput.unit === MODEL_UNAVAILABLE_LABEL ? t('console.common.unavailable') : `${model.throughput.value}${model.throughput.unit === 'B tokens' ? 'B token' : ` ${model.throughput.unit}`}`}</strong></span>
+          <div className="model-card-tags">
+            {(model.tags?.length ? model.tags : model.labels.slice(0, 4).map((label) => ({ label }))).slice(0, 4).map((tag) => (
+              <ModelColorTag key={tag.label} tag={tag} className="model-card-tag" />
+            ))}
+          </div>
         </div>
         <p className="model-card-description">{model.description}</p>
+        <div className="model-card-metrics" aria-label={t('console.modelDetail.informationTitle')}>
+          <div><span>{t('console.common.providers', { count: model.providerCount })}</span><strong>{model.providerCount}</strong></div>
+          <div><span>{t('console.modelDetail.platformTokens')}</span><strong>{model.throughput.unit === MODEL_UNAVAILABLE_LABEL ? t('console.common.unavailable') : `${model.throughput.value}${model.throughput.unit === 'B tokens' ? 'B' : ` ${model.throughput.unit}`}`}</strong></div>
+          <div><span>{t('home.rebuild.availability')}</span><strong>{model.availability.rate > 0 ? `${model.availability.rate}%` : t('console.common.unavailable')}</strong></div>
+        </div>
         <div className="model-card-io">
           <div><span className="model-card-io-label">{t('console.common.inputType')} <span className="model-card-type-mark" aria-hidden="true">{inputMark}</span></span><strong>{inputType}</strong></div>
           <div><span className="model-card-io-label">{t('console.common.outputType')} <span className="model-card-type-mark" aria-hidden="true">{outputMark}</span></span><strong>{outputType}</strong></div>
@@ -309,10 +446,12 @@ export function ModelCard({ model, compact = false, onSelect }: { model: ModelRe
           <div className="model-card-spec-cell"><span>{localizeConsoleLabel(t, specs.contextLabel)}:</span><strong>{specs.contextValue === MODEL_UNAVAILABLE_LABEL ? t('console.common.unavailable') : specs.contextValue}</strong></div>
           <div className="model-card-spec-cell"><span>{localizeConsoleLabel(t, specs.outputLabel)}:</span><strong>{specs.outputValue === MODEL_UNAVAILABLE_LABEL ? t('console.common.unavailable') : specs.outputValue}</strong></div>
         </div>
-        <div className="model-card-foot">
-          <span className="model-card-providers">{t('console.common.providers', { count: model.providerCount })}</span>
-          <span className={`model-card-availability${hasAvailability ? '' : ' is-unavailable'}`}><span>{hasAvailability ? `${localizeConsoleLabel(t, model.availability.window)} ${model.availability.rate}%` : t('console.common.unavailable')}</span>{availabilityBars(model.availability.rate)}</span>
-        </div>
+        <ModelAvailability
+          className="model-card-availability"
+          hourly={model.availability.hourly}
+          summaryRate={model.availability.rate}
+          label={t('home.rebuild.availability')}
+        />
       </>
   )
 
@@ -372,6 +511,85 @@ type VerificationCodeButtonProps = {
   onClick: () => void
 }
 
+type LoginDialCode = {
+  code: string
+  labelKey: string
+  minLength: number
+  maxLength: number
+  pattern?: RegExp
+}
+
+const LOGIN_CODE_RETRY_SECONDS = 60
+const PHONE_CODE_COOLDOWN_KEY = 'token-nx:auth:phone-code-cooldown:v1'
+const LOGIN_DIAL_CODES: readonly LoginDialCode[] = [
+  { code: '+86', labelKey: 'login.countryMainland', minLength: 11, maxLength: 11, pattern: /^1[3-9]\d{9}$/ },
+  { code: '+852', labelKey: 'login.countryHongKong', minLength: 8, maxLength: 8 },
+  { code: '+853', labelKey: 'login.countryMacau', minLength: 8, maxLength: 8 },
+  { code: '+886', labelKey: 'login.countryTaiwan', minLength: 9, maxLength: 10 },
+  { code: '+1', labelKey: 'login.countryUsCanada', minLength: 10, maxLength: 10 },
+  { code: '+44', labelKey: 'login.countryUnitedKingdom', minLength: 10, maxLength: 10 },
+  { code: '+81', labelKey: 'login.countryJapan', minLength: 10, maxLength: 11 },
+  { code: '+82', labelKey: 'login.countrySouthKorea', minLength: 9, maxLength: 11 },
+  { code: '+65', labelKey: 'login.countrySingapore', minLength: 8, maxLength: 8 },
+  { code: '+60', labelKey: 'login.countryMalaysia', minLength: 9, maxLength: 10 },
+  { code: '+61', labelKey: 'login.countryAustralia', minLength: 9, maxLength: 9 },
+  { code: '+49', labelKey: 'login.countryGermany', minLength: 10, maxLength: 11 },
+  { code: '+33', labelKey: 'login.countryFrance', minLength: 9, maxLength: 9 },
+] as const
+
+function loginDialCode(value: string): LoginDialCode {
+  return LOGIN_DIAL_CODES.find((entry) => entry.code === value) ?? LOGIN_DIAL_CODES[0]
+}
+
+function normalizeLoginPhone(value: string): string {
+  return value.replace(/\D/g, '')
+}
+
+function maskLoginPhone(value: string): string {
+  return value.length >= 7 ? `${value.slice(0, 3)}****${value.slice(-4)}` : value
+}
+
+function internationalLoginPhone(dialCode: string, value: string): string {
+  return `${dialCode}${normalizeLoginPhone(value)}`
+}
+
+type PhoneCodeCooldown = {
+  destination: string
+  countryCode: string
+  expiresAt: number
+}
+
+function readPhoneCodeCooldown(): PhoneCodeCooldown | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = window.localStorage.getItem(PHONE_CODE_COOLDOWN_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as Partial<PhoneCodeCooldown>
+    if (typeof parsed.destination !== 'string' || typeof parsed.countryCode !== 'string' || typeof parsed.expiresAt !== 'number' || !Number.isFinite(parsed.expiresAt)) return null
+    if (parsed.expiresAt <= Date.now()) {
+      window.localStorage.removeItem(PHONE_CODE_COOLDOWN_KEY)
+      return null
+    }
+    return { destination: parsed.destination, countryCode: parsed.countryCode, expiresAt: parsed.expiresAt }
+  } catch {
+    return null
+  }
+}
+
+function savePhoneCodeCooldown(destination: string, countryCode: string): void {
+  try {
+    window.localStorage.setItem(PHONE_CODE_COOLDOWN_KEY, JSON.stringify({ destination, countryCode, expiresAt: Date.now() + LOGIN_CODE_RETRY_SECONDS * 1000 }))
+  } catch {
+    // Ignore storage failures; the in-memory countdown still protects this session.
+  }
+}
+
+function remainingPhoneCodeCooldown(destination: string, countryCode: string): number {
+  const cooldown = readPhoneCodeCooldown()
+  if (!cooldown || cooldown.destination !== destination || cooldown.countryCode !== countryCode) return 0
+  return Math.max(1, Math.ceil((cooldown.expiresAt - Date.now()) / 1000))
+}
+
 function VerificationCodeButton(props: VerificationCodeButtonProps) {
   const { t } = useTranslation()
   let label = t('login.sendCode')
@@ -392,18 +610,70 @@ function VerificationCodeButton(props: VerificationCodeButtonProps) {
   )
 }
 
-export function LoginPanel({ onSuccess, onAuthFailure }: { onSuccess: () => void; onAuthFailure?: () => void }) {
+type LoginPhoneFieldProps = {
+  id: string
+  label?: string
+  dialCode: string
+  phone: string
+  invalid?: boolean
+  onDialCodeChange: (value: string) => void
+  onPhoneChange: (value: string) => void
+  inputRef?: RefObject<HTMLInputElement | null>
+}
+
+function LoginPhoneField(props: LoginPhoneFieldProps) {
   const { t } = useTranslation()
-  const [tab, setTab] = useState<'email' | 'phone' | 'wechat'>('email')
-  const [email, setEmail] = useState('')
-  const [emailCode, setEmailCode] = useState('')
-  const [emailCodeSent, setEmailCodeSent] = useState(false)
-  const [emailRetryAfter, setEmailRetryAfter] = useState(0)
-  const [emailCodeLoading, setEmailCodeLoading] = useState(false)
-  const [emailLoginLoading, setEmailLoginLoading] = useState(false)
+  const dial = loginDialCode(props.dialCode)
+  const [dialCodeOpen, setDialCodeOpen] = useState(false)
+  return (
+    <div className="form-field phone-field">
+      {props.label ? <label className="field-label" htmlFor={props.id}>{props.label}</label> : null}
+      <div className="phone-input-wrapper">
+        <div className={`phone-prefix-control${dialCodeOpen ? ' is-open' : ''}`}>
+          <span className="phone-prefix-value" aria-hidden="true">{dial.code}</span>
+          <select
+            className="phone-prefix-select"
+            value={props.dialCode}
+            onChange={(event) => {
+              props.onDialCodeChange(event.target.value)
+              setDialCodeOpen(false)
+            }}
+            onMouseDown={() => setDialCodeOpen((open) => !open)}
+            onFocus={() => setDialCodeOpen(true)}
+            onBlur={() => setDialCodeOpen(false)}
+            aria-label={t('login.countryCode')}
+          >
+            {LOGIN_DIAL_CODES.map((entry) => <option key={entry.code} value={entry.code}>{entry.code} {t(entry.labelKey)}</option>)}
+          </select>
+        </div>
+        <input
+          ref={props.inputRef}
+          className="phone-input"
+          id={props.id}
+          aria-label={t('login.phone')}
+          type="tel"
+          value={props.phone}
+          onChange={(event) => props.onPhoneChange(normalizeLoginPhone(event.target.value).slice(0, dial.maxLength))}
+          placeholder={t('login.phonePlaceholder')}
+          maxLength={dial.maxLength}
+          autoComplete="tel-national"
+          inputMode="numeric"
+          aria-invalid={props.invalid}
+          required
+        />
+      </div>
+    </div>
+  )
+}
+
+export function LoginPanel({ onSuccess, onAuthFailure, inviteCode }: { onSuccess: () => void; onAuthFailure?: () => void; inviteCode?: string }) {
+  const { t } = useTranslation()
+  const [tab, setTab] = useState<'phone' | 'wechat'>('phone')
+  const [dialCode, setDialCode] = useState('+86')
   const [phone, setPhone] = useState('')
   const [code, setCode] = useState('')
   const [termsAccepted, setTermsAccepted] = useState(false)
+  const [rememberLogin, setRememberLogin] = useState(false)
   const [phoneCodeSent, setPhoneCodeSent] = useState(false)
   const [phoneRetryAfter, setPhoneRetryAfter] = useState(0)
   const [phoneCodeLoading, setPhoneCodeLoading] = useState(false)
@@ -412,27 +682,29 @@ export function LoginPanel({ onSuccess, onAuthFailure }: { onSuccess: () => void
   const [wechatView, setWechatView] = useState<'idle' | 'loading' | 'pending' | 'binding' | 'error'>('idle')
   const [wechatQr, setWechatQr] = useState<{ state: string; authorize_url: string } | null>(null)
   const [bindingTicket, setBindingTicket] = useState('')
+  const [bindingDialCode, setBindingDialCode] = useState('+86')
   const [bindingPhone, setBindingPhone] = useState('')
   const [bindingCode, setBindingCode] = useState('')
   const [bindingCodeSent, setBindingCodeSent] = useState(false)
   const [bindingRetryAfter, setBindingRetryAfter] = useState(0)
   const [bindingCodeLoading, setBindingCodeLoading] = useState(false)
   const [bindingLoading, setBindingLoading] = useState(false)
-  const wechatWindowRef = useRef<Window | null>(null)
+  const phoneInputRef = useRef<HTMLInputElement>(null)
   const dispatch = useAppDispatch()
   const navigate = useNavigate()
-
-  useEffect(() => {
-    if (emailRetryAfter <= 0) return undefined
-    const timer = window.setInterval(() => setEmailRetryAfter((value) => Math.max(0, value - 1)), 1000)
-    return () => window.clearInterval(timer)
-  }, [emailRetryAfter])
 
   useEffect(() => {
     if (phoneRetryAfter <= 0) return undefined
     const timer = window.setInterval(() => setPhoneRetryAfter((value) => Math.max(0, value - 1)), 1000)
     return () => window.clearInterval(timer)
   }, [phoneRetryAfter])
+
+  useEffect(() => {
+    const destination = normalizeLoginPhone(phone)
+    const retryAfter = destination ? remainingPhoneCodeCooldown(destination, dialCode) : 0
+    setPhoneRetryAfter(retryAfter)
+    setPhoneCodeSent(retryAfter > 0)
+  }, [dialCode, phone])
 
   useEffect(() => {
     if (bindingRetryAfter <= 0) return undefined
@@ -469,7 +741,6 @@ export function LoginPanel({ onSuccess, onAuthFailure }: { onSuccess: () => void
           return
         }
         await dispatch(completeWechatLogin(result.result)).unwrap()
-        if (wechatWindowRef.current && !wechatWindowRef.current.closed) wechatWindowRef.current.close()
         onSuccess()
       } catch (error) {
         if (active) {
@@ -501,72 +772,30 @@ export function LoginPanel({ onSuccess, onAuthFailure }: { onSuccess: () => void
     setFeedback(readLoginError(error))
   }
 
-  function validatePhone(value: string): boolean {
-    if (!/^1[3-9]\d{9}$/.test(value)) {
+  function validatePhone(value: string, selectedDialCode: string): boolean {
+    const normalized = normalizeLoginPhone(value)
+    const dial = loginDialCode(selectedDialCode)
+    const validLength = normalized.length >= dial.minLength && normalized.length <= dial.maxLength
+    if (!validLength || (dial.pattern && !dial.pattern.test(normalized))) {
       setFeedback(t('login.validationPhone'))
       return false
     }
     return true
   }
 
-  function validateEmail(value: string): boolean {
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())) {
-      setFeedback(t('login.validationEmail'))
-      return false
-    }
-    return true
-  }
-
-  async function requestEmailCodeAction(): Promise<void> {
-    const destination = email.trim()
-    if (emailRetryAfter > 0 || emailCodeLoading || !validateEmail(destination)) return
-    setEmailCodeLoading(true)
-    setFeedback('')
-    try {
-      const result = await dispatch(requestEmailCode({ destination })).unwrap()
-      setEmailCodeSent(true)
-      setEmailRetryAfter(result.retry_after_seconds)
-      setFeedback(t('login.sentTo', { destination: result.destination_masked }))
-    } catch (error) {
-      handleLoginError(error)
-    } finally {
-      setEmailCodeLoading(false)
-    }
-  }
-
-  async function submitEmail(event: React.FormEvent<HTMLFormElement>): Promise<void> {
-    event.preventDefault()
-    if (!termsAccepted) {
-      setFeedback(t('login.acceptTermsRequired'))
-      return
-    }
-    const destination = email.trim()
-    if (!validateEmail(destination)) return
-    if (!/^\d{6}$/.test(emailCode)) {
-      setFeedback(t('login.validationCode'))
-      return
-    }
-    setEmailLoginLoading(true)
-    setFeedback('')
-    try {
-      await dispatch(loginWithEmail({ destination, code: emailCode })).unwrap()
-      onSuccess()
-    } catch (error) {
-      handleLoginError(error)
-    } finally {
-      setEmailLoginLoading(false)
-    }
-  }
-
   async function requestCode(): Promise<void> {
-    if (phoneRetryAfter > 0 || phoneCodeLoading || !validatePhone(phone)) return
+    const currentPhone = normalizeLoginPhone(phoneInputRef.current?.value ?? phone)
+    if (currentPhone !== phone) setPhone(currentPhone)
+    if (phoneRetryAfter > 0 || phoneCodeLoading || !validatePhone(currentPhone, dialCode)) return
     setPhoneCodeLoading(true)
     setFeedback('')
     try {
-      const result = await dispatch(requestPhoneCode({ destination: phone })).unwrap()
+      const destination = currentPhone
+      const result = await dispatch(requestPhoneCode({ destination, countryCode: dialCode })).unwrap()
       setPhoneCodeSent(true)
-      setPhoneRetryAfter(result.retry_after_seconds)
-      setFeedback(t('login.sentTo', { destination: result.destination_masked }))
+      setPhoneRetryAfter(LOGIN_CODE_RETRY_SECONDS)
+      savePhoneCodeCooldown(destination, dialCode)
+      setFeedback(t('login.sentTo', { destination: result.destination_masked || maskLoginPhone(destination) }))
     } catch (error) {
       handleLoginError(error)
     } finally {
@@ -580,7 +809,9 @@ export function LoginPanel({ onSuccess, onAuthFailure }: { onSuccess: () => void
       setFeedback(t('login.acceptTermsRequired'))
       return
     }
-    if (!validatePhone(phone)) return
+    const destination = normalizeLoginPhone(phoneInputRef.current?.value ?? phone)
+    if (destination !== phone) setPhone(destination)
+    if (!validatePhone(destination, dialCode)) return
     if (!/^\d{6}$/.test(code)) {
       setFeedback(t('login.validationCode'))
       return
@@ -588,7 +819,8 @@ export function LoginPanel({ onSuccess, onAuthFailure }: { onSuccess: () => void
     setPhoneLoginLoading(true)
     setFeedback('')
     try {
-      await dispatch(loginWithPhone({ destination: phone, code })).unwrap()
+      const user = await dispatch(loginWithPhone({ destination, code, inviteCode })).unwrap()
+      saveVerifiedPhone(user.id, destination)
       onSuccess()
     } catch (error) {
       handleLoginError(error)
@@ -605,9 +837,6 @@ export function LoginPanel({ onSuccess, onAuthFailure }: { onSuccess: () => void
       const result = await dispatch(requestWechatQr()).unwrap()
       setWechatQr({ state: result.state, authorize_url: result.authorize_url })
       setWechatView('pending')
-      const popup = window.open(result.authorize_url, 'token-nx-wechat-login', 'popup,width=480,height=720')
-      wechatWindowRef.current = popup
-      if (!popup) setFeedback(t('login.popupBlocked'))
     } catch (error) {
       setWechatView('error')
       handleLoginError(error)
@@ -615,13 +844,13 @@ export function LoginPanel({ onSuccess, onAuthFailure }: { onSuccess: () => void
   }
 
   async function requestBindingCodeAction(): Promise<void> {
-    if (!bindingTicket || bindingRetryAfter > 0 || bindingCodeLoading || !validatePhone(bindingPhone)) return
+    if (!bindingTicket || bindingRetryAfter > 0 || bindingCodeLoading || !validatePhone(bindingPhone, bindingDialCode)) return
     setBindingCodeLoading(true)
     setFeedback('')
     try {
-      const result = await dispatch(requestBindingCode({ bindingTicket, phone: bindingPhone })).unwrap()
+      const result = await dispatch(requestBindingCode({ bindingTicket, phone: internationalLoginPhone(bindingDialCode, bindingPhone) })).unwrap()
       setBindingCodeSent(true)
-      setBindingRetryAfter(result.retry_after_seconds)
+      setBindingRetryAfter(LOGIN_CODE_RETRY_SECONDS)
       setFeedback(t('login.sentTo', { destination: result.destination_masked }))
     } catch (error) {
       handleLoginError(error)
@@ -632,7 +861,11 @@ export function LoginPanel({ onSuccess, onAuthFailure }: { onSuccess: () => void
 
   async function submitBinding(event: React.FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault()
-    if (!validatePhone(bindingPhone)) return
+    if (!termsAccepted) {
+      setFeedback(t('login.acceptTermsRequired'))
+      return
+    }
+    if (!validatePhone(bindingPhone, bindingDialCode)) return
     if (!/^\d{6}$/.test(bindingCode)) {
       setFeedback(t('login.validationCode'))
       return
@@ -640,8 +873,8 @@ export function LoginPanel({ onSuccess, onAuthFailure }: { onSuccess: () => void
     setBindingLoading(true)
     setFeedback('')
     try {
-      await dispatch(completeBinding({ bindingTicket, phone: bindingPhone, code: bindingCode })).unwrap()
-      if (wechatWindowRef.current && !wechatWindowRef.current.closed) wechatWindowRef.current.close()
+      const user = await dispatch(completeBinding({ bindingTicket, phone: internationalLoginPhone(bindingDialCode, bindingPhone), code: bindingCode })).unwrap()
+      saveVerifiedPhone(user.id, bindingPhone)
       onSuccess()
     } catch (error) {
       handleLoginError(error)
@@ -653,72 +886,51 @@ export function LoginPanel({ onSuccess, onAuthFailure }: { onSuccess: () => void
   return (
     <div className="login-panel" aria-labelledby="login-panel-heading">
       <div className="login-panel-header">
-        <div className="login-panel-logo"><BrandLogo size="panel" /><small>SECURE ACCESS</small></div>
-        <div className="login-panel-title" id="login-panel-heading">{t('login.title')}</div>
+        <div className="login-panel-logo"><BrandLogo size="panel" /></div>
       </div>
-      <div className="login-tabs" role="tablist" aria-label={t('login.methods')}>
-        <button className={`login-tab${tab === 'email' ? ' active' : ''}`} type="button" role="tab" aria-selected={tab === 'email'} onClick={() => { setTab('email'); setFeedback('') }}>{t('login.emailTab')}</button>
-        <button className={`login-tab${tab === 'phone' ? ' active' : ''}`} type="button" role="tab" aria-selected={tab === 'phone'} onClick={() => { setTab('phone'); setFeedback('') }}>{t('login.phoneTab')}</button>
-        <button className={`login-tab${tab === 'wechat' ? ' active' : ''}`} type="button" role="tab" aria-selected={tab === 'wechat'} onClick={() => { setTab('wechat'); setFeedback(''); if (wechatView === 'idle' || wechatView === 'error') void startWechatLogin() }}>{t('login.wechatTab')}</button>
-      </div>
-      {tab === 'email' ? (
-        <div className="login-pane" role="tabpanel">
-          <form className="login-form" onSubmit={submitEmail} noValidate>
-            <div className="form-field">
-              <label className="field-label" htmlFor="login-email">{t('login.email')}</label>
-              <input className="input" id="login-email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder={t('login.emailPlaceholder')} maxLength={254} autoComplete="email" autoCapitalize="none" spellCheck={false} aria-invalid={feedback === t('login.validationEmail')} required />
-            </div>
-            <div className="form-field">
-              <label className="field-label" htmlFor="login-email-code">{t('login.code')}</label>
-              <div className="code-input-wrapper">
-                <input className="input" id="login-email-code" type="text" value={emailCode} onChange={(event) => setEmailCode(event.target.value)} placeholder={t('login.codePlaceholder')} maxLength={6} autoComplete="one-time-code" inputMode="numeric" required />
-                <VerificationCodeButton loading={emailCodeLoading} retryAfter={emailRetryAfter} sent={emailCodeSent} onClick={() => { void requestEmailCodeAction() }} />
-              </div>
-            </div>
-            <div className="terms-checkbox"><input type="checkbox" id="login-email-terms" checked={termsAccepted} onChange={(event) => setTermsAccepted(event.target.checked)} /><label htmlFor="login-email-terms">{t('login.agreementPrefix')} <a href="/terms" target="_blank" rel="noopener noreferrer">{t('login.userAgreement')}</a> {t('login.agreementAnd')} <a href="/privacy" target="_blank" rel="noopener noreferrer">{t('login.privacyPolicy')}</a></label></div>
-            {feedback ? <p className="login-feedback" role="status" aria-live="polite">{feedback}</p> : null}
-            <button className="btn btn-primary submit-btn" type="submit" disabled={!termsAccepted || emailLoginLoading}>{emailLoginLoading ? t('login.loggingIn') : t('login.login')}</button>
-          </form>
-        </div>
-      ) : tab === 'phone' ? (
-        <div className="login-pane" role="tabpanel">
+      {tab === 'phone' ? (
+        <div className="login-pane login-pane--phone">
           <form className="login-form" onSubmit={submitPhone} noValidate>
-            <div className="form-field">
-              <label className="field-label" htmlFor="login-phone">{t('login.phone')}</label>
-              <div className="phone-input-wrapper">
-                <span className="phone-prefix">+86</span>
-                <input className="phone-input" id="login-phone" type="tel" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder={t('login.phonePlaceholder')} maxLength={11} autoComplete="tel" inputMode="numeric" aria-invalid={feedback === t('login.validationPhone')} required />
-              </div>
-            </div>
-            <div className="form-field">
-              <label className="field-label" htmlFor="login-code">{t('login.code')}</label>
+            <h2 className="login-panel-title" id="login-panel-heading"><label htmlFor="login-phone">{t('login.phoneLoginTitle')}</label></h2>
+            <LoginPhoneField id="login-phone" dialCode={dialCode} phone={phone} invalid={feedback === t('login.validationPhone')} onDialCodeChange={setDialCode} onPhoneChange={setPhone} inputRef={phoneInputRef} />
+            <div className="form-field code-field">
+              <label className="public-sr-only" htmlFor="login-code">{t('login.code')}</label>
               <div className="code-input-wrapper">
-                <input className="input" id="login-code" type="text" value={code} onChange={(event) => setCode(event.target.value)} placeholder={t('login.codePlaceholder')} maxLength={6} autoComplete="one-time-code" inputMode="numeric" required />
+                <input className="input" id="login-code" type="text" value={code} onChange={(event) => setCode(normalizeLoginPhone(event.target.value).slice(0, 6))} placeholder={t('login.codePlaceholder')} maxLength={6} autoComplete="one-time-code" inputMode="numeric" required />
                 <VerificationCodeButton loading={phoneCodeLoading} retryAfter={phoneRetryAfter} sent={phoneCodeSent} onClick={() => { void requestCode() }} />
               </div>
             </div>
-            <div className="terms-checkbox"><input type="checkbox" id="login-terms" checked={termsAccepted} onChange={(event) => setTermsAccepted(event.target.checked)} /><label htmlFor="login-terms">{t('login.agreementPrefix')} <a href="/terms" target="_blank" rel="noopener noreferrer">{t('login.userAgreement')}</a> {t('login.agreementAnd')} <a href="/privacy" target="_blank" rel="noopener noreferrer">{t('login.privacyPolicy')}</a></label></div>
+            <div className="remember-checkbox"><input type="checkbox" id="login-remember" checked={rememberLogin} onChange={(event) => setRememberLogin(event.target.checked)} /><label htmlFor="login-remember">{t('login.rememberLogin')}</label></div>
             {feedback ? <p className="login-feedback" role="status" aria-live="polite">{feedback}</p> : null}
-            <button className="btn btn-primary submit-btn" type="submit" disabled={!termsAccepted || phoneLoginLoading}>{phoneLoginLoading ? t('login.loggingIn') : t('login.login')}</button>
+            <button className="btn btn-primary submit-btn" type="submit" disabled={phoneLoginLoading}><span>{phoneLoginLoading ? t('login.loggingIn') : t('login.loginRegister')}</span></button>
+            <div className="terms-checkbox"><input type="checkbox" id="login-terms" checked={termsAccepted} onChange={(event) => setTermsAccepted(event.target.checked)} /><label htmlFor="login-terms">{t('login.agreementPrefix')} <a href="/terms" target="_blank" rel="noopener noreferrer">{t('login.userAgreement')}</a> {t('login.agreementAnd')} <a href="/privacy" target="_blank" rel="noopener noreferrer">{t('login.privacyPolicy')}</a>{t('login.accountCreationHint')}</label></div>
           </form>
+          <div className="login-separator"><span>{t('login.separatorOr')}</span></div>
+          <button className="btn login-switch-btn" type="button" onClick={() => { setTab('wechat'); setFeedback(''); if (wechatView === 'idle' || wechatView === 'error') void startWechatLogin() }}>
+            <img className="wechat-icon" src={wechatIcon} alt="" aria-hidden="true" />{t('login.wechatLoginAction')}
+          </button>
         </div>
       ) : (
-        <div className="login-pane" role="tabpanel">
+        <div className={`login-pane${wechatView === 'binding' ? ' login-pane--phone login-pane--binding' : ' login-pane--wechat'}`}>
           {wechatView === 'binding' ? (
             <form className="login-form" onSubmit={submitBinding} noValidate>
-              <p className="wechat-status" role="status" aria-live="polite">{t('login.bindingTitle')}</p>
-              <div className="form-field"><label className="field-label" htmlFor="binding-phone">{t('login.phone')}</label><div className="phone-input-wrapper"><span className="phone-prefix">+86</span><input className="phone-input" id="binding-phone" type="tel" value={bindingPhone} onChange={(event) => setBindingPhone(event.target.value)} placeholder={t('login.phonePlaceholder')} maxLength={11} autoComplete="tel" inputMode="numeric" required /></div></div>
-              <div className="form-field"><label className="field-label" htmlFor="binding-code">{t('login.code')}</label><div className="code-input-wrapper"><input className="input" id="binding-code" type="text" value={bindingCode} onChange={(event) => setBindingCode(event.target.value)} placeholder={t('login.codePlaceholder')} maxLength={6} inputMode="numeric" required /><VerificationCodeButton loading={bindingCodeLoading} retryAfter={bindingRetryAfter} sent={bindingCodeSent} onClick={() => { void requestBindingCodeAction() }} /></div></div>
+              <h2 className="login-panel-title" id="login-panel-heading"><label htmlFor="binding-phone">{t('login.bindPhoneTitle')}</label></h2>
+              <LoginPhoneField id="binding-phone" dialCode={bindingDialCode} phone={bindingPhone} invalid={feedback === t('login.validationPhone')} onDialCodeChange={setBindingDialCode} onPhoneChange={setBindingPhone} />
+              <div className="form-field code-field"><label className="public-sr-only" htmlFor="binding-code">{t('login.code')}</label><div className="code-input-wrapper"><input className="input" id="binding-code" type="text" value={bindingCode} onChange={(event) => setBindingCode(normalizeLoginPhone(event.target.value).slice(0, 6))} placeholder={t('login.codePlaceholder')} maxLength={6} autoComplete="one-time-code" inputMode="numeric" required /><VerificationCodeButton loading={bindingCodeLoading} retryAfter={bindingRetryAfter} sent={bindingCodeSent} onClick={() => { void requestBindingCodeAction() }} /></div></div>
+              <div className="remember-checkbox"><input type="checkbox" id="binding-remember" checked={rememberLogin} onChange={(event) => setRememberLogin(event.target.checked)} /><label htmlFor="binding-remember">{t('login.rememberLogin')}</label></div>
               {feedback ? <p className="login-feedback" role="status" aria-live="polite">{feedback}</p> : null}
-              <button className="btn btn-primary submit-btn" type="submit" disabled={bindingLoading}>{bindingLoading ? t('login.binding') : t('login.bindingLogin')}</button>
+              <button className="btn btn-primary submit-btn" type="submit" disabled={bindingLoading}><span>{bindingLoading ? t('login.binding') : t('login.bindAndLogin')}</span></button>
+              <div className="terms-checkbox"><input type="checkbox" id="binding-terms" checked={termsAccepted} onChange={(event) => setTermsAccepted(event.target.checked)} /><label htmlFor="binding-terms">{t('login.agreementPrefix')} <a href="/terms" target="_blank" rel="noopener noreferrer">{t('login.userAgreement')}</a> {t('login.agreementAnd')} <a href="/privacy" target="_blank" rel="noopener noreferrer">{t('login.privacyPolicy')}</a>{t('login.accountCreationHint')}</label></div>
+              <div className="login-separator"><span>{t('login.separatorOr')}</span></div>
+              <button className="btn login-switch-btn" type="button" onClick={() => { setTab('phone'); setWechatView('idle'); setWechatQr(null); setFeedback('') }}>{t('login.backToPhone')}</button>
             </form>
           ) : (
             <>
+              <h2 className="login-panel-title" id="login-panel-heading">{t('login.wechatLoginTitle')}</h2>
               <div className="wechat-qr-remote">{wechatQr ? <iframe title={t('login.wechatTab')} src={wechatQr.authorize_url} /> : <span>{wechatView === 'error' ? t('login.qrFailed') : t('login.qrLoading')}</span>}</div>
-              <p className="wechat-agreement">{t('login.wechatAgreement')}</p>
-              <p className="wechat-status" role="status" aria-live="polite">{feedback || (wechatView === 'pending' ? t('login.wechatScanHint') : t('login.wechatPreparing'))}</p>
-              {wechatQr ? <button className="btn btn-secondary submit-btn" type="button" onClick={() => { const popup = window.open(wechatQr.authorize_url, 'token-nx-wechat-login', 'popup,width=480,height=720'); wechatWindowRef.current = popup }}>{t('login.openWechat')}</button> : null}
-              {wechatView === 'error' ? <button className="btn btn-primary submit-btn" type="button" onClick={() => void startWechatLogin()}>{t('login.refreshQr')}</button> : null}
+              <p className={`wechat-status${wechatView === 'error' ? ' is-error' : ' public-sr-only'}`} role="status" aria-live="polite">{feedback || (wechatView === 'pending' ? t('login.wechatScanHint') : t('login.wechatPreparing'))}</p>
+              {wechatView === 'error' ? <button className="btn btn-primary submit-btn" type="button" onClick={() => void startWechatLogin()}><span>{t('login.refreshQr')}</span></button> : null}
+              <button className="btn login-switch-btn" type="button" onClick={() => { setTab('phone'); setFeedback('') }}>{t('login.backToPhone')}</button>
             </>
           )}
         </div>
@@ -738,9 +950,10 @@ type LoginDialogProps = {
   onClose: () => void
   onSuccess: () => void
   dialogId?: string
+  inviteCode?: string
 }
 
-export function LoginDialog({ open, onClose, onSuccess, dialogId = 'login-popover' }: LoginDialogProps) {
+export function LoginDialog({ open, onClose, onSuccess, dialogId = 'login-popover', inviteCode }: LoginDialogProps) {
   const { t } = useTranslation()
   const [mounted, setMounted] = useState(open)
   const closeTimerRef = useRef<number | undefined>(undefined)
@@ -788,21 +1001,27 @@ export function LoginDialog({ open, onClose, onSuccess, dialogId = 'login-popove
     <>
       <button className={`login-drawer-backdrop${open ? '' : ' is-closing'}`} type="button" aria-label={t('login.close')} onClick={onClose} />
       <div className={`login-popover${open ? ' is-open' : ' is-closing'}`} id={dialogId} role="dialog" aria-modal="true" aria-label={t('login.dialogLabel')}>
-        <LoginPanel onSuccess={handleSuccess} onAuthFailure={onClose} />
+        <button className="login-popover-close" type="button" aria-label={t('login.close')} title={t('login.close')} onClick={onClose}>
+          <IconClose aria-hidden="true" />
+        </button>
+        <LoginPanel inviteCode={inviteCode} onSuccess={handleSuccess} onAuthFailure={onClose} />
       </div>
     </>,
     document.body,
   )
 }
 
-export function LoginPopover({ onSuccess }: { onSuccess: () => void }) {
+export function LoginPopover({ onSuccess, inviteCode }: { onSuccess: () => void; inviteCode?: string }) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
 
   return (
     <div className="login-trigger-wrap">
-      <button className="btn btn-primary" type="button" aria-haspopup="dialog" aria-controls="login-popover" aria-expanded={open} onClick={() => setOpen((value) => !value)}>{t('login.trigger')}</button>
-      <LoginDialog open={open} onClose={() => setOpen(false)} onSuccess={onSuccess} />
+      <button className="btn btn-primary" type="button" aria-label={t('login.trigger')} aria-haspopup="dialog" aria-controls="login-popover" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
+        <span className="header-login-label header-login-label--desktop">{t('login.trigger')}</span>
+        <span className="header-login-label header-login-label--mobile">{t('login.loginRegister')}</span>
+      </button>
+      <LoginDialog open={open} onClose={() => setOpen(false)} onSuccess={onSuccess} inviteCode={inviteCode} />
     </div>
   )
 }
@@ -816,13 +1035,25 @@ type LoginRequiredActionProps = {
 export function LoginRequiredAction({ returnPath, children, className = '' }: LoginRequiredActionProps) {
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
+  const authStatus = useAppSelector((state) => state.auth.status)
+  const requiresLogin = authStatus !== 'authenticated'
   const safeReturnPath = normalizeLoginReturnPath(returnPath)
   const fallbackPath = `/login?return=${encodeURIComponent(safeReturnPath)}`
 
   return (
     <>
-      <Link className={className} to={fallbackPath} aria-haspopup="dialog" aria-controls="login-popover" aria-expanded={open} onClick={(event) => { event.preventDefault(); setOpen(true) }}>{children}</Link>
-      <LoginDialog open={open} onClose={() => setOpen(false)} onSuccess={() => navigate(safeReturnPath)} />
+      <Link
+        className={className}
+        to={requiresLogin ? fallbackPath : safeReturnPath}
+        aria-haspopup={requiresLogin ? 'dialog' : undefined}
+        aria-controls={requiresLogin ? 'login-popover' : undefined}
+        aria-expanded={requiresLogin ? open : undefined}
+        onClick={requiresLogin ? (event) => { event.preventDefault(); setOpen(true) } : undefined}
+      >
+        {children}
+      </Link>
+      {/* 中文：已登录用户直接进入目标页面，仅未登录时挂载登录弹窗。 */}
+      {requiresLogin ? <LoginDialog open={open} onClose={() => setOpen(false)} onSuccess={() => navigate(safeReturnPath)} /> : null}
     </>
   )
 }
@@ -830,13 +1061,37 @@ export function LoginRequiredAction({ returnPath, children, className = '' }: Lo
 export function ThemeToggleButton() {
   const { t } = useTranslation()
   const mode = useThemeMode()
-  const icon = mode === 'light' ? <IconSunStroked className="icon-svg tool-icon" /> : mode === 'dark' ? <IconMoonStroked className="icon-svg tool-icon" /> : <IconDesktop className="icon-svg tool-icon" />
+  const resolvedTheme = useResolvedTheme()
+  const icon = resolvedTheme === 'dark'
+    ? <IconMoonStroked className="icon-svg tool-icon" />
+    : <IconSunStroked className="icon-svg tool-icon" />
   const label = t(themeModeLabel(mode))
 
-  return <button className="header-tool theme-switcher" type="button" title={`${t('theme.switch')} · ${label}`} aria-label={`${t('theme.switch')} · ${label}`} onClick={cycleThemeMode}>{icon}</button>
+  return <button className="header-tool theme-switcher" type="button" title={`${t('theme.switch')} · ${label}`} aria-label={`${t('theme.switch')} · ${label}`} onClick={(event) => { const rect = event.currentTarget.getBoundingClientRect(); cycleThemeModeWithTransition({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }) }}>{icon}</button>
 }
 
-export function PublicHeader({ enterpriseAccess }: { enterpriseAccess?: EnterpriseMenuAccess } = {}) {
+function LanguageToggleButton({ mobile = false }: { mobile?: boolean }) {
+  const { t, i18n: translationI18n } = useTranslation()
+  const isEnglish = translationI18n.resolvedLanguage?.startsWith('en') ?? false
+  const nextLanguage = isEnglish ? 'zh-CN' : 'en-US'
+
+  return (
+    <button className={`header-tool language-switcher${isEnglish ? ' is-english' : ''}${mobile ? ' language-switcher--mobile' : ''}`} type="button" title={t('language.label')} aria-label={t('language.toggle')} aria-pressed={isEnglish} onClick={() => { void translationI18n.changeLanguage(nextLanguage) }}>
+      <span className="language-switcher-track" aria-hidden="true">
+        <span className="language-switcher-thumb" />
+        <span className="language-switcher-option language-switcher-option--en">EN</span>
+        <span className="language-switcher-option language-switcher-option--zh">中</span>
+      </span>
+    </button>
+  )
+}
+
+type PublicHeaderProps = {
+  enterpriseAccess?: EnterpriseMenuAccess
+  unreadNotificationCount?: number
+}
+
+export function PublicHeader({ enterpriseAccess, unreadNotificationCount = 0 }: PublicHeaderProps = {}) {
   const { t } = useTranslation()
   const location = useLocation()
   const navigate = useNavigate()
@@ -844,72 +1099,249 @@ export function PublicHeader({ enterpriseAccess }: { enterpriseAccess?: Enterpri
   const dispatch = useAppDispatch()
   const auth = useAppSelector((state) => state.auth)
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [scrolled, setScrolled] = useState(false)
+  const [billingMenuOpen, setBillingMenuOpen] = useState(false)
+  const [billingBalanceVisible, setBillingBalanceVisible] = useState(initialBillingBalanceVisible)
+  const [billingOverview, setBillingOverview] = useState<AccountOverviewResponse | null>(null)
+  const [accountSettingsOpen, setAccountSettingsOpen] = useState(false)
+  const headerRef = useRef<HTMLElement | null>(null)
+  const billingOverviewCacheRef = useRef(new Map<string, BillingOverviewCacheEntry>())
+  const billingOverviewRequestsRef = useRef(new Map<string, Promise<AccountOverviewResponse>>())
+  const billingHoverRequestTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const inviteCode = new URLSearchParams(location.search).get('invite_code')?.trim() || undefined
+  const billingContext = billingOverviewContext(store.activeWorkspace)
+  const billingContextCacheKey = billingOverviewKey(billingContext)
+  const billingContextCacheKeyRef = useRef(billingContextCacheKey)
+  billingContextCacheKeyRef.current = billingContextCacheKey
+  const billingBalance = formatBillingOverviewAmount(billingOverview?.account_balance_yuan)
+  const billingInvitationReward = formatBillingOverviewAmount(billingOverview?.invitation_reward_yuan)
+  const billingInvoiceableAmount = formatBillingOverviewAmount(billingOverview?.invoiceable_amount_yuan)
+  const maskedBillingBalance = billingBalance === '--' ? '--' : billingBalance.replace(/\D/g, '').replace(/\d/g, '*')
+  const billingHoverCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const currentPath = location.pathname
+  const publicLinks = auth.status === 'authenticated' ? [...PUBLIC_LINKS, AUTHENTICATED_PUBLIC_LINK] : PUBLIC_LINKS
   function go(path: string): void {
-    setMobileOpen(false)
+    if (path === currentPath) {
+      setMobileOpen(false)
+      return
+    }
     navigate(path)
   }
 
-  const isEnglish = i18n.resolvedLanguage?.startsWith('en') ?? false
-  const nextLanguage = isEnglish ? 'zh-CN' : 'en-US'
+  useLayoutEffect(() => {
+    clearBillingHoverRequestTimer()
+    setMobileOpen(false)
+    setBillingMenuOpen(false)
+  }, [currentPath])
+
+  useEffect(() => {
+    let animationFrame = 0
+    const syncScrollState = (): void => {
+      cancelAnimationFrame(animationFrame)
+      animationFrame = requestAnimationFrame(() => setScrolled(window.scrollY > 8))
+    }
+    syncScrollState()
+    window.addEventListener('scroll', syncScrollState, { passive: true })
+    return () => {
+      cancelAnimationFrame(animationFrame)
+      window.removeEventListener('scroll', syncScrollState)
+    }
+  }, [])
+
+  function clearBillingHoverCloseTimer(): void {
+    if (billingHoverCloseTimerRef.current === null) return
+    clearTimeout(billingHoverCloseTimerRef.current)
+    billingHoverCloseTimerRef.current = null
+  }
+
+  function clearBillingHoverRequestTimer(): void {
+    if (billingHoverRequestTimerRef.current === null) return
+    clearTimeout(billingHoverRequestTimerRef.current)
+    billingHoverRequestTimerRef.current = null
+  }
+
+  function loadBillingOverview(context: BillingContext, contextKey: string): void {
+    const cached = billingOverviewCacheRef.current.get(contextKey)
+    if (cached && Date.now() - cached.loadedAt < BILLING_OVERVIEW_CACHE_MS) {
+      setBillingOverview(cached.data)
+      return
+    }
+    const pending = billingOverviewRequestsRef.current.get(contextKey)
+    const request = pending ?? getAccountOverview(context)
+    if (!pending) billingOverviewRequestsRef.current.set(contextKey, request)
+    void request.then((data) => {
+      billingOverviewCacheRef.current.set(contextKey, { data, loadedAt: Date.now() })
+      if (billingContextCacheKeyRef.current === contextKey) setBillingOverview(data)
+    }).catch((error: unknown) => {
+      if (isAuthenticationFailure(error)) dispatch(invalidateAuth())
+    }).finally(() => {
+      if (billingOverviewRequestsRef.current.get(contextKey) === request) billingOverviewRequestsRef.current.delete(contextKey)
+    })
+  }
+
+  function openBillingMenu(): void {
+    clearBillingHoverCloseTimer()
+    setBillingMenuOpen(true)
+    clearBillingHoverRequestTimer()
+    billingHoverRequestTimerRef.current = setTimeout(() => {
+      billingHoverRequestTimerRef.current = null
+      loadBillingOverview(billingContext, billingContextCacheKey)
+    }, BILLING_OVERVIEW_HOVER_DELAY_MS)
+  }
+
+  function toggleBillingBalanceVisibility(): void {
+    setBillingBalanceVisible((visible) => {
+      const nextVisible = !visible
+      persistBillingBalanceVisible(nextVisible)
+      return nextVisible
+    })
+  }
+
+  function scheduleBillingMenuClose(): void {
+    clearBillingHoverCloseTimer()
+    clearBillingHoverRequestTimer()
+    billingHoverCloseTimerRef.current = setTimeout(() => {
+      billingHoverCloseTimerRef.current = null
+      setBillingMenuOpen(false)
+    }, 160)
+  }
+
+  useEffect(() => {
+    setBillingOverview(billingOverviewCacheRef.current.get(billingContextCacheKey)?.data ?? null)
+  }, [billingContextCacheKey])
+
+  useEffect(() => () => {
+    clearBillingHoverCloseTimer()
+    clearBillingHoverRequestTimer()
+  }, [])
+
+  useEffect(() => {
+    if (!mobileOpen) return undefined
+    const handlePointerDown = (event: PointerEvent): void => {
+      if (accountSettingsOpen && event.target instanceof Element && event.target.closest('.account-settings-overlay, .profile-contact-modal')) return
+      if (!headerRef.current?.contains(event.target as Node)) setMobileOpen(false)
+    }
+    const handleKeyDown = (event: KeyboardEvent): void => {
+      if (accountSettingsOpen) return
+      if (event.key === 'Escape') setMobileOpen(false)
+    }
+    document.addEventListener('pointerdown', handlePointerDown)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [accountSettingsOpen, mobileOpen])
 
   function renderPublicLink(link: PublicLink, mobile = false): ReactNode {
-    const className = `public-nav-link${currentPath.startsWith(link.path) ? ' active' : ''}${link.disabled ? ' public-nav-link--disabled' : ''}`
+    const isActive = !link.disabled && currentPath.startsWith(link.path)
+    const showEmphasis = isActive
+    const className = `public-nav-link${isActive ? ' active' : ''}${link.disabled ? ' public-nav-link--disabled' : ''}${showEmphasis ? ' public-nav-link--emphasized' : ''}`
+    const linkContent = <>{t(link.labelKey)}{mobile ? <IconChevronRight className="public-mobile-nav-chevron" aria-hidden="true" /> : null}</>
     if (link.disabled) {
-      return <span key={`${link.path}-${link.labelKey}`} className={className} aria-disabled="true">{t(link.labelKey)}</span>
+      return <span key={`${link.path}-${link.labelKey}`} className={className} aria-disabled="true">{linkContent}</span>
     }
-    return <Link key={`${link.path}-${link.labelKey}`} className={className} to={link.path} onClick={mobile ? () => setMobileOpen(false) : undefined}>{t(link.labelKey)}</Link>
+    const linkNode = <Link key={`${link.path}-${link.labelKey}`} className={className} to={link.path} onClick={mobile ? (event) => { event.preventDefault(); go(link.path) } : undefined} onFocus={!mobile && link.labelKey === 'nav.billing' ? openBillingMenu : undefined} aria-haspopup={!mobile && link.labelKey === 'nav.billing' ? 'dialog' : undefined}>{linkContent}</Link>
+    if (mobile || link.labelKey !== 'nav.billing') return linkNode
+    return <div className="public-billing-menu-shell" key={`${link.path}-${link.labelKey}`} onMouseEnter={openBillingMenu} onMouseLeave={scheduleBillingMenuClose}>
+      {linkNode}
+      {billingMenuOpen ? <div className="billing-hover-card" role="dialog" aria-label={t('console.billing.balance')}>
+        <div className="billing-hover-card-top">
+          <div className="billing-hover-balance">
+            <div className="billing-hover-label">
+              <span>{t('console.billing.balance')}</span><span>{t('console.billing.currency')}</span>
+              <button className="billing-hover-eye" type="button" aria-label={t(billingBalanceVisible ? 'console.billing.hideBalance' : 'console.billing.showBalance')} title={t(billingBalanceVisible ? 'console.billing.hideBalance' : 'console.billing.showBalance')} onClick={toggleBillingBalanceVisibility}>
+                {billingBalanceVisible ? <IconEyeOpenedStroked aria-hidden="true" /> : <IconEyeClosedStroked aria-hidden="true" />}
+              </button>
+            </div>
+            <strong className={billingBalanceVisible ? '' : 'is-hidden'} title={billingBalanceVisible ? billingOverview?.account_balance_yuan : undefined}>{billingBalanceVisible ? billingBalance : maskedBillingBalance}</strong>
+          </div>
+          <Link className="billing-hover-recharge" to="/console/billing?tab=recharge" onClick={() => setBillingMenuOpen(false)}><span>{t('console.billing.rechargeNow')}</span></Link>
+        </div>
+        <div className="billing-hover-facts">
+          <div><span>{t('console.billing.promotionBalance')}</span><strong title={billingOverview?.invitation_reward_yuan}>{billingInvitationReward}</strong></div>
+          <div><span>{t('console.billing.invoiceAvailable')}</span><strong title={billingOverview?.invoiceable_amount_yuan}>{billingInvoiceableAmount}</strong></div>
+        </div>
+        <div className="billing-hover-divider" aria-hidden="true" />
+        <Link className="billing-hover-center" to="/console/billing" onClick={() => setBillingMenuOpen(false)}>{t('console.billing.billingCenter')}</Link>
+      </div> : null}
+    </div>
   }
 
   return (
-    <header className="app-header public-header public-header--home">
+    <>
+      <style>{publicMobileNavStyles}</style>
+      <header className={`app-header public-header public-header--home${scrolled ? ' is-scrolled' : ''}${mobileOpen ? ' mobile-nav-open' : ''}`} ref={headerRef}>
       <div className="app-header-inner app-header-full public-header-inner">
         <button className="mobile-menu-button" type="button" aria-controls="public-mobile-nav" aria-expanded={mobileOpen} aria-label={mobileOpen ? t('nav.close') : t('nav.open')} onClick={() => setMobileOpen((open) => !open)}>
-          {mobileOpen ? <IconClose className="icon-svg" /> : <IconMenu className="icon-svg" />}
+          <span className="mobile-menu-icon" aria-hidden="true">
+            <IconMenu className="icon-svg mobile-menu-icon-menu" />
+            <IconClose className="icon-svg mobile-menu-icon-close" />
+          </span>
         </button>
-        <Link className="header-logo brand-link" to="/" aria-label={`${t('common.home')} Token NX`}><span className="brand-lockup"><BrandLogo /></span></Link>
-        <span className="header-trial-badge"><strong>{t('console.common.trial')}</strong><em>{t('console.models.free')}</em></span>
+        <Link className="header-logo brand-link" to="/" aria-label={`${t('common.home')} Token NX`}><img className="header-brand-image" src={headerLogo} alt="" aria-hidden="true" /></Link>
+        <span className="header-trial-badge">
+          <img className="header-trial-pill" src={headerTrialPill} alt="" aria-hidden="true" />
+          <span className="header-trial-glass" aria-hidden="true" />
+          <strong>{t('console.common.trial')}</strong>
+          <span className="header-trial-subscription" aria-hidden="true">{t('console.common.subscription')}</span>
+          <span className="header-trial-free"><img src={headerTrialFreeTag} alt="" aria-hidden="true" /><em>{t('console.models.free')}</em></span>
+        </span>
         <nav className="header-nav public-nav" aria-label={t('console.common.publicNav')}>
-          {PUBLIC_LINKS.map((link) => renderPublicLink(link))}
-          </nav>
-          <div className="header-actions public-header-actions">
-            <div className="header-tools">
-              <button className="header-tool header-tool-badge" type="button" title={t('nav.notifications')} aria-label={t('nav.notifications')} onClick={() => requestSupportWidget('notifications')}>
-                <IconBellStroked className="icon-svg tool-icon" />
-                <i className="header-notification-dot" aria-hidden="true" />
-              </button>
-              <ThemeToggleButton />
-              <button className={`header-tool language-switcher${isEnglish ? ' is-english' : ''}`} type="button" title={t('language.label')} aria-label={t('language.toggle')} aria-pressed={isEnglish} onClick={() => { void i18n.changeLanguage(nextLanguage) }}>
-                <span className="language-switch-track" aria-hidden="true">
-                  <span className="language-option">EN</span>
-                  <span className="language-option">中</span>
-                  <i className="language-switch-thumb" />
-                </span>
-              </button>
-            </div>
+          {publicLinks.map((link) => renderPublicLink(link))}
+        </nav>
+        <div className="header-actions public-header-actions">
+          <div className="header-tools">
+            <ThemeToggleButton />
+            <button className="header-tool header-tool-badge" type="button" title={t('nav.notifications')} aria-label={t('nav.notifications')} onClick={() => requestSupportWidget('notifications')}>
+              <IconBellStroked className="header-notification-icon" aria-hidden="true" />
+              {unreadNotificationCount > 0 ? <i className="header-notification-dot" aria-hidden="true" /> : null}
+            </button>
+            <LanguageToggleButton />
+          </div>
           {auth.status === 'authenticated' ? (
-            <UserMenu
-              store={store}
-              userId={auth.user?.id || ''}
-              userName={auth.user?.display_name || store.nickname}
-              phone={auth.user?.phone_masked || store.phone}
-              enterpriseAccess={enterpriseAccess}
-              onNavigate={go}
-              onLogout={() => { void dispatch(logoutAuth()).finally(() => go('/')) }}
-            />
+            <>
+              <UserMenu
+                store={store}
+                userId={auth.user?.id || ''}
+                userName={auth.user?.display_name || store.nickname}
+                phone={auth.user?.phone_masked || store.phone}
+                enterpriseAccess={enterpriseAccess}
+                accountSettingsOpen={accountSettingsOpen}
+                onNavigate={go}
+                onOpenSettings={() => setAccountSettingsOpen(true)}
+                onLogout={() => { void dispatch(logoutAuth()).finally(() => go('/')) }}
+              />
+              <button className="public-mobile-logout" type="button" onClick={() => { void dispatch(logoutAuth()).finally(() => go('/')) }}>
+                <span>{t('nav.logout')}</span>
+              </button>
+            </>
           ) : (
-            <LoginPopover onSuccess={() => go(DEFAULT_CONSOLE_PATH)} />
+            <LoginPopover inviteCode={inviteCode} onSuccess={() => {
+              setMobileOpen(false)
+              if (inviteCode) navigate('/', { replace: true })
+            }} />
           )}
         </div>
       </div>
       <nav className="public-mobile-nav" id="public-mobile-nav" aria-label={t('console.common.publicNav')} hidden={!mobileOpen}>
-        {PUBLIC_LINKS.map((link) => renderPublicLink(link, true))}
+        {publicLinks.map((link) => renderPublicLink(link, true))}
+        <div className="public-mobile-tools">
+          <ThemeToggleButton />
+          <button className="header-tool header-tool-badge" type="button" title={t('nav.notifications')} aria-label={t('nav.notifications')} onClick={() => { setMobileOpen(false); requestSupportWidget('notifications') }}>
+            <IconBellStroked className="header-notification-icon" aria-hidden="true" />
+            {unreadNotificationCount > 0 ? <i className="header-notification-dot" aria-hidden="true" /> : null}
+          </button>
+          <LanguageToggleButton mobile />
+        </div>
       </nav>
-    </header>
+      </header>
+      {accountSettingsOpen ? <AccountSettingsModal onClose={() => setAccountSettingsOpen(false)} /> : null}
+    </>
   )
 }
 
-type ConsoleNavIconName = 'quickstart' | 'models' | 'model-test' | 'video' | 'api-keys' | 'usage' | 'records' | 'billing' | 'real-name' | 'settings' | 'account' | 'members' | 'governance' | 'bell' | 'pie' | 'logout' | 'workspace'
+type ConsoleNavIconName = 'quickstart' | 'models' | 'model-test' | 'video' | 'api-keys' | 'usage' | 'records' | 'billing' | 'real-name' | 'settings' | 'account' | 'members' | 'governance' | 'bell' | 'pie' | 'logout' | 'workspace' | 'gift'
 
 type ConsoleNavItem = {
   key: string
@@ -946,6 +1378,7 @@ const CONSOLE_NAV_ICONS: Record<ConsoleNavIconName, (props: { className?: string
   pie: (props) => <IconPieChartStroked {...props} />,
   logout: (props) => <IconExit {...props} />,
   workspace: (props) => <IconBriefcaseStroked {...props} />,
+  gift: (props) => <IconGiftStroked {...props} />,
 }
 
 function ConsoleNavIcon({ name, className = '' }: { name: ConsoleNavIconName; className?: string }) {
@@ -985,7 +1418,15 @@ const personalNavGroups: ConsoleNavGroup[] = [
       { key: '/console/real-name', label: '实名认证', icon: 'real-name' },
       { key: '/console/settings', label: '个人中心', icon: 'account' },
       { key: '/console/billing', label: '费用管理', icon: 'billing' },
-      { key: '/console/api-keys', label: 'API 密钥管理', icon: 'api-keys' },
+      { key: '/console/api-keys', label: '密钥管理', icon: 'api-keys' },
+    ],
+  },
+  {
+    key: 'activity',
+    label: '活动中心',
+    items: [
+      { key: '/console/invitations', label: '邀请返现', icon: 'gift' },
+      { key: '/console/real-name-reward', label: '认证返现', icon: 'gift', actionOnly: true, soon: true },
     ],
   },
   {
@@ -1047,7 +1488,7 @@ const enterpriseNavGroups: ConsoleNavGroup[] = [
     label: '账户管理',
     items: [
       { key: '/console/settings', label: '账号信息', icon: 'account' },
-      { key: '/console/api-keys', label: 'API 密钥管理', icon: 'api-keys' },
+      { key: '/console/api-keys', label: '密钥管理', icon: 'api-keys' },
     ],
   },
 ]
@@ -1056,9 +1497,10 @@ const CONSOLE_NAV_LABEL_KEYS: Record<string, string> = {
   '模型使用': 'console.nav.modelUse', '快速接入': 'console.nav.quickstart', '模型广场': 'console.nav.models', '体验中心': 'console.nav.experience',
   '智能对话': 'console.nav.playground', '视频生成': 'console.nav.video', '数据分析': 'console.nav.analytics', '用量统计': 'console.nav.usage', '调用记录': 'console.nav.records',
   '账户管理': 'console.nav.account', '实名认证': 'console.nav.realName', '个人中心': 'console.nav.profile', '费用管理': 'console.nav.billing',
-  'API 密钥管理': 'console.nav.apiKeys', '企业中心': 'console.nav.enterpriseCenter', '企业入驻': 'console.nav.enterpriseCreate', '企业管理': 'console.nav.enterpriseManagement',
+  'API 密钥管理': 'console.nav.apiKeys', '密钥管理': 'console.nav.apiKeys', '企业中心': 'console.nav.enterpriseCenter', '企业入驻': 'console.nav.enterpriseCreate', '企业管理': 'console.nav.enterpriseManagement',
   '人员管理': 'console.nav.members', '用量管理': 'console.nav.enterpriseUsage', '操作日志': 'console.nav.audit', '我的数据': 'console.nav.myData',
   '企业设置': 'console.nav.enterpriseSettings', '通用设置': 'console.nav.settings', '模型管理': 'console.nav.enterpriseModels', '权限与标签': 'console.nav.governance', '账号信息': 'console.nav.accountInfo',
+  '活动中心': 'console.nav.activityCenter', '邀请返现': 'console.nav.invitationReward', '认证返现': 'console.nav.realNameReward',
 }
 
 function localizeConsoleNavLabel(t: TFunction, value: string): string {
@@ -1066,6 +1508,7 @@ function localizeConsoleNavLabel(t: TFunction, value: string): string {
   return key ? t(key) : value
 }
 
+// 中文：视频生成已开放；个人和企业空间共用同一组体验中心入口。
 // 中文：企业所有者入口同时驱动侧栏和用户菜单，避免两个导航面板出现权限差异。
 export function consoleNavGroupsFor(workspace: Pick<Workspace, 'type' | 'role'>, permissions: readonly string[] = []): ConsoleNavGroup[] {
   const source = workspace.type === 'enterprise' ? enterpriseNavGroups : personalNavGroups
@@ -1077,7 +1520,20 @@ export function consoleNavGroupsFor(workspace: Pick<Workspace, 'type' | 'role'>,
 }
 
 function userMenuGroupsFor(workspace: Workspace, permissions: readonly string[] = []): ConsoleNavGroup[] {
-  return consoleNavGroupsFor(workspace, permissions)
+  const itemsByPath = new Map(
+    consoleNavGroupsFor(workspace, permissions)
+      .flatMap((group) => group.items)
+      .map((item) => [item.path ?? item.key, item] as const),
+  )
+  // Keep the profile menu in the Figma order and grouping; the full console navigation remains unchanged.
+  const menuGroups = [
+    { key: 'profile-experience', label: '体验中心', paths: ['/console/playground', '/console/video'] },
+    { key: 'profile-activity', label: '数据与费用', paths: ['/console/usage', '/console/billing', '/console/records'] },
+    { key: 'profile-account', label: '账户管理', paths: ['/console/api-keys', '/console/invitations'] },
+  ]
+  return menuGroups
+    .map((group) => ({ ...group, items: group.paths.map((path) => itemsByPath.get(path)).filter((item): item is ConsoleNavItem => Boolean(item)) }))
+    .filter((group) => group.items.length > 0)
 }
 
 type UserMenuProps = {
@@ -1086,7 +1542,9 @@ type UserMenuProps = {
   userName: string
   phone: string
   enterpriseAccess?: EnterpriseMenuAccess
+  accountSettingsOpen?: boolean
   onNavigate: (path: string) => void
+  onOpenSettings: () => void
   onLogout: () => void
 }
 
@@ -1108,10 +1566,12 @@ export function workspacesFromMemberships(memberships: EnterpriseMembership[]): 
 }
 
 const WORKSPACE_MENU_VIEWPORT_GAP_PX = 12
-const WORKSPACE_MENU_GAP_PX = 12
+const WORKSPACE_MENU_GAP_PX = 1
+// 临时调试开关：固定为点击展开，样式调整完成后改为 false 即可恢复 hover 交互。
+const USER_MENU_CLICK_PINNED_MODE = false
 
 // 中文：登录后的用户菜单与参考站保持同一层级，空间切换和控制台入口共用当前工作空间状态。
-function UserMenu({ store, userId, userName, phone, enterpriseAccess, onNavigate, onLogout }: UserMenuProps) {
+function UserMenu({ store, userId, userName, phone, enterpriseAccess, accountSettingsOpen = false, onNavigate, onOpenSettings, onLogout }: UserMenuProps) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [workspaceOpen, setWorkspaceOpen] = useState(false)
@@ -1120,12 +1580,43 @@ function UserMenu({ store, userId, userName, phone, enterpriseAccess, onNavigate
   const workspaceTriggerRef = useRef<HTMLButtonElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const workspaceMenuRef = useRef<HTMLDivElement>(null)
+  const hoverCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [workspaceMenuPosition, setWorkspaceMenuPosition] = useState<{ top: number; left: number } | null>(null)
   const displayName = limitDisplayNameLength(userName.trim()) || limitDisplayNameLength(store.nickname) || t('console.common.demoUser')
   const phoneLabel = phone.trim() || t('console.common.phoneUnavailable')
   const initial = (displayName || store.avatar || '用').slice(0, 1).toUpperCase()
   const activeWorkspace = store.activeWorkspace
   const groups = userMenuGroupsFor(activeWorkspace, enterpriseAccess?.permissions)
+  const keepMenuOpenForSettings = accountSettingsOpen && typeof window !== 'undefined' && window.innerWidth <= 760
+
+  function clearHoverCloseTimer(): void {
+    if (hoverCloseTimerRef.current === null) return
+    clearTimeout(hoverCloseTimerRef.current)
+    hoverCloseTimerRef.current = null
+  }
+
+  function openMenuOnHover(): void {
+    if (USER_MENU_CLICK_PINNED_MODE) return
+    clearHoverCloseTimer()
+    setOpen(true)
+  }
+
+  function scheduleHoverClose(): void {
+    if (USER_MENU_CLICK_PINNED_MODE || keepMenuOpenForSettings) return
+    clearHoverCloseTimer()
+    hoverCloseTimerRef.current = setTimeout(() => {
+      hoverCloseTimerRef.current = null
+      closeMenu()
+    }, 160)
+  }
+
+  useEffect(() => () => clearHoverCloseTimer(), [])
+
+  useEffect(() => {
+    if (!keepMenuOpenForSettings) return
+    clearHoverCloseTimer()
+    setOpen(true)
+  }, [keepMenuOpenForSettings])
 
   useEffect(() => {
     let mounted = true
@@ -1143,19 +1634,21 @@ function UserMenu({ store, userId, userName, phone, enterpriseAccess, onNavigate
   }, [store.replaceEnterpriseWorkspaces, userId])
 
   function updateWorkspaceMenuPosition(): void {
-    const anchor = dropdownRef.current?.getBoundingClientRect() ?? workspaceTriggerRef.current?.getBoundingClientRect()
+    const trigger = workspaceTriggerRef.current?.getBoundingClientRect()
+    const compactViewport = window.innerWidth <= 760
+    const anchor = compactViewport ? trigger : (dropdownRef.current?.getBoundingClientRect() ?? trigger)
     const menu = workspaceMenuRef.current
     if (!anchor || !menu) return
     const menuWidth = menu.offsetWidth
     const menuHeight = menu.offsetHeight
-    const left = Math.min(
-      Math.max(WORKSPACE_MENU_VIEWPORT_GAP_PX, anchor.left - menuWidth - WORKSPACE_MENU_GAP_PX),
-      Math.max(WORKSPACE_MENU_VIEWPORT_GAP_PX, window.innerWidth - menuWidth - WORKSPACE_MENU_VIEWPORT_GAP_PX),
-    )
-    const top = Math.min(
-      Math.max(WORKSPACE_MENU_VIEWPORT_GAP_PX, anchor.top),
-      Math.max(WORKSPACE_MENU_VIEWPORT_GAP_PX, window.innerHeight - menuHeight - WORKSPACE_MENU_VIEWPORT_GAP_PX),
-    )
+    const maxLeft = Math.max(WORKSPACE_MENU_VIEWPORT_GAP_PX, window.innerWidth - menuWidth - WORKSPACE_MENU_VIEWPORT_GAP_PX)
+    const maxTop = Math.max(WORKSPACE_MENU_VIEWPORT_GAP_PX, window.innerHeight - menuHeight - WORKSPACE_MENU_VIEWPORT_GAP_PX)
+    const left = compactViewport
+      ? Math.min(Math.max(WORKSPACE_MENU_VIEWPORT_GAP_PX, anchor.left), maxLeft)
+      : Math.min(Math.max(WORKSPACE_MENU_VIEWPORT_GAP_PX, anchor.left - menuWidth - WORKSPACE_MENU_GAP_PX), maxLeft)
+    const top = compactViewport
+      ? Math.min(Math.max(WORKSPACE_MENU_VIEWPORT_GAP_PX, anchor.bottom + 8), maxTop)
+      : Math.min(Math.max(WORKSPACE_MENU_VIEWPORT_GAP_PX, anchor.top), maxTop)
     setWorkspaceMenuPosition({ top, left })
   }
 
@@ -1165,10 +1658,18 @@ function UserMenu({ store, userId, userName, phone, enterpriseAccess, onNavigate
       return undefined
     }
     updateWorkspaceMenuPosition()
-    const handleViewportChange = () => updateWorkspaceMenuPosition()
+    let frame = 0
+    const handleViewportChange = () => {
+      if (frame) return
+      frame = window.requestAnimationFrame(() => {
+        frame = 0
+        updateWorkspaceMenuPosition()
+      })
+    }
     window.addEventListener('resize', handleViewportChange)
-    document.addEventListener('scroll', handleViewportChange, true)
+    document.addEventListener('scroll', handleViewportChange, { capture: true, passive: true })
     return () => {
+      window.cancelAnimationFrame(frame)
       window.removeEventListener('resize', handleViewportChange)
       document.removeEventListener('scroll', handleViewportChange, true)
     }
@@ -1183,9 +1684,11 @@ function UserMenu({ store, userId, userName, phone, enterpriseAccess, onNavigate
   useEffect(() => {
     if (!open) return undefined
     function handlePointerDown(event: PointerEvent): void {
+      if (USER_MENU_CLICK_PINNED_MODE || keepMenuOpenForSettings) return
       if (event.target instanceof Node && !shellRef.current?.contains(event.target) && !workspaceMenuRef.current?.contains(event.target)) closeMenu()
     }
     function handleKeyDown(event: KeyboardEvent): void {
+      if (keepMenuOpenForSettings) return
       if (event.key !== 'Escape') return
       event.preventDefault()
       if (workspaceOpen) {
@@ -1201,11 +1704,24 @@ function UserMenu({ store, userId, userName, phone, enterpriseAccess, onNavigate
       document.removeEventListener('pointerdown', handlePointerDown)
       document.removeEventListener('keydown', handleKeyDown)
     }
-  }, [open, workspaceOpen])
+  }, [keepMenuOpenForSettings, open, workspaceOpen])
 
   function navigateFromMenu(path: string): void {
     closeMenu()
     onNavigate(path)
+  }
+
+  function toggleMenuFromTrigger(): void {
+    if (!USER_MENU_CLICK_PINNED_MODE || !open) {
+      setOpen(true)
+      return
+    }
+    closeMenu()
+  }
+
+  function openAccountSettings(): void {
+    if (window.innerWidth > 760) closeMenu()
+    onOpenSettings()
   }
 
   function switchWorkspace(workspace: Workspace): void {
@@ -1227,23 +1743,24 @@ function UserMenu({ store, userId, userName, phone, enterpriseAccess, onNavigate
         id="workspace-menu"
         role="menu"
         aria-label={t('console.common.switchWorkspace')}
+        onMouseEnter={clearHoverCloseTimer}
+        onMouseLeave={scheduleHoverClose}
         style={workspaceMenuPosition ? { top: workspaceMenuPosition.top, left: workspaceMenuPosition.left } : { visibility: 'hidden' }}
       >
-        <div className="workspace-menu-heading">{t('console.common.switchWorkspace')}</div>
         {store.workspaces.map((workspace) => {
           const workspaceName = workspace.type === 'personal' ? displayName : workspace.name
           const workspaceInitial = workspaceName.slice(0, 1).toUpperCase()
           const active = workspace.id === activeWorkspace.id
           return <button className={`workspace-menu-item${active ? ' active' : ''}`} type="button" role="menuitem" key={workspace.id} aria-current={active ? 'true' : undefined} aria-pressed={active} title={workspaceName} onClick={() => switchWorkspace(workspace)}>
-            <span className={`workspace-avatar${workspace.type === 'personal' ? '' : ' workspace-avatar-muted'}`}>{workspaceInitial}</span>
-            <span className="workspace-info"><span className="workspace-name">{workspaceName}</span><span className="workspace-type">{workspaceTypeLabel(workspace, t)}</span></span>
-            {active ? <span className="workspace-current-label">{t('console.common.current')}</span> : null}
+            <span className="workspace-avatar">{workspaceInitial}</span>
+            <span className="workspace-info"><span className="workspace-name">{workspaceName}</span><span className="workspace-type">{workspace.type === 'personal' ? t('console.common.personalWorkspace') : `${workspace.name} · ${workspace.role}`}</span></span>
+            {active ? <IconTick className="icon-svg workspace-menu-check" aria-hidden="true" /> : null}
           </button>
         })}
-        <button className="workspace-menu-item workspace-menu-create" type="button" role="menuitem" onClick={() => navigateFromMenu(NEW_ENTERPRISE_CREATE_PATH)}>
-          <span className="workspace-avatar workspace-avatar-muted">+</span>
+        {store.workspaces.length === 1 ? <button className="workspace-menu-item workspace-menu-create" type="button" role="menuitem" onClick={() => navigateFromMenu(NEW_ENTERPRISE_CREATE_PATH)}>
+          <span className="workspace-avatar">+</span>
           <span className="workspace-info"><span className="workspace-name">{t('console.common.createWorkspace')}</span><span className="workspace-type">{t('console.common.startEnterpriseVerification')}</span></span>
-        </button>
+        </button> : null}
       </div>,
       document.body,
     )
@@ -1252,30 +1769,26 @@ function UserMenu({ store, userId, userName, phone, enterpriseAccess, onNavigate
   function renderMenuItem(item: ConsoleNavItem): ReactNode {
     const icon = <ConsoleNavIcon name={item.icon} className="dropdown-icon" />
     if (!item.actionOnly) {
-      return <Link className="dropdown-link" role="menuitem" key={item.key} to={item.path ?? item.key} onClick={() => closeMenu()}>{icon}<span>{localizeConsoleNavLabel(t, item.label)}</span></Link>
+      const path = item.path ?? item.key
+      return <Link className="dropdown-link" role="menuitem" key={item.key} to={path} onClick={(event) => { event.preventDefault(); navigateFromMenu(path) }}>{icon}<span>{localizeConsoleNavLabel(t, item.label)}</span></Link>
     }
     return <button className="dropdown-link dropdown-link-soon" role="menuitem" key={item.key} type="button" onClick={() => { closeMenu(); Toast.info(item.soon ? t('console.common.comingSoon', { name: localizeConsoleNavLabel(t, item.label) }) : t('console.common.actionReceived')) }}>{icon}<span>{localizeConsoleNavLabel(t, item.label)}</span>{item.soon ? <span className="nav-soon-badge">{t('console.common.comingSoonShort')}</span> : null}</button>
   }
 
   return (
-    <div className="user-menu-shell" ref={shellRef}>
-      <button ref={triggerRef} className="user-menu-trigger" type="button" aria-haspopup="menu" aria-controls="user-dropdown" aria-expanded={open} aria-label={open ? t('console.common.closeUserMenu') : t('console.common.openUserMenu')} onClick={() => { if (open) closeMenu(); else setOpen(true) }}>
+    <div className="user-menu-shell" ref={shellRef} onMouseEnter={openMenuOnHover} onMouseLeave={scheduleHoverClose}>
+      <button ref={triggerRef} className="user-menu-trigger user-menu-trigger--avatar-only" type="button" aria-haspopup="menu" aria-controls="user-dropdown" aria-expanded={open} aria-label={open ? t('console.common.closeUserMenu') : t('console.common.openUserMenu')} onClick={toggleMenuFromTrigger}>
         <span className="user-avatar">{initial}</span>
         <span className="user-name">{displayName}</span>
         <IconChevronDown className="icon-svg user-menu-chevron" />
       </button>
-      <div ref={dropdownRef} className={`user-dropdown${open ? ' open' : ''}`} id="user-dropdown" role="menu" aria-label={t('console.common.userMenu')} aria-hidden={!open}>
+      <div ref={dropdownRef} className={`user-dropdown${open ? ' open' : ''}`} id="user-dropdown" role="menu" aria-label={t('console.common.userMenu')} aria-hidden={!open} onMouseEnter={clearHoverCloseTimer} onMouseLeave={scheduleHoverClose}>
         <div className="user-dropdown-header">
-          <div className="dropdown-user-name">{displayName}</div>
-          <div className="dropdown-user-email">{phoneLabel}</div>
-          <div className="dropdown-workspace">{t('console.common.currentWorkspace')} · {activeWorkspace.type === 'personal' ? displayName : activeWorkspace.name}</div>
-        </div>
-        <div className="user-dropdown-section">
-          <button ref={workspaceTriggerRef} className="dropdown-link dropdown-link-switch" type="button" role="menuitem" aria-label={t('console.common.switchWorkspace')} aria-controls="workspace-menu" aria-expanded={workspaceOpen} onClick={() => setWorkspaceOpen((value) => !value)}>
-            <ConsoleNavIcon name="workspace" className="dropdown-icon" />
-            <span>{t('console.common.switchWorkspace')}</span>
-            <IconChevronDown className="icon-svg dropdown-link-chevron" />
+          <button ref={workspaceTriggerRef} className="user-dropdown-identity" type="button" role="menuitem" aria-label={t('console.common.switchWorkspace')} aria-controls="workspace-menu" aria-expanded={workspaceOpen} onClick={() => setWorkspaceOpen((value) => !value)}>
+            <span className="user-dropdown-identity-avatar">{initial}</span>
+            <span className="user-dropdown-identity-copy"><strong>{displayName}</strong><span className="user-dropdown-workspace-line"><span>{activeWorkspace.type === 'personal' ? t('console.common.personalWorkspace') : activeWorkspace.name}</span><span className={`user-dropdown-identity-chevron${workspaceOpen ? ' is-open' : ''}`} aria-hidden="true"><IconChevronDown className="user-dropdown-identity-chevron-icon" /></span></span><span className="public-sr-only">{phoneLabel}</span><span className="public-sr-only">{t('console.common.currentWorkspace')} · {activeWorkspace.type === 'personal' ? displayName : activeWorkspace.name}</span><span className="public-sr-only">{t('console.common.switchWorkspace')}</span></span>
           </button>
+          <button className="user-dropdown-settings" type="button" aria-label={t('nav.settings')} onClick={openAccountSettings}><IconSettingStroked aria-hidden="true" /></button>
         </div>
         {groups.map((group) => <div className="user-dropdown-section" key={group.key}>{group.items.map(renderMenuItem)}</div>)}
         <div className="user-dropdown-section">
@@ -1290,10 +1803,232 @@ function UserMenu({ store, userId, userName, phone, enterpriseAccess, onNavigate
   )
 }
 
-function workspaceTypeLabel(workspace: Workspace, t: TFunction): string {
-  return workspace.type === 'enterprise'
-    ? `${t('console.common.enterpriseWorkspace')} · ${workspace.role}`
-    : t('console.common.personalWorkspace')
+function AccountSettingsModal({ onClose }: { onClose: () => void }) {
+  const { t } = useTranslation()
+  const store = useAppStore()
+  const dispatch = useAppDispatch()
+  const auth = useAppSelector((state) => state.auth)
+  const navigate = useNavigate()
+  const fallbackDisplayName = limitDisplayNameLength(auth.user?.display_name || store.nickname) || t('console.common.demoUser')
+  const [profile, setProfile] = useState<UserProfile | null>(null)
+  const [displayName, setDisplayName] = useState(fallbackDisplayName)
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState('')
+  const [editingName, setEditingName] = useState(false)
+  const [editingValue, setEditingValue] = useState('')
+  const [savingName, setSavingName] = useState(false)
+  const [contactProvider, setContactProvider] = useState<ContactProvider | null>(null)
+  const nicknameRequestPending = useRef(false)
+  const initial = displayName.slice(0, 1).toUpperCase()
+  const accountLabel = t('console.nav.account').replace(/管理$/, '')
+  const phone = profile?.phone.masked_identifier || auth.user?.phone_masked || store.phone || t('profile.overview.notSet')
+  const email = profile?.email.masked_identifier || auth.user?.email_masked || t('profile.overview.notSet')
+  const userId = profile?.id || auth.user?.id || t('profile.overview.notSet')
+
+  function profileAuthUser(nextProfile: UserProfile) {
+    return {
+      id: nextProfile.id,
+      display_name: limitDisplayNameLength(nextProfile.display_name),
+      avatar_url: nextProfile.avatar_url,
+      locale: nextProfile.locale,
+      timezone: nextProfile.timezone,
+      status: nextProfile.status,
+      phone_masked: nextProfile.phone.masked_identifier,
+      email_masked: nextProfile.email.masked_identifier,
+    }
+  }
+
+  function applyProfile(nextProfile: UserProfile, publish = true): void {
+    const normalizedProfile = { ...nextProfile, display_name: limitDisplayNameLength(nextProfile.display_name) }
+    setProfile(normalizedProfile)
+    setDisplayName(normalizedProfile.display_name)
+    dispatch(updateAuthenticatedUser(profileAuthUser(normalizedProfile)))
+    store.updateProfile({ nickname: normalizedProfile.display_name, phone: normalizedProfile.phone.masked_identifier, avatar: normalizedProfile.avatar_url || store.avatar })
+    if (publish) publishProfileUpdate(normalizedProfile)
+  }
+
+  function invalidateProfileSession(): void {
+    clearAuthTokens()
+    dispatch(invalidateAuth())
+    onClose()
+    navigate('/', { replace: true })
+  }
+
+  useEffect(() => {
+    let active = true
+    const accessToken = getAccessToken()
+    if (!accessToken) {
+      invalidateProfileSession()
+      return
+    }
+    setLoading(true)
+    setLoadError('')
+    void getUserProfile(accessToken).then((nextProfile) => {
+      if (active) applyProfile(nextProfile)
+    }).catch((error) => {
+      if (!active) return
+      if (isAuthenticationFailure(error)) invalidateProfileSession()
+      else setLoadError(getProfileErrorMessage(error))
+    }).finally(() => {
+      if (active) setLoading(false)
+    })
+    return () => { active = false }
+  }, [])
+
+  useEffect(() => subscribeProfileUpdates((nextProfile) => applyProfile(nextProfile, false)), [])
+
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = previousOverflow
+    }
+  }, [onClose])
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !contactProvider && !editingName) onClose()
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [contactProvider, editingName, onClose])
+
+  async function copyUserId(): Promise<void> {
+    if (!userId || userId === t('profile.overview.notSet')) return
+    try {
+      await navigator.clipboard.writeText(userId)
+      Toast.success(t('profile.overview.copied'))
+    } catch {
+      Toast.error(t('console.common.copyFailed'))
+    }
+  }
+
+  function beginNameEdit(): void {
+    if (loading || !profile) return
+    setEditingName(true)
+    setEditingValue(displayName)
+  }
+
+  async function commitName(): Promise<void> {
+    if (nicknameRequestPending.current || !profile) return
+    const value = editingValue.trim()
+    if (!value) {
+      appToast.warning(t('profile.personal.emptyName'))
+      return
+    }
+    if (!isValidDisplayName(value)) {
+      appToast.warning(t('profile.personal.nameTooLong', { count: PROFILE_DISPLAY_NAME_MAX_LENGTH }))
+      return
+    }
+    if (value === profile.display_name) {
+      setEditingName(false)
+      return
+    }
+    const accessToken = getAccessToken()
+    if (!accessToken) {
+      invalidateProfileSession()
+      return
+    }
+    nicknameRequestPending.current = true
+    setSavingName(true)
+    try {
+      const nextProfile = await updateProfileNickname(accessToken, value)
+      applyProfile(nextProfile)
+      setEditingName(false)
+      appToast.success(t('profile.personal.saved'))
+    } catch (error) {
+      if (isAuthenticationFailure(error)) invalidateProfileSession()
+      else appToast.error(getProfileErrorMessage(error))
+    } finally {
+      nicknameRequestPending.current = false
+      setSavingName(false)
+    }
+  }
+
+  function handleNameKeyDown(event: ReactKeyboardEvent<HTMLInputElement>): void {
+    if (event.key === 'Enter') {
+      event.preventDefault()
+      void commitName()
+    } else if (event.key === 'Escape') {
+      event.preventDefault()
+      event.stopPropagation()
+      setEditingName(false)
+      setEditingValue(displayName)
+    }
+  }
+
+  function renderNickname(): ReactNode {
+    if (editingName) {
+      return <span className="account-settings-value account-settings-value--editing">
+        <input className="account-settings-input" autoFocus value={editingValue} aria-label={t('profile.personal.nickname')} maxLength={PROFILE_DISPLAY_NAME_MAX_LENGTH} disabled={savingName} onChange={(event) => setEditingValue(limitDisplayNameLength(event.target.value))} onBlur={() => { void commitName() }} onKeyDown={handleNameKeyDown} />
+        <button type="button" className="account-settings-icon-button account-settings-confirm" aria-label={t('profile.personal.save')} disabled={savingName} onMouseDown={(event) => event.preventDefault()} onClick={() => { void commitName() }}><IconTick aria-hidden="true" /></button>
+      </span>
+    }
+    return <span className="account-settings-value">{displayName}<button type="button" className="account-settings-icon-button" aria-label={t('profile.personal.nickname')} disabled={loading || !profile} onClick={beginNameEdit}><IconEditStroked aria-hidden="true" /></button></span>
+  }
+
+  return createPortal(
+    <>
+      <div className="account-settings-overlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !contactProvider) onClose() }}>
+        <section className="account-settings-modal" role="dialog" aria-modal="true" aria-label={t('profile.title')}>
+        <aside className="account-settings-sidebar">
+          <h2>{t('profile.personal.title')}</h2>
+          <button className="account-settings-tab active" type="button"><IconUserStroked aria-hidden="true" /><span>{accountLabel}</span></button>
+        </aside>
+        <main className="account-settings-main">
+          <header className="account-settings-main-header">
+            <h3>{accountLabel}</h3>
+            <button className="account-settings-close" type="button" aria-label={t('nav.close')} onClick={onClose}><IconClose aria-hidden="true" /></button>
+          </header>
+          <div className="account-settings-fields">
+            <div className="account-settings-row account-settings-row--name">
+              <span className="account-settings-label">{t('profile.personal.nickname')}</span>
+              {renderNickname()}
+            </div>
+            <div className="account-settings-row account-settings-row--avatar">
+              <span className="account-settings-label">{t('profile.personal.avatar')}</span>
+              <span className="account-settings-avatar">{initial}</span>
+            </div>
+            <div className="account-settings-row">
+              <span className="account-settings-label">{t('profile.contact.email')}</span>
+              <button type="button" className="account-settings-contact-trigger" disabled={loading || !profile} onClick={() => setContactProvider('email')}><span>{email}</span><span className="account-settings-inline-action">{profile?.email.bound ? t('profile.contact.changeEmail') : t('profile.contact.dialogEmailBind')}</span></button>
+            </div>
+            <div className="account-settings-row">
+              <span className="account-settings-label">{t('profile.overview.id')}</span>
+              <span className="account-settings-value">{userId}<button type="button" className="account-settings-icon-button" aria-label={t('profile.overview.copyId')} onClick={() => { void copyUserId() }}><IconCopyStroked aria-hidden="true" /></button></span>
+            </div>
+            <div className="account-settings-row">
+              <span className="account-settings-label">{t('login.phone')}</span>
+              <button type="button" className="account-settings-contact-trigger" aria-label={t('login.phone')} disabled={loading || !profile} onClick={() => setContactProvider('phone')}><span>{phone}</span><IconEditStroked aria-hidden="true" /></button>
+            </div>
+            <div className="account-settings-row account-settings-row--badges">
+              <span className="account-settings-label">{t('profile.badge')}</span>
+              <span className="account-settings-badges"><img src={accountBadge} alt="" /><img src={accountBadge} alt="" /><img src={accountBadge} alt="" /></span>
+            </div>
+            <div className="account-settings-row account-settings-row--delete">
+              <span className="account-settings-label">{t('profile.deleteAccount')}</span>
+              <button type="button" className="account-settings-delete">{t('profile.deleteAccount')}</button>
+            </div>
+            {loadError ? <p className="account-settings-load-error" role="alert">{loadError}</p> : null}
+          </div>
+        </main>
+        </section>
+      </div>
+      {contactProvider && profile ? <Suspense fallback={null}><LazyProfileContactDialog
+          visible
+          provider={contactProvider}
+          currentContact={profile[contactProvider]}
+          currentDestination={contactProvider === 'phone' ? getVerifiedPhone(profile.id) ?? undefined : undefined}
+          accessToken={getAccessToken()}
+          onAuthFailure={invalidateProfileSession}
+          onCancel={() => setContactProvider(null)}
+          onSaved={(nextProfile) => { applyProfile(nextProfile); setContactProvider(null) }}
+        /></Suspense> : null}
+    </>,
+    document.body,
+  )
 }
 
 export function activeNavKey(pathname: string): string {
@@ -1326,6 +2061,50 @@ export function ConsoleLayout({ children }: { children: ReactNode }) {
     || hasEnterpriseMenuPermission(enterpriseAccess.permissions, permissionScope)
 
   // 中文：受控企业页面先等待权限上下文，再决定渲染页面或回到基础工作页。
+  useEffect(() => {
+    let modalVisible = false
+    let pendingScrollPosition: { left: number; top: number } | null = null
+    let lastScrollPosition = { left: window.scrollX, top: window.scrollY }
+
+    const recordScrollPosition = () => {
+      if (!modalVisible && !pendingScrollPosition) lastScrollPosition = { left: window.scrollX, top: window.scrollY }
+    }
+    const recordInteractionPosition = () => {
+      if (!modalVisible) pendingScrollPosition = { left: window.scrollX, top: window.scrollY }
+    }
+    const clearInteractionPosition = () => {
+      if (!modalVisible) pendingScrollPosition = null
+    }
+    const restoreScrollPosition = (position: { left: number; top: number }) => {
+      if (document.documentElement.scrollHeight <= document.documentElement.clientHeight) return
+      const root = document.documentElement
+      const previousScrollBehavior = root.style.scrollBehavior
+      root.style.scrollBehavior = 'auto'
+      window.scrollTo({ left: position.left, top: position.top, behavior: 'instant' as ScrollBehavior })
+      window.requestAnimationFrame(() => { root.style.scrollBehavior = previousScrollBehavior })
+    }
+    const hasVisibleModal = () => Boolean(document.querySelector('.semi-portal .semi-modal-wrap:not(.semi-modal-displayNone)'))
+    const observer = new MutationObserver(() => {
+      const nextModalVisible = hasVisibleModal()
+      if (nextModalVisible && !modalVisible) restoreScrollPosition(pendingScrollPosition ?? lastScrollPosition)
+      if (!nextModalVisible) pendingScrollPosition = null
+      modalVisible = nextModalVisible
+    })
+
+    window.addEventListener('scroll', recordScrollPosition, { passive: true })
+    document.addEventListener('pointerdown', recordInteractionPosition, true)
+    document.addEventListener('pointerup', clearInteractionPosition, true)
+    document.addEventListener('keyup', clearInteractionPosition, true)
+    observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] })
+    return () => {
+      observer.disconnect()
+      window.removeEventListener('scroll', recordScrollPosition)
+      document.removeEventListener('pointerdown', recordInteractionPosition, true)
+      document.removeEventListener('pointerup', clearInteractionPosition, true)
+      document.removeEventListener('keyup', clearInteractionPosition, true)
+    }
+  }, [])
+
   if (activeWorkspace.type === 'enterprise' && permissionScope !== null && enterpriseAccess.loading) {
     return <AppLoadingScreen label={t('console.enterprise.contextLoading')} />
   }
@@ -1334,17 +2113,11 @@ export function ConsoleLayout({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className={`console-frame${sidebarOpen ? ' console-frame--sidebar-open' : ''}${location.pathname === '/console/quickstart' ? ' console-frame--quickstart' : ''}`}>
+    <div className={`console-frame public-header-host${sidebarOpen ? ' console-frame--sidebar-open' : ''}${location.pathname === '/console/quickstart' ? ' console-frame--quickstart' : ''}`}>
       <PublicHeader enterpriseAccess={enterpriseAccess} />
       <Layout className="console-layout">
         <Layout.Sider className="console-sider">
           <aside className="console-sidebar" aria-label={t('console.common.consoleNav')}>
-            <div className="workspace-switcher-wrap">
-              <div className="workspace-switcher" role="status" aria-label={t('console.common.currentWorkspace')} title={activeWorkspace.name}>
-                <Avatar size="small" color="grey">{activeWorkspace.name.slice(0, 1).toUpperCase()}</Avatar>
-                <span className="workspace-switcher-copy"><strong title={activeWorkspace.name}>{activeWorkspace.name}</strong></span>
-              </div>
-            </div>
             <nav className="console-nav-custom" aria-label={t('console.common.consoleNav')}>
               {groups.map((group) => (
                 <section className="console-nav-section" key={group.key}>
@@ -1384,38 +2157,27 @@ export function ConsoleLayout({ children }: { children: ReactNode }) {
   )
 }
 
-type FooterLink = { label: string; path: string }
-
-const DEFAULT_FOOTER_LINKS: FooterLink[] = [
-  { label: 'footer.status', path: '/status' },
-  { label: 'footer.terms', path: '/terms' },
-  { label: 'footer.privacy', path: '/privacy' },
-]
-
 const PUBLIC_COMPANY_INFO = {
   name: '安顺佳云灵犀智能科技有限公司',
-  phone: '13388889999',
-  address: '贵州省安顺市平坝区',
-  filing: '备案号 1293232-12',
+  filing: '京ICP备20011824号-24',
+  securityFiling: '北京公安备 11010802041394号',
 } as const
 
-const PUBLIC_FOOTER_GROUPS = [
-  { title: '产品', links: [{ label: '模型目录', path: '/models' }, { label: '模型价格', path: '/pricing' }, { label: '接入文档', path: '/docs' }] },
-  { title: '服务', links: [{ label: '服务状态', path: '/status' }, { label: '关于我们', path: '/about' }] },
-  { title: '法律', links: [{ label: '服务条款', path: '/terms' }, { label: '隐私政策', path: '/privacy' }] },
-] as const
+const PUBLIC_FOOTER_DOC_HREFS = {
+  platformIntro: '/docs/01M074Z9VZXG1V0T6KYRW7AE34/platform-overview',
+  // 直接跳转到 API 文档中的第二项“接入概览”。
+  apiDocs: '/docs/01M0765G0JAQQMZ1WDAE1DBG87/integration-overview',
+  faq: '/docs/01M0765G0JADMQ2Y49DHV3MX70/frequently-asked-questions',
+} as const
 
 const MANUSCRIPT_FOOTER_GROUPS = [
-  { titleKey: 'footer.product', links: [{ labelKey: 'footer.chat', path: '/docs' }, { labelKey: 'footer.video', path: '/docs' }, { labelKey: 'footer.ranking', path: '/models' }, { labelKey: 'footer.modelPrice', path: '/pricing' }] },
-  { titleKey: 'footer.docs', links: [{ labelKey: 'footer.chat', path: '/docs' }, { labelKey: 'footer.video', path: '/docs' }, { labelKey: 'footer.ranking', path: '/models' }, { labelKey: 'footer.modelPrice', path: '/pricing' }] },
-  { titleKey: 'footer.pricing', links: [{ labelKey: 'footer.apiPrice', path: '/pricing' }, { labelKey: 'footer.subscriptionPrice', path: '/pricing' }, { labelKey: 'footer.specialOffers', path: '/pricing' }] },
-  { titleKey: 'footer.about', links: [{ labelKey: 'footer.companyIntro', path: '/about' }, { labelKey: 'footer.news', path: '/docs' }] },
+  { titleKey: 'footer.product', mobileTitleKey: 'footer.product', links: [{ labelKey: 'footer.chat', path: '/console/playground', requiresLogin: true }, { labelKey: 'footer.video', path: '/console/video', requiresLogin: true }, { labelKey: 'footer.ranking', path: '/rankings' }, { labelKey: 'footer.agentRanking', path: '/apps' }] },
+  { titleKey: 'footer.docs', mobileTitleKey: 'footer.docs', links: [{ labelKey: 'footer.platformIntro', path: PUBLIC_FOOTER_DOC_HREFS.platformIntro }, { labelKey: 'footer.userGuide', path: '/docs' }, { labelKey: 'footer.apiDocs', path: PUBLIC_FOOTER_DOC_HREFS.apiDocs }, { labelKey: 'footer.faq', path: PUBLIC_FOOTER_DOC_HREFS.faq }] },
+  { titleKey: 'footer.pricing', mobileTitleKey: 'footer.pricing', links: [{ labelKey: 'footer.apiPrice', path: '/models' }, { labelKey: 'footer.subscriptionPrice', path: '/console/billing?tab=subscription', requiresLogin: true }] },
+  { titleKey: 'footer.legal', mobileTitleKey: 'footer.legal', links: [{ labelKey: 'footer.userAgreement', path: '/terms' }, { labelKey: 'footer.privacyAgreement', path: '/privacy' }, { labelKey: 'footer.rechargeAgreement', path: '/recharge-agreement' }] },
 ] as const
 
-const PUBLIC_WECHAT_QR_TARGET = 'https://example.com/token-nx-official-account'
-const PUBLIC_WECHAT_QR_IMAGE = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=8&data=${encodeURIComponent(PUBLIC_WECHAT_QR_TARGET)}`
-
-const MANUSCRIPT_SUPPORT_TRANSITION_MS = 300
+const MANUSCRIPT_SUPPORT_TRANSITION_MS = 360
 const MANUSCRIPT_SUPPORT_MESSAGE_MAX_LENGTH = 1000
 type SupportTab = 'contact' | 'notifications'
 const SUPPORT_OPEN_EVENT = 'token-nx:open-support'
@@ -1425,38 +2187,31 @@ export function requestSupportWidget(tab: SupportTab = 'contact'): void {
   window.dispatchEvent(new CustomEvent(SUPPORT_OPEN_EVENT, { detail: { tab } }))
 }
 
-const FOOTER_LABEL_KEYS: Record<string, string> = {
-  '模型目录': 'footer.models',
-  '模型价格': 'footer.pricing',
-  '接入文档': 'footer.docs',
-  '服务状态': 'footer.status',
-  '关于我们': 'footer.about',
-  '服务条款': 'footer.terms',
-  '隐私政策': 'footer.privacy',
-  文档: 'footer.docs',
-}
-
-export function PublicFooter({ label = 'Token NX', links = DEFAULT_FOOTER_LINKS, manuscript = false }: { label?: string; links?: FooterLink[]; manuscript?: boolean }) {
+export function PublicFooter() {
   const { t } = useTranslation()
-
-  function localizeFooterLabel(value: string): string {
-    const key = FOOTER_LABEL_KEYS[value]
-    if (key) return t(key)
-    return value.startsWith('footer.') || value.startsWith('public.') ? t(value) : value
-  }
+  const [openManuscriptGroup, setOpenManuscriptGroup] = useState<string | null>(null)
 
   return (
-    <footer className={`public-footer${manuscript ? ' public-footer--manuscript' : ''}`}>
-      <div className="public-footer-inner">
-        {manuscript ? <div className="public-footer-brand manuscript-footer-brand"><span className="manuscript-footer-logo"><BrandLogo size="compact" /></span><span>© {new Date().getFullYear()} Token NX, Inc</span><small>{PUBLIC_COMPANY_INFO.name}</small></div> : <div className="public-footer-brand"><span className="footer-brand-lockup"><BrandLogo size="compact" /></span><span>{localizeFooterLabel(label)}</span><small>{PUBLIC_COMPANY_INFO.name}</small></div>}
-        {manuscript ? <nav className="public-footer-nav manuscript-footer-nav" aria-label={t('public.footer.navigation')}>{MANUSCRIPT_FOOTER_GROUPS.map((group) => <div className="public-footer-nav-group" key={group.titleKey}><strong>{t(group.titleKey)}</strong>{group.links.map((link) => <Link key={`${link.path}-${link.labelKey}`} to={link.path}>{t(link.labelKey)}</Link>)}</div>)}</nav> : <nav className="public-footer-nav" aria-label={t('public.footer.navigation')}>
-          {PUBLIC_FOOTER_GROUPS.map((group) => <div className="public-footer-nav-group" key={group.title}><strong>{group.title === '产品' ? t('footer.product') : group.title === '服务' ? t('footer.service') : t('footer.legal')}</strong>{group.links.map((link) => <Link key={`${link.path}-${link.label}`} to={link.path}>{localizeFooterLabel(link.label)}</Link>)}</div>)}
-          {links.length ? <div className="public-footer-nav-group public-footer-nav-group--extra"><strong>{t('footer.related')}</strong>{links.map((link) => <Link key={`${link.path}-${link.label}`} to={link.path}>{localizeFooterLabel(link.label)}</Link>)}</div> : null}
-        </nav>}
-        {manuscript ? <div className="public-footer-contact manuscript-footer-contact"><strong>{t('footer.contact')}</strong><a href={`tel:${PUBLIC_COMPANY_INFO.phone}`}>{PUBLIC_COMPANY_INFO.phone}</a><span>{PUBLIC_COMPANY_INFO.address}</span><div className="manuscript-footer-qr-row"><div className="public-footer-qr"><img src={PUBLIC_WECHAT_QR_IMAGE} alt={t('footer.qrAlt')} loading="eager" /><span>{t('footer.customerQr')}</span></div><div className="public-footer-qr"><img src={PUBLIC_WECHAT_QR_IMAGE} alt={t('footer.officialQr')} loading="eager" /><span>{t('footer.officialQr')}</span></div></div></div> : <div className="public-footer-contact"><div className="public-footer-qr"><img src={PUBLIC_WECHAT_QR_IMAGE} alt={t('footer.qrAlt')} loading="eager" /><span>{t('footer.qrTitle').split('\n').map((line) => <span key={line}>{line}<br /></span>)}</span></div><div className="public-footer-contact-copy"><strong>{t('footer.contact')}</strong><a href={`tel:${PUBLIC_COMPANY_INFO.phone}`}>{PUBLIC_COMPANY_INFO.phone}</a><span>{PUBLIC_COMPANY_INFO.address}</span></div></div>}
-      </div>
-      <div className="public-footer-bottom"><span>© {new Date().getFullYear()} {PUBLIC_COMPANY_INFO.name}</span><span>{t('footer.filing')}</span></div>
-      <ManuscriptSupportWidget />
+    <footer className="public-footer public-footer--manuscript">
+        <div className="public-footer-inner">
+          <div className="public-footer-brand manuscript-footer-brand"><span className="manuscript-footer-logo"><img src={manuscriptFooterLogo} alt="Token NX" decoding="async" /></span><span>© {new Date().getFullYear()} Token NX,Inc</span><small>{PUBLIC_COMPANY_INFO.name}</small></div>
+          <nav className="public-footer-nav manuscript-footer-nav" aria-label={t('public.footer.navigation')}>{MANUSCRIPT_FOOTER_GROUPS.map((group) => {
+          const isOpen = openManuscriptGroup === group.titleKey
+          const panelId = `manuscript-footer-panel-${group.titleKey.replace(/[^a-z0-9]+/gi, '-')}`
+          return <div className={`public-footer-nav-group${isOpen ? ' is-open' : ''}`} key={group.titleKey}>
+            <strong className="manuscript-footer-group-title">{t(group.titleKey)}</strong>
+            <button className="manuscript-footer-group-toggle" type="button" aria-expanded={isOpen} aria-controls={panelId} onClick={() => setOpenManuscriptGroup((current) => current === group.titleKey ? null : group.titleKey)}>
+              <span className="manuscript-footer-group-label" data-mobile-label={t(group.mobileTitleKey)}>{t(group.titleKey)}</span><span className="manuscript-footer-group-symbol" aria-hidden="true">{isOpen ? '-' : '+'}</span>
+            </button>
+            <div className="manuscript-footer-group-links" id={panelId}>{group.links.map((link) => 'requiresLogin' in link && link.requiresLogin
+              ? <LoginRequiredAction key={`${link.path}-${link.labelKey}`} returnPath={link.path}>{t(link.labelKey)}</LoginRequiredAction>
+              : <Link key={`${link.path}-${link.labelKey}`} to={link.path}>{t(link.labelKey)}</Link>)}</div>
+          </div>
+          })}</nav>
+          <div className="public-footer-contact manuscript-footer-contact"><strong>{t('footer.contact')}</strong><div className="manuscript-footer-contact-line"><span>{t('footer.salesPrefix')}</span><button className="manuscript-footer-online-action manuscript-footer-online-consultation" type="button" aria-label={`${t('footer.salesPrefix')}${t('footer.salesOnline')}`} onClick={() => requestSupportWidget('contact')}>{t('footer.salesOnline')}</button></div><div className="manuscript-footer-contact-line"><span>{t('footer.businessPrefix')}</span><a className="manuscript-footer-business-action manuscript-footer-business-email" href="mailto:wub@tokennx.com" aria-label={`${t('footer.businessPrefix')}wub@tokennx.com`}>wub@tokennx.com</a></div><div className="manuscript-footer-qr-row"><div className="public-footer-qr"><img src={manuscriptCustomerQr} alt={t('footer.qrAlt')} loading="lazy" decoding="async" /><span>{t('footer.customerQr')}</span></div><div className="public-footer-qr"><img src={manuscriptOfficialQr} alt={t('footer.officialQr')} loading="lazy" decoding="async" /><span>{t('footer.officialQr')}</span></div></div></div>
+        </div>
+        <div className="public-footer-bottom manuscript-footer-filing" aria-label={t('footer.filing')}><span className="manuscript-footer-filing-copy">Copyright @ 2025-{new Date().getFullYear()} {PUBLIC_COMPANY_INFO.name}</span><span className="manuscript-footer-filing-item"><img src={manuscriptFilingIcpIcon} alt="" aria-hidden="true" />{PUBLIC_COMPANY_INFO.filing}</span><span className="manuscript-footer-filing-item"><img src={manuscriptFilingSecurityIcon} alt="" aria-hidden="true" />{PUBLIC_COMPANY_INFO.securityFiling}</span><Link className="manuscript-footer-filing-item" to="/about">{t('footer.businessLicense')}</Link><Link className="manuscript-footer-filing-item" to="/terms">{t('footer.license')}</Link></div>
+        <ManuscriptSupportWidget />
     </footer>
   )
 }
@@ -1476,12 +2231,14 @@ export function ManuscriptSupportWidget() {
   const messageSequenceRef = useRef(0)
   const messagesEndRef = useRef<HTMLDivElement | null>(null)
   const supportLocale: SupportLocale = translationI18n.language.startsWith('en') ? 'en-US' : 'zh-CN'
+  const triggerExpanded = hovered && !mounted
 
   useEffect(() => {
     const handleOpenRequest = (event: Event) => {
       const detail = (event as CustomEvent<{ tab?: SupportTab }>).detail
       if (detail?.tab === 'contact' || detail?.tab === 'notifications') setTab(detail.tab)
       if (closeTimerRef.current !== undefined) window.clearTimeout(closeTimerRef.current)
+      setHovered(false)
       setOpen(true)
       setMounted(true)
     }
@@ -1522,11 +2279,13 @@ export function ManuscriptSupportWidget() {
   function openPanel(): void {
     if (closeTimerRef.current !== undefined) window.clearTimeout(closeTimerRef.current)
     setTab('contact')
+    setHovered(false)
     setOpen(true)
     setMounted(true)
   }
 
   function closePanel(): void {
+    setHovered(false)
     setOpen(false)
     if (closeTimerRef.current !== undefined) window.clearTimeout(closeTimerRef.current)
     closeTimerRef.current = window.setTimeout(() => setMounted(false), MANUSCRIPT_SUPPORT_TRANSITION_MS)
@@ -1570,7 +2329,7 @@ export function ManuscriptSupportWidget() {
   }
 
   return (
-    <div ref={rootRef} className={`manuscript-support-widget${hovered ? ' is-hovered' : ''}`} onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}>
+    <div ref={rootRef} className={`manuscript-support-widget${triggerExpanded ? ' is-hovered' : ''}`} onMouseEnter={() => { if (!mounted) setHovered(true) }} onMouseLeave={() => setHovered(false)}>
       {mounted ? <section className={`manuscript-support-panel${open ? ' is-open' : ' is-closing'}`} role="dialog" aria-modal="false" aria-label={t('support.dialogLabel')}>
         <div className="manuscript-support-tabs" role="tablist" aria-label={t('support.panel')}>
           <span className={`manuscript-support-tab-thumb${tab === 'notifications' ? ' is-right' : ''}`} aria-hidden="true" />
@@ -1604,20 +2363,25 @@ export function ManuscriptSupportWidget() {
       </section> : null}
       <div className="manuscript-support-trigger">
         <button className="manuscript-support-icon-button" type="button" aria-label={open ? t('support.close') : t('support.open')} title={open ? t('support.close') : t('support.open')} aria-expanded={open} onClick={togglePanel}><IconCustomerSupport /></button>
-        <button className="manuscript-support-label-button" type="button" aria-label={t('support.trigger')} aria-hidden={!hovered} tabIndex={hovered ? 0 : -1} onClick={togglePanel}><IconCustomerSupport /><span>{t('support.trigger')}</span></button>
+        <button className="manuscript-support-label-button" type="button" aria-label={t('support.trigger')} aria-hidden={!triggerExpanded} tabIndex={triggerExpanded ? 0 : -1} onClick={togglePanel}><IconCustomerSupport /><span>{t('support.trigger')}</span></button>
       </div>
     </div>
   )
 }
 
-export function PublicLayout({ children, mainClassName = '', footerLabel, footerLinks }: { children: ReactNode; mainClassName?: string; footerLabel?: string; footerLinks?: FooterLink[] }) {
-  const layoutClassName = mainClassName.includes('home-page--manuscript') ? ' public-layout--manuscript-home' : ''
-  const manuscript = mainClassName.includes('home-page--manuscript')
-  return <div className={`public-layout${layoutClassName}`}><PublicHeader /><main className={`public-main${mainClassName ? ` ${mainClassName}` : ''}`}>{children}</main><PublicFooter label={footerLabel} links={footerLinks} manuscript={manuscript} /></div>
+export function PublicLayout({ children, mainClassName = '' }: { children: ReactNode; mainClassName?: string }) {
+  const store = useAppStore()
+  const enterpriseAccess = useEnterpriseMenuAccess(store.activeWorkspace)
+  const manuscript = mainClassName.includes('home-page--manuscript') || mainClassName.includes('docs-page--manuscript') || mainClassName.includes('apps-page--manuscript') || mainClassName.includes('rankings-page--manuscript') || mainClassName.includes('news-page--manuscript')
+  const modelCatalog = mainClassName.includes('public-models-page')
+  const layoutClassName = manuscript ? ' public-layout--manuscript-home' : modelCatalog ? ' public-layout--models' : ''
+  return <div className={`public-layout public-header-host${layoutClassName}`}><PublicHeader enterpriseAccess={enterpriseAccess} /><main className={`public-main${mainClassName ? ` ${mainClassName}` : ''}`}>{children}</main><PublicFooter /></div>
 }
 
-export function BannerNotice({ children, tone = 'info' }: { children: ReactNode; tone?: 'info' | 'warning' | 'success' }) {
-  return <div className={`banner-notice banner-notice--${tone}`}><span className="banner-notice-dot" />{children}</div>
+export function BannerNotice({ children, tone = 'info', compact = false }: { children: ReactNode; tone?: 'info' | 'warning' | 'success'; compact?: boolean }) {
+  if (!compact) return <div className={`banner-notice banner-notice--${tone}`}><span className="banner-notice-dot" />{children}</div>
+  const icon = tone === 'warning' ? <IconAlertTriangle /> : tone === 'success' ? <IconTickCircle /> : <IconInfoCircle />
+  return <div className={`banner-notice banner-notice--${tone} banner-notice--compact`} role={tone === 'warning' ? 'alert' : 'status'}><span className="banner-notice-icon" aria-hidden="true">{icon}</span><div className="banner-notice-compact-content">{children}</div></div>
 }
 
 export function EmptyPanel({ title, description, action }: { title: string; description: string; action?: ReactNode }) {
@@ -1646,5 +2410,5 @@ export function StatusBadge({ status }: { status: 'success' | 'failed' | 'active
 }
 
 export function modalityLabel(model: ModelRecord): string {
-  return MODALITY_LABELS[model.modality]
+  return MODALITY_LABELS[model.modality] ?? model.modality
 }

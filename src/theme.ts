@@ -1,23 +1,32 @@
 import { useSyncExternalStore } from 'react'
 
-export type ThemeMode = 'light' | 'dark' | 'system'
+export type ThemeMode = 'light' | 'dark'
+
+export interface ThemeTransitionOrigin {
+  x: number
+  y: number
+}
 
 export const THEME_STORAGE_KEY = 'token-nx:theme'
 
 const THEME_CHANGE_EVENT = 'token-nx-theme-change'
+const NEXT_THEME_MODE: Record<ThemeMode, ThemeMode> = { light: 'dark', dark: 'light' }
 
 let themeMode: ThemeMode = readStoredThemeMode()
 const listeners = new Set<() => void>()
-let mediaQuery: MediaQueryList | null = null
 
 function readStoredThemeMode(): ThemeMode {
-  if (typeof window === 'undefined') return 'system'
+  if (typeof window === 'undefined') return 'dark'
   try {
     const stored = window.localStorage.getItem(THEME_STORAGE_KEY)
-    return stored === 'light' || stored === 'dark' || stored === 'system' ? stored : 'system'
+    if (stored === 'light' || stored === 'dark') return stored
+
+    // Resolve a missing or legacy `system` value once, then keep a concrete user preference.
+    const initialTheme = systemTheme()
+    window.localStorage.setItem(THEME_STORAGE_KEY, initialTheme)
+    return initialTheme
   } catch {
-    // 中文：浏览器禁用存储时使用系统主题，避免阻塞首屏渲染。
-    return 'system'
+    return systemTheme()
   }
 }
 
@@ -30,20 +39,15 @@ function systemTheme(): 'light' | 'dark' {
   }
 }
 
-function resolvedTheme(mode: ThemeMode): 'light' | 'dark' {
-  return mode === 'system' ? systemTheme() : mode
-}
-
 function applyTheme(mode: ThemeMode): void {
   if (typeof document === 'undefined') return
   const root = document.documentElement
-  const resolved = resolvedTheme(mode)
   root.dataset.themeMode = mode
-  root.dataset.theme = resolved
-  root.style.colorScheme = resolved
+  root.dataset.theme = mode
+  root.style.colorScheme = mode
   // 中文：把解析后的主题桥接给 Semi UI。Semi 只识别 body[theme-mode="dark"]，
   // 否则未被手工重写的 Semi 组件（Toast、Switch、Pagination 等）会停留在亮色默认调色板，暗色下显示近黑文字。
-  document.body?.setAttribute('theme-mode', resolved)
+  document.body?.setAttribute('theme-mode', mode)
 }
 
 function notify(): void {
@@ -51,26 +55,7 @@ function notify(): void {
   window.dispatchEvent(new CustomEvent(THEME_CHANGE_EVENT, { detail: themeMode }))
 }
 
-function handleSystemThemeChange(): void {
-  if (themeMode === 'system') {
-    applyTheme(themeMode)
-    notify()
-  }
-}
-
-function syncSystemListener(): void {
-  if (typeof window === 'undefined') return
-  if (mediaQuery) mediaQuery.removeEventListener('change', handleSystemThemeChange)
-  try {
-    mediaQuery = themeMode === 'system' && typeof window.matchMedia === 'function' ? window.matchMedia('(prefers-color-scheme: light)') : null
-  } catch {
-    mediaQuery = null
-  }
-  mediaQuery?.addEventListener('change', handleSystemThemeChange)
-}
-
 applyTheme(themeMode)
-syncSystemListener()
 
 export function getThemeMode(): ThemeMode {
   return themeMode
@@ -84,13 +69,65 @@ export function setThemeMode(mode: ThemeMode): void {
     // 中文：主题切换仍在当前页面生效，持久化失败不影响用户继续操作。
   }
   applyTheme(mode)
-  syncSystemListener()
   notify()
 }
 
 export function cycleThemeMode(): void {
-  const nextMode: Record<ThemeMode, ThemeMode> = { system: 'light', light: 'dark', dark: 'system' }
-  setThemeMode(nextMode[themeMode])
+  setThemeMode(NEXT_THEME_MODE[themeMode])
+}
+
+function prefersReducedMotion(): boolean {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false
+  try {
+    return window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  } catch {
+    return false
+  }
+}
+
+function transitionGeometry(origin?: ThemeTransitionOrigin): { x: number; y: number; radius: number } {
+  const x = Math.min(window.innerWidth, Math.max(0, origin?.x ?? window.innerWidth - 32))
+  const y = Math.min(window.innerHeight, Math.max(0, origin?.y ?? 32))
+  return {
+    x,
+    y,
+    radius: Math.hypot(Math.max(x, window.innerWidth - x), Math.max(y, window.innerHeight - y)),
+  }
+}
+
+function radialThemeTransition(origin: ThemeTransitionOrigin | undefined, previousResolvedTheme: string | undefined): void {
+  const { x, y, radius } = transitionGeometry(origin)
+  const overlay = document.createElement('div')
+  overlay.className = 'theme-transition-overlay'
+  overlay.dataset.theme = previousResolvedTheme === 'light' ? 'light' : 'dark'
+  overlay.style.setProperty('--theme-transition-x', `${x}px`)
+  overlay.style.setProperty('--theme-transition-y', `${y}px`)
+  overlay.style.setProperty('--theme-transition-radius', `${radius}px`)
+  const removeOverlay = () => overlay.remove()
+  overlay.addEventListener('animationend', removeOverlay, { once: true })
+  document.body.appendChild(overlay)
+  window.setTimeout(removeOverlay, 1200)
+}
+
+export function cycleThemeModeWithTransition(origin?: ThemeTransitionOrigin): void {
+  if (typeof document === 'undefined' || typeof window === 'undefined') {
+    cycleThemeMode()
+    return
+  }
+
+  const previousResolvedTheme = document.documentElement.dataset.theme
+  const nextMode = NEXT_THEME_MODE[themeMode]
+  if (nextMode === previousResolvedTheme) {
+    setThemeMode(nextMode)
+    return
+  }
+  if (prefersReducedMotion()) {
+    setThemeMode(nextMode)
+    return
+  }
+
+  radialThemeTransition(origin, previousResolvedTheme)
+  setThemeMode(nextMode)
 }
 
 export function useThemeMode(): ThemeMode {
@@ -100,23 +137,22 @@ export function useThemeMode(): ThemeMode {
       return () => listeners.delete(listener)
     },
     getThemeMode,
-    () => 'system',
+    () => 'dark',
   )
 }
 
-// 中文：返回解析后的实际主题（light/dark）。相比 useThemeMode，它在“跟随系统”时也会在系统主题切换后更新，
-// 适合需要按真实明暗取色的场景（如图表坐标轴颜色）。
+// Used by components that need the concrete palette, such as chart axes.
 export function useResolvedTheme(): 'light' | 'dark' {
   return useSyncExternalStore(
     (listener) => {
       listeners.add(listener)
       return () => listeners.delete(listener)
     },
-    () => resolvedTheme(themeMode),
+    () => themeMode,
     () => 'dark',
   )
 }
 
 export function themeModeLabel(mode: ThemeMode): string {
-  return mode === 'light' ? 'theme.light' : mode === 'dark' ? 'theme.dark' : 'theme.system'
+  return mode === 'light' ? 'theme.light' : 'theme.dark'
 }

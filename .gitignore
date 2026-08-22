@@ -1,3 +1,6 @@
 node_modules/
 dist/
 coverage/
+dist.zip
+.agents/
+skills-lock.json

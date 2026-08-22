@@ -73,7 +73,8 @@ describe('企业邀请页面', () => {
 
     expect(await screen.findByRole('heading', { name: '加入企业' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: '研发空间' })).toBeInTheDocument()
-    expect(screen.getByRole('tab', { name: /邮箱/ })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '手机号登录' })).toBeInTheDocument()
+    expect(screen.queryByLabelText('邮箱')).not.toBeInTheDocument()
     expect(screen.getByText('登录后会保留当前邀请 Token，无需重新打开邀请链接。')).toBeInTheDocument()
     expect(getInvitationPreviewMock).toHaveBeenCalledWith('join-token/abc', expect.objectContaining({ accessToken: undefined, signal: expect.any(AbortSignal) }))
     expect(submitInvitationJoinMock).not.toHaveBeenCalled()
@@ -93,7 +94,7 @@ describe('企业邀请页面', () => {
   })
 
   it('已过期邀请显示失效原因且不提供申请按钮', async () => {
-    getInvitationPreviewMock.mockResolvedValueOnce({ ...PREVIEW, status: 'expired', expires_at: '2026-07-01T00:00:00Z' })
+    getInvitationPreviewMock.mockResolvedValueOnce({ ...PREVIEW, status: 'expired', expires_at: Date.parse('2026-07-01T00:00:00Z') })
     renderJoin(true)
 
     expect(await screen.findByText('已过期')).toBeInTheDocument()

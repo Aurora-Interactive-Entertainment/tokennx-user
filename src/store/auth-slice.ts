@@ -1,8 +1,9 @@
 import { createAsyncThunk, createSlice, type PayloadAction } from '@reduxjs/toolkit'
 import { getCurrentUser, loginByEmail, loginByPhone, logout, requestWechatQr as requestWechatQrRequest, sendBindingPhoneCode, sendEmailCode, sendPhoneCode, bindWechatPhone, type AuthResult, type AuthUser, type DeviceInfo, type EmailCodeResult, type PhoneCodeResult, type WechatQrResult, type WechatStatusResult, getWechatStatus } from '@/api/auth'
-import { AUTH_INVALID_CODE, isApiError } from '@/api/http'
+import { AUTH_INVALID_CODE, isApiError, isAuthenticationFailure } from '@/api/http'
 import { clearAuthTokens, getAccessToken, getDeviceId, getDeviceName, readRefreshToken, saveAuthTokens } from '@/auth/token-storage'
 import { refreshAuthSession, withAuthSessionLock } from '@/auth/refresh-coordinator'
+import i18n from '@/i18n'
 
 export interface AuthOperationError {
   message: string
@@ -29,22 +30,22 @@ function deviceInfo(): DeviceInfo {
 }
 
 export function authError(error: unknown): AuthOperationError {
-  if (!isApiError(error)) return { message: '认证请求失败，请稍后重试', code: 0, status: 0 }
+  if (!isApiError(error)) return { message: i18n.t('api.auth.requestFailed'), code: 0, status: 0 }
   const messages: Record<number, string> = {
-    100001: '请求参数无效，请检查输入内容',
-    100004: '登录状态已过期，请重新登录',
-    100006: '认证状态发生冲突，请重新操作',
-    100007: '认证服务暂时不可用，请稍后重试',
-    [AUTH_INVALID_CODE]: '邮箱、手机号或验证码错误，请重新确认',
-    110002: '该微信账号需要先绑定手机号',
-    110003: '手机号已绑定其他账号，暂时无法继续',
-    110004: '验证码发送过于频繁，请稍后再试',
+    100001: i18n.t('api.auth.invalidInput'),
+    100004: i18n.t('api.auth.sessionExpired'),
+    100006: i18n.t('api.auth.sessionConflict'),
+    100007: i18n.t('api.auth.unavailable'),
+    [AUTH_INVALID_CODE]: i18n.t('api.auth.invalidCode'),
+    110002: i18n.t('api.auth.bindingRequired'),
+    110003: i18n.t('api.auth.phoneAlreadyBound'),
+    110004: i18n.t('api.auth.codeTooFrequent'),
   }
   return { message: messages[error.code] ?? error.message, code: error.code, status: error.status }
 }
 
 function completeAuth(result: AuthResult): AuthUser {
-  if (result.status !== 'succeeded' || result.binding_required || !result.user) throw new Error('认证尚未完成')
+  if (result.status !== 'succeeded' || result.binding_required || !result.user) throw new Error(i18n.t('api.auth.incomplete'))
   saveAuthTokens(result)
   return result.user
 }
@@ -54,19 +55,21 @@ export const hydrateAuth = createAsyncThunk<AuthUser | null>('auth/hydrate', asy
   if (!refreshToken) return null
   try {
     const result = await refreshAuthSession(refreshToken)
-    if (result.status !== 'succeeded' || result.binding_required || !result.user) throw new Error('认证尚未完成')
+    if (result.status !== 'succeeded' || result.binding_required || !result.user) throw new Error(i18n.t('api.auth.incomplete'))
     const user = result.user
     const access = getAccessToken()
     return access ? await getCurrentUser(access) : user
-  } catch {
-    clearAuthTokens({ expectedRefreshToken: refreshToken })
+  } catch (error) {
+    // Preserve the session on service/network failures; only a 401 proves that
+    // the refresh token is no longer authorized.
+    if (isAuthenticationFailure(error)) clearAuthTokens({ expectedRefreshToken: refreshToken })
     return null
   }
 })
 
-export const requestPhoneCode = createAsyncThunk<PhoneCodeResult, { destination: string } , ThunkConfig>('auth/requestPhoneCode', async ({ destination }, { rejectWithValue }) => {
+export const requestPhoneCode = createAsyncThunk<PhoneCodeResult, { destination: string; countryCode?: string }, ThunkConfig>('auth/requestPhoneCode', async ({ destination, countryCode = '+86' }, { rejectWithValue }) => {
   try {
-    return await sendPhoneCode(destination)
+    return await sendPhoneCode(destination, countryCode)
   } catch (error) {
     return rejectWithValue(authError(error))
   }
@@ -88,9 +91,9 @@ export const loginWithEmail = createAsyncThunk<AuthUser, { destination: string; 
   }
 })
 
-export const loginWithPhone = createAsyncThunk<AuthUser, { destination: string; code: string }, ThunkConfig>('auth/loginWithPhone', async ({ destination, code }, { rejectWithValue }) => {
+export const loginWithPhone = createAsyncThunk<AuthUser, { destination: string; code: string; inviteCode?: string }, ThunkConfig>('auth/loginWithPhone', async ({ destination, code, inviteCode }, { rejectWithValue }) => {
   try {
-    return completeAuth(await loginByPhone(destination, code, deviceInfo()))
+    return completeAuth(await loginByPhone(destination, code, inviteCode))
   } catch (error) {
     return rejectWithValue(authError(error))
   }
@@ -183,16 +186,16 @@ const authSlice = createSlice({
       .addCase(hydrateAuth.fulfilled, (state, action) => { state.status = action.payload ? 'authenticated' : 'unauthenticated'; state.user = action.payload; state.error = null })
       .addCase(loginWithEmail.pending, (state) => { state.status = 'loading'; state.error = null })
       .addCase(loginWithEmail.fulfilled, (state, action) => { state.status = 'authenticated'; state.user = action.payload; state.error = null })
-      .addCase(loginWithEmail.rejected, (state, action) => { state.status = 'unauthenticated'; state.user = null; state.error = action.payload ?? { message: '邮箱登录失败', code: 0, status: 0 } })
+      .addCase(loginWithEmail.rejected, (state, action) => { state.status = 'unauthenticated'; state.user = null; state.error = action.payload ?? { message: i18n.t('api.auth.emailLoginFailed'), code: 0, status: 0 } })
       .addCase(loginWithPhone.pending, (state) => { state.status = 'loading'; state.error = null })
       .addCase(loginWithPhone.fulfilled, (state, action) => { state.status = 'authenticated'; state.user = action.payload; state.error = null })
-      .addCase(loginWithPhone.rejected, (state, action) => { state.status = 'unauthenticated'; state.user = null; state.error = action.payload ?? { message: '手机号登录失败', code: 0, status: 0 } })
+      .addCase(loginWithPhone.rejected, (state, action) => { state.status = 'unauthenticated'; state.user = null; state.error = action.payload ?? { message: i18n.t('api.auth.phoneLoginFailed'), code: 0, status: 0 } })
       .addCase(completeWechatLogin.pending, (state) => { state.status = 'loading'; state.error = null })
       .addCase(completeWechatLogin.fulfilled, (state, action) => { state.status = 'authenticated'; state.user = action.payload; state.error = null })
-      .addCase(completeWechatLogin.rejected, (state, action) => { state.status = 'unauthenticated'; state.user = null; state.error = action.payload ?? { message: '微信登录失败', code: 0, status: 0 } })
+      .addCase(completeWechatLogin.rejected, (state, action) => { state.status = 'unauthenticated'; state.user = null; state.error = action.payload ?? { message: i18n.t('api.auth.wechatLoginFailed'), code: 0, status: 0 } })
       .addCase(completeBinding.pending, (state) => { state.status = 'loading'; state.error = null })
       .addCase(completeBinding.fulfilled, (state, action) => { state.status = 'authenticated'; state.user = action.payload; state.error = null })
-      .addCase(completeBinding.rejected, (state, action) => { state.status = 'unauthenticated'; state.user = null; state.error = action.payload ?? { message: '手机号绑定失败', code: 0, status: 0 } })
+      .addCase(completeBinding.rejected, (state, action) => { state.status = 'unauthenticated'; state.user = null; state.error = action.payload ?? { message: i18n.t('api.auth.phoneBindingFailed'), code: 0, status: 0 } })
       .addCase(logoutAuth.fulfilled, (state) => { state.status = 'unauthenticated'; state.user = null; state.error = null })
       .addCase(logoutAuth.rejected, (state, action) => { state.status = 'unauthenticated'; state.user = null; state.error = action.payload ?? null })
   },

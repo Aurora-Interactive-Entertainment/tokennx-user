@@ -1,0 +1,132 @@
+.enterprise-invitation-form {
+  display: grid;
+  gap: var(--spacing-20);
+}
+
+.enterprise-invitation-intro {
+  display: grid;
+  gap: var(--spacing-6);
+  padding: var(--spacing-16) var(--spacing-20);
+  border: 1px solid var(--color-border-neutral-l2);
+  border-radius: var(--radius-6);
+  background: var(--color-bg-base-tertiary);
+}
+
+.enterprise-invitation-intro strong {
+  color: var(--color-text-default-hover);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.enterprise-invitation-intro p,
+.enterprise-invitation-role-hint {
+  margin: 0;
+  color: var(--color-text-tertiary);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.enterprise-invitation-form > label {
+  display: grid;
+  min-width: 0;
+  gap: var(--spacing-8);
+}
+
+.enterprise-invitation-form > label > span {
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.enterprise-invitation-date-picker {
+  width: 100%;
+  min-width: 0;
+}
+
+.enterprise-invitation-modal .semi-modal-footer .semi-button-primary {
+  min-width: 132px;
+}
+
+/* DatePicker renders its panel in a body portal, so isolate its navigation
+   controls from the app-wide Semi button sizing and color overrides. */
+.enterprise-invitation-date-dropdown .semi-datepicker-navigation-left button,
+.enterprise-invitation-date-dropdown .semi-datepicker-navigation-right button,
+.enterprise-invitation-date-dropdown .semi-datepicker-navigation-left .semi-button,
+.enterprise-invitation-date-dropdown .semi-datepicker-navigation-right .semi-button {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  width: 32px;
+  min-height: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--semi-border-radius-small, 3px);
+  color: var(--semi-color-text-2, #666);
+  background: transparent;
+  box-shadow: none;
+  font-size: 14px;
+  line-height: 1;
+  transform: none;
+}
+
+.enterprise-invitation-date-dropdown .semi-datepicker-navigation-left button:hover,
+.enterprise-invitation-date-dropdown .semi-datepicker-navigation-right button:hover,
+.enterprise-invitation-date-dropdown .semi-datepicker-navigation-left .semi-button:hover,
+.enterprise-invitation-date-dropdown .semi-datepicker-navigation-right .semi-button:hover {
+  color: var(--semi-color-primary, #3370ff);
+  background: var(--semi-color-fill-0, #f5f5f5);
+}
+
+.enterprise-invitation-date-dropdown .semi-datepicker-navigation-month .semi-button {
+  box-sizing: border-box;
+  min-width: 0;
+  min-height: 32px;
+  height: 32px;
+  padding: 0 8px;
+  border: 0;
+  color: var(--semi-color-text-0, #1f1f1f);
+  background: transparent;
+  box-shadow: none;
+  font-size: 16px;
+  line-height: 22px;
+  transform: none;
+}
+
+.enterprise-invitation-date-dropdown .semi-datepicker-navigation-month .semi-button:hover {
+  color: var(--semi-color-primary, #3370ff);
+  background: var(--semi-color-fill-0, #f5f5f5);
+}
+
+.enterprise-invitation-date-dropdown .semi-datepicker-navigation > div {
+  min-width: 0;
+}
+
+@media (max-width: 720px) {
+  .enterprise-invitation-modal .semi-modal {
+    width: calc(100vw - var(--spacing-24)) !important;
+    max-width: none;
+  }
+
+  .enterprise-invitation-form {
+    gap: var(--spacing-16);
+  }
+
+  .enterprise-invitation-intro {
+    padding: var(--spacing-14) var(--spacing-16);
+  }
+
+  .enterprise-invitation-modal .semi-modal-footer {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--spacing-8);
+  }
+
+  .enterprise-invitation-modal .semi-modal-footer .semi-button {
+    width: 100%;
+    min-width: 0;
+    margin: 0;
+  }
+}

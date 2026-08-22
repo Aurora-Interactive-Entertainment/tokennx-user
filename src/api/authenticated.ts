@@ -40,8 +40,11 @@ async function fetchAuthenticated<T>(path: string, options: FetchJsonOptions, re
     let refreshed: AuthenticatedSession
     try {
       refreshed = await refreshAccessToken(refreshToken)
-    } catch {
-      clearAuthTokens({ expectedRefreshToken: refreshToken })
+    } catch (refreshError) {
+      // A transient refresh failure is not proof that the session is expired.
+      const refreshExpired = isAuthenticationFailure(refreshError)
+      if (refreshExpired) clearAuthTokens({ expectedRefreshToken: refreshToken })
+      if (!refreshExpired) throw refreshError
       throw error
 	}
 

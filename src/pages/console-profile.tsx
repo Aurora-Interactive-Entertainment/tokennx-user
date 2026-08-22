@@ -1,6 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
-import { Button, Input, Modal, Switch, Toast } from '@douyinfe/semi-ui'
+import Button from '@douyinfe/semi-ui/lib/es/button'
+import Input from '@douyinfe/semi-ui/lib/es/input'
+import Modal from '@/components/app-modal'
+import Switch from '@douyinfe/semi-ui/lib/es/switch'
 import {
   getNotificationPreferences,
   getProfileEnterprises,
@@ -19,7 +22,7 @@ import {
   type NotificationPreferences,
   type UserProfile,
 } from '@/api/profile'
-import { getAccessToken } from '@/auth/token-storage'
+import { getAccessToken, getVerifiedPhone } from '@/auth/token-storage'
 import { isAuthenticationFailure } from '@/api/http'
 import { ProfileContactDialog } from '@/components/profile-contact-dialog'
 import { BannerNotice, PageTitle } from '@/components/common'
@@ -29,6 +32,9 @@ import { getEnterpriseContext, type EnterpriseContext, type EnterpriseRoleOption
 import { invalidateAuth, updateAuthenticatedUser } from '@/store/auth-slice'
 import { useAppDispatch } from '@/store/hooks'
 import { useTranslation } from 'react-i18next'
+import { appToast as Toast } from '@/components/app-toast'
+import { publishProfileUpdate, subscribeProfileUpdates } from '@/profile/profile-sync'
+import './console-profile.css'
 
 const PREFERENCE_DEFINITIONS: Record<NotificationPreferenceCode, { labelKey: string; descriptionKey: string }> = {
   low_balance: { labelKey: 'profile.notifications.lowBalance', descriptionKey: 'profile.notifications.lowBalanceDescription' },
@@ -87,6 +93,7 @@ export function SettingsPage() {
   const [savingPreference, setSavingPreference] = useState<NotificationPreferenceCode | null>(null)
   const [contactProvider, setContactProvider] = useState<ContactProvider | null>(null)
   const [deactivateVisible, setDeactivateVisible] = useState(false)
+  const nicknameRequestPending = useRef(false)
 
   const invalidateSession = useCallback((): void => {
     dispatch(invalidateAuth())
@@ -169,14 +176,18 @@ export function SettingsPage() {
     ]
   }, [enterprises, enterpriseContext, profile, store.activeWorkspace.id, store.activeWorkspace.type, t])
 
-  function applyProfile(nextProfile: UserProfile): void {
+  const applyProfile = useCallback((nextProfile: UserProfile, publish = true): void => {
     const normalizedProfile = normalizeProfile(nextProfile)
     setProfile(normalizedProfile)
     setDisplayName(normalizedProfile.display_name)
     dispatch(updateAuthenticatedUser(profileToAuthUser(normalizedProfile)))
-  }
+    if (publish) publishProfileUpdate(normalizedProfile)
+  }, [dispatch])
+
+  useEffect(() => subscribeProfileUpdates((nextProfile) => applyProfile(nextProfile, false)), [applyProfile])
 
   async function saveNickname(): Promise<void> {
+    if (nicknameRequestPending.current) return
     const normalizedName = displayName.trim()
     if (!normalizedName) {
       Toast.warning(t('profile.personal.emptyName'))
@@ -193,6 +204,7 @@ export function SettingsPage() {
       return
     }
     if (normalizedName === profile.display_name) return
+    nicknameRequestPending.current = true
     setSavingNickname(true)
     try {
       const nextProfile = await updateProfileNickname(accessToken, normalizedName)
@@ -201,6 +213,7 @@ export function SettingsPage() {
     } catch (requestError) {
       if (!handleProfileError(requestError)) Toast.error(getProfileErrorMessage(requestError))
     } finally {
+      nicknameRequestPending.current = false
       setSavingNickname(false)
     }
   }
@@ -240,28 +253,45 @@ export function SettingsPage() {
 
   // 中文：企业空间和个人空间共用个人资料编辑区，保证账号展示与更新规则一致。
   function renderPersonalProfileSection(currentProfile: UserProfile): React.ReactNode {
-    return <section className="settings-section" aria-labelledby="profile-personal-title">
+    return <section className="settings-section settings-card settings-card--personal" aria-labelledby="profile-personal-title">
       <div className="settings-section-head">
         <h2 id="profile-personal-title">{t('profile.personal.title')}</h2>
         <p>{t('profile.personal.description')}</p>
         <p className="settings-hint">{t('profile.personal.dataHint')}</p>
       </div>
-      <form className="settings-form" noValidate onSubmit={(event) => { event.preventDefault(); void saveNickname() }}>
-        <div className="settings-row">
+      <div className="settings-form">
+        <div className="settings-row settings-row--avatar">
           <span className="settings-label">{t('profile.personal.avatar')}</span>
           <div className="settings-control">
             <div className="settings-avatar" aria-label={t('profile.personal.avatar')}>{renderProfileAvatar()}</div>
             <p className="settings-hint">{t('profile.personal.avatarHint')}</p>
           </div>
         </div>
-        <div className="settings-row">
+        <div className="settings-row settings-row--name">
           <label className="settings-label" htmlFor="profile-display-name">{t('profile.personal.nickname')}</label>
           <div className="settings-control">
-            <Input id="profile-display-name" value={displayName} onChange={(value) => setDisplayName(limitDisplayNameLength(value))} maxLength={PROFILE_DISPLAY_NAME_MAX_LENGTH} autoComplete="nickname" aria-describedby="profile-display-name-hint" />
-            <p className="settings-hint" id="profile-display-name-hint">{t('profile.personal.nicknameHint', { count: PROFILE_DISPLAY_NAME_MAX_LENGTH })}</p>
+            <div className="settings-name-input-row">
+              <Input
+                id="profile-display-name"
+                value={displayName}
+                onChange={(value) => setDisplayName(limitDisplayNameLength(value))}
+                onBlur={() => { void saveNickname() }}
+                onKeyDown={(event) => {
+                  if (event.key !== 'Enter' || event.nativeEvent.isComposing) return
+                  event.preventDefault()
+                  void saveNickname()
+                }}
+                maxLength={PROFILE_DISPLAY_NAME_MAX_LENGTH}
+                autoComplete="nickname"
+                aria-describedby="profile-display-name-hint"
+                aria-busy={savingNickname}
+                disabled={savingNickname}
+              />
+              <p className="settings-hint" id="profile-display-name-hint">{t('profile.personal.nicknameHint', { count: PROFILE_DISPLAY_NAME_MAX_LENGTH })}</p>
+            </div>
           </div>
         </div>
-        <div className="settings-row">
+        <div className="settings-row settings-row--phone">
           <span className="settings-label" id="profile-phone-label">{t('profile.contact.phone')}</span>
           <div className="settings-control">
             <div className="settings-inline" aria-labelledby="profile-phone-label">
@@ -271,7 +301,7 @@ export function SettingsPage() {
             <p className="settings-hint">{t('profile.personal.phoneHint')}</p>
           </div>
         </div>
-        <div className="settings-row">
+        <div className="settings-row settings-row--email">
           <span className="settings-label" id="profile-email-label">{t('profile.contact.email')}</span>
           <div className="settings-control">
             <div className="settings-inline" aria-labelledby="profile-email-label">
@@ -281,7 +311,7 @@ export function SettingsPage() {
             <p className="settings-hint">{t('profile.personal.emailHint')}</p>
           </div>
         </div>
-        <div className="settings-row">
+        <div className="settings-row settings-row--user-id">
           <span className="settings-label" id="profile-user-id-label">{t('profile.overview.id')}</span>
           <div className="settings-control">
             <div className="settings-inline" aria-labelledby="profile-user-id-label">
@@ -291,19 +321,13 @@ export function SettingsPage() {
             <p className="settings-hint">{t('profile.personal.userIdHint')}</p>
           </div>
         </div>
-        <div className="settings-row">
-          <span className="settings-label" aria-hidden="true" />
-          <div className="settings-actions">
-            <Button className="settings-primary-button" theme="solid" type="primary" htmlType="submit" loading={savingNickname} disabled={savingNickname || !displayName.trim()}>{savingNickname ? t('profile.personal.saving') : t('profile.personal.save')}</Button>
-          </div>
-        </div>
-      </form>
+      </div>
     </section>
   }
 
   if (loading && !profile) {
     return (
-      <div className="page-stack settings-console-page">
+      <div className="page-stack settings-console-page settings-redesign-page settings-redesign-page--loading">
         <PageTitle title={t('profile.title')} description={t('profile.description')} />
         <div className="settings-page-inner"><div className="profile-state-panel" role="status">{t('profile.loading')}</div></div>
       </div>
@@ -312,10 +336,10 @@ export function SettingsPage() {
 
   if (error && !profile) {
     return (
-      <div className="page-stack settings-console-page">
+      <div className="page-stack settings-console-page settings-redesign-page settings-redesign-page--error">
         <PageTitle title={t('profile.title')} description={t('profile.description')} />
         <div className="settings-page-inner">
-          <BannerNotice tone="warning"><div className="profile-error-content"><strong>{t('profile.loadFailed')}</strong><span>{error}</span><Button className="settings-secondary-button" theme="outline" size="small" loading={loading} disabled={loading} onClick={() => { void loadProfile() }}>{t('profile.retry')}</Button></div></BannerNotice>
+          <BannerNotice tone="warning" compact><div className="profile-error-content"><strong>{t('profile.loadFailed')}</strong><span>{error}</span><Button className="settings-secondary-button" theme="outline" size="small" loading={loading} disabled={loading} onClick={() => { void loadProfile() }}>{t('profile.retry')}</Button></div></BannerNotice>
         </div>
       </div>
     )
@@ -323,7 +347,6 @@ export function SettingsPage() {
 
   if (!profile || (!enterpriseWorkspace && !preferences) || (enterpriseWorkspace && !enterpriseContext)) return null
 
-  const profileContact = contactProvider ? profile[contactProvider] : profile.phone
   const enterprisePermissions = enterpriseContext
     ? ENTERPRISE_CAPABILITY_DEFINITIONS.filter(({ key }) => enterpriseContext.capabilities[key]).map(({ labelKey }) => t(labelKey))
     : []
@@ -339,28 +362,28 @@ export function SettingsPage() {
   }
 
   return (
-    <div className="page-stack settings-console-page">
+    <div className={`page-stack settings-console-page settings-redesign-page ${enterpriseWorkspace ? 'settings-redesign-page--enterprise' : 'settings-redesign-page--personal'}`}>
       <PageTitle title={enterpriseWorkspace ? t('profile.enterprise.title') : t('profile.title')} description={enterpriseWorkspace ? t('profile.enterprise.description') : t('profile.description')} />
       <div className="settings-page-inner">
-        {error ? <BannerNotice tone="warning"><div className="profile-error-content"><span>{error}</span><Button className="settings-secondary-button" theme="outline" size="small" loading={loading} disabled={loading} onClick={() => { void loadProfile() }}>{t('profile.retry')}</Button></div></BannerNotice> : null}
+        {error ? <BannerNotice tone="warning" compact><div className="profile-error-content"><span>{error}</span><Button className="settings-secondary-button" theme="outline" size="small" loading={loading} disabled={loading} onClick={() => { void loadProfile() }}>{t('profile.retry')}</Button></div></BannerNotice> : null}
 
         {renderPersonalProfileSection(profile)}
 
-        {enterpriseWorkspace ? <section className="settings-section" aria-labelledby="profile-enterprise-title">
+        {enterpriseWorkspace ? <section className="settings-section settings-card settings-card--enterprise" aria-labelledby="profile-enterprise-title">
           <div className="settings-section-head">
             <h2 id="profile-enterprise-title">{t('profile.enterprise.accountTitle')}</h2>
             <p>{t('profile.enterprise.accountDescription')}</p>
           </div>
           <div className="settings-form enterprise-account-form">
-            <div className="settings-row"><span className="settings-label">{t('profile.enterprise.name')}</span><div className="settings-control"><span className="settings-readonly">{enterpriseContext?.name}</span></div></div>
-            <div className="settings-row"><span className="settings-label">{t('profile.enterprise.code')}</span><div className="settings-control"><code className="settings-readonly">{enterpriseContext?.code}</code></div></div>
-            <div className="settings-row"><span className="settings-label">{t('profile.enterprise.memberId')}</span><div className="settings-control"><div className="settings-inline"><code className="settings-readonly">{enterpriseContext?.member_id}</code><Button className="settings-secondary-button" theme="outline" size="small" onClick={() => { void copyEnterpriseMemberID() }}>{t('profile.overview.copyShort')}</Button></div></div></div>
-            <div className="settings-row"><span className="settings-label">{t('profile.enterprise.role')}</span><div className="settings-control"><span className="settings-readonly">{enterpriseContext ? roleLabels(enterpriseContext.roles.length ? enterpriseContext.roles : [enterpriseContext.role], profile.locale, enterpriseContext.role_options) : '--'}</span></div></div>
-            <div className="settings-row"><span className="settings-label">{t('profile.enterprise.permissions.title')}</span><div className="settings-control"><div className="enterprise-permission-list">{enterprisePermissions.length ? enterprisePermissions.map((permission) => <span className="model-tag" key={permission}>{permission}</span>) : <span className="settings-readonly">{t('profile.enterprise.permissions.none')}</span>}</div></div></div>
+            <div className="settings-row settings-row--enterprise-name"><span className="settings-label">{t('profile.enterprise.name')}</span><div className="settings-control"><span className="settings-readonly">{enterpriseContext?.name}</span></div></div>
+            <div className="settings-row settings-row--enterprise-code"><span className="settings-label">{t('profile.enterprise.code')}</span><div className="settings-control"><code className="settings-readonly">{enterpriseContext?.code}</code></div></div>
+            <div className="settings-row settings-row--member-id"><span className="settings-label">{t('profile.enterprise.memberId')}</span><div className="settings-control"><div className="settings-inline"><code className="settings-readonly">{enterpriseContext?.member_id}</code><Button className="settings-secondary-button" theme="outline" size="small" onClick={() => { void copyEnterpriseMemberID() }}>{t('profile.overview.copyShort')}</Button></div></div></div>
+            <div className="settings-row settings-row--role"><span className="settings-label">{t('profile.enterprise.role')}</span><div className="settings-control"><span className="settings-readonly">{enterpriseContext ? roleLabels(enterpriseContext.roles.length ? enterpriseContext.roles : [enterpriseContext.role], profile.locale, enterpriseContext.role_options) : '--'}</span></div></div>
+            <div className="settings-row settings-row--permissions"><span className="settings-label">{t('profile.enterprise.permissions.title')}</span><div className="settings-control"><div className="enterprise-permission-list">{enterprisePermissions.length ? enterprisePermissions.map((permission) => <span className="model-tag" key={permission}>{permission}</span>) : <span className="settings-readonly">{t('profile.enterprise.permissions.none')}</span>}</div></div></div>
           </div>
         </section> : null}
 
-        {!enterpriseWorkspace ? <section className="settings-section" aria-labelledby="profile-notification-title">
+        {!enterpriseWorkspace ? <section className="settings-section settings-card settings-card--notifications" aria-labelledby="profile-notification-title">
           <div className="settings-section-head">
             <h2 id="profile-notification-title">{t('profile.notifications.title')}</h2>
             <p>{t('profile.notifications.description')}</p>
@@ -379,7 +402,7 @@ export function SettingsPage() {
           </div>
         </section> : null}
 
-        <section className="settings-section" aria-labelledby="profile-workspace-title">
+        <section className="settings-section settings-card settings-card--workspace" aria-labelledby="profile-workspace-title">
           <div className="settings-section-head">
             <h2 id="profile-workspace-title">{t('profile.workspace.title')}</h2>
             <p>{t('profile.workspace.description')}</p>
@@ -396,7 +419,7 @@ export function SettingsPage() {
           <p className="settings-hint">{t('profile.workspace.createHint')}</p>
         </section>
 
-        {!enterpriseWorkspace ? <section className="settings-section" aria-labelledby="profile-security-title">
+        {!enterpriseWorkspace ? <section className="settings-section settings-card settings-card--security" aria-labelledby="profile-security-title">
           <div className="settings-section-head">
             <h2 className="danger-copy" id="profile-security-title">{t('profile.security.title')}</h2>
             <p>{t('profile.security.description')}</p>
@@ -408,19 +431,22 @@ export function SettingsPage() {
         </section> : null}
       </div>
 
-      <ProfileContactDialog
-        visible={Boolean(contactProvider)}
-        provider={contactProvider ?? 'phone'}
-        currentContact={profileContact}
+      {contactProvider ? <ProfileContactDialog
+        visible
+        provider={contactProvider}
+        currentContact={profile[contactProvider]}
+        currentDestination={contactProvider === 'phone' ? getVerifiedPhone(profile.id) ?? undefined : undefined}
         accessToken={getAccessToken()}
-        locale={profile.locale}
         onAuthFailure={invalidateSession}
         onCancel={() => setContactProvider(null)}
         onSaved={(nextProfile) => { applyProfile(nextProfile); setContactProvider(null) }}
-      />
+      /> : null}
       <Modal
+        className="profile-security-modal"
+        centered
         title={t('profile.security.dialogTitle')}
         visible={deactivateVisible}
+        zIndex={1400}
         onCancel={() => setDeactivateVisible(false)}
         onOk={() => { setDeactivateVisible(false); Toast.warning(t('profile.security.dialogPending')) }}
         okText={t('profile.security.dialogContinue')}

@@ -1,14 +1,15 @@
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, useLocation } from 'react-router'
 import { Provider } from 'react-redux'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { limitDisplayNameLength } from '@/api/profile'
+import { limitDisplayNameLength, type UserProfile } from '@/api/profile'
 import { getEnterpriseContext, type EnterpriseContext } from '@/api/enterprise-console'
 import { AppStoreProvider } from '@/data/app-state'
 import { createAppStore } from '@/store'
-import { clearAuthTokens, saveAuthTokens } from '@/auth/token-storage'
-import { activeNavKey, ConsoleLayout, consoleNavGroupsFor, DEFAULT_CONSOLE_PATH, isEnterpriseOwner, isEnterprisePermissionPath, LoginPanel, localizeConsoleLabel, normalizeLoginReturnPath, PublicHeader, PUBLIC_LINKS } from './common'
+import { synchronizeAuthenticatedUser } from '@/store/auth-slice'
+import { clearAuthTokens, getVerifiedPhone, saveAuthTokens, saveVerifiedPhone } from '@/auth/token-storage'
+import { activeNavKey, ConsoleLayout, consoleNavGroupsFor, DEFAULT_CONSOLE_PATH, isEnterpriseOwner, isEnterprisePermissionPath, LoginPanel, localizeConsoleLabel, normalizeLoginReturnPath, PublicFooter, PublicHeader, PublicLayout, PUBLIC_LINKS } from './common'
 import { NEW_ENTERPRISE_CREATE_PATH } from '@/api/enterprise-certification'
 import i18n from '@/i18n'
 
@@ -41,6 +42,48 @@ const DEFAULT_ENTERPRISE_CONTEXT: EnterpriseContext = {
   },
 }
 
+const ACCOUNT_PROFILE: UserProfile = {
+  id: 'user-1',
+  display_name: '测试用户',
+  avatar_url: '',
+  locale: 'zh-CN',
+  timezone: 'Asia/Shanghai',
+  status: 'active',
+  version: 1,
+  phone: { bound: true, masked_identifier: '138****8000' },
+  email: { bound: false, masked_identifier: '' },
+}
+
+function profileApiResponse(data: unknown, status = 200, code = 0, msg = 'success'): Response {
+  return new Response(JSON.stringify({ code, msg, data }), { status, headers: { 'Content-Type': 'application/json' } })
+}
+
+function mockAccountProfileApi() {
+  let profile = structuredClone(ACCOUNT_PROFILE)
+  const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, options) => {
+    const url = String(input)
+    const method = options?.method ?? 'GET'
+    if (url.endsWith('/api/user/profile') && method === 'GET') return profileApiResponse(profile)
+    if (url.endsWith('/api/user/profile/nickname') && method === 'PUT') {
+      const body = JSON.parse(String(options?.body)) as { display_name: string }
+      profile = { ...profile, display_name: body.display_name, version: profile.version + 1 }
+      return profileApiResponse(profile)
+    }
+    if (url.endsWith('/api/user/profile/contact/code')) return profileApiResponse([])
+    if (url.endsWith('/api/user/profile/phone') && method === 'PUT') {
+      profile = { ...profile, phone: { bound: true, masked_identifier: '139****9000' }, version: profile.version + 1 }
+      return profileApiResponse(profile)
+    }
+    if (url.endsWith('/api/user/profile/email') && method === 'PUT') {
+      profile = { ...profile, email: { bound: true, masked_identifier: 'n***@example.com' }, version: profile.version + 1 }
+      return profileApiResponse(profile)
+    }
+    throw new Error(`unexpected request: ${url}`)
+  })
+  saveAuthTokens({ status: 'succeeded', binding_required: false, access_token: 'profile-access-token', refresh_token: 'profile-refresh-token', refresh_expires_at: Date.UTC(2099, 0, 1), user: ACCOUNT_PROFILE })
+  return { fetchMock, getProfile: () => profile }
+}
+
 function LocationProbe() {
   const location = useLocation()
   return <output data-testid="common-location">{location.pathname}{location.search}</output>
@@ -53,7 +96,48 @@ beforeEach(() => {
 })
 afterEach(() => {
   vi.restoreAllMocks()
+  window.localStorage.removeItem('token-nx:auth:phone-code-cooldown:v1')
   clearAuthTokens()
+})
+
+it('uses the shared mobile header host in public and console layouts', async () => {
+  const publicView = render(
+    <MemoryRouter initialEntries={['/models']}>
+      <Provider store={createAppStore()}>
+        <AppStoreProvider><PublicLayout><span>Public page</span></PublicLayout></AppStoreProvider>
+      </Provider>
+    </MemoryRouter>,
+  )
+
+  expect(document.querySelector('.public-layout')).toHaveClass('public-header-host')
+  expect(document.querySelectorAll('.public-header')).toHaveLength(1)
+  expect(document.querySelectorAll('.mobile-menu-button')).toHaveLength(1)
+  expect(document.querySelectorAll('.public-mobile-nav')).toHaveLength(1)
+  publicView.unmount()
+
+  const user = userEvent.setup()
+  render(
+    <MemoryRouter initialEntries={['/console/models']}>
+      <Provider store={createAppStore()}>
+        <AppStoreProvider><ConsoleLayout><span>Console detail page</span></ConsoleLayout></AppStoreProvider>
+      </Provider>
+    </MemoryRouter>,
+  )
+
+  const consoleFrame = document.querySelector('.console-frame') as HTMLElement
+  const header = consoleFrame.querySelector('.public-header') as HTMLElement
+  const menuButton = consoleFrame.querySelector('.mobile-menu-button') as HTMLButtonElement
+  const mobileNav = consoleFrame.querySelector('.public-mobile-nav') as HTMLElement
+  expect(consoleFrame).toHaveClass('public-header-host')
+  expect(consoleFrame.querySelectorAll('.public-header')).toHaveLength(1)
+  expect(consoleFrame.querySelectorAll('.mobile-menu-button')).toHaveLength(1)
+  expect(consoleFrame.querySelectorAll('.public-mobile-nav')).toHaveLength(1)
+
+  await user.click(menuButton)
+
+  expect(header).toHaveClass('mobile-nav-open')
+  expect(menuButton).toHaveAttribute('aria-expanded', 'true')
+  expect(mobileNav).not.toHaveAttribute('hidden')
 })
 
 describe('控制台导航路径匹配', () => {
@@ -64,7 +148,7 @@ describe('控制台导航路径匹配', () => {
     expect(activeNavKey('/console/real-name')).toBe('/console/real-name')
     expect(activeNavKey('/console/enterprise-create')).toBe('/console/enterprise-create')
     expect(activeNavKey('/console/video')).toBe('/console/video')
-    expect(activeNavKey('/console/invitations')).toBe('')
+    expect(activeNavKey('/console/invitations')).toBe('/console/invitations')
     expect(activeNavKey('/console')).toBe('')
   })
 
@@ -85,14 +169,14 @@ describe('控制台导航路径匹配', () => {
     expect(navigation).not.toHaveTextContent('使用日志')
     expect(navigation).not.toHaveTextContent('企业管理')
     expect(navigation).toHaveTextContent('视频生成')
-    expect(navigation).not.toHaveTextContent('邀请返现')
-    expect(navigation).not.toHaveTextContent('认证送现金')
+    expect(navigation).toHaveTextContent('邀请返现')
+    expect(navigation).toHaveTextContent('认证返现')
     expect(navigation).not.toHaveTextContent('文档中心')
     expect(navigation).not.toHaveTextContent('联系我们')
     expect(navigation).not.toHaveTextContent('在线客服')
     expect(screen.getByRole('link', { name: '实名认证' })).toHaveAttribute('href', '/console/real-name')
     expect(screen.getByRole('link', { name: '视频生成' })).toHaveAttribute('href', '/console/video')
-    expect(screen.queryByRole('button', { name: /认证送现金/ })).toBeNull()
+    expect(screen.getByRole('button', { name: /认证返现/ })).toHaveTextContent('即将上线')
     expect(screen.getByRole('status', { name: '当前空间' })).toHaveTextContent('个人空间')
     expect(screen.getByRole('button', { name: '打开客服' })).toBeInTheDocument()
     expect(navigation.closest('.console-sidebar')).not.toHaveTextContent('han')
@@ -207,7 +291,7 @@ describe('控制台导航路径匹配', () => {
       expect(navigation).toHaveTextContent('用量统计')
       expect(navigation).toHaveTextContent('调用记录')
       expect(navigation).toHaveTextContent('账号信息')
-      expect(navigation).toHaveTextContent('API 密钥管理')
+      expect(navigation).toHaveTextContent('密钥管理')
       for (const label of ['企业管理', '人员管理', '用量管理', '操作日志', '数据分析', '企业设置', '通用设置', '模型管理', '权限与标签', '费用管理']) {
         expect(navigation).not.toHaveTextContent(label)
       }
@@ -215,7 +299,7 @@ describe('控制台导航路径匹配', () => {
       await userEvent.setup().click(screen.getByRole('button', { name: '打开用户菜单' }))
       const menu = screen.getByRole('menu', { name: '用户菜单' })
       expect(menu).toHaveTextContent('快速接入')
-      expect(menu).toHaveTextContent('API 密钥管理')
+      expect(menu).toHaveTextContent('密钥管理')
       expect(menu).not.toHaveTextContent('企业管理')
       expect(menu).not.toHaveTextContent('费用管理')
     } finally {
@@ -231,7 +315,7 @@ describe('控制台导航路径匹配', () => {
     expect(isEnterpriseOwner({ type: 'enterprise', role: 'owner' })).toBe(true)
     expect(isEnterpriseOwner({ type: 'enterprise', role: 'member' })).toBe(false)
     expect(isEnterpriseOwner({ type: 'personal', role: 'owner' })).toBe(false)
-    expect(consoleNavGroupsFor({ type: 'enterprise', role: 'member' }).flatMap((group) => group.items).map((item) => item.label)).toEqual(['快速接入', '模型广场', '智能对话', '视频生成', '用量统计', '调用记录', '账号信息', 'API 密钥管理'])
+    expect(consoleNavGroupsFor({ type: 'enterprise', role: 'member' }).flatMap((group) => group.items).map((item) => item.label)).toEqual(['快速接入', '模型广场', '智能对话', '视频生成', '用量统计', '调用记录', '账号信息', '密钥管理'])
     expect(consoleNavGroupsFor({ type: 'enterprise', role: 'member' }, ['usage.detail']).flatMap((group) => group.items).map((item) => item.label)).toContain('用量管理')
     expect(consoleNavGroupsFor({ type: 'enterprise', role: 'member' }, ['billing.view']).flatMap((group) => group.items).map((item) => item.label)).toContain('费用管理')
     expect(consoleNavGroupsFor({ type: 'enterprise', role: 'member' }, ['billing.view']).find((group) => group.key === 'enterprise-management')?.items.map((item) => item.label)).toContain('费用管理')
@@ -321,7 +405,78 @@ describe('公共 Header 布局', () => {
     expect(document.querySelector('.public-header')).toHaveClass('public-header--home')
   })
 
-  it('公开 Header 仅保留模型入口可点击，桌面和移动导航都禁用其余四项', async () => {
+  it('通知红点与铃铛资源分离并由未读数量控制', () => {
+    const { rerender } = render(
+      <MemoryRouter initialEntries={['/']}>
+        <Provider store={createAppStore()}>
+          <AppStoreProvider><PublicHeader unreadNotificationCount={0} /></AppStoreProvider>
+        </Provider>
+      </MemoryRouter>,
+    )
+
+    const notificationButton = screen.getByRole('button', { name: '查看通知' })
+    expect(notificationButton.querySelector('.header-notification-icon')).toBeInTheDocument()
+    expect(notificationButton.querySelector('.header-notification-dot')).toBeNull()
+
+    rerender(
+      <MemoryRouter initialEntries={['/']}>
+        <Provider store={createAppStore()}>
+          <AppStoreProvider><PublicHeader unreadNotificationCount={2} /></AppStoreProvider>
+        </Provider>
+      </MemoryRouter>,
+    )
+    expect(screen.getByRole('button', { name: '查看通知' }).querySelectorAll('.header-notification-dot')).toHaveLength(1)
+  })
+
+  it('费用弹窗可通过眼睛按钮隐藏和恢复余额', async () => {
+    const user = userEvent.setup()
+    const appStore = createAppStore()
+    appStore.dispatch({ type: 'auth/loginWithEmail/fulfilled', payload: { id: 'user-1', display_name: '测试用户', avatar_url: '', locale: 'zh-CN', timezone: 'Asia/Shanghai', status: 'active' } })
+    saveAuthTokens({ status: 'succeeded', binding_required: false, access_token: 'overview-access-token', refresh_token: 'overview-refresh-token', refresh_expires_at: Date.UTC(2099, 0, 1) })
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => new Response(JSON.stringify({
+      code: 0,
+      msg: 'success',
+      data: { account_balance_yuan: '128.500000000', invitation_reward_yuan: '20.000000000', invoiceable_amount_yuan: '88.00' },
+    }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
+
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <Provider store={appStore}>
+          <AppStoreProvider><PublicHeader /></AppStoreProvider>
+        </Provider>
+      </MemoryRouter>,
+    )
+
+    const navigation = screen.getByRole('navigation', { name: '公开导航' })
+    const billingLink = within(navigation).getByRole('link', { name: '费用' })
+    await user.hover(billingLink)
+    const dialog = await screen.findByRole('dialog', { name: '账户余额' })
+    expect(await within(dialog).findByText('128.50')).toBeInTheDocument()
+    expect(within(dialog).getByText('20.00')).toBeInTheDocument()
+    expect(within(dialog).getByText('88.00')).toBeInTheDocument()
+    const overviewCalls = () => fetchMock.mock.calls.filter(([input]) => new URL(String(input), window.location.origin).pathname === '/api/user/account/overview')
+    expect(overviewCalls()).toHaveLength(1)
+    const overviewURL = new URL(String(overviewCalls()[0]?.[0]), window.location.origin)
+    expect(overviewURL.pathname).toBe('/api/user/account/overview')
+    expect(overviewURL.searchParams.get('account_type')).toBe('personal')
+    expect(new Headers(overviewCalls()[0]?.[1]?.headers).get('Authorization')).toBe('Bearer overview-access-token')
+
+    await user.click(within(dialog).getByRole('button', { name: '隐藏余额' }))
+    expect(within(dialog).getByText('*****')).toBeInTheDocument()
+    expect(within(dialog).getByRole('button', { name: '显示余额' })).toBeInTheDocument()
+    expect(window.localStorage.getItem('token-nx:billing-balance-visible:v1')).toBe('hidden')
+
+    await user.click(within(dialog).getByRole('button', { name: '显示余额' }))
+    expect(within(dialog).getByText('128.50')).toBeInTheDocument()
+    expect(window.localStorage.getItem('token-nx:billing-balance-visible:v1')).toBe('visible')
+
+    await user.unhover(billingLink)
+    await user.hover(billingLink)
+    await new Promise((resolve) => setTimeout(resolve, 160))
+    expect(overviewCalls()).toHaveLength(1)
+  })
+
+  it('公开 Header 的模型、排名、应用和文档入口可点击，桌面和移动导航隐藏私有化', async () => {
     const user = userEvent.setup()
     render(
       <MemoryRouter initialEntries={['/']}>
@@ -333,19 +488,170 @@ describe('公共 Header 布局', () => {
 
     const desktopNav = screen.getByRole('navigation', { name: '公开导航' })
     expect(within(desktopNav).getByRole('link', { name: '模型' })).toHaveAttribute('href', '/models')
-    for (const label of ['私有化', '排名', '应用', '文档']) {
-      expect(within(desktopNav).queryByRole('link', { name: label })).toBeNull()
-      expect(within(desktopNav).getByText(label)).toHaveAttribute('aria-disabled', 'true')
-    }
+    expect(within(desktopNav).getByRole('link', { name: '排名' })).toHaveAttribute('href', '/rankings')
+    expect(within(desktopNav).getByRole('link', { name: '智能体' })).toHaveAttribute('href', '/apps')
+    expect(within(desktopNav).getByRole('link', { name: '文档' })).toHaveAttribute('href', '/docs')
+    expect(within(desktopNav).queryByText('私有化')).toBeNull()
 
     await user.click(screen.getByRole('button', { name: '打开公开导航' }))
     const mobileNav = document.querySelector('.public-mobile-nav')
     expect(mobileNav).not.toBeNull()
     expect(within(mobileNav as HTMLElement).getByRole('link', { name: '模型' })).toHaveAttribute('href', '/models')
-    for (const label of ['私有化', '排名', '应用', '文档']) {
-      expect(within(mobileNav as HTMLElement).queryByRole('link', { name: label })).toBeNull()
-      expect(within(mobileNav as HTMLElement).getByText(label)).toHaveAttribute('aria-disabled', 'true')
-    }
+    expect(within(mobileNav as HTMLElement).getByRole('link', { name: '排名' })).toHaveAttribute('href', '/rankings')
+    expect(within(mobileNav as HTMLElement).getByRole('link', { name: '智能体' })).toHaveAttribute('href', '/apps')
+    expect(within(mobileNav as HTMLElement).getByRole('link', { name: '文档' })).toHaveAttribute('href', '/docs')
+    expect(within(mobileNav as HTMLElement).queryByText('私有化')).toBeNull()
+  })
+
+  it('移动导航可通过外部点击和 Escape 收起', async () => {
+    const user = userEvent.setup()
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <Provider store={createAppStore()}>
+          <AppStoreProvider><PublicHeader /></AppStoreProvider>
+        </Provider>
+      </MemoryRouter>,
+    )
+
+    const menuButton = document.querySelector('.mobile-menu-button') as HTMLButtonElement
+    const mobileNav = document.querySelector('.public-mobile-nav') as HTMLElement
+    expect(menuButton.querySelector('.mobile-menu-icon-menu')).toBeInTheDocument()
+    expect(menuButton.querySelector('.mobile-menu-icon-close')).toBeInTheDocument()
+    await user.click(menuButton)
+    expect(menuButton).toHaveAttribute('aria-expanded', 'true')
+    expect(mobileNav).not.toHaveAttribute('hidden')
+
+    fireEvent.pointerDown(document.body)
+    expect(menuButton).toHaveAttribute('aria-expanded', 'false')
+    expect(mobileNav).toHaveAttribute('hidden')
+
+    await user.click(menuButton)
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(menuButton).toHaveAttribute('aria-expanded', 'false')
+    expect(mobileNav).toHaveAttribute('hidden')
+  })
+
+  it('移动导航登录后展示用户身份和独立退出入口', async () => {
+    const user = userEvent.setup()
+    const appStore = createAppStore()
+    appStore.dispatch(synchronizeAuthenticatedUser({
+      id: 'mobile-user',
+      display_name: '移动端用户',
+      avatar_url: '',
+      locale: 'zh-CN',
+      timezone: 'Asia/Shanghai',
+      status: 'active',
+      phone_masked: '138****0000',
+    }))
+
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <Provider store={appStore}>
+          <AppStoreProvider><PublicHeader /></AppStoreProvider>
+        </Provider>
+      </MemoryRouter>,
+    )
+
+    await user.click(document.querySelector('.mobile-menu-button') as HTMLButtonElement)
+
+    expect(document.querySelector('.public-header')).toHaveClass('mobile-nav-open')
+    expect(document.querySelector('.user-menu-trigger')).toHaveTextContent('移动端用户')
+    expect(document.querySelector('.public-mobile-logout')).toHaveTextContent(i18n.t('nav.logout'))
+  })
+
+  it('移动导航通知按钮会收起导航并打开通知面板', async () => {
+    const user = userEvent.setup()
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <Provider store={createAppStore()}>
+          <AppStoreProvider>
+            <PublicHeader unreadNotificationCount={2} />
+            <PublicFooter />
+          </AppStoreProvider>
+        </Provider>
+      </MemoryRouter>,
+    )
+
+    const menuButton = document.querySelector('.mobile-menu-button') as HTMLButtonElement
+    const mobileNav = document.querySelector('.public-mobile-nav') as HTMLElement
+    await user.click(menuButton)
+
+    const notificationButton = within(mobileNav).getByRole('button', { name: i18n.t('nav.notifications') })
+    expect(notificationButton.querySelector('.header-notification-icon')).toBeInTheDocument()
+    expect(notificationButton.querySelector('.header-notification-dot')).toBeInTheDocument()
+
+    await user.click(notificationButton)
+
+    expect(menuButton).toHaveAttribute('aria-expanded', 'false')
+    expect(mobileNav).toHaveAttribute('hidden')
+    const supportDialog = await screen.findByRole('dialog', { name: i18n.t('support.dialogLabel') })
+    expect(within(supportDialog).getByRole('tabpanel', { name: i18n.t('support.notificationsTab') })).toBeInTheDocument()
+    expect(supportDialog.querySelector('.manuscript-support-tab.is-active')).toHaveAttribute('aria-selected', 'true')
+  })
+
+  it('关闭客服面板后会同步收起悬浮入口', async () => {
+    const user = userEvent.setup()
+    render(<MemoryRouter><PublicFooter /></MemoryRouter>)
+
+    const widget = document.querySelector('.manuscript-support-widget') as HTMLElement
+    const labelButton = document.querySelector('.manuscript-support-label-button') as HTMLButtonElement
+    fireEvent.mouseEnter(widget)
+    expect(widget).toHaveClass('is-hovered')
+
+    await user.click(labelButton)
+    const supportDialog = await screen.findByRole('dialog', { name: i18n.t('support.dialogLabel') })
+    await user.click(within(supportDialog).getByRole('button', { name: i18n.t('support.closePanel') }))
+
+    expect(widget).not.toHaveClass('is-hovered')
+    expect(labelButton).toHaveAttribute('aria-hidden', 'true')
+    expect(labelButton).toHaveAttribute('tabindex', '-1')
+  })
+
+  it('统一公共 Footer 分组支持展开、切换和收起', async () => {
+    const user = userEvent.setup()
+    render(<MemoryRouter><PublicFooter /></MemoryRouter>)
+
+    const productToggle = screen.getByRole('button', { name: i18n.t('footer.product') })
+    const docsToggle = screen.getByRole('button', { name: i18n.t('footer.docs') })
+    expect(productToggle).toHaveAttribute('aria-expanded', 'false')
+
+    await user.click(productToggle)
+    expect(productToggle).toHaveAttribute('aria-expanded', 'true')
+    expect(productToggle.closest('.public-footer-nav-group')).toHaveClass('is-open')
+
+    await user.click(docsToggle)
+    expect(productToggle).toHaveAttribute('aria-expanded', 'false')
+    expect(docsToggle).toHaveAttribute('aria-expanded', 'true')
+
+    await user.click(docsToggle)
+    expect(docsToggle).toHaveAttribute('aria-expanded', 'false')
+  })
+
+  it('公共 Footer 使用新的业务分组、登录入口和联系信息', async () => {
+    const user = userEvent.setup()
+    render(
+      <MemoryRouter>
+        <Provider store={createAppStore()}>
+          <PublicFooter />
+        </Provider>
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByRole('link', { name: '智能对话' })).toHaveAttribute('href', '/login?return=%2Fconsole%2Fplayground')
+    expect(screen.getByRole('link', { name: '视频生成' })).toHaveAttribute('href', '/login?return=%2Fconsole%2Fvideo')
+    expect(screen.getByRole('link', { name: '模型排名' })).toHaveAttribute('href', '/rankings')
+    expect(screen.getByRole('link', { name: '智能体排名' })).toHaveAttribute('href', '/apps')
+    expect(screen.getByRole('link', { name: '套餐价格' })).toHaveAttribute('href', '/login?return=%2Fconsole%2Fbilling%3Ftab%3Dsubscription')
+    expect(screen.getByRole('link', { name: i18n.t('footer.platformIntro') })).toHaveAttribute('href', '/docs/01M074Z9VZXG1V0T6KYRW7AE34/platform-overview')
+    expect(screen.getByRole('link', { name: i18n.t('footer.apiDocs') })).toHaveAttribute('href', '/docs/01M0765G0JAQQMZ1WDAE1DBG87/integration-overview')
+    expect(screen.getByRole('link', { name: i18n.t('footer.faq') })).toHaveAttribute('href', '/docs/01M0765G0JADMQ2Y49DHV3MX70/frequently-asked-questions')
+    expect(screen.getByRole('link', { name: i18n.t('footer.userAgreement') })).toHaveAttribute('href', '/terms')
+    expect(screen.getByRole('link', { name: i18n.t('footer.privacyAgreement') })).toHaveAttribute('href', '/privacy')
+    expect(screen.getByRole('link', { name: i18n.t('footer.rechargeAgreement') })).toHaveAttribute('href', '/recharge-agreement')
+    expect(screen.getByRole('link', { name: '商务合作：wub@tokennx.com' })).toHaveAttribute('href', 'mailto:wub@tokennx.com')
+
+    await user.click(screen.getByRole('button', { name: '售前咨询：在线咨询' }))
+    expect(await screen.findByRole('dialog', { name: '联系客服' })).toBeInTheDocument()
   })
 
   it('Header 和用户菜单统一限制昵称展示长度', async () => {
@@ -386,6 +692,28 @@ describe('控制台模型展示本地化', () => {
 })
 
 describe('登录验证码按钮', () => {
+  it('读取浏览器自动填充的手机号并在接口未返回脱敏号码时显示本地回退值', async () => {
+    const user = userEvent.setup()
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ code: 0, msg: 'success', data: { destination_masked: '', expires_at: '2099-01-01T00:05:00Z', retry_after_seconds: 10 } }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
+
+    render(
+      <MemoryRouter initialEntries={['/login']}>
+        <Provider store={createAppStore()}>
+          <AppStoreProvider><LoginPanel onSuccess={vi.fn()} /></AppStoreProvider>
+        </Provider>
+      </MemoryRouter>,
+    )
+
+    const phoneInput = screen.getByLabelText('手机号') as HTMLInputElement
+    const valueSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set
+    valueSetter?.call(phoneInput, '13800138000')
+    await user.click(screen.getByRole('button', { name: '获取验证码' }))
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledOnce())
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toMatchObject({ destination: '13800138000' })
+    expect(await screen.findByText('验证码已发送至 138****8000')).toBeInTheDocument()
+  })
+
   it('发送验证码后立即显示加载并阻止重复请求', async () => {
     const user = userEvent.setup()
     let resolveRequest!: (response: Response) => void
@@ -400,7 +728,7 @@ describe('登录验证码按钮', () => {
       </MemoryRouter>,
     )
 
-    await user.type(screen.getByLabelText('邮箱'), 'user@example.com')
+    await user.type(screen.getByLabelText('手机号'), '13800138000')
     const sendButton = screen.getByRole('button', { name: '获取验证码' })
     await user.click(sendButton)
 
@@ -414,8 +742,29 @@ describe('登录验证码按钮', () => {
     await user.click(sendButton)
     expect(fetchMock).toHaveBeenCalledTimes(1)
 
-    resolveRequest(new Response(JSON.stringify({ code: 0, msg: 'success', data: { destination_masked: 'u***@example.com', expires_at: '2099-01-01T00:05:00Z', retry_after_seconds: 60 } }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
+    resolveRequest(new Response(JSON.stringify({ code: 0, msg: 'success', data: { destination_masked: '138****8000', expires_at: '2099-01-01T00:05:00Z', retry_after_seconds: 10 } }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
     await waitFor(() => expect(screen.getByRole('button', { name: '60s 后重试' })).toBeDisabled())
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toMatchObject({ destination: '13800138000', country_code: '+86' })
+  })
+
+  it('刷新后相同手机号继续冷却，切换其他手机号即可发送', async () => {
+    const user = userEvent.setup()
+    const cooldownKey = 'token-nx:auth:phone-code-cooldown:v1'
+    window.localStorage.setItem(cooldownKey, JSON.stringify({ destination: '13800138000', countryCode: '+86', expiresAt: Date.now() + 60_000 }))
+    render(
+      <MemoryRouter initialEntries={['/login']}>
+        <Provider store={createAppStore()}>
+          <AppStoreProvider><LoginPanel onSuccess={vi.fn()} /></AppStoreProvider>
+        </Provider>
+      </MemoryRouter>,
+    )
+    const phoneInput = screen.getByLabelText('手机号')
+    await user.type(phoneInput, '13800138000')
+    expect(screen.getByRole('button', { name: /s 后重试/ })).toBeDisabled()
+    await user.clear(phoneInput)
+    await user.type(phoneInput, '13900139000')
+    expect(screen.getByRole('button', { name: '获取验证码' })).toBeEnabled()
+    window.localStorage.removeItem(cooldownKey)
   })
 })
 
@@ -445,12 +794,184 @@ describe('已登录用户菜单', () => {
     expect(menu).toHaveTextContent('调用记录')
     expect(menu).not.toHaveTextContent('使用日志')
     expect(menu).toHaveTextContent('费用管理')
-    expect(menu).toHaveTextContent('API 密钥管理')
-    expect(menu).not.toHaveTextContent('邀请返现')
-    expect(menu).not.toHaveTextContent('认证送现金')
+    expect(menu).toHaveTextContent('密钥管理')
+    expect(menu).toHaveTextContent('邀请返现')
+    expect(menu).toHaveTextContent('认证返现')
     expect(menu).not.toHaveTextContent('文档中心')
     expect(menu).not.toHaveTextContent('联系我们')
     expect(menu).toHaveTextContent('退出登录')
+  })
+
+  it('点击用户菜单设置打开全局账户弹窗', async () => {
+    const user = userEvent.setup()
+    const { fetchMock } = mockAccountProfileApi()
+    const appMount = document.createElement('div')
+    appMount.id = 'app-mount'
+    document.body.appendChild(appMount)
+    const appStore = createAppStore()
+    appStore.dispatch({ type: 'auth/loginWithEmail/fulfilled', payload: { id: 'user-1', display_name: '测试用户', avatar_url: '', locale: 'zh-CN', timezone: 'Asia/Shanghai', status: 'active' } })
+    saveVerifiedPhone('user-1', '13800138000')
+    expect(getVerifiedPhone('user-1')).toBe('13800138000')
+
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <Provider store={appStore}>
+          <AppStoreProvider><PublicHeader /></AppStoreProvider>
+        </Provider>
+      </MemoryRouter>,
+    )
+
+    await user.hover(screen.getByRole('button', { name: '打开用户菜单' }))
+    await user.click(screen.getByRole('button', { name: '账户设置' }))
+    const dialog = await screen.findByRole('dialog', { name: '个人中心' })
+    await waitFor(() => expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith('/api/user/profile'))).toBe(true))
+    expect(dialog).toHaveTextContent('个人资料')
+    expect(dialog).toHaveTextContent('账户')
+    expect(dialog).toHaveTextContent('测试用户')
+    expect(dialog.querySelectorAll('.account-settings-badges img')).toHaveLength(3)
+
+    await user.click(within(dialog).getByRole('button', { name: '昵称' }))
+    const nameInput = within(dialog).getByRole('textbox', { name: '昵称' })
+    await user.clear(nameInput)
+    await user.type(nameInput, '新的昵称')
+    await user.click(within(dialog).getByText('头像'))
+    await waitFor(() => expect(within(dialog).queryByRole('textbox', { name: '昵称' })).toBeNull())
+    expect(await within(dialog).findByText('新的昵称')).toBeInTheDocument()
+    const nicknameRequest = fetchMock.mock.calls.find(([url]) => String(url).endsWith('/api/user/profile/nickname'))
+    expect(JSON.parse(String(nicknameRequest?.[1]?.body))).toEqual({ display_name: '新的昵称' })
+    expect(getVerifiedPhone('user-1')).toBe('13800138000')
+
+    await user.click(within(dialog).getByRole('button', { name: '手机号' }))
+    const phoneDialog = await screen.findByRole('dialog', { name: '更换手机号' }, { timeout: 5000 })
+    expect(phoneDialog).toHaveTextContent('当前联系方式')
+    expect(phoneDialog.querySelector('#profile-phone-current-destination')).toHaveValue('13800138000')
+    expect(phoneDialog.closest('.profile-contact-modal')?.closest('#app-mount')).toBeNull()
+    expect(within(dialog).queryByRole('textbox', { name: '手机号' })).toBeNull()
+    appMount.remove()
+  })
+
+  it('弹窗昵称无变化时不请求，邮箱绑定成功后同步展示和认证用户', async () => {
+    const user = userEvent.setup()
+    const { fetchMock } = mockAccountProfileApi()
+    const appStore = createAppStore()
+    appStore.dispatch({ type: 'auth/loginWithEmail/fulfilled', payload: { id: 'user-1', display_name: '测试用户', avatar_url: '', locale: 'zh-CN', timezone: 'Asia/Shanghai', status: 'active' } })
+
+    render(<MemoryRouter initialEntries={['/']}><Provider store={appStore}><AppStoreProvider><PublicHeader /></AppStoreProvider></Provider></MemoryRouter>)
+    await user.hover(screen.getByRole('button', { name: '打开用户菜单' }))
+    await user.click(screen.getByRole('button', { name: '账户设置' }))
+    const dialog = await screen.findByRole('dialog', { name: '个人中心' })
+    await waitFor(() => expect(within(dialog).getByRole('button', { name: '昵称' })).toBeEnabled())
+
+    await user.click(within(dialog).getByRole('button', { name: '昵称' }))
+    const nameInput = within(dialog).getByRole('textbox', { name: '昵称' })
+    await user.click(within(dialog).getByRole('button', { name: '保存更改' }))
+    expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith('/api/user/profile/nickname'))).toBe(false)
+    expect(nameInput).not.toBeInTheDocument()
+
+    await user.click(within(dialog).getByRole('button', { name: /绑定邮箱/ }))
+    const emailDialog = await screen.findByRole('dialog', { name: '绑定邮箱' })
+    const newEmail = document.querySelector<HTMLInputElement>('#profile-email-new-destination')
+    const newCode = document.querySelector<HTMLInputElement>('#profile-email-newCode')
+    if (!newEmail || !newCode) throw new Error('邮箱绑定表单未渲染')
+    await user.type(newEmail, 'new@example.com')
+    await user.click(within(emailDialog).getByRole('button', { name: '发送新验证码' }))
+    await user.type(newCode, '654321')
+    await user.click(within(emailDialog).getByRole('button', { name: '保存联系方式' }))
+
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: '绑定邮箱' })).not.toBeInTheDocument())
+    expect(within(dialog).getByText('n***@example.com')).toBeInTheDocument()
+    expect(appStore.getState().auth.user?.email_masked).toBe('n***@example.com')
+  })
+
+  it('移动端打开并操作账户设置时保留底层导航和用户菜单', async () => {
+    const user = userEvent.setup()
+    mockAccountProfileApi()
+    const appStore = createAppStore()
+    const originalInnerWidth = window.innerWidth
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 700 })
+    appStore.dispatch({ type: 'auth/loginWithEmail/fulfilled', payload: { id: 'user-1', display_name: '测试用户', avatar_url: '', locale: 'zh-CN', timezone: 'Asia/Shanghai', status: 'active' } })
+
+    try {
+      render(
+        <MemoryRouter initialEntries={['/']}>
+          <Provider store={appStore}>
+            <AppStoreProvider><PublicHeader /></AppStoreProvider>
+          </Provider>
+        </MemoryRouter>,
+      )
+
+      const mobileMenuButton = document.querySelector('.mobile-menu-button') as HTMLButtonElement
+      await user.click(mobileMenuButton)
+      const header = document.querySelector('.public-header') as HTMLElement
+      expect(header).toHaveClass('mobile-nav-open')
+
+      await user.click(screen.getByRole('button', { name: '打开用户菜单' }))
+      const menu = screen.getByRole('menu', { name: '用户菜单' })
+      await user.click(screen.getByRole('button', { name: '账户设置' }))
+      const dialog = await screen.findByRole('dialog', { name: '个人中心' })
+      expect(header).toHaveClass('mobile-nav-open')
+      expect(menu).toHaveClass('open')
+
+      fireEvent.mouseLeave(menu.closest('.user-menu-shell') as HTMLElement)
+      await new Promise((resolve) => window.setTimeout(resolve, 200))
+      expect(menu).toHaveClass('open')
+
+      fireEvent.pointerDown(dialog)
+      expect(header).toHaveClass('mobile-nav-open')
+      expect(menu).toHaveClass('open')
+
+      await user.click(within(dialog).getByText('头像'))
+      expect(header).toHaveClass('mobile-nav-open')
+      expect(menu).toHaveClass('open')
+
+      await user.click(within(dialog).getByRole('button', { name: /绑定邮箱/ }))
+      const emailDialog = await screen.findByRole('dialog', { name: '绑定邮箱' }, { timeout: 5000 })
+      const emailInput = document.querySelector<HTMLInputElement>('#profile-email-new-destination')
+      if (!emailInput) throw new Error('邮箱输入框未渲染')
+      await user.type(emailInput, 'new@example.com')
+      await user.click(within(emailDialog).getByRole('button', { name: '发送新验证码' }))
+      expect(header).toHaveClass('mobile-nav-open')
+      expect(menu).toHaveClass('open')
+      await user.click(within(emailDialog).getByRole('button', { name: '取消' }))
+      expect(header).toHaveClass('mobile-nav-open')
+      expect(menu).toHaveClass('open')
+
+      await user.click(within(dialog).getByRole('button', { name: /关闭/ }))
+      expect(header).toHaveClass('mobile-nav-open')
+    } finally {
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalInnerWidth })
+    }
+  })
+
+  it('closes the mobile header and user menu before navigating from a user menu item', async () => {
+    const user = userEvent.setup()
+    const appStore = createAppStore()
+    appStore.dispatch({ type: 'auth/loginWithEmail/fulfilled', payload: { id: 'user-1', display_name: 'Mobile user', avatar_url: '', locale: 'zh-CN', timezone: 'Asia/Shanghai', status: 'active' } })
+
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <Provider store={appStore}>
+          <AppStoreProvider><LocationProbe /><PublicHeader /></AppStoreProvider>
+        </Provider>
+      </MemoryRouter>,
+    )
+
+    const header = document.querySelector('.public-header') as HTMLElement
+    const mobileMenuButton = document.querySelector('.mobile-menu-button') as HTMLButtonElement
+    await user.click(mobileMenuButton)
+    await user.click(document.querySelector('.user-menu-trigger') as HTMLButtonElement)
+
+    const userMenu = document.querySelector('.user-dropdown') as HTMLElement
+    const quickstartLink = userMenu.querySelector('a[href="/console/quickstart"]') as HTMLAnchorElement
+    expect(header).toHaveClass('mobile-nav-open')
+    expect(userMenu).toHaveClass('open')
+
+    await user.click(quickstartLink)
+
+    expect(screen.getByTestId('common-location')).toHaveTextContent('/console/quickstart')
+    expect(header).not.toHaveClass('mobile-nav-open')
+    expect(mobileMenuButton).toHaveAttribute('aria-expanded', 'false')
+    expect(userMenu).not.toHaveClass('open')
   })
 
   it('登录没有指定返回地址时进入快速接入而不是总览', () => {

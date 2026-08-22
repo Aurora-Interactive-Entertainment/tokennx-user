@@ -2,7 +2,22 @@ export const apiResources = {
   'zh-CN': {
     api: {
       auth: {
+        requestFailed: '认证请求失败，请稍后重试',
+        invalidInput: '请求参数无效，请检查输入内容',
+        sessionConflict: '认证状态发生冲突，请重新操作',
+        unavailable: '认证服务暂时不可用，请稍后重试',
+        invalidCode: '邮箱、手机号或验证码错误，请重新确认',
+        bindingRequired: '该微信账号需要先绑定手机号',
+        phoneAlreadyBound: '手机号已绑定其他账号，暂时无法继续',
+        codeTooFrequent: '验证码发送过于频繁，请稍后再试',
+        incomplete: '认证尚未完成',
+        emailLoginFailed: '邮箱登录失败',
+        phoneLoginFailed: '手机号登录失败',
+        wechatLoginFailed: '微信登录失败',
+        phoneBindingFailed: '手机号绑定失败',
         sessionExpired: '登录状态已失效，请重新登录',
+        expired: '认证单据已过期，请重新发起认证',
+        faceFailed: '人脸认证未通过，请重新发起认证',
       },
       http: {
         serviceUnavailable: '服务暂时不可用，请稍后重试',
@@ -118,9 +133,9 @@ export const apiResources = {
       },
       modelRuntime: {
         unknownError: '模型服务返回了无法识别的错误',
-        requestFailed: '模型请求失败，请检查 API Key、模型权限和后端服务状态',
+        requestFailed: '模型请求失败，请稍后重试',
         invalidStream: '模型服务返回了无法解析的流式数据',
-        apiKeyRequired: '请先选择一个可用的 API Key',
+        accessTokenRequired: '登录状态已失效，请重新登录',
         invalidRequest: '模型和测试内容不能为空',
         timeout: '模型响应超时，请检查后端服务和上游模型状态',
         networkFailure: '无法连接模型服务，请检查后端 Base URL 和网络状态',
@@ -139,7 +154,22 @@ export const apiResources = {
   'en-US': {
     api: {
       auth: {
+        requestFailed: 'Authentication failed. Try again later.',
+        invalidInput: 'The request parameters are invalid. Check your input.',
+        sessionConflict: 'The authentication state changed. Try again.',
+        unavailable: 'The authentication service is temporarily unavailable. Try again later.',
+        invalidCode: 'The email, phone number, or verification code is incorrect.',
+        bindingRequired: 'This WeChat account must bind a phone number first.',
+        phoneAlreadyBound: 'This phone number is already bound to another account.',
+        codeTooFrequent: 'Verification codes are being sent too frequently. Try again later.',
+        incomplete: 'Authentication is not complete.',
+        emailLoginFailed: 'Email sign-in failed.',
+        phoneLoginFailed: 'Phone sign-in failed.',
+        wechatLoginFailed: 'WeChat sign-in failed.',
+        phoneBindingFailed: 'Phone binding failed.',
         sessionExpired: 'Your session has expired. Please sign in again.',
+        expired: 'The verification request expired. Start again.',
+        faceFailed: 'Face verification failed. Start again.',
       },
       http: {
         serviceUnavailable: 'The service is temporarily unavailable. Try again later.',
@@ -255,9 +285,9 @@ export const apiResources = {
       },
       modelRuntime: {
         unknownError: 'The model service returned an unreadable error.',
-        requestFailed: 'The model request failed. Check the API key, model permissions, and backend status.',
+        requestFailed: 'The model request failed. Try again later.',
         invalidStream: 'The model service returned an unreadable streaming response.',
-        apiKeyRequired: 'Select an available API key first.',
+        accessTokenRequired: 'Your session has expired. Sign in again.',
         invalidRequest: 'The model and test content are required.',
         timeout: 'The model response timed out. Check the backend and upstream model status.',
         networkFailure: 'Unable to connect to the model service. Check the backend Base URL and network.',

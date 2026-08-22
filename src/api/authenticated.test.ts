@@ -175,4 +175,33 @@ describe('已认证请求封装', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2)
     expect(new Headers(fetchMock.mock.calls[1][1]?.headers).get('Authorization')).toBe('Bearer synced-access')
   })
+
+  it('does not refresh or clear the session for a non-401 API error', async () => {
+    saveAuthTokens(authResult('access-token', 'refresh-token'))
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = String(input)
+      if (url.endsWith('/api/user/profile')) return apiResponse(null, 400, 110001, 'invalid input')
+      throw new Error(`unexpected request: ${url}`)
+    })
+
+    await expect(getUserProfile('access-token')).rejects.toMatchObject({ status: 400, code: 110001 })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(getAccessToken()).toBe('access-token')
+    expect(window.localStorage.getItem(REFRESH_SESSION_KEY)).toContain('refresh-token')
+  })
+
+  it('keeps the session when the refresh endpoint itself returns a non-401 error', async () => {
+    saveAuthTokens(authResult('expired-access', 'refresh-token'))
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = String(input)
+      if (url.endsWith('/api/user/profile')) return apiResponse(null, 401, 110001, 'unauthorized')
+      if (url.endsWith('/api/auth/refresh')) return apiResponse(null, 503, 120001, 'service unavailable')
+      throw new Error(`unexpected request: ${url}`)
+    })
+
+    await expect(getUserProfile('expired-access')).rejects.toMatchObject({ status: 503, code: 120001 })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(getAccessToken()).toBe('expired-access')
+    expect(window.localStorage.getItem(REFRESH_SESSION_KEY)).toContain('refresh-token')
+  })
 })

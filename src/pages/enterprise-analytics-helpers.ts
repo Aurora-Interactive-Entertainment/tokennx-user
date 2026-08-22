@@ -6,10 +6,11 @@ import type {
 } from "@/api/enterprise-console";
 import i18n from "@/i18n";
 import {
+  apiTimeToDate,
   formatCount,
   formatLocalDateInput,
   formatYuan,
-  localDateToISOString,
+  localDateToTimestamp,
   shiftLocalDate,
 } from "@/utils/format";
 
@@ -38,8 +39,8 @@ export type AnalyticsFilters = {
 
 export type AnalyticsQuery = {
   range: AnalyticsRange;
-  start_at?: string;
-  end_at?: string;
+  start_at?: number;
+  end_at?: number;
   member_id?: string;
 };
 
@@ -129,11 +130,11 @@ export function analyticsQuery(filters: AnalyticsFilters): AnalyticsQuery {
     range: filters.range,
     start_at:
       filters.range === "custom"
-        ? localDateToISOString(filters.startDate)
+        ? localDateToTimestamp(filters.startDate)
         : undefined,
     end_at:
       filters.range === "custom"
-        ? localDateToISOString(filters.endDate, true)
+        ? localDateToTimestamp(filters.endDate, true)
         : undefined,
     member_id: filters.memberID === "all" ? undefined : filters.memberID,
   };
@@ -203,10 +204,7 @@ export function formatAnalyticsSeconds(
 ): string {
   return value === null || value === undefined || !Number.isFinite(value)
     ? "--"
-    : i18n.t("console.enterprise.analytics.durationSeconds", {
-        value: value.toFixed(2),
-        defaultValue: `${value.toFixed(2)} 秒`,
-      });
+    : i18n.t("console.enterprise.analytics.durationSeconds", { value: value.toFixed(2) });
 }
 
 export function analyticsSummary(
@@ -277,9 +275,7 @@ export function formatAnalyticsDelta(
 ): AnalyticsDelta {
   if (previous === null)
     return {
-      text: i18n.t("console.enterprise.analytics.noComparablePeriod", {
-        defaultValue: "—（无可比周期）",
-      }),
+      text: i18n.t("console.enterprise.analytics.noComparablePeriod"),
       tone: "neutral",
     };
   const difference = current - previous;
@@ -290,21 +286,12 @@ export function formatAnalyticsDelta(
   if (kind === "cost")
     value = formatYuan(String(absoluteDifference));
   else if (kind === "rate")
-    value = i18n.t("console.enterprise.analytics.percentagePoints", {
-      value: absoluteDifference.toFixed(1),
-      defaultValue: `${absoluteDifference.toFixed(1)} 个百分点`,
-    });
+    value = i18n.t("console.enterprise.analytics.percentagePoints", { value: absoluteDifference.toFixed(1) });
   else if (kind === "latency")
-    value = i18n.t("console.enterprise.analytics.durationSeconds", {
-      value: absoluteDifference.toFixed(2),
-      defaultValue: `${absoluteDifference.toFixed(2)} 秒`,
-    });
+    value = i18n.t("console.enterprise.analytics.durationSeconds", { value: absoluteDifference.toFixed(2) });
   else value = formatAnalyticsNumber(absoluteDifference);
   return {
-    text: i18n.t("console.enterprise.analytics.periodChange", {
-      value: `${sign}${value}`,
-      defaultValue: `环比 ${sign}${value}`,
-    }),
+    text: i18n.t("console.enterprise.analytics.periodChange", { value: `${sign}${value}` }),
     tone,
   };
 }
@@ -318,53 +305,37 @@ export function analyticsDimensionLabel(
     const modelName =
       rawName && rawName !== item.code?.trim()
         ? rawName
-        : i18n.t("console.enterprise.analytics.unnamedModel", {
-            defaultValue: "未登记模型",
-          });
+        : i18n.t("console.enterprise.analytics.unnamedModel");
     const alias = item.alias?.trim();
     return alias
-      ? i18n.t("console.enterprise.analytics.modelWithAlias", {
-          name: modelName,
-          alias,
-          defaultValue: `${modelName}（${alias}）`,
-        })
+      ? i18n.t("console.enterprise.analytics.modelWithAlias", { name: modelName, alias })
       : modelName;
   }
   if (kind === "api-key")
     return (
       rawName ||
-      i18n.t("console.enterprise.analytics.unnamedKey", {
-        defaultValue: "未命名密钥",
-      })
+      i18n.t("console.enterprise.analytics.unnamedKey")
     );
   if (kind === "source") {
     const sourceKey = item.code?.trim() || rawName;
     const translationKey = ANALYTICS_SOURCE_LABEL_KEYS[sourceKey];
     return translationKey
-      ? i18n.t(translationKey, {
-          defaultValue: ANALYTICS_SOURCE_LABELS[sourceKey] || rawName,
-        })
+      ? i18n.t(translationKey)
       : rawName ||
-          i18n.t("console.enterprise.analytics.unknownSource", {
-            defaultValue: "未知来源",
-          });
+          i18n.t("console.enterprise.analytics.unknownSource");
   }
   if (kind === "protocol") {
     const protocolKey = item.code?.trim() || rawName;
     const translationKey = ANALYTICS_PROTOCOL_LABEL_KEYS[protocolKey];
     return translationKey
-      ? i18n.t(translationKey, {
-          defaultValue: ANALYTICS_PROTOCOL_LABELS[protocolKey] || rawName,
-        })
+      ? i18n.t(translationKey)
       : rawName ||
-          i18n.t("console.enterprise.analytics.unknownProtocol", {
-            defaultValue: "未知协议",
-          });
+          i18n.t("console.enterprise.analytics.unknownProtocol");
   }
   return (
     rawName ||
     item.id?.trim() ||
-    i18n.t("console.enterprise.analytics.unknownMember", { defaultValue: "未知成员" })
+    i18n.t("console.enterprise.analytics.unknownMember")
   );
 }
 
@@ -404,10 +375,9 @@ export function analyticsDistributionRows(
   });
 }
 
-function apiDateOnly(value: string | number | null | undefined): string {
-  if (value === null || value === undefined) return "";
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? "" : date.toISOString().slice(0, 10);
+function apiDateOnly(value: number | null | undefined): string {
+  const date = apiTimeToDate(value);
+  return date ? date.toISOString().slice(0, 10) : "";
 }
 
 function appendRangeParams(

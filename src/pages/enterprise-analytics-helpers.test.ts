@@ -79,11 +79,9 @@ describe("企业数据分析业务规则", () => {
     };
     const query = analyticsQuery(custom);
     expect(query.range).toBe("custom");
-    expect(query.start_at).toContain("T");
-    expect(query.end_at).toContain("T");
-    expect(new Date(query.end_at ?? "").getTime()).toBeGreaterThan(
-      new Date(query.start_at ?? "").getTime(),
-    );
+    expect(query.start_at).toBe(new Date(2026, 6, 18, 0, 0, 0, 0).getTime());
+    expect(query.end_at).toBe(new Date(2026, 6, 24, 23, 59, 59, 999).getTime());
+    expect(query.end_at).toBeGreaterThan(query.start_at ?? 0);
     expect(customAnalyticsRangeDefaults(new Date(2026, 6, 31))).toEqual({
       startDate: "2026-07-25",
       endDate: "2026-07-31",
@@ -146,8 +144,8 @@ describe("企业数据分析业务规则", () => {
       filters: { range: "month", startDate: "", endDate: "", memberID: "all" },
       period: {
         range: "month",
-        start_at: "2026-07-01T00:00:00Z",
-        end_at: "2026-07-31T23:59:59Z",
+        start_at: Date.parse("2026-07-01T00:00:00Z"),
+        end_at: Date.parse("2026-07-31T23:59:59Z"),
         label: "2026 年 7 月",
       },
       memberID: "member-1",

@@ -25,13 +25,13 @@ describe('用户调用记录 API 客户端', () => {
 
   it('生成个人和企业隔离的筛选查询，并拒绝缺少企业 ID', () => {
     expect(createUsageRecordsQuery(PERSONAL_CONTEXT, { page: 2, page_size: RECORDS_PAGE_SIZE, source: 'api' })).toBe('account_type=personal&page=2&page_size=20&source=api')
-    expect(createUsageRecordsQuery(ENTERPRISE_CONTEXT, { member_id: 'member-1', model: 'gpt-test', start_at: '2026-07-01T00:00:00Z' })).toBe('account_type=enterprise&enterprise_id=enterprise-1&member_id=member-1&model=gpt-test&start_at=2026-07-01T00%3A00%3A00Z')
+    expect(createUsageRecordsQuery(ENTERPRISE_CONTEXT, { member_id: 'member-1', model: 'gpt-test', start_at: 1782864000000 })).toBe('account_type=enterprise&enterprise_id=enterprise-1&member_id=member-1&model=gpt-test&start_at=1782864000000')
     expect(() => createUsageRecordsQuery({ account_type: 'enterprise' })).toThrowError('企业调用记录上下文缺少企业 ID')
   })
 
   it('调用记录接口并传递认证、分页与详情筛选参数', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(apiResponse({ items: [], page: 1, page_size: 20, total: 0 }))
-    await getUsageRecords(ENTERPRISE_CONTEXT, { page: 3, page_size: 10, api_key_id: 'key-1', model: 'gpt-test', source: 'console-test', status: 'cancelled', request_id: 'request-1', member_id: 'member-1', start_at: '2026-07-01T00:00:00Z', end_at: '2026-08-01T00:00:00Z', accessToken: 'records-token' })
+    await getUsageRecords(ENTERPRISE_CONTEXT, { page: 3, page_size: 10, api_key_id: 'key-1', model: 'gpt-test', source: 'console-test', status: 'cancelled', request_id: 'request-1', member_id: 'member-1', start_at: 1782864000000, end_at: 1785542400000, accessToken: 'records-token' })
     const call = fetchMock.mock.calls[0]
     const url = new URL(String(call?.[0]), window.location.origin)
     expect(url.pathname).toBe('/api/user/usage/records')
@@ -46,11 +46,11 @@ describe('用户调用记录 API 客户端', () => {
 
   it('生成并调用用量摘要接口，隔离时间范围和账务筛选参数', async () => {
     expect(createUsageSummaryQuery(PERSONAL_CONTEXT, { range: '7d', page: 1, page_size: 20, source: 'all' })).toBe('account_type=personal&range=7d&page=1&page_size=20')
-    expect(createUsageSummaryQuery(ENTERPRISE_CONTEXT, { range: 'custom', member_id: 'member-1', start_at: '2026-07-01T00:00:00Z', end_at: '2026-08-01T00:00:00Z' })).toBe('account_type=enterprise&enterprise_id=enterprise-1&range=custom&member_id=member-1&start_at=2026-07-01T00%3A00%3A00Z&end_at=2026-08-01T00%3A00%3A00Z')
+    expect(createUsageSummaryQuery(ENTERPRISE_CONTEXT, { range: 'custom', member_id: 'member-1', start_at: 1782864000000, end_at: 1785542400000 })).toBe('account_type=enterprise&enterprise_id=enterprise-1&range=custom&member_id=member-1&start_at=1782864000000&end_at=1785542400000')
     expect(() => createUsageSummaryQuery({ account_type: 'enterprise' })).toThrowError('企业用量统计上下文缺少企业 ID')
 
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(apiResponse({ metrics: { request_count: 0 }, trend: [], models: [], api_keys: [], sources: [], model_rows: [] }, 200, 0, 'success', 'summary-request-id'))
-    await getUsageSummary(ENTERPRISE_CONTEXT, { range: 'custom', page: 2, page_size: 10, api_key_id: 'key-1', model: 'gpt-test', source: 'api', status: 'success', member_id: 'member-1', start_at: '2026-07-01T00:00:00Z', end_at: '2026-08-01T00:00:00Z', accessToken: 'summary-token' })
+    await getUsageSummary(ENTERPRISE_CONTEXT, { range: 'custom', page: 2, page_size: 10, api_key_id: 'key-1', model: 'gpt-test', source: 'api', status: 'success', member_id: 'member-1', start_at: 1782864000000, end_at: 1785542400000, accessToken: 'summary-token' })
     const call = fetchMock.mock.calls[0]
     const url = new URL(String(call?.[0]), window.location.origin)
     expect(url.pathname).toBe('/api/user/usage/summary')

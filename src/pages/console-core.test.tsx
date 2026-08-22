@@ -1,12 +1,13 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { within } from '@testing-library/react'
 import { MemoryRouter, useLocation } from 'react-router'
 import { Provider } from 'react-redux'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AppStoreProvider } from '@/data/app-state'
 import { createAppStore } from '@/store'
 import { MODEL_API_BASE_URL, ModelRuntimeError, streamChatCompletion } from '@/api/model-runtime'
-import { getUserApiKeys, type UserApiKey } from '@/api/user-api-keys'
+import type { UserApiKey } from '@/api/user-api-keys'
 import { clearAuthTokens, saveAuthTokens } from '@/auth/token-storage'
 import type { AuthResult } from '@/api/auth'
 import { apiKeySupportsModel, ConsoleModelsPage, PlaygroundPage, QuickstartPage } from './console-core'
@@ -16,6 +17,11 @@ function CurrentPath() {
   return <output data-testid="current-path">{location.pathname}</output>
 }
 
+function CurrentLocation() {
+  const location = useLocation()
+  return <output data-testid="current-location">{location.pathname}{location.search}</output>
+}
+
 function renderConsolePage(page: React.ReactNode, initialEntries: string[] = ['/console']): void {
   render(<MemoryRouter initialEntries={initialEntries}><Provider store={createAppStore()}><AppStoreProvider>{page}</AppStoreProvider></Provider></MemoryRouter>)
 }
@@ -23,11 +29,6 @@ function renderConsolePage(page: React.ReactNode, initialEntries: string[] = ['/
 vi.mock('@/api/model-runtime', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/api/model-runtime')>()
   return { ...actual, streamChatCompletion: vi.fn() }
-})
-
-vi.mock('@/api/user-api-keys', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/api/user-api-keys')>()
-  return { ...actual, getUserApiKeys: vi.fn() }
 })
 
 function activeApiKey(): UserApiKey {
@@ -44,7 +45,7 @@ function activeApiKey(): UserApiKey {
     billing_source: 'balance',
     limits: { enabled: true, cost_limit_yuan: null, used_amount_yuan: '0', rpm: null, tpm: null, concurrency: null },
     creator: { id: 'user-test', display_name: '测试用户', masked_phone: '138****0000' },
-    created_at: '2026-07-27T10:00:00Z',
+    created_at: Date.parse('2026-07-27T10:00:00Z'),
     expires_at: null,
     last_used_at: null,
   }
@@ -75,6 +76,15 @@ function visibleModelsResponse(): { items: Array<Record<string, unknown>> } {
         id: 'deepseek-chat', alias: 'deepseek-public', name: '后端 DeepSeek', company: '后端厂商', modality: 'text', billing_mode: 'token', context_window_tokens: 64000,
         description: '来自用户模型目录的模型', capabilities: ['chat'], provider_count: 1, total_tokens: '1770000000',
         prices: [{ meter_code: 'input', meter_kind: 'input_token', unit: 'token', currency: 'CNY', unit_quantity: 1000000, unit_price_yuan: '0.10', tier_no: 0 }],
+        availability: {
+          rate: 80,
+          hourly: Array.from({ length: 48 }, (_, index) => ({
+            hour_start: 1786946400000 + index * 60 * 60 * 1000,
+            rate: index === 0 ? 0 : index === 1 ? 79 : 80,
+            sample_count: 100,
+            success_count: index === 0 ? 0 : index === 1 ? 79 : 80,
+          })),
+        },
       },
       {
         id: 'qwen-chat', alias: 'qwen-public', name: '后端 Qwen', company: '后端千问厂商', modality: 'text', billing_mode: 'token', context_window_tokens: 32000,
@@ -86,6 +96,30 @@ function visibleModelsResponse(): { items: Array<Record<string, unknown>> } {
         description: '来自用户模型目录的无价格模型', capabilities: null, provider_count: 0, prices: null,
       },
     ],
+  }
+}
+
+function modelDetailResponse(): Record<string, unknown> {
+  return {
+    model: {
+      id: 'deepseek-chat', alias: 'deepseek-public', name: 'DeepSeek 详情', company: '详情厂商', modality: 'text', billing_mode: 'token', context_window_tokens: 1000000,
+      description: '接口返回的详情介绍', capabilities: ['chat', 'reasoning'], provider_count: 3, total_tokens: '7237576',
+      prices: [
+        { meter_code: 'input_token', meter_kind: 'input_token', purpose: 'input', unit: 'token', currency: 'CNY', unit_quantity: 1000000, unit_price_yuan: '1.000000000000', tier_no: 0 },
+        { meter_code: 'output_token', meter_kind: 'output_token', purpose: 'output', unit: 'token', currency: 'CNY', unit_quantity: 1000000, unit_price_yuan: '2.000000000000', tier_no: 0 },
+        { meter_code: 'cache_token', meter_kind: 'cache_token', purpose: 'cache_hit', unit: 'token', currency: 'CNY', unit_quantity: 1000000, unit_price_yuan: '0.020000000000', tier_no: 0 },
+        { meter_code: 'cache_creation', meter_kind: 'cache_token', purpose: 'cache_creation', unit: 'token', currency: 'CNY', unit_quantity: 1000000, unit_price_yuan: '0.030000000000', tier_no: 0 },
+      ],
+    },
+    tags: [{ label: '接口标签', color: '#22946e' }],
+    specifications: { max_output_tokens: 65536, input_modalities: ['text'], output_modalities: ['text'], recommended_protocol: { code: 'openai_chat_completions', name: 'OpenAI Chat Completions' }, capability_limits: {} },
+    metrics: {
+      activity: { unit: 'token', points: Array.from({ length: 7 }, (_, index) => ({ timestamp: 1786147200000 + index * 86400000, value: index * 100 })) },
+      throughput: { unit: 'tokens/s', statistic: 'p50', points: Array.from({ length: 7 }, (_, index) => ({ timestamp: 1786147200000 + index * 86400000, value: index ? index * 12.5 : null })) },
+      first_token_latency: { unit: 'ms', statistic: 'p95', points: Array.from({ length: 7 }, (_, index) => ({ timestamp: 1786147200000 + index * 86400000, value: index ? 120 - index : null })) },
+      availability: { rate: 98.5, success_requests: 197, valid_requests: 200 },
+      cumulative_usage: { value: '7237576', unit: 'token' },
+    },
   }
 }
 
@@ -114,16 +148,6 @@ function manyModelsResponse(): { items: Array<Record<string, unknown>> } {
       }
     }),
   }
-}
-
-async function selectPlaygroundApiKey(user: ReturnType<typeof userEvent.setup>, name = '联调密钥'): Promise<void> {
-  const keySelect = await waitFor(() => {
-    const element = document.getElementById('playground-api-key')
-    if (!element) throw new Error('API Key 选择器尚未渲染')
-    return element
-  })
-  await user.click(keySelect)
-  fireEvent.click(await screen.findByRole('option', { name: new RegExp(`${name} ·`) }))
 }
 
 describe('控制台模型接入页面', () => {
@@ -166,6 +190,7 @@ describe('控制台模型接入页面', () => {
     await user.click(screen.getByRole('button', { name: '复制模型 Base URL' }))
 
     expect(clipboardWriteText).toHaveBeenCalledWith(MODEL_API_BASE_URL)
+    expect(screen.getByRole('link', { name: '模型详情' })).toHaveAttribute('href', '/console/models?model=deepseek-public')
   })
 
   it('将接口返回的全部用户可见模型展示在模型广场', async () => {
@@ -181,9 +206,80 @@ describe('控制台模型接入页面', () => {
     expect(screen.getByText('后端视觉厂商')).toBeInTheDocument()
     expect(screen.getByText('1.77B token')).toBeInTheDocument()
     expect(document.querySelector('.models-console-page .model-card-grid')).not.toHaveClass('model-card-grid--single')
+    expect(document.querySelectorAll('.models-console-page .model-card-foot')).toHaveLength(0)
+    const availabilityBars = document.querySelectorAll('.models-console-page .model-availability-bar')
+    expect(availabilityBars).toHaveLength(48)
+    expect(availabilityBars[0]).toHaveClass('is-danger')
+    expect(availabilityBars[1]).toHaveClass('is-warning')
+    expect(availabilityBars[2]).toHaveClass('is-healthy')
 
     await user.click(screen.getByRole('button', { name: '复制 后端 DeepSeek 模型别名' }))
     expect(clipboardWriteText).toHaveBeenCalledWith('deepseek-public')
+  })
+
+  it('将活动放在顶部筛选区且不显示数量，并保留模型类型计数和零项禁用', async () => {
+    vi.mocked(globalThis.fetch).mockResolvedValue(new Response(JSON.stringify({
+      code: 0,
+      msg: 'success',
+      data: {
+        ...visibleModelsResponse(),
+        items: visibleModelsResponse().items.map((item, index) => index === 0 ? { ...item, tags: [{ label: '折扣', color: '#c98a35' }] } : item),
+        activities: [
+          { id: 'activity-free', name: '免费', model_count: 1, sort_order: 0 },
+          { id: 'activity-discount', name: '折扣', model_count: 1, sort_order: 1 },
+        ],
+      },
+    }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
+    renderConsolePage(<ConsoleModelsPage />, ['/console/models'])
+
+    const activityFilters = await screen.findByRole('group', { name: '活动筛选' })
+    expect(within(activityFilters).getAllByRole('button').map((button) => button.textContent)).toEqual(['全部', '免费', '折扣'])
+    expect(screen.getAllByRole('group', { name: '活动筛选' })).toHaveLength(1)
+
+    const modelTypes = screen.getByRole('group', { name: '模型类型筛选' })
+    expect(within(modelTypes).getByRole('button', { name: /全部\s*3/ })).toBeEnabled()
+    expect(within(modelTypes).getByRole('button', { name: /图片\s*1/ })).toBeEnabled()
+    expect(within(modelTypes).getByRole('button', { name: /音频\s*0/ })).toBeDisabled()
+    const coloredTag = document.querySelector<HTMLElement>('.models-console-page .model-card-tags .model-color-tag')
+    expect(coloredTag).toHaveTextContent('折扣')
+    expect(coloredTag?.style.getPropertyValue('--model-tag-color')).toBe('#c98a35')
+  })
+
+  it('模型广场支持通过查询参数打开抽屉，并在关闭后清除参数', async () => {
+    const user = userEvent.setup()
+    renderConsolePage(<><ConsoleModelsPage /><CurrentLocation /></>, ['/console/models?model=deepseek-public'])
+
+    await waitFor(() => expect(screen.getByText('3 个模型')).toBeInTheDocument())
+    const detailPanel = await waitFor(() => {
+      const panel = document.querySelector('[data-model-detail-content]')
+      if (!panel) throw new Error('模型详情抽屉尚未打开')
+      return panel
+    })
+    expect(detailPanel).toHaveTextContent('后端 DeepSeek')
+
+    const closeButton = document.querySelector<HTMLButtonElement>('.model-detail-close')
+    expect(closeButton).not.toBeNull()
+    await user.click(closeButton as HTMLButtonElement)
+    expect(screen.getByTestId('current-location')).toHaveTextContent('/console/models')
+    expect(document.querySelector('[data-model-detail-content]')).toBeNull()
+  })
+
+  it('打开模型详情时显示详情接口返回的价格、规格和指标', async () => {
+    const detail = modelDetailResponse()
+    vi.mocked(globalThis.fetch).mockImplementation(async (input) => {
+      if (String(input).includes('/api/user/models/deepseek-public')) return new Response(JSON.stringify({ code: 0, msg: 'success', data: detail }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+      return new Response(JSON.stringify({ code: 0, msg: 'success', data: visibleModelsResponse() }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+    })
+    renderConsolePage(<ConsoleModelsPage />, ['/console/models?model=deepseek-public'])
+
+    expect(await screen.findByText('接口返回的详情介绍')).toBeInTheDocument()
+    expect(screen.getByText('详情厂商')).toBeInTheDocument()
+    expect(screen.getByText('0.020')).toBeInTheDocument()
+    expect(screen.getByText('1M')).toBeInTheDocument()
+    expect(screen.getByText('98.5%')).toBeInTheDocument()
+    expect(screen.getByText('7,237,576')).toBeInTheDocument()
+    expect(document.querySelectorAll('.model-detail-chart-bars')).toHaveLength(1)
+    expect(document.querySelectorAll('.model-detail-chart-line')).toHaveLength(2)
   })
 
   it('分页后切换搜索会回到第一页，并按当前结果显示范围', async () => {
@@ -223,39 +319,29 @@ describe('控制台模型接入页面', () => {
     expect(await screen.findByText('12 个模型')).toBeInTheDocument()
   })
 
-  it('未选择 API Key 时隐藏模型列表，选择后只展示该 Key 可访问的模型', async () => {
+  it('直接展示用户模型接口返回的文本模型，不再显示 API Key 控件', async () => {
     const user = userEvent.setup()
-    const scopedApiKey: UserApiKey = {
-      ...activeApiKey(),
-      id: 'key-scoped-test',
-      name: '限定模型密钥',
-      scope: 'selected',
-      model_ids: ['deepseek-chat'],
-      models: [{ id: 'deepseek-chat', alias: 'deepseek-public', name: '后端 DeepSeek', company: '后端厂商' }],
-    }
-    vi.mocked(getUserApiKeys).mockResolvedValue({ items: [activeApiKey(), scopedApiKey], available_models: [] })
-
     renderConsolePage(<PlaygroundPage />, ['/console/playground?model=deepseek-chat'])
 
-    await waitFor(() => expect(screen.getByText('请选择 API Key')).toBeInTheDocument())
-    const modelSelect = document.getElementById('playground-model')
-    expect(modelSelect).not.toBeNull()
-    expect(modelSelect).toHaveAttribute('aria-disabled', 'true')
-
-    await selectPlaygroundApiKey(user, '限定模型密钥')
-
-    if (!modelSelect) throw new Error('模型选择器尚未渲染')
-    await waitFor(() => expect(modelSelect).toHaveAttribute('aria-disabled', 'false'))
+    const modelSelect = await waitFor(() => {
+      const element = document.getElementById('playground-model')
+      if (!element) throw new Error('模型选择器尚未渲染')
+      return element
+    })
+    expect(modelSelect).toHaveAttribute('aria-disabled', 'false')
+    expect(document.getElementById('playground-api-key')).toBeNull()
+    expect(screen.getByText('本页面仅作为测试用，对话内容不会被保存刷新页面后将会消失')).toBeInTheDocument()
+    expect(document.querySelector('.message-list')).toHaveClass('is-centered')
+    expect(screen.queryByRole('link', { name: '管理 API Key' })).toBeNull()
     await user.click(modelSelect)
     expect(await screen.findByRole('option', { name: /后端 DeepSeek/ })).toBeInTheDocument()
-    expect(screen.queryByRole('option', { name: /后端 Qwen/ })).toBeNull()
+    expect(screen.getByRole('option', { name: /后端 Qwen/ })).toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: /后端 Vision/ })).toBeNull()
   })
 
-  it('加载活动 API Key 后把用户输入交给模型请求并展示真实回复', async () => {
+  it('把登录令牌、所选模型和用户输入交给模型请求并展示真实回复', async () => {
     const user = userEvent.setup()
-    const apiKey = activeApiKey()
     const clipboardWriteText = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue(undefined)
-    vi.mocked(getUserApiKeys).mockResolvedValue({ items: [apiKey], available_models: [] })
     vi.mocked(streamChatCompletion).mockImplementation(async (input) => {
       input.onReasoningDelta?.('先')
       input.onReasoningDelta?.('分析')
@@ -266,14 +352,13 @@ describe('控制台模型接入页面', () => {
 
     renderConsolePage(<PlaygroundPage />, ['/console/playground?model=deepseek-chat'])
 
-    await selectPlaygroundApiKey(user)
     expect(screen.queryByText('模型服务已就绪')).toBeNull()
-    await user.type(screen.getByLabelText('测试提示词'), '请返回真实结果')
+    await user.type(await screen.findByLabelText('测试提示词'), '请返回真实结果')
     await user.click(screen.getByRole('button', { name: '发送' }))
 
     await waitFor(() => expect(streamChatCompletion).toHaveBeenCalledTimes(1))
     expect(vi.mocked(streamChatCompletion).mock.calls[0]?.[0]).toMatchObject({
-      apiKey: 'nx_live_test_secret',
+      accessToken: 'console-model-token',
       model: 'deepseek-public',
       messages: [{ role: 'user', content: '请返回真实结果' }],
       temperature: 0.7,
@@ -297,12 +382,10 @@ describe('控制台模型接入页面', () => {
 
   it('限制输入为 1000 个字符并显示实时字符计数', async () => {
     const user = userEvent.setup()
-    vi.mocked(getUserApiKeys).mockResolvedValue({ items: [activeApiKey()], available_models: [] })
 
     renderConsolePage(<PlaygroundPage />, ['/console/playground?model=deepseek-chat'])
-    await selectPlaygroundApiKey(user)
 
-    const input = screen.getByLabelText('测试提示词')
+    const input = await screen.findByLabelText('测试提示词')
     expect(screen.getByText('0/1000')).toBeInTheDocument()
     fireEvent.change(input, { target: { value: `${'a'.repeat(1000)}b` } })
 
@@ -312,14 +395,12 @@ describe('控制台模型接入页面', () => {
 
   it('连续会话请求携带当前会话历史消息', async () => {
     const user = userEvent.setup()
-    vi.mocked(getUserApiKeys).mockResolvedValue({ items: [activeApiKey()], available_models: [] })
     vi.mocked(streamChatCompletion)
       .mockResolvedValueOnce({ content: '第一轮回复', reasoning: '第一轮思考', requestId: 'req-round-1', inputTokens: 3, outputTokens: 4, finishReason: 'stop', latencyMs: 20 })
       .mockResolvedValueOnce({ content: '第二轮回复', reasoning: '第二轮思考', requestId: 'req-round-2', inputTokens: 7, outputTokens: 8, finishReason: 'stop', latencyMs: 30 })
 
     renderConsolePage(<PlaygroundPage />, ['/console/playground?model=deepseek-chat'])
-    await selectPlaygroundApiKey(user)
-    await user.type(screen.getByLabelText('测试提示词'), '第一轮问题')
+    await user.type(await screen.findByLabelText('测试提示词'), '第一轮问题')
     await user.click(screen.getByRole('button', { name: '发送' }))
     await waitFor(() => expect(streamChatCompletion).toHaveBeenCalledTimes(1))
     await user.type(screen.getByLabelText('测试提示词'), '第二轮问题')
@@ -335,7 +416,6 @@ describe('控制台模型接入页面', () => {
 
   it('模型响应等待时显示加载动画，并用停止图标中止请求', async () => {
     const user = userEvent.setup()
-    vi.mocked(getUserApiKeys).mockResolvedValue({ items: [activeApiKey()], available_models: [] })
     let aborted = false
     vi.mocked(streamChatCompletion).mockImplementationOnce((input) => new Promise((_resolve, reject) => {
       input.signal?.addEventListener('abort', () => {
@@ -345,8 +425,7 @@ describe('控制台模型接入页面', () => {
     }))
 
     renderConsolePage(<PlaygroundPage />, ['/console/playground?model=deepseek-chat'])
-    await selectPlaygroundApiKey(user)
-    await user.type(screen.getByLabelText('测试提示词'), '等待响应')
+    await user.type(await screen.findByLabelText('测试提示词'), '等待响应')
     await user.click(screen.getByRole('button', { name: '发送' }))
 
     expect(await screen.findByRole('status', { name: '正在生成响应' })).toBeInTheDocument()
@@ -356,21 +435,21 @@ describe('控制台模型接入页面', () => {
 
     await user.click(screen.getByRole('button', { name: '停止生成' }))
     await waitFor(() => expect(aborted).toBe(true))
+    await user.click(await screen.findByRole('button', { name: '关闭' }))
     expect(await screen.findByRole('button', { name: '编辑失败消息' })).toBeInTheDocument()
   })
 
   it('达到会话限制后禁用输入并提示开启新会话', async () => {
     const user = userEvent.setup()
-    vi.mocked(getUserApiKeys).mockResolvedValue({ items: [activeApiKey()], available_models: [] })
     vi.mocked(streamChatCompletion).mockImplementation(async (input) => {
       input.onDelta?.('回复')
       return { content: '回复', reasoning: '', requestId: `req-round-${vi.mocked(streamChatCompletion).mock.calls.length}`, inputTokens: 1, outputTokens: 1, finishReason: 'stop', latencyMs: 10 }
     })
 
     renderConsolePage(<PlaygroundPage />, ['/console/playground?model=deepseek-chat'])
-    await selectPlaygroundApiKey(user)
+    const promptInput = await screen.findByLabelText('测试提示词')
     for (let round = 1; round <= 10; round += 1) {
-      await user.type(screen.getByLabelText('测试提示词'), `第${round}次请求`)
+      await user.type(promptInput, `第${round}次请求`)
       await user.click(screen.getByRole('button', { name: '发送' }))
       await waitFor(() => expect(streamChatCompletion).toHaveBeenCalledTimes(round))
     }
@@ -384,17 +463,20 @@ describe('控制台模型接入页面', () => {
 
   it('失败请求可编辑并在重试成功后替换失败内容', async () => {
     const user = userEvent.setup()
-    vi.mocked(getUserApiKeys).mockResolvedValue({ items: [activeApiKey()], available_models: [] })
     vi.mocked(streamChatCompletion)
       .mockRejectedValueOnce(new ModelRuntimeError('请求内容包含不允许的文本', 400, 'content_blocked', 'req-failed'))
       .mockResolvedValueOnce({ content: '重试成功', reasoning: '', requestId: 'req-retry', inputTokens: 2, outputTokens: 3, finishReason: 'stop', latencyMs: 12 })
 
     renderConsolePage(<PlaygroundPage />, ['/console/playground?model=deepseek-chat'])
-    await selectPlaygroundApiKey(user)
-    await user.type(screen.getByLabelText('测试提示词'), '失败问题')
+    await user.type(await screen.findByLabelText('测试提示词'), '失败问题')
     await user.click(screen.getByRole('button', { name: '发送' }))
 
-    await screen.findByRole('button', { name: '编辑失败消息' })
+    expect(await screen.findByText('调用失败，请稍后重试')).toBeInTheDocument()
+    expect(document.querySelector('.playground-workspace-notice')).toBeInTheDocument()
+    expect(document.querySelector('.message-list')).toHaveClass('is-centered')
+    expect(screen.queryByText('请求内容包含不允许的文本')).toBeNull()
+    expect(screen.queryByText(/req-failed/)).toBeNull()
+    await user.click(screen.getByRole('button', { name: '关闭' }))
     await user.click(screen.getByRole('button', { name: '编辑失败消息' }))
     expect(screen.getByLabelText('测试提示词')).toHaveValue('失败问题')
     await user.clear(screen.getByLabelText('测试提示词'))
@@ -408,32 +490,31 @@ describe('控制台模型接入页面', () => {
     expect(screen.queryByRole('button', { name: '编辑失败消息' })).toBeNull()
   })
 
-  it('没有可用 API Key 时不展示演示连接提示或后端地址', async () => {
-    vi.mocked(getUserApiKeys).mockResolvedValue({ items: [], available_models: [] })
+  it('不同运行时错误统一显示调用失败提示', async () => {
+    const user = userEvent.setup()
+    vi.mocked(streamChatCompletion).mockRejectedValueOnce(new ModelRuntimeError('余额不足', 402, 'insufficient_balance', 'req-balance'))
 
     renderConsolePage(<PlaygroundPage />, ['/console/playground?model=deepseek-chat'])
+    await user.type(await screen.findByLabelText('测试提示词'), '测试统一错误')
+    await user.click(screen.getByRole('button', { name: '发送' }))
 
-    await waitFor(() => expect(getUserApiKeys).toHaveBeenCalledWith({ account_type: 'personal' }, 'active'))
-    expect(screen.queryByText('尚未配置可用 API Key')).toBeNull()
-    expect(screen.queryByText(/请求地址/)).toBeNull()
-    expect(screen.queryByText(/chat\/completions/)).toBeNull()
-    expect(screen.queryByText(/请先创建并启用一把 API Key/)).toBeNull()
-    expect(screen.queryByText('汇总本周所有对话中的用户诉求。')).toBeNull()
-    expect(screen.queryByText('给出一份接口异常排查清单。')).toBeNull()
+    expect(await screen.findByText('调用失败，请稍后重试')).toBeInTheDocument()
+    expect(document.querySelector('.playground-workspace-notice')).toBeInTheDocument()
+    expect(document.querySelector('.playground-console-page > .banner-notice')).toBeNull()
+    expect(screen.queryByText('余额不足')).toBeNull()
+    expect(screen.queryByText(/req-balance/)).toBeNull()
   })
 
-  it('指定范围 Key 没有匹配文本模型时保留工作区但禁用发送', async () => {
+  it('会话调用认证失效时清理令牌并跳转首页', async () => {
     const user = userEvent.setup()
-    vi.mocked(getUserApiKeys).mockResolvedValue({ items: [{ ...activeApiKey(), scope: 'selected', model_ids: ['model-not-visible'], models: [] }], available_models: [] })
+    vi.mocked(streamChatCompletion).mockRejectedValueOnce(new ModelRuntimeError('认证信息无效', 401, 'invalid_token', 'req-auth'))
 
-    renderConsolePage(<PlaygroundPage />, ['/console/playground?model=deepseek-chat'])
+    renderConsolePage(<><PlaygroundPage /><CurrentPath /></>, ['/console/playground?model=deepseek-chat'])
+    await user.type(await screen.findByLabelText('测试提示词'), '测试认证失效')
+    await user.click(screen.getByRole('button', { name: '发送' }))
 
-    await selectPlaygroundApiKey(user)
-    expect(await screen.findByText('当前 API Key 没有可用的文本模型，请切换 API Key 或调整密钥的模型范围。')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '发送' })).toBeDisabled()
-    await user.type(screen.getByLabelText('测试提示词'), '不应发送')
-    expect(screen.getByRole('button', { name: '发送' })).toBeDisabled()
-    expect(streamChatCompletion).not.toHaveBeenCalled()
+    await waitFor(() => expect(screen.getByTestId('current-path')).toHaveTextContent('/'))
+    expect(window.localStorage.getItem('token-nx:refresh-session:v1')).toBeNull()
   })
 
   it('模型目录认证失效时清理令牌并跳转首页', async () => {

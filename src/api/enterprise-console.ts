@@ -1,5 +1,5 @@
 import { getAccessToken } from '@/auth/token-storage'
-import type { ApiTimeValue } from '@/utils/format'
+import type { ApiTimestamp } from '@/utils/format'
 import i18n from '@/i18n'
 import { fetchAuthenticatedJson } from './authenticated'
 import { ApiError, isApiError, type FetchJsonOptions } from './http'
@@ -116,8 +116,8 @@ export interface EnterpriseMember {
   masked_contact: string
   status: string
   join_source: string
-  joined_at: ApiTimeValue
-  exited_at?: ApiTimeValue | null
+  joined_at: ApiTimestamp
+  exited_at?: ApiTimestamp | null
   role: string
   roles: string[]
   tags: EnterpriseTagRef[]
@@ -146,8 +146,8 @@ export interface EnterpriseTag {
   allowed_models: string[]
   member_count: number
   version: number
-  created_at: ApiTimeValue
-  updated_at: ApiTimeValue
+  created_at: ApiTimestamp
+  updated_at: ApiTimestamp
 }
 
 export interface EnterpriseJoinRequest {
@@ -160,9 +160,9 @@ export interface EnterpriseJoinRequest {
   status: string
   rejection_reason?: string
   reviewed_by_member_id?: string
-  reviewed_at?: ApiTimeValue | null
-  created_at: ApiTimeValue
-  updated_at: ApiTimeValue
+  reviewed_at?: ApiTimestamp | null
+  created_at: ApiTimestamp
+  updated_at: ApiTimestamp
   version: number
 }
 
@@ -180,11 +180,11 @@ export interface EnterpriseInvitation {
   role_name: string
   max_uses: number
   used_count: number
-  expires_at?: ApiTimeValue | null
+  expires_at?: ApiTimestamp | null
   status: string
   inviter_name: string
-  created_at: ApiTimeValue
-  updated_at: ApiTimeValue
+  created_at: ApiTimestamp
+  updated_at: ApiTimestamp
   invite_token?: string
   invite_url?: string
   version: number
@@ -202,7 +202,7 @@ export interface EnterpriseInvitationUsage {
   user_id: string
   member_id?: string
   user_name: string
-  joined_at: ApiTimeValue
+  joined_at: ApiTimestamp
 }
 
 export interface EnterpriseInvitationPreview {
@@ -215,7 +215,7 @@ export interface EnterpriseInvitationPreview {
   inviter_name: string
   max_uses: number
   used_count: number
-  expires_at?: ApiTimeValue | null
+  expires_at?: ApiTimestamp | null
   status: string
   already_member: boolean
   pending_request: boolean
@@ -223,8 +223,8 @@ export interface EnterpriseInvitationPreview {
 
 export interface EnterpriseUsagePeriod {
   range: string
-  start_at: ApiTimeValue
-  end_at: ApiTimeValue
+  start_at: ApiTimestamp
+  end_at: ApiTimestamp
   label: string
 }
 
@@ -331,7 +331,7 @@ export interface EnterpriseAuditLog {
   before: Record<string, unknown>
   after: Record<string, unknown>
   request_id: string
-  occurred_at: ApiTimeValue
+  occurred_at: ApiTimestamp
 }
 
 export interface EnterpriseAuditLogPage {
@@ -377,8 +377,8 @@ export type EnterpriseInvitationsRequest = EnterpriseListOptions & {
 export type EnterpriseUsageRequest = EnterpriseListOptions & {
   range?: string
   month?: string
-  start_at?: string
-  end_at?: string
+  start_at?: ApiTimestamp
+  end_at?: ApiTimestamp
   member_id?: string
   page?: number
   page_size?: number
@@ -391,8 +391,8 @@ export type EnterpriseAuditLogsRequest = EnterpriseListOptions & {
   action?: string
   actor_id?: string
   result?: string
-  start_at?: string
-  end_at?: string
+  start_at?: ApiTimestamp
+  end_at?: ApiTimestamp
 }
 
 export type EnterpriseTagInput = {
@@ -416,7 +416,7 @@ export type EnterpriseRoleInput = {
 export type EnterpriseInvitationInput = {
   role: string
   max_uses: number
-  expires_at: string | null
+  expires_at: ApiTimestamp | null
 }
 
 export type EnterpriseInvitationJoinInput = {
@@ -564,6 +564,15 @@ export function getEnterpriseUsage(context: EnterpriseRequestContext, options: E
 
 export function getEnterpriseAnalytics(context: EnterpriseRequestContext, options: EnterpriseUsageRequest = {}): Promise<EnterpriseAnalyticsResponse> {
   return fetchAuthenticatedJson<EnterpriseAnalyticsResponse>(`${enterpriseBasePath(context)}/analytics?${createUsageQuery(options)}`, requestOptions(options))
+    // 中文：后端在暂无用量等场景可能省略数组字段，统一兜底为空数组，避免页面读取 undefined.length 崩溃。
+    .then((response) => ({
+      ...response,
+      trend: response.trend ?? [],
+      members: response.members ?? [],
+      models: response.models ?? [],
+      api_keys: response.api_keys ?? [],
+      sources: response.sources ?? [],
+    }))
 }
 
 export function getEnterpriseAuditLogs(context: EnterpriseRequestContext, options: EnterpriseAuditLogsRequest = {}): Promise<EnterpriseAuditLogPage> {

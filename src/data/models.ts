@@ -1,7 +1,7 @@
-import type { UserModelItem, UserModelPrice } from '@/api/user-models'
+import type { UserModelActivity, UserModelItem, UserModelPrice, UserModelTag } from '@/api/user-models'
 import { formatDecimal } from '@/utils/format'
 
-export type ModelModality = 'text' | 'image' | 'video' | 'audio' | 'embedding' | 'rerank' | 'speech' | 'transcription' | 'other'
+export type ModelModality = 'text' | 'image' | 'video' | 'audio' | 'embedding' | 'rerank' | 'speech' | 'transcription' | 'multimodal' | 'other'
 
 export interface ModelPrice {
   input?: number
@@ -20,6 +20,16 @@ export interface ModelPrice {
 export interface ModelAvailability {
   rate: number
   window: string
+  sampleCount?: number
+  successCount?: number
+  hourly?: ModelAvailabilityHour[]
+}
+
+export interface ModelAvailabilityHour {
+  hourStart: number
+  rate: number
+  sampleCount?: number
+  successCount?: number
 }
 
 export interface ModelThroughput {
@@ -33,6 +43,7 @@ export interface ModelRecord {
   alias?: string
   name: string
   company: string
+  iconUrl?: string
   modality: ModelModality
   capabilities: string[]
   context?: string
@@ -40,6 +51,9 @@ export interface ModelRecord {
   officialPrice: ModelPrice
   tokenNxPrice: ModelPrice
   labels: string[]
+  tags?: UserModelTag[]
+  activities?: UserModelActivity[]
+  activityIds?: string[]
   availability: ModelAvailability
   providerCount: number
   throughput: ModelThroughput
@@ -67,7 +81,8 @@ export function modelPermissionKey(model: Pick<ModelRecord, 'id' | 'code'>): str
   return model.code?.trim() || model.id.trim()
 }
 
-export const MODALITY_LABELS: Record<ModelModality, string> = {
+export const MODALITY_LABELS: Partial<Record<ModelModality, string>> = {
+  multimodal: '多模态',
   text: '文本',
   image: '图像',
   video: '视频',
@@ -85,9 +100,9 @@ const USER_MODEL_TOKEN_THOUSAND = 1_000
 const USER_MODEL_TOKEN_BILLION = 1_000_000_000
 const USER_MODEL_UNKNOWN_AVAILABILITY = 0
 const USER_MODEL_UNKNOWN_THROUGHPUT = 0
-const USER_MODEL_UNKNOWN_DATA_LABEL = '后端未提供'
+const USER_MODEL_UNKNOWN_DATA_LABEL = '暂无数据'
 
-const KNOWN_MODALITIES = new Set<ModelModality>(['text', 'image', 'video', 'audio', 'embedding', 'rerank', 'speech', 'transcription'])
+const KNOWN_MODALITIES = new Set<ModelModality>(['text', 'image', 'video', 'audio', 'embedding', 'rerank', 'speech', 'transcription', 'multimodal'])
 
 function normalizeModelModality(value: string): ModelModality {
   const normalized = value.trim().toLowerCase() as ModelModality
@@ -174,7 +189,8 @@ function modelPrice(prices: UserModelPrice[]): ModelPrice {
 export function userModelToRecord(model: UserModelItem): ModelRecord {
   const modality = normalizeModelModality(model.modality)
   const capabilities = (model.capabilities ?? []).map((capability) => capability.trim()).filter(Boolean)
-  const labels = [...new Set([MODALITY_LABELS[modality], ...capabilities])]
+  const tags = (model.tags ?? []).filter((tag) => tag.label?.trim()).map((tag) => ({ label: tag.label.trim(), ...(tag.color?.trim() ? { color: tag.color.trim() } : {}) }))
+  const labels = [...new Set([MODALITY_LABELS[modality] ?? modality, ...tags.map((tag) => tag.label), ...capabilities])]
   const currentPrice = modelPrice(model.prices ?? [])
   const id = model.id.trim()
   const alias = model.alias?.trim() || id
@@ -184,6 +200,7 @@ export function userModelToRecord(model: UserModelItem): ModelRecord {
     alias,
     name: model.name.trim(),
     company: model.company.trim(),
+    ...(model.icon_url?.trim() ? { iconUrl: model.icon_url.trim() } : {}),
     modality,
     capabilities,
     context: formatContextWindow(model.context_window_tokens),
@@ -191,9 +208,27 @@ export function userModelToRecord(model: UserModelItem): ModelRecord {
     officialPrice: { ...currentPrice },
     tokenNxPrice: currentPrice,
     labels,
-    availability: { rate: USER_MODEL_UNKNOWN_AVAILABILITY, window: USER_MODEL_UNKNOWN_DATA_LABEL },
+    tags,
+    activities: model.activities ?? [],
+    activityIds: model.activity_ids ?? (model.activities ?? []).map((activity) => activity.id),
+    availability: {
+      rate: typeof model.availability?.rate === 'number' && Number.isFinite(model.availability.rate) ? model.availability.rate : USER_MODEL_UNKNOWN_AVAILABILITY,
+      window: model.availability?.window_hours ? `${model.availability.window_hours}h` : USER_MODEL_UNKNOWN_DATA_LABEL,
+      ...(typeof model.availability?.sample_count === 'number' && Number.isFinite(model.availability.sample_count) ? { sampleCount: model.availability.sample_count } : {}),
+      ...(typeof model.availability?.success_count === 'number' && Number.isFinite(model.availability.success_count) ? { successCount: model.availability.success_count } : {}),
+      hourly: (model.availability?.hourly ?? []).flatMap((point) => {
+        if (!Number.isFinite(point.hour_start) || !Number.isFinite(point.rate)) return []
+        return [{
+          hourStart: point.hour_start,
+          rate: point.rate,
+          ...(typeof point.sample_count === 'number' && Number.isFinite(point.sample_count) ? { sampleCount: point.sample_count } : {}),
+          ...(typeof point.success_count === 'number' && Number.isFinite(point.success_count) ? { successCount: point.success_count } : {}),
+        }]
+      }),
+    },
     providerCount: model.provider_count,
     throughput: formatUserModelThroughput(model.total_tokens),
+    ...(typeof model.max_tokens === 'number' && Number.isFinite(model.max_tokens) ? { maxOutput: formatContextWindow(model.max_tokens) } : {}),
   }
 }
 

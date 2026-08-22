@@ -1,0 +1,21 @@
+.semi-toast.app-toast {
+  margin-top: 76px;
+  pointer-events: none;
+}
+
+.semi-toast.app-toast .semi-toast-content {
+  max-width: min(420px, calc(100vw - 32px));
+  border: 1px solid #353535;
+  border-radius: 8px;
+  color: #fff;
+  background: #242424;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, .36);
+  pointer-events: none;
+}
+
+html[data-theme="light"] .semi-toast.app-toast .semi-toast-content {
+  border-color: #d8dadd;
+  color: #17181b;
+  background: #fff;
+  box-shadow: 0 8px 28px rgba(24, 28, 36, .16);
+}

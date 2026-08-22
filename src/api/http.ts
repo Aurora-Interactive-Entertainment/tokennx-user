@@ -89,29 +89,52 @@ export async function fetchJson<T>(path: string, options: FetchJsonOptions = {})
 // fetchResponse 保留认证请求的原始响应，供文件下载等非 JSON 接口复用统一超时和错误处理。
 export async function fetchResponse(path: string, options: FetchJsonOptions = {}): Promise<Response> {
 	const controller = new AbortController()
-	const timeout = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
+	let timedOut = false
+	let removeExternalAbortListener: (() => void) | undefined
+	if (options.signal) {
+		if (options.signal.aborted) {
+			controller.abort(options.signal.reason)
+		} else {
+			const onExternalAbort = () => controller.abort(options.signal?.reason)
+			options.signal.addEventListener('abort', onExternalAbort, { once: true })
+			removeExternalAbortListener = () => options.signal?.removeEventListener('abort', onExternalAbort)
+		}
+	}
+	const timeout = window.setTimeout(() => {
+		timedOut = true
+		controller.abort()
+	}, REQUEST_TIMEOUT_MS)
   const headers = new Headers(options.headers)
+  const isFormDataBody = typeof FormData !== 'undefined' && options.body instanceof FormData
   const requestId = createRequestId()
   headers.set('Accept', 'application/json')
   headers.set('X-Request-ID', requestId)
   headers.set('X-App-Lang', getActiveLanguage())
-  if (options.body !== undefined) headers.set('Content-Type', 'application/json')
+  if (isFormDataBody) headers.delete('Content-Type')
+  else if (options.body !== undefined) headers.set('Content-Type', 'application/json')
   if (options.accessToken) headers.set('Authorization', `Bearer ${options.accessToken}`)
+
+  const requestBody: BodyInit | undefined = options.body === undefined
+    ? undefined
+    : isFormDataBody
+      ? options.body as FormData
+      : JSON.stringify(options.body)
 
 	let response: Response
   try {
     response = await fetch(makeApiUrl(path), {
       ...options,
-      body: options.body === undefined ? undefined : JSON.stringify(options.body),
+      body: requestBody,
       credentials: 'omit',
       headers,
-      signal: options.signal ?? controller.signal,
+      signal: controller.signal,
     })
   } catch (error) {
-    if (error instanceof DOMException && error.name === 'AbortError') throw new ApiError(i18n.t('api.http.timeout'), 408, 0, requestId)
+    if (timedOut && error instanceof DOMException && error.name === 'AbortError') throw new ApiError(i18n.t('api.http.timeout'), 408, 0, requestId)
     throw new ApiError(i18n.t('api.http.networkFailure'), 0, 0, requestId)
   } finally {
     window.clearTimeout(timeout)
+		removeExternalAbortListener?.()
   }
 
 	let payload: Partial<ApiEnvelope<unknown>> | null = null
@@ -132,8 +155,10 @@ export function isApiError(error: unknown): error is ApiError {
 }
 
 export function isAuthenticationFailure(error: unknown): boolean {
-  if (isApiError(error)) return error.status === AUTH_UNAUTHORIZED_STATUS || error.code === AUTH_INVALID_CODE
+  // Only an HTTP 401 means that the account session is no longer authorized.
+  // Business error codes can be reused by login/form APIs and must not log out a user.
+  if (isApiError(error)) return error.status === AUTH_UNAUTHORIZED_STATUS
   if (!error || typeof error !== 'object') return false
-  const candidate = error as { status?: unknown; code?: unknown }
-  return candidate.status === AUTH_UNAUTHORIZED_STATUS || candidate.code === AUTH_INVALID_CODE
+  const candidate = error as { status?: unknown }
+  return candidate.status === AUTH_UNAUTHORIZED_STATUS
 }

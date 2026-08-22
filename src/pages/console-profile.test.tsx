@@ -1,15 +1,16 @@
 import '@/i18n'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, useLocation } from 'react-router'
 import { Provider } from 'react-redux'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { AuthResult } from '@/api/auth'
-import { clearAuthTokens, getAccessToken, saveAuthTokens } from '@/auth/token-storage'
+import { clearAuthTokens, getAccessToken, getVerifiedPhone, saveAuthTokens, saveVerifiedPhone } from '@/auth/token-storage'
 import { NEW_ENTERPRISE_CREATE_PATH } from '@/api/enterprise-certification'
 import { limitDisplayNameLength, PROFILE_DISPLAY_NAME_MAX_LENGTH } from '@/api/profile'
 import { AppStoreProvider } from '@/data/app-state'
 import { createAppStore } from '@/store'
+import { PublicHeader } from '@/components/common'
 import { SettingsPage } from './console-profile'
 
 const PROFILE = {
@@ -90,10 +91,14 @@ function authResult(): AuthResult {
   }
 }
 
-function mockProfileApi(config: { expireAccess?: boolean; refreshFails?: boolean } = {}) {
+function mockProfileApi(config: { expireAccess?: boolean; refreshFails?: boolean; nicknameFailures?: number; phoneFailures?: number; emailFailures?: number; emailBound?: boolean } = {}) {
   let profile = structuredClone(PROFILE)
+  if (config.emailBound) profile = { ...profile, email: { bound: true, masked_identifier: 'o***@example.com' } }
   let preferences = structuredClone(PREFERENCES)
   let accessExpired = config.expireAccess ?? false
+  let nicknameFailures = config.nicknameFailures ?? 0
+  let phoneFailures = config.phoneFailures ?? 0
+  let emailFailures = config.emailFailures ?? 0
   const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, requestOptions) => {
     const url = String(input)
     const method = requestOptions?.method ?? 'GET'
@@ -107,17 +112,29 @@ function mockProfileApi(config: { expireAccess?: boolean; refreshFails?: boolean
     if (url.endsWith('/api/user/profile/enterprises')) return apiResponse(ENTERPRISES)
     if (url.endsWith('/api/user/enterprise/01K0ENTERPRISEPUBLICIDEX01/context')) return apiResponse(ENTERPRISE_CONTEXT)
     if (url.endsWith('/api/user/profile/notification-preferences') && method === 'GET') return apiResponse(preferences)
-    if (url.endsWith('/api/user/profile/nickname')) {
+    if (url.endsWith('/api/user/profile/nickname') && method === 'PUT') {
+      if (nicknameFailures > 0) {
+        nicknameFailures -= 1
+        return apiResponse(null, 409, 100006, '资料版本冲突')
+      }
       const body = JSON.parse(String(requestOptions?.body)) as { display_name: string }
       profile = { ...profile, display_name: body.display_name, version: profile.version + 1 }
       return apiResponse(profile)
     }
-    if (url.endsWith('/api/user/profile/contact/code')) return apiResponse({ destination_masked: '139****5678', expires_at: '2099-01-01T00:05:00Z', retry_after_seconds: 60 })
+    if (url.endsWith('/api/user/profile/contact/code')) return apiResponse([])
     if (url.endsWith('/api/user/profile/phone')) {
+      if (phoneFailures > 0) {
+        phoneFailures -= 1
+        return apiResponse(null, 503, 100007, '联系方式服务不可用')
+      }
       profile = { ...profile, phone: { bound: true, masked_identifier: '139****5678' }, version: profile.version + 1 }
       return apiResponse(profile)
     }
     if (url.endsWith('/api/user/profile/email')) {
+      if (emailFailures > 0) {
+        emailFailures -= 1
+        return apiResponse(null, 409, 110003, '该邮箱已被其他账号绑定')
+      }
       profile = { ...profile, email: { bound: true, masked_identifier: 'n***@example.com' }, version: profile.version + 1 }
       return apiResponse(profile)
     }
@@ -156,7 +173,9 @@ describe('个人中心页面', () => {
     vi.restoreAllMocks()
     clearAuthTokens()
     window.localStorage.clear()
+    window.sessionStorage.clear()
     saveAuthTokens(authResult())
+    saveVerifiedPhone(PROFILE.id, '13812345678')
   })
 
   it('按参考设置页结构加载真实资料、企业关系和通知偏好', async () => {
@@ -199,21 +218,30 @@ describe('个人中心页面', () => {
     expect(appStore.getState().auth).toMatchObject({ status: 'unauthenticated', user: null, error: null })
   })
 
-  it('保存昵称时提交当前版本接口并刷新认证用户状态', async () => {
+  it('按 Enter 确认昵称时提交当前版本接口并刷新认证用户状态', async () => {
     const user = userEvent.setup()
     const { fetchMock } = mockProfileApi()
     const { appStore } = renderPage()
     const input = await screen.findByLabelText('昵称')
 
     await user.clear(input)
-    await user.type(input, '更新后的昵称')
-    await user.click(screen.getByRole('button', { name: '保存更改' }))
+    await user.type(input, '  更新后的昵称  ')
+    await user.keyboard('{Enter}')
 
-    await waitFor(() => expect(fetchMock.mock.calls.some(([url, options]) => String(url).endsWith('/api/user/profile/nickname') && JSON.parse(String(options?.body)).display_name === '更新后的昵称')).toBe(true))
+    await waitFor(() => expect(fetchMock.mock.calls.some(([url, options]) => {
+      const headers = new Headers(options?.headers)
+      return String(url).endsWith('/api/user/profile/nickname')
+        && options?.method === 'PUT'
+        && headers.get('Authorization') === 'Bearer profile-token'
+        && JSON.parse(String(options?.body)).display_name === '更新后的昵称'
+    })).toBe(true))
+    expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith('/api/user/profile/nickname'))).toHaveLength(1)
+    expect(input).toHaveValue('更新后的昵称')
     expect(appStore.getState().auth.user?.display_name).toBe('更新后的昵称')
+    expect(screen.queryByRole('button', { name: '保存更改' })).not.toBeInTheDocument()
   })
 
-  it('输入昵称时按 Unicode 字符上限截断，并只提交受限后的值', async () => {
+  it('昵称输入框失焦时按 Unicode 字符上限提交受限后的值', async () => {
     const user = userEvent.setup()
     const { fetchMock } = mockProfileApi()
     renderPage()
@@ -225,9 +253,44 @@ describe('个人中心页面', () => {
 
     expect(input).toHaveAttribute('maxlength', String(PROFILE_DISPLAY_NAME_MAX_LENGTH))
     expect(input).toHaveValue(limitDisplayNameLength(longName))
-    await user.click(screen.getByRole('button', { name: '保存更改' }))
+    await user.tab()
 
     await waitFor(() => expect(fetchMock.mock.calls.some(([url, options]) => String(url).endsWith('/api/user/profile/nickname') && JSON.parse(String(options?.body)).display_name === limitDisplayNameLength(longName))).toBe(true))
+  })
+
+  it('昵称未变化时按 Enter 或失焦都不发送更新请求', async () => {
+    const user = userEvent.setup()
+    const { fetchMock } = mockProfileApi()
+    renderPage()
+
+    const input = await screen.findByLabelText('昵称')
+    await user.click(input)
+    await user.keyboard('{Enter}')
+    await user.tab()
+
+    expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith('/api/user/profile/nickname'))).toHaveLength(0)
+  })
+
+  it('昵称更新失败时保留输入内容并允许再次确认重试', async () => {
+    const user = userEvent.setup()
+    const { fetchMock } = mockProfileApi({ nicknameFailures: 1 })
+    const { appStore } = renderPage()
+    const input = await screen.findByLabelText('昵称')
+
+    await user.clear(input)
+    await user.type(input, '待重试昵称')
+    await user.tab()
+
+    await waitFor(() => expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith('/api/user/profile/nickname'))).toHaveLength(1))
+    expect(input).toHaveValue('待重试昵称')
+    expect(appStore.getState().auth.user?.display_name).toBe(PROFILE.display_name)
+
+    await user.click(input)
+    await user.keyboard('{Enter}')
+
+    await waitFor(() => expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith('/api/user/profile/nickname'))).toHaveLength(2))
+    expect(input).toHaveValue('待重试昵称')
+    expect(appStore.getState().auth.user?.display_name).toBe('待重试昵称')
   })
 
   it('通知开关按部分更新契约提交，并在服务端返回后更新状态', async () => {
@@ -249,11 +312,16 @@ describe('个人中心页面', () => {
     renderPage()
 
     await user.click(await screen.findByRole('button', { name: '更换手机号' }))
-    expect(screen.getByRole('dialog')).toHaveTextContent('当前联系方式')
+    const contactDialog = screen.getByRole('dialog')
+    expect(contactDialog).toHaveTextContent('当前联系方式')
+    const contactModal = document.querySelector('.profile-contact-modal')
+    expect(contactModal?.querySelector('.semi-modal')).toHaveClass('semi-modal-centered')
+    expect(contactModal).toContainElement(contactDialog)
     const currentDestination = document.querySelector<HTMLInputElement>('#profile-phone-current-destination')
     const newDestination = document.querySelector<HTMLInputElement>('#profile-phone-new-destination')
     if (!currentDestination || !newDestination) throw new Error('联系方式输入框未渲染')
-    await user.type(currentDestination, '13812345678')
+    expect(currentDestination).toHaveValue('13812345678')
+    expect(currentDestination).toHaveAttribute('readonly')
     await user.type(newDestination, '13912345678')
     await user.click(screen.getByRole('button', { name: '发送当前验证码' }))
     await user.click(screen.getByRole('button', { name: '发送新验证码' }))
@@ -267,11 +335,210 @@ describe('个人中心页面', () => {
     await waitFor(() => expect(fetchMock.mock.calls.some(([url, options]) => String(url).endsWith('/api/user/profile/phone') && options?.method === 'PUT')).toBe(true))
     const codeRequests = fetchMock.mock.calls.filter(([url]) => String(url).endsWith('/api/user/profile/contact/code'))
     expect(codeRequests).toHaveLength(2)
-    expect(JSON.parse(String(codeRequests[0][1]?.body))).toMatchObject({ provider_code: 'phone', purpose: 'current', destination: '13812345678' })
-    expect(JSON.parse(String(codeRequests[1][1]?.body))).toMatchObject({ provider_code: 'phone', purpose: 'new', destination: '13912345678' })
+    expect(JSON.parse(String(codeRequests[0][1]?.body))).toEqual({ provider_code: 'phone', purpose: 'current', destination: '13812345678', country_code: '+86' })
+    expect(JSON.parse(String(codeRequests[1][1]?.body))).toEqual({ provider_code: 'phone', purpose: 'new', destination: '13912345678', country_code: '+86' })
     const updateRequest = fetchMock.mock.calls.find(([url, options]) => String(url).endsWith('/api/user/profile/phone') && options?.method === 'PUT')
     expect(JSON.parse(String(updateRequest?.[1]?.body))).toEqual({ current_destination: '13812345678', current_code: '123456', new_destination: '13912345678', new_code: '654321' })
     expect(await screen.findByText('139****5678')).toBeInTheDocument()
+    expect(getVerifiedPhone(PROFILE.id)).toBe('13912345678')
+  })
+
+  it('弹窗修改昵称后立即同步个人中心页面和认证用户', async () => {
+    const user = userEvent.setup()
+    const { fetchMock } = mockProfileApi()
+    const appStore = createAppStore()
+    appStore.dispatch({ type: 'auth/loginWithEmail/fulfilled', payload: authResult().user })
+
+    render(
+      <MemoryRouter initialEntries={['/console/settings']}>
+        <Provider store={appStore}>
+          <AppStoreProvider><PublicHeader /><SettingsPage /></AppStoreProvider>
+        </Provider>
+      </MemoryRouter>,
+    )
+
+    const pageNameInput = await screen.findByDisplayValue(PROFILE.display_name)
+    await user.click(screen.getByRole('button', { name: '打开用户菜单' }))
+    await user.click(screen.getByRole('button', { name: '账户设置' }))
+    const dialog = await screen.findByRole('dialog', { name: '个人中心' })
+    await waitFor(() => expect(within(dialog).getByRole('button', { name: '昵称' })).toBeEnabled())
+    await user.click(within(dialog).getByRole('button', { name: '昵称' }))
+    const modalNameInput = within(dialog).getByRole('textbox', { name: '昵称' })
+    await user.clear(modalNameInput)
+    await user.type(modalNameInput, '同步昵称')
+    await user.click(within(dialog).getByRole('button', { name: '保存更改' }))
+
+    await waitFor(() => expect(pageNameInput).toHaveValue('同步昵称'))
+    expect(appStore.getState().auth.user?.display_name).toBe('同步昵称')
+    expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith('/api/user/profile/nickname'))).toHaveLength(1)
+  })
+
+  it('更换手机号时提前拦截相同的新旧手机号', async () => {
+    const user = userEvent.setup()
+    const { fetchMock } = mockProfileApi()
+    renderPage()
+
+    await user.click(await screen.findByRole('button', { name: '更换手机号' }))
+    const currentDestination = document.querySelector<HTMLInputElement>('#profile-phone-current-destination')
+    const newDestination = document.querySelector<HTMLInputElement>('#profile-phone-new-destination')
+    if (!currentDestination || !newDestination) throw new Error('联系方式输入框未渲染')
+    expect(currentDestination).toHaveValue('13812345678')
+    await user.type(newDestination, '13812345678')
+    await user.click(screen.getByRole('button', { name: '发送新验证码' }))
+    await user.click(screen.getByRole('button', { name: '保存联系方式' }))
+
+    expect(await screen.findByText('新联系方式不能与当前联系方式相同')).toBeInTheDocument()
+    expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith('/api/user/profile/contact/code'))).toBe(false)
+    expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith('/api/user/profile/phone'))).toBe(false)
+  })
+
+  it('发送验证码前校验手机号格式', async () => {
+    const user = userEvent.setup()
+    const { fetchMock } = mockProfileApi()
+    renderPage()
+
+    await user.click(await screen.findByRole('button', { name: '更换手机号' }))
+    const newDestination = document.querySelector<HTMLInputElement>('#profile-phone-new-destination')
+    if (!newDestination) throw new Error('新手机号输入框未渲染')
+    await user.type(newDestination, '12345')
+    await user.click(screen.getByRole('button', { name: '发送新验证码' }))
+
+    expect(await screen.findByText('请输入正确的中国大陆手机号')).toBeInTheDocument()
+    expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith('/api/user/profile/contact/code'))).toBe(false)
+  })
+
+  it('关闭联系方式弹窗时清理验证码倒计时', async () => {
+    const user = userEvent.setup()
+    const clearIntervalSpy = vi.spyOn(window, 'clearInterval')
+    mockProfileApi()
+    renderPage()
+
+    await user.click(await screen.findByRole('button', { name: '更换手机号' }))
+    const currentDestination = document.querySelector<HTMLInputElement>('#profile-phone-current-destination')
+    if (!currentDestination) throw new Error('当前手机号输入框未渲染')
+    expect(currentDestination).toHaveValue('13812345678')
+    await user.click(screen.getByRole('button', { name: '发送当前验证码' }))
+    expect(await screen.findByRole('button', { name: '60 秒后重试' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '取消' }))
+
+    await waitFor(() => expect(clearIntervalSpy).toHaveBeenCalled())
+  })
+
+  it('手机号更新失败时保留输入并允许重新保存', async () => {
+    const user = userEvent.setup()
+    const { fetchMock } = mockProfileApi({ phoneFailures: 1 })
+    renderPage()
+
+    await user.click(await screen.findByRole('button', { name: '更换手机号' }))
+    const currentDestination = document.querySelector<HTMLInputElement>('#profile-phone-current-destination')
+    const newDestination = document.querySelector<HTMLInputElement>('#profile-phone-new-destination')
+    const currentCode = document.querySelector<HTMLInputElement>('#profile-phone-currentCode')
+    const newCode = document.querySelector<HTMLInputElement>('#profile-phone-newCode')
+    if (!currentDestination || !newDestination || !currentCode || !newCode) throw new Error('手机号表单未渲染')
+    expect(currentDestination).toHaveValue('13812345678')
+    await user.type(currentCode, '123456')
+    await user.type(newDestination, '13912345678')
+    await user.type(newCode, '654321')
+    await user.click(screen.getByRole('button', { name: '保存联系方式' }))
+
+    await waitFor(() => expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith('/api/user/profile/phone'))).toHaveLength(1))
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(currentDestination).toHaveValue('13812345678')
+    expect(currentCode).toHaveValue('123456')
+    expect(newDestination).toHaveValue('13912345678')
+    expect(newCode).toHaveValue('654321')
+
+    await user.click(screen.getByRole('button', { name: '保存联系方式' }))
+    await waitFor(() => expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith('/api/user/profile/phone'))).toHaveLength(2))
+    expect(await screen.findByText('139****5678')).toBeInTheDocument()
+  })
+
+  it('绑定邮箱时只发送新邮箱验证码并提交新邮箱字段', async () => {
+    const user = userEvent.setup()
+    const { fetchMock } = mockProfileApi()
+    renderPage()
+
+    await user.click(await screen.findByRole('button', { name: '添加邮箱' }))
+    expect(screen.getByRole('dialog')).toHaveTextContent('绑定邮箱')
+    expect(document.querySelector('#profile-email-current-destination')).toBeNull()
+
+    const newDestination = document.querySelector<HTMLInputElement>('#profile-email-new-destination')
+    const newCode = document.querySelector<HTMLInputElement>('#profile-email-newCode')
+    if (!newDestination || !newCode) throw new Error('邮箱绑定表单未渲染')
+    await user.type(newDestination, 'new@example.com')
+    await user.click(screen.getByRole('button', { name: '发送新验证码' }))
+    await user.type(newCode, '654321')
+    await user.click(screen.getByRole('button', { name: '保存联系方式' }))
+
+    await waitFor(() => expect(fetchMock.mock.calls.some(([url, options]) => String(url).endsWith('/api/user/profile/email') && options?.method === 'PUT')).toBe(true))
+    const codeRequest = fetchMock.mock.calls.find(([url]) => String(url).endsWith('/api/user/profile/contact/code'))
+    expect(JSON.parse(String(codeRequest?.[1]?.body))).toEqual({ provider_code: 'email', purpose: 'new', destination: 'new@example.com' })
+    const updateRequest = fetchMock.mock.calls.find(([url, options]) => String(url).endsWith('/api/user/profile/email') && options?.method === 'PUT')
+    expect(JSON.parse(String(updateRequest?.[1]?.body))).toEqual({ new_destination: 'new@example.com', new_code: '654321' })
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(await screen.findByText('n***@example.com')).toBeInTheDocument()
+  })
+
+  it('更换邮箱时分别验证当前邮箱和新邮箱后提交双验证码', async () => {
+    const user = userEvent.setup()
+    const { fetchMock } = mockProfileApi({ emailBound: true })
+    renderPage()
+
+    await user.click(await screen.findByRole('button', { name: '更换邮箱' }))
+    expect(screen.getByRole('dialog')).toHaveTextContent('更换邮箱')
+    const currentDestination = document.querySelector<HTMLInputElement>('#profile-email-current-destination')
+    const currentCode = document.querySelector<HTMLInputElement>('#profile-email-currentCode')
+    const newDestination = document.querySelector<HTMLInputElement>('#profile-email-new-destination')
+    const newCode = document.querySelector<HTMLInputElement>('#profile-email-newCode')
+    if (!currentDestination || !currentCode || !newDestination || !newCode) throw new Error('邮箱更换表单未渲染')
+
+    await user.type(currentDestination, 'old@example.com')
+    await user.click(screen.getByRole('button', { name: '发送当前验证码' }))
+    await user.type(currentCode, '123456')
+    await user.type(newDestination, 'new@example.com')
+    await user.click(screen.getByRole('button', { name: '发送新验证码' }))
+    await user.type(newCode, '654321')
+    await user.click(screen.getByRole('button', { name: '保存联系方式' }))
+
+    await waitFor(() => expect(fetchMock.mock.calls.some(([url, options]) => String(url).endsWith('/api/user/profile/email') && options?.method === 'PUT')).toBe(true))
+    const codeRequests = fetchMock.mock.calls.filter(([url]) => String(url).endsWith('/api/user/profile/contact/code'))
+    expect(JSON.parse(String(codeRequests[0][1]?.body))).toEqual({ provider_code: 'email', purpose: 'current', destination: 'old@example.com' })
+    expect(JSON.parse(String(codeRequests[1][1]?.body))).toEqual({ provider_code: 'email', purpose: 'new', destination: 'new@example.com' })
+    const updateRequest = fetchMock.mock.calls.find(([url, options]) => String(url).endsWith('/api/user/profile/email') && options?.method === 'PUT')
+    expect(JSON.parse(String(updateRequest?.[1]?.body))).toEqual({ current_destination: 'old@example.com', current_code: '123456', new_destination: 'new@example.com', new_code: '654321' })
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  })
+
+  it('邮箱保存失败时展示后端错误并保留全部输入用于重试', async () => {
+    const user = userEvent.setup()
+    const { fetchMock } = mockProfileApi({ emailBound: true, emailFailures: 1 })
+    renderPage()
+
+    await user.click(await screen.findByRole('button', { name: '更换邮箱' }))
+    const currentDestination = document.querySelector<HTMLInputElement>('#profile-email-current-destination')
+    const currentCode = document.querySelector<HTMLInputElement>('#profile-email-currentCode')
+    const newDestination = document.querySelector<HTMLInputElement>('#profile-email-new-destination')
+    const newCode = document.querySelector<HTMLInputElement>('#profile-email-newCode')
+    if (!currentDestination || !currentCode || !newDestination || !newCode) throw new Error('邮箱更换表单未渲染')
+    await user.type(currentDestination, 'old@example.com')
+    await user.type(currentCode, '123456')
+    await user.type(newDestination, 'new@example.com')
+    await user.type(newCode, '654321')
+    const saveButton = screen.getByRole('button', { name: '保存联系方式' })
+    await user.click(saveButton)
+
+    await waitFor(() => expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith('/api/user/profile/email'))).toHaveLength(1))
+    expect(await screen.findByText('该邮箱已被其他账号绑定')).toBeInTheDocument()
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(currentDestination).toHaveValue('old@example.com')
+    expect(currentCode).toHaveValue('123456')
+    expect(newDestination).toHaveValue('new@example.com')
+    expect(newCode).toHaveValue('654321')
+    expect(saveButton).toBeEnabled()
+
+    await user.click(saveButton)
+    await waitFor(() => expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith('/api/user/profile/email'))).toHaveLength(2))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
 
   it('复制用户 ID 并保留参考页的工作空间与安全入口', async () => {
@@ -287,8 +554,12 @@ describe('个人中心页面', () => {
     await waitFor(() => expect(writeText).toHaveBeenCalledWith(PROFILE.id))
 
     await user.click(screen.getByRole('button', { name: '进入注销流程' }))
-    expect(screen.getByRole('dialog')).toHaveTextContent('确认注销账号')
-    expect(screen.getByRole('dialog')).toHaveTextContent('不会立即删除当前账号或数据')
+    const securityDialog = screen.getByRole('dialog')
+    expect(securityDialog).toHaveTextContent('确认注销账号')
+    expect(securityDialog).toHaveTextContent('不会立即删除当前账号或数据')
+    const securityModal = document.querySelector('.profile-security-modal')
+    expect(securityModal?.querySelector('.semi-modal')).toHaveClass('semi-modal-centered')
+    expect(securityModal).toContainElement(securityDialog)
     await user.click(screen.getByRole('button', { name: '取消' }))
     await waitFor(() => expect(screen.getByRole('dialog')).toHaveClass('semi-modal-content-animate-hide'))
     Object.defineProperty(navigator, 'clipboard', { configurable: true, value: originalClipboard })
@@ -324,7 +595,7 @@ describe('个人中心页面', () => {
 
     await user.clear(screen.getByLabelText('昵称'))
     await user.type(screen.getByLabelText('昵称'), '企业空间中的新昵称')
-    await user.click(screen.getByRole('button', { name: '保存更改' }))
+    await user.keyboard('{Enter}')
     await waitFor(() => expect(fetchMock.mock.calls.some(([url, options]) => String(url).endsWith('/api/user/profile/nickname') && JSON.parse(String(options?.body)).display_name === '企业空间中的新昵称')).toBe(true))
   })
 })

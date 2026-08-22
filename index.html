@@ -5,12 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#1a1b1d" />
     <title>Token NX</title>
+    <link rel="icon" type="image/png" href="./src/assets/figma-header/X-16.png" />
     <script>
       (() => {
         // 中文：在样式和 React 加载前应用已保存的主题，避免首屏出现主题闪烁。
         const themeStorageKey = 'token-nx:theme'
         const root = document.documentElement
-        let mode = 'system'
+        let mode = 'dark'
 
         try {
           const stored = window.localStorage.getItem(themeStorageKey)
@@ -31,6 +32,56 @@
         root.style.colorScheme = theme
       })()
     </script>
+    <script>
+      (() => {
+        if (window.location.pathname !== '/' && window.location.pathname !== '/home') return
+
+        const configuredApiBase = '%VITE_API_BASE_URL%'
+        const apiBase = configuredApiBase.startsWith('%') ? '' : configuredApiBase.trim().replace(/\/+$/, '')
+        const homepageUrl = `${apiBase}/api/homepage`
+        const requestController = new AbortController()
+        const requestTimeout = window.setTimeout(() => requestController.abort(), 15000)
+
+        window.__TOKEN_NX_HOMEPAGE_REQUEST__ = fetch(homepageUrl, {
+          credentials: 'omit',
+          headers: { Accept: 'application/json' },
+          priority: 'high',
+          signal: requestController.signal,
+        }).then(async (response) => {
+          if (!response.ok) return undefined
+          const payload = await response.json()
+          if (!payload || payload.code !== 0 || !payload.data) return undefined
+
+          const firstCard = Array.isArray(payload.data.cards) ? payload.data.cards[0] : undefined
+          const translations = firstCard?.data?.translations
+          let language = 'zh-CN'
+          try {
+            const storedLanguage = window.localStorage.getItem('token-nx:locale')
+            if (storedLanguage === 'en-US') language = storedLanguage
+          } catch {
+            // Storage may be unavailable in privacy-restricted WebViews.
+          }
+          const content = translations?.[language] ?? translations?.['zh-CN'] ?? translations?.['en-US']
+          const objectId = typeof content?.image_object_id === 'string' ? content.image_object_id.trim() : ''
+          const imageUrl = /^[0-9A-HJKMNP-TV-Z]{26}$/.test(objectId)
+            ? `${apiBase}/api/homepage/assets/${encodeURIComponent(objectId)}`
+            : typeof content?.image_url === 'string' ? content.image_url.trim() : ''
+
+          if (imageUrl) {
+            const image = new Image()
+            image.fetchPriority = 'high'
+            image.decoding = 'async'
+            const releaseImage = () => { delete window.__TOKEN_NX_HOMEPAGE_LCP_IMAGE__ }
+            image.addEventListener('load', releaseImage, { once: true })
+            image.addEventListener('error', releaseImage, { once: true })
+            window.__TOKEN_NX_HOMEPAGE_LCP_IMAGE__ = image
+            image.src = imageUrl
+          }
+
+          return payload.data
+        }).catch(() => undefined).finally(() => window.clearTimeout(requestTimeout))
+      })()
+    </script>
     <style>
       :root {
         color-scheme: dark light;
@@ -48,6 +99,11 @@
         min-height: 100%;
         margin: 0;
         background: var(--boot-bg);
+      }
+
+      html {
+        overflow-y: scroll;
+        scrollbar-gutter: stable;
       }
 
       #root {
@@ -100,11 +156,12 @@
         transform-origin: center;
       }
 
+      /* 中文：logo 源图比例约 5.45:1，高度自适应完整显示，与 React 接管后的加载页样式保持一致 */
       .app-loading-shell__logo-shell .app-loading-shell__logo {
         display: block;
-        width: 178px;
-        height: 40px;
-        object-fit: cover;
+        width: 220px;
+        max-width: calc(100vw - 96px);
+        height: auto;
       }
 
       @keyframes boot-loader-logo-breathe {

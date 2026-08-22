@@ -1,6 +1,6 @@
 import { fetchAuthenticatedJson } from './authenticated'
 import { ApiError, isApiError } from './http'
-import type { ApiTimeValue } from '@/utils/format'
+import type { ApiTimestamp } from '@/utils/format'
 import i18n from '@/i18n'
 
 const API_KEY_PATH = '/api/user/api-keys'
@@ -54,9 +54,9 @@ export interface UserApiKey {
   billing_source: ApiKeyBillingSource
   limits: ApiKeyLimits
   creator: ApiKeyCreator
-  created_at: ApiTimeValue
-  expires_at: ApiTimeValue | null
-  last_used_at: ApiTimeValue | null
+  created_at: ApiTimestamp
+  expires_at: ApiTimestamp | null
+  last_used_at: ApiTimestamp | null
 }
 
 export interface UserApiKeyList {
@@ -67,7 +67,7 @@ export interface UserApiKeyList {
 export interface UserApiKeyMutation {
   name: string
   tags: string[]
-  expires_at: string | null
+  expires_at: ApiTimestamp | null
   scope: ApiKeyScope
   model_ids: string[]
   billing_source: ApiKeyBillingSource
@@ -87,7 +87,7 @@ export interface UserApiKeyActivity {
   id: string
   event_type: string
   actor_type: string
-  occurred_at: ApiTimeValue
+  occurred_at: ApiTimestamp
   snapshot: Record<string, unknown>
 }
 

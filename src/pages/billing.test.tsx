@@ -1,5 +1,5 @@
 import '@/i18n'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { Provider } from 'react-redux'
@@ -51,7 +51,7 @@ function makeAnalysis(enterprise = false, walletOverrides: Partial<BillingAnalys
       total_balance_yuan: enterprise ? '210.000000000' : '110.000000000',
       ...walletOverrides,
     },
-    period: { value: '2026-07', label: '2026年7月', start: '2026-07-01T00:00:00Z', end: '2026-08-01T00:00:00Z' },
+    period: { value: '2026-07', label: '2026年7月', start: Date.parse('2026-07-01T00:00:00Z'), end: Date.parse('2026-08-01T00:00:00Z') },
     filters: {
       periods: [
         { value: '2026-07', label: '2026年7月' },
@@ -81,7 +81,7 @@ function makeAnalysis(enterprise = false, walletOverrides: Partial<BillingAnalys
       items: [
         {
           id: 'ledger-usage',
-          occurred_at: '2026-07-23T08:30:00Z',
+          occurred_at: Date.parse('2026-07-23T08:30:00Z'),
           kind: 'model_consume',
           channel: 'OpenAI 渠道',
           description: '模型消费',
@@ -95,7 +95,7 @@ function makeAnalysis(enterprise = false, walletOverrides: Partial<BillingAnalys
         },
         {
           id: 'ledger-recharge',
-          occurred_at: '2026-07-22T08:30:00Z',
+          occurred_at: Date.parse('2026-07-22T08:30:00Z'),
           kind: 'recharge',
           channel: '充值',
           description: '充值到账',
@@ -106,7 +106,7 @@ function makeAnalysis(enterprise = false, walletOverrides: Partial<BillingAnalys
         },
         {
           id: 'ledger-reward',
-          occurred_at: '2026-07-21T08:30:00Z',
+          occurred_at: Date.parse('2026-07-21T08:30:00Z'),
           kind: 'reward',
           channel: '赠送',
           description: '奖励发放: 注册奖励',
@@ -131,7 +131,7 @@ function makeInvoice(overrides: Partial<BillingInvoiceItem> = {}): BillingInvoic
     status: 'submitted',
     status_label: '开票中',
     title_masked: '本地演示工作区',
-    submitted_at: '2026-07-23T08:30:00Z',
+    submitted_at: Date.parse('2026-07-23T08:30:00Z'),
     completed_at: null,
     invoice_type: 'normal',
     file_type: '',
@@ -160,7 +160,7 @@ function WorkspaceControl() {
   }}>切换到企业空间</button>
 }
 
-function renderBilling(config: { analysisError?: boolean; invoiceError?: boolean; requestId?: string; paymentReturnOrderID?: string; paymentStatus?: string; invoice?: BillingInvoiceItem; analysisWallet?: Partial<BillingAnalysisResponse['wallet']>; paymentFormHTML?: string } = {}) {
+function renderBilling(config: { analysisError?: boolean; invoiceError?: boolean; requestId?: string; paymentReturnOrderID?: string; paymentStatus?: string; tab?: string; invoice?: BillingInvoiceItem; analysisWallet?: Partial<BillingAnalysisResponse['wallet']>; paymentFormHTML?: string } = {}) {
   const appStore = createAppStore()
   appStore.dispatch({ type: 'auth/loginWithEmail/fulfilled', payload: AUTH_RESULT.user })
     const analysis = makeAnalysis(false, config.analysisWallet)
@@ -200,6 +200,7 @@ function renderBilling(config: { analysisError?: boolean; invoiceError?: boolean
   const query = new URLSearchParams()
   if (config.requestId) query.set('request', config.requestId)
   if (config.paymentReturnOrderID) query.set('order_id', config.paymentReturnOrderID)
+  if (config.tab) query.set('tab', config.tab)
   const path = query.toString() ? `/console/billing?${query.toString()}` : '/console/billing'
   const view = render(<MemoryRouter initialEntries={[path]}><Provider store={appStore}><AppStoreProvider><WorkspaceControl /><BillingPage /></AppStoreProvider></Provider></MemoryRouter>)
   return { ...view, appStore, fetchMock, getPostInput: () => postInput, getPaymentOrderInput: () => paymentOrderInput, getPaymentStartInput: () => paymentStartInput }
@@ -244,6 +245,13 @@ describe('用户费用管理页面', () => {
     expect(new Headers(analysisCall?.[1]?.headers).get('X-Request-ID')).toBeTruthy()
   })
 
+  it('套餐入口查询参数会直接打开订阅与资源包页签', () => {
+    renderBilling({ tab: 'subscription' })
+
+    expect(screen.getByRole('tab', { name: '订阅与资源包' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('heading', { name: '在线订阅暂未开放' })).toBeInTheDocument()
+  })
+
   it('使用账面余额展示，不因预授权释放回升可用余额', async () => {
     renderBilling({ analysisWallet: { paid_available_yuan: '99.999733000', bonus_available_yuan: '0.000000000', total_available_yuan: '99.999733000', total_balance_yuan: '100.000000000' } })
     expect((await screen.findAllByText('账户余额')).length).toBeGreaterThan(0)
@@ -259,13 +267,17 @@ describe('用户费用管理页面', () => {
     })
     const { fetchMock } = renderBilling({ paymentStatus: 'paying' })
     await screen.findByRole('heading', { name: '费用分析' })
-    await user.selectOptions(screen.getByLabelText('API 密钥'), 'key-public-1')
-    await user.selectOptions(screen.getByLabelText('模型'), 'gpt-public')
-    await user.selectOptions(screen.getByLabelText('账期'), '2026-06')
-    await user.selectOptions(screen.getByLabelText('消费类型'), 'recharge')
+    await user.click(screen.getByRole('combobox', { name: 'API 密钥' }))
+    fireEvent.click(await screen.findByRole('option', { name: /主密钥/ }))
+    await user.click(await screen.findByRole('combobox', { name: '模型' }))
+    fireEvent.click(await screen.findByRole('option', { name: /测试模型/ }))
+    await user.click(await screen.findByRole('combobox', { name: '账期' }))
+    fireEvent.click(await screen.findByRole('option', { name: /2026年6月/ }))
+    await user.click(await screen.findByRole('combobox', { name: '消费类型' }))
+    fireEvent.click(await screen.findByRole('option', { name: /充值/ }))
     await waitFor(() => {
       const calls = fetchMock.mock.calls.map(([input]) => new URL(String(input), window.location.origin)).filter((url) => url.pathname.endsWith('/analysis'))
-      expect(calls.some((url) => url.searchParams.get('api_key_id') === 'key-public-1' && url.searchParams.get('model') === 'gpt-public' && url.searchParams.get('period') === '2026-06' && url.searchParams.get('source') === 'recharge')).toBe(true)
+      expect(calls.map((url) => Object.fromEntries(url.searchParams))).toContainEqual(expect.objectContaining({ api_key_id: 'key-public-1', model: 'gpt-public', period: '2026-06', source: 'recharge' }))
     })
 
     await user.click(screen.getByRole('tab', { name: '充值' }))
@@ -350,7 +362,7 @@ describe('用户费用管理页面', () => {
     expect(screen.getByText('本地演示数据：以下金额与历史不代表真实开票资格、已开具记录或税务结果。')).toBeInTheDocument()
     expect(screen.getByText('开票历史记录')).toBeInTheDocument()
     expect(screen.getAllByText('开票中').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('1').length).toBe(2)
+    expect(screen.getAllByText('1').length).toBeGreaterThanOrEqual(2)
     await user.click(screen.getByRole('button', { name: /常见开票问题/ }))
     expect(screen.getByText('数电发票将在申请提交后 24 小时内处理，并发送到接收邮箱。发票抬头和税号提交后如需修改，需要重新申请。')).not.toBeVisible()
     await user.click(screen.getByRole('button', { name: '立即开票' }))

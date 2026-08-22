@@ -2,7 +2,7 @@ import { fileURLToPath, URL } from 'node:url'
 import react from '@vitejs/plugin-react'
 import { defineConfig, loadEnv } from 'vite'
 
-const CHUNK_SIZE_WARNING_LIMIT_KB = 1024
+const CHUNK_SIZE_WARNING_LIMIT_KB = 600
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')

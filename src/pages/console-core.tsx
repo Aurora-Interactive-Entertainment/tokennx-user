@@ -2,47 +2,110 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
 import { Link, useSearchParams, useNavigate } from 'react-router'
-import { Button, Modal, Toast } from '@douyinfe/semi-ui'
-import { IconArrowRight, IconCode, IconCopy, IconEdit, IconSearch, IconSend, IconSetting, IconStop } from '@douyinfe/semi-icons'
-import { BannerNotice, EmptyPanel, ModelCard, ModelLogo, PageTitle } from '@/components/common'
+import Button from '@douyinfe/semi-ui/lib/es/button'
+import Modal from '@/components/app-modal'
+import Toast from '@douyinfe/semi-ui/lib/es/toast'
+import { IconAlertTriangle, IconArrowRight, IconCode, IconCopy, IconEdit, IconSearch, IconSend, IconSetting, IconStop } from '@douyinfe/semi-icons'
+import { EmptyPanel, ModelCard, ModelLogo, PageTitle } from '@/components/common'
 import { ModelDetailDrawer } from '@/components/model-detail-drawer'
 import { MarkdownContent } from '@/components/markdown-content'
 import { MoneyText } from '@/components/money'
+import { AppPagination } from '@/components/app-pagination'
 import { CompatCard as Card, CompatInput as Input, CompatSelect as Select } from '@/components/semi-compat'
 import { useAppStore, type PlaygroundMessage } from '@/data/app-state'
-import { findModelInList, modelAlias, type ModelRecord } from '@/data/models'
-import { useUserModels } from '@/data/user-models'
-import { getUserApiKeys, type UserApiKey, type UserApiKeyContext } from '@/api/user-api-keys'
+import { findModelInList, mapUserModels, modelAlias, type ModelRecord } from '@/data/models'
+import type { UserModelModality } from '@/api/user-models'
+import { useUserModelDetail, useUserModels } from '@/data/user-models'
 import { ModelRuntimeError, streamChatCompletion, type ChatCompletionMessage } from '@/api/model-runtime'
 import { normalizeQuickstartLanguage, normalizeQuickstartProtocol, quickstartCodeSample, QUICKSTART_API_BASE_URL, type QuickstartLanguage, type QuickstartProtocol } from '@/utils/quickstart'
 import { formatNumber } from '@/utils/format'
 import { canStartPlaygroundRound, limitPlaygroundPrompt, playgroundCharacterCount, PLAYGROUND_MAX_INPUT_CHARACTERS } from '@/utils/playground'
-import { getAccessToken } from '@/auth/token-storage'
-import { isAuthenticationFailure } from '@/api/http'
+import { clearAuthTokens, getAccessToken } from '@/auth/token-storage'
 import { invalidateAuth } from '@/store/auth-slice'
 import { useAppDispatch } from '@/store/hooks'
 import { DEFAULT_MODEL_PAGE_SIZE, MODEL_CATEGORIES, MODEL_PAGE_SIZES, MODEL_PRICE_FILTERS, MODEL_SORTS, filterAndSortModels, modelCategoryCounts, paginateModels, type ModelCategory, type ModelPriceFilter, type ModelSort } from '@/utils/model-filters'
-import { apiKeySupportsModel } from '@/utils/model-access'
 
 const FIRST_MODEL_PAGE = 1
 
 export function ConsoleModelsPage() {
   const { t } = useTranslation()
-  const { models: userModels, loading, error, refresh } = useUserModels()
-  const [query, setQuery] = useState('')
-  const [company, setCompany] = useState('all')
-  const [priceFilter, setPriceFilter] = useState<ModelPriceFilter>('all')
   const [category, setCategory] = useState<ModelCategory>('all')
-  const [sort, setSort] = useState<ModelSort>('default')
+  const [activityId, setActivityId] = useState('')
   const [page, setPage] = useState(FIRST_MODEL_PAGE)
   const [pageSize, setPageSize] = useState<number>(DEFAULT_MODEL_PAGE_SIZE)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const requestedModelAlias = searchParams.get('model')
+  // 搜索词初始值取 URL 的 keyword 参数（模型广场“立即体验”跳转时携带）。
+  const [query, setQuery] = useState(() => searchParams.get('keyword')?.trim() ?? '')
+  const [company, setCompany] = useState('all')
+  const [priceFilter, setPriceFilter] = useState<ModelPriceFilter>('all')
+  const [sort, setSort] = useState<ModelSort>('default')
+  // 防抖后的搜索关键词：作为 keyword 参数交给后端做服务端搜索，避免每次按键都发请求。
+  const [debouncedKeyword, setDebouncedKeyword] = useState(() => searchParams.get('keyword')?.trim() ?? '')
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setDebouncedKeyword((current) => {
+        const next = query.trim()
+        return next === current ? current : next
+      })
+    }, 300)
+    return () => window.clearTimeout(timer)
+  }, [query])
+  // 关键词搜索由后端完成，此时不能启用服务端分页参数（结果集已被检索过滤）。
+  const canUseServerPagination = !debouncedKeyword && company === 'all' && priceFilter === 'all' && sort === 'default'
+  const serverModelType: UserModelModality | undefined = category === 'all' || category === 'speech' || category === 'transcription' ? undefined : category
+  const { models: userModels, activities, total: apiTotal, page: apiPage, pageSize: apiPageSize, loading, error, refresh } = useUserModels({ activityId: activityId || undefined, modelType: serverModelType, ...(debouncedKeyword ? { keyword: debouncedKeyword } : {}), ...(canUseServerPagination ? { page, pageSize } : {}) })
   const [detailModel, setDetailModel] = useState<ModelRecord | null>(null)
+  const requestedDetailState = useUserModelDetail(requestedModelAlias)
+  const detailState = useUserModelDetail(requestedModelAlias ?? (detailModel ? modelAlias(detailModel) : null))
   const companies = useMemo(() => [...new Set(userModels.map((model) => model.company))].sort((left, right) => left.localeCompare(right, 'zh-CN')), [userModels])
-  const filteredModels = useMemo(() => filterAndSortModels(userModels, { query, company, category, priceFilter, sort }), [category, company, priceFilter, query, sort, userModels])
-  const categoryCounts = useMemo(() => modelCategoryCounts(userModels, { query, company, priceFilter }), [company, priceFilter, query, userModels])
-  const pageResult = useMemo(() => paginateModels(filteredModels, page, pageSize), [filteredModels, page, pageSize])
+  // 关键词搜索已由服务端 keyword 参数完成，本地不再按 query 二次过滤，避免匹配字段差异造成误过滤。
+  const localQuery = debouncedKeyword ? '' : query
+  const filteredModels = useMemo(() => filterAndSortModels(userModels, { query: localQuery, company, category, priceFilter, sort }), [category, company, localQuery, priceFilter, sort, userModels])
+  const categoryCounts = useMemo(() => modelCategoryCounts(userModels, { query: localQuery, company, priceFilter }), [company, localQuery, priceFilter, userModels])
+  const pageResult = useMemo(() => {
+    if (apiTotal === null) return paginateModels(filteredModels, page, pageSize)
+    const currentPage = apiPage ?? page
+    const currentPageSize = apiPageSize ?? pageSize
+    const start = apiTotal === 0 ? 0 : (currentPage - 1) * currentPageSize + 1
+    return { items: filteredModels, page: currentPage, pageSize: currentPageSize, total: apiTotal, totalPages: apiTotal === 0 ? 0 : Math.ceil(apiTotal / currentPageSize), start, end: Math.min(currentPage * currentPageSize, apiTotal) }
+  }, [apiPage, apiPageSize, apiTotal, filteredModels, page, pageSize])
   // 中文：单卡页面限制卡片宽度，多卡页面继续由网格平均分配可用空间。
   const modelGridClassName = pageResult.items.length === 1 ? 'model-card-grid model-card-grid--single' : 'model-card-grid'
+
+  useEffect(() => {
+    if (!requestedModelAlias) return
+    const requestedModel = findModelInList(userModels, requestedModelAlias)
+    if (requestedModel) {
+      setDetailModel(requestedModel)
+      return
+    }
+    // 当前列表里找不到时，用接口详情兜底构造一条本地记录打开抽屉。
+    const fetchedModel = requestedDetailState.detail?.model
+    if (fetchedModel) {
+      const mappedModel = mapUserModels([fetchedModel])[0] ?? null
+      setDetailModel(mappedModel)
+    }
+  }, [requestedDetailState.detail, requestedModelAlias, userModels])
+
+  // keyword 跳转（模型广场“立即体验”）：搜索结果返回后自动打开对应模型的详情侧边栏。
+  const requestedKeyword = searchParams.get('keyword')?.trim() ?? ''
+  const autoOpenedKeywordRef = useRef('')
+  useEffect(() => {
+    // URL keyword 被清除（如关闭抽屉）时重置标记，保证下次带参跳转仍能自动打开。
+    if (!requestedKeyword) {
+      autoOpenedKeywordRef.current = ''
+      return
+    }
+    // model 参数优先定位详情；同一 keyword 只自动打开一次，避免用户输入时反复弹抽屉。
+    if (requestedModelAlias || loading || error || autoOpenedKeywordRef.current === requestedKeyword) return
+    const loweredKeyword = requestedKeyword.toLocaleLowerCase()
+    const exactMatch = userModels.find((model) => model.name.trim().toLocaleLowerCase() === loweredKeyword || modelAlias(model).toLocaleLowerCase() === loweredKeyword)
+    const target = exactMatch ?? (userModels.length === 1 ? userModels[0] : undefined)
+    if (!target) return
+    autoOpenedKeywordRef.current = requestedKeyword
+    setDetailModel(target)
+  }, [error, loading, requestedKeyword, requestedModelAlias, userModels])
 
   useEffect(() => {
     if (pageResult.page !== page) setPage(pageResult.page)
@@ -53,13 +116,32 @@ export function ConsoleModelsPage() {
     update()
   }
 
+  function selectActivity(activity: string): void {
+    updateFilter(() => {
+      setActivityId(activity)
+      setPriceFilter('all')
+    })
+  }
+
   function clearFilters(): void {
     setQuery('')
     setCompany('all')
     setPriceFilter('all')
     setCategory('all')
+    setActivityId('')
     setSort('default')
     setPage(FIRST_MODEL_PAGE)
+  }
+
+  function closeModelDetail(): void {
+    setDetailModel(null)
+    setQuery('')
+    if (!requestedModelAlias && !searchParams.get('keyword')) return
+    // 关闭抽屉时清掉 model 定位参数和 keyword 搜索词（原 model_name 定位语义已迁移到 keyword）。
+    const nextSearchParams = new URLSearchParams(searchParams)
+    nextSearchParams.delete('model')
+    nextSearchParams.delete('keyword')
+    setSearchParams(nextSearchParams, { replace: true })
   }
 
   return <div className="page-stack models-console-page">
@@ -67,28 +149,27 @@ export function ConsoleModelsPage() {
     {loading ? <EmptyPanel title={t('console.common.loadingModels')} description={t('console.common.readingModels')} /> : error ? <EmptyPanel title={t('console.common.modelCatalogFailed')} description={error} action={<Button theme="outline" onClick={refresh}>{t('console.common.reload')}</Button>} /> : null}
     {!loading && !error ? <>
     <div className="models-toolbar">
-      <div className="models-search-box"><IconSearch aria-hidden="true" /><Input value={query} onChange={(value) => updateFilter(() => setQuery(value))} placeholder={t('console.models.searchPlaceholder')} aria-label={t('console.models.searchPlaceholder').replace('...', '')} /></div>
+      <Input className="app-standard-input models-search-input" size="large" prefix={<IconSearch aria-hidden="true" />} value={query} onChange={(value) => updateFilter(() => setQuery(value))} placeholder={t('console.models.searchPlaceholder')} aria-label={t('console.models.searchPlaceholder').replace('...', '')} showClear />
       <Select className="models-company-select" value={company} onChange={(value) => updateFilter(() => setCompany(String(value)))} aria-label={t('console.common.allCompanies')}><Select.Option value="all">{t('console.common.allCompanies')}</Select.Option>{companies.map((item) => <Select.Option key={item} value={item}>{item}</Select.Option>)}</Select>
       <div className="models-controls">
-        <div className="price-filters" role="group" aria-label={t('console.common.priceStatus')}>{MODEL_PRICE_FILTERS.map((filter) => <button className={`price-filter${priceFilter === filter.value ? ' active' : ''}`} type="button" aria-pressed={priceFilter === filter.value} key={filter.value} onClick={() => updateFilter(() => setPriceFilter(filter.value))}>{t(filter.labelKey)}</button>)}</div>
+        <div className="price-filters model-activity-filters" role="group" aria-label={activities.length ? t('console.models.activityFilter') : t('console.common.priceStatus')}>
+          {activities.length ? <>
+            <button className={`price-filter${activityId === '' ? ' active' : ''}`} type="button" aria-pressed={activityId === ''} onClick={() => selectActivity('')}>{t('console.common.all')}</button>
+            {activities.map((activity) => <button className={`price-filter${activityId === activity.id ? ' active' : ''}`} type="button" aria-pressed={activityId === activity.id} key={activity.id} onClick={() => selectActivity(activity.id)}>{activity.name}</button>)}
+          </> : MODEL_PRICE_FILTERS.map((filter) => <button className={`price-filter${priceFilter === filter.value ? ' active' : ''}`} type="button" aria-pressed={priceFilter === filter.value} key={filter.value} onClick={() => updateFilter(() => { setActivityId(''); setPriceFilter(filter.value) })}>{t(filter.labelKey)}</button>)}
+        </div>
         <label className="sort-control"><span>{t('console.common.sort')}</span><Select value={sort} onChange={(value) => updateFilter(() => setSort(value as ModelSort))} aria-label={t('console.common.modelSort')}>{MODEL_SORTS.map((option) => <Select.Option key={option.value} value={option.value}>{t(option.labelKey)}</Select.Option>)}</Select></label>
       </div>
     </div>
-    <div className="models-subbar"><div className="modality-tabs" role="group" aria-label={t('console.common.modelType')}>{MODEL_CATEGORIES.map((tab) => <button className={`modality-tab${category === tab.value ? ' active' : ''}`} type="button" aria-pressed={category === tab.value} key={tab.value} disabled={categoryCounts[tab.value] === 0} onClick={() => updateFilter(() => setCategory(tab.value))}>{t(tab.labelKey)} <span className="tab-count">{categoryCounts[tab.value]}</span></button>)}</div><span className="models-result-count">{t('console.common.modelCount', { count: filteredModels.length })}</span></div>
+    <div className="models-subbar">
+      <div className="modality-tabs" role="group" aria-label={t('console.common.modelType')}>{MODEL_CATEGORIES.map((tab) => <button className={`modality-tab${category === tab.value ? ' active' : ''}`} type="button" aria-pressed={category === tab.value} key={tab.value} disabled={categoryCounts[tab.value] === 0} onClick={() => updateFilter(() => setCategory(tab.value))}>{t(tab.labelKey)} <span className="tab-count">{categoryCounts[tab.value]}</span></button>)}</div><span className="models-result-count">{t('console.common.modelCount', { count: pageResult.total })}</span>
+    </div>
     {filteredModels.length ? <>
       <div className={modelGridClassName}>{pageResult.items.map((model) => <ModelCard key={model.id} model={model} onSelect={setDetailModel} />)}</div>
-      <nav className="models-pagination" aria-label={t('console.models.modelPage')}>
-        <span className="models-pagination-info">{t('console.common.showRange', { start: pageResult.start, end: pageResult.end, total: pageResult.total })}</span>
-        <div className="models-pagination-controls">
-          <button type="button" className="models-pagination-button" aria-label={t('console.common.previous')} disabled={pageResult.page <= FIRST_MODEL_PAGE} onClick={() => setPage((value) => Math.max(FIRST_MODEL_PAGE, value - 1))}>‹</button>
-          <button type="button" className="models-pagination-button is-current" aria-current="page" disabled>{pageResult.page}</button>
-          <button type="button" className="models-pagination-button" aria-label={t('console.common.next')} disabled={pageResult.page >= pageResult.totalPages} onClick={() => setPage((value) => Math.min(pageResult.totalPages, value + 1))}>›</button>
-          <Select className="models-pagination-size" value={pageSize} onChange={(value) => { setPageSize(Number(value)); setPage(FIRST_MODEL_PAGE) }} aria-label={t('console.common.pageSize')}>{MODEL_PAGE_SIZES.map((size) => <Select.Option key={size} value={size}>{t('console.common.rowsPerPage', { size })}</Select.Option>)}</Select>
-        </div>
-      </nav>
+      <AppPagination ariaLabel={t('console.models.modelPage')} currentPage={pageResult.page} pageSize={pageSize} total={pageResult.total} pageSizeOptions={[...MODEL_PAGE_SIZES]} summary={t('console.common.showRange', { start: pageResult.start, end: pageResult.end, total: pageResult.total })} onPageChange={setPage} onPageSizeChange={(nextPageSize) => { setPageSize(nextPageSize); setPage(FIRST_MODEL_PAGE) }} />
     </> : <EmptyPanel title={t('console.models.modelNotFound')} description={t('console.common.adjustFilters')} action={<Button theme="outline" onClick={clearFilters}>{t('console.common.clearFilters')}</Button>} />}
     </> : null}
-    <ModelDetailDrawer model={detailModel} visible={detailModel !== null} onClose={() => setDetailModel(null)} />
+    <ModelDetailDrawer model={detailModel} detail={detailState.detail} loading={detailState.loading} error={detailState.error} visible={detailModel !== null} onClose={closeModelDetail} />
   </div>
 }
 
@@ -101,12 +182,6 @@ const MAX_MAX_TOKENS = 128_000
 
 function modelErrorMessage(error: unknown, t: TFunction): string {
   if (error instanceof DOMException && error.name === 'AbortError') return t('console.playground.stopped')
-  if (error instanceof ModelRuntimeError) {
-    if (error.status === 401) return t('console.playground.invalidApiKey')
-    if (error.status === 402) return t('console.playground.insufficientBalance')
-    const requestHint = error.requestId ? t('console.playground.requestIdHint', { label: t('console.common.requestId'), id: error.requestId }) : ''
-    return `${error.message}${requestHint}`
-  }
   return t('console.playground.modelCallFailed')
 }
 
@@ -126,7 +201,15 @@ function sessionMessages(session: { messages: PlaygroundMessage[] }): Playground
   return session.messages
 }
 
-// 中文：服务端以模型编码授权，页面同时兼容公开 ID 和别名，避免目录字段演进导致误过滤。
+function PlaygroundWorkspaceNotice({ message, description, action }: { message: string; description?: string; action?: ReactNode }) {
+  return <div className="workspace-notice-state playground-workspace-notice" role="alert">
+    <span className="workspace-notice-icon"><IconAlertTriangle aria-hidden="true" /></span>
+    <strong>{message}</strong>
+    {description ? <p>{description}</p> : null}
+    {action ? <div className="workspace-notice-actions">{action}</div> : null}
+  </div>
+}
+
 export { apiKeySupportsModel } from '@/utils/model-access'
 
 export function PlaygroundPage() {
@@ -144,10 +227,6 @@ export function PlaygroundPage() {
   const [paramsVisible, setParamsVisible] = useState(false)
   const [temperature, setTemperature] = useState(DEFAULT_TEMPERATURE)
   const [maxTokens, setMaxTokens] = useState(DEFAULT_MAX_TOKENS)
-  const [apiKeys, setApiKeys] = useState<UserApiKey[]>([])
-  const [selectedApiKeyId, setSelectedApiKeyId] = useState('')
-  const [apiKeysLoading, setApiKeysLoading] = useState(true)
-  const [apiKeyError, setApiKeyError] = useState('')
   const [activePrompt, setActivePrompt] = useState('')
   const [streamingResponse, setStreamingResponse] = useState('')
   const [streamingReasoning, setStreamingReasoning] = useState('')
@@ -157,30 +236,34 @@ export function PlaygroundPage() {
   const requestControllerRef = useRef<AbortController | null>(null)
   const streamingResponseRef = useRef('')
   const streamingReasoningRef = useRef('')
+  const messageListRef = useRef<HTMLDivElement | null>(null)
+  const followMessageBottomRef = useRef(true)
   const abortReasonRef = useRef<'user' | 'navigation' | null>(null)
-  const workspaceContext = useMemo<UserApiKeyContext>(() => store.activeWorkspace.type === 'enterprise'
-    ? { account_type: 'enterprise', enterprise_id: store.activeWorkspace.id }
-    : { account_type: 'personal' }, [store.activeWorkspace.id, store.activeWorkspace.type])
-  const workspaceKey = `${workspaceContext.account_type}:${workspaceContext.account_type === 'enterprise' ? workspaceContext.enterprise_id : 'personal'}`
+  const workspaceKey = `${store.activeWorkspace.type}:${store.activeWorkspace.id}`
   const selectedSession = store.playgroundSessions.find((session) => session.id === selectedSessionId)
   const currentRounds = selectedSession?.rounds ?? 0
   const canContinueConversation = canStartPlaygroundRound(currentRounds)
-  const usableApiKeys = useMemo(() => apiKeys.filter((key) => key.status === 'active' && key.secret.trim()), [apiKeys])
-  const selectedApiKey = usableApiKeys.find((key) => key.id === selectedApiKeyId)
-  // 中文：未明确选择 API Key 时不推导模型，避免把工作区模型目录误当成密钥权限。
-  const selectableModels = useMemo(() => {
-    return models.filter((model) => model.modality === 'text' && Boolean(modelAlias(model)) && apiKeySupportsModel(selectedApiKey, model))
-  }, [models, selectedApiKey])
+  const selectableModels = useMemo(
+    () => models.filter((model) => model.modality === 'text' && Boolean(modelAlias(model))),
+    [models],
+  )
   const selectedModel = findModelInList(selectableModels, modelId) ?? selectableModels[0]
+
+  function handleMessageScroll(event: React.UIEvent<HTMLDivElement>): void {
+    const element = event.currentTarget
+    followMessageBottomRef.current = element.scrollHeight - element.scrollTop - element.clientHeight <= 40
+  }
+
+  useEffect(() => {
+    const element = messageListRef.current
+    if (!element || !followMessageBottomRef.current) return
+    element.scrollTop = element.scrollHeight
+  }, [activePrompt, requestError, selectedSessionId, streamingReasoning, streamingResponse])
 
   useEffect(() => {
     requestControllerRef.current?.abort()
     requestControllerRef.current = null
     abortReasonRef.current = 'navigation'
-    setApiKeys([])
-    setSelectedApiKeyId('')
-    setApiKeysLoading(true)
-    setApiKeyError('')
     setSelectedSessionId('')
     setEditingAttemptId('')
     setRetryingAttemptId('')
@@ -191,35 +274,13 @@ export function PlaygroundPage() {
   }, [workspaceKey])
 
   useEffect(() => {
-    let active = true
-    setApiKeysLoading(true)
-    setApiKeyError('')
-    void getUserApiKeys(workspaceContext, 'active').then((result) => {
-      if (!active) return
-      setApiKeys(result.items)
-    }).catch((error: unknown) => {
-      if (!active) return
-      if (isAuthenticationFailure(error)) {
-        dispatch(invalidateAuth())
-        navigate('/', { replace: true })
-        return
-      }
-      setApiKeyError(error instanceof Error ? error.message : t('console.models.reloadKeys'))
-    }).finally(() => {
-      if (active) setApiKeysLoading(false)
-    })
-    return () => { active = false }
-  }, [dispatch, navigate, t, workspaceContext])
-
-  useEffect(() => {
-    if (!selectedApiKey) return
     if (selectableModels.some((model) => modelAlias(model) === modelId)) return
     const fallback = selectableModels[0]
     const fallbackAlias = fallback ? modelAlias(fallback) : ''
     if (modelId === fallbackAlias) return
     setModelId(fallbackAlias)
     store.setSelectedModelId(fallbackAlias)
-  }, [modelId, selectableModels, selectedApiKey, store])
+  }, [modelId, selectableModels, store])
 
   useEffect(() => () => {
     abortReasonRef.current = 'navigation'
@@ -235,21 +296,19 @@ export function PlaygroundPage() {
     abortGeneration('user')
   }
 
-  function selectApiKey(apiKeyId: string): void {
-    startNewSession()
-    setModelId('')
-    store.setSelectedModelId('')
-    setSelectedApiKeyId(apiKeyId)
-  }
-
   async function runTest(): Promise<void> {
     const trimmedPrompt = prompt.trim()
     if (running) return
     if (!trimmedPrompt) { Toast.warning(t('console.playground.promptRequired')); return }
-    if (!selectedApiKey) { Toast.warning(t('console.playground.apiKeyRequired')); return }
     if (!selectedModel || !modelAlias(selectedModel)) { Toast.warning(t('console.playground.noTextModelAlias')); return }
-    if (!apiKeySupportsModel(selectedApiKey, selectedModel)) { Toast.warning(t('console.playground.unsupportedModel')); return }
     if (!canContinueConversation) { Toast.warning(t('console.playground.newSessionLimit')); return }
+    const accessToken = getAccessToken()
+    if (!accessToken) {
+      clearAuthTokens({ force: true })
+      dispatch(invalidateAuth())
+      navigate('/', { replace: true })
+      return
+    }
     const parsedTemperature = Number(temperature)
     const parsedMaxTokens = Number(maxTokens)
     if (!Number.isFinite(parsedTemperature) || parsedTemperature < MIN_TEMPERATURE || parsedTemperature > MAX_TEMPERATURE) {
@@ -270,6 +329,7 @@ export function PlaygroundPage() {
     setRequestError('')
     setRetryingAttemptId(replacingAttemptId ?? '')
     setActivePrompt(trimmedPrompt)
+    followMessageBottomRef.current = true
     setStreamingResponse('')
     setStreamingReasoning('')
     streamingResponseRef.current = ''
@@ -282,7 +342,7 @@ export function PlaygroundPage() {
         { role: 'user', content: trimmedPrompt },
       ]
       const result = await streamChatCompletion({
-        apiKey: selectedApiKey.secret,
+        accessToken,
         model: modelAlias(selectedModel),
         messages,
         temperature: parsedTemperature,
@@ -332,6 +392,12 @@ export function PlaygroundPage() {
         setRetryingAttemptId('')
         return
       }
+      if (error instanceof ModelRuntimeError && error.status === 401) {
+        clearAuthTokens({ force: true })
+        dispatch(invalidateAuth())
+        navigate('/', { replace: true })
+        return
+      }
       const message = modelErrorMessage(error, t)
       const failedSession = store.recordPlaygroundFailure({
         modelId: modelAlias(selectedModel),
@@ -353,7 +419,6 @@ export function PlaygroundPage() {
       setEditingAttemptId('')
       setRetryingAttemptId('')
       setRequestError(message)
-      Toast.error(message)
     } finally {
       if (requestControllerRef.current === controller) {
         requestControllerRef.current = null
@@ -375,6 +440,7 @@ export function PlaygroundPage() {
     streamingReasoningRef.current = ''
     setRequestError('')
     setPrompt('')
+    followMessageBottomRef.current = true
   }
 
   function selectSession(session: typeof store.playgroundSessions[number]): void {
@@ -393,6 +459,7 @@ export function PlaygroundPage() {
     streamingReasoningRef.current = ''
     setRequestError('')
     setPrompt('')
+    followMessageBottomRef.current = true
   }
 
   function copyMessage(value: string, successMessage: string): void {
@@ -432,19 +499,34 @@ export function PlaygroundPage() {
 
   if (modelsLoading) return <div className="page-stack playground-console-page"><PageTitle title={t('console.playground.title')} description={t('console.playground.description')} /><EmptyPanel title={t('console.common.loadingModels')} description={t('console.common.readingModels')} /></div>
   if (modelsError) return <div className="page-stack playground-console-page"><PageTitle title={t('console.playground.title')} description={t('console.playground.description')} /><EmptyPanel title={t('console.common.modelCatalogFailed')} description={modelsError} action={<Button theme="outline" onClick={refreshModels}>{t('console.common.reload')}</Button>} /></div>
-  if (!models.some((model) => model.modality === 'text' && modelAlias(model))) return <div className="page-stack playground-console-page"><PageTitle title={t('console.playground.title')} description={t('console.playground.description')} /><EmptyPanel title={t('console.playground.noTextModels')} description={t('console.playground.noTextModelsHint')} /></div>
+
+  const centerMessageState = Boolean(requestError) || (!selectedSession && !activePrompt)
 
   return <div className="page-stack playground-console-page">
     <PageTitle title={t('console.playground.title')} description={t('console.playground.detailedDescription')} />
-    <section className="playground-connection-bar" aria-label={t('console.playground.connection')}>
-      <div className="playground-connection-controls"><label htmlFor="playground-api-key">{t('console.playground.apiKey')}</label><Select className="playground-api-key-select" dropdownClassName="playground-select-dropdown" id="playground-api-key" aria-label={t('console.playground.apiKey')} value={selectedApiKey?.id ?? ''} onSelect={(value) => selectApiKey(String(value))} disabled={apiKeysLoading || usableApiKeys.length === 0}><Select.Option value="">{t('console.playground.selectApiKey')}</Select.Option>{usableApiKeys.map((key) => <Select.Option key={key.id} value={key.id}>{key.name} · {key.masked_key}</Select.Option>)}</Select><Link className="playground-key-link" to="/console/api-keys">{t('console.playground.manageApiKey')}</Link></div>
-    </section>
-    {apiKeyError ? <BannerNotice tone="warning">{apiKeyError}</BannerNotice> : null}
-    {selectedApiKey && selectableModels.length === 0 ? <BannerNotice tone="warning">{t('console.playground.apiKeyNoModels')}</BannerNotice> : null}
-    {requestError ? <BannerNotice tone="warning"><span>{requestError}</span>{requestError.includes(t('console.common.requestId')) ? null : <Button theme="borderless" size="small" onClick={() => setRequestError('')}>{t('console.playground.closeError')}</Button>}</BannerNotice> : null}
     <section className="playground-shell" aria-label={t('console.playground.title')}>
       <aside className="history-panel" aria-labelledby="history-title"><div className="history-heading"><h2 id="history-title">{t('console.playground.history')}</h2><Button theme="outline" size="small" onClick={startNewSession}>{t('console.playground.newSession')}</Button></div><div className="history-list">{store.playgroundSessions.slice(0, 7).map((session) => { const model = findModelInList(models, session.modelId); const modelName = model?.name ?? t('console.playground.unnamedModel'); const displayModelAlias = model ? modelAlias(model) || t('console.common.modelAliasUnset') : t('console.common.modelAliasUnset'); return <button type="button" className={`history-item${selectedSessionId === session.id ? ' is-active' : ''}`} key={session.id} onClick={() => selectSession(session)}><strong>{modelName}</strong><span>{displayModelAlias} · {session.createdAt}</span><small>{lastUserMessage(session)}</small></button> })}</div></aside>
-      <div className="workspace"><div className="playground-header"><div className="playground-actions"><label className="sr-only" htmlFor="playground-model">{t('console.playground.chooseModel')}</label><Select className="playground-model-select" dropdownClassName="playground-select-dropdown" id="playground-model" aria-label={t('console.playground.chooseModel')} value={selectedModel ? modelAlias(selectedModel) : ''} onChange={(value) => { const nextModelAlias = String(value); setModelId(nextModelAlias); store.setSelectedModelId(nextModelAlias); setSelectedSessionId(''); setEditingAttemptId(''); setRetryingAttemptId(''); setRequestError('') }} disabled={selectableModels.length === 0}>{selectableModels.map((model) => <Select.Option key={model.id} value={modelAlias(model)}>{t('console.playground.modelWithProvider', { name: model.name, company: model.company, alias: modelAlias(model) })}</Select.Option>)}</Select><Button className="icon-button" theme="borderless" icon={<IconSetting />} aria-label={t('console.playground.modelParams')} title={t('console.playground.modelParams')} onClick={() => setParamsVisible(true)} disabled={!selectedModel} /></div></div><div className="message-list">{selectedSession ? sessionMessages(selectedSession).filter((message) => message.attemptId !== retryingAttemptId).map((message) => renderMessage(message)) : null}{activePrompt ? <><div className="message user"><span className="message-avatar">H</span><div className="message-body"><div className="message-bubble">{activePrompt}</div><div className="message-actions"><Button className="message-icon-action" theme="borderless" size="small" icon={<IconCopy />} aria-label={t('console.playground.copyUserMessage')} title={t('console.playground.copyUserMessage')} onClick={() => copyMessage(activePrompt, t('console.playground.copiedUserMessage'))} /></div></div></div>{renderMessage({ id: 'streaming-response', attemptId: 'streaming-attempt', role: 'assistant', status: 'complete', content: '', reasoning: '', requestId: null, error: null, createdAt: '', inputTokens: null, outputTokens: null, cost: null, latency: null }, true)}</> : null}{!selectedSession && !activePrompt ? <div className="empty-state">{!selectedApiKey ? <><h3>{t('console.playground.chooseKeyFirst')}</h3><p>{t('console.playground.chooseKeyHint')}</p></> : null}{selectedApiKey && selectableModels.length === 0 ? <><h3>{t('console.playground.noKeyModels')}</h3><p>{t('console.playground.noKeyModelsHint')}</p></> : null}{selectedApiKey && selectableModels.length > 0 ? <><h3>{t('console.playground.startConversation')}</h3><p>{t('console.playground.startConversationHint')}</p></> : null}</div> : null}</div><div className="composer"><div className="composer-box"><Input.TextArea className="composer-input" value={prompt} onChange={(value) => setPrompt(limitPlaygroundPrompt(value))} maxLength={PLAYGROUND_MAX_INPUT_CHARACTERS} rows={1} disabled={running || !canContinueConversation} placeholder={canContinueConversation ? t('console.playground.promptPlaceholder') : t('console.playground.newSessionLimit')} aria-label={t('console.playground.testPrompt')} onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); if (!running) void runTest() } }} /><span className="composer-character-count" aria-live="polite">{playgroundCharacterCount(prompt)}/{PLAYGROUND_MAX_INPUT_CHARACTERS}</span><div className="composer-actions"><Button className="send-btn" theme="solid" type="primary" icon={running ? <IconStop /> : <IconSend />} aria-label={running ? t('console.playground.stop') : t('console.playground.send')} title={running ? t('console.playground.stop') : t('console.playground.send')} disabled={running ? false : !prompt.trim() || !selectedApiKey || !selectedModel || !canContinueConversation} onClick={() => { if (running) stopGeneration(); else void runTest() }} /></div></div><div className="composer-hint"><span>{t('console.playground.enterHint')}</span><span>{selectedModel ? `${selectedModel.name} · ${modelAlias(selectedModel) || t('console.common.modelAliasUnset')} · Temperature ${temperature} · Max Tokens ${maxTokens}` : selectedApiKey ? t('console.playground.noAvailableModels') : t('console.playground.selectApiKeyFirst')}</span></div></div></div>
+      <div className="workspace">
+        <div className="playground-header">
+          <div className="playground-actions">
+            <label className="sr-only" htmlFor="playground-model">{t('console.playground.chooseModel')}</label>
+            <Select className="playground-model-select" dropdownClassName="playground-select-dropdown" id="playground-model" aria-label={t('console.playground.chooseModel')} value={selectedModel ? modelAlias(selectedModel) : ''} onChange={(value) => { const nextModelAlias = String(value); setModelId(nextModelAlias); store.setSelectedModelId(nextModelAlias); setSelectedSessionId(''); setEditingAttemptId(''); setRetryingAttemptId(''); setRequestError('') }} disabled={selectableModels.length === 0}>{selectableModels.map((model) => <Select.Option key={model.id} value={modelAlias(model)}>{t('console.playground.modelWithProvider', { name: model.name, company: model.company, alias: modelAlias(model) })}</Select.Option>)}</Select>
+            <Button className="icon-button" theme="borderless" icon={<IconSetting />} aria-label={t('console.playground.modelParams')} title={t('console.playground.modelParams')} onClick={() => setParamsVisible(true)} disabled={!selectedModel} />
+          </div>
+        </div>
+        <div className={`message-list${centerMessageState ? ' is-centered' : ''}`} ref={messageListRef} onScroll={handleMessageScroll}>
+          {requestError ? <PlaygroundWorkspaceNotice message={requestError} action={<Button theme="outline" size="small" onClick={() => setRequestError('')}>{t('console.playground.closeError')}</Button>} /> : <>
+            {selectedSession ? sessionMessages(selectedSession).filter((message) => message.attemptId !== retryingAttemptId).map((message) => renderMessage(message)) : null}
+            {activePrompt ? <><div className="message user"><span className="message-avatar">H</span><div className="message-body"><div className="message-bubble">{activePrompt}</div><div className="message-actions"><Button className="message-icon-action" theme="borderless" size="small" icon={<IconCopy />} aria-label={t('console.playground.copyUserMessage')} title={t('console.playground.copyUserMessage')} onClick={() => copyMessage(activePrompt, t('console.playground.copiedUserMessage'))} /></div></div></div>{renderMessage({ id: 'streaming-response', attemptId: 'streaming-attempt', role: 'assistant', status: 'complete', content: '', reasoning: '', requestId: null, error: null, createdAt: '', inputTokens: null, outputTokens: null, cost: null, latency: null }, true)}</> : null}
+            {!selectedSession && !activePrompt ? selectableModels.length > 0 ? <div className="empty-state"><h3>{t('console.playground.startConversation')}</h3><p>{t('console.playground.startConversationHint')}</p></div> : <PlaygroundWorkspaceNotice message={t('console.playground.noTextModels')} description={t('console.playground.noTextModelsHint')} /> : null}
+          </>}
+        </div>
+        <div className="composer">
+          <p className="playground-ephemeral-notice" role="note">{t('console.playground.ephemeralNotice')}</p>
+          <div className="composer-box"><Input.TextArea className="composer-input" value={prompt} onChange={(value) => setPrompt(limitPlaygroundPrompt(value))} maxLength={PLAYGROUND_MAX_INPUT_CHARACTERS} rows={1} disabled={running || !canContinueConversation} placeholder={canContinueConversation ? t('console.playground.promptPlaceholder') : t('console.playground.newSessionLimit')} aria-label={t('console.playground.testPrompt')} onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); if (!running) void runTest() } }} /><span className="composer-character-count" aria-live="polite">{playgroundCharacterCount(prompt)}/{PLAYGROUND_MAX_INPUT_CHARACTERS}</span><div className="composer-actions"><Button className="send-btn" theme="solid" type="primary" icon={running ? <IconStop /> : <IconSend />} aria-label={running ? t('console.playground.stop') : t('console.playground.send')} title={running ? t('console.playground.stop') : t('console.playground.send')} disabled={running ? false : !prompt.trim() || !selectedModel || !canContinueConversation} onClick={() => { if (running) stopGeneration(); else void runTest() }} /></div></div>
+          <div className="composer-hint"><span>{t('console.playground.enterHint')}</span><span>{selectedModel ? `${selectedModel.name} · ${modelAlias(selectedModel) || t('console.common.modelAliasUnset')} · ${t('console.playground.temperature')} ${temperature} · ${t('console.playground.maxTokens')} ${maxTokens}` : t('console.playground.noAvailableModels')}</span></div>
+        </div>
+      </div>
     </section>
     <Modal title={t('console.playground.parameters')} visible={paramsVisible} onCancel={() => setParamsVisible(false)} onOk={() => setParamsVisible(false)} okText={t('console.playground.done')} cancelText={t('console.common.cancel')}><div className="params-dialog"><label className="field-label" htmlFor="temperature">{t('console.playground.temperature')}</label><Input id="temperature" value={temperature} onChange={setTemperature} suffix={t('console.playground.randomness')} inputMode="decimal" /><span className="params-field-hint">{t('console.playground.parameterRange', { min: MIN_TEMPERATURE, max: MAX_TEMPERATURE })}</span><label className="field-label" htmlFor="max-tokens">{t('console.playground.maxTokens')}</label><Input id="max-tokens" value={maxTokens} onChange={(value) => setMaxTokens(value.replace(/\D/g, ''))} suffix="tokens" inputMode="numeric" /><span className="params-field-hint">{t('console.playground.tokenRange', { min: MIN_MAX_TOKENS, max: MAX_MAX_TOKENS })}</span></div></Modal>
   </div>
@@ -457,21 +539,19 @@ export function QuickstartPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const { models, loading: modelsLoading, error: modelsError, refresh: refreshModels } = useUserModels()
   const textModels = models.filter((item) => item.modality === 'text' && modelAlias(item))
-  const resolvedRequestedModel = findModelInList(models, searchParams.get('model'))
+  const requestedModelAlias = searchParams.get('model')
+  const resolvedRequestedModel = findModelInList(models, requestedModelAlias)
   const requestedModel = resolvedRequestedModel && modelAlias(resolvedRequestedModel) ? resolvedRequestedModel : undefined
   const firstModel = requestedModel ?? textModels[0]
   const [protocol, setProtocol] = useState<QuickstartProtocol>(normalizeQuickstartProtocol(searchParams.get('protocol')))
   const [language, setLanguage] = useState<QuickstartLanguage>(normalizeQuickstartLanguage(searchParams.get('language')))
-  const [modelId, setModelId] = useState(searchParams.get('model') ?? '')
-  const resolvedModel = findModelInList(models, modelId)
-  const model = resolvedModel && modelAlias(resolvedModel) ? resolvedModel : firstModel
+  const model = firstModel
 
   useEffect(() => {
     const alias = firstModel ? modelAlias(firstModel) : ''
-    if (!alias || (modelId === alias && searchParams.get('model') === alias)) return
-    setModelId(alias)
+    if (!alias || (requestedModel && requestedModelAlias === alias)) return
     setSearchParams({ model: alias, protocol, language }, { replace: true })
-  }, [firstModel, language, modelId, protocol, searchParams, setSearchParams])
+  }, [firstModel, language, protocol, requestedModel, requestedModelAlias, setSearchParams])
 
   function syncContext(nextModelAlias: string, nextProtocol = protocol, nextLanguage = language): void {
     setSearchParams({ model: nextModelAlias, protocol: nextProtocol, language: nextLanguage })
@@ -509,11 +589,11 @@ export function QuickstartPage() {
       </nav>
       <div className="quickstart-code-workspace">
         <aside className="quickstart-code-controls" aria-label={t('console.quickstart.sampleOptions')}>
-          <div className="quickstart-control-group"><label htmlFor="quickstart-model">{t('console.quickstart.model')}</label><Select id="quickstart-model" value={modelAlias(model)} onChange={(value) => { const nextModelAlias = String(value); setModelId(nextModelAlias); syncContext(nextModelAlias) }} block>{selectableModels.map((item) => <Select.Option key={item.id} value={modelAlias(item)}>{item.modality === 'text' ? t('console.playground.modelWithProvider', { name: item.name, company: item.company, alias: modelAlias(item) }) : t('console.playground.modelWithNoSample', { name: item.name, alias: modelAlias(item) })}</Select.Option>)}</Select></div>
+          <div className="quickstart-control-group"><label htmlFor="quickstart-model">{t('console.quickstart.model')}</label><Select id="quickstart-model" value={modelAlias(model)} onChange={(value) => { syncContext(String(value)) }} block>{selectableModels.map((item) => <Select.Option key={item.id} value={modelAlias(item)}>{item.modality === 'text' ? t('console.playground.modelWithProvider', { name: item.name, company: item.company, alias: modelAlias(item) }) : t('console.playground.modelWithNoSample', { name: item.name, alias: modelAlias(item) })}</Select.Option>)}</Select></div>
           <div className="quickstart-control-group"><span className="quickstart-control-label">{t('console.quickstart.apiStyle')}</span><div className="quickstart-segmented" role="group" aria-label={t('console.quickstart.apiStyle')}><button className={protocol === 'openai' ? 'active' : ''} type="button" aria-pressed={protocol === 'openai'} disabled={!supportsCodeSample} onClick={() => { setProtocol('openai'); syncContext(modelAlias(model), 'openai') }}>{t('console.quickstart.openai')}</button><button className={protocol === 'anthropic' ? 'active' : ''} type="button" aria-pressed={protocol === 'anthropic'} disabled={!supportsCodeSample} onClick={() => { setProtocol('anthropic'); syncContext(modelAlias(model), 'anthropic') }}>{t('console.quickstart.claude')}</button></div></div>
           <div className="quickstart-control-group"><span className="quickstart-control-label">{t('console.quickstart.language')}</span><div className="quickstart-segmented quickstart-segmented--language" role="group" aria-label={t('console.quickstart.codeSampleLanguage')}><button className={language === 'python' ? 'active' : ''} type="button" aria-pressed={language === 'python'} disabled={!supportsCodeSample} onClick={() => { setLanguage('python'); syncContext(modelAlias(model), protocol, 'python') }}>{t('console.quickstart.python')}</button><button className={language === 'node' ? 'active' : ''} type="button" aria-pressed={language === 'node'} disabled={!supportsCodeSample} onClick={() => { setLanguage('node'); syncContext(modelAlias(model), protocol, 'node') }}>Node.js</button><button className={language === 'curl' ? 'active' : ''} type="button" aria-pressed={language === 'curl'} disabled={!supportsCodeSample} onClick={() => { setLanguage('curl'); syncContext(modelAlias(model), protocol, 'curl') }}>{t('console.quickstart.curl')}</button></div></div>
           <div className="quickstart-endpoint-list"><div className="quickstart-endpoint-item"><span>{t('console.quickstart.apiBaseUrl')}</span><div className="quickstart-endpoint-value"><code>{QUICKSTART_API_BASE_URL}</code><Button theme="borderless" size="small" icon={<IconCopy />} aria-label={t('console.quickstart.copyBaseUrl')} title={t('console.quickstart.copyBaseUrl')} onClick={copyBaseUrl} /></div></div><div className="quickstart-endpoint-item"><span>API Key</span><code>YOUR_TOKEN_NX_API_KEY</code></div></div>
-          <div className="quickstart-actions"><Link className="btn btn-secondary" to={'/console/playground?model=' + encodeURIComponent(modelAlias(model))}>{t('console.quickstart.onlineTest')}</Link><Link className="btn btn-secondary" to={'/console/models/' + encodeURIComponent(modelAlias(model))}>{t('console.quickstart.modelDetails')}</Link></div>
+          <div className="quickstart-actions"><Link className="btn btn-secondary" to={'/console/playground?model=' + encodeURIComponent(modelAlias(model))}>{t('console.quickstart.onlineTest')}</Link><Link className="btn btn-secondary" to={'/console/models?model=' + encodeURIComponent(modelAlias(model))}>{t('console.quickstart.modelDetails')}</Link></div>
         </aside>
         <section className="quickstart-code-panel" aria-labelledby="quickstart-code-title">
           <div className="quickstart-code-panel-head"><strong id="quickstart-code-title">{supportsCodeSample ? t('console.quickstart.executableSample') : t('console.quickstart.samplePending')}</strong><Button theme="outline" className="btn btn-secondary btn-sm" onClick={copyCode} disabled={!supportsCodeSample}>{t('console.quickstart.copySample')}</Button></div>

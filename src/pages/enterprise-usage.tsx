@@ -3,7 +3,10 @@ import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 import Button from '@douyinfe/semi-ui/lib/es/button'
 import { IconSearch } from '@douyinfe/semi-icons'
+import { AnalyticsTimeRangePicker, type TimeRangePreset, type TimeRangeValue } from '@/components/analytics-time-range-picker'
 import { MoneyText } from '@/components/money'
+import { AppPagination } from '@/components/app-pagination'
+import { CompatInput as Input, CompatSelect as Select } from '@/components/semi-compat'
 import {
   getEnterpriseTags,
   getEnterpriseUsage,
@@ -15,7 +18,7 @@ import {
   type EnterpriseUsageResponse,
   type EnterpriseUsageTrendPoint,
 } from '@/api/enterprise-console'
-import { formatLocalDateInput, localDateToISOString, shiftLocalDate } from '@/utils/format'
+import { apiTimeToDate, formatLocalDateInput, localDateToTimestamp, shiftLocalDate } from '@/utils/format'
 import { analyticsDimensionLabel } from './enterprise-analytics-helpers'
 import i18n from '@/i18n'
 import {
@@ -63,14 +66,14 @@ function customRangeDefaults(): Pick<UsageFilters, 'startDate' | 'endDate'> {
   return { startDate: formatLocalDateInput(shiftLocalDate(today, -DEFAULT_CUSTOM_RANGE_DAYS)), endDate: formatLocalDateInput(today) }
 }
 
-export function enterpriseUsageQuery(filters: UsageFilters, page = 1): { range: string; start_at?: string; end_at?: string; member_id?: string; page: number; page_size: number } {
+export function enterpriseUsageQuery(filters: UsageFilters, page = 1, pageSize = DEFAULT_USAGE_PAGE_SIZE): { range: string; start_at?: number; end_at?: number; member_id?: string; page: number; page_size: number } {
   return {
     range: filters.range,
-    start_at: filters.range === 'custom' ? localDateToISOString(filters.startDate) : undefined,
-    end_at: filters.range === 'custom' ? localDateToISOString(filters.endDate, true) : undefined,
+    start_at: filters.range === 'custom' ? localDateToTimestamp(filters.startDate) : undefined,
+    end_at: filters.range === 'custom' ? localDateToTimestamp(filters.endDate, true) : undefined,
     member_id: filters.memberID === 'all' ? undefined : filters.memberID,
     page: Math.max(1, page),
-    page_size: DEFAULT_USAGE_PAGE_SIZE,
+    page_size: pageSize,
   }
 }
 
@@ -99,10 +102,16 @@ function formatUsageMoney(value: string | null | undefined): ReactNode {
   return <MoneyText value={value} />
 }
 
-function usagePeriodMonth(value: string | number): string {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return ''
-  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`
+function usagePeriodMonth(value: EnterpriseUsageResponse['period']['start_at']): string {
+  const date = apiTimeToDate(value)
+  if (!date) return ''
+  const isoLabel = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`
+  if (!i18n.language.startsWith('en')) return isoLabel
+  try {
+    return new Intl.DateTimeFormat(i18n.language, { year: 'numeric', month: 'long', timeZone: 'UTC' }).format(date)
+  } catch {
+    return isoLabel
+  }
 }
 
 function usagePeriodChipLabel(period: EnterpriseUsageResponse['period']): string {
@@ -147,17 +156,12 @@ function UsageMetrics({ data }: { data: EnterpriseUsageResponse }) {
   </div>
 }
 
-function UsagePeriodControls({ filters, onRangeChange, onStartDateChange, onEndDateChange }: { filters: UsageFilters; onRangeChange: (range: UsageRange) => void; onStartDateChange: (value: string) => void; onEndDateChange: (value: string) => void }) {
+function UsagePeriodControls({ filters, onChange }: { filters: UsageFilters; onChange: (value: TimeRangeValue<UsageRange>) => void }) {
   const { t } = useTranslation()
+  const presets: readonly TimeRangePreset<UsageRange>[] = DETAIL_USAGE_RANGES.map((value) => ({ value, label: usageRangeLabel(value) }))
   return <div className="enterprise-usage-detail-time-filter" aria-label={t('console.enterprise.usage.timeRange')}>
     <span>{t('console.enterprise.usage.timeRange')}</span>
-    <div className="enterprise-range-tabs" role="group" aria-label={t('console.enterprise.usage.timeRange')}>
-      {DETAIL_USAGE_RANGES.map((value) => <button className={filters.range === value ? 'active' : ''} type="button" aria-pressed={filters.range === value} onClick={() => onRangeChange(value)} key={value}>{usageRangeLabel(value)}</button>)}
-    </div>
-    {filters.range === 'custom' ? <div className="enterprise-date-range">
-      <label htmlFor="enterprise-usage-start">{t('console.enterprise.usage.startDate')}<input id="enterprise-usage-start" type="date" value={filters.startDate} onChange={(event) => onStartDateChange(event.target.value)} /></label>
-      <label htmlFor="enterprise-usage-end">{t('console.enterprise.usage.endDate')}<input id="enterprise-usage-end" type="date" value={filters.endDate} onChange={(event) => onEndDateChange(event.target.value)} /></label>
-    </div> : null}
+    <AnalyticsTimeRangePicker value={{ range: filters.range, startDate: filters.startDate, endDate: filters.endDate }} presets={presets} defaultCustomValue={customRangeDefaults()} dateRestriction="last-90-days" onChange={onChange} />
   </div>
 }
 
@@ -173,11 +177,11 @@ function UsageQuotaCallout() {
 function UsageBoardToolbar({ tags, roleOptions, filters, onChange }: { tags: EnterpriseTag[]; roleOptions: EnterpriseRoleOption[]; filters: BoardFilters; onChange: (patch: Partial<BoardFilters>) => void }) {
   const { t } = useTranslation()
   return <div className="enterprise-usage-toolbar" aria-label={t('console.enterprise.usage.memberUsageList')}>
-    <label className="enterprise-usage-search-field"><IconSearch aria-hidden="true" /><input type="search" value={filters.search} onChange={(event) => onChange({ search: event.target.value })} placeholder={t('console.enterprise.usage.memberSearch')} aria-label={t('console.enterprise.usage.memberSearchLabel')} /></label>
-    <select className="source-input enterprise-usage-filter-input" value={filters.role} onChange={(event) => onChange({ role: event.target.value })} aria-label={t('console.enterprise.usage.roleFilter')}><option value="all">{t('console.enterprise.usage.allRoles')}</option>{roleOptions.map((option) => <option value={option.code} key={option.code}>{option.name}</option>)}</select>
-    <select className="source-input enterprise-usage-filter-input" value={filters.quota} onChange={(event) => onChange({ quota: event.target.value as QuotaFilter })} aria-label={t('console.enterprise.usage.quotaFilter')}><option value="all">{t('console.enterprise.usage.allQuota')}</option><option value="near">{t('console.enterprise.usage.nearQuota')}</option><option value="over">{t('console.enterprise.usage.overQuota')}</option><option value="none">{t('console.enterprise.usage.noQuota')}</option></select>
-    <select className="source-input enterprise-usage-filter-input" value={filters.tagID} onChange={(event) => onChange({ tagID: event.target.value })} aria-label={t('console.enterprise.usage.tagFilter')}><option value="all">{t('console.enterprise.usage.allTags')}</option>{tags.map((tag) => <option value={tag.id} key={tag.id}>{tag.name}</option>)}</select>
-    <select className="source-input enterprise-usage-filter-input" value={filters.sort} onChange={(event) => onChange({ sort: event.target.value as UsageSort })} aria-label={t('console.enterprise.usage.sort')}><option value="cost">{t('console.enterprise.usage.byCost')}</option><option value="requests">{t('console.enterprise.usage.byRequests')}</option><option value="tokens">{t('console.enterprise.usage.byTokens')}</option></select>
+    <Input className="app-standard-input enterprise-usage-search-input" size="large" prefix={<IconSearch aria-hidden="true" />} value={filters.search} onChange={(value) => onChange({ search: value })} placeholder={t('console.enterprise.usage.memberSearch')} aria-label={t('console.enterprise.usage.memberSearchLabel')} showClear />
+    <span id="enterprise-usage-role-filter-label" className="public-sr-only">{t('console.enterprise.usage.roleFilter')}</span><Select className="enterprise-usage-filter-input" value={filters.role} onChange={(value) => onChange({ role: String(value) })} onSelect={(value) => onChange({ role: String(value) })} aria-labelledby="enterprise-usage-role-filter-label"><Select.Option value="all">{t('console.enterprise.usage.allRoles')}</Select.Option>{roleOptions.map((option) => <Select.Option value={option.code} key={option.code}>{roleLabel(option.code, roleOptions)}</Select.Option>)}</Select>
+    <span id="enterprise-usage-quota-filter-label" className="public-sr-only">{t('console.enterprise.usage.quotaFilter')}</span><Select className="enterprise-usage-filter-input" value={filters.quota} onChange={(value) => onChange({ quota: String(value) as QuotaFilter })} onSelect={(value) => onChange({ quota: String(value) as QuotaFilter })} aria-labelledby="enterprise-usage-quota-filter-label"><Select.Option value="all">{t('console.enterprise.usage.allQuota')}</Select.Option><Select.Option value="near">{t('console.enterprise.usage.nearQuota')}</Select.Option><Select.Option value="over">{t('console.enterprise.usage.overQuota')}</Select.Option><Select.Option value="none">{t('console.enterprise.usage.noQuota')}</Select.Option></Select>
+    <span id="enterprise-usage-tag-filter-label" className="public-sr-only">{t('console.enterprise.usage.tagFilter')}</span><Select className="enterprise-usage-filter-input" value={filters.tagID} onChange={(value) => onChange({ tagID: String(value) })} onSelect={(value) => onChange({ tagID: String(value) })} aria-labelledby="enterprise-usage-tag-filter-label"><Select.Option value="all">{t('console.enterprise.usage.allTags')}</Select.Option>{tags.map((tag) => <Select.Option value={tag.id} key={tag.id}>{tag.name}</Select.Option>)}</Select>
+    <span id="enterprise-usage-sort-label" className="public-sr-only">{t('console.enterprise.usage.sort')}</span><Select className="enterprise-usage-filter-input" value={filters.sort} onChange={(value) => onChange({ sort: String(value) as UsageSort })} onSelect={(value) => onChange({ sort: String(value) as UsageSort })} aria-labelledby="enterprise-usage-sort-label"><Select.Option value="cost">{t('console.enterprise.usage.byCost')}</Select.Option><Select.Option value="requests">{t('console.enterprise.usage.byRequests')}</Select.Option><Select.Option value="tokens">{t('console.enterprise.usage.byTokens')}</Select.Option></Select>
   </div>
 }
 
@@ -235,12 +239,11 @@ function MemberUsageTable({ members, visibleMembers, roleOptions, tagsByID, tags
   })}</tbody></table></div>
 }
 
-function UsagePagination({ page, pageSize, total, onChange }: { page: number; pageSize: number; total: number; onChange: (page: number) => void }) {
+function UsagePagination({ page, pageSize, total, onChange, onPageSizeChange }: { page: number; pageSize: number; total: number; onChange: (page: number) => void; onPageSizeChange: (pageSize: number) => void }) {
   const { t } = useTranslation()
   const safePageSize = pageSize > 0 ? pageSize : DEFAULT_USAGE_PAGE_SIZE
   const pageCount = Math.max(1, Math.ceil(total / safePageSize))
-  if (total <= safePageSize) return null
-  return <div className="enterprise-pagination enterprise-usage-pagination"><span>{t('console.enterprise.usage.memberSummary', { total: formatEnterpriseNumber(total), page, pageCount })}</span><div><Button theme="outline" size="small" disabled={page <= 1} onClick={() => onChange(page - 1)}>{t('console.common.previous')}</Button><Button theme="outline" size="small" disabled={page >= pageCount} onClick={() => onChange(page + 1)}>{t('console.common.next')}</Button></div></div>
+  return <AppPagination ariaLabel={t('console.enterprise.usage.memberSummary', { total: formatEnterpriseNumber(total), page, pageCount })} currentPage={page} pageSize={safePageSize} total={total} summary={t('console.enterprise.usage.memberSummary', { total: formatEnterpriseNumber(total), page, pageCount })} onPageChange={onChange} onPageSizeChange={onPageSizeChange} />
 }
 
 function UsageTabs({ activeTab, onChange }: { activeTab: UsageTab; onChange: (tab: UsageTab) => void }) {
@@ -292,9 +295,9 @@ function DimensionTable({ title, items, kind, memberID, filters }: { title: stri
   return <section className="enterprise-usage-dimension-section"><h3 className="enterprise-usage-dimension-title">{title}</h3>{items.length === 0 ? <div className="enterprise-usage-chart-empty">{t('console.enterprise.usage.noDimension')}</div> : <div className="source-table-scroll"><table className="enterprise-usage-dimension-table"><thead><tr><th>{t('console.enterprise.usage.name')}</th><th>{t('console.enterprise.usage.requests')}</th><th>{t('console.enterprise.usage.cost')}</th><th>{t('console.enterprise.usage.operation')}</th></tr></thead><tbody>{items.map((item, index) => <tr key={`${kind}-${item.id || item.code || item.name}-${index}`}><td><strong>{dimensionLabel(item, kind)}</strong>{kind === 'model' && item.code ? <small>{item.code}</small> : null}</td><td>{formatEnterpriseNumber(item.requests)}</td><td><MoneyText value={item.cost_yuan} /></td><td><Link className="enterprise-usage-record-link" to={dimensionRecordsHref(item, kind, memberID, filters)}>{t('console.enterprise.usage.records')}</Link></td></tr>)}</tbody></table></div>}</section>
 }
 
-function UsageDetailControls({ members, roleOptions, filters, onSelect, onRangeChange, onStartDateChange, onEndDateChange }: { members: EnterpriseMemberUsage[]; roleOptions: EnterpriseRoleOption[]; filters: UsageFilters; onSelect: (memberID: string) => void; onRangeChange: (range: UsageRange) => void; onStartDateChange: (value: string) => void; onEndDateChange: (value: string) => void }) {
+function UsageDetailControls({ members, roleOptions, filters, onSelect, onTimeRangeChange }: { members: EnterpriseMemberUsage[]; roleOptions: EnterpriseRoleOption[]; filters: UsageFilters; onSelect: (memberID: string) => void; onTimeRangeChange: (value: TimeRangeValue<UsageRange>) => void }) {
   const { t } = useTranslation()
-  return <div className="enterprise-usage-detail-controls"><label htmlFor="enterprise-usage-detail-member">{t('console.enterprise.usage.chooseMember')}<select id="enterprise-usage-detail-member" className="source-input" value={filters.memberID} onChange={(event) => onSelect(event.target.value)}><option value="all">{t('console.enterprise.usage.chooseMember')}</option>{members.map((member) => <option value={member.member_id} key={member.member_id}>{member.member_name || member.member_id} · {roleLabel(member.role, roleOptions)}</option>)}</select></label><UsagePeriodControls filters={filters} onRangeChange={onRangeChange} onStartDateChange={onStartDateChange} onEndDateChange={onEndDateChange} /></div>
+  return <div className="enterprise-usage-detail-controls"><label><span id="enterprise-usage-detail-member-label">{t('console.enterprise.usage.chooseMember')}</span><Select id="enterprise-usage-detail-member" value={filters.memberID} onChange={(value) => onSelect(String(value))} onSelect={(value) => onSelect(String(value))} aria-labelledby="enterprise-usage-detail-member-label" block><Select.Option value="all">{t('console.enterprise.usage.chooseMember')}</Select.Option>{members.map((member) => <Select.Option value={member.member_id} key={member.member_id}>{member.member_name || member.member_id} · {roleLabel(member.role, roleOptions)}</Select.Option>)}</Select></label><UsagePeriodControls filters={filters} onChange={onTimeRangeChange} /></div>
 }
 
 function MemberUsageDetail({ data, memberID, filters }: { data: NonNullable<EnterpriseUsageResponse['member_detail']>; memberID: string; filters: UsageFilters }) {
@@ -315,6 +318,7 @@ function UsageContent({ context, onPeriodChange }: { context: EnterpriseContext;
   const [boardFilters, setBoardFilters] = useState<BoardFilters>(defaultBoardFilters)
   const [activeTab, setActiveTab] = useState<UsageTab>('board')
   const [memberPage, setMemberPage] = useState(1)
+  const [memberPageSize, setMemberPageSize] = useState(DEFAULT_USAGE_PAGE_SIZE)
   const [data, setData] = useState<EnterpriseUsageResponse | null>(null)
   const [memberOptions, setMemberOptions] = useState<EnterpriseMemberUsage[]>([])
   const [tags, setTags] = useState<EnterpriseTag[]>([])
@@ -324,7 +328,7 @@ function UsageContent({ context, onPeriodChange }: { context: EnterpriseContext;
   const [error, setError] = useState<{ message: string; requestId: string | null } | null>(null)
   const [reloadToken, setReloadToken] = useState(0)
   const roleOptions = context.role_options ?? []
-  const query = useMemo(() => enterpriseUsageQuery(filters, memberPage), [filters, memberPage])
+  const query = useMemo(() => enterpriseUsageQuery(filters, memberPage, memberPageSize), [filters, memberPage, memberPageSize])
   const dateRangeError = filters.range === 'custom' ? validateEnterpriseDateRange(filters.startDate, filters.endDate) : ''
   const tagsByID = useMemo(() => new Map(tags.map((tag) => [tag.id, tag])), [tags])
   const selectableMembers = memberOptions.length ? memberOptions : data?.members ?? []
@@ -407,9 +411,9 @@ function UsageContent({ context, onPeriodChange }: { context: EnterpriseContext;
     return () => onPeriodChange(null)
   }, [data, onPeriodChange])
 
-  function updateRange(range: UsageRange): void {
+  function updateTimeRange(value: TimeRangeValue<UsageRange>): void {
     setMemberPage(1)
-    setFilters((previous) => ({ ...previous, range, ...(range === 'custom' ? customRangeDefaults() : { startDate: '', endDate: '' }) }))
+    setFilters((previous) => ({ ...previous, ...value }))
   }
 
   function selectMember(memberID: string): void {
@@ -441,8 +445,8 @@ function UsageContent({ context, onPeriodChange }: { context: EnterpriseContext;
     {error ? <div className="enterprise-filter-error"><EnterpriseError message={error.message} requestId={error.requestId} onRetry={() => setReloadToken((value) => value + 1)} /></div> : null}
     {loading && !data && !dateRangeError ? <EnterpriseLoading label={t('console.enterprise.usage.loading')} /> : null}
     {data && !dateRangeError ? <>
-      <section id="enterprise-usage-panel-board" className="enterprise-usage-tab-panel" role="tabpanel" aria-labelledby="enterprise-usage-tab-board" hidden={showDetail}><UsageMetrics data={data} /><p className="enterprise-data-note">{t('console.enterprise.usage.quotaCallout')}</p><UsageQuotaCallout /><UsageBoardToolbar tags={tags} roleOptions={roleOptions} filters={boardFilters} onChange={(patch) => { setMemberPage(1); setBoardFilters((previous) => ({ ...previous, ...patch })) }} /><MemberUsageTable members={data.members} visibleMembers={visibleMembers} roleOptions={roleOptions} tagsByID={tagsByID} tagsUnavailable={tagsUnavailable} selectedID={filters.memberID} onSelect={openMemberDetail} /><UsagePagination page={data.page} pageSize={data.page_size} total={data.total_members} onChange={setMemberPage} /></section>
-      <section id="enterprise-usage-panel-detail" className="enterprise-usage-tab-panel" role="tabpanel" aria-labelledby="enterprise-usage-tab-detail" hidden={!showDetail}><UsageDetailControls members={selectableMembers} roleOptions={roleOptions} filters={filters} onSelect={selectMember} onRangeChange={updateRange} onStartDateChange={(value) => setFilters((previous) => ({ ...previous, startDate: value }))} onEndDateChange={(value) => setFilters((previous) => ({ ...previous, endDate: value }))} />{loading && !detailData ? <EnterpriseLoading label={t('console.enterprise.usage.loadingDetail')} /> : filters.memberID === 'all' ? <EnterpriseEmpty title={t('console.enterprise.usage.noMemberSelected')} description={t('console.enterprise.usage.noMemberSelectedHint')} /> : detailData ? <MemberUsageDetail data={detailData} memberID={filters.memberID} filters={filters} /> : <EnterpriseEmpty title={t('console.enterprise.usage.noMemberUsage')} description={t('console.enterprise.usage.noMemberUsageHint')} />}</section>
+      <section id="enterprise-usage-panel-board" className="enterprise-usage-tab-panel" role="tabpanel" aria-labelledby="enterprise-usage-tab-board" hidden={showDetail}><UsageMetrics data={data} /><p className="enterprise-data-note">{t('console.enterprise.usage.quotaCallout')}</p><UsageQuotaCallout /><UsageBoardToolbar tags={tags} roleOptions={roleOptions} filters={boardFilters} onChange={(patch) => { setMemberPage(1); setBoardFilters((previous) => ({ ...previous, ...patch })) }} /><MemberUsageTable members={data.members} visibleMembers={visibleMembers} roleOptions={roleOptions} tagsByID={tagsByID} tagsUnavailable={tagsUnavailable} selectedID={filters.memberID} onSelect={openMemberDetail} /><UsagePagination page={data.page} pageSize={data.page_size} total={data.total_members} onChange={setMemberPage} onPageSizeChange={(nextPageSize) => { setMemberPageSize(nextPageSize); setMemberPage(1) }} /></section>
+      <section id="enterprise-usage-panel-detail" className="enterprise-usage-tab-panel" role="tabpanel" aria-labelledby="enterprise-usage-tab-detail" hidden={!showDetail}><UsageDetailControls members={selectableMembers} roleOptions={roleOptions} filters={filters} onSelect={selectMember} onTimeRangeChange={updateTimeRange} />{loading && !detailData ? <EnterpriseLoading label={t('console.enterprise.usage.loadingDetail')} /> : filters.memberID === 'all' ? <EnterpriseEmpty title={t('console.enterprise.usage.noMemberSelected')} description={t('console.enterprise.usage.noMemberSelectedHint')} /> : detailData ? <MemberUsageDetail data={detailData} memberID={filters.memberID} filters={filters} /> : <EnterpriseEmpty title={t('console.enterprise.usage.noMemberUsage')} description={t('console.enterprise.usage.noMemberUsageHint')} />}</section>
     </> : null}
     {!loading && !data && !dateRangeError && !error ? <EnterpriseEmpty title={t('console.enterprise.usage.noEnterpriseUsage')} description={t('console.enterprise.usage.noEnterpriseUsageHint')} /> : null}
   </div>

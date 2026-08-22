@@ -9,13 +9,14 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && vite build && npm run size:check",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "size:check": "node scripts/check-bundle-size.mjs"
   },
   "dependencies": {
     "@douyinfe/semi-icons": "2.101.1",
@@ -23,13 +24,18 @@
     "@lobehub/icons-static-svg": "^1.94.0",
     "@reduxjs/toolkit": "^2.12.0",
     "echarts": "^6.1.0",
+    "hast-util-sanitize": "^5.0.2",
     "i18next": "^26.3.6",
+    "prism-react-renderer": "^2.4.1",
+    "prismjs": "^1.30.0",
+    "qrcode": "^1.5.4",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "react-i18next": "^17.0.11",
     "react-markdown": "^10.1.0",
     "react-redux": "^9.3.0",
     "react-router": "^8.3.0",
+    "rehype-raw": "^7.0.0",
     "rehype-sanitize": "^6.0.0",
     "remark-gfm": "^4.0.1"
   },
@@ -38,6 +44,7 @@
     "@testing-library/react": "16.3.2",
     "@testing-library/user-event": "14.6.1",
     "@types/node": "26.1.2",
+    "@types/qrcode": "^1.5.5",
     "@types/react": "19.2.17",
     "@types/react-dom": "19.2.3",
     "@vitejs/plugin-react": "6.0.4",

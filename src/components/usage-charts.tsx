@@ -4,7 +4,7 @@ import * as echarts from 'echarts/core'
 import { BarChart, LineChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent } from 'echarts/components'
 import { SVGRenderer } from 'echarts/renderers'
-import type { UsageSummaryDimension, UsageSummaryTrendPoint } from '@/api/usage-records'
+import type { UsageDistributionItem, UsageTrendBucket, UsageTrendGranularity, UsageTrendMetric as StatisticsTrendMetric } from '@/api/usage-statistics'
 import { formatCurrency, formatYuanExact } from '@/utils/format'
 import { useResolvedTheme } from '@/theme'
 import i18n from '@/i18n'
@@ -51,19 +51,21 @@ const CHART_PALETTES: Record<'light' | 'dark', ChartPalette> = {
   },
 }
 
-export type UsageTrendMetric = 'requests' | 'cost' | 'tokens'
+export type UsageTrendMetric = StatisticsTrendMetric
 export type UsageDistributionTone = 'model' | 'key'
 
 type UsageTrendChartProps = {
-  data: UsageSummaryTrendPoint[]
+  data: UsageTrendBucket[]
   metric: UsageTrendMetric
   canViewBilling: boolean
+  granularity?: UsageTrendGranularity
 }
 
 type UsageDistributionChartProps = {
-  data: UsageSummaryDimension[]
+  data: UsageDistributionItem[]
   tone: UsageDistributionTone
   canViewBilling: boolean
+  metric?: UsageTrendMetric
 }
 
 function numberLabel(value: number): string {
@@ -76,10 +78,10 @@ function costValue(value: string, canViewBilling: boolean): number {
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0
 }
 
-function trendValue(point: UsageSummaryTrendPoint, metric: UsageTrendMetric, canViewBilling: boolean): number {
-  if (metric === 'requests') return point.request_count
-  if (metric === 'tokens') return point.input_tokens + point.output_tokens
-  return costValue(point.cost_yuan, canViewBilling)
+function trendValue(point: UsageTrendBucket, metric: UsageTrendMetric, canViewBilling: boolean): number {
+  if (metric === 'requests') return point.request_count ?? 0
+  if (metric === 'tokens') return (point.input_tokens ?? 0) + (point.output_tokens ?? 0) + (point.cached_tokens ?? 0)
+  return costValue(point.cost_yuan ?? '', canViewBilling)
 }
 
 function trendValueLabel(value: number, metric: UsageTrendMetric, canViewBilling: boolean): string {
@@ -87,8 +89,8 @@ function trendValueLabel(value: number, metric: UsageTrendMetric, canViewBilling
   return numberLabel(value)
 }
 
-function trendTooltipLabel(point: UsageSummaryTrendPoint | undefined, value: number, metric: UsageTrendMetric, canViewBilling: boolean): string {
-  if (metric === 'cost') return canViewBilling && point ? formatYuanExact(point.cost_yuan) : '--'
+function trendTooltipLabel(point: UsageTrendBucket | undefined, value: number, metric: UsageTrendMetric, canViewBilling: boolean): string {
+  if (metric === 'cost') return canViewBilling && point ? formatYuanExact(point.cost_yuan ?? '0') : '--'
   return trendValueLabel(value, metric, canViewBilling)
 }
 
@@ -103,15 +105,22 @@ function EmptyChart({ title, description }: { title: string; description: string
   return <div className="usage-chart-empty"><strong>{title}</strong><span>{description}</span></div>
 }
 
-export function UsageTrendChart({ data, metric, canViewBilling }: UsageTrendChartProps) {
+function formatBucketLabel(timestamp: number, granularity: UsageTrendGranularity): string {
+  const date = new Date(timestamp)
+  if (granularity === 'hour') return `${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')} ${String(date.getUTCHours()).padStart(2, '0')}:00`
+  if (granularity === 'month') return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`
+  return `${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`
+}
+
+export function UsageTrendChart({ data, metric, canViewBilling, granularity = 'day' }: UsageTrendChartProps) {
   const { t } = useTranslation()
   const chartRef = useRef<HTMLDivElement>(null)
   const theme = useResolvedTheme()
   const chartData = useMemo(() => data.map((point) => ({
-    label: point.date.slice(5),
+    label: formatBucketLabel(point.bucket_start, granularity),
     value: trendValue(point, metric, canViewBilling),
     rawValue: point.cost_yuan,
-  })), [canViewBilling, data, metric])
+  })), [canViewBilling, data, granularity, metric])
 
   useEffect(() => {
     const node = chartRef.current
@@ -176,7 +185,13 @@ export function UsageTrendChart({ data, metric, canViewBilling }: UsageTrendChar
   return <div className="usage-echart usage-trend-echart" ref={chartRef} role="img" aria-label={t('console.usage.trend')} />
 }
 
-export function UsageDistributionChart({ data, tone, canViewBilling }: UsageDistributionChartProps) {
+function distributionValue(item: UsageDistributionItem, metric: UsageTrendMetric): number {
+  if (metric === 'cost') return Number(item.cost_yuan ?? 0) || 0
+  if (metric === 'tokens') return (item.input_tokens ?? 0) + (item.output_tokens ?? 0) + (item.cached_tokens ?? 0)
+  return item.request_count ?? 0
+}
+
+export function UsageDistributionChart({ data, tone, canViewBilling, metric = 'requests' }: UsageDistributionChartProps) {
   const { t } = useTranslation()
   const chartRef = useRef<HTMLDivElement>(null)
   const theme = useResolvedTheme()
@@ -184,9 +199,8 @@ export function UsageDistributionChart({ data, tone, canViewBilling }: UsageDist
     name: tone === 'model'
       ? t('console.common.modelWithAlias', { name: item.name || t('console.usage.unnamedModel'), alias: item.alias?.trim() || t('console.usage.noAlias') })
       : item.name?.trim() || t('console.common.unknown'),
-    requests: item.requests,
-    cost: item.cost_yuan,
-  })), [data, t, tone])
+    value: distributionValue(item, metric),
+  })), [data, metric, t, tone])
   const height = Math.max(DISTRIBUTION_MIN_HEIGHT, chartData.length * DISTRIBUTION_ROW_HEIGHT)
 
   useEffect(() => {
@@ -201,7 +215,7 @@ export function UsageDistributionChart({ data, tone, canViewBilling }: UsageDist
       tooltip: {
         trigger: 'axis',
         axisPointer: { type: 'shadow' },
-        valueFormatter: (value: string | number) => numberLabel(Number(value)),
+        valueFormatter: (value: string | number) => metric === 'cost' ? (canViewBilling ? formatCurrency(Number(value)) : '--') : numberLabel(Number(value)),
       },
       xAxis: {
         type: 'value',
@@ -222,11 +236,11 @@ export function UsageDistributionChart({ data, tone, canViewBilling }: UsageDist
       },
       series: [{
         type: 'bar',
-        name: t('console.usage.requests'),
+        name: metric === 'requests' ? t('console.usage.requests') : metric === 'tokens' ? t('console.usage.tokens') : t('console.usage.cost'),
         barMaxWidth: 14,
-        data: chartData.map((item) => item.requests),
+        data: chartData.map((item) => item.value),
         itemStyle: { color, borderRadius: [0, 4, 4, 0] },
-        label: { show: true, position: 'right', color: palette.seriesLabel, fontSize: 11, formatter: (params: { value?: number }) => numberLabel(Number(params.value ?? 0)) },
+        label: { show: true, position: 'right', color: palette.seriesLabel, fontSize: 11, formatter: (params: { value?: number }) => metric === 'cost' ? (canViewBilling ? formatCurrency(Number(params.value ?? 0)) : '--') : numberLabel(Number(params.value ?? 0)) },
       }],
     })
     const resizeObserver = typeof ResizeObserver === 'function' ? new ResizeObserver(() => chart.resize()) : null
@@ -235,7 +249,7 @@ export function UsageDistributionChart({ data, tone, canViewBilling }: UsageDist
       resizeObserver?.disconnect()
       chart.dispose()
     }
-  }, [chartData, t, tone, theme])
+  }, [canViewBilling, chartData, metric, t, tone, theme])
 
   if (chartData.length === 0) return <EmptyChart title={t('console.usage.noData')} description={t('console.usage.noDataHint')} />
   return <div className="usage-echart usage-distribution-echart" data-row-count={chartData.length} style={{ height }} ref={chartRef} role="img" aria-label={tone === 'model' ? t('console.usage.modelDistribution') : t('console.usage.keyDistribution')} />

@@ -1,0 +1,53 @@
+.docs-markdown { color: #8b8b8b; font-size: 16px; line-height: 1.75; }
+.docs-markdown > :first-child { margin-top: 0; }
+.docs-markdown > :last-child { margin-bottom: 0; }
+.docs-markdown h1, .docs-markdown h2, .docs-markdown h3, .docs-markdown h4 { color: #fff; font-weight: 500; line-height: 1.35; letter-spacing: 0; scroll-margin-top: 174px; }
+.docs-markdown h1 { max-width: calc(100% - 160px); margin: 0 0 28px; font-size: 30px; }
+.docs-markdown h2 { margin: 52px 0 18px; font-size: 28px; }
+.docs-markdown h3 { margin: 38px 0 16px; font-size: 22px; }
+.docs-markdown h4 { margin: 30px 0 14px; font-size: 18px; }
+.docs-markdown p, .docs-markdown ul, .docs-markdown ol, .docs-markdown blockquote, .docs-markdown pre, .docs-markdown table { margin: 0 0 25px; }
+.docs-markdown ul, .docs-markdown ol { padding-left: 26px; }
+.docs-markdown li + li { margin-top: 7px; }
+.docs-markdown blockquote { padding: 12px 18px; border-left: 3px solid #8866e7; color: #aaa; background: #181818; }
+.docs-markdown blockquote > :last-child { margin-bottom: 0; }
+.docs-markdown a { color: #a77dff; text-decoration: underline; text-underline-offset: 3px; }
+.docs-markdown :not(pre) > code { padding: 2px 6px; border-radius: 3px; color: #d7c8ff; background: #202020; font-size: .9em; }
+.docs-markdown pre { max-width: 100%; overflow: auto; padding: 20px 18px; border: 0; border-radius: 0; color: #b9b9b9; background: transparent; }
+.docs-markdown pre code { color: inherit; font: 12px/1.7 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; white-space: pre; }
+.docs-markdown table { display: table; width: 100%; max-width: 100%; overflow: visible; border-collapse: collapse; }
+.docs-markdown th, .docs-markdown td { padding: 14px 12px; border: 1px solid #353535; color: #8b8b8b; text-align: left; }
+.docs-markdown th { color: #fff; background: #202020; font-weight: 500; }
+.docs-markdown .markdown-image-frame { position: relative; display: block; min-block-size: clamp(120px, 22vw, 220px); max-width: 100%; margin: 30px auto; overflow: hidden; border-radius: 4px; background: #202020; }
+.docs-markdown .markdown-image-frame.is-loaded { min-block-size: 0; background: transparent; }
+.docs-markdown .markdown-image { display: block; max-width: 100%; height: auto; margin: 0 auto; border-radius: inherit; opacity: 0; transition: opacity .18s ease-out; }
+.docs-markdown .markdown-image.is-loaded { opacity: 1; }
+.docs-markdown .markdown-image-loading { position: absolute; inset: 0; display: grid; place-items: center; color: #a77dff; animation: markdown-image-loading-pulse 1.5s ease-in-out infinite; }
+.docs-markdown .markdown-image-loading-ring { width: 24px; height: 24px; border: 2px solid #454545; border-top-color: currentColor; border-radius: 50%; animation: markdown-image-loading-spin .8s linear infinite; }
+@keyframes markdown-image-loading-spin { to { transform: rotate(360deg); } }
+@keyframes markdown-image-loading-pulse { 50% { opacity: .58; } }
+.docs-markdown hr { margin: 42px 0; border: 0; border-top: 1px solid #353535; }
+
+html[data-theme="light"] .docs-markdown h1,
+html[data-theme="light"] .docs-markdown h2,
+html[data-theme="light"] .docs-markdown h3,
+html[data-theme="light"] .docs-markdown h4,
+html[data-theme="light"] .docs-markdown th { color: #17181b; }
+html[data-theme="light"] .docs-markdown { color: #626975; }
+html[data-theme="light"] .docs-markdown blockquote, html[data-theme="light"] .docs-markdown th { background: #eef0f2; }
+html[data-theme="light"] .docs-markdown :not(pre) > code { color: #6241bd; background: #ece8f7; }
+html[data-theme="light"] .docs-markdown pre { color: #353a43; background: transparent; }
+html[data-theme="light"] .docs-markdown th, html[data-theme="light"] .docs-markdown td { border-color: #d8dadd; }
+html[data-theme="light"] .docs-markdown td { color: #626975; }
+html[data-theme="light"] .docs-markdown hr { border-top-color: #d8dadd; }
+html[data-theme="light"] .docs-markdown .markdown-image-frame { background: #eef0f2; }
+html[data-theme="light"] .docs-markdown .markdown-image-frame.is-loaded { background: transparent; }
+html[data-theme="light"] .docs-markdown .markdown-image-loading { color: #7b59c9; }
+html[data-theme="light"] .docs-markdown .markdown-image-loading-ring { border-color: #c9cdd3; border-top-color: currentColor; }
+
+@media (max-width: 720px) {
+  .docs-markdown h1 { max-width: none; font-size: 26px; }
+  .docs-markdown h2 { font-size: 23px; }
+  .docs-markdown { font-size: 15px; }
+  .docs-markdown table { display: block; overflow-x: auto; }
+}

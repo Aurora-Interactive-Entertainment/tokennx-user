@@ -17,7 +17,7 @@ const RECORD: UsageRecordItem = {
   id: RECORD_ID,
   request_id: REQUEST_ID,
   event_type: 'request.completed',
-  occurred_at: '2026-07-23T08:30:00.150Z',
+  occurred_at: Date.parse('2026-07-23T08:30:00.150Z'),
   model_code: 'gpt-test',
   model_alias: 'gpt-public',
   model_name: '测试模型',

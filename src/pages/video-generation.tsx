@@ -1,9 +1,11 @@
-import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate, useSearchParams } from 'react-router'
-import { Button, Modal, Toast } from '@douyinfe/semi-ui'
+import Button from '@douyinfe/semi-ui/lib/es/button'
+import Modal from '@/components/app-modal'
+import Toast from '@douyinfe/semi-ui/lib/es/toast'
 import { IconAlertTriangle, IconArrowUp, IconCheckCircleStroked, IconClose, IconDeleteStroked, IconDownload, IconHistory, IconImage, IconLoading, IconRefresh, IconSetting, IconStop, IconVideo } from '@douyinfe/semi-icons'
-import { BannerNotice, EmptyPanel, PageTitle } from '@/components/common'
+import { EmptyPanel, PageTitle } from '@/components/common'
 import { CompatInput as Input, CompatSelect as Select } from '@/components/semi-compat'
 import { getUserApiKeys, type UserApiKey, type UserApiKeyContext } from '@/api/user-api-keys'
 import { cancelVideoTask, getVideoTask, submitVideoGeneration, videoTaskIsTerminal, VideoRuntimeError, type VideoTask, type VideoTaskStatus } from '@/api/video-runtime'
@@ -205,6 +207,25 @@ function VideoHistoryPanel({ entries, selectedID, onSelect, onClear, onNew, disa
       <span className="video-history-item-meta">{formatVideoDate(entry.createdAt)} · {entry.duration}s · {entry.size}</span>
     </button>)}</div> : <div className="video-history-empty"><IconHistory aria-hidden="true" /><p>{t('console.video.historyEmpty')}</p><span>{t('console.video.historyEmptyHint')}</span></div>}
   </aside>
+}
+
+interface VideoWorkspaceNoticeItem {
+  id: string
+  message: string
+  requestId?: string | null
+  action?: ReactNode
+}
+
+function VideoWorkspaceNotice({ items }: { items: VideoWorkspaceNoticeItem[] }) {
+  const { t } = useTranslation()
+  return <div className="workspace-notice-state video-workspace-notice" role="alert">
+    <span className="workspace-notice-icon"><IconAlertTriangle aria-hidden="true" /></span>
+    <div className="workspace-notice-list">{items.map((item) => <div className="workspace-notice-item" key={item.id}>
+      <strong>{item.message}</strong>
+      {item.requestId ? <code>{t('console.common.requestIdValue', { requestId: item.requestId })}</code> : null}
+      {item.action ? <div className="workspace-notice-actions">{item.action}</div> : null}
+    </div>)}</div>
+  </div>
 }
 
 function VideoStage({ task, modelName, submitting, onCancel, onRetry }: { task: VideoTask | null; modelName: string; submitting: boolean; onCancel: () => void; onRetry: () => void }) {
@@ -556,13 +577,16 @@ export function VideoPage() {
   if (modelsLoading) return <div className="page-stack video-console-page"><PageTitle title={t('console.video.title')} description={t('console.video.description')} /><EmptyPanel title={t('console.common.loadingModels')} description={t('console.common.readingModels')} /></div>
   if (modelsError) return <div className="page-stack video-console-page"><PageTitle title={t('console.video.title')} description={t('console.video.description')} /><EmptyPanel title={t('console.common.modelCatalogFailed')} description={modelsError} action={<Button theme="outline" icon={<IconRefresh />} onClick={refreshModels}>{t('console.common.reload')}</Button>} /></div>
 
+  const workspaceNotices: VideoWorkspaceNoticeItem[] = []
+  if (requestFailure) workspaceNotices.push({ id: 'request-failure', message: requestFailure.message, requestId: requestFailure.requestId, action: <Button theme="outline" size="small" onClick={() => setRequestFailure(null)}>{t('console.common.close')}</Button> })
+  if (apiKeyError) workspaceNotices.push({ id: 'api-key-error', message: apiKeyError, action: <Button theme="outline" size="small" icon={<IconRefresh />} onClick={() => window.location.reload()}>{t('console.common.reload')}</Button> })
+  if (!apiKeysLoading && usableApiKeys.length === 0) workspaceNotices.push({ id: 'no-api-key', message: t('console.video.noApiKey'), action: <Link className="workspace-notice-link" to="/console/api-keys">{t('console.video.createApiKey')}</Link> })
+  if (selectedApiKey && selectableVideoModels.length === 0) workspaceNotices.push({ id: 'no-key-models', message: t('console.video.noKeyModels') })
+  if (!videoModels.length) workspaceNotices.push({ id: 'no-video-models', message: t('console.video.noModelsHint') })
+  const showWorkspaceNotices = workspaceNotices.length > 0 && !submitting && (!currentTask || Boolean(requestFailure))
+
   return <div className="page-stack video-console-page">
     <PageTitle title={t('console.video.title')} description={t('console.video.pageDescription')} />
-    {apiKeyError ? <BannerNotice tone="warning"><span>{apiKeyError}</span><Button theme="borderless" size="small" icon={<IconRefresh />} onClick={() => window.location.reload()}>{t('console.common.reload')}</Button></BannerNotice> : null}
-    {!apiKeysLoading && usableApiKeys.length === 0 ? <BannerNotice tone="warning"><span>{t('console.video.noApiKey')}</span><Link to="/console/api-keys">{t('console.video.createApiKey')}</Link></BannerNotice> : null}
-    {selectedApiKey && selectableVideoModels.length === 0 ? <BannerNotice tone="warning">{t('console.video.noKeyModels')}</BannerNotice> : null}
-    {!videoModels.length ? <BannerNotice tone="warning">{t('console.video.noModelsHint')}</BannerNotice> : null}
-    {requestFailure ? <BannerNotice tone="warning"><span className="video-request-error"><strong>{requestFailure.message}</strong>{requestFailure.requestId ? <code>{t('console.common.requestIdValue', { requestId: requestFailure.requestId })}</code> : null}</span><Button theme="borderless" size="small" onClick={() => setRequestFailure(null)}>{t('console.common.close')}</Button></BannerNotice> : null}
     <section className="video-workspace experience-workbench" aria-label={t('console.video.workspace')}>
       <VideoHistoryPanel entries={history} selectedID={selectedHistoryID} onSelect={selectHistory} onClear={clearHistory} onNew={startNewGeneration} disabled={operationBusy} />
       <div className="video-workspace-main experience-main">
@@ -574,7 +598,7 @@ export function VideoPage() {
             <Link className="video-key-link" to="/console/api-keys">{t('console.video.manageApiKey')}</Link>
           </div>
         </header>
-        <main className="video-stage experience-content"><VideoStage task={currentTask} modelName={selectedHistory?.modelName ?? selectedModel?.name ?? t('console.video.unnamedModel')} submitting={submitting} onCancel={currentTask && taskIsActive(currentTask) ? () => { void cancelCurrentTask() } : cancelSubmission} onRetry={retryCurrent} /></main>
+        <main className="video-stage experience-content">{showWorkspaceNotices ? <VideoWorkspaceNotice items={workspaceNotices} /> : <VideoStage task={currentTask} modelName={selectedHistory?.modelName ?? selectedModel?.name ?? t('console.video.unnamedModel')} submitting={submitting} onCancel={currentTask && taskIsActive(currentTask) ? () => { void cancelCurrentTask() } : cancelSubmission} onRetry={retryCurrent} />}</main>
         <footer className="video-composer experience-composer">
           <div className="video-composer-box">
             {inputReference ? <div className="video-reference-row">

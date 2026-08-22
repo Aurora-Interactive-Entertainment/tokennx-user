@@ -113,9 +113,9 @@ describe('企业控制台 API 客户端', () => {
 
   it('覆盖用量、分析、日志列表和日志详情的筛选参数', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => apiResponse({}))
-    await getEnterpriseUsage(CONTEXT, { range: 'custom', start_at: '2026-07-01T00:00:00.000Z', end_at: '2026-07-08T00:00:00.000Z', member_id: 'member-2', page: 2, accessToken: 'token' })
+    await getEnterpriseUsage(CONTEXT, { range: 'custom', start_at: Date.parse('2026-07-01T00:00:00.000Z'), end_at: Date.parse('2026-07-08T00:00:00.000Z'), member_id: 'member-2', page: 2, accessToken: 'token' })
     await getEnterpriseAnalytics(CONTEXT, { range: 'month', month: '2026-07', page_size: 50, accessToken: 'token' })
-    await getEnterpriseAuditLogs(CONTEXT, { page: 3, category: 'member', action: 'role.update', actor_id: 'member-1', result: 'success', start_at: '2026-07-01T00:00:00.000Z', end_at: '2026-07-31T00:00:00.000Z', accessToken: 'token' })
+    await getEnterpriseAuditLogs(CONTEXT, { page: 3, category: 'member', action: 'role.update', actor_id: 'member-1', result: 'success', start_at: Date.parse('2026-07-01T00:00:00.000Z'), end_at: Date.parse('2026-07-31T00:00:00.000Z'), accessToken: 'token' })
     await getEnterpriseAuditLog(CONTEXT, 'event/1', { accessToken: 'token' })
 
     const urls = fetchMock.mock.calls.map(([input]) => new URL(String(input), window.location.origin))
@@ -139,7 +139,7 @@ describe('企业控制台 API 客户端', () => {
     await updateEnterpriseTag(CONTEXT, 'tag-1', { name: '研发', description: '更新', daily_cost_limit_yuan: null, weekly_cost_limit_yuan: null, monthly_cost_limit_yuan: null, concurrency_limit: null, rpm_limit: null, tpm_limit: null, allowed_models: [], expected_version: 6 }, { accessToken: 'token' })
     await deleteEnterpriseTag(CONTEXT, 'tag-1', 7, { accessToken: 'token' })
     await reviewEnterpriseJoinRequest(CONTEXT, 'request-1', { action: 'approve', role: 'member' }, { accessToken: 'token' })
-    await createEnterpriseInvitation(CONTEXT, { role: 'member', max_uses: 10, expires_at: '2026-08-01T00:00:00.000Z' }, { accessToken: 'token' })
+    await createEnterpriseInvitation(CONTEXT, { role: 'member', max_uses: 10, expires_at: Date.parse('2026-08-01T00:00:00.000Z') }, { accessToken: 'token' })
     await updateEnterpriseInvitation(CONTEXT, 'link-1', { action: 'revoke', expected_version: 8 }, { accessToken: 'token' })
 
     const requests = fetchMock.mock.calls.map(([, init]) => ({ method: init?.method, body: init?.body ? JSON.parse(String(init.body)) : null }))
@@ -147,7 +147,7 @@ describe('企业控制台 API 客户端', () => {
     expect(requests[0]?.body).toEqual({ role: 'administrator', expected_version: 2 })
     expect(requests[3]?.body).toEqual({ cost_limit_yuan: '12.50', period_type: 'monthly', expected_version: 5 })
     expect(requests[6]?.body).toEqual({ expected_version: 7 })
-    expect(requests[8]?.body).toEqual({ role: 'member', max_uses: 10, expires_at: '2026-08-01T00:00:00.000Z' })
+    expect(requests[8]?.body).toEqual({ role: 'member', max_uses: 10, expires_at: Date.parse('2026-08-01T00:00:00.000Z') })
     expect(requests[9]?.body).toEqual({ action: 'revoke', expected_version: 8 })
   })
 

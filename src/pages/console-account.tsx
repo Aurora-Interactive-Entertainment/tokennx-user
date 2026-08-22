@@ -1,30 +1,34 @@
-import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
 import { getActiveLocale } from '@/i18n'
 import { Link, useNavigate, useSearchParams } from 'react-router'
-import { Button, Modal, Switch, Toast } from '@douyinfe/semi-ui'
-import { IconArrowRight, IconBarChartHStroked, IconCheckCircleStroked, IconCopy, IconCreditCard, IconDeleteStroked, IconEditStroked, IconGift, IconKey, IconMinusCircleStroked, IconPlus, IconPlusCircleStroked, IconSearch, IconUserGroup } from '@douyinfe/semi-icons'
-import { BannerNotice, EmptyPanel, MetricCard, ModelLogo, PageTitle, SectionHeading, workspacesFromMemberships } from '@/components/common'
+import Button from '@douyinfe/semi-ui/lib/es/button'
+import Modal from '@/components/app-modal'
+import Switch from '@douyinfe/semi-ui/lib/es/switch'
+import Toast from '@douyinfe/semi-ui/lib/es/toast'
+import { IconArrowRight, IconBarChartHStroked, IconCopy, IconDeleteStroked, IconEditStroked, IconGift, IconKey, IconMinusCircleStroked, IconPlus, IconPlusCircleStroked, IconSearch, IconUserGroup } from '@douyinfe/semi-icons'
+import { BannerNotice, EmptyPanel, MetricCard, ModelLogo, PageTitle, SectionHeading } from '@/components/common'
 import { MoneyText } from '@/components/money'
 import { CompatCard as Card, CompatInput as Input, CompatSelect as Select } from '@/components/semi-compat'
 import { useAppStore } from '@/data/app-state'
 import { modelAlias } from '@/data/models'
-import { getAccessToken } from '@/auth/token-storage'
-import { getProfileEnterprises } from '@/api/profile'
-import { ENTERPRISE_CREDIT_CODE_LENGTH, ENTERPRISE_LEGAL_REPRESENTATIVE_MAX_LENGTH, ENTERPRISE_NAME_MAX_LENGTH, NEW_ENTERPRISE_CREATE_PATH, getEnterpriseCertification, getEnterpriseCertificationErrorMessage, normalizeEnterpriseCreditCode, submitEnterpriseCertification, validateEnterpriseCertificationForm, type EnterpriseApplicantType, type EnterpriseCertification, type EnterpriseCertificationFormInput, type EnterpriseCertificationValidationErrors, type SubmitEnterpriseCertificationRequest } from '@/api/enterprise-certification'
+import { NEW_ENTERPRISE_CREATE_PATH } from '@/api/enterprise-certification'
 import { getUserApiKeyErrorMessage, getUserApiKeys, createUserApiKey, updateUserApiKey, enableUserApiKey, disableUserApiKey, revokeUserApiKey, type ApiKeyScope, type ApiKeyStatusFilter, type CreatedUserApiKey, type UserApiKey, type UserApiKeyContext, type UserApiKeyList, type UserApiKeyMutation } from '@/api/user-api-keys'
 import { isAuthenticationFailure } from '@/api/http'
 import { invalidateAuth } from '@/store/auth-slice'
 import { useAppDispatch } from '@/store/hooks'
-import { apiTimeToISOString, formatApiTime, type ApiTimeValue } from '@/utils/format'
+import { formatApiTime, type ApiTimeValue } from '@/utils/format'
+import { getInvitationOverview, type InvitationOverview } from '@/api/invitation'
+
+export { EnterpriseCreatePage } from './enterprise-create'
 
 type ApiKeyExpiryPreset = 'never' | '30days' | '90days' | '365days' | 'current'
 
 type ApiKeyFormState = {
   name: string
   tagsText: string
-  expiresAt: string | null
+  expiresAt: number | null
   scope: ApiKeyScope
   modelIds: string[]
   billingSource: 'balance' | 'subscription'
@@ -145,7 +149,7 @@ export function ApiKeysPage() {
   function openEdit(key: UserApiKey): void {
     setEditingKey(key)
     setForm({
-      name: key.name, tagsText: key.tags.join(', '), expiresAt: apiTimeToISOString(key.expires_at), scope: key.scope, modelIds: key.model_ids ?? [],
+      name: key.name, tagsText: key.tags.join(', '), expiresAt: key.expires_at, scope: key.scope, modelIds: key.model_ids ?? [],
       billingSource: key.billing_source, limitsEnabled: key.limits.enabled, costLimitYuan: key.limits.cost_limit_yuan ?? '',
       rpm: key.limits.rpm === null ? '' : String(key.limits.rpm), tpm: key.limits.tpm === null ? '' : String(key.limits.tpm),
       concurrency: key.limits.concurrency === null ? '' : String(key.limits.concurrency),
@@ -171,13 +175,13 @@ export function ApiKeysPage() {
     // 中文：编辑时允许恢复到打开表单时的原始到期日。
     if (value === 'current') {
       setExpiryPreset('current')
-      updateForm({ expiresAt: apiTimeToISOString(editingKey?.expires_at) })
+      updateForm({ expiresAt: editingKey?.expires_at ?? null })
       return
     }
     const days = value === '30days' ? 30 : value === '90days' ? 90 : value === '365days' ? 365 : 0
     if (days > 0) {
       setExpiryPreset(value as ApiKeyExpiryPreset)
-      updateForm({ expiresAt: new Date(Date.now() + days * API_KEY_DAY_MS).toISOString() })
+      updateForm({ expiresAt: Date.now() + days * API_KEY_DAY_MS })
     }
   }
 
@@ -288,15 +292,16 @@ export function ApiKeysPage() {
   const filteredModels = availableModels.filter((model) => apiKeyModelLabel(model, t).toLocaleLowerCase().includes(modelSearch.trim().toLocaleLowerCase()))
   const availableModelsLoading = loading && result === null
   const workspaceLabel = store.activeWorkspace.type === 'enterprise' ? store.activeWorkspace.name : t('console.common.personalWorkspace')
+  const showCreator = store.activeWorkspace.type === 'enterprise'
 
   return (
-    <div className="page-stack api-keys-console-page">
+    <div className={`page-stack api-keys-console-page${showCreator ? '' : ' api-keys-console-page--personal'}`}>
       <PageTitle
         title={t('console.account.apiKeysTitle')}
         description={t('console.account.apiKeysDescription')}
         actions={<><div className="status-filters" role="group" aria-label={t('console.account.modelScopeFilter')}>{(['all', 'active', 'disabled'] as const).map((key) => <button type="button" className={'status-filter-btn' + (filter === key ? ' active' : '')} aria-pressed={filter === key} key={key} onClick={() => setFilter(key)}>{key === 'all' ? t('console.account.all') : key === 'active' ? t('console.account.enable') : t('console.account.disabled')}</button>)}</div><Button theme="solid" type="primary" icon={<IconPlus />} onClick={openCreate}>{t('console.account.create')}</Button></>}
       />
-      {errorMessage ? <BannerNotice tone="warning"><span>{errorMessage}</span><Button theme="borderless" size="small" onClick={() => setReloadToken((value) => value + 1)}>{t('console.common.reload')}</Button></BannerNotice> : null}
+      {errorMessage ? <BannerNotice tone="warning" compact><span>{errorMessage}</span><Button theme="borderless" size="small" onClick={() => setReloadToken((value) => value + 1)}>{t('console.common.reload')}</Button></BannerNotice> : null}
       {loading ? <div className="api-keys-loading" role="status"><span className="api-keys-loading-spinner" />{t('console.account.noKeysLoading')}</div> : rows.length === 0 ? <EmptyPanel title={t('console.account.noKeys')} description={t('console.account.noKeysHint')} action={<Button theme="solid" type="primary" icon={<IconPlus />} onClick={openCreate}>{t('console.account.create')}</Button>} /> : <div className="source-table-scroll" role="region" aria-label={t('console.account.tableRegion')} tabIndex={0}><table className="api-keys-table"><thead><tr><th>{t('console.account.name')}</th><th>{t('console.account.key')}</th><th>{t('console.account.createdBy')}</th><th>{t('console.account.limits')}</th><th>{t('console.account.usageLimit')}</th><th>{t('console.account.availableModels')}</th><th>{t('console.common.status')}</th><th>{t('console.account.tags')}</th><th>{t('console.account.createdTime')}</th><th>{t('console.account.lastUsed')}</th><th>{t('console.account.activity')}</th><th>{t('console.account.operation')}</th></tr></thead><tbody>{rows.map((row) => {
         const limit = row.limits.cost_limit_yuan ? Number(row.limits.cost_limit_yuan) : 0
         const used = Number(row.limits.used_amount_yuan || 0)
@@ -305,7 +310,7 @@ export function ApiKeysPage() {
         const modelLabels = row.scope === 'all' ? [t('console.account.allModelsTag')] : row.models.length ? row.models.map((model) => apiKeyModelLabel(model, t)) : [t('console.account.notSelected')]
         return <tr key={row.id}><td className="api-key-name-cell"><div className="key-name-cell"><strong title={row.name}>{row.name}</strong><span className="cell-secondary">{workspaceLabel}</span></div></td><td><span className="key-masked">{row.masked_key}<button type="button" className="copy-btn" title={t(row.secret ? 'console.account.copyFullKey' : 'console.account.notAvailable')} aria-label={t(row.secret ? 'console.account.copyFullKey' : 'console.account.notAvailable')} disabled={!row.secret} onClick={() => copyApiKey(row)}><IconCopy /></button></span></td><td><div className="creator-cell"><span className="creator-avatar" aria-hidden="true">{(row.creator.display_name || '?').slice(0, 1)}</span><span className="creator-copy"><strong>{row.creator.display_name || t('console.account.unknownUser')}</strong><span className="cell-secondary">{row.creator.masked_phone || t('console.account.phoneUnbound')}</span></span></div></td><td className="limit-cell">{row.limits.enabled === false ? <span className="table-muted">{t('console.account.limitClosed')}</span> : <div className="metric-stack"><span className="metric-line"><strong>RPM</strong>{numberLabel(row.limits.rpm)}</span><span className="metric-line"><strong>TPM</strong>{numberLabel(row.limits.tpm)}</span><span className="metric-line"><strong>{t('console.account.costLimit')}</strong>{yuanLabel(row.limits.cost_limit_yuan)}</span></div>}</td><td><div className="usage-cell"><span><span className="usage-value">{yuanLabel(row.limits.used_amount_yuan)}</span> <span className="cell-secondary">/ {yuanLabel(row.limits.cost_limit_yuan)}</span></span>{row.limits.cost_limit_yuan ? <div className="usage-bar" aria-label={t('console.account.usedPercent', { percent: Math.round(progress) })}><div className={'usage-bar-fill ' + progressClass} style={{ width: String(progress) + '%' }} /></div> : null}</div></td><td className="model-cell"><div className="model-tags">{modelLabels.slice(0, 2).map((label) => <span className="model-tag" title={label} key={label}>{label}</span>)}{modelLabels.length > 2 ? <span className="model-tag">+{modelLabels.length - 2}</span> : null}</div></td><td><span className={'api-key-status-badge ' + row.status}>{row.status === 'active' ? t('console.account.enable') : row.status === 'disabled' ? t('console.account.disabled') : t('console.account.expired')}</span></td><td className="tag-cell">{row.tags.length ? <div className="tag-list">{row.tags.map((tag) => <span className="model-tag" title={tag} key={tag}>{tag}</span>)}</div> : <span className="table-muted">--</span>}</td><td>{apiDateLabel(row.created_at)}</td><td>{apiDateLabel(row.last_used_at)}</td><td><Link className="activity-link" to={userApiKeyRecordsHref(row.id)} title={t('console.account.viewRecords')}>{t('console.common.details')}<IconArrowRight aria-hidden="true" /></Link></td><td><div className="action-buttons"><button className="table-icon-action" type="button" aria-label={t('console.account.edit')} title={t('console.account.edit')} onClick={() => openEdit(row)}><IconEditStroked /></button>{row.status === 'expired' ? null : row.status === 'active' ? <button className="table-icon-action" type="button" aria-label={t('console.account.disableTitle')} title={t('console.account.disableTitle')} onClick={() => setAction({ type: 'disable', key: row })}><IconMinusCircleStroked /></button> : <button className="table-icon-action" type="button" aria-label={t('console.account.enableTitle')} title={t('console.account.enableTitle')} onClick={() => setAction({ type: 'enable', key: row })}><IconPlusCircleStroked /></button>}<button className="table-icon-action danger" type="button" aria-label={t('console.account.delete')} title={t('console.account.delete')} onClick={() => setAction({ type: 'delete', key: row })}><IconDeleteStroked /></button></div></td></tr>
       })}</tbody></table></div>}
-      <Modal title={editingKey ? t('console.account.edit') : t('console.account.create')} visible={modalVisible} onCancel={closeModal} onOk={() => { void saveKey() }} okText={editingKey ? t('console.account.saveChanges') : t('console.account.createKeyAction')} cancelText={t('console.common.cancel')} okButtonProps={{ loading: saving, disabled: saving }}><div className="modal-form api-key-modal-form"><BannerNotice tone="info"><span>{t('console.account.secureHint')}</span></BannerNotice>{availableModelsLoading ? <BannerNotice tone="info">{t('console.account.visibleModelsLoading')}</BannerNotice> : null}<div className="api-key-form-field"><label className="field-label" htmlFor="key-name">{t('console.account.keyName')}</label><Input id="key-name" value={form.name} onChange={(value) => updateForm({ name: value })} placeholder={t('console.account.keyNamePlaceholder')} maxLength={32} showClear /><span className="api-key-field-hint">{Array.from(form.name).length}/32</span></div><div className="api-key-form-field"><label className="field-label" htmlFor="key-tags">{t('console.account.tags')} <small>（{t('console.account.optional')}）</small></label><Input id="key-tags" value={form.tagsText} onChange={(value) => updateForm({ tagsText: value })} placeholder={t('console.account.tagsPlaceholder')} maxLength={120} /><span className="api-key-field-hint">{t('console.account.tagsHint')}</span></div><div className="api-key-form-field"><label className="field-label" htmlFor="key-expiry">{t('console.account.validity')}</label><Select id="key-expiry" value={expiryPreset} onChange={(value) => selectExpiry(String(value))} block>{editingKey ? <Select.Option value="current">{t('console.account.keepExpiry')}</Select.Option> : null}<Select.Option value="never">{t('console.account.forever')}</Select.Option><Select.Option value="30days">{t('console.account.days30')}</Select.Option><Select.Option value="90days">{t('console.account.days90')}</Select.Option><Select.Option value="365days">{t('console.account.year1')}</Select.Option></Select><span className="api-key-field-hint">{t('console.account.expiryHint')}</span></div><fieldset className="api-key-form-field api-key-fieldset"><legend className="field-label">{t('console.account.keyScope')}</legend><div className="api-key-scope-options"><label className="api-key-scope-radio"><input type="radio" name="api-key-scope" value="all" checked={form.scope === 'all'} onChange={() => updateForm({ scope: 'all', modelIds: [] })} /><span>{t('console.account.currentEnabledModels')}</span></label><label className="api-key-scope-radio"><input type="radio" name="api-key-scope" value="selected" checked={form.scope === 'selected'} onChange={() => updateForm({ scope: 'selected' })} /><span>{t('console.account.selectedModel')}</span></label></div>{form.scope === 'selected' ? <div className="api-key-model-picker"><div className="api-key-model-picker-toolbar"><Input className="api-key-model-search" value={modelSearch} onChange={setModelSearch} placeholder={t('console.account.searchModel')} aria-label={t('console.account.searchModel')} /><span>{t('console.account.selectedCount', { count: form.modelIds.length })}</span></div><div className="api-key-model-list">{filteredModels.length ? filteredModels.map((model) => <label className="api-key-model-option" key={model.id}><input type="checkbox" checked={form.modelIds.includes(model.id)} onChange={(event) => updateForm({ modelIds: event.target.checked ? [...form.modelIds, model.id] : form.modelIds.filter((id) => id !== model.id) })} /><span>{apiKeyModelLabel(model, t)}</span></label>) : <span className="api-key-model-empty">{t('console.account.noMatchingModels')}</span>}</div></div> : null}<span className="api-key-field-hint">{t('console.account.modelScopeHint')}</span></fieldset><fieldset className="api-key-form-field api-key-fieldset" aria-describedby="billing-source-hint"><legend className="field-label">{t('console.account.expenseSource')}</legend><div className="billing-source-options"><label className="billing-source-option"><input type="radio" name="api-key-billing-source" value="balance" checked={form.billingSource === 'balance'} onChange={() => updateForm({ billingSource: 'balance' })} /><span>{t('console.account.balanceExpense')}</span></label><label className="billing-source-option"><input type="radio" name="api-key-billing-source" value="subscription" checked={form.billingSource === 'subscription'} onChange={() => updateForm({ billingSource: 'subscription' })} /><span>{t('console.account.subscriptionExpense')}</span></label></div><span className="api-key-field-hint" id="billing-source-hint">{t('console.account.billingHint')}</span></fieldset><div className="api-key-form-field"><label className="api-key-switch-row"><span><strong>{t('console.account.enableLimits')}</strong><small>{t('console.account.enableLimitsHint')}</small></span><Switch checked={form.limitsEnabled} onChange={(checked) => updateForm({ limitsEnabled: checked })} aria-label={t('console.account.enableLimits')} /></label></div><button className="api-key-advanced-toggle" type="button" aria-expanded={advancedOpen} aria-controls="api-key-advanced-fields" onClick={() => setAdvancedOpen((value) => !value)}><span className="api-key-expand-caret" aria-hidden="true">▶</span><span>{t('console.account.advanced')}</span></button><div id="api-key-advanced-fields" className="api-key-advanced-fields">{advancedOpen ? form.limitsEnabled ? <div className="api-key-advanced-settings"><div className="api-key-form-field"><div className="api-key-limit-field-head"><label className="field-label" htmlFor="key-cost-limit">{t('console.account.cumulativeLimit')} <small>（{t('console.account.optional')}）</small></label><span>{t('console.account.unsetAccountBalance')}</span></div><div className="api-key-input-with-prefix"><span>¥</span><Input id="key-cost-limit" value={form.costLimitYuan} onChange={(value) => updateForm({ costLimitYuan: value })} placeholder={t('console.account.costLimitPlaceholder')} inputMode="decimal" /></div><span className="api-key-field-hint">{t('console.account.costLimitHint')}</span></div><div className="api-key-form-field"><label className="field-label">{t('console.account.rateLimit')} <small>（{t('console.account.optional')}）</small></label><div className="api-key-limit-grid"><label><span>{t('console.account.concurrency')}</span><Input id="key-concurrency" value={form.concurrency} onChange={(value) => updateForm({ concurrency: value.replace(/\D/g, '') })} placeholder={t('console.account.unlimited')} inputMode="numeric" /></label><label><span>RPM</span><Input id="key-rpm" value={form.rpm} onChange={(value) => updateForm({ rpm: value.replace(/\D/g, '') })} placeholder={t('console.account.unlimited')} inputMode="numeric" /></label><label><span>TPM</span><Input id="key-tpm" value={form.tpm} onChange={(value) => updateForm({ tpm: value.replace(/\D/g, '') })} placeholder={t('console.account.unlimited')} inputMode="numeric" /></label></div><span className="api-key-field-hint">{t('console.account.rateLimitHint')}</span></div></div> : <span className="api-key-field-hint api-key-limit-disabled-hint">{t('console.account.limitsDisabledHint')}</span> : null}</div></div></Modal>
+      <Modal centered title={editingKey ? t('console.account.edit') : t('console.account.create')} visible={modalVisible} onCancel={closeModal} onOk={() => { void saveKey() }} okText={editingKey ? t('console.account.saveChanges') : t('console.account.createKeyAction')} cancelText={t('console.common.cancel')} okButtonProps={{ loading: saving, disabled: saving }}><div className="modal-form api-key-modal-form"><BannerNotice tone="info"><span>{t('console.account.secureHint')}</span></BannerNotice>{availableModelsLoading ? <BannerNotice tone="info">{t('console.account.visibleModelsLoading')}</BannerNotice> : null}<div className="api-key-form-field"><label className="field-label" htmlFor="key-name">{t('console.account.keyName')}</label><Input id="key-name" value={form.name} onChange={(value) => updateForm({ name: value })} placeholder={t('console.account.keyNamePlaceholder')} maxLength={32} showClear /><span className="api-key-field-hint">{Array.from(form.name).length}/32</span></div><div className="api-key-form-field"><label className="field-label" htmlFor="key-tags">{t('console.account.tags')} <small>（{t('console.account.optional')}）</small></label><Input id="key-tags" value={form.tagsText} onChange={(value) => updateForm({ tagsText: value })} placeholder={t('console.account.tagsPlaceholder')} maxLength={120} /><span className="api-key-field-hint">{t('console.account.tagsHint')}</span></div><div className="api-key-form-field"><label className="field-label" htmlFor="key-expiry">{t('console.account.validity')}</label><Select id="key-expiry" value={expiryPreset} onChange={(value) => selectExpiry(String(value))} block>{editingKey ? <Select.Option value="current">{t('console.account.keepExpiry')}</Select.Option> : null}<Select.Option value="never">{t('console.account.forever')}</Select.Option><Select.Option value="30days">{t('console.account.days30')}</Select.Option><Select.Option value="90days">{t('console.account.days90')}</Select.Option><Select.Option value="365days">{t('console.account.year1')}</Select.Option></Select><span className="api-key-field-hint">{t('console.account.expiryHint')}</span></div><fieldset className="api-key-form-field api-key-fieldset"><legend className="field-label">{t('console.account.keyScope')}</legend><div className="api-key-scope-options"><label className="api-key-scope-radio"><input type="radio" name="api-key-scope" value="all" checked={form.scope === 'all'} onChange={() => updateForm({ scope: 'all', modelIds: [] })} /><span>{t('console.account.currentEnabledModels')}</span></label><label className="api-key-scope-radio"><input type="radio" name="api-key-scope" value="selected" checked={form.scope === 'selected'} onChange={() => updateForm({ scope: 'selected' })} /><span>{t('console.account.selectedModel')}</span></label></div>{form.scope === 'selected' ? <div className="api-key-model-picker"><div className="api-key-model-picker-toolbar"><Input className="api-key-model-search" value={modelSearch} onChange={setModelSearch} placeholder={t('console.account.searchModel')} aria-label={t('console.account.searchModel')} /><span>{t('console.account.selectedCount', { count: form.modelIds.length })}</span></div><div className="api-key-model-list">{filteredModels.length ? filteredModels.map((model) => <label className="api-key-model-option" key={model.id}><input type="checkbox" checked={form.modelIds.includes(model.id)} onChange={(event) => updateForm({ modelIds: event.target.checked ? [...form.modelIds, model.id] : form.modelIds.filter((id) => id !== model.id) })} /><span>{apiKeyModelLabel(model, t)}</span></label>) : <span className="api-key-model-empty">{t('console.account.noMatchingModels')}</span>}</div></div> : null}<span className="api-key-field-hint">{t('console.account.modelScopeHint')}</span></fieldset><fieldset className="api-key-form-field api-key-fieldset" aria-describedby="billing-source-hint"><legend className="field-label">{t('console.account.expenseSource')}</legend><div className="billing-source-options"><label className="billing-source-option"><input type="radio" name="api-key-billing-source" value="balance" checked={form.billingSource === 'balance'} onChange={() => updateForm({ billingSource: 'balance' })} /><span>{t('console.account.balanceExpense')}</span></label><label className="billing-source-option"><input type="radio" name="api-key-billing-source" value="subscription" checked={form.billingSource === 'subscription'} onChange={() => updateForm({ billingSource: 'subscription' })} /><span>{t('console.account.subscriptionExpense')}</span></label></div><span className="api-key-field-hint" id="billing-source-hint">{t('console.account.billingHint')}</span></fieldset><div className="api-key-form-field"><label className="api-key-switch-row"><span><strong>{t('console.account.enableLimits')}</strong><small>{t('console.account.enableLimitsHint')}</small></span><Switch checked={form.limitsEnabled} onChange={(checked) => updateForm({ limitsEnabled: checked })} aria-label={t('console.account.enableLimits')} /></label></div><button className="api-key-advanced-toggle" type="button" aria-expanded={advancedOpen} aria-controls="api-key-advanced-fields" onClick={() => setAdvancedOpen((value) => !value)}><span className="api-key-expand-caret" aria-hidden="true">▶</span><span>{t('console.account.advanced')}</span></button><div id="api-key-advanced-fields" className="api-key-advanced-fields">{advancedOpen ? form.limitsEnabled ? <div className="api-key-advanced-settings"><div className="api-key-form-field"><div className="api-key-limit-field-head"><label className="field-label" htmlFor="key-cost-limit">{t('console.account.cumulativeLimit')} <small>（{t('console.account.optional')}）</small></label><span>{t('console.account.unsetAccountBalance')}</span></div><div className="api-key-input-with-prefix"><span>¥</span><Input id="key-cost-limit" value={form.costLimitYuan} onChange={(value) => updateForm({ costLimitYuan: value })} placeholder={t('console.account.costLimitPlaceholder')} inputMode="decimal" /></div><span className="api-key-field-hint">{t('console.account.costLimitHint')}</span></div><div className="api-key-form-field"><label className="field-label">{t('console.account.rateLimit')} <small>（{t('console.account.optional')}）</small></label><div className="api-key-limit-grid"><label><span>{t('console.account.concurrency')}</span><Input id="key-concurrency" value={form.concurrency} onChange={(value) => updateForm({ concurrency: value.replace(/\D/g, '') })} placeholder={t('console.account.unlimited')} inputMode="numeric" /></label><label><span>RPM</span><Input id="key-rpm" value={form.rpm} onChange={(value) => updateForm({ rpm: value.replace(/\D/g, '') })} placeholder={t('console.account.unlimited')} inputMode="numeric" /></label><label><span>TPM</span><Input id="key-tpm" value={form.tpm} onChange={(value) => updateForm({ tpm: value.replace(/\D/g, '') })} placeholder={t('console.account.unlimited')} inputMode="numeric" /></label></div><span className="api-key-field-hint">{t('console.account.rateLimitHint')}</span></div></div> : <span className="api-key-field-hint api-key-limit-disabled-hint">{t('console.account.limitsDisabledHint')}</span> : null}</div></div></Modal>
       <Modal key={action?.type ?? 'closed'} title={action?.type === 'delete' ? t('console.account.deleteTitle') : action?.type === 'disable' ? t('console.account.disableTitle') : t('console.account.enableTitle')} visible={action !== null} onCancel={() => { if (!actionLoading) setAction(null) }} onOk={() => { void runAction() }} okText={action?.type === 'delete' ? t('console.account.confirmDelete') : action?.type === 'disable' ? t('console.account.confirmDisable') : t('console.account.confirmEnable')} cancelText={t('console.common.cancel')} okButtonProps={{ loading: actionLoading, disabled: actionLoading }}><p className="api-key-confirm-copy">{action?.type === 'delete' ? t('console.account.deleteHint', { name: action.key.name }) : action?.type === 'disable' ? t('console.account.disableHint', { name: action.key.name }) : t('console.account.enableHint', { name: action?.key.name })}</p></Modal>
     </div>
   )
@@ -329,222 +334,40 @@ export function SettingsPage() {
     store.updateProfile({ nickname: next, phone: store.phone, avatar: next.slice(0, 1).toUpperCase() })
     Toast.success(t('profile.personal.saved'))
   }
-  return <div className="page-stack settings-console-page"><PageTitle title={t('profile.title')} description={t('profile.description')} /><div className="settings-page-inner"><section className="settings-section"><div className="settings-section-head"><h2>{t('profile.personal.title')}</h2><p>{t('profile.personal.description')}</p><p className="settings-hint">{t('profile.personal.dataHint')}</p></div><div className="settings-form"><div className="settings-row"><span className="settings-label">{t('profile.personal.avatar')}</span><div className="settings-control"><div className="settings-avatar">{store.avatar}</div><p className="settings-hint">{t('profile.personal.avatarHint')}</p></div></div><div className="settings-row"><label className="settings-label" htmlFor="nickname">{t('profile.personal.nickname')}</label><div className="settings-control"><Input id="nickname" value={nickname} onChange={setNickname} maxLength={20} /><p className="settings-hint">{t('profile.personal.nicknameHint', { count: 20 })}</p></div></div><div className="settings-row"><span className="settings-label">{t('profile.contact.phone')}</span><div className="settings-control"><div className="settings-inline"><span className="settings-readonly">{store.phone}</span><Button theme="outline" size="small" onClick={() => Toast.info(t('profile.personal.phoneHint'))}>{t('profile.contact.changePhone')}</Button></div><p className="settings-hint">{t('profile.personal.phoneHint')}</p></div></div><div className="settings-row"><span className="settings-label">{t('profile.contact.email')}</span><div className="settings-control"><div className="settings-inline"><span className="settings-readonly">{t('profile.contact.unboundEmail')}</span><Button theme="outline" size="small" onClick={() => Toast.info(t('profile.personal.emailHint'))}>{t('profile.contact.bindEmail')}</Button></div><p className="settings-hint">{t('profile.personal.emailHint')}</p></div></div><div className="settings-row"><span className="settings-label">{t('profile.overview.id')}</span><div className="settings-control"><div className="settings-inline"><code className="settings-readonly">usr_han_001</code><Button theme="outline" size="small" onClick={() => Toast.success(t('profile.overview.copied'))}>{t('profile.overview.copyShort')}</Button></div><p className="settings-hint">{t('profile.personal.userIdHint')}</p></div></div><div className="settings-row"><span /><div className="settings-actions"><Button theme="solid" type="primary" onClick={saveProfile}>{t('profile.personal.save')}</Button></div></div></div></section><section className="settings-section"><div className="settings-section-head"><h2>{t('profile.notifications.title')}</h2><p>{t('profile.notifications.description')}</p></div><div className="notification-list"><label className="notification-row"><span><strong>{t('profile.notifications.lowBalance')}</strong><small>{t('profile.notifications.lowBalanceDescription')}</small></span><Switch checked={lowBalance} onChange={setLowBalance} /></label><label className="notification-row"><span><strong>{t('profile.notifications.invitations')}</strong><small>{t('profile.notifications.invitationsDescription')}</small></span><Switch checked={invitations} onChange={setInvitations} /></label><label className="notification-row"><span><strong>{t('profile.notifications.productUpdates')}</strong><small>{t('profile.notifications.productUpdatesDescription')}</small></span><Switch checked={productUpdates} onChange={setProductUpdates} /></label></div></section><section className="settings-section"><div className="settings-section-head"><h2>{t('profile.workspace.title')}</h2><p>{t('profile.workspace.description')}</p></div><div className="workspace-list">{store.workspaces.map((workspace) => <div className="workspace-item" key={workspace.id}><div><strong>{workspace.name}</strong><small>{workspace.type === 'enterprise' ? t('profile.workspace.enterpriseType') : t('profile.workspace.personalType')}</small></div><span>{workspace.id === store.activeWorkspace.id ? t('profile.workspace.current') : workspace.role === 'owner' ? t('profile.workspace.owner') : workspace.role}</span></div>)}</div><Button theme="outline" onClick={() => window.location.assign(NEW_ENTERPRISE_CREATE_PATH)}>{t('profile.workspace.create')}</Button><p className="settings-hint">{t('profile.workspace.createHint')}</p></section><section className="settings-section settings-security-section"><div className="settings-section-head"><h2>{t('profile.security.title')}</h2><p>{t('profile.security.description')}</p></div><div className="settings-actions"><Button theme="outline" type="danger" onClick={() => setDeleteVisible(true)}>{t('profile.security.deactivate')}</Button><span className="settings-hint">{t('profile.security.deactivateHint')}</span></div></section></div><Modal title={t('profile.security.dialogTitle')} visible={deleteVisible} onCancel={() => setDeleteVisible(false)} onOk={() => { setDeleteVisible(false); Toast.warning(t('profile.security.dialogPending')) }} okText={t('profile.security.dialogContinue')} cancelText={t('profile.security.dialogCancel')}><p>{t('profile.security.dialogDescription')}</p></Modal></div>
+  return <div className="page-stack settings-console-page"><PageTitle title={t('profile.title')} description={t('profile.description')} /><div className="settings-page-inner"><section className="settings-section"><div className="settings-section-head"><h2>{t('profile.personal.title')}</h2><p>{t('profile.personal.description')}</p><p className="settings-hint">{t('profile.personal.dataHint')}</p></div><div className="settings-form"><div className="settings-row"><span className="settings-label">{t('profile.personal.avatar')}</span><div className="settings-control"><div className="settings-avatar">{store.avatar}</div><p className="settings-hint">{t('profile.personal.avatarHint')}</p></div></div><div className="settings-row"><label className="settings-label" htmlFor="nickname">{t('profile.personal.nickname')}</label><div className="settings-control"><Input className="app-standard-input settings-profile-input" id="nickname" size="large" value={nickname} onChange={setNickname} maxLength={20} /><p className="settings-hint">{t('profile.personal.nicknameHint', { count: 20 })}</p></div></div><div className="settings-row"><span className="settings-label">{t('profile.contact.phone')}</span><div className="settings-control"><div className="settings-inline"><span className="settings-readonly">{store.phone}</span><Button theme="outline" size="small" onClick={() => Toast.info(t('profile.personal.phoneHint'))}>{t('profile.contact.changePhone')}</Button></div><p className="settings-hint">{t('profile.personal.phoneHint')}</p></div></div><div className="settings-row"><span className="settings-label">{t('profile.contact.email')}</span><div className="settings-control"><div className="settings-inline"><span className="settings-readonly">{t('profile.contact.unboundEmail')}</span><Button theme="outline" size="small" onClick={() => Toast.info(t('profile.personal.emailHint'))}>{t('profile.contact.bindEmail')}</Button></div><p className="settings-hint">{t('profile.personal.emailHint')}</p></div></div><div className="settings-row"><span className="settings-label">{t('profile.overview.id')}</span><div className="settings-control"><div className="settings-inline"><code className="settings-readonly">usr_han_001</code><Button theme="outline" size="small" onClick={() => Toast.success(t('profile.overview.copied'))}>{t('profile.overview.copyShort')}</Button></div><p className="settings-hint">{t('profile.personal.userIdHint')}</p></div></div><div className="settings-row"><span /><div className="settings-actions"><Button theme="solid" type="primary" onClick={saveProfile}>{t('profile.personal.save')}</Button></div></div></div></section><section className="settings-section"><div className="settings-section-head"><h2>{t('profile.notifications.title')}</h2><p>{t('profile.notifications.description')}</p></div><div className="notification-list"><label className="notification-row"><span><strong>{t('profile.notifications.lowBalance')}</strong><small>{t('profile.notifications.lowBalanceDescription')}</small></span><Switch checked={lowBalance} onChange={setLowBalance} /></label><label className="notification-row"><span><strong>{t('profile.notifications.invitations')}</strong><small>{t('profile.notifications.invitationsDescription')}</small></span><Switch checked={invitations} onChange={setInvitations} /></label><label className="notification-row"><span><strong>{t('profile.notifications.productUpdates')}</strong><small>{t('profile.notifications.productUpdatesDescription')}</small></span><Switch checked={productUpdates} onChange={setProductUpdates} /></label></div></section><section className="settings-section"><div className="settings-section-head"><h2>{t('profile.workspace.title')}</h2><p>{t('profile.workspace.description')}</p></div><div className="workspace-list">{store.workspaces.map((workspace) => <div className="workspace-item" key={workspace.id}><div><strong>{workspace.name}</strong><small>{workspace.type === 'enterprise' ? t('profile.workspace.enterpriseType') : t('profile.workspace.personalType')}</small></div><span>{workspace.id === store.activeWorkspace.id ? t('profile.workspace.current') : workspace.role === 'owner' ? t('profile.workspace.owner') : workspace.role}</span></div>)}</div><Button theme="outline" onClick={() => window.location.assign(NEW_ENTERPRISE_CREATE_PATH)}>{t('profile.workspace.create')}</Button><p className="settings-hint">{t('profile.workspace.createHint')}</p></section><section className="settings-section settings-security-section"><div className="settings-section-head"><h2>{t('profile.security.title')}</h2><p>{t('profile.security.description')}</p></div><div className="settings-actions"><Button theme="outline" type="danger" onClick={() => setDeleteVisible(true)}>{t('profile.security.deactivate')}</Button><span className="settings-hint">{t('profile.security.deactivateHint')}</span></div></section></div><Modal title={t('profile.security.dialogTitle')} visible={deleteVisible} onCancel={() => setDeleteVisible(false)} onOk={() => { setDeleteVisible(false); Toast.warning(t('profile.security.dialogPending')) }} okText={t('profile.security.dialogContinue')} cancelText={t('profile.security.dialogCancel')}><p>{t('profile.security.dialogDescription')}</p></Modal></div>
 }
 
 export function InvitationsPage() {
   const { t } = useTranslation()
-  const [copied, setCopied] = useState(false)
-  const inviteLink = 'https://tokennx.invalid/invite/usr_han_001'
-  function copyLink(): void { navigator.clipboard.writeText(inviteLink).then(() => { setCopied(true); Toast.success(t('console.invitations.copied')); window.setTimeout(() => setCopied(false), 1500) }).catch(() => Toast.error(t('console.common.copyFailed'))) }
-  return <div className="invite-page"><header className="invite-hero"><span className="invite-hero-icon"><IconGift /></span><div><h1>{t('console.invitations.title')}</h1><p>{t('console.invitations.description')}</p></div></header><section className="invite-summary"><article><IconCreditCard /><span>{t('console.invitations.pending')}</span><strong><MoneyText value="12.800000" /></strong></article><article><IconBarChartHStroked /><span>{t('console.invitations.total')}</span><strong><MoneyText value="36.500000" /></strong></article><article><IconUserGroup /><span>{t('console.invitations.count')}</span><strong>3</strong></article></section><section className="invite-link-card"><div className="invite-section-heading"><span className="invite-section-icon"><IconKey /></span><div><h2>{t('console.invitations.link')}</h2><p>{t('console.invitations.linkHint')}</p></div></div><div className="invite-link-row"><Input value={inviteLink} readOnly /><Button theme="solid" type="primary" icon={<IconCopy />} onClick={copyLink}>{copied ? t('console.invitations.copied') : t('console.invitations.copy')}</Button></div></section><section className="invite-records"><div className="invite-section-heading"><div><h2>{t('console.invitations.records')}</h2><p>{t('console.invitations.recordsHint')}</p></div></div><div className="source-table-scroll"><table className="invite-table"><thead><tr><th>{t('console.invitations.member')}</th><th>{t('console.invitations.role')}</th><th>{t('console.invitations.status')}</th><th>{t('console.invitations.joinedAt')}</th><th>{t('console.invitations.operation')}</th></tr></thead><tbody>{[['林舟', 'lin***@demo.invalid', '2026/07/15 16:42:18'], ['周然', 'zhou***@demo.invalid', '2026/07/13 11:08:36'], ['陈屿', 'chen***@demo.invalid', '2026/07/10 09:25:04']].map(([name, email, time]) => <tr key={name}><td><strong>{name}</strong><small>{email}</small></td><td><em>{t('console.invitations.developer')}</em></td><td><span className="invite-status">{t('console.invitations.joined')}</span></td><td>{time}</td><td>{t('console.invitations.noAction')}</td></tr>)}</tbody></table></div></section><section className="invite-rules"><h2>{t('console.invitations.rules')}</h2><ol><li>{t('console.invitations.ruleSource')}</li><li>{t('console.invitations.ruleStatus')}</li><li>{t('console.invitations.ruleSettlement')}</li></ol></section></div>
-}
-
-export function EnterpriseCreatePage() {
-  const { t } = useTranslation()
   const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
   const dispatch = useAppDispatch()
-  const { replaceEnterpriseWorkspaces } = useAppStore()
-  const isNewApplication = searchParams.get('mode') === 'new'
-  const [certification, setCertification] = useState<EnterpriseCertification | null>(null)
-  const [enterpriseName, setEnterpriseName] = useState('')
-  const [creditCode, setCreditCode] = useState('')
-  const [legalRepresentative, setLegalRepresentative] = useState('')
-  const [applicantType, setApplicantType] = useState<EnterpriseApplicantType>('legal_representative')
-  const [consent, setConsent] = useState(false)
-  const [errors, setErrors] = useState<EnterpriseCertificationValidationErrors>({})
+  const [copied, setCopied] = useState(false)
+  const [overview, setOverview] = useState<InvitationOverview | null>(null)
   const [loading, setLoading] = useState(true)
-  const [submitting, setSubmitting] = useState(false)
-  const [errorMessage, setErrorMessage] = useState('')
-  const [workspaceRefreshError, setWorkspaceRefreshError] = useState('')
-  const [newApplicationSubmitted, setNewApplicationSubmitted] = useState(false)
+  const [error, setError] = useState('')
+  const inviteLink = overview ? `${window.location.origin}/invite?invite_code=${encodeURIComponent(overview.invite_code)}` : ''
 
-  const invalidateSession = useCallback((): void => {
-    dispatch(invalidateAuth())
-    navigate('/', { replace: true })
-  }, [dispatch, navigate])
-
-  const loadCertification = useCallback(async (): Promise<void> => {
-    const accessToken = getAccessToken()
-    if (!accessToken) {
-      invalidateSession()
-      setLoading(false)
-      return
-    }
-    if (isNewApplication) {
-      setCertification(null)
-      setErrorMessage('')
-      setWorkspaceRefreshError('')
-      setLoading(false)
-      return
-    }
+  useEffect(() => {
+    const controller = new AbortController()
     setLoading(true)
-    setErrorMessage('')
-    try {
-      setCertification(await getEnterpriseCertification(accessToken))
-    } catch (requestError: unknown) {
-      if (isAuthenticationFailure(requestError)) {
-        invalidateSession()
-      } else {
-        setErrorMessage(getEnterpriseCertificationErrorMessage(requestError))
-      }
-    } finally {
-      setLoading(false)
-    }
-  }, [invalidateSession, isNewApplication])
-
-  const refreshEnterpriseWorkspaces = useCallback(async (accessToken: string): Promise<void> => {
-    setWorkspaceRefreshError('')
-    try {
-      const memberships = await getProfileEnterprises(getAccessToken() ?? accessToken)
-      replaceEnterpriseWorkspaces(workspacesFromMemberships(memberships))
-    } catch (requestError: unknown) {
-      if (isAuthenticationFailure(requestError)) {
-        invalidateSession()
+    getInvitationOverview({ signal: controller.signal }).then(setOverview).catch((reason: unknown) => {
+      if (controller.signal.aborted) return
+      if (isAuthenticationFailure(reason)) {
+        dispatch(invalidateAuth())
+        navigate('/', { replace: true })
         return
       }
-      setWorkspaceRefreshError(t('console.enterpriseCreate.workspaceRefreshError'))
-    }
-  }, [invalidateSession, replaceEnterpriseWorkspaces, t])
+      setError(reason instanceof Error ? reason.message : t('console.invitations.loadFailed'))
+    }).finally(() => { if (!controller.signal.aborted) setLoading(false) })
+    return () => controller.abort()
+  }, [dispatch, navigate, t])
 
-  useEffect(() => {
-    if (!isNewApplication) return
-    setCertification(null)
-    setEnterpriseName('')
-    setCreditCode('')
-    setLegalRepresentative('')
-    setApplicantType('legal_representative')
-    setConsent(false)
-    setErrors({})
-    setNewApplicationSubmitted(false)
-  }, [isNewApplication])
+  function copyLink(): void { navigator.clipboard.writeText(inviteLink).then(() => { setCopied(true); Toast.success(t('console.invitations.copied')); window.setTimeout(() => setCopied(false), 1500) }).catch(() => Toast.error(t('console.common.copyFailed'))) }
 
-  const visibleCertification = isNewApplication && !newApplicationSubmitted ? null : certification
+  if (loading) return <div className="invite-page"><div className="public-invitation-loading" role="status"><span className="records-loading-spinner" />{t('console.common.loading')}</div></div>
+  if (error || !overview) return <div className="invite-page"><div className="public-invitation-empty" role="alert"><strong>{error || t('console.invitations.loadFailed')}</strong></div></div>
 
-  useEffect(() => {
-    void loadCertification()
-  }, [loadCertification])
-
-  useEffect(() => {
-    if (visibleCertification?.status !== 'approved') return
-    const accessToken = getAccessToken()
-    if (!accessToken) {
-      invalidateSession()
-      return
-    }
-    void refreshEnterpriseWorkspaces(accessToken)
-  }, [invalidateSession, refreshEnterpriseWorkspaces, visibleCertification])
-
-  function submit(event: FormEvent<HTMLFormElement>): void {
-    event.preventDefault()
-    const input: EnterpriseCertificationFormInput = { enterpriseName, creditCode, legalRepresentative, applicantType, consent }
-    const nextErrors = validateEnterpriseCertificationForm(input)
-    setErrors(nextErrors)
-    if (Object.keys(nextErrors).length > 0) return
-    const accessToken = getAccessToken()
-    if (!accessToken) {
-      invalidateSession()
-      return
-    }
-    const request: SubmitEnterpriseCertificationRequest = {
-      enterprise_name: enterpriseName.trim(),
-      credit_code: normalizeEnterpriseCreditCode(creditCode),
-      legal_representative: legalRepresentative.trim(),
-      applicant_type: applicantType,
-      consent,
-    }
-    setSubmitting(true)
-    setErrorMessage('')
-    void submitEnterpriseCertification(accessToken, request).then((result) => {
-      if (isNewApplication) setNewApplicationSubmitted(true)
-      setCertification(result)
-    }).catch((requestError: unknown) => {
-      if (isAuthenticationFailure(requestError)) {
-        invalidateSession()
-        return
-      }
-      setErrorMessage(getEnterpriseCertificationErrorMessage(requestError))
-    }).finally(() => {
-      setSubmitting(false)
-    })
-  }
-
-  if (loading && !visibleCertification) {
-    return <div className="page-stack enterprise-create-page"><PageTitle title={t('console.enterpriseCreate.title')} description={t('console.enterpriseCreate.description')} /><div className="profile-state-panel" role="status">{t('console.enterpriseCreate.loading')}</div></div>
-  }
-
-  const approved = visibleCertification?.status === 'approved'
-  const showForm = !visibleCertification || visibleCertification.status === 'unsubmitted' || visibleCertification.status === 'rejected' || visibleCertification.status === 'cancelled'
-  return <div className="page-stack enterprise-create-page">
-    <PageTitle title={t('console.enterpriseCreate.title')} description={t('console.enterpriseCreate.description')} />
-    {errorMessage ? <BannerNotice tone="warning"><div className="profile-error-content"><span>{errorMessage}</span><Button theme="borderless" size="small" loading={loading} disabled={loading} onClick={() => { void loadCertification() }}>{t('console.enterpriseCreate.reload')}</Button></div></BannerNotice> : null}
-    {!approved && visibleCertification?.status === 'rejected' ? <BannerNotice tone="warning">{t('console.enterpriseCreate.rejected')}</BannerNotice> : null}
-    <div className="enterprise-create-layout">
-      <Card className="enterprise-create-card">
-        <span className="eyebrow">{t('console.enterpriseCreate.eyebrow')}</span>
-        {approved ? <>
-          <h2>{t('console.enterpriseCreate.approvedTitle')}</h2>
-          <p>{t('console.enterpriseCreate.approvedHint')}</p>
-          {workspaceRefreshError ? <BannerNotice tone="warning">{workspaceRefreshError}</BannerNotice> : null}
-          <div className="real-name-status" aria-label={t('console.enterpriseCreate.resultLabel')}>
-            <div className="real-name-status-row"><span>{t('console.enterpriseCreate.enterpriseName')}</span><strong>{visibleCertification?.enterprise_name || t('console.enterpriseCreate.verifiedEnterprise')}</strong></div>
-            <div className="real-name-status-row"><span>{t('console.enterpriseCreate.creditCode')}</span><strong>{visibleCertification?.credit_code_masked || t('console.enterpriseCreate.protected')}</strong></div>
-            <div className="real-name-status-row"><span>{t('console.enterpriseCreate.legalRepresentative')}</span><strong>{visibleCertification?.legal_representative_masked || t('console.enterpriseCreate.protected')}</strong></div>
-            <div className="real-name-status-row"><span>{t('console.enterpriseCreate.applicantType')}</span><strong>{visibleCertification?.applicant_type === 'authorized_agent' ? t('console.enterpriseCreate.authorizedAgent') : t('console.enterpriseCreate.legalRepresentativeApplicant')}</strong></div>
-            <div className="real-name-status-row"><span>{t('console.enterpriseCreate.workspace')}</span><strong>{t('console.enterpriseCreate.created')}</strong></div>
-          </div>
-        </> : showForm ? <>
-          <h2>{t('console.enterpriseCreate.formTitle')}</h2>
-          <p>{t('console.enterpriseCreate.formHint')}</p>
-          <form className="real-name-form" onSubmit={submit} noValidate>
-            <label className="real-name-field" htmlFor="enterprise-name">
-              <span>{t('console.enterpriseCreate.enterpriseName')}</span>
-              <Input id="enterprise-name" value={enterpriseName} onChange={(value) => { setEnterpriseName(value); setErrors((previous) => ({ ...previous, enterpriseName: undefined })) }} maxLength={ENTERPRISE_NAME_MAX_LENGTH} placeholder={t('console.enterpriseCreate.namePlaceholder')} aria-invalid={Boolean(errors.enterpriseName)} aria-describedby={errors.enterpriseName ? 'enterprise-name-error' : undefined} />
-              {errors.enterpriseName ? <span className="profile-field-error" id="enterprise-name-error" role="alert">{errors.enterpriseName}</span> : null}
-            </label>
-            <label className="real-name-field" htmlFor="enterprise-credit-code">
-              <span>{t('console.enterpriseCreate.creditCode')}</span>
-              <Input id="enterprise-credit-code" value={creditCode} onChange={(value) => { setCreditCode(normalizeEnterpriseCreditCode(value)); setErrors((previous) => ({ ...previous, creditCode: undefined })) }} maxLength={ENTERPRISE_CREDIT_CODE_LENGTH} placeholder={t('console.enterpriseCreate.creditCodePlaceholder')} aria-invalid={Boolean(errors.creditCode)} aria-describedby={errors.creditCode ? 'enterprise-credit-code-error' : undefined} />
-              {errors.creditCode ? <span className="profile-field-error" id="enterprise-credit-code-error" role="alert">{errors.creditCode}</span> : null}
-            </label>
-            <label className="real-name-field" htmlFor="enterprise-legal-representative">
-              <span>{t('console.enterpriseCreate.legalRepresentative')}</span>
-              <Input id="enterprise-legal-representative" value={legalRepresentative} onChange={(value) => { setLegalRepresentative(value); setErrors((previous) => ({ ...previous, legalRepresentative: undefined })) }} maxLength={ENTERPRISE_LEGAL_REPRESENTATIVE_MAX_LENGTH} placeholder={t('console.enterpriseCreate.legalRepresentativePlaceholder')} aria-invalid={Boolean(errors.legalRepresentative)} aria-describedby={errors.legalRepresentative ? 'enterprise-legal-representative-error' : undefined} />
-              {errors.legalRepresentative ? <span className="profile-field-error" id="enterprise-legal-representative-error" role="alert">{errors.legalRepresentative}</span> : null}
-            </label>
-            <label className="real-name-field" htmlFor="enterprise-applicant-type">
-              <span>{t('console.enterpriseCreate.applicantType')}</span>
-              <select className="source-input real-name-select" id="enterprise-applicant-type" value={applicantType} onChange={(event) => { setApplicantType(event.target.value as EnterpriseApplicantType); setErrors((previous) => ({ ...previous, applicantType: undefined })) }} aria-invalid={Boolean(errors.applicantType)} aria-describedby={errors.applicantType ? 'enterprise-applicant-type-error' : undefined}>
-                <option value="legal_representative">{t('console.enterpriseCreate.legalRepresentativeApplicant')}</option>
-                <option value="authorized_agent">{t('console.enterpriseCreate.authorizedAgent')}</option>
-              </select>
-              {errors.applicantType ? <span className="profile-field-error" id="enterprise-applicant-type-error" role="alert">{errors.applicantType}</span> : null}
-            </label>
-            <label className="real-name-consent" htmlFor="enterprise-certification-consent">
-              <input id="enterprise-certification-consent" type="checkbox" checked={consent} onChange={(event) => { setConsent(event.target.checked); if (event.target.checked) setErrors((previous) => ({ ...previous, consent: undefined })) }} aria-invalid={Boolean(errors.consent)} aria-describedby={errors.consent ? 'enterprise-certification-consent-error' : undefined} />
-              <span>{t('console.enterpriseCreate.consent')}</span>
-            </label>
-            {errors.consent ? <span className="profile-field-error" id="enterprise-certification-consent-error" role="alert">{errors.consent}</span> : null}
-            <Button className="real-name-submit" htmlType="submit" theme="solid" type="primary" loading={submitting} disabled={submitting}>{t('console.enterpriseCreate.submit')}</Button>
-          </form>
-          <p className="real-name-demo-note">{t('console.enterpriseCreate.demoNote')}</p>
-        </> : <>
-          <h2>{t('console.enterpriseCreate.pendingTitle')}</h2>
-          <p>{t('console.enterpriseCreate.pendingHint')}</p>
-          <Button theme="outline" loading={loading} disabled={loading} onClick={() => { void loadCertification() }}>{t('console.enterpriseCreate.refreshStatus')}</Button>
-        </>}
-      </Card>
-      <aside className="enterprise-create-aside">
-        <h3>{t('console.enterpriseCreate.afterTitle')}</h3>
-        <div><IconCheckCircleStroked /><span>{t('console.enterpriseCreate.afterWorkspace')}</span></div>
-        <div><IconCheckCircleStroked /><span>{t('console.enterpriseCreate.afterOwner')}</span></div>
-        <div><IconCheckCircleStroked /><span>{t('console.enterpriseCreate.afterMembers')}</span></div>
-        <div><IconCheckCircleStroked /><span>{t('console.enterpriseCreate.afterResources')}</span></div>
-        <Button theme="borderless" icon={<IconArrowRight />} onClick={() => navigate('/about')}>{t('console.enterpriseCreate.about')}</Button>
-      </aside>
-    </div>
-  </div>
+  return <div className="invite-page"><header className="invite-hero"><span className="invite-hero-icon"><IconGift /></span><div><h1>{t('console.invitations.title')}</h1><p>{t('console.invitations.description')}</p></div></header><section className="invite-summary"><article><IconBarChartHStroked /><span>{t('console.invitations.total')}</span><strong><MoneyText value={overview.total_reward_yuan} digits={2} /></strong></article><article><IconUserGroup /><span>{t('console.invitations.count')}</span><strong>{overview.invited_count}</strong></article></section><section className="invite-link-card"><div className="invite-section-heading"><span className="invite-section-icon"><IconKey /></span><div><h2>{t('console.invitations.link')}</h2><p>{t('console.invitations.linkHint')}</p></div></div><div className="invite-link-row"><Input value={inviteLink} readOnly /><Button theme="solid" type="primary" icon={<IconCopy />} onClick={copyLink}>{copied ? t('console.invitations.copied') : t('console.invitations.copy')}</Button></div></section><section className="invite-records"><div className="invite-section-heading"><div><h2>{t('console.invitations.records')}</h2><p>{t('console.invitations.recordsHint')}</p></div></div><div className="source-table-scroll"><table className="invite-table"><thead><tr><th>{t('console.invitations.member')}</th><th>{t('console.invitations.status')}</th><th>{t('console.invitations.joinedAt')}</th></tr></thead><tbody>{overview.records.map((record) => <tr key={record.id}><td><strong>{record.display_name}</strong></td><td><span className="invite-status">{record.status === 'joined' ? t('console.invitations.joined') : record.status}</span></td><td>{formatApiTime(record.joined_at)}</td></tr>)}</tbody></table></div></section><section className="invite-rules"><h2>{t('console.invitations.rules')}</h2><ol><li>{t('console.invitations.ruleSource')}</li><li>{t('console.invitations.ruleStatus')}</li><li>{t('console.invitations.ruleSettlement')}</li></ol></section></div>
 }
 
 export function EnterpriseSettingsPage() {

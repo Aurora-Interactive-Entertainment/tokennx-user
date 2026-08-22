@@ -168,7 +168,7 @@ const MEMBER: EnterpriseMember = {
   masked_contact: '138****0001',
   status: 'active',
   join_source: '企业邀请',
-  joined_at: '2026-07-01T08:00:00Z',
+  joined_at: Date.parse('2026-07-01T08:00:00Z'),
   role: 'engineering',
   roles: ['engineering'],
   tags: [{ id: 'tag_dev', name: '研发' }],
@@ -189,8 +189,8 @@ const TAG: EnterpriseTag = {
   allowed_models: ['gpt-4o'],
   member_count: 1,
   version: 1,
-  created_at: '2026-07-01T08:00:00Z',
-  updated_at: '2026-07-01T08:00:00Z',
+  created_at: Date.parse('2026-07-01T08:00:00Z'),
+  updated_at: Date.parse('2026-07-01T08:00:00Z'),
 }
 
 const JOIN_REQUEST: EnterpriseJoinRequest = {
@@ -201,8 +201,8 @@ const JOIN_REQUEST: EnterpriseJoinRequest = {
   requested_role: 'data_analyst',
   request_message: '申请加入研发团队',
   status: 'pending',
-  created_at: '2026-07-02T08:00:00Z',
-  updated_at: '2026-07-02T08:00:00Z',
+  created_at: Date.parse('2026-07-02T08:00:00Z'),
+  updated_at: Date.parse('2026-07-02T08:00:00Z'),
   version: 1,
 }
 
@@ -215,8 +215,8 @@ const INVITATION: EnterpriseInvitation = {
   expires_at: null,
   status: 'active',
   inviter_name: '测试用户',
-  created_at: '2026-07-03T08:00:00Z',
-  updated_at: '2026-07-03T08:00:00Z',
+  created_at: Date.parse('2026-07-03T08:00:00Z'),
+  updated_at: Date.parse('2026-07-03T08:00:00Z'),
   invite_url: 'https://example.invalid/invite/test',
   version: 1,
 }
@@ -255,8 +255,8 @@ const METRICS = {
 
 const PERIOD = {
   range: '30d',
-  start_at: '2026-07-01T00:00:00Z',
-  end_at: '2026-07-30T23:59:59Z',
+  start_at: Date.parse('2026-07-01T00:00:00Z'),
+  end_at: Date.parse('2026-07-30T23:59:59Z'),
   label: '近 30 天',
 }
 
@@ -309,7 +309,7 @@ const AUDIT_EVENT: EnterpriseAuditLog = {
   before: { role: 'engineering' },
   after: { role: 'data_analyst' },
   request_id: 'request_audit_test',
-  occurred_at: '2026-07-29T08:00:00Z',
+  occurred_at: Date.parse('2026-07-29T08:00:00Z'),
 }
 
 function auditPage(overrides: Partial<EnterpriseAuditLogResponsePage> = {}): EnterpriseAuditLogResponsePage {
@@ -328,6 +328,19 @@ function renderPage(element: React.ReactNode, isEnterprise = true) {
   const appStore = createAppStore()
   appStore.dispatch({ type: 'auth/loginWithEmail/fulfilled', payload: AUTH_RESULT.user })
   return render(<MemoryRouter initialEntries={['/console/enterprise']}><Provider store={appStore}><AppStoreProvider>{element}</AppStoreProvider></Provider></MemoryRouter>)
+}
+
+async function selectSemiOption(user: ReturnType<typeof userEvent.setup>, combobox: HTMLElement, optionName: string | RegExp): Promise<void> {
+  await user.click(combobox)
+  let option: HTMLElement | undefined
+  await waitFor(() => {
+    option = [...document.querySelectorAll<HTMLElement>('[role="option"]')].find((candidate) => {
+      const label = candidate.textContent?.trim() ?? ''
+      return typeof optionName === 'string' ? label === optionName : optionName.test(label)
+    })
+    expect(option).toBeTruthy()
+  })
+  fireEvent.click(option!)
 }
 
 function mockDownload() {
@@ -565,7 +578,7 @@ describe('企业人员管理页面', () => {
     renderPage(<MembersPage />)
 
     expect(await screen.findByText('张三')).toBeInTheDocument()
-    await user.selectOptions(screen.getByLabelText('角色'), 'data_analyst')
+    await selectSemiOption(user, screen.getByRole('combobox', { name: '角色' }), '数据分析员')
     await waitFor(() => expect(getEnterpriseMembersMock).toHaveBeenCalledWith(expect.objectContaining({ enterprise_id: ENTERPRISE_ID }), expect.objectContaining({ role: 'data_analyst' })))
 
     await user.click(screen.getByRole('button', { name: '查看详情' }))
@@ -594,9 +607,11 @@ describe('企业人员管理页面', () => {
     await user.click(screen.getByRole('tab', { name: '邀请' }))
     createEnterpriseInvitationMock.mockResolvedValueOnce({ ...INVITATION, invite_url: '/join?token=token%2Fabc' })
     await user.click(await screen.findByRole('button', { name: '创建邀请链接' }))
-    fireEvent.change(screen.getByLabelText('有效期（可选）'), { target: { value: '2026-07-30' } })
+    const expiryInput = document.querySelector<HTMLInputElement>('.enterprise-invitation-date-picker input')
+    expect(expiryInput).not.toBeNull()
+    fireEvent.change(expiryInput!, { target: { value: '2026-07-30' } })
     await user.click(screen.getByRole('button', { name: 'confirm' }))
-    const expectedInvitationExpiry = new Date(2026, 6, 30, 23, 59, 59, 999).toISOString()
+    const expectedInvitationExpiry = new Date(2026, 6, 30, 23, 59, 59, 999).getTime()
     await waitFor(() => expect(createEnterpriseInvitationMock).toHaveBeenCalledWith(expect.objectContaining({ enterprise_id: ENTERPRISE_ID }), { role: defaultAssignableRole, max_uses: 10, expires_at: expectedInvitationExpiry }))
     const expectedInvitationURL = `${window.location.origin}/join?token=token%2Fabc`
     expect(await screen.findByRole('textbox', { name: '邀请链接' })).toHaveValue(expectedInvitationURL)
@@ -607,7 +622,7 @@ describe('企业人员管理页面', () => {
     await user.click(screen.getByRole('tab', { name: '成员' }))
     await user.click(await screen.findByRole('button', { name: '查看详情' }))
     const roleSelect = screen.getByRole('combobox', { name: '企业角色' })
-    await user.selectOptions(roleSelect, 'data_analyst')
+    await selectSemiOption(user, roleSelect, '数据分析员')
     expect(roleSelect).toHaveTextContent('数据分析员')
     await user.click(screen.getByRole('button', { name: '保存角色' }))
     await waitFor(() => expect(updateEnterpriseMemberRoleMock).toHaveBeenCalledWith(expect.objectContaining({ enterprise_id: ENTERPRISE_ID }), MEMBER.id, { role: 'data_analyst', expected_version: MEMBER.version }))
@@ -655,7 +670,7 @@ describe('企业用量和数据分析页面', () => {
     expect(getEnterpriseUsageMock).not.toHaveBeenCalled()
   })
 
-  it('加载用量并在明细按成员筛选，非法自定义日期不会发起请求', async () => {
+  it('加载用量并在明细按成员筛选，支持统一的自定义日期选择', async () => {
     const user = userEvent.setup()
     renderPage(<EnterpriseUsagePage />)
     expect((await screen.findAllByText('请求数')).length).toBeGreaterThan(0)
@@ -665,13 +680,13 @@ describe('企业用量和数据分析页面', () => {
     expect(screen.queryByText('¥12.50000000')).not.toBeInTheDocument()
     expect(screen.getByText(/并发 8/)).toBeInTheDocument()
     await user.click(screen.getByRole('tab', { name: '用量明细' }))
-    await user.selectOptions(screen.getByLabelText('选择成员...'), MEMBER.id)
+    await selectSemiOption(user, screen.getByRole('combobox', { name: '选择成员...' }), /张三/)
     await waitFor(() => expect(getEnterpriseUsageMock).toHaveBeenCalledWith(expect.objectContaining({ enterprise_id: ENTERPRISE_ID }), expect.objectContaining({ member_id: MEMBER.id })))
 
+    await user.click(screen.getByRole('button', { name: /选择时间范围/ }))
     await user.click(screen.getByRole('button', { name: '自定义' }))
-    fireEvent.change(screen.getByLabelText('开始日期'), { target: { value: '2026-07-30' } })
-    fireEvent.change(screen.getByLabelText('结束日期'), { target: { value: '2026-07-01' } })
-    expect(await screen.findByRole('alert')).toHaveTextContent('开始日期不能晚于结束日期')
+    await user.click(screen.getByRole('button', { name: '应用' }))
+    await waitFor(() => expect(getEnterpriseUsageMock).toHaveBeenCalledWith(expect.objectContaining({ enterprise_id: ENTERPRISE_ID }), expect.objectContaining({ member_id: MEMBER.id, range: 'custom', start_at: expect.any(Number), end_at: expect.any(Number) })))
   })
 
   it('空成员用量使用业务空态而不是伪造数据', async () => {
@@ -696,7 +711,7 @@ describe('企业用量和数据分析页面', () => {
 
     await screen.findByRole('tab', { name: '用量看板' })
     await user.click(screen.getByRole('tab', { name: '用量明细' }))
-    await user.selectOptions(screen.getByLabelText('选择成员...'), MEMBER.id)
+    await selectSemiOption(user, screen.getByRole('combobox', { name: '选择成员...' }), /张三/)
     await waitFor(() => expect(getEnterpriseUsageMock).toHaveBeenCalledWith(expect.objectContaining({ enterprise_id: ENTERPRISE_ID }), expect.objectContaining({ member_id: MEMBER.id })))
     expect((await screen.findAllByText('张三', { exact: true })).length).toBeGreaterThan(0)
     expect(screen.getByText('按 API 密钥')).toBeInTheDocument()
@@ -711,8 +726,8 @@ describe('企业用量和数据分析页面', () => {
     renderPage(<EnterpriseUsagePage />)
 
     expect((await screen.findAllByText('研发')).length).toBeGreaterThan(0)
-    await user.selectOptions(screen.getByLabelText('按额度状态筛选'), 'near')
-    expect(screen.getAllByRole('row').some((row) => row.textContent?.includes('李四'))).toBe(true)
+    await selectSemiOption(user, screen.getByRole('combobox', { name: '按额度状态筛选' }), '接近额度')
+    await waitFor(() => expect(screen.getAllByRole('row').some((row) => row.textContent?.includes('李四'))).toBe(true))
     expect(screen.getAllByRole('row').some((row) => row.textContent?.includes('张三'))).toBe(false)
     await user.clear(screen.getByLabelText('搜索成员昵称或手机号'))
     await user.type(screen.getByLabelText('搜索成员昵称或手机号'), '李四')
@@ -742,7 +757,7 @@ describe('企业操作日志页面', () => {
     renderPage(<EnterpriseAuditLogPage />)
 
     expect(await screen.findByText(AUDIT_EVENT.summary)).toBeInTheDocument()
-    await user.selectOptions(screen.getByLabelText('结果'), 'failed')
+    await selectSemiOption(user, screen.getByRole('combobox', { name: '结果' }), '失败')
     await waitFor(() => expect(getEnterpriseAuditLogsMock).toHaveBeenCalledWith(expect.objectContaining({ enterprise_id: ENTERPRISE_ID }), expect.objectContaining({ result: 'failed' })))
     await user.click(screen.getByRole('button', { name: '查看详情' }))
     expect(await screen.findByText('正在读取操作详情...')).toBeInTheDocument()
@@ -752,13 +767,13 @@ describe('企业操作日志页面', () => {
     expect(download.click).toHaveBeenCalledOnce()
   })
 
-  it('操作日志自定义日期顺序错误时阻止接口请求', async () => {
+  it('操作日志使用统一的自定义日期选择并提交时间参数', async () => {
     const user = userEvent.setup()
     renderPage(<EnterpriseAuditLogPage />)
     await screen.findByText(AUDIT_EVENT.summary)
+    await user.click(screen.getByRole('button', { name: /选择时间范围/ }))
     await user.click(screen.getByRole('button', { name: '自定义' }))
-    fireEvent.change(screen.getByLabelText('开始日期'), { target: { value: '2026-07-30' } })
-    fireEvent.change(screen.getByLabelText('结束日期'), { target: { value: '2026-07-01' } })
-    expect(await screen.findByRole('alert')).toHaveTextContent('开始日期不能晚于结束日期')
+    await user.click(screen.getByRole('button', { name: '应用' }))
+    await waitFor(() => expect(getEnterpriseAuditLogsMock).toHaveBeenCalledWith(expect.objectContaining({ enterprise_id: ENTERPRISE_ID }), expect.objectContaining({ start_at: expect.any(Number), end_at: expect.any(Number) })))
   })
 })

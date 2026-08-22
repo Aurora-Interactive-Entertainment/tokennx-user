@@ -4,12 +4,15 @@ import {
   AUTH_SYNC_STORAGE_KEY,
   DEVICE_ID_KEY,
   REFRESH_SESSION_KEY,
+  VERIFIED_PHONE_KEY,
   clearAuthTokens,
   getAccessToken,
+  getVerifiedPhone,
   getDeviceId,
   getDeviceName,
   readRefreshToken,
   saveAuthTokens,
+  saveVerifiedPhone,
   subscribeAuthTokenChanges,
 } from './token-storage'
 
@@ -36,7 +39,30 @@ function authResult(overrides: Partial<AuthResult> = {}): AuthResult {
 describe('认证令牌存储', () => {
   beforeEach(() => {
     window.localStorage.clear()
+    window.sessionStorage.clear()
     clearAuthTokens()
+  })
+
+  it('only exposes the verified phone to the same user and clears it on sign-out', () => {
+    saveAuthTokens(authResult())
+    saveVerifiedPhone('user-1', '138 0013 8000')
+
+    expect(getVerifiedPhone('user-1')).toBe('13800138000')
+    expect(getVerifiedPhone('user-2')).toBeNull()
+    expect(window.localStorage.getItem(VERIFIED_PHONE_KEY)).not.toBeNull()
+    expect(window.sessionStorage.getItem(VERIFIED_PHONE_KEY)).toBeNull()
+
+    clearAuthTokens()
+    expect(getVerifiedPhone('user-1')).toBeNull()
+    expect(window.localStorage.getItem(VERIFIED_PHONE_KEY)).toBeNull()
+  })
+
+  it('兼容旧标签页的临时手机号并迁移到跨标签页缓存', () => {
+    window.sessionStorage.setItem(VERIFIED_PHONE_KEY, JSON.stringify({ userId: 'user-1', phone: '13800138000' }))
+
+    expect(getVerifiedPhone('user-1')).toBe('13800138000')
+    expect(window.localStorage.getItem(VERIFIED_PHONE_KEY)).not.toBeNull()
+    expect(window.sessionStorage.getItem(VERIFIED_PHONE_KEY)).toBeNull()
   })
 
   it('只把 refresh token 写入 localStorage，access token 保留在内存', () => {

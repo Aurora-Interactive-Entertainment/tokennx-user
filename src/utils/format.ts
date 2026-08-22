@@ -1,6 +1,6 @@
 import type { UsageRecord } from '@/data/app-state'
 import type { ModelRecord } from '@/data/models'
-import { getActiveLanguage, getActiveLocale } from '@/i18n'
+import i18n, { getActiveLocale } from '@/i18n'
 
 export const MONEY_DISPLAY_DECIMAL_PLACES = 3
 export type MoneyValue = string | number | null | undefined
@@ -102,8 +102,8 @@ export function isZeroYuan(value: MoneyValue): boolean {
   return normalized !== null && /^[-+]?0(?:\.0*)?$/.test(normalized)
 }
 
-export function formatSignedYuan(value: MoneyValue, direction: 'income' | 'expense' | 'adjustment'): string {
-  const formatted = formatYuan(value)
+export function formatSignedYuan(value: MoneyValue, direction: 'income' | 'expense' | 'adjustment', digits = MONEY_DISPLAY_DECIMAL_PLACES): string {
+  const formatted = formatYuan(value, digits)
   if (formatted === '--' || direction === 'adjustment') return formatted
   return `${direction === 'income' ? '+' : '-'}${formatted}`
 }
@@ -114,7 +114,9 @@ export function formatSignedYuanExact(value: MoneyValue, direction: 'income' | '
   return `${direction === 'income' ? '+' : '-'}${formatted}`
 }
 
-export type ApiTimeValue = string | number
+export type ApiTimestamp = number
+// 兼容旧缓存和测试数据的字符串时间；后端接口字段应使用 ApiTimestamp。
+export type ApiTimeValue = string | ApiTimestamp
 
 const UNIX_TIMESTAMP_MILLISECONDS_THRESHOLD = 1_000_000_000_000
 const LOCAL_DATE_INPUT_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/
@@ -122,6 +124,10 @@ const API_TIME_FIELD_SUFFIXES = ['_at', '_from', '_until', '_start', '_end', '_t
 
 export function isApiTimeValue(value: unknown): value is ApiTimeValue {
   return typeof value === 'string' || typeof value === 'number'
+}
+
+export function isApiTimestamp(value: unknown): value is ApiTimestamp {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= UNIX_TIMESTAMP_MILLISECONDS_THRESHOLD
 }
 
 export function isApiTimeFieldName(fieldName: string): boolean {
@@ -144,16 +150,16 @@ export function shiftLocalDate(date: Date, days: number): Date {
   return result
 }
 
-export function localDateToISOString(value: string, endOfDay = false): string | undefined {
+export function localDateToTimestamp(value: string, endOfDay = false): ApiTimestamp | undefined {
   const match = value.trim().match(LOCAL_DATE_INPUT_PATTERN)
   if (!match) return undefined
   const year = Number(match[1])
   const month = Number(match[2])
   const day = Number(match[3])
   const date = new Date(year, month - 1, day, endOfDay ? 23 : 0, endOfDay ? 59 : 0, endOfDay ? 59 : 0, endOfDay ? 999 : 0)
-  // 中文：日期输入代表用户本地日历日期，先在本地构造边界，再转换为 UTC ISO 时间。
+  // 日期输入代表用户本地自然日。Date#getTime 直接返回对应 UTC 时刻的毫秒值，禁止额外加减时区偏移。
   if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return undefined
-  return date.toISOString()
+  return date.getTime()
 }
 
 function parseUnixTimestamp(value: number): Date {
@@ -171,6 +177,19 @@ function parseApiTime(value: ApiTimeValue): Date {
   const normalized = trimmed.includes('T') ? trimmed : trimmed.replace(' ', 'T')
   const hasTimezone = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(normalized)
   return new Date(hasTimezone ? normalized : `${normalized}Z`)
+}
+
+export function apiTimeToMilliseconds(value: unknown): ApiTimestamp | null {
+  if (!isApiTimeValue(value)) return null
+  const date = parseApiTime(value)
+  const milliseconds = date.getTime()
+  return Number.isSafeInteger(milliseconds) && milliseconds >= 0 ? milliseconds : null
+}
+
+export function apiTimeToDate(value: ApiTimeValue | null | undefined): Date | null {
+  if (value === null || value === undefined) return null
+  const milliseconds = apiTimeToMilliseconds(value)
+  return milliseconds === null ? null : new Date(milliseconds)
 }
 
 function apiTimeFallback(value: ApiTimeValue): string {
@@ -221,14 +240,13 @@ export function modelPriceSummary(model: ModelRecord): string {
   const formatPresent = (value: number | undefined): string | null => formatDecimal(value)
   const input = formatPresent(price.input)
   const output = formatPresent(price.output)
-  const english = getActiveLanguage() === 'en-US'
-  if (input !== null && output !== null) return english ? `Input ${input} / Output ${output} ${price.unit}` : `输入 ${input} / 输出 ${output} ${price.unit}`
+  if (input !== null && output !== null) return `${i18n.t('public.priceSummary.input')} ${input} / ${i18n.t('public.priceSummary.output')} ${output} ${price.unit}`
   const standard = formatPresent(price.standard)
   const hd = formatPresent(price.hd)
-  if (standard !== null && hd !== null) return english ? `Standard ${standard} / HD ${hd} ${price.unit}` : `标准 ${standard} / 高清 ${hd} ${price.unit}`
+  if (standard !== null && hd !== null) return `${i18n.t('public.priceSummary.standard')} ${standard} / ${i18n.t('public.priceSummary.hd')} ${hd} ${price.unit}`
   const base = formatPresent(price.base)
   if (base !== null) return `${base} ${price.unit}`
-  return english ? 'Price pending' : '价格待公布'
+  return i18n.t('public.priceSummary.pending')
 }
 
 export function usageTotal(records: UsageRecord[]): { cost: number; inputTokens: number; outputTokens: number; requests: number } {
@@ -244,13 +262,12 @@ export function relativeTime(value: ApiTimeValue): string {
   const parsed = parseApiTime(value)
   if (Number.isNaN(parsed.getTime())) return typeof value === 'number' ? String(value) : value
   const minutes = Math.max(0, Math.floor((Date.now() - parsed.getTime()) / 60000))
-  const english = getActiveLanguage() === 'en-US'
-  if (minutes < 1) return english ? 'Just now' : '刚刚'
-  if (minutes < 60) return english ? `${minutes} minute${minutes === 1 ? '' : 's'} ago` : `${minutes} 分钟前`
+  if (minutes < 1) return i18n.t('common.relativeJustNow')
+  if (minutes < 60) return i18n.t('common.relativeMinutesAgo', { count: minutes })
   const hours = Math.floor(minutes / 60)
-  if (hours < 24) return english ? `${hours} hour${hours === 1 ? '' : 's'} ago` : `${hours} 小时前`
+  if (hours < 24) return i18n.t('common.relativeHoursAgo', { count: hours })
   const days = Math.floor(hours / 24)
-  return english ? `${days} day${days === 1 ? '' : 's'} ago` : `${days} 天前`
+  return i18n.t('common.relativeDaysAgo', { count: days })
 }
 
 export function formatApiTimeField(fieldName: string, value: unknown): string | null {

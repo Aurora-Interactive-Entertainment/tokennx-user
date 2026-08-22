@@ -1,4 +1,5 @@
 import type { ComponentProps, ReactElement, ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import SemiCard from "@douyinfe/semi-ui/lib/es/card";
 import SemiInput from "@douyinfe/semi-ui/lib/es/input";
 import SemiSelect from "@douyinfe/semi-ui/lib/es/select";
@@ -22,10 +23,15 @@ type CompatSelectComponent = {
   OptGroup: typeof SemiSelect.OptGroup;
 };
 
-const CompatSelect = (({ block, style, ...props }: CompatSelectProps) => {
+const CompatSelect = (({ block, style, className, dropdownClassName, ...props }: CompatSelectProps) => {
+  const { i18n } = useTranslation();
   // 兼容旧版 block 语义，同时保留调用方显式传入的其他样式。
   const mergedStyle = block ? { ...style, width: "100%" } : style;
-  return <SemiSelect {...props} style={mergedStyle} />;
+  const mergedClassName = className ? `app-select ${className}` : "app-select";
+  const mergedDropdownClassName = dropdownClassName ? `app-select-dropdown ${dropdownClassName}` : "app-select-dropdown";
+  // Semi Select caches option labels internally. Rebuild it when the active language changes.
+  const languageKey = i18n.resolvedLanguage ?? i18n.language;
+  return <SemiSelect key={languageKey} {...props} className={mergedClassName} dropdownClassName={mergedDropdownClassName} style={mergedStyle} />;
 }) as CompatSelectComponent;
 
 CompatSelect.Option = SemiSelect.Option;

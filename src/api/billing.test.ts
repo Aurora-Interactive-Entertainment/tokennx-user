@@ -6,6 +6,7 @@ import {
   closeBillingPaymentOrder,
   createBillingQuery,
   createBillingPaymentOrder,
+  getAccountOverview,
   getBillingAnalysis,
   getBillingBonusGrants,
   getBillingErrorMessage,
@@ -136,5 +137,20 @@ describe('用户账务 API 客户端', () => {
     expect(getBillingErrorMessage(new Error('offline'))).toBe('账务请求失败，请稍后重试')
     expect(getBillingRequestId(new ApiError('bad', 400, 100001, 'req-1'))).toBe('req-1')
     expect(getBillingRequestId(new Error('bad'))).toBeNull()
+  })
+  it('接入账户总览并按个人或企业账务主体传递查询参数', async () => {
+    const overview = { account_balance_yuan: '128.500000000', invitation_reward_yuan: '20.000000000', invoiceable_amount_yuan: '88.00' }
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => apiResponse(overview))
+
+    await expect(getAccountOverview(PERSONAL_CONTEXT, { accessToken: 'billing-token' })).resolves.toEqual(overview)
+    await getAccountOverview(ENTERPRISE_CONTEXT, { accessToken: 'billing-token' })
+
+    const urls = fetchMock.mock.calls.map(([input]) => new URL(String(input), window.location.origin))
+    expect(urls.map((url) => url.pathname)).toEqual(['/api/user/account/overview', '/api/user/account/overview'])
+    expect(urls[0].searchParams.get('account_type')).toBe('personal')
+    expect(urls[0].searchParams.get('enterprise_id')).toBeNull()
+    expect(urls[1].searchParams.get('account_type')).toBe('enterprise')
+    expect(urls[1].searchParams.get('enterprise_id')).toBe(ENTERPRISE_CONTEXT.enterprise_id)
+    expect(new Headers(fetchMock.mock.calls[0]?.[1]?.headers).get('Authorization')).toBe('Bearer billing-token')
   })
 })

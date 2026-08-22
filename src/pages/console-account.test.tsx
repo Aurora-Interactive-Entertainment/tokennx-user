@@ -65,7 +65,7 @@ function authResult(): AuthResult {
   }
 }
 
-function mockApiKeyApi(config: { expireAccess?: boolean; refreshFails?: boolean; empty?: boolean; limitsDisabled?: boolean; noSelectedModels?: boolean; withoutSecret?: boolean; createdAtAsNumber?: boolean; availableModels?: Array<{ id: string; alias: string; name: string; company: string }> } = {}) {
+function mockApiKeyApi(config: { expireAccess?: boolean; refreshFails?: boolean; empty?: boolean; limitsDisabled?: boolean; noSelectedModels?: boolean; withoutSecret?: boolean; createdAtAsNumber?: boolean; enterpriseItems?: boolean; availableModels?: Array<{ id: string; alias: string; name: string; company: string }> } = {}) {
   const keyItem = structuredClone(KEY_ITEM)
   if (config.limitsDisabled) keyItem.limits.enabled = false
   if (config.withoutSecret) keyItem.secret = ''
@@ -100,7 +100,7 @@ function mockApiKeyApi(config: { expireAccess?: boolean; refreshFails?: boolean;
     if (accessExpired && url.includes('/api/user/api-keys')) return apiResponse(null, 401, 110001, '认证信息无效')
     if (url.includes('/api/user/api-keys') && method === 'GET' && !url.includes('/activity')) {
       const accountType = new URL(url, 'https://saas.example.com').searchParams.get('account_type')
-      return apiResponse({ items: accountType === 'enterprise' ? [] : items, available_models: config.availableModels ?? [{ id: 'gpt-4o', alias: 'gpt-public', name: 'GPT-4o', company: 'OpenAI' }] })
+      return apiResponse({ items: accountType === 'enterprise' && !config.enterpriseItems ? [] : items, available_models: config.availableModels ?? [{ id: 'gpt-4o', alias: 'gpt-public', name: 'GPT-4o', company: 'OpenAI' }] })
     }
     if (url.includes('/api/user/api-keys') && method === 'POST' && !url.includes('/enable') && !url.includes('/disable')) {
       const body = JSON.parse(String(requestOptions?.body)) as { name: string }
@@ -154,7 +154,7 @@ function renderPage(observeLocation = false, initialEntry = '/console/api-keys',
   }
 }
 
-describe('API 密钥管理页面', () => {
+describe('密钥管理页面', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
     clearAuthTokens()
@@ -166,7 +166,7 @@ describe('API 密钥管理页面', () => {
     mockApiKeyApi()
     renderPage()
 
-    expect(await screen.findByRole('heading', { name: 'API 密钥管理' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: '密钥管理' })).toBeInTheDocument()
     expect(screen.queryByText(/安全提示|本地演示模式/)).not.toBeInTheDocument()
     expect(screen.getByText('默认密钥')).toBeInTheDocument()
     expect(screen.getByText('¥12.500')).toBeInTheDocument()
@@ -175,6 +175,7 @@ describe('API 密钥管理页面', () => {
     expect(screen.getAllByTitle('¥100.000000000').length).toBeGreaterThan(0)
     expect(screen.getByText('nx_live_••••abcd')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '复制完整 API 密钥' })).toBeInTheDocument()
+    expect(document.querySelector('.api-keys-console-page')).toHaveClass('api-keys-console-page--personal')
     expect(screen.getByRole('button', { name: /创建 API 密钥/ })).toBeInTheDocument()
     expect(screen.getByRole('group', { name: 'API Key 状态筛选' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: '详情' })).toHaveAttribute('href', '/console/records?keyId=key_demo_default')
@@ -182,6 +183,19 @@ describe('API 密钥管理页面', () => {
     expect(screen.getByRole('button', { name: '禁用 API 密钥' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '删除 API 密钥' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /密钥活动/ })).not.toBeInTheDocument()
+  })
+
+  it('企业空间保留创建人信息', async () => {
+    window.localStorage.setItem('token-nx:user-front:v1', JSON.stringify({
+      activeWorkspaceId: 'enterprise-1',
+      workspaces: [{ id: 'enterprise-1', name: '示例企业', type: 'enterprise', role: 'owner' }],
+    }))
+    mockApiKeyApi({ enterpriseItems: true })
+    renderPage()
+
+    expect(await screen.findByRole('columnheader', { name: '创建人' })).toBeInTheDocument()
+    expect(document.querySelector('.api-keys-console-page')).not.toHaveClass('api-keys-console-page--personal')
+    expect(screen.getByText('接口用户')).toBeInTheDocument()
   })
 
   it('切换空间后清理旧密钥并按企业账务主体重新加载', async () => {
@@ -253,7 +267,7 @@ describe('API 密钥管理页面', () => {
     }))
     renderPage()
 
-    await screen.findByRole('heading', { name: 'API 密钥管理' })
+    await screen.findByRole('heading', { name: '密钥管理' })
     await user.click(screen.getAllByRole('button', { name: /创建 API 密钥/ })[0])
     await user.click(screen.getByRole('radio', { name: '指定模型' }))
 

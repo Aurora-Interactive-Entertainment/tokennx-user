@@ -1,10 +1,13 @@
-import { useEffect, useState } from 'react'
-import { Button, Input, Modal, Toast } from '@douyinfe/semi-ui'
+import { useEffect, useRef, useState } from 'react'
+import Button from '@douyinfe/semi-ui/lib/es/button'
+import Input from '@douyinfe/semi-ui/lib/es/input'
+import Modal from '@/components/app-modal'
 import {
   getProfileErrorMessage,
   isValidContactDestination,
   isValidVerificationCode,
   PROFILE_DEFAULT_RETRY_SECONDS,
+  PROFILE_PHONE_COUNTRY_CODE,
   PROFILE_VERIFICATION_CODE_LENGTH,
   sendProfileContactCode,
   updateProfileContact,
@@ -12,8 +15,11 @@ import {
   type ProfileContact,
   type UserProfile,
 } from '@/api/profile'
-import { isAuthenticationFailure } from '@/api/http'
+import { isApiError, isAuthenticationFailure } from '@/api/http'
+import { saveVerifiedPhone } from '@/auth/token-storage'
 import { useTranslation } from 'react-i18next'
+import { appToast } from './app-toast'
+import './profile-contact-dialog.css'
 
 const COUNTDOWN_INTERVAL_MS = 1000
 const CONTACT_PURPOSES = ['current', 'new'] as const
@@ -30,7 +36,6 @@ interface ContactFormValues {
 interface ContactCodeState {
   loading: boolean
   retryAfter: number
-  destinationMasked: string
 }
 
 type ContactCodeStates = Record<ContactPurpose, ContactCodeState>
@@ -40,21 +45,21 @@ interface ProfileContactDialogProps {
   visible: boolean
   provider: ContactProvider
   currentContact: ProfileContact
+  currentDestination?: string
   accessToken: string | null
-  locale: string
   onAuthFailure: () => void
   onCancel: () => void
   onSaved: (profile: UserProfile) => void
 }
 
-function initialValues(): ContactFormValues {
-  return { currentDestination: '', currentCode: '', newDestination: '', newCode: '' }
+function initialValues(currentDestination = ''): ContactFormValues {
+  return { currentDestination, currentCode: '', newDestination: '', newCode: '' }
 }
 
 function initialCodeStates(): ContactCodeStates {
   return {
-    current: { loading: false, retryAfter: 0, destinationMasked: '' },
-    new: { loading: false, retryAfter: 0, destinationMasked: '' },
+    current: { loading: false, retryAfter: 0 },
+    new: { loading: false, retryAfter: 0 },
   }
 }
 
@@ -66,12 +71,22 @@ function codeField(purpose: ContactPurpose): 'currentCode' | 'newCode' {
   return purpose === 'current' ? 'currentCode' : 'newCode'
 }
 
+function contactRequestErrorMessage(error: unknown): string {
+  return isApiError(error) && error.message ? error.message : getProfileErrorMessage(error)
+}
+
+function getContactModalContainer(): HTMLElement {
+  return document.body
+}
+
 export function ProfileContactDialog(props: ProfileContactDialogProps) {
   const { t } = useTranslation()
-  const [values, setValues] = useState<ContactFormValues>(initialValues)
+  const [values, setValues] = useState<ContactFormValues>(() => initialValues(props.currentDestination))
   const [codeStates, setCodeStates] = useState<ContactCodeStates>(initialCodeStates)
   const [errors, setErrors] = useState<ContactErrors>({})
   const [saving, setSaving] = useState(false)
+  const sendingCode = useRef<Record<ContactPurpose, boolean>>({ current: false, new: false })
+  const savingContact = useRef(false)
 
   const isBound = props.currentContact.bound
   const providerLabel = props.provider === 'phone' ? t('profile.contact.phone') : t('profile.contact.email')
@@ -81,14 +96,18 @@ export function ProfileContactDialog(props: ProfileContactDialogProps) {
 
   useEffect(() => {
     if (!props.visible) return
-    setValues(initialValues())
+    setValues(initialValues(props.currentDestination))
     setCodeStates(initialCodeStates())
     setErrors({})
     setSaving(false)
-  }, [props.visible, props.provider, props.currentContact.bound])
+    sendingCode.current = { current: false, new: false }
+    savingContact.current = false
+  }, [props.visible, props.provider, props.currentContact.bound, props.currentDestination])
+
+  const hasActiveCountdown = CONTACT_PURPOSES.some((purpose) => codeStates[purpose].retryAfter > 0)
 
   useEffect(() => {
-    if (!props.visible || CONTACT_PURPOSES.every((purpose) => codeStates[purpose].retryAfter <= 0)) return
+    if (!props.visible || !hasActiveCountdown) return
     const timer = window.setInterval(() => {
       setCodeStates((previous) => {
         const next = { ...previous }
@@ -100,7 +119,7 @@ export function ProfileContactDialog(props: ProfileContactDialogProps) {
       })
     }, COUNTDOWN_INTERVAL_MS)
     return () => window.clearInterval(timer)
-  }, [codeStates, props.visible])
+  }, [hasActiveCountdown, props.visible])
 
   function updateValue(field: keyof ContactFormValues, value: string): void {
     setValues((previous) => ({ ...previous, [field]: value }))
@@ -127,51 +146,59 @@ export function ProfileContactDialog(props: ProfileContactDialogProps) {
     }
     const newDestinationError = contactDestinationError(values.newDestination)
     if (newDestinationError) nextErrors.newDestination = newDestinationError
+    if (isBound && values.currentDestination.trim() && values.currentDestination.trim() === values.newDestination.trim()) nextErrors.newDestination = t('profile.contact.sameDestination')
     if (!isValidVerificationCode(values.newCode)) nextErrors.newCode = t('profile.contact.codeInvalid', { count: PROFILE_VERIFICATION_CODE_LENGTH })
     setErrors(nextErrors)
     return Object.keys(nextErrors).length === 0
   }
 
   async function sendCode(purpose: ContactPurpose): Promise<void> {
+    if (sendingCode.current[purpose] || codeStates[purpose].retryAfter > 0) return
     const field = destinationField(purpose)
     const error = contactDestinationError(values[field])
     if (error) {
       setErrors((previous) => ({ ...previous, [field]: error }))
       return
     }
+    if (purpose === 'new' && isBound && values.currentDestination.trim() === values.newDestination.trim()) {
+      setErrors((previous) => ({ ...previous, newDestination: t('profile.contact.sameDestination') }))
+      return
+    }
     if (!props.accessToken) {
       props.onAuthFailure()
       return
     }
+    sendingCode.current[purpose] = true
     setCodeStates((previous) => ({ ...previous, [purpose]: { ...previous[purpose], loading: true } }))
     try {
-      const result = await sendProfileContactCode(props.accessToken, {
+      await sendProfileContactCode(props.accessToken, {
         provider_code: props.provider,
         purpose,
         destination: values[field].trim(),
-        locale: props.locale,
+        ...(props.provider === 'phone' ? { country_code: PROFILE_PHONE_COUNTRY_CODE } : {}),
       })
-      const retryAfter = Number.isFinite(result.retry_after_seconds) && result.retry_after_seconds > 0
-        ? Math.ceil(result.retry_after_seconds)
-        : PROFILE_DEFAULT_RETRY_SECONDS
       setCodeStates((previous) => ({
         ...previous,
-        [purpose]: { loading: false, retryAfter, destinationMasked: result.destination_masked },
+        [purpose]: { loading: false, retryAfter: PROFILE_DEFAULT_RETRY_SECONDS },
       }))
-      Toast.success(t('profile.contact.codeSent', { destination: result.destination_masked }))
+      appToast.success(t('profile.contact.codeSent'))
     } catch (error) {
       if (isAuthenticationFailure(error)) props.onAuthFailure()
-      else Toast.error(getProfileErrorMessage(error))
+      else appToast.error(contactRequestErrorMessage(error))
       setCodeStates((previous) => ({ ...previous, [purpose]: { ...previous[purpose], loading: false } }))
+    } finally {
+      sendingCode.current[purpose] = false
     }
   }
 
   async function saveContact(): Promise<void> {
+    if (savingContact.current) return
     if (!validateForm()) return
     if (!props.accessToken) {
       props.onAuthFailure()
       return
     }
+    savingContact.current = true
     setSaving(true)
     try {
       const request = isBound
@@ -183,12 +210,14 @@ export function ProfileContactDialog(props: ProfileContactDialogProps) {
         }
         : { new_destination: values.newDestination.trim(), new_code: values.newCode.trim() }
       const profile = await updateProfileContact(props.accessToken, props.provider, request)
-      Toast.success(t('profile.contact.saved'))
+      if (props.provider === 'phone') saveVerifiedPhone(profile.id, values.newDestination)
+      appToast.success(t('profile.contact.saved'))
       props.onSaved(profile)
     } catch (error) {
       if (isAuthenticationFailure(error)) props.onAuthFailure()
-      else Toast.error(getProfileErrorMessage(error))
+      else appToast.error(contactRequestErrorMessage(error))
     } finally {
+      savingContact.current = false
       setSaving(false)
     }
   }
@@ -198,7 +227,6 @@ export function ProfileContactDialog(props: ProfileContactDialogProps) {
     const state = codeStates[purpose]
     const label = purpose === 'current' ? t('profile.contact.currentCode') : t('profile.contact.newCode')
     const sendLabel = purpose === 'current' ? t('profile.contact.sendCurrent') : t('profile.contact.sendNew')
-    const destinationMasked = state.destinationMasked ? ` · ${state.destinationMasked}` : ''
     return (
       <div className="profile-contact-code-row">
         <label className="profile-field profile-field--code" htmlFor={`profile-${props.provider}-${field}`}>
@@ -219,41 +247,44 @@ export function ProfileContactDialog(props: ProfileContactDialogProps) {
           theme="outline"
           size="small"
           loading={state.loading}
-          disabled={state.loading || state.retryAfter > 0}
+          disabled={state.loading || state.retryAfter > 0 || (purpose === 'current' && props.provider === 'phone' && !values.currentDestination)}
           onClick={() => { void sendCode(purpose) }}
         >
           {state.retryAfter > 0 ? t('profile.contact.retryAfter', { seconds: state.retryAfter }) : sendLabel}
         </Button>
-        {destinationMasked ? <span className="profile-code-destination">{destinationMasked}</span> : null}
       </div>
     )
   }
 
   return (
     <Modal
+      className="profile-contact-modal"
+      centered
       title={title}
       visible={props.visible}
-      width={560}
+      width={528}
+      zIndex={1400}
+      getPopupContainer={getContactModalContainer}
       maskClosable={!saving}
       closable={!saving}
       footer={
         <div className="profile-dialog-footer">
           <Button className="profile-secondary-button" theme="outline" disabled={saving} onClick={props.onCancel}>{t('profile.contact.cancel')}</Button>
-          <Button className="profile-primary-button" theme="solid" type="primary" loading={saving} onClick={() => { void saveContact() }}>{t('profile.contact.save')}</Button>
+          <Button className="profile-primary-button" theme="solid" type="primary" loading={saving} disabled={saving} onClick={() => { void saveContact() }}>{t('profile.contact.save')}</Button>
         </div>
       }
       onCancel={props.onCancel}
     >
-      <div className="profile-contact-dialog">
-        <p className="profile-dialog-intro">{providerLabel}</p>
+      <div className={`profile-contact-dialog profile-contact-dialog--${props.provider} ${isBound ? 'is-bound' : 'is-unbound'}`}>
         {isBound ? (
-          <section className="profile-dialog-group">
+          <section className="profile-dialog-group profile-dialog-group--current">
             <label className="profile-field" htmlFor={`profile-${props.provider}-current-destination`}>
               <span>{t('profile.contact.currentDestination')}</span>
               <Input
                 id={`profile-${props.provider}-current-destination`}
                 value={values.currentDestination}
                 onChange={(value) => updateValue('currentDestination', value)}
+                readonly={props.provider === 'phone'}
                 placeholder={t('profile.contact.currentDestinationPlaceholder')}
                 aria-invalid={Boolean(errors.currentDestination)}
                 aria-describedby={errors.currentDestination ? `profile-${props.provider}-current-destination-error` : undefined}
@@ -262,8 +293,19 @@ export function ProfileContactDialog(props: ProfileContactDialogProps) {
             </label>
             {renderCodeControl('current')}
           </section>
-        ) : null}
-        <section className="profile-dialog-group">
+        ) : (
+          <section className="profile-dialog-group profile-dialog-group--status">
+            <label className="profile-field" htmlFor={`profile-${props.provider}-unbound-status`}>
+              <span>{providerLabel}</span>
+              <Input
+                id={`profile-${props.provider}-unbound-status`}
+                value={t(props.provider === 'email' ? 'profile.contact.unboundEmail' : 'profile.contact.unbound')}
+                readonly
+              />
+            </label>
+          </section>
+        )}
+        <section className="profile-dialog-group profile-dialog-group--new">
           <label className="profile-field" htmlFor={`profile-${props.provider}-new-destination`}>
             <span>{t('profile.contact.newDestination')}</span>
             <Input

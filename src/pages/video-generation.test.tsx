@@ -82,7 +82,7 @@ function activeApiKey(overrides: Partial<UserApiKey> = {}): UserApiKey {
   return {
     id: 'key-video-test', name: '视频联调密钥', masked_key: 'nx_live_••••••••test', secret: 'nx_live_video_secret', status: 'active', scope: 'all', model_ids: null, models: [], tags: [], billing_source: 'balance',
     limits: { enabled: true, cost_limit_yuan: null, used_amount_yuan: '0', rpm: null, tpm: null, concurrency: null },
-    creator: { id: 'user-video-test', display_name: '测试用户', masked_phone: '138****0000' }, created_at: '2026-07-30T10:00:00Z', expires_at: null, last_used_at: null,
+    creator: { id: 'user-video-test', display_name: '测试用户', masked_phone: '138****0000' }, created_at: Date.parse('2026-07-30T10:00:00Z'), expires_at: null, last_used_at: null,
     ...overrides,
   }
 }
@@ -107,7 +107,7 @@ describe('视频生成页面', () => {
   beforeEach(() => {
     window.localStorage.clear()
     vi.clearAllMocks()
-    vi.mocked(useUserModels).mockReturnValue({ models: [videoModel(), videoModel({ id: 'other-video', code: 'other-video', alias: 'other-video-public', name: 'Other Video' })], loading: false, error: '', refresh: vi.fn() })
+    vi.mocked(useUserModels).mockReturnValue({ models: [videoModel(), videoModel({ id: 'other-video', code: 'other-video', alias: 'other-video-public', name: 'Other Video' })], activities: [], total: null, page: null, pageSize: null, loading: false, error: '', refresh: vi.fn() })
     vi.mocked(getUserApiKeys).mockResolvedValue({ items: [activeApiKey()], available_models: [] })
   })
 
@@ -176,5 +176,14 @@ describe('视频生成页面', () => {
     expect(screen.getByLabelText('视频提示词')).toHaveValue('')
     expect(screen.getByText('准备开始生成')).toBeInTheDocument()
     expect(document.querySelector('.video-history-panel')).toBeInTheDocument()
+  })
+
+  it('工作区缺少可用密钥时在结果区内显示提示', async () => {
+    vi.mocked(getUserApiKeys).mockResolvedValue({ items: [], available_models: [] })
+    renderVideoPage()
+
+    await waitFor(() => expect(document.querySelector('.video-workspace-notice')).toBeInTheDocument())
+    expect(document.querySelector('.video-workspace.experience-workbench')).toBeInTheDocument()
+    expect(document.querySelector('.video-console-page > .banner-notice')).toBeNull()
   })
 })

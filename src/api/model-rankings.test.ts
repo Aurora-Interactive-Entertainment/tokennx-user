@@ -1,0 +1,76 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { getModelUsageLeaderboard, getRecentModelUsage } from './model-rankings'
+
+function response(data: unknown): Response {
+  return new Response(JSON.stringify({ code: 0, msg: 'success', data }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+}
+
+describe('公开模型用量排名接口', () => {
+  beforeEach(() => vi.restoreAllMocks())
+
+  it('按指定周期查询排行榜并保留空的对比涨跌率', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(response({
+      period: 'month',
+      started_at: Date.UTC(2026, 7, 1),
+      ended_at: Date.UTC(2026, 7, 13, 8),
+      previous_from: Date.UTC(2026, 6, 1),
+      previous_to: Date.UTC(2026, 7, 1),
+      items: [{ rank: 1, code: 'gpt-test', name: '测试模型', total_tokens: 120000, request_count: 320, previous_tokens: 0, change_rate: null }],
+    }))
+
+    const result = await getModelUsageLeaderboard('month')
+
+    expect(String(fetchMock.mock.calls[0][0])).toContain('/api/homepage/model-usage/leaderboard?period=month')
+    expect(result.items[0]).toMatchObject({ code: 'gpt-test', total_tokens: 120000, change_rate: null })
+  })
+
+  it('保留后端返回的毫秒时间戳', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(response({
+      period: 'day',
+      started_at: 1786579200000,
+      ended_at: 1786620082973,
+      previous_from: 1786492800000,
+      previous_to: 1786579200000,
+      items: [{ rank: 1, code: 'model-1', name: '模型 1', total_tokens: 100, request_count: 1, previous_tokens: 80, change_rate: 25 }],
+    }))
+
+    const result = await getModelUsageLeaderboard('day')
+
+    expect(result.started_at).toBe(1786579200000)
+    expect(result.ended_at).toBe(1786620082973)
+  })
+
+  it('将后端省略的涨跌率视为暂无对比', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(response({
+      period: 'month',
+      started_at: 1785542400000,
+      ended_at: 1786706814035,
+      previous_from: 1782864000000,
+      previous_to: 1785542400000,
+      items: [{
+        rank: 3,
+        code: 'model.01kzx9ed4d0jypzmkp94q9w03c',
+        name: 'kimi-k3',
+        total_tokens: 133503,
+        request_count: 41,
+        previous_tokens: 0,
+      }],
+    }))
+
+    const result = await getModelUsageLeaderboard('month')
+
+    expect(result.items[0].change_rate).toBeNull()
+  })
+
+  it('读取最近周及逐周模型用量', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(response({
+      weeks: ['2026-03-02', '2026-03-09'],
+      items: [{ rank: 1, code: 'gpt-test', name: '测试模型', total_tokens: 120000, request_count: 320, weekly_usage: [{ week_start: 1772409600000, total_tokens: 50000, request_count: 120 }] }],
+    }))
+
+    const result = await getRecentModelUsage()
+
+    expect(result.weeks).toEqual(['2026-03-02', '2026-03-09'])
+    expect(result.items[0].weekly_usage).toEqual([{ week_start: 1772409600000, total_tokens: 50000, request_count: 120 }])
+  })
+})
