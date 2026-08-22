@@ -5,7 +5,7 @@ import { Link, useSearchParams, useNavigate } from 'react-router'
 import Button from '@douyinfe/semi-ui/lib/es/button'
 import Modal from '@/components/app-modal'
 import Toast from '@douyinfe/semi-ui/lib/es/toast'
-import { IconAlertTriangle, IconArrowRight, IconCode, IconCopy, IconEdit, IconSearch, IconSend, IconSetting, IconStop } from '@douyinfe/semi-icons'
+import { IconAlertTriangle, IconArrowRight, IconChevronDown, IconCode, IconCopy, IconEdit, IconSearch, IconSend, IconSetting, IconStop } from '@douyinfe/semi-icons'
 import { EmptyPanel, ModelCard, ModelLogo, PageTitle } from '@/components/common'
 import { ModelDetailDrawer } from '@/components/model-detail-drawer'
 import { MarkdownContent } from '@/components/markdown-content'
@@ -17,13 +17,13 @@ import { findModelInList, mapUserModels, modelAlias, type ModelRecord } from '@/
 import type { UserModelModality } from '@/api/user-models'
 import { useUserModelDetail, useUserModels } from '@/data/user-models'
 import { ModelRuntimeError, streamChatCompletion, type ChatCompletionMessage } from '@/api/model-runtime'
-import { normalizeQuickstartLanguage, normalizeQuickstartProtocol, quickstartCodeSample, QUICKSTART_API_BASE_URL, type QuickstartLanguage, type QuickstartProtocol } from '@/utils/quickstart'
 import { formatNumber } from '@/utils/format'
 import { canStartPlaygroundRound, limitPlaygroundPrompt, playgroundCharacterCount, PLAYGROUND_MAX_INPUT_CHARACTERS } from '@/utils/playground'
 import { clearAuthTokens, getAccessToken } from '@/auth/token-storage'
 import { invalidateAuth } from '@/store/auth-slice'
 import { useAppDispatch } from '@/store/hooks'
 import { DEFAULT_MODEL_PAGE_SIZE, MODEL_CATEGORIES, MODEL_PAGE_SIZES, MODEL_PRICE_FILTERS, MODEL_SORTS, filterAndSortModels, modelCategoryCounts, paginateModels, type ModelCategory, type ModelPriceFilter, type ModelSort } from '@/utils/model-filters'
+import { QuickstartGuide } from '@/components/quickstart-guide'
 
 const FIRST_MODEL_PAGE = 1
 
@@ -534,74 +534,8 @@ export function PlaygroundPage() {
 
 
 
-export function QuickstartPage() {
-  const { t } = useTranslation()
-  const [searchParams, setSearchParams] = useSearchParams()
-  const { models, loading: modelsLoading, error: modelsError, refresh: refreshModels } = useUserModels()
-  const textModels = models.filter((item) => item.modality === 'text' && modelAlias(item))
-  const requestedModelAlias = searchParams.get('model')
-  const resolvedRequestedModel = findModelInList(models, requestedModelAlias)
-  const requestedModel = resolvedRequestedModel && modelAlias(resolvedRequestedModel) ? resolvedRequestedModel : undefined
-  const firstModel = requestedModel ?? textModels[0]
-  const [protocol, setProtocol] = useState<QuickstartProtocol>(normalizeQuickstartProtocol(searchParams.get('protocol')))
-  const [language, setLanguage] = useState<QuickstartLanguage>(normalizeQuickstartLanguage(searchParams.get('language')))
-  const model = firstModel
-
-  useEffect(() => {
-    const alias = firstModel ? modelAlias(firstModel) : ''
-    if (!alias || (requestedModel && requestedModelAlias === alias)) return
-    setSearchParams({ model: alias, protocol, language }, { replace: true })
-  }, [firstModel, language, protocol, requestedModel, requestedModelAlias, setSearchParams])
-
-  function syncContext(nextModelAlias: string, nextProtocol = protocol, nextLanguage = language): void {
-    setSearchParams({ model: nextModelAlias, protocol: nextProtocol, language: nextLanguage })
-  }
-
-  function copyText(value: string, successMessage: string): void {
-    if (!navigator.clipboard) { Toast.error(t('console.common.copyFailed')); return }
-    void navigator.clipboard.writeText(value).then(() => Toast.success(successMessage)).catch(() => Toast.error(t('console.common.copyFailed')))
-  }
-
-  function copyCode(): void { copyText(code, t('console.quickstart.copySuccess')) }
-
-  function copyBaseUrl(): void { copyText(QUICKSTART_API_BASE_URL, t('console.quickstart.baseUrlCopied')) }
-
-  if (modelsLoading) return <div className="quickstart-page"><PageTitle title={t('console.quickstart.title')} description={t('console.quickstart.description')} /><EmptyPanel title={t('console.common.loadingModels')} description={t('console.common.readingModels')} /></div>
-  if (modelsError) return <div className="quickstart-page"><PageTitle title={t('console.quickstart.title')} description={t('console.quickstart.description')} /><EmptyPanel title={t('console.common.modelCatalogFailed')} description={modelsError} action={<Button theme="outline" onClick={refreshModels}>{t('console.common.reload')}</Button>} /></div>
-  if (!model) return <div className="quickstart-page"><PageTitle title={t('console.quickstart.title')} description={t('console.quickstart.description')} /><EmptyPanel title={t('console.common.noModels')} description={t('console.quickstart.noModelsHint')} action={<Button theme="outline" onClick={refreshModels}>{t('console.common.reload')}</Button>} /></div>
-
-  const selectableModels = requestedModel && requestedModel.modality !== 'text' ? [requestedModel, ...textModels.filter((item) => item.id !== requestedModel.id)] : textModels
-  const supportsCodeSample = model.modality === 'text'
-  const code = supportsCodeSample
-    ? quickstartCodeSample({ protocol, language, modelAlias: modelAlias(model) })
-    : [t('console.quickstart.noSampleCodeLine1', { model: model.name }), t('console.quickstart.noSampleCodeLine2', { alias: modelAlias(model) }), t('console.quickstart.noSampleCodeLine3')].join('\n')
-  const contextQuery = 'model=' + encodeURIComponent(modelAlias(model)) + '&protocol=' + protocol + '&language=' + language
-
-  return (
-    <div className="quickstart-page">
-      <PageTitle title={t('console.quickstart.title')} description={t('console.quickstart.styleCodeDescription', { model: model.name, style: protocol === 'openai' ? t('console.quickstart.openaiStyle') : t('console.quickstart.claudeStyle') })} />
-      <div className="quickstart-connection-notice"><strong>{t('console.quickstart.connectionReady')}</strong><span>{t('console.quickstart.connectionHint')}</span></div>
-      {!supportsCodeSample ? <div className="quickstart-context-notice"><strong>{t('console.quickstart.noSampleTitle', { model: model.name })}</strong><span>{t('console.quickstart.noSampleHint')}</span></div> : null}
-      <nav className="quickstart-activation-path" aria-label={t('console.quickstart.activationSteps')}>
-        <Link className="quickstart-activation-step" to="/console/models"><span className="quickstart-step-number">1</span><span><strong>{t('console.quickstart.chooseModel')}</strong><small>{t('console.quickstart.confirmCapability')}</small></span></Link>
-        <Link className="quickstart-activation-step" to={'/console/api-keys?model=' + encodeURIComponent(modelAlias(model)) + '&return=' + encodeURIComponent('/console/quickstart?' + contextQuery)}><span className="quickstart-step-number">2</span><span><strong>{t('console.quickstart.createKey')}</strong><small>{t('console.quickstart.scopeAccess')}</small></span></Link>
-        <span className="quickstart-activation-step"><span className="quickstart-step-number">3</span><span><strong>{t('console.quickstart.copyCode')}</strong><small>{t('console.quickstart.replaceKey')}</small></span></span>
-      </nav>
-      <div className="quickstart-code-workspace">
-        <aside className="quickstart-code-controls" aria-label={t('console.quickstart.sampleOptions')}>
-          <div className="quickstart-control-group"><label htmlFor="quickstart-model">{t('console.quickstart.model')}</label><Select id="quickstart-model" value={modelAlias(model)} onChange={(value) => { syncContext(String(value)) }} block>{selectableModels.map((item) => <Select.Option key={item.id} value={modelAlias(item)}>{item.modality === 'text' ? t('console.playground.modelWithProvider', { name: item.name, company: item.company, alias: modelAlias(item) }) : t('console.playground.modelWithNoSample', { name: item.name, alias: modelAlias(item) })}</Select.Option>)}</Select></div>
-          <div className="quickstart-control-group"><span className="quickstart-control-label">{t('console.quickstart.apiStyle')}</span><div className="quickstart-segmented" role="group" aria-label={t('console.quickstart.apiStyle')}><button className={protocol === 'openai' ? 'active' : ''} type="button" aria-pressed={protocol === 'openai'} disabled={!supportsCodeSample} onClick={() => { setProtocol('openai'); syncContext(modelAlias(model), 'openai') }}>{t('console.quickstart.openai')}</button><button className={protocol === 'anthropic' ? 'active' : ''} type="button" aria-pressed={protocol === 'anthropic'} disabled={!supportsCodeSample} onClick={() => { setProtocol('anthropic'); syncContext(modelAlias(model), 'anthropic') }}>{t('console.quickstart.claude')}</button></div></div>
-          <div className="quickstart-control-group"><span className="quickstart-control-label">{t('console.quickstart.language')}</span><div className="quickstart-segmented quickstart-segmented--language" role="group" aria-label={t('console.quickstart.codeSampleLanguage')}><button className={language === 'python' ? 'active' : ''} type="button" aria-pressed={language === 'python'} disabled={!supportsCodeSample} onClick={() => { setLanguage('python'); syncContext(modelAlias(model), protocol, 'python') }}>{t('console.quickstart.python')}</button><button className={language === 'node' ? 'active' : ''} type="button" aria-pressed={language === 'node'} disabled={!supportsCodeSample} onClick={() => { setLanguage('node'); syncContext(modelAlias(model), protocol, 'node') }}>Node.js</button><button className={language === 'curl' ? 'active' : ''} type="button" aria-pressed={language === 'curl'} disabled={!supportsCodeSample} onClick={() => { setLanguage('curl'); syncContext(modelAlias(model), protocol, 'curl') }}>{t('console.quickstart.curl')}</button></div></div>
-          <div className="quickstart-endpoint-list"><div className="quickstart-endpoint-item"><span>{t('console.quickstart.apiBaseUrl')}</span><div className="quickstart-endpoint-value"><code>{QUICKSTART_API_BASE_URL}</code><Button theme="borderless" size="small" icon={<IconCopy />} aria-label={t('console.quickstart.copyBaseUrl')} title={t('console.quickstart.copyBaseUrl')} onClick={copyBaseUrl} /></div></div><div className="quickstart-endpoint-item"><span>API Key</span><code>YOUR_TOKEN_NX_API_KEY</code></div></div>
-          <div className="quickstart-actions"><Link className="btn btn-secondary" to={'/console/playground?model=' + encodeURIComponent(modelAlias(model))}>{t('console.quickstart.onlineTest')}</Link><Link className="btn btn-secondary" to={'/console/models?model=' + encodeURIComponent(modelAlias(model))}>{t('console.quickstart.modelDetails')}</Link></div>
-        </aside>
-        <section className="quickstart-code-panel" aria-labelledby="quickstart-code-title">
-          <div className="quickstart-code-panel-head"><strong id="quickstart-code-title">{supportsCodeSample ? t('console.quickstart.executableSample') : t('console.quickstart.samplePending')}</strong><Button theme="outline" className="btn btn-secondary btn-sm" onClick={copyCode} disabled={!supportsCodeSample}>{t('console.quickstart.copySample')}</Button></div>
-          <pre className="quickstart-code-block"><code>{code}</code></pre>
-        </section>
-      </div>
-    </div>
-  )
-}
-
 export { VideoPage } from './video-generation'
+
+export function QuickstartPage() {
+  return <QuickstartGuide />
+}
