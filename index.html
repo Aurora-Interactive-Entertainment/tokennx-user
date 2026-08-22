@@ -4,7 +4,30 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#1a1b1d" />
-    <title>Token NX</title>
+    <meta name="description" content="Token NX 是合规的企业级大型 AI 算力聚合平台，聚合多家大模型算力，提供优质、低价的 API 接入与企业管理能力。" data-seo-managed="true" />
+    <meta name="robots" content="index, follow" data-seo-managed="true" />
+    <link rel="canonical" href="https://tokennx.com/" data-seo-managed="true" />
+    <link rel="alternate" hreflang="zh-CN" href="https://tokennx.com/" data-seo-managed="true" />
+    <link rel="alternate" hreflang="en" href="https://tokennx.com/en/" data-seo-managed="true" />
+    <link rel="alternate" hreflang="x-default" href="https://tokennx.com/" data-seo-managed="true" />
+    <meta property="og:type" content="website" data-seo-managed="true" />
+    <meta property="og:site_name" content="Token NX" data-seo-managed="true" />
+    <meta property="og:locale" content="zh_CN" data-seo-managed="true" />
+    <meta property="og:locale:alternate" content="en_US" data-seo-managed="true" />
+    <meta property="og:title" content="Token NX - 合规的企业级 AI 算力聚合平台" data-seo-managed="true" />
+    <meta property="og:description" content="Token NX 是合规的企业级大型 AI 算力聚合平台，聚合多家大模型算力，提供优质、低价的 API 接入与企业管理能力。" data-seo-managed="true" />
+    <meta property="og:url" content="https://tokennx.com/" data-seo-managed="true" />
+    <meta property="og:image" content="https://tokennx.com/og/share.png" data-seo-managed="true" />
+    <meta property="og:image:alt" content="合规的企业级大型 AI 算力聚合平台" data-seo-managed="true" />
+    <meta name="twitter:card" content="summary_large_image" data-seo-managed="true" />
+    <meta name="twitter:title" content="Token NX - 合规的企业级 AI 算力聚合平台" data-seo-managed="true" />
+    <meta name="twitter:description" content="Token NX 是合规的企业级大型 AI 算力聚合平台，聚合多家大模型算力，提供优质、低价的 API 接入与企业管理能力。" data-seo-managed="true" />
+    <meta name="twitter:image" content="https://tokennx.com/og/share.png" data-seo-managed="true" />
+    <meta name="twitter:image:alt" content="合规的企业级大型 AI 算力聚合平台" data-seo-managed="true" />
+    <title>Token NX - 合规的企业级 AI 算力聚合平台</title>
+    <script type="application/ld+json" data-seo-managed="true">
+      {"@context":"https://schema.org","@graph":[{"@type":"Organization","@id":"https://tokennx.com/#organization","name":"Token NX","url":"https://tokennx.com","logo":"https://tokennx.com/logo.png","description":"Token NX 是合规的企业级大型 AI 算力聚合平台，提供用量计费、调用记录和密钥管理。","email":"legal@tokennx.com"},{"@type":"WebSite","@id":"https://tokennx.com/#website","url":"https://tokennx.com/","name":"Token NX","description":"合规的企业级大型 AI 算力聚合平台","inLanguage":["zh-CN","en"],"publisher":{"@id":"https://tokennx.com/#organization"}},{"@type":"Service","@id":"https://tokennx.com/#service","name":"Token NX","serviceType":"合规的企业级大型 AI 算力聚合平台","description":"Token NX 聚合多家大模型的算力，为开发者和企业提供系统级、企业级的 AI 算力服务，以优质服务和低廉价格降低 AI 使用成本。","url":"https://tokennx.com/","provider":{"@id":"https://tokennx.com/#organization"},"termsOfService":"https://tokennx.com/terms/"}]}
+    </script>
     <link rel="icon" type="image/png" href="./src/assets/figma-header/X-16.png" />
     <script>
       (() => {
@@ -115,6 +138,17 @@
         min-height: 100vh;
       }
 
+      /* 中文：静态 GEO 摘要供无 JS 爬虫读取，不改变正常首屏布局。 */
+      .static-seo-summary {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+        clip-path: inset(50%);
+        white-space: nowrap;
+      }
+
       /* 中文：静态首屏只展示品牌 Logo 呼吸灯，避免 React 接管前仍出现旧的进度条。 */
       .app-loading-shell {
         position: fixed;
@@ -204,6 +238,7 @@
   </head>
   <body>
     <div id="root">
+      <script src="/seo-static.js"></script>
       <div id="app-mount"></div>
       <div id="boot-loader" class="app-loading-shell" role="status" aria-label="正在加载 Token NX">
         <div class="app-loading-shell__content">

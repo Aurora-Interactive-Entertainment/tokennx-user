@@ -7,6 +7,7 @@ import { AppStoreProvider } from '@/data/app-state'
 import { hydrateAuth, invalidateAuth, synchronizeAuthenticatedUser } from '@/store/auth-slice'
 import { useAppDispatch, useAppSelector } from '@/store/hooks'
 import { subscribeAuthTokenChanges } from '@/auth/token-storage'
+import { SeoManager } from '@/seo/site-seo'
 
 const loadPublicPages = () => import('@/pages/public')
 const loadInvitationPage = () => import('@/pages/join')
@@ -23,6 +24,8 @@ const DocsPage = lazy(() => loadPublicPages().then(({ DocsPage }) => ({ default:
 const PricingPage = lazy(() => loadPublicPages().then(({ PricingPage }) => ({ default: PricingPage })))
 const StatusPage = lazy(() => loadPublicPages().then(({ StatusPage }) => ({ default: StatusPage })))
 const AboutPage = lazy(() => loadPublicPages().then(({ AboutPage }) => ({ default: AboutPage })))
+const ContactPage = lazy(() => loadPublicPages().then(({ ContactPage }) => ({ default: ContactPage })))
+const QuickstartPublicPage = lazy(() => loadPublicPages().then(({ QuickstartPublicPage }) => ({ default: QuickstartPublicPage })))
 const LegalPage = lazy(() => loadPublicPages().then(({ LegalPage }) => ({ default: LegalPage })))
 const LoginPage = lazy(() => loadPublicPages().then(({ LoginPage }) => ({ default: LoginPage })))
 const JoinPage = lazy(() => loadInvitationPage().then(({ JoinPage }) => ({ default: JoinPage })))
@@ -85,6 +88,14 @@ export function AuthBootstrap({ children }: { children: ReactNode }) {
   return children
 }
 
+function EnglishLocaleRoute() {
+  const { i18n } = useTranslation()
+  useEffect(() => {
+    if (!i18n.language.startsWith('en')) void i18n.changeLanguage('en-US')
+  }, [i18n])
+  return <Outlet />
+}
+
 function NotFoundPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -128,6 +139,7 @@ function BootReadyWatcher({ onBootReady }: { onBootReady: () => void }) {
 export default function App({ onBootReady }: { onBootReady: () => void }) {
   return (
     <BrowserRouter>
+      <SeoManager />
       <ScrollToTop />
       <AppStoreProvider>
         <AuthBootstrap>
@@ -144,6 +156,8 @@ export default function App({ onBootReady }: { onBootReady: () => void }) {
               <Route path="/pricing" element={<PricingPage />} />
               <Route path="/status" element={<StatusPage />} />
               <Route path="/about" element={<AboutPage />} />
+              <Route path="/contact" element={<ContactPage />} />
+              <Route path="/quickstart" element={<QuickstartPublicPage />} />
               <Route path="/news" element={<NewsListPage />} />
               <Route path="/news/:id" element={<NewsDetailPage />} />
               <Route path="/terms" element={<LegalPage kind="terms" />} />
@@ -152,6 +166,25 @@ export default function App({ onBootReady }: { onBootReady: () => void }) {
               <Route path="/login" element={<LoginPage />} />
               <Route path="/join" element={<JoinPage />} />
               <Route path="/invite" element={<InviteLandingPage />} />
+              <Route path="/en" element={<EnglishLocaleRoute />}>
+                <Route index element={<HomePage onInitialScoreboardReady={onBootReady} />} />
+                <Route path="models" element={<ModelsPublicPage />} />
+                <Route path="models/:modelId" element={<ModelDetailPage />} />
+                <Route path="rankings" element={<RankingsPage />} />
+                <Route path="apps" element={<AppsPage />} />
+                <Route path="docs" element={<DocsPage />} />
+                <Route path="docs/:publicId/:slug?" element={<DocsPage />} />
+                <Route path="pricing" element={<PricingPage />} />
+                <Route path="status" element={<StatusPage />} />
+                <Route path="about" element={<AboutPage />} />
+                <Route path="contact" element={<ContactPage />} />
+                <Route path="quickstart" element={<QuickstartPublicPage />} />
+                <Route path="news" element={<NewsListPage />} />
+                <Route path="news/:id" element={<NewsDetailPage />} />
+                <Route path="terms" element={<LegalPage kind="terms" />} />
+                <Route path="privacy" element={<LegalPage kind="privacy" />} />
+                <Route path="login" element={<LoginPage />} />
+              </Route>
               <Route path="/console" element={<ConsoleOutlet />}>
                 <Route index element={<ConsoleHomeRedirect />} />
                 <Route path="models" element={<ConsoleModelsPage />} />

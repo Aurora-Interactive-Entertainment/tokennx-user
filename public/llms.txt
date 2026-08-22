@@ -1,0 +1,39 @@
+# Token NX
+
+## 简体中文
+
+合规的企业级大型 AI 算力聚合平台
+
+- [首页](https://tokennx.com/): Token NX 聚合多家大模型的算力，为开发者和企业提供系统级、企业级的 AI 算力服务，以优质服务和低廉价格降低 AI 使用成本。
+  - **Token NX 是什么？** Token NX 是合规的企业级大型 AI 算力聚合平台，把多家大模型的算力、API Key、公开价格和调用记录集中在一个入口。
+  - **如何开始调用模型？** 创建 API Key 后，在 OpenAI 兼容 SDK 中把 Base URL 配置为 https://api.tokennx.com/v1，选择可用模型并发送请求。
+  - **为什么选择 Token NX？** 合规运营、企业级服务、多家大模型算力聚合，以及低廉的价格和优质的服务支持。
+- [模型与价格](https://tokennx.com/models/): 按模型公司、模态、上下文长度和能力筛选可用模型，并查看当前公开价格与适用范围。
+  - **价格如何展示？** 按 Token 计价与按次计价分开展示，并按模型的公开规则显示输入、输出或不同规格的价格。
+  - **如何比较模型？** 可按模型公司、模态、上下文长度和支持能力筛选，再结合价格与适用范围选择模型。
+  - **价格是否会变化？** 模型公司定价、平台成本或汇率变化时，公开价格可能调整；实际费用以调用时页面显示的计费规则为准。
+- [平台介绍](https://tokennx.com/about/): Token NX 是合规的企业级大型 AI 算力聚合平台，聚合多家大模型算力，提供用量计费、调用记录和密钥管理。
+- [服务条款](https://tokennx.com/terms/): 本页面说明使用 Token NX 账户、API Key、充值、模型调用与相关服务时适用的规则。
+- [隐私政策](https://tokennx.com/privacy/): 本页面说明 Token NX 在提供账户、计费、模型调用和调用记录服务时如何处理与保护必要数据。
+- [文档中心](https://tokennx.com/docs/): Token NX 文档中心提供从创建 API Key 到接入客户端、管理用量与账单的完整指引。
+- [快速接入](https://tokennx.com/quickstart/): 按代码接入工作台的指引创建 API Key、选择模型并配置 Base URL，即可开始调用。
+- [联系我们](https://tokennx.com/contact/): 通过本页提供的渠道联系 Token NX，获取商务合作、技术支持或提交反馈。
+
+## English
+
+Compliant, enterprise-grade large-scale AI compute aggregation platform
+
+- [Home](https://tokennx.com/en/): Token NX aggregates compute from multiple large models and delivers system-level, enterprise-level AI compute services, lowering AI costs with quality support and low pricing.
+  - **What is Token NX?** Token NX is a compliant, enterprise-grade AI compute aggregation platform that brings model compute, API keys, public pricing, and request records into one entry point.
+  - **How do I start calling a model?** After creating an API key, set the Base URL to https://api.tokennx.com/v1 in an OpenAI-compatible SDK, select a model, and send a request.
+  - **Why choose Token NX?** Compliant operations, enterprise-grade services, aggregated compute from multiple large models, and low pricing with quality support.
+- [Models & Pricing](https://tokennx.com/en/models/): Filter available models by company, modality, context window, and capability, then review current public pricing and fit.
+  - **How are prices shown?** Token-based and per-call billing are shown separately, with current public input, output, or specification prices for each model.
+  - **How can I compare models?** Filter by model company, modality, context window, and capabilities, then compare price and intended use.
+  - **Can prices change?** Public prices may change with model-company pricing, platform costs, or exchange rates; actual charges follow the rules shown at call time.
+- [About](https://tokennx.com/en/about/): Token NX is a compliant, enterprise-grade AI compute aggregation platform providing usage-based billing, request records, and key management.
+- [Terms of Service](https://tokennx.com/en/terms/): This page explains the rules that apply when using Token NX accounts, API keys, top-ups, model calls, and related services.
+- [Privacy Policy](https://tokennx.com/en/privacy/): This page explains how Token NX handles and protects necessary data while providing accounts, billing, model access, and request records.
+- [Documentation](https://tokennx.com/en/docs/): The Token NX documentation covers everything from creating an API key to integrating clients and managing usage and billing.
+- [Quickstart](https://tokennx.com/en/quickstart/): Follow the code-workspace guide to create an API key, select a model, and configure the Base URL to start calling.
+- [Contact](https://tokennx.com/en/contact/): Reach Token NX through the listed channels for business cooperation, technical support, or feedback.

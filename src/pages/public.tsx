@@ -4,7 +4,7 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
 import Toast from '@douyinfe/semi-ui/lib/es/toast'
 import Skeleton from '@douyinfe/semi-ui/lib/es/skeleton'
 import { IconBookOpenStroked, IconChevronDown, IconCopyStroked, IconFile } from '@douyinfe/semi-icons'
-import { LoginPanel, LoginRequiredAction, ManuscriptSupportWidget, PublicLayout, ModelLogo, normalizeLoginReturnPath } from '@/components/common'
+import { LoginPanel, LoginRequiredAction, ManuscriptSupportWidget, PublicLayout, ModelLogo, normalizeLoginReturnPath, requestSupportWidget } from '@/components/common'
 import modelCardArt from '@/assets/figma-home/model-card-art.png'
 import promoModelLogo from '@/assets/figma-home/promo-model-logo.svg'
 import promoBannerArt from '@/assets/figma-home/promo-banner.png'
@@ -1742,6 +1742,34 @@ export function StatusPage() {
 export function AboutPage() {
   const { t } = useTranslation()
   return <PublicLayout mainClassName="public-page"><header className="public-page-head"><h1>{t('public.about.title')}</h1><p>{t('public.about.description')}</p></header><section className="public-section"><h2>{t('public.about.boundaryTitle')}</h2><div className="public-grid"><div className="public-grid-item"><h3>{t('public.about.catalogTitle')}</h3><p>{t('public.about.catalogDescription')}</p></div><div className="public-grid-item"><h3>{t('public.about.requestTitle')}</h3><p>{t('public.about.requestDescription')}</p></div><div className="public-grid-item"><h3>{t('public.about.upstreamTitle')}</h3><p>{t('public.about.upstreamDescription')}</p></div></div></section><section className="public-section"><h2>{t('public.about.stageTitle')}</h2><p>{t('public.about.stageDescription')}</p><div className="public-actions"><Link className="btn btn-primary" to="/models">{t('public.about.browseModels')}</Link><Link className="btn btn-secondary" to="/docs">{t('public.about.viewDocs')}</Link></div></section></PublicLayout>
+}
+
+export function ContactPage() {
+  const { t, i18n } = useTranslation()
+  const prefix = i18n.resolvedLanguage?.startsWith('en') ? '/en' : ''
+  return <PublicLayout mainClassName="public-page"><header className="public-page-head"><h1>{t('public.contact.title')}</h1><p>{t('public.contact.description')}</p></header><section className="public-section"><div className="public-grid"><div className="public-grid-item"><h2>{t('public.contact.supportTitle')}</h2><p>{t('public.contact.supportDescription')}</p><button className="btn btn-primary" type="button" onClick={() => requestSupportWidget('contact')}>{t('public.contact.supportAction')}</button></div><div className="public-grid-item"><h2>{t('public.contact.businessTitle')}</h2><p>{t('public.contact.businessDescription')}</p><a className="btn btn-secondary" href={`mailto:${t('public.contact.businessEmail')}`}>{t('public.contact.businessEmail')}</a></div><div className="public-grid-item"><h2>{t('public.contact.legalTitle')}</h2><p>{t('public.contact.legalDescription')}</p><div className="public-actions"><Link className="btn btn-secondary" to={`${prefix}/terms`}>{t('footer.terms')}</Link><Link className="btn btn-secondary" to={`${prefix}/privacy`}>{t('footer.privacy')}</Link></div></div></div></section></PublicLayout>
+}
+
+export function QuickstartPublicPage() {
+  const { t, i18n } = useTranslation()
+  const docsPath = i18n.resolvedLanguage?.startsWith('en') ? '/en/docs' : '/docs'
+  return <PublicLayout mainClassName="public-page">
+    <header className="public-page-head">
+      <h1>{t('public.quickstart.title')}</h1>
+      <p>{t('public.quickstart.description')}</p>
+      <div className="public-actions">
+        <LoginRequiredAction className="btn btn-primary" returnPath="/console/quickstart">{t('public.quickstart.startAction')}</LoginRequiredAction>
+        <Link className="btn btn-secondary" to={docsPath}>{t('public.quickstart.docsAction')}</Link>
+      </div>
+    </header>
+    <section className="public-section">
+      <div className="public-grid">
+        <div className="public-grid-item"><h2>{t('public.quickstart.stepKey')}</h2><p>{t('public.quickstart.stepKeyDescription')}</p></div>
+        <div className="public-grid-item"><h2>{t('public.quickstart.stepEndpoint')}</h2><p>{t('public.quickstart.stepEndpointDescription')}</p></div>
+        <div className="public-grid-item"><h2>{t('public.quickstart.stepRequest')}</h2><p>{t('public.quickstart.stepRequestDescription')}</p></div>
+      </div>
+    </section>
+  </PublicLayout>
 }
 
 export { LegalPage } from './legal'
