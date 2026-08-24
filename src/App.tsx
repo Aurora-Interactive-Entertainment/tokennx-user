@@ -50,6 +50,11 @@ const EnterpriseAuditLogPage = lazy(() => import('@/pages/enterprise-audit-log')
 const EnterpriseUsagePage = lazy(() => import('@/pages/enterprise-usage').then(({ EnterpriseUsagePage }) => ({ default: EnterpriseUsagePage })))
 const EnterpriseGovernancePage = lazy(() => import('@/pages/enterprise-governance').then(({ EnterpriseGovernancePage }) => ({ default: EnterpriseGovernancePage })))
 const MembersPage = lazy(() => import('@/pages/enterprise-members').then(({ MembersPage }) => ({ default: MembersPage })))
+const TraeEnterpriseAnalysisPage = lazy(() => import('@/pages/trae-enterprise').then(({ TraeEnterpriseAnalysisPage }) => ({ default: TraeEnterpriseAnalysisPage })))
+const TraeEnterpriseMembersPage = lazy(() => import('@/pages/trae-enterprise').then(({ TraeEnterpriseMembersPage }) => ({ default: TraeEnterpriseMembersPage })))
+const TraeEnterpriseSubscriptionPage = lazy(() => import('@/pages/trae-enterprise').then(({ TraeEnterpriseSubscriptionPage }) => ({ default: TraeEnterpriseSubscriptionPage })))
+const TraeEnterpriseUsagePage = lazy(() => import('@/pages/trae-enterprise').then(({ TraeEnterpriseUsagePage }) => ({ default: TraeEnterpriseUsagePage })))
+const TraeEnterpriseAuditPage = lazy(() => import('@/pages/trae-enterprise').then(({ TraeEnterpriseAuditPage }) => ({ default: TraeEnterpriseAuditPage })))
 const RecordsPage = lazy(() => import('@/pages/records').then(({ RecordsPage }) => ({ default: RecordsPage })))
 const UsagePage = lazy(() => import('@/pages/usage').then(({ UsagePage }) => ({ default: UsagePage })))
 const RealNamePage = lazy(() => import('@/pages/console-real-name').then(({ RealNamePage }) => ({ default: RealNamePage })))
@@ -208,6 +213,11 @@ export default function App({ onBootReady }: { onBootReady: () => void }) {
                 <Route path="enterprise-analytics" element={<EnterpriseAnalyticsPage />} />
                 <Route path="enterprise-models" element={<EnterpriseModelsPage />} />
                 <Route path="enterprise-settings" element={<EnterpriseSettingsPage />} />
+                <Route path="trae-enterprise/data-analysis" element={<TraeEnterpriseAnalysisPage />} />
+                <Route path="trae-enterprise/users" element={<TraeEnterpriseMembersPage />} />
+                <Route path="trae-enterprise/subscription" element={<TraeEnterpriseSubscriptionPage />} />
+                <Route path="trae-enterprise/usage" element={<TraeEnterpriseUsagePage />} />
+                <Route path="trae-enterprise/operation-log" element={<TraeEnterpriseAuditPage />} />
               </Route>
               <Route path="/home" element={<Navigate to="/" replace />} />
               <Route path="*" element={<NotFoundPage />} />

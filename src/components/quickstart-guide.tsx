@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next'
 import Button from '@douyinfe/semi-ui/lib/es/button'
 import Toast from '@douyinfe/semi-ui/lib/es/toast'
 import { IconCopy, IconFile, IconSearch } from '@douyinfe/semi-icons'
-import { PageTitle } from '@/components/common'
 import { CompatInput as Input } from '@/components/semi-compat'
 import { useAppStore } from '@/data/app-state'
 import { findModelInList, modelAlias, type ModelRecord } from '@/data/models'
@@ -83,10 +82,11 @@ function highlightCode(code: string): ReactNode {
   return code.split('\n').map((line, index) => <span className="quickstart-code-line" key={`line-${index}`}>{highlightCodeLine(line)}</span>)
 }
 
-function StepHeader({ step, title, status, open, onToggle, help }: { step: 1 | 2 | 3; title: string; status?: ReactNode; open: boolean; onToggle: () => void; help?: ReactNode }) {
+// Keep the ordinal label localized so the same step structure reads naturally in both locales.
+function StepHeader({ label, title, status, open, onToggle, help }: { label: string; title: string; status?: ReactNode; open: boolean; onToggle: () => void; help?: ReactNode }) {
   return <div className={`quickstart-pdf-step-header${open ? ' is-open' : ''}`}>
     <button className="quickstart-pdf-step-toggle" type="button" aria-expanded={open} onClick={onToggle}>
-      <span className="quickstart-pdf-step-title"><em>Step {step}</em><strong>{title}</strong>{status}</span>
+      <span className="quickstart-pdf-step-title"><em>{label}</em><strong>{title}</strong>{status}</span>
     </button>
     {help ? <span className="quickstart-pdf-step-help">{help}</span> : null}
     <button className="quickstart-pdf-step-accordion-button" type="button" aria-expanded={open} aria-label={title} onClick={onToggle} />
@@ -166,17 +166,16 @@ export function QuickstartGuide() {
     void navigator.clipboard.writeText(value).then(() => Toast.success(t('console.quickstart.copySuccess'))).catch(() => Toast.error(t('console.common.copyFailed')))
   }
 
-  if (modelsLoading || modelsError || !model) return <div className="quickstart-page quickstart-pdf-page"><PageTitle title={t('console.quickstart.pageTitle')} description={t('console.quickstart.pageIntro')} />{modelsLoading ? <p>{t('console.common.readingModels')}</p> : <p>{modelsError || t('console.quickstart.noModelsHint')}</p>}{modelsError ? <Button theme="outline" onClick={refreshModels}>{t('console.common.reload')}</Button> : null}</div>
+  if (modelsLoading || modelsError || !model) return <div className="quickstart-page quickstart-pdf-page">{modelsLoading ? <p>{t('console.common.readingModels')}</p> : <p>{modelsError || t('console.quickstart.noModelsHint')}</p>}{modelsError ? <Button theme="outline" onClick={refreshModels}>{t('console.common.reload')}</Button> : null}</div>
   const contextQuery = `model=${encodeURIComponent(modelAlias(model))}&language=${language}`
   const completed = keys.some((key) => key.status === 'active')
   const toggle = (step: QuickstartStep) => setOpenStep(openStep === step ? 0 : step)
   return <div className="quickstart-page quickstart-pdf-page">
-    <PageTitle title={t('console.quickstart.pageTitle')} description={t('console.quickstart.pageIntro')} />
-    <div className="quickstart-pdf-intro"><div><strong>{t('console.quickstart.heroTitle')}</strong><p>{t('console.quickstart.heroHint')} <Link to="/console/billing">{t('console.quickstart.subscription')}</Link></p></div><div className="quickstart-pdf-connection"><span><i />{t('console.quickstart.connectionReady')}</span><code>{QUICKSTART_API_BASE_URL}</code><Button theme="borderless" size="small" icon={<IconCopy />} aria-label={t('console.quickstart.copyBaseUrl')} title={t('console.quickstart.copyBaseUrl')} onClick={() => copy(QUICKSTART_API_BASE_URL)} /><Link to={'/console/models?model=' + encodeURIComponent(modelAlias(model))}>{t('console.quickstart.modelDetails')}</Link><small><b>{model.name} · OpenAI</b> · {t('console.quickstart.connectionHint')}</small></div></div>
+    <div className="quickstart-pdf-intro"><div><strong>{t('console.quickstart.heroTitle')}</strong><p>{t('console.quickstart.heroHint')} <Link to="/console/billing">{t('console.quickstart.subscription')}</Link></p></div></div>
     <div className="quickstart-pdf-steps">
-      <section className={`quickstart-pdf-step${openStep === 1 ? ' is-open' : ''}`}><StepHeader step={1} title={t('console.quickstart.stepApiKey')} open={openStep === 1} onToggle={() => toggle(1)} help={<Link to="/docs">{t('console.quickstart.viewHelp')}</Link>} status={<span className="quickstart-pdf-status"><i className={completed ? 'is-complete' : ''} />{t('console.quickstart.completedCount', { count: completed ? 1 : 0 })}</span>} /><StepPanel open={openStep === 1}><ApiKeyStep keys={keys} loading={keysLoading} contextQuery={contextQuery} onCopy={copy} t={t} /></StepPanel></section>
-      <section className={`quickstart-pdf-step${openStep === 2 ? ' is-open' : ''}`}><StepHeader step={2} title={t('console.quickstart.stepModel')} open={openStep === 2} onToggle={() => toggle(2)} status={<span className="quickstart-pdf-status"><i />{model.name}</span>} /><StepPanel open={openStep === 2}><ModelStep models={textModels} selected={model} onSelect={(alias) => { setSearchParams({ model: alias, language }); setOpenStep(2) }} onNext={() => { setOpenStep(3); window.requestAnimationFrame(() => document.getElementById('quickstart-agent')?.scrollIntoView({ behavior: 'smooth', block: 'start' })) }} t={t} /></StepPanel></section>
-      <section className={`quickstart-pdf-step${openStep === 3 ? ' is-open' : ''}`}><StepHeader step={3} title={t('console.quickstart.stepAgent')} open={openStep === 3} onToggle={() => toggle(3)} /><StepPanel open={openStep === 3}><AgentStep model={model} language={language} setLanguage={(next) => { setLanguage(next); setSearchParams({ model: modelAlias(model), language: next }) }} t={t} onCopy={copy} /></StepPanel></section>
+      <section className={`quickstart-pdf-step${openStep === 1 ? ' is-open' : ''}`}><StepHeader label={t('console.quickstart.stepOne')} title={t('console.quickstart.stepApiKey')} open={openStep === 1} onToggle={() => toggle(1)} help={<Link to="/docs">{t('console.quickstart.viewHelp')}</Link>} status={<span className="quickstart-pdf-status"><i className={completed ? 'is-complete' : ''} />{t('console.quickstart.completedCount', { count: completed ? 1 : 0 })}</span>} /><StepPanel open={openStep === 1}><ApiKeyStep keys={keys} loading={keysLoading} contextQuery={contextQuery} onCopy={copy} t={t} /></StepPanel></section>
+      <section className={`quickstart-pdf-step${openStep === 2 ? ' is-open' : ''}`}><StepHeader label={t('console.quickstart.stepTwo')} title={t('console.quickstart.stepModel')} open={openStep === 2} onToggle={() => toggle(2)} status={<span className="quickstart-pdf-status"><i />{model.name}</span>} /><StepPanel open={openStep === 2}><ModelStep models={textModels} selected={model} onSelect={(alias) => { setSearchParams({ model: alias, language }); setOpenStep(2) }} onNext={() => { setOpenStep(3); window.requestAnimationFrame(() => document.getElementById('quickstart-agent')?.scrollIntoView({ behavior: 'smooth', block: 'start' })) }} t={t} /></StepPanel></section>
+      <section className={`quickstart-pdf-step${openStep === 3 ? ' is-open' : ''}`}><StepHeader label={t('console.quickstart.stepThree')} title={t('console.quickstart.stepAgent')} open={openStep === 3} onToggle={() => toggle(3)} /><StepPanel open={openStep === 3}><AgentStep model={model} language={language} setLanguage={(next) => { setLanguage(next); setSearchParams({ model: modelAlias(model), language: next }) }} t={t} onCopy={copy} /></StepPanel></section>
     </div>
   </div>
 }

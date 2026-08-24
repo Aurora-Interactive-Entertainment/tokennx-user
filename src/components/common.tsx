@@ -60,7 +60,7 @@ import { cycleThemeModeWithTransition, themeModeLabel, useResolvedTheme, useThem
 import { getMockSupportReply, MOCK_SUPPORT_REPLY_DELAY_MS, type SupportChatMessage, type SupportLocale, type SupportMessageRole } from './support-chat'
 import { MoneyText } from './money'
 import { ModelAvailability } from './model-availability'
-import { enterpriseMenuPermissionKeyForPath, hasEnterpriseMenuPermission, isEnterpriseOwner, type EnterpriseMenuAccess, type EnterpriseMenuPermissionKey, useEnterpriseMenuAccess } from './enterprise-menu-access'
+import { enterpriseMenuPermissionKeyForPath, hasEnterpriseMenuPermission, isEnterpriseOwner, isTraeEnterpriseManagementPath, TEMPORARILY_OPEN_TRAE_ENTERPRISE_MANAGEMENT, type EnterpriseMenuAccess, type EnterpriseMenuPermissionKey, useEnterpriseMenuAccess } from './enterprise-menu-access'
 import { ENTERPRISE_CREATE_PATH, NEW_ENTERPRISE_CREATE_PATH } from '@/api/enterprise-certification'
 export { isEnterpriseOwner } from './enterprise-menu-access'
 import tokenNxLogo from '@/token-nx-logo.png'
@@ -1386,6 +1386,18 @@ function ConsoleNavIcon({ name, className = '' }: { name: ConsoleNavIconName; cl
   return <Icon className={`console-nav-icon${className ? ` ${className}` : ''}`} aria-hidden />
 }
 
+const traeEnterpriseNavGroup: ConsoleNavGroup = {
+  key: 'enterprise-management-trae',
+  label: '企业管理（新版）',
+  items: [
+    { key: '/console/trae-enterprise/data-analysis', label: '数据分析', icon: 'pie', permissionScope: 'trae' },
+    { key: '/console/trae-enterprise/users', label: '人员管理', icon: 'members', permissionScope: 'trae' },
+    { key: '/console/trae-enterprise/subscription', label: '订阅管理', icon: 'billing', permissionScope: 'trae' },
+    { key: '/console/trae-enterprise/usage', label: '用量管理', icon: 'usage', permissionScope: 'trae' },
+    { key: '/console/trae-enterprise/operation-log', label: '操作日志', icon: 'records', permissionScope: 'trae' },
+  ],
+}
+
 const personalNavGroups: ConsoleNavGroup[] = [
   {
     key: 'model-use',
@@ -1436,6 +1448,7 @@ const personalNavGroups: ConsoleNavGroup[] = [
       { key: ENTERPRISE_CREATE_PATH, path: NEW_ENTERPRISE_CREATE_PATH, label: '企业入驻', icon: 'workspace' },
     ],
   },
+  traeEnterpriseNavGroup,
 ]
 
 const enterpriseNavGroups: ConsoleNavGroup[] = [
@@ -1466,6 +1479,7 @@ const enterpriseNavGroups: ConsoleNavGroup[] = [
       { key: '/console/billing', label: '费用管理', icon: 'billing', permissionScope: 'billing' },
     ],
   },
+  traeEnterpriseNavGroup,
   {
     key: 'my-data',
     label: '我的数据',
@@ -1499,6 +1513,7 @@ const CONSOLE_NAV_LABEL_KEYS: Record<string, string> = {
   '账户管理': 'console.nav.account', '实名认证': 'console.nav.realName', '个人中心': 'console.nav.profile', '费用管理': 'console.nav.billing',
   'API 密钥管理': 'console.nav.apiKeys', '密钥管理': 'console.nav.apiKeys', '企业中心': 'console.nav.enterpriseCenter', '企业入驻': 'console.nav.enterpriseCreate', '企业管理': 'console.nav.enterpriseManagement',
   '人员管理': 'console.nav.members', '用量管理': 'console.nav.enterpriseUsage', '操作日志': 'console.nav.audit', '我的数据': 'console.nav.myData',
+  '企业管理（新版）': 'traeEnterprise.nav.group', '订阅管理': 'traeEnterprise.nav.subscription',
   '企业设置': 'console.nav.enterpriseSettings', '通用设置': 'console.nav.settings', '模型管理': 'console.nav.enterpriseModels', '权限与标签': 'console.nav.governance', '账号信息': 'console.nav.accountInfo',
   '活动中心': 'console.nav.activityCenter', '邀请返现': 'console.nav.invitationReward', '认证返现': 'console.nav.realNameReward',
 }
@@ -1515,7 +1530,10 @@ export function consoleNavGroupsFor(workspace: Pick<Workspace, 'type' | 'role'>,
   const owner = isEnterpriseOwner(workspace)
   return source.map((group) => ({
     ...group,
-    items: group.items.filter((item) => !item.permissionScope || owner || hasEnterpriseMenuPermission(permissions, item.permissionScope)),
+    items: group.items.filter((item) => !item.permissionScope
+      || (TEMPORARILY_OPEN_TRAE_ENTERPRISE_MANAGEMENT && item.permissionScope === 'trae')
+      || owner
+      || hasEnterpriseMenuPermission(permissions, item.permissionScope)),
   })).filter((group) => group.items.length > 0)
 }
 
@@ -2056,6 +2074,7 @@ export function ConsoleLayout({ children }: { children: ReactNode }) {
   const groups = consoleNavGroupsFor(activeWorkspace, enterpriseAccess.permissions)
   const navKey = activeNavKey(location.pathname)
   const permissionScope = enterpriseMenuPermissionKeyForPath(location.pathname)
+  const isTraeEnterpriseRoute = isTraeEnterpriseManagementPath(location.pathname)
   const hasRoutePermission = permissionScope === null
     || isEnterpriseOwner(activeWorkspace)
     || hasEnterpriseMenuPermission(enterpriseAccess.permissions, permissionScope)
@@ -2105,10 +2124,13 @@ export function ConsoleLayout({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  if (activeWorkspace.type === 'enterprise' && permissionScope !== null && enterpriseAccess.loading) {
+  if (isTraeEnterpriseRoute && !TEMPORARILY_OPEN_TRAE_ENTERPRISE_MANAGEMENT && activeWorkspace.type !== 'enterprise') {
+    return <Navigate replace to={DEFAULT_CONSOLE_PATH} />
+  }
+  if (activeWorkspace.type === 'enterprise' && permissionScope !== null && enterpriseAccess.loading && !(TEMPORARILY_OPEN_TRAE_ENTERPRISE_MANAGEMENT && isTraeEnterpriseRoute)) {
     return <AppLoadingScreen label={t('console.enterprise.contextLoading')} />
   }
-  if (activeWorkspace.type === 'enterprise' && permissionScope !== null && !hasRoutePermission) {
+  if (activeWorkspace.type === 'enterprise' && permissionScope !== null && !hasRoutePermission && !(TEMPORARILY_OPEN_TRAE_ENTERPRISE_MANAGEMENT && isTraeEnterpriseRoute)) {
     return <Navigate replace to={DEFAULT_CONSOLE_PATH} />
   }
 

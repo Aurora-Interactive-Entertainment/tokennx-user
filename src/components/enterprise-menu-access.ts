@@ -7,6 +7,10 @@ import { invalidateAuth } from "@/store/auth-slice";
 import { useNavigate } from "react-router";
 import type { Workspace } from "@/data/app-state";
 
+// 中文：新版企业管理页面当前处于页面调整期，临时对所有已登录账号开放。
+// 页面完成后将此开关改回 false，即恢复企业空间和角色权限限制。
+export const TEMPORARILY_OPEN_TRAE_ENTERPRISE_MANAGEMENT = true;
+
 // 中文：菜单只关心资源前缀，具体动作由企业角色权限矩阵继续控制。
 export const ENTERPRISE_MENU_PERMISSION_PREFIXES = {
   members: ["members."],
@@ -14,6 +18,7 @@ export const ENTERPRISE_MENU_PERMISSION_PREFIXES = {
   audit: ["audit."],
   analytics: ["analytics."],
   billing: ["billing."],
+  trae: ["trae."],
   settings: ["settings."],
   models: ["models."],
   governance: ["roles.", "tags."],
@@ -46,6 +51,11 @@ const ENTERPRISE_MENU_PATH_SCOPES: readonly {
   { path: "/console/enterprise-usage", scope: "usage" },
   { path: "/console/members", scope: "members" },
   { path: "/console/billing", scope: "billing" },
+  { path: "/console/trae-enterprise/data-analysis", scope: "trae" },
+  { path: "/console/trae-enterprise/users", scope: "trae" },
+  { path: "/console/trae-enterprise/subscription", scope: "trae" },
+  { path: "/console/trae-enterprise/usage", scope: "trae" },
+  { path: "/console/trae-enterprise/operation-log", scope: "trae" },
 ];
 
 export function isEnterpriseOwner(
@@ -74,6 +84,10 @@ export function enterpriseMenuPermissionKeyForPath(
     ({ path }) => pathname === path || pathname.startsWith(`${path}/`),
   );
   return match?.scope ?? null;
+}
+
+export function isTraeEnterpriseManagementPath(pathname: string): boolean {
+  return pathname === "/console/trae-enterprise" || pathname.startsWith("/console/trae-enterprise/");
 }
 
 function normalizePermissions(value: unknown): string[] {

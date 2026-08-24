@@ -4,6 +4,7 @@ import { apiResources } from './api'
 import { consoleResources } from './console'
 import { enterpriseCreateResources } from './enterprise-create'
 import { publicResources } from './public'
+import { traeEnterpriseResources } from './trae-enterprise'
 
 export const LANGUAGE_STORAGE_KEY = 'token-nx:locale'
 
@@ -554,6 +555,7 @@ const resources = {
       ...publicResources['zh-CN'],
       ...apiResources['zh-CN'],
       ...consoleResources['zh-CN'],
+      ...traeEnterpriseResources['zh-CN'],
       console: {
         ...consoleResources['zh-CN'].console,
         enterpriseCreate: {
@@ -762,6 +764,7 @@ const resources = {
       ...publicResources['en-US'],
       ...apiResources['en-US'],
       ...consoleResources['en-US'],
+      ...traeEnterpriseResources['en-US'],
       console: {
         ...consoleResources['en-US'].console,
         enterpriseCreate: {
