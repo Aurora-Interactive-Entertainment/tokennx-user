@@ -57,6 +57,7 @@ const TraeEnterpriseUsagePage = lazy(() => import('@/pages/trae-enterprise').the
 const TraeEnterpriseAuditPage = lazy(() => import('@/pages/trae-enterprise').then(({ TraeEnterpriseAuditPage }) => ({ default: TraeEnterpriseAuditPage })))
 const RecordsPage = lazy(() => import('@/pages/records').then(({ RecordsPage }) => ({ default: RecordsPage })))
 const UsagePage = lazy(() => import('@/pages/usage').then(({ UsagePage }) => ({ default: UsagePage })))
+const PersonalUsagePage = lazy(() => import('@/pages/personal-usage').then(({ PersonalUsagePage }) => ({ default: PersonalUsagePage })))
 const RealNamePage = lazy(() => import('@/pages/console-real-name').then(({ RealNamePage }) => ({ default: RealNamePage })))
 const SettingsPage = lazy(() => import('@/pages/console-profile').then(({ SettingsPage }) => ({ default: SettingsPage })))
 
@@ -199,6 +200,7 @@ export default function App({ onBootReady }: { onBootReady: () => void }) {
                 <Route path="quickstart" element={<QuickstartPage />} />
                 <Route path="api-keys" element={<ApiKeysPage />} />
                 <Route path="usage" element={<UsagePage />} />
+                <Route path="personal-usage" element={<PersonalUsagePage />} />
                 <Route path="records" element={<RecordsPage />} />
                 <Route path="billing" element={<BillingPage />} />
                 <Route path="real-name" element={<RealNamePage />} />

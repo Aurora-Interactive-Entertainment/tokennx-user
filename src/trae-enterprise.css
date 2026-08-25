@@ -1,9 +1,6 @@
 /* Trae-style enterprise workspace. The old enterprise pages keep their own classes and routes. */
 .trae-page { width: 100%; min-width: 0; padding: 32px; color: var(--color-text-default); }
 .console-page:has(> .trae-page) { padding-inline: 0; }
-.trae-breadcrumb { display: flex; align-items: center; gap: 9px; margin-bottom: 25px; color: var(--color-text-tertiary); font-size: 12px; }
-.trae-breadcrumb b { color: var(--color-border-neutral-l3); font-weight: 400; }
-.trae-breadcrumb strong { color: var(--color-text-default); font-weight: 500; }
 .trae-page-heading { display: flex; align-items: center; justify-content: space-between; gap: 20px; min-height: 44px; margin-bottom: 26px; }
 .trae-page-heading h1 { color: var(--color-text-default-hover); font-size: 22px; font-weight: 650; line-height: 1.35; }
 .trae-page-heading-action { display: flex; align-items: center; gap: 8px; }
@@ -42,33 +39,49 @@
 .trae-picker-option-check { margin-left: auto; color: var(--color-text-default-hover); font-size: 16px; }
 .trae-inline-search, .trae-date-field { display: inline-flex; align-items: center; min-width: 0; height: 38px; border: 1px solid var(--color-border-neutral-l2); border-radius: 6px; color: var(--color-text-secondary); background: var(--color-bg-base-secondary); }
 .trae-inline-search input, .trae-date-field input { height: 100%; min-width: 0; border: 0; outline: 0; color: inherit; background: transparent; font: inherit; }
-.trae-date-picker.semi-datepicker { width: 274px; min-width: 0; }
-.trae-date-picker-dropdown { box-sizing: border-box; width: 805px; max-width: calc(100vw - 16px); overflow: hidden; padding: 0; border: 1px solid var(--color-border-neutral-l2); border-radius: 8px; background: var(--color-bg-base-secondary); box-shadow: 0 12px 30px rgba(0, 0, 0, .3); }
-.trae-date-picker-dropdown .semi-datepicker-quick-control { width: 142px; background: transparent; }
+.trae-date-picker.semi-datepicker { width: 255px; min-width: 0; height: 32px; }
+.trae-date-picker .semi-datepicker-range-input { height: 30px; }
+.trae-date-picker .semi-datepicker-range-input-wrapper { padding-inline: 8px; }
+.trae-date-picker .semi-datepicker-range-input-wrapper input { width: 100%; min-width: 0; padding-inline: 4px; font-size: 13px; }
+.trae-date-picker .semi-datepicker-range-input-separator { align-items: center; justify-content: center; text-align: center; font-size: 13px; }
+.trae-date-picker-dropdown { box-sizing: border-box; width: 610px; max-width: calc(100vw - 16px); overflow: hidden; padding: 0; border: 1px solid var(--color-border-neutral-l2); border-radius: 8px; background: var(--color-bg-base-secondary); box-shadow: 0 12px 30px rgba(0, 0, 0, .3); }
+.semi-popover-wrapper:has(.trae-date-picker-dropdown), .semi-popover-wrapper:has(.trae-date-picker-dropdown) .semi-tooltip-content, .semi-popover-wrapper:has(.trae-date-picker-dropdown) .semi-popover { background: var(--color-bg-base-secondary) !important; line-height: 0; }
+.semi-popover-wrapper:has(.trae-date-picker-dropdown) { overflow: hidden; border-radius: 8px; }
+.trae-date-picker-dropdown .semi-datepicker-quick-control { width: 104px; background: transparent; }
 .trae-date-picker-dropdown .semi-datepicker-quick-control-header { display: none; }
-.trae-date-picker-dropdown .semi-datepicker-quick-control-left-content { grid-template-columns: 1fr; gap: 2px; padding: 12px 8px; }
-.trae-date-picker-dropdown .semi-datepicker-quick-control-left-content-item { display: block; width: 100%; max-width: none; padding: 0 8px; border-radius: 4px; color: var(--color-text-secondary); cursor: pointer; line-height: 28px; text-align: center; }
-.trae-date-picker-dropdown .semi-datepicker-quick-control-left-content-item:hover { color: var(--color-text-default-hover); background: var(--color-bg-overlay-l2); }
-.trae-date-picker-dropdown .semi-datepicker-quick-control-left-content-item-ellipsis { width: auto; color: inherit; }
-.trae-date-picker-dropdown .semi-datepicker-quick-control-left-content > button { width: 100%; height: 28px; margin: 4px 0 0; padding: 0 8px; border: 0; border-radius: 4px; color: var(--color-text-secondary); background: transparent; }
-.trae-date-picker-dropdown .semi-datepicker-quick-control-left-content > button:hover { background: transparent; }
+.trae-date-picker-dropdown .semi-datepicker-quick-control-left-content { grid-template-columns: 1fr; gap: 2px; padding: 8px; }
+.trae-date-picker-dropdown .semi-datepicker-quick-control-left-content > button { display: flex; width: 100%; height: 28px; align-items: center; justify-content: center; margin: 4px 0 0; padding: 0 8px; box-sizing: border-box; border: 0; border-radius: 4px; color: var(--color-text-secondary); background: transparent; font-size: 13px; font-weight: 400 !important; transition: none !important; }
+html[data-theme="dark"] .trae-date-picker-dropdown .semi-datepicker-quick-control-left-content > button:hover { color: #ffffff !important; background: rgba(224, 226, 242, .05) !important; }
+html[data-theme="light"] .trae-date-picker-dropdown .semi-datepicker-quick-control-left-content > button:hover { color: #17181b !important; background: rgba(23, 24, 27, .045) !important; }
+.trae-date-picker-dropdown .semi-datepicker-quick-control-left-content-item, .trae-date-picker-dropdown .semi-datepicker-quick-control-left-content-item-ellipsis, .trae-date-picker-dropdown .semi-datepicker-quick-control-left-content-item-ellipsis > span { display: flex; height: 28px; min-height: 28px; align-items: center; justify-content: center; padding: 0; color: inherit; font-size: 13px; font-weight: 400 !important; line-height: 28px; pointer-events: none; }
+.trae-date-picker-dropdown .semi-datepicker-quick-control-left-content-item:hover { background: transparent; }
+.trae-date-picker-dropdown .semi-datepicker-quick-control-left-content-item, .trae-date-picker-dropdown .semi-datepicker-quick-control-left-content-item-ellipsis { transition: none !important; }
 .trae-date-picker-dropdown .semi-datepicker-quick-control-left { border-right-color: var(--color-border-neutral-l2); }
-.trae-date-picker-dropdown .semi-datepicker-container { display: flex; }
-.trae-date-picker-dropdown .semi-datepicker-month-grid { min-height: 360px; justify-content: space-between; gap: 8px; }
-.trae-date-picker-dropdown .semi-datepicker-month-grid-left, .trae-date-picker-dropdown .semi-datepicker-month-grid-right { flex: 0 0 312px; min-width: 0; min-height: 360px; }
-.trae-date-picker-dropdown .semi-datepicker-month { padding-bottom: 8px; }
-.trae-date-picker-dropdown .semi-datepicker-navigation { height: 42px; padding-top: 0; padding-bottom: 0; }
+.trae-date-picker-dropdown .semi-datepicker-container { display: flex; box-sizing: border-box; overflow: hidden; border-radius: inherit; }
+.trae-date-picker-dropdown .semi-datepicker-container > div { width: 100%; }
+.trae-date-picker-dropdown .semi-datepicker-container > div > div { display: flex; width: 100%; min-width: 0; }
+.trae-date-picker-dropdown .semi-datepicker-container > div > div > div:last-child { min-width: 0; flex: 1 1 auto; box-sizing: border-box; padding-inline: 8px; }
+.trae-date-picker-dropdown .semi-datepicker-container > div > div > div:last-child > .semi-datepicker-month-grid { width: 100%; }
+.trae-date-picker-dropdown .semi-datepicker-month-grid { min-height: 276px; justify-content: space-between; gap: 8px; }
+.trae-date-picker-dropdown .semi-datepicker-month-grid-left, .trae-date-picker-dropdown .semi-datepicker-month-grid-right { flex: 0 0 240px; min-width: 0; min-height: 276px; }
+.trae-date-picker-dropdown .semi-datepicker-month-grid[x-preset-position='left'] .semi-datepicker-month, .trae-date-picker-dropdown .semi-datepicker-month-grid[x-preset-position='right'] .semi-datepicker-month, .trae-date-picker-dropdown .semi-datepicker-month { width: 240px; height: 234px !important; box-sizing: border-box; padding: 0 0 8px; }
+.trae-date-picker-dropdown .semi-datepicker-navigation { height: 42px; padding: 0 8px; }
+.trae-date-picker-dropdown .semi-datepicker-navigation > button { margin: 0 !important; }
+.trae-date-picker-dropdown .semi-datepicker-navigation > button[aria-label='Previous year'], .trae-date-picker-dropdown .semi-datepicker-navigation > button[aria-label='Next year'] { display: none; }
 .trae-date-picker-dropdown .semi-datepicker-navigation .semi-button, .trae-date-picker-dropdown .semi-datepicker-navigation .semi-button:hover { border-color: transparent !important; color: var(--color-text-secondary) !important; background: transparent !important; box-shadow: none !important; }
-.trae-date-picker-dropdown .semi-datepicker-navigation-month .semi-button { color: var(--color-text-default-hover) !important; }
-.trae-date-picker-dropdown .semi-datepicker-weekday-item, .trae-date-picker-dropdown .semi-datepicker-day { width: 36px; height: 44px; }
-.trae-date-picker-dropdown .semi-datepicker-weekday-item { line-height: 44px; }
+.trae-date-picker-dropdown .semi-datepicker-navigation-month .semi-button, .trae-date-picker-dropdown .semi-datepicker-navigation-month .semi-button-content { pointer-events: none; color: var(--color-text-default-hover) !important; font-weight: 400 !important; }
+.trae-date-picker-dropdown .semi-datepicker-navigation-month .semi-button * { font-weight: 400 !important; }
+.trae-date-picker-dropdown .semi-datepicker-navigation > button .semi-icon { width: 15px; height: 15px; font-size: 15px; }
+.trae-date-picker-dropdown .semi-datepicker-weekday-item, .trae-date-picker-dropdown .semi-datepicker-day { width: 32px; height: 32px; font-size: 12px; font-weight: 400 !important; }
+.trae-date-picker-dropdown .semi-datepicker-weekday-item { line-height: 32px; }
 .trae-date-picker-dropdown .semi-datepicker-day-main { color: var(--color-text-default); }
+.trae-date-picker-dropdown .semi-datepicker-day-main { display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 400 !important; }
 .trae-date-picker-dropdown .semi-datepicker-day-inrange .semi-datepicker-day-main, .trae-date-picker-dropdown .semi-datepicker-day-inoffsetrange .semi-datepicker-day-main, .trae-date-picker-dropdown .semi-datepicker-day-inhover .semi-datepicker-day-main, .trae-date-picker-dropdown .semi-datepicker-day-hoverday .semi-datepicker-day-main, .trae-date-picker-dropdown .semi-datepicker-day-hoverday-offset .semi-datepicker-day-main, .trae-date-picker-dropdown .semi-datepicker-day-hoverday-inrange .semi-datepicker-day-main, .trae-date-picker-dropdown .semi-datepicker-day-selectedrange-hover .semi-datepicker-day-main { width: 100%; border-radius: 0; background: var(--color-bg-overlay-l2); color: var(--color-text-default); }
 .trae-date-picker-dropdown .semi-datepicker-day-selected .semi-datepicker-day-main, .trae-date-picker-dropdown .semi-datepicker-day-selected-start .semi-datepicker-day-main, .trae-date-picker-dropdown .semi-datepicker-day-selected-end .semi-datepicker-day-main { background: var(--color-text-default-hover); color: var(--color-bg-base-primary); }
 html[data-theme="light"] .trae-date-picker-dropdown [class*="semi-datepicker-day-selected"] .semi-datepicker-day-main { background: #17181b; color: #ffffff; }
 html[data-theme="dark"] .trae-date-picker-dropdown [class*="semi-datepicker-day-selected"] .semi-datepicker-day-main { background: #e7e9ef; color: #17181b; }
 .trae-date-picker-dropdown .semi-datepicker-day-disabled .semi-datepicker-day-main { color: var(--color-text-tertiary); }
-.trae-usage-detail-date-dropdown { width: 640px; }
+.trae-usage-detail-date-dropdown { width: 508px; }
 .trae-date-field { gap: 8px; padding: 0 10px; }
 .trae-date-field svg { flex: 0 0 auto; color: var(--color-text-tertiary); }
 .trae-date-field input { width: 112px; color: var(--color-text-secondary); font-size: 12px; }
@@ -93,16 +106,17 @@ html[data-theme="dark"] .trae-date-picker-dropdown [class*="semi-datepicker-day-
 .trae-analysis-metric-grid .trae-metric-card { width: min(100%, 340px); }
 .trae-analysis-metric-grid.trae-metric-grid--three.trae-core-metric-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); justify-items: stretch; }
 .trae-analysis-metric-grid.trae-core-metric-grid .trae-metric-card { width: 100%; }
-.trae-metric-card { display: flex; min-width: 0; min-height: 108px; flex-direction: column; justify-content: space-between; gap: 20px; padding: 18px 20px; border: 1px solid var(--color-border-neutral-l1); border-radius: 7px; background: var(--color-bg-base-secondary); }
-.trae-metric-card:hover { border-color: var(--color-border-neutral-l2); background: var(--color-bg-overlay-l1); }
+.trae-metric-card { display: flex; min-width: 0; min-height: 108px; flex-direction: column; justify-content: space-between; gap: 20px; padding: 24px; border: 1px solid var(--color-border-neutral-l1); border-radius: 7px; background: var(--color-bg-base-secondary); }
 .trae-metric-label { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: var(--color-text-secondary); font-size: 13px; }
 .trae-metric-label.is-info-inline { justify-content: flex-start; }
 .trae-metric-label svg { flex: 0 0 auto; color: var(--color-text-tertiary); font-size: 14px; }
-.trae-metric-info { display: inline-flex; align-items: center; color: var(--color-text-tertiary); cursor: help; }
-.trae-metric-info:focus-visible { outline: 2px solid var(--color-brand); outline-offset: 2px; }
+.trae-metric-info { display: inline-flex; align-items: center; color: var(--color-text-tertiary); cursor: pointer; }
+.trae-metric-info:hover,
+.trae-metric-info:focus,
+.trae-metric-info:focus-visible { outline: 0; border: 0; background: transparent; box-shadow: none; }
 .trae-metric-card strong { color: var(--color-text-default-hover); font-size: 22px; font-weight: 650; line-height: 1; }
 .trae-metric-card.is-success strong { color: var(--color-success); }
-.trae-chart-panel { min-height: 380px; padding: 20px 24px 18px; border: 1px solid var(--color-border-neutral-l1); border-radius: 7px; background: var(--color-bg-base-secondary); }
+.trae-chart-panel { min-height: 380px; padding: 10px 24px 24px; border: 1px solid var(--color-border-neutral-l1); border-radius: 7px; background: var(--color-bg-base-secondary); }
 .trae-line-chart-wrap { min-width: 0; }
 .trae-line-chart { position: relative; width: 100%; height: 340px; min-height: 0; }
 .trae-chart-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 18px; min-height: 34px; padding: 4px 4px 0; color: var(--color-text-secondary); font-size: 12px; }
@@ -113,14 +127,35 @@ html[data-theme="dark"] .trae-date-picker-dropdown [class*="semi-datepicker-day-
 .trae-analysis-page > .trae-toolbar .trae-member-select.semi-select { width: 200px; height: 32px; }
 .trae-analysis-page > .trae-toolbar .trae-select.semi-select { font-size: 13px; }
 .trae-analysis-page > .trae-toolbar .trae-select .semi-select-selection-text, .trae-analysis-page > .trae-toolbar .trae-select .semi-select-selection-placeholder { font-size: 13px; line-height: 20px; }
-.trae-analysis-page > .trae-toolbar .trae-date-picker.semi-datepicker { width: 224px; }
+.trae-analysis-page > .trae-toolbar .trae-date-picker.semi-datepicker { width: 255px; }
 .trae-analysis-page > .trae-toolbar .trae-date-picker .semi-datepicker-range-input { height: 32px; }
-.trae-analysis-page > .trae-toolbar .trae-date-picker .semi-datepicker-range-input-wrapper { padding-inline: 4px; }
-.trae-analysis-page > .trae-toolbar .trae-date-picker .semi-datepicker-range-input-wrapper input { width: 100%; min-width: 0; padding-inline: 0; font-size: 13px; }
-.trae-analysis-page > .trae-toolbar .trae-date-picker .semi-datepicker-range-input-separator { align-self: center; font-size: 13px; line-height: 22px; }
+.trae-analysis-page > .trae-toolbar .trae-date-picker .semi-datepicker-range-input-wrapper input, .trae-analysis-page > .trae-toolbar .trae-date-picker .semi-datepicker-range-input-separator { font-size: 13px; }
+.trae-audit-page > .trae-toolbar .trae-select.semi-select { width: 240px; height: 32px; font-size: 13px; }
+.trae-audit-page > .trae-toolbar .trae-select .semi-select-selection-text, .trae-audit-page > .trae-toolbar .trae-select .semi-select-selection-placeholder { font-size: 13px; line-height: 20px; }
+.trae-audit-page > .trae-toolbar .trae-date-picker.semi-datepicker { width: 255px; }
+.trae-audit-page > .trae-toolbar .trae-date-picker .semi-datepicker-range-input { height: 32px; }
+.trae-audit-page > .trae-toolbar .trae-date-picker .semi-datepicker-range-input-wrapper input, .trae-audit-page > .trae-toolbar .trae-date-picker .semi-datepicker-range-input-separator { font-size: 13px; }
+.trae-audit-select-dropdown { min-width: 240px; padding: 4px 0; border-radius: 6px; }
+.trae-audit-select-dropdown .semi-select-option { box-sizing: border-box; height: 32px; min-height: 32px; margin: 2px 6px; padding: 0 10px; border-radius: 4px; line-height: 32px; }
+.trae-audit-select-dropdown .semi-select-option-icon { display: none; }
+.trae-audit-select-dropdown .semi-select-option-selected, .trae-audit-select-dropdown .semi-select-option-focused, .trae-audit-select-dropdown .semi-select-option:hover { background: var(--color-bg-overlay-l3); color: var(--color-text-default-hover); }
+.trae-audit-select-dropdown .semi-select-dropdown-search-wrapper { box-sizing: border-box; height: 32px; margin: 0 6px 6px; padding: 0; }
+.trae-audit-select-dropdown .semi-select-dropdown-search-wrapper .semi-input-wrapper, .trae-audit-select-dropdown .semi-select-dropdown-search-wrapper .semi-input { height: 30px; min-height: 30px; }
+.trae-audit-table { min-width: 920px; table-layout: fixed; }
+.trae-audit-table th:nth-child(1), .trae-audit-table td:nth-child(1) { width: 170px; }
+.trae-audit-table th:nth-child(2), .trae-audit-table td:nth-child(2) { width: auto; }
+.trae-audit-table th:nth-child(3), .trae-audit-table td:nth-child(3) { width: 260px; }
+.trae-audit-table th:nth-child(4), .trae-audit-table td:nth-child(4) { width: 180px; }
+.trae-audit-table tbody tr:nth-child(even) td { background: var(--color-bg-overlay-l1); }
+.trae-audit-table tbody tr:hover td, .trae-audit-table tbody tr:focus-visible td { background: var(--color-bg-overlay-l2); }
+.trae-audit-table tbody tr { cursor: pointer; }
+.trae-audit-operator-cell { display: grid; gap: 3px; min-width: 0; white-space: normal; }
+.trae-audit-operator-cell strong { color: var(--color-text-default-hover); font-size: 13px; font-weight: 500; line-height: 18px; }
+.trae-audit-operator-cell small { overflow: hidden; color: var(--color-text-tertiary); font-size: 12px; line-height: 16px; text-overflow: ellipsis; white-space: nowrap; }
+.trae-audit-table .trae-table-detail { overflow: hidden; max-width: 0; text-overflow: ellipsis; }
 .trae-analysis-grid .trae-section { min-height: 210px; margin-top: 24px; }
 .trae-analysis-chart-section { min-width: 0; }
-.trae-analysis-chart-section .trae-analysis-line-chart-wrap { min-height: 300px; padding: 14px 16px 10px; border: 1px solid var(--color-border-neutral-l1); border-radius: 7px; background: var(--color-bg-base-secondary); }
+.trae-analysis-chart-section .trae-analysis-line-chart-wrap { min-height: 300px; padding: 10px 24px 24px; border: 1px solid var(--color-border-neutral-l1); border-radius: 7px; background: var(--color-bg-base-secondary); }
 .trae-analysis-line-chart { position: relative; width: 100%; height: 250px; }
 .trae-analysis-ranking-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; }
 .trae-analysis-ranking-section { min-width: 0; margin-top: 24px; }
@@ -138,10 +173,6 @@ html[data-theme="dark"] .trae-date-picker-dropdown [class*="semi-datepicker-day-
 .trae-empty svg { font-size: 23px; color: var(--color-text-tertiary); }
 .trae-empty strong { color: var(--color-text-secondary); font-size: 13px; font-weight: 550; }
 .trae-empty span { font-size: 11px; }
-.trae-notice { position: fixed; right: 28px; bottom: 24px; z-index: 130; display: flex; align-items: center; gap: 9px; max-width: min(360px, calc(100vw - 32px)); padding: 11px 12px; border: 1px solid color-mix(in srgb, var(--color-success) 42%, transparent); border-radius: 7px; color: var(--color-text-default-hover); background: var(--color-bg-menu); box-shadow: 0 10px 28px rgba(0, 0, 0, .22); font-size: 12px; }
-.trae-notice > svg { flex: 0 0 auto; color: var(--color-success); }
-.trae-notice button { display: inline-flex; margin-left: auto; padding: 2px; border: 0; color: var(--color-text-tertiary); background: transparent; cursor: pointer; }
-.trae-notice button:hover { color: var(--color-text-default-hover); }
 .trae-tabs { display: flex; align-items: center; gap: 4px; margin-bottom: 20px; border-bottom: 1px solid var(--color-border-neutral-l1); }
 .trae-tabs button { position: relative; min-height: 38px; padding: 0 16px; border: 0; color: var(--color-text-secondary); background: transparent; font: inherit; font-size: 13px; cursor: pointer; }
 .trae-tabs button::after { position: absolute; right: 16px; bottom: -1px; left: 16px; height: 2px; background: transparent; content: ''; }
@@ -254,19 +285,48 @@ html[data-theme="dark"] .trae-date-picker-dropdown [class*="semi-datepicker-day-
 .trae-usage-person-card { display: grid; gap: 16px; padding: 16px; border: 1px solid var(--color-border-neutral-l1); border-radius: 7px; background: var(--color-bg-base-secondary); }
 .trae-usage-person-values { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; color: var(--color-text-tertiary); font-size: 10px; }
 .trae-usage-person-values b { display: block; margin-top: 3px; color: var(--color-text-default-hover); font-size: 12px; font-weight: 550; }
-.trae-dialog-backdrop { position: fixed; inset: 0; z-index: 150; display: grid; place-items: center; padding: 20px; background: rgba(0, 0, 0, .55); }
+.trae-dialog-backdrop { position: fixed; inset: 0; z-index: 150; display: grid; place-items: center; overflow-y: auto; overscroll-behavior: contain; padding: 20px; background: rgba(0, 0, 0, .55); }
 .trae-dialog { width: min(460px, 100%); border: 1px solid var(--color-border-neutral-l2); border-radius: 8px; background: var(--color-bg-menu); box-shadow: 0 18px 50px rgba(0, 0, 0, .3); }
 .trae-dialog > header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px; border-bottom: 1px solid var(--color-border-neutral-l1); }
 .trae-dialog > header h2 { color: var(--color-text-default-hover); font-size: 16px; }
 .trae-dialog > header button { display: inline-grid; width: 28px; height: 28px; place-items: center; border: 0; border-radius: 5px; color: var(--color-text-tertiary); background: transparent; cursor: pointer; }
 .trae-dialog > header button:hover { color: var(--color-text-default-hover); background: var(--color-bg-overlay-l3); }
 .trae-dialog.trae-confirm-dialog { width: min(360px, 100%); }
-.trae-dialog.trae-confirm-dialog > header { padding: 12px; }
+.trae-dialog.trae-confirm-dialog > header { padding: 12px; border-bottom: 0; }
 .trae-dialog.trae-confirm-dialog > header h2 { font-size: 16px; }
 .trae-confirm-dialog-content { padding: 0 12px 12px; }
 .trae-confirm-dialog-content p { margin: 0 0 14px; color: var(--color-text-secondary); font-size: 13px; line-height: 1.5; }
 .trae-confirm-dialog-content .trae-dialog-actions { margin: 0; padding: 0; }
 .trae-confirm-dialog-content .trae-dialog-actions button { min-height: 30px; font-size: 13px; }
+.trae-member-action-dialog { width: min(480px, 100%); }
+.trae-member-action-dialog--reclaim { width: min(360px, 100%); }
+.trae-member-action-dialog > header { padding: 12px; border-bottom: 0; }
+.trae-dialog-title-with-icon { display: inline-flex; align-items: center; gap: 7px; }
+.trae-dialog-title-with-icon > svg { width: 16px; height: 16px; color: var(--color-text-tertiary); }
+.trae-member-action-content { padding: 0 12px 12px; }
+.trae-member-action-content > p { margin: 0 0 14px; color: var(--color-text-secondary); font-size: 13px; line-height: 1.55; }
+.trae-member-action-field { display: grid; gap: 7px; color: var(--color-text-secondary); font-size: 13px; }
+.trae-member-action-field > span { color: var(--color-text-default-hover); font-weight: 600; }
+.trae-member-action-field > span b { margin-right: 4px; color: #F65A5A; }
+.trae-member-action-field .trae-department-picker-trigger { height: 32px; min-height: 32px; font-size: 13px; }
+.trae-member-action-content > .trae-dialog-actions { margin-top: 18px; }
+.trae-member-action-content .trae-dialog-actions button { min-height: 30px; font-size: 13px; }
+.trae-member-action-dialog--department .trae-member-action-content > .trae-dialog-actions { margin-top: 8px; }
+.trae-member-action-dialog--reclaim .trae-member-action-content { padding-bottom: 12px; }
+.trae-member-action-dialog--reclaim .trae-member-action-content > .trae-dialog-actions { margin-top: 0; }
+.trae-member-action-link { display: inline; margin: 0; padding: 0; border: 0; color: var(--color-brand); background: transparent; font: inherit; font-size: 13px; cursor: pointer; }
+.trae-member-action-member { margin: 0 0 14px; padding: 10px 12px; border: 1px solid var(--color-border-neutral-l1); border-radius: 5px; color: var(--color-text-secondary); background: var(--color-bg-base-secondary); font-size: 13px; }
+.trae-member-action-dialog--remove .trae-member-action-content > p { margin-bottom: 10px; }
+.trae-member-action-dialog--remove .trae-member-action-member { margin-bottom: 4px; padding-block: 5px; }
+.trae-member-action-dialog--remove .trae-member-action-content > .trae-dialog-actions { margin-top: 0; }
+.trae-role-options { display: grid; overflow: hidden; margin-top: 4px; border: 1px solid var(--color-border-neutral-l1); border-radius: 5px; }
+.trae-role-option { display: flex; align-items: flex-start; gap: 10px; min-height: 66px; padding: 12px; color: var(--color-text-secondary); background: var(--color-bg-base-secondary); cursor: pointer; }
+.trae-role-option + .trae-role-option { border-top: 1px solid var(--color-border-neutral-l1); }
+.trae-role-option.is-selected { background: var(--color-bg-overlay-l1); }
+.trae-role-option input { width: 16px; height: 16px; flex: 0 0 16px; margin: 1px 0 0; accent-color: var(--color-brand); }
+.trae-role-option > span { display: grid; gap: 5px; min-width: 0; }
+.trae-role-option strong { color: var(--color-text-default-hover); font-size: 13px; font-weight: 550; }
+.trae-role-option small { color: var(--color-text-tertiary); font-size: 11px; line-height: 1.45; }
 .trae-department-detail-dialog { width: min(480px, 100%); }
 .trae-department-detail-content { padding: 0 12px 12px; }
 .trae-department-detail-content dl { display: grid; gap: 14px; margin: 0; padding: 0 0 18px; }
@@ -279,9 +339,21 @@ html[data-theme="dark"] .trae-date-picker-dropdown [class*="semi-datepicker-day-
 .trae-danger-button:hover { border-color: #e34d4d; background: #e34d4d; }
 .trae-dialog-form { display: grid; gap: 16px; padding: 12px; }
 .trae-dialog-form > p { color: var(--color-text-secondary); font-size: 12px; }
-.trae-dialog-form label { display: grid; gap: 7px; color: var(--color-text-secondary); font-size: 12px; }
-.trae-dialog-form input, .trae-dialog-form select { min-height: 38px; padding: 0 10px; border: 1px solid var(--color-border-neutral-l2); border-radius: 5px; outline: 0; color: var(--color-text-default); background: var(--color-bg-base-secondary); font: inherit; font-size: 12px; }
-.trae-dialog-form input:focus, .trae-dialog-form select:focus { border-color: var(--color-brand); }
+.trae-dialog-form > label { display: grid; gap: 7px; color: var(--color-text-secondary); font-size: 12px; }
+.trae-dialog-form > label > input,
+.trae-dialog-form > label > select,
+.trae-dialog-form .trae-dialog-input-wrap > input { min-height: 38px; padding: 0 10px; border: 1px solid var(--color-border-neutral-l2); border-radius: 5px; outline: 0; color: var(--color-text-default); background: var(--color-bg-base-secondary); font: inherit; font-size: 12px; }
+.trae-dialog-form > label > input:focus,
+.trae-dialog-form > label > select:focus,
+.trae-dialog-form .trae-dialog-input-wrap > input:focus { border-color: var(--color-brand); }
+.trae-dialog-form .semi-input { min-height: 0; height: 100%; padding: 0 10px; border: 0; border-radius: inherit; outline: 0; background: transparent; font-size: 12px; }
+.trae-dialog-form .semi-input-wrapper-error,
+.trae-dialog-form .semi-input-wrapper-error:hover,
+.trae-dialog-form .semi-input-wrapper-error.semi-input-wrapper-focus {
+  border-color: #f65a5a;
+  background: var(--color-bg-base-secondary);
+}
+.trae-dialog-form .semi-form-field-error-message { margin-top: 4px; color: #f65a5a; font-size: 11px; line-height: 16px; }
 .trae-dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
 .trae-rule-list { display: grid; gap: 16px; padding: 12px; }
 .trae-rule-list > div { display: grid; gap: 7px; padding-bottom: 14px; border-bottom: 1px solid var(--color-border-neutral-l1); }
@@ -310,9 +382,9 @@ html[data-theme="dark"] .trae-date-picker-dropdown [class*="semi-datepicker-day-
 .trae-member-add-menu button { display: flex; align-items: center; gap: 8px; min-height: 30px; padding: 0 6px; border: 0; border-radius: 4px; color: var(--color-text-default); background: transparent; font: inherit; font-size: 13px; text-align: left; cursor: pointer; }
 .trae-member-add-menu button svg { width: 16px; height: 16px; flex: 0 0 16px; }
 .trae-member-add-menu button:hover { color: var(--color-text-default-hover); background: var(--color-bg-overlay-l3); }
-.trae-members-page > .trae-tabs { position: relative; gap: 12px; margin: 0; padding: 0px 36px 0; border-bottom: 0; }
+.trae-members-page > .trae-tabs { position: relative; gap: 24px; margin: 0; padding: 0px 36px 0; border-bottom: 0; }
 .trae-members-page > .trae-tabs::after { position: absolute; right: 36px; bottom: 0; left: 36px; height: 1px; background: var(--color-border-neutral-l1); content: ''; }
-.trae-members-page > .trae-tabs button { z-index: 1; min-height: 44px; padding-inline: 0; margin-right: 0; font-size: 16px; font-weight: 600; }
+.trae-members-page > .trae-tabs button { z-index: 1; min-height: 44px; padding-inline: 0; margin-right: 0; font-size: 13px; font-weight: 600; }
 .trae-members-page > .trae-tabs button::after { right: 0; left: 0; }
 .trae-members-page > .trae-members-workspace, .trae-members-page > .trae-department-editor { margin: 0 36px 36px; border: 0; border-radius: 0; background: transparent; grid-template-columns: 240px minmax(0, 1fr); }
 /* Leave height to the grid stretch so the tree and member list end on the same baseline. */
@@ -358,7 +430,8 @@ html[data-theme="dark"] .trae-date-picker-dropdown [class*="semi-datepicker-day-
 .trae-department-picker-trigger { display: flex; width: 100%; min-height: 44px; align-items: center; justify-content: space-between; gap: 10px; padding: 0 12px; border: 1px solid var(--color-border-neutral-l2); border-radius: 6px; color: var(--color-text-secondary); background: var(--color-bg-base-secondary); font: inherit; text-align: left; cursor: pointer; }
 .trae-department-picker-trigger:hover { border-color: var(--color-border-neutral-l3); }
 .trae-department-picker-trigger span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.trae-department-picker-dropdown { position: absolute; right: 0; left: 0; top: calc(100% + 6px); z-index: 30; max-height: 264px; overflow: auto; padding: 4px 6px; border: 1px solid var(--color-border-neutral-l2); border-radius: 6px; background: var(--color-bg-menu); box-shadow: 0 12px 30px rgba(0, 0, 0, .3); }
+.trae-department-parent-field { overflow: visible !important; }
+.trae-department-picker-dropdown { position: absolute; right: 0; left: 0; top: calc(100% + 6px); z-index: 200; max-height: 264px; overflow: auto; padding: 4px 6px; border: 1px solid var(--color-border-neutral-l2); border-radius: 6px; background: var(--color-bg-menu); box-shadow: 0 12px 30px rgba(0, 0, 0, .3); }
 .trae-department-picker-option { display: flex; width: 100%; min-height: 32px; align-items: center; gap: 7px; padding-right: 8px; border-radius: 5px; color: var(--color-text-secondary); font-size: 13px; }
 .trae-department-picker-option:hover, .trae-department-picker-option.is-selected { color: var(--color-text-default-hover); background: var(--color-bg-overlay-l3); }
 .trae-department-picker-toggle { display: inline-grid; width: 20px; height: 20px; place-items: center; }
@@ -379,6 +452,7 @@ html[data-theme="dark"] .trae-date-picker-dropdown [class*="semi-datepicker-day-
 .trae-dialog-input-wrap input { width: 100%; padding-right: 52px; }
 .trae-dialog-input-wrap small { position: absolute; right: 12px; top: 50%; color: var(--color-text-tertiary); font-size: 13px; transform: translateY(-50%); }
 .trae-department-dialog-form input, .trae-department-dialog-form .trae-department-picker-trigger { box-sizing: border-box; height: 30px; min-height: 30px; font-size: 13px; }
+.trae-department-dialog-form .semi-input-suffix { margin-right: 10px; }
 .trae-department-dialog-form .trae-department-picker-trigger > svg { width: 12px; height: 12px; flex: 0 0 12px; }
 .trae-department-dialog-form > label > input { width: 100%; }
 .trae-department-dialog-form input:disabled { color: var(--color-text-tertiary); background: var(--color-bg-base-tertiary); }
@@ -595,16 +669,66 @@ html[data-theme="dark"] .trae-date-picker-dropdown [class*="semi-datepicker-day-
 .trae-usage-page-official > .trae-tabs button.is-active::after { background: var(--color-text-default-hover); }
 .trae-usage-summary--official { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 .trae-usage-summary-card { display: grid; min-height: 176px; grid-template-rows: auto 1fr auto; gap: 12px; padding: 16px 22px; border: 1px solid var(--color-border-neutral-l1); border-radius: 7px; background: var(--color-bg-base-secondary); }
+.trae-usage-summary-card--overall { box-sizing: border-box; min-height: 175px; grid-template-rows: 1fr; padding: 24px; }
 .trae-usage-summary-heading { display: flex; align-items: center; gap: 6px; color: var(--color-text-secondary); font-size: 13px; }
 .trae-usage-summary-heading > svg { color: var(--color-text-tertiary); font-size: 13px; }
 .trae-usage-summary-heading > button:last-child { margin-left: auto; }
 .trae-usage-overall-body { display: flex; align-items: center; justify-content: space-between; gap: 18px; min-height: 112px; }
-.trae-usage-overall-body > div { display: grid; gap: 9px; }
-.trae-usage-overall-body strong, .trae-usage-card-money { color: var(--color-text-default-hover); font-size: 25px; line-height: 1; }
-.trae-usage-overall-body span { color: var(--color-text-secondary); font-size: 11px; white-space: nowrap; }
-.trae-usage-overall-body span i { display: inline-block; width: 8px; height: 8px; margin-right: 7px; border-radius: 2px; background: var(--color-success); }
-.trae-usage-overall-body span i.is-overage { background: #e5a83b; }
-.trae-usage-donut { width: 96px; height: 96px; flex: 0 0 auto; }
+.trae-usage-overall-copy { display: flex; min-width: 0; flex-direction: column; justify-content: flex-start; gap: 18px; height: 100%; }
+.trae-usage-overall-details { display: grid; gap: 9px; }
+.trae-usage-overall-details strong, .trae-usage-card-money { color: var(--color-text-default-hover); font-size: 25px; line-height: 1; }
+.trae-usage-overall-details span { color: var(--color-text-secondary); font-size: 11px; white-space: nowrap; }
+.trae-usage-overall-details span i { display: inline-block; width: 8px; height: 8px; margin-right: 7px; border-radius: 2px; background: var(--color-success); }
+.trae-usage-overall-details span i.is-overage { background: #e5a83b; }
+.trae-usage-donut { width: 132px; height: 126px; flex: 0 0 auto; }
+.trae-usage-quota-dialog { width: min(560px, 100%); }
+.trae-usage-quota-dialog > header { padding: 16px 12px 12px; border-bottom: 0; }
+.trae-usage-quota-dialog > header h2 { font-size: 16px; }
+.trae-usage-quota-form { display: grid; gap: 0; padding: 0 12px 12px; }
+.trae-usage-quota-tabs { display: flex; gap: 4px; margin-bottom: 12px; }
+.trae-usage-quota-tabs button { min-height: 32px; padding: 0 12px; border: 0; border-radius: 5px; color: var(--color-text-tertiary); background: transparent; font: inherit; font-size: 12px; cursor: pointer; }
+.trae-usage-quota-tabs button.is-active { color: var(--color-text-default-hover); background: var(--color-bg-overlay-l2); }
+.trae-usage-quota-panel { min-height: 98px; padding: 14px 12px 12px; border: 1px solid var(--color-border-neutral-l2); border-radius: 6px; background: var(--color-bg-base-secondary); }
+.trae-usage-quota-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px; }
+.trae-usage-quota-fields label { display: grid; gap: 10px; color: var(--color-text-secondary); font-size: 12px; }
+.trae-usage-quota-fields label > .app-info-icon { display: inline-flex; width: 13px; height: 13px; margin-left: 3px; vertical-align: -2px; }
+.trae-usage-quota-input { display: flex; align-items: center; height: 32px; padding: 0 10px; border: 1px solid var(--color-border-neutral-l1); border-radius: 5px; background: var(--color-bg-base-tertiary); }
+.trae-usage-quota-input input { min-width: 0; flex: 1; height: 100%; padding: 0; border: 0; outline: 0; color: var(--color-text-default); background: transparent; font: inherit; font-size: 13px; }
+.trae-usage-quota-input input:disabled { color: var(--color-text-tertiary); }
+.trae-usage-quota-input span { color: var(--color-text-tertiary); font-size: 12px; }
+.trae-usage-quota-panel--overage { display: flex; min-height: 130px; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+.trae-usage-quota-panel--overage p { max-width: 390px; margin: 0 0 14px; color: var(--color-text-tertiary); font-size: 12px; line-height: 1.55; }
+.trae-usage-quota-panel--overage .trae-secondary-button { min-height: 30px; }
+.trae-usage-quota-form > .trae-dialog-actions { margin-top: 14px; }
+.trae-usage-member-quota-dialog { width: min(560px, 100%); }
+.trae-usage-member-quota-dialog > header { padding: 12px 12px 4px; border-bottom: 0; }
+.trae-usage-member-quota-dialog > header h2 { font-size: 18px; line-height: 24px; }
+.trae-usage-member-quota-form { display: grid; gap: 13px; padding: 0 12px 12px; }
+.trae-usage-member-quota-notice { display: flex; align-items: center; gap: 10px; min-height: 36px; box-sizing: border-box; padding: 0 12px; border: 1px solid #3b73db; border-radius: 5px; color: var(--color-text-secondary); background: color-mix(in srgb, #3b73db 24%, var(--color-bg-base-secondary)); font-size: 13px; }
+.trae-usage-member-quota-notice > svg, .trae-usage-member-quota-disabled > svg { flex: 0 0 auto; color: #4d8cff; font-size: 16px; }
+.trae-usage-member-quota-label, .trae-usage-member-quota-field { display: grid; gap: 8px; color: var(--color-text-secondary); font-size: 13px; }
+.trae-usage-member-quota-label > strong, .trae-usage-member-quota-field > strong { color: var(--color-text-default-hover); font-size: 15px; font-weight: 650; }
+.trae-usage-member-quota-label > strong i { margin-right: 3px; color: #f34f4f; font-style: normal; }
+.trae-usage-member-quota-select.semi-select { width: 100%; min-height: 32px; border-color: var(--color-border-neutral-l1); border-radius: 6px; background: var(--color-bg-base-tertiary); }
+.trae-usage-member-quota-select.semi-select.has-error, .trae-usage-member-quota-input.has-error { border-color: #f34f4f; }
+.trae-usage-member-quota-select .semi-select-selection { min-height: 30px; padding-inline: 10px; }
+.trae-usage-member-quota-select .semi-tag { margin: 0; border-radius: 4px; color: var(--color-text-secondary); background: var(--color-bg-overlay-l2); }
+.trae-usage-member-quota-input { display: flex; align-items: center; height: 32px; box-sizing: border-box; padding: 0 12px; border: 1px solid var(--color-border-neutral-l1); border-radius: 5px; background: var(--color-bg-base-tertiary); }
+.trae-usage-member-quota-input input { min-width: 0; flex: 1; height: 100%; padding: 0; border: 0; outline: 0; color: var(--color-text-default); background: transparent; font: inherit; font-size: 14px; }
+.trae-usage-member-quota-input span { color: var(--color-text-tertiary); font-size: 13px; }
+.trae-usage-member-quota-field > strong i { margin-right: 3px; color: #f34f4f; font-style: normal; }
+.trae-usage-member-quota-error { color: #f34f4f; font-size: 12px; line-height: 18px; }
+.trae-usage-member-quota-disabled { display: flex; align-items: flex-start; gap: 10px; margin: 0; color: var(--color-text-tertiary); font-size: 13px; line-height: 1.5; }
+.trae-usage-member-quota-disabled a { color: var(--color-text-secondary); text-decoration: underline; }
+.trae-member-quota-option { display: flex; align-items: center; gap: 8px; width: 100%; }
+.trae-member-quota-checkbox { display: inline-grid; width: 16px; height: 16px; flex: 0 0 auto; place-items: center; box-sizing: border-box; border: 1px solid var(--color-border-neutral-l2); border-radius: 3px; color: #ffffff; background: transparent; font-size: 11px; line-height: 1; }
+.trae-member-quota-checkbox.is-selected { border-color: var(--color-text-default-hover); background: var(--color-text-default-hover); }
+.trae-member-quota-option strong { color: var(--color-text-default-hover); font-size: 13px; font-weight: 500; }
+.trae-member-quota-option small { color: var(--color-text-tertiary); font-size: 12px; }
+.trae-usage-member-quota-dropdown { width: 100%; min-width: 0; padding: 6px; }
+.trae-usage-member-quota-dropdown .semi-select-dropdown-search-wrapper { height: 34px; margin: 0 0 6px; padding: 0 8px; border: 1px solid var(--color-border-neutral-l1); border-radius: 4px; background: var(--color-bg-base-tertiary); }
+.trae-usage-member-quota-dropdown .semi-select-option { min-height: 36px; margin: 2px 0; padding: 0 10px; border-radius: 4px; }
+.trae-usage-member-quota-dropdown .semi-select-option:hover, .trae-usage-member-quota-dropdown .semi-select-option-focused, .trae-usage-member-quota-dropdown .semi-select-option-selected { background: var(--color-bg-overlay-l2); }
 .trae-usage-card-money { align-self: center; }
 .trae-usage-card-money small { color: var(--color-text-tertiary); font-size: 12px; font-weight: 400; }
 .trae-usage-progress-track { height: 6px; overflow: hidden; border-radius: 4px; background: var(--color-bg-overlay-l3); }
@@ -645,11 +769,14 @@ html[data-theme="dark"] .trae-date-picker-dropdown [class*="semi-datepicker-day-
 .trae-usage-detail-toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 15px; }
 .trae-usage-detail-toolbar .trae-select.semi-select { width: 180px; height: 32px; }
 .trae-usage-detail-toolbar .trae-select .semi-select-selection { height: 30px; }
-.trae-usage-detail-date-picker.semi-datepicker { width: 274px; min-width: 0; height: 32px; }
+.trae-usage-detail-date-picker.semi-datepicker { width: 255px; min-width: 0; height: 32px; }
 .trae-usage-detail-date-picker .semi-datepicker-range-input { height: 30px; }
-.trae-usage-detail-date-picker .semi-datepicker-range-input-wrapper { padding-inline: 4px; }
-.trae-usage-detail-date-picker .semi-datepicker-range-input-wrapper input { width: 100%; min-width: 0; padding-inline: 0; font-size: 13px; }
-.trae-usage-detail-date-picker .semi-datepicker-range-input-separator { align-self: center; font-size: 13px; line-height: 22px; }
+.trae-usage-detail-date-picker .semi-datepicker-range-input-wrapper { padding-inline: 8px; }
+.trae-usage-detail-date-picker .semi-datepicker-range-input-wrapper input { width: 100%; min-width: 0; padding-inline: 4px; font-size: 13px; }
+.trae-usage-detail-date-picker .semi-datepicker-range-input-separator { align-items: center; align-self: center; justify-content: center; text-align: center; font-size: 13px; line-height: 22px; }
+.trae-usage-detail-date-dropdown .semi-datepicker-quick-control { display: none !important; }
+.trae-usage-detail-date-dropdown .semi-datepicker-container > div > div > div:last-child { width: 100%; padding-inline: 8px; }
+.trae-usage-detail-date-dropdown .semi-datepicker-month { width: 240px; height: 234px !important; box-sizing: border-box; padding: 0 0 8px; }
 .trae-usage-range-buttons { display: flex; height: 32px; box-sizing: border-box; align-items: center; gap: 2px; padding: 2px; border: 1px solid var(--color-border-neutral-l1); border-radius: 6px; background: var(--color-bg-base-secondary); }
 .trae-usage-range-buttons button { min-height: 26px; padding: 0 12px; border: 0; border-radius: 4px; color: var(--color-text-tertiary); background: transparent; font-size: 12px; cursor: pointer; }
 .trae-usage-range-buttons button:hover, .trae-usage-range-buttons button.is-active { color: var(--color-text-default-hover); background: var(--color-bg-overlay-l2); }
@@ -662,22 +789,6 @@ html[data-theme="dark"] .trae-date-picker-dropdown [class*="semi-datepicker-day-
 .trae-usage-member-select-dropdown .semi-select-dropdown-search-wrapper .semi-input-wrapper { height: 30px; border: 0; background: transparent; }
 .trae-usage-member-select-dropdown .semi-select-option { min-height: 32px; height: 32px; margin: 2px 6px; padding: 0 10px; border-radius: 4px; line-height: 32px; }
 .trae-usage-member-select-dropdown .semi-select-option-selected, .trae-usage-member-select-dropdown .semi-select-option-focused, .trae-usage-member-select-dropdown .semi-select-option:hover { background: var(--color-bg-overlay-l3); color: var(--color-text-default-hover); }
-.trae-usage-pagination { display: flex; align-items: center; justify-content: flex-end; min-height: 52px; padding-top: 12px; }
-.trae-usage-pagination .semi-page { display: flex; align-items: center; gap: 6px; margin: 0; color: var(--color-text-secondary); }
-.trae-usage-pagination .semi-page-item, .trae-usage-pagination .semi-page-prev, .trae-usage-pagination .semi-page-next { display: inline-grid; width: 28px; height: 28px; place-items: center; box-sizing: border-box; margin: 0; padding: 0; border: 1px solid transparent; border-radius: 4px; color: var(--color-text-secondary); background: var(--color-bg-base-tertiary); font-size: 13px; line-height: 1; }
-.trae-usage-pagination .semi-page-item:hover, .trae-usage-pagination .semi-page-prev:hover:not(.disabled), .trae-usage-pagination .semi-page-next:hover:not(.disabled) { color: var(--color-text-default-hover); background: var(--color-bg-overlay-l2); }
-.trae-usage-pagination .semi-page-item-active { border-color: var(--color-border-neutral-l2); color: var(--color-text-default-hover); background: var(--color-bg-overlay-l2); }
-.trae-usage-pagination .semi-page-item-active:hover { color: var(--color-text-default-hover); background: var(--color-bg-overlay-l2); }
-html[data-theme="light"] .trae-usage-pagination .semi-page-item-active,
-html[data-theme="light"] .trae-usage-pagination .semi-page-item-active:hover { border-color: #17181b; color: #ffffff; background: #17181b; }
-.trae-usage-pagination .semi-page-item-disabled { color: var(--color-text-tertiary); opacity: .45; }
-.trae-usage-pagination .semi-page-item-rest { width: 18px; color: var(--color-text-tertiary); }
-.trae-usage-pagination .semi-select { width: 110px; height: 28px; margin-left: 2px; border-color: var(--color-border-neutral-l1); border-radius: 4px; background: var(--color-bg-base-secondary); }
-.trae-usage-pagination .semi-select-selection { height: 26px; font-size: 13px; }
-.trae-usage-pagination .semi-select-arrow { color: var(--color-text-tertiary); }
-.semi-page-select-dropdown .semi-select-option-icon { display: none; }
-.semi-page-select-dropdown .semi-select-option { box-sizing: border-box; margin-inline: 4px; padding-inline: 10px; font-size: 13px; }
-.semi-page-select-dropdown .semi-select-option-selected, .semi-page-select-dropdown .semi-select-option-focused, .semi-page-select-dropdown .semi-select-option:hover { border-radius: 6px; background: var(--color-bg-overlay-l2); color: var(--color-text-default-hover); }
 
 /* 新版企业管理五个页面的输入框聚焦时不额外绘制外边框，保持与设计稿一致。 */
 .trae-page input:focus,
@@ -701,6 +812,14 @@ html[data-theme="light"] .trae-usage-pagination .semi-page-item-active:hover { b
   .trae-usage-detail-toolbar { align-items: stretch; flex-direction: column; }
   .trae-usage-detail-toolbar .trae-select, .trae-usage-detail-date-picker.semi-datepicker { width: 100%; }
   .trae-usage-detail-download { margin-left: 0; align-self: flex-end; }
-  .trae-usage-pagination { justify-content: flex-start; flex-wrap: wrap; }
   .trae-usage-page-official .trae-toolbar .trae-inline-search--wide, .trae-usage-page-official .trae-toolbar .trae-select.semi-select { width: 100%; }
+}
+/* 新版企业管理使用 72px 顶部导航，避免旧的 64px 布局基准产生 8px 页面溢出。 */
+.console-frame:has(.trae-page) .console-sider {
+  top: 72px;
+}
+
+.console-frame:has(.trae-page) .console-layout,
+.console-frame:has(.trae-page) .console-main-layout {
+  min-height: calc(100vh - 72px);
 }

@@ -3,12 +3,10 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router";
 import Toast from "@douyinfe/semi-ui/lib/es/toast";
+import { Form } from "@douyinfe/semi-ui/lib/es/form";
 import Select from "@douyinfe/semi-ui/lib/es/select";
 import Table from "@douyinfe/semi-ui/lib/es/table";
 import DatePicker from "@douyinfe/semi-ui/lib/es/datePicker";
-import Pagination from "@douyinfe/semi-ui/lib/es/pagination";
-import ConfigProvider from "@douyinfe/semi-ui/lib/es/configProvider";
-import semiZhCN from "@douyinfe/semi-ui/lib/es/locale/source/zh_CN";
 import Tooltip from "@douyinfe/semi-ui/lib/es/tooltip";
 import * as echarts from "echarts/core";
 import { LineChart as EChartsLineChart, PieChart } from "echarts/charts";
@@ -19,9 +17,9 @@ import {
   IconBarChartVStroked,
   IconBookmark,
   IconCalendar,
-  IconCheckCircleStroked,
   IconChevronDown,
   IconChevronRight,
+  IconChevronUp,
   IconClose,
   IconCreditCard,
   IconDownload,
@@ -42,6 +40,7 @@ import {
   IconUserListStroked,
 } from "@douyinfe/semi-icons";
 import { exportEnterpriseCsv } from "./enterprise-console-shared";
+import { TraePagination } from "@/components/trae-pagination";
 import { useResolvedTheme } from "@/theme";
 import "@/trae-enterprise.css";
 
@@ -54,6 +53,10 @@ echarts.use([
 ]);
 
 type Translate = (key: string, options?: Record<string, unknown>) => string;
+
+function showTraeToast(message: string) {
+  Toast.success(message);
+}
 type TraePageProps = {
   title: string;
   action?: ReactNode;
@@ -121,44 +124,90 @@ const requestRows = [
   { id: "request-2", name: "Ming Zhao", email: "ming@example.com", department: "产品中心", appliedAt: "2026/08/20 10:32" },
 ];
 
-const auditRows = [
+const auditRowSeeds = [
   {
-    id: "audit-1",
     time: "2026/08/22 18:42:16",
-    operator: "han",
-    action: "调整成员权限",
-    detail: "将 Lina Chen 的角色调整为管理员",
-    result: "success",
-    ip: "10.24.16.8",
+    operator: "zhuhanxin",
+    operatorEmail: "zhuhanxin0308@163.com",
+    action: "修改企业配额",
+    detail: "修改企业基础会话配额：人均金额配额为500.00元",
   },
   {
-    id: "audit-2",
     time: "2026/08/22 17:12:03",
-    operator: "Lina Chen",
-    action: "创建 API Key",
-    detail: "创建企业工作空间密钥「研发服务」",
-    result: "success",
-    ip: "10.24.16.12",
+    operator: "zhuhanxin",
+    operatorEmail: "zhuhanxin0308@163.com",
+    action: "发布智能体",
+    detail: "发布智能体，智能体名称：UI/UX优化顾问",
   },
   {
-    id: "audit-3",
     time: "2026/08/21 09:28:44",
-    operator: "han",
-    action: "导出用量数据",
-    detail: "导出 2026/08/01 - 2026/08/21 用量明细",
-    result: "success",
-    ip: "10.24.16.8",
+    operator: "zhuhanxin",
+    operatorEmail: "zhuhanxin0308@163.com",
+    action: "修改部门",
+    detail: "修改部门】五级上级部门，从极光互娱科技（深圳）有限公司/运营/测试子级...",
   },
   {
-    id: "audit-4",
     time: "2026/08/20 20:05:11",
-    operator: "张宇",
-    action: "申请加入部门",
-    detail: "申请加入产品中心",
-    result: "failed",
-    ip: "10.24.18.21",
+    operator: "zhuhanxin",
+    operatorEmail: "zhuhanxin0308@163.com",
+    action: "修改部门",
+    detail: "修改部门】四级子部门上级部门，从极光互娱科技（深圳）有限公司/运营/测...",
+  },
+  {
+    time: "2026/08/20 16:32:10",
+    operator: "zhuhanxin",
+    operatorEmail: "zhuhanxin0308@163.com",
+    action: "创建部门",
+    detail: "创建部门：极光互娱科技（深圳）有限公司/运营/测试子级部门/测试三级子...",
+  },
+  {
+    time: "2026/08/20 16:31:42",
+    operator: "zhuhanxin",
+    operatorEmail: "zhuhanxin0308@163.com",
+    action: "创建部门",
+    detail: "创建部门：极光互娱科技（深圳）有限公司/运营/测试子级部门/测试三级子...",
+  },
+  {
+    time: "2026/08/20 16:30:58",
+    operator: "zhuhanxin",
+    operatorEmail: "zhuhanxin0308@163.com",
+    action: "创建部门",
+    detail: "创建部门：极光互娱科技（深圳）有限公司/运营/测试子级部门/测试三级子...",
+  },
+  {
+    time: "2026/08/20 16:30:30",
+    operator: "zhuhanxin",
+    operatorEmail: "zhuhanxin0308@163.com",
+    action: "创建部门",
+    detail: "创建部门：406324736",
+  },
+  {
+    time: "2026/08/20 16:30:13",
+    operator: "zhuhanxin",
+    operatorEmail: "zhuhanxin0308@163.com",
+    action: "创建部门",
+    detail: "创建部门：极光互娱科技（深圳）有限公司/运营/测试子级部门/测试三级子...",
+  },
+  {
+    time: "2026/08/20 16:29:57",
+    operator: "zhuhanxin",
+    operatorEmail: "zhuhanxin0308@163.com",
+    action: "创建部门",
+    detail: "创建部门：极光互娱科技（深圳）有限公司/运营/测试子级部门/测试三级子...",
   },
 ];
+
+const auditRows = Array.from({ length: 60 }, (_, index) => {
+  const seed = auditRowSeeds[index % auditRowSeeds.length];
+  const day = String(25 - Math.floor(index / auditRowSeeds.length)).padStart(2, "0");
+  return {
+    ...seed,
+    id: "audit-" + (index + 1),
+    time: index < auditRowSeeds.length ? seed.time : "2026/08/" + day + " " + seed.time.slice(11),
+    result: "success" as const,
+    ip: "10.24.16.8",
+  };
+});
 
 const usageRows = [
   {
@@ -291,14 +340,8 @@ function flattenTraeUsageDepartments(
 }
 
 function TraeShell({ title, action, children, className = "" }: TraePageProps) {
-  const { t } = useTranslation();
   return (
     <div className={`trae-page ${className}`.trim()}>
-      <div className="trae-breadcrumb">
-        <span>{t("traeEnterprise.common.breadcrumb")}</span>
-        <b>/</b>
-        <strong>{title}</strong>
-      </div>
       <header className="trae-page-heading">
         <h1>{title}</h1>
         {action ? (
@@ -800,8 +843,8 @@ function TraeDateRangePicker({
       dropdownClassName="trae-date-picker-dropdown"
       type="dateRange"
       value={value}
-      format="yyyy/MM/dd"
-      rangeSeparator=" - "
+      format="yyyy-MM-dd"
+      rangeSeparator=" ~ "
       presets={presets}
       presetPosition="left"
       showClear={false}
@@ -831,6 +874,7 @@ function TraeMetricCard({
         {showInfo ? (
           <Tooltip
             autoAdjustOverflow
+            className="app-info-tooltip"
             content={label}
             position="top"
             showArrow={false}
@@ -841,11 +885,11 @@ function TraeMetricCard({
               tabIndex={0}
               aria-label={label}
             >
-              {icon ?? <IconInfoCircle aria-hidden="true" />}
+              {icon ?? <IconInfoCircle className="app-info-icon" aria-hidden="true" />}
             </span>
           </Tooltip>
         ) : (
-          (icon ?? <IconInfoCircle aria-hidden="true" />)
+          (icon ?? <IconInfoCircle className="app-info-icon" aria-hidden="true" />)
         )}
       </div>
       <strong>{value}</strong>
@@ -859,7 +903,7 @@ function TraeSection({
   children,
   className = "",
 }: {
-  title: string;
+  title: ReactNode;
   action?: ReactNode;
   children: ReactNode;
   className?: string;
@@ -890,36 +934,37 @@ function TraeEmpty({ hint }: { hint?: string }) {
   );
 }
 
-function TraeNotice({
-  message,
-  onClose,
-}: {
-  message: string | null;
-  onClose: () => void;
-}) {
-  if (!message) return null;
-  return (
-    <div className="trae-notice" role="status">
-      <IconCheckCircleStroked aria-hidden="true" />
-      <span>{message}</span>
-      <button type="button" aria-label="关闭提示" onClick={onClose}>
-        <IconClose aria-hidden="true" />
-      </button>
-    </div>
-  );
-}
-
 function TraeDialog({
   title,
   children,
   onClose,
   className = "",
 }: {
-  title: string;
+  title: ReactNode;
   children: ReactNode;
   onClose: () => void;
   className?: string;
 }) {
+  useEffect(() => {
+    const html = document.documentElement;
+    const body = document.body;
+    const previousHtmlOverflow = html.style.overflow;
+    const previousBodyOverflow = body.style.overflow;
+    const previousBodyPaddingRight = body.style.paddingRight;
+    const scrollbarWidth = window.innerWidth - html.clientWidth;
+
+    // Keep the background page fixed while a custom dialog is open. Preserve
+    // the existing scrollbar gutter when the page already has one.
+    html.style.overflow = "hidden";
+    body.style.overflow = "hidden";
+    if (scrollbarWidth > 0) body.style.paddingRight = `${scrollbarWidth}px`;
+    return () => {
+      html.style.overflow = previousHtmlOverflow;
+      body.style.overflow = previousBodyOverflow;
+      body.style.paddingRight = previousBodyPaddingRight;
+    };
+  }, []);
+
   return (
     <div
       className="trae-dialog-backdrop"
@@ -1083,7 +1128,7 @@ function LineChart({ dateRange }: { dateRange: Date[] }) {
         axisLine: { show: false },
         axisTick: { show: false },
         axisLabel: { color: textColor, fontSize: 11 },
-        splitLine: { lineStyle: { color: gridColor, type: "dashed" } },
+        splitLine: { lineStyle: { color: gridColor, type: "solid" } },
       },
       series: seriesMeta.map((series) => ({
         type: "line",
@@ -1259,7 +1304,7 @@ function TraeAnalysisLineChart({
         axisLine: { show: false },
         axisTick: { show: false },
         axisLabel: { color: textColor, fontSize: 11 },
-        splitLine: { lineStyle: { color: gridColor, type: "dashed" } },
+        splitLine: { lineStyle: { color: gridColor, type: "solid" } },
       },
       series: seriesMeta.map((series, index) => ({
         type: "line",
@@ -1360,9 +1405,10 @@ function TraeAnalysisPieChart({ kind }: { kind: AnalysisPieKind }) {
     if (!node) return undefined;
     const chart = echarts.init(node, undefined, { renderer: "svg" });
     const isDark = theme === "dark";
-    const textColor = isDark ? "#f1f3f7" : "#30343b";
-    const tooltipBackground = isDark ? "#202124" : "#ffffff";
-    const tooltipBorder = isDark ? "#777b84" : "#d8dadd";
+    const labelColor = isDark ? "#ffffff" : "#30343b";
+    const tooltipTextColor = "#ffffff";
+    const tooltipBackground = "#202124";
+    const tooltipBorder = "#1DC981";
     chart.setOption({
       animationDuration: 360,
       tooltip: {
@@ -1370,7 +1416,7 @@ function TraeAnalysisPieChart({ kind }: { kind: AnalysisPieKind }) {
         backgroundColor: tooltipBackground,
         borderColor: tooltipBorder,
         borderWidth: 1,
-        textStyle: { color: textColor, fontSize: 12 },
+        textStyle: { color: tooltipTextColor, fontSize: 12 },
         formatter: (params: unknown) => {
           const item = params as {
             name?: string;
@@ -1400,7 +1446,7 @@ function TraeAnalysisPieChart({ kind }: { kind: AnalysisPieKind }) {
                 ? `${Number(item.percent ?? 0).toFixed(2)}%`
                 : "";
             },
-            color: textColor,
+            color: labelColor,
             fontSize: 11,
             fontWeight: 600,
           },
@@ -1434,7 +1480,7 @@ function TraeAnalysisPieChart({ kind }: { kind: AnalysisPieKind }) {
                     position: "outside",
                     formatter:
                       item.value >= 2 ? `${item.value.toFixed(2)}%` : "",
-                    color: textColor,
+                    color: labelColor,
                     fontSize: 11,
                     fontWeight: 600,
                   },
@@ -1491,9 +1537,8 @@ export function TraeEnterpriseAnalysisPage() {
   const [scope, setScope] = useState("");
   const [dateRange, setDateRange] = useState<Date[]>(() => {
     const today = startOfToday();
-    return [addDays(today, -90), today];
+    return [addDays(today, -30), today];
   });
-  const [notice, setNotice] = useState<string | null>(null);
   const metrics = [
     [t("traeEnterprise.analysis.total"), "2"],
     [t("traeEnterprise.analysis.ide"), "2"],
@@ -1505,7 +1550,7 @@ export function TraeEnterpriseAnalysisPage() {
   ];
   function exportData() {
     exportEnterpriseCsv("trae-data-analysis.csv", ["指标", "数值"], metrics);
-    setNotice("已导出当前数据");
+    showTraeToast("已导出当前数据");
   }
   return (
     <TraeShell
@@ -1604,7 +1649,6 @@ export function TraeEnterpriseAnalysisPage() {
           <TraeAnalysisPieChart kind="languages" />
         </TraeSection>
       </div>
-      <TraeNotice message={notice} onClose={() => setNotice(null)} />
     </TraeShell>
   );
 }
@@ -1665,6 +1709,7 @@ function DepartmentTree({
   onEditDepartment,
   onAddChildDepartment,
   onDeleteDepartment,
+  onMoveUp,
   onMoveDown,
 }: {
   collapsed: boolean;
@@ -1677,6 +1722,7 @@ function DepartmentTree({
   onEditDepartment: (node: TraeDepartmentNode) => void;
   onAddChildDepartment: (parentID: string) => void;
   onDeleteDepartment: (node: TraeDepartmentNode) => void;
+  onMoveUp: (node: TraeDepartmentNode) => void;
   onMoveDown: (node: TraeDepartmentNode) => void;
 }) {
   const departmentMenuRef = useRef<HTMLDivElement>(null);
@@ -1854,6 +1900,18 @@ function DepartmentTree({
               <IconPlus aria-hidden="true" />
               {t("traeEnterprise.members.addChildDepartment")}
             </button>
+            {hasPreviousSibling(nodes, menuNode.id) ? (
+              <button
+                type="button"
+                onClick={() => {
+                  closeDepartmentMenu();
+                  onMoveUp(menuNode);
+                }}
+              >
+                <IconChevronUp aria-hidden="true" />
+                {t("traeEnterprise.departmentTable.moveUp")}
+              </button>
+            ) : null}
             {hasNextSibling(nodes, menuNode.id) ? (
               <button
                 type="button"
@@ -2048,8 +2106,8 @@ function DepartmentManagementTable({
             title: (
               <span className="trae-department-table-count-heading">
                 {t("traeEnterprise.departmentTable.people")}
-                <Tooltip content={t("traeEnterprise.members.directMembers")}>
-                  <IconInfoCircle aria-hidden="true" />
+                <Tooltip className="app-info-tooltip" content={t("traeEnterprise.members.directMembers")}>
+                  <IconInfoCircle className="app-info-icon" aria-hidden="true" />
                 </Tooltip>
               </span>
             ),
@@ -2255,49 +2313,51 @@ function TraeDepartmentDialog({
       : t("traeEnterprise.members.newDepartmentTitle");
   return (
     <TraeDialog title={title} onClose={onClose}>
-      <form
+      <Form<{ name: string }>
         className="trae-dialog-form trae-department-dialog-form"
-        onSubmit={(event) => {
-          event.preventDefault();
-          if (name.trim()) onSubmit(name.trim(), parentID, state.node?.id);
+        labelPosition="top"
+        initValues={{ name }}
+        autoScrollToError
+        showValidateIcon={false}
+        onValueChange={(values) => {
+          if (typeof values.name === "string") setName(values.name);
+        }}
+        onSubmit={(values) => {
+          onSubmit(values.name.trim(), parentID, state.node?.id);
         }}
       >
-        <label>
-          <span>
-            <b>*</b>
-            {t("traeEnterprise.members.departmentName")}
-          </span>
-          <div className="trae-dialog-input-wrap">
-            <input
-              value={name}
-              maxLength={30}
-              required
-              placeholder={t(
-                "traeEnterprise.members.departmentNamePlaceholder",
-              )}
-              onChange={(event) => setName(event.target.value)}
-            />
-            <small>{name.length}/30</small>
-          </div>
-        </label>
+        <Form.Input
+          field="name"
+          label={t("traeEnterprise.members.departmentName")}
+          rules={[
+            {
+              required: true,
+              message: t("traeEnterprise.members.departmentNamePlaceholder"),
+            },
+          ]}
+          maxLength={30}
+          placeholder={t("traeEnterprise.members.departmentNamePlaceholder")}
+          suffix={<small>{name.length}/30</small>}
+        />
         {state.mode === "edit" ? (
-          <label>
-            <span>{t("traeEnterprise.members.departmentID")}</span>
-            <input value={state.node?.id ?? ""} disabled />
-          </label>
+          <Form.Input
+            field="departmentID"
+            label={t("traeEnterprise.members.departmentID")}
+            initValue={state.node?.id ?? ""}
+            disabled
+          />
         ) : null}
-        <label>
-          <span>
-            <b>*</b>
-            {t("traeEnterprise.members.parentDepartment")}
-          </span>
+        <Form.Slot
+          label={t("traeEnterprise.members.parentDepartment")}
+          className="trae-department-parent-field"
+        >
           <TraeDepartmentPicker
             nodes={nodes}
             value={parentID}
             onChange={setParentID}
             label={t("traeEnterprise.members.parentDepartment")}
           />
-        </label>
+        </Form.Slot>
         <div className="trae-dialog-actions">
           <button
             className="trae-secondary-button"
@@ -2310,7 +2370,138 @@ function TraeDepartmentDialog({
             {t("traeEnterprise.common.confirm")}
           </button>
         </div>
-      </form>
+      </Form>
+    </TraeDialog>
+  );
+}
+
+type TraeMemberAction = "changeDepartment" | "reclaimAccount" | "changeRole" | "removeMember";
+
+function TraeMemberActionDialog({
+  action,
+  member,
+  nodes,
+  t,
+  onClose,
+  onComplete,
+}: {
+  action: TraeMemberAction;
+  member: (typeof memberRows)[number];
+  nodes: TraeDepartmentNode[];
+  t: Translate;
+  onClose: () => void;
+  onComplete: () => void;
+}) {
+  const [departmentID, setDepartmentID] = useState("company");
+  const [role, setRole] = useState<"admin" | "member">(
+    member.role === "member" ? "member" : "admin",
+  );
+  const title = t(`traeEnterprise.members.${action}`);
+  const complete = () => {
+    onComplete();
+    onClose();
+  };
+  const actions = (
+    <div className="trae-dialog-actions">
+      <button className="trae-secondary-button" type="button" onClick={onClose}>
+        {t("traeEnterprise.common.cancel")}
+      </button>
+      <button className="trae-primary-button" type="button" onClick={complete}>
+        {t("traeEnterprise.common.confirm")}
+      </button>
+    </div>
+  );
+
+  if (action === "changeDepartment") {
+    return (
+      <TraeDialog className="trae-member-action-dialog trae-member-action-dialog--department" title={title} onClose={onClose}>
+        <div className="trae-member-action-content">
+          <p>{t("traeEnterprise.memberDialogs.changeDepartmentHint", { count: 1 })}</p>
+          <label className="trae-member-action-field">
+            <span><b>*</b>{t("traeEnterprise.memberDialogs.department")}</span>
+            <TraeDepartmentPicker
+              nodes={nodes}
+              value={departmentID}
+              onChange={setDepartmentID}
+              label={t("traeEnterprise.memberDialogs.department")}
+            />
+          </label>
+          {actions}
+        </div>
+      </TraeDialog>
+    );
+  }
+
+  if (action === "reclaimAccount") {
+    return (
+      <TraeDialog
+        className="trae-member-action-dialog trae-member-action-dialog--reclaim"
+        title={<span className="trae-dialog-title-with-icon"><IconInfoCircle aria-hidden="true" />{title}</span>}
+        onClose={onClose}
+      >
+        <div className="trae-member-action-content">
+          <p>
+            {t("traeEnterprise.memberDialogs.reclaimHint")}{" "}
+            <button className="trae-member-action-link" type="button" onClick={() => showTraeToast(t("traeEnterprise.memberDialogs.learnMore"))}>
+              {t("traeEnterprise.memberDialogs.learnMore")}
+            </button>
+          </p>
+          {actions}
+        </div>
+      </TraeDialog>
+    );
+  }
+
+  if (action === "removeMember") {
+    return (
+      <TraeDialog
+        className="trae-member-action-dialog trae-member-action-dialog--remove"
+        title={<span className="trae-dialog-title-with-icon"><IconInfoCircle aria-hidden="true" />{title}</span>}
+        onClose={onClose}
+      >
+        <div className="trae-member-action-content">
+          <p>
+            {t("traeEnterprise.memberDialogs.removeHint", { count: 1 })}{" "}
+            <button className="trae-member-action-link" type="button" onClick={() => showTraeToast(t("traeEnterprise.memberDialogs.learnMore"))}>
+              {t("traeEnterprise.memberDialogs.learnMore")}
+            </button>
+          </p>
+          <div className="trae-member-action-member">{member.name}({member.email})</div>
+          <div className="trae-dialog-actions">
+            <button className="trae-secondary-button" type="button" onClick={onClose}>
+              {t("traeEnterprise.common.cancel")}
+            </button>
+            <button className="trae-primary-button trae-danger-button" type="button" onClick={complete}>
+              {t("traeEnterprise.members.removeMember")}
+            </button>
+          </div>
+        </div>
+      </TraeDialog>
+    );
+  }
+
+  return (
+    <TraeDialog className="trae-member-action-dialog trae-member-action-dialog--role" title={title} onClose={onClose}>
+      <div className="trae-member-action-content">
+        <p>{t("traeEnterprise.memberDialogs.roleHint", { name: member.name })}</p>
+        <div className="trae-role-options" role="radiogroup">
+          <label className={`trae-role-option${role === "admin" ? " is-selected" : ""}`}>
+            <input type="radio" name="member-role" value="admin" checked={role === "admin"} onChange={() => setRole("admin")} />
+            <span>
+              <strong>{t("traeEnterprise.memberDialogs.roleAdmin")}</strong>
+              <small>{t("traeEnterprise.memberDialogs.roleAdminHint")}</small>
+            </span>
+          </label>
+          <label className={`trae-role-option${role === "member" ? " is-selected" : ""}`}>
+            <input type="radio" name="member-role" value="member" checked={role === "member"} onChange={() => setRole("member")} />
+            <span>
+              <strong>{t("traeEnterprise.memberDialogs.roleMember")}</strong>
+              <small>{t("traeEnterprise.memberDialogs.roleMemberHint")}</small>
+            </span>
+          </label>
+        </div>
+        {actions}
+      </div>
     </TraeDialog>
   );
 }
@@ -2375,8 +2566,11 @@ export function TraeEnterpriseMembersPage() {
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("all");
   const [accountType, setAccountType] = useState("all");
-  const [notice, setNotice] = useState<string | null>(null);
   const [dialog, setDialog] = useState<"member" | "rules" | null>(null);
+  const [memberActionDialog, setMemberActionDialog] = useState<{
+    action: TraeMemberAction;
+    member: (typeof memberRows)[number];
+  } | null>(null);
   const [departmentDialog, setDepartmentDialog] =
     useState<DepartmentDialogState | null>(null);
   const [departmentDeleteNode, setDepartmentDeleteNode] =
@@ -2459,10 +2653,9 @@ export function TraeEnterpriseMembersPage() {
     }),
     [requestQuery, requestState, requestStatus],
   );
-  function submitMember(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  function submitMember(_values: { email: string; role: string }) {
     setDialog(null);
-    setNotice(t("traeEnterprise.members.addSuccess"));
+    showTraeToast(t("traeEnterprise.members.addSuccess"));
   }
   function saveDepartment(name: string, parentID: string, nodeID?: string) {
     if (nodeID)
@@ -2500,7 +2693,7 @@ export function TraeEnterpriseMembersPage() {
           : [...current, { id: `department-${Date.now()}`, name }],
       );
     setDepartmentDialog(null);
-    setNotice(t("traeEnterprise.common.success"));
+    showTraeToast(t("traeEnterprise.common.success"));
   }
   const treeProps = {
     t,
@@ -2524,11 +2717,11 @@ export function TraeEnterpriseMembersPage() {
     },
     onMoveUp: (node: TraeDepartmentNode) => {
       setDepartments((current) => moveDepartmentUp(current, node.id));
-      setNotice(t("traeEnterprise.departmentTable.moveUp"));
+      showTraeToast(t("traeEnterprise.departmentTable.moveUp"));
     },
     onMoveDown: (node: TraeDepartmentNode) => {
       setDepartments((current) => moveDepartmentDown(current, node.id));
-      setNotice(t("traeEnterprise.departmentTable.moveDown"));
+      showTraeToast(t("traeEnterprise.departmentTable.moveDown"));
     },
   };
   function confirmDeleteDepartment() {
@@ -2542,7 +2735,7 @@ export function TraeEnterpriseMembersPage() {
       setSelectedDepartmentID("company");
     }
     setDepartmentDeleteNode(null);
-    setNotice(t("traeEnterprise.members.deleteDepartmentSuccess"));
+    showTraeToast(t("traeEnterprise.members.deleteDepartmentSuccess"));
   }
   return (
     <div className="trae-page trae-members-page">
@@ -2711,11 +2904,12 @@ export function TraeEnterpriseMembersPage() {
                           position="bottom"
                         >
                           <button
+                            className="app-info-icon-trigger"
                             type="button"
                             aria-label={t("traeEnterprise.members.stateRules")}
                             onClick={() => setDialog("rules")}
                           >
-                            <IconInfoCircle aria-hidden="true" />
+                            <IconInfoCircle className="app-info-icon" aria-hidden="true" />
                           </button>
                         </Tooltip>
                       </>
@@ -2828,7 +3022,16 @@ export function TraeEnterpriseMembersPage() {
                                   disabled={Boolean(disabled)}
                                   onClick={() => {
                                     setMemberMenu(null);
-                                    setNotice(t(`traeEnterprise.members.${actionKey}`));
+                                    if (
+                                      actionKey === "changeDepartment" ||
+                                      actionKey === "reclaimAccount" ||
+                                      actionKey === "changeRole" ||
+                                      actionKey === "removeMember"
+                                    ) {
+                                      setMemberActionDialog({ action: actionKey, member });
+                                    } else {
+                                      showTraeToast(t(`traeEnterprise.members.${actionKey}`));
+                                    }
                                   }}
                                 >
                                   {t(`traeEnterprise.members.${actionKey}`)}
@@ -2870,11 +3073,11 @@ export function TraeEnterpriseMembersPage() {
           }}
           onMoveDown={(node) => {
             setDepartments((current) => moveDepartmentDown(current, node.id));
-            setNotice(t("traeEnterprise.departmentTable.moveDown"));
+            showTraeToast(t("traeEnterprise.departmentTable.moveDown"));
           }}
           onMoveUp={(node) => {
             setDepartments((current) => moveDepartmentUp(current, node.id));
-            setNotice(t("traeEnterprise.departmentTable.moveUp"));
+            showTraeToast(t("traeEnterprise.departmentTable.moveUp"));
           }}
         />
       ) : (
@@ -2953,7 +3156,7 @@ export function TraeEnterpriseMembersPage() {
                               ...value,
                               [id]: "approved",
                             }));
-                            setNotice(t("traeEnterprise.common.success"));
+                            showTraeToast(t("traeEnterprise.common.success"));
                           }}
                         >
                           {t("traeEnterprise.members.approve")}
@@ -2967,7 +3170,7 @@ export function TraeEnterpriseMembersPage() {
                               ...value,
                               [id]: "rejected",
                             }));
-                            setNotice(t("traeEnterprise.common.success"));
+                            showTraeToast(t("traeEnterprise.common.success"));
                           }}
                         >
                           {t("traeEnterprise.members.reject")}
@@ -2982,32 +3185,46 @@ export function TraeEnterpriseMembersPage() {
           </div>
         </section>
       )}
-      <TraeNotice message={notice} onClose={() => setNotice(null)} />
       {dialog === "member" ? (
         <TraeDialog
           title={t("traeEnterprise.members.addTitle")}
           onClose={() => setDialog(null)}
         >
-          <form className="trae-dialog-form" onSubmit={submitMember}>
-            <label>
-              {t("traeEnterprise.members.email")}
-              <input
-                type="email"
-                required
-                placeholder={t("traeEnterprise.members.emailPlaceholder")}
-              />
-            </label>
-            <label>
-              {t("traeEnterprise.members.roleLabel")}
-              <select defaultValue="member">
-                <option value="member">
-                  {t("traeEnterprise.members.member")}
-                </option>
-                <option value="admin">
-                  {t("traeEnterprise.members.admin")}
-                </option>
-              </select>
-            </label>
+          <Form<{ email: string; role: string }>
+            className="trae-dialog-form"
+            labelPosition="top"
+            initValues={{ email: "", role: "member" }}
+            autoScrollToError
+            showValidateIcon={false}
+            onSubmit={submitMember}
+          >
+            <Form.Input
+              field="email"
+              label={t("traeEnterprise.members.email")}
+              type="email"
+              rules={[
+                {
+                  required: true,
+                  message: t("traeEnterprise.members.emailPlaceholder"),
+                },
+                {
+                  type: "email",
+                  message: t("traeEnterprise.members.emailPlaceholder"),
+                },
+              ]}
+              placeholder={t("traeEnterprise.members.emailPlaceholder")}
+            />
+            <Form.Select
+              field="role"
+              label={t("traeEnterprise.members.roleLabel")}
+            >
+              <Form.Select.Option value="member">
+                {t("traeEnterprise.members.member")}
+              </Form.Select.Option>
+              <Form.Select.Option value="admin">
+                {t("traeEnterprise.members.admin")}
+              </Form.Select.Option>
+            </Form.Select>
             <div className="trae-dialog-actions">
               <button
                 className="trae-secondary-button"
@@ -3020,7 +3237,7 @@ export function TraeEnterpriseMembersPage() {
                 {t("traeEnterprise.common.confirm")}
               </button>
             </div>
-          </form>
+          </Form>
         </TraeDialog>
       ) : null}
       {dialog === "rules" ? (
@@ -3052,6 +3269,16 @@ export function TraeEnterpriseMembersPage() {
             </div>
           </div>
         </TraeDialog>
+      ) : null}
+      {memberActionDialog ? (
+        <TraeMemberActionDialog
+          action={memberActionDialog.action}
+          member={memberActionDialog.member}
+          nodes={departments}
+          t={t}
+          onClose={() => setMemberActionDialog(null)}
+          onComplete={() => showTraeToast(t(`traeEnterprise.members.${memberActionDialog.action}`))}
+        />
       ) : null}
       {departmentDialog ? (
         <TraeDepartmentDialog
@@ -3198,7 +3425,7 @@ export function TraeEnterpriseSubscriptionPage() {
           <div className="trae-capacity-block">
             <div className="trae-capacity-heading">
               <span>
-                {t("traeEnterprise.subscription.available")} <IconInfoCircle aria-hidden="true" />
+                {t("traeEnterprise.subscription.available")} <IconInfoCircle className="app-info-icon" aria-hidden="true" />
               </span>
             </div>
             <strong className="trae-capacity-number"><i><IconUserListStroked aria-hidden="true" /></i>30</strong>
@@ -3218,7 +3445,7 @@ export function TraeEnterpriseSubscriptionPage() {
         </div>
         <div className="trae-payg-row">
           <div>
-            <span>{t("traeEnterprise.subscription.addon")} <IconInfoCircle aria-hidden="true" /></span>
+            <span>{t("traeEnterprise.subscription.addon")} <IconInfoCircle className="app-info-icon" aria-hidden="true" /></span>
             <strong>
               <span className="trae-subscription-icon"><IconGift aria-hidden="true" /></span>
               {t("traeEnterprise.subscription.notPurchased")}
@@ -3234,7 +3461,7 @@ export function TraeEnterpriseSubscriptionPage() {
         </div>
         <div className="trae-payg-row">
           <div>
-            <span>{t("traeEnterprise.subscription.payg")} <IconInfoCircle aria-hidden="true" /></span>
+            <span>{t("traeEnterprise.subscription.payg")} <IconInfoCircle className="app-info-icon" aria-hidden="true" /></span>
             <strong>
               <span className="trae-subscription-icon"><IconCreditCard aria-hidden="true" /></span>
               {t("traeEnterprise.subscription.notOpen")}
@@ -3259,7 +3486,6 @@ function TraeEnterpriseUsageLegacyPage() {
   const [tab, setTab] = useState<"board" | "detail">("board");
   const [query, setQuery] = useState("");
   const [dialog, setDialog] = useState<"limit" | "buy" | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
   const filtered = usageRows.filter(
     (row) =>
       !query.trim() ||
@@ -3482,7 +3708,6 @@ function TraeEnterpriseUsageLegacyPage() {
           </div>
         </TraeSection>
       )}
-      <TraeNotice message={notice} onClose={() => setNotice(null)} />
       {dialog === "limit" ? (
         <TraeDialog
           title={t("traeEnterprise.usage.limitTitle")}
@@ -3493,7 +3718,7 @@ function TraeEnterpriseUsageLegacyPage() {
             onSubmit={(event) => {
               event.preventDefault();
               setDialog(null);
-              setNotice(t("traeEnterprise.common.success"));
+              showTraeToast(t("traeEnterprise.common.success"));
             }}
           >
             <p>{t("traeEnterprise.usage.limitHint")}</p>
@@ -3540,7 +3765,7 @@ function TraeEnterpriseUsageLegacyPage() {
                 type="button"
                 onClick={() => {
                   setDialog(null);
-                  setNotice(t("traeEnterprise.common.success"));
+                  showTraeToast(t("traeEnterprise.common.success"));
                 }}
               >
                 {t("traeEnterprise.common.confirm")}
@@ -3553,6 +3778,103 @@ function TraeEnterpriseUsageLegacyPage() {
   );
 }
 
+function TraeUsageQuotaDialog({ onClose, onBuy }: { onClose: () => void; onBuy: () => void }) {
+  const { t } = useTranslation();
+  const [tab, setTab] = useState<"base" | "overage">("base");
+
+  return (
+    <TraeDialog title={t("traeEnterprise.usage.globalQuotaTitle")} onClose={onClose} className="trae-usage-quota-dialog">
+      <form className="trae-usage-quota-form" onSubmit={(event) => { event.preventDefault(); onClose(); showTraeToast(t("traeEnterprise.common.success")); }}>
+        <div className="trae-usage-quota-tabs" role="tablist">
+          <button type="button" role="tab" aria-selected={tab === "base"} className={tab === "base" ? "is-active" : ""} onClick={() => setTab("base")}>{t("traeEnterprise.usage.baseQuotaTab")}</button>
+          <button type="button" role="tab" aria-selected={tab === "overage"} className={tab === "overage" ? "is-active" : ""} onClick={() => setTab("overage")}>{t("traeEnterprise.usage.overageQuotaTab")}</button>
+        </div>
+        {tab === "base" ? (
+          <div className="trae-usage-quota-panel" role="tabpanel">
+            <div className="trae-usage-quota-fields">
+              <label>{t("traeEnterprise.usage.companyLimit")} <span className="app-info-icon" aria-hidden="true"><IconInfoCircle /></span><div className="trae-usage-quota-input"><input value="1000" disabled aria-label={t("traeEnterprise.usage.companyLimit")} /><span>元</span></div></label>
+              <label>{t("traeEnterprise.usage.perMemberLimit")} <span className="app-info-icon" aria-hidden="true"><IconInfoCircle /></span><div className="trae-usage-quota-input"><input defaultValue="100" inputMode="decimal" aria-label={t("traeEnterprise.usage.perMemberLimit")} /><span>元</span></div></label>
+            </div>
+          </div>
+        ) : (
+          <div className="trae-usage-quota-panel trae-usage-quota-panel--overage" role="tabpanel">
+            <p>{t("traeEnterprise.usage.overageQuotaHint")}</p>
+            <button type="button" className="trae-secondary-button" onClick={onBuy}>{t("traeEnterprise.usage.overageQuotaAction")} <IconChevronRight aria-hidden="true" /></button>
+          </div>
+        )}
+        <div className="trae-dialog-actions">
+          <button className="trae-secondary-button" type="button" onClick={onClose}>{t("traeEnterprise.common.cancel")}</button>
+          <button className="trae-primary-button" type="submit">{t("traeEnterprise.common.save")}</button>
+        </div>
+      </form>
+    </TraeDialog>
+  );
+}
+
+function TraeUsageMemberQuotaDialog({ member, onClose }: { member: TraeUsageMemberRow; onClose: () => void }) {
+  const { t } = useTranslation();
+  const [selectedMembers, setSelectedMembers] = useState<string[]>([member.id]);
+  const [baseQuota, setBaseQuota] = useState("500");
+  const [errors, setErrors] = useState<{ members?: string; baseQuota?: string }>({});
+  const memberOptions = traeUsageMemberRows.map((item) => ({
+    value: item.id,
+    label: item.name,
+  }));
+
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const nextErrors: { members?: string; baseQuota?: string } = {};
+    if (selectedMembers.length === 0) {
+      nextErrors.members = t("traeEnterprise.usage.memberQuotaMembersRequired");
+    }
+    const normalizedQuota = baseQuota.trim();
+    if (!normalizedQuota) {
+      nextErrors.baseQuota = t("traeEnterprise.usage.memberQuotaAmountRequired");
+    } else if (!/^(?:\d+(?:\.\d+)?|\.\d+)$/.test(normalizedQuota) || !Number.isFinite(Number(normalizedQuota)) || Number(normalizedQuota) < 0) {
+      nextErrors.baseQuota = t("traeEnterprise.usage.memberQuotaAmountInvalid");
+    }
+    setErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0) return;
+    onClose();
+    showTraeToast(t("traeEnterprise.common.success"));
+  }
+
+  return (
+    <TraeDialog title={t("traeEnterprise.usage.memberQuotaTitle")} onClose={onClose} className="trae-usage-member-quota-dialog">
+      <form className="trae-usage-member-quota-form" onSubmit={handleSubmit} noValidate>
+        <div className="trae-usage-member-quota-notice"><IconInfoCircle aria-hidden="true" /><span>{t("traeEnterprise.usage.memberQuotaHint")}</span></div>
+        <label className="trae-usage-member-quota-label"><strong><i>*</i>{t("traeEnterprise.usage.memberScope", { count: selectedMembers.length })}</strong>
+          <Select
+            aria-label={t("traeEnterprise.usage.memberScope", { count: selectedMembers.length })}
+            className={`trae-usage-member-quota-select${errors.members ? " has-error" : ""}`}
+            dropdownClassName="trae-usage-member-quota-dropdown"
+            multiple
+            filter
+            searchPosition="dropdown"
+            searchPlaceholder={t("traeEnterprise.usage.searchMember")}
+            value={selectedMembers}
+            optionList={memberOptions}
+            onChange={(value) => {
+              const nextMembers = Array.isArray(value) ? value.map(String) : value == null ? [] : [String(value)];
+              setSelectedMembers(nextMembers);
+              if (nextMembers.length > 0) setErrors((current) => ({ ...current, members: undefined }));
+            }}
+            renderSelectedItem={(option: Record<string, any>) => ({ isRenderInTag: true, content: option.label ?? member.name })}
+            renderOptionItem={(option: { value?: string | number; selected?: boolean; disabled?: boolean; className?: string; onClick?: (event: React.MouseEvent) => void; onMouseEnter?: (event: React.MouseEvent) => void }) => {
+              const item = traeUsageMemberRows.find((candidate) => candidate.id === String(option.value));
+              return <div className={option.className ?? "semi-select-option-custom"} onClick={option.onClick} onMouseEnter={option.onMouseEnter} aria-disabled={option.disabled ? "true" : undefined}><span className="trae-member-quota-option"><span className={`trae-member-quota-checkbox${option.selected ? " is-selected" : ""}`} aria-hidden="true">{option.selected ? "✓" : ""}</span><strong>{item?.name ?? ""}</strong><small>{item?.email ?? ""}</small></span></div>;
+            }}
+          />
+          {errors.members ? <span className="trae-usage-member-quota-error">{errors.members}</span> : null}
+        </label>
+        <label className="trae-usage-member-quota-field"><strong><i>*</i>{t("traeEnterprise.usage.baseQuotaAmount")}</strong><div className={`trae-usage-member-quota-input${errors.baseQuota ? " has-error" : ""}`}><input required inputMode="decimal" value={baseQuota} aria-label={t("traeEnterprise.usage.baseQuotaAmount")} aria-invalid={errors.baseQuota ? "true" : "false"} onChange={(event) => { setBaseQuota(event.target.value); if (errors.baseQuota) setErrors((current) => ({ ...current, baseQuota: undefined })); }} /><span>元</span></div>{errors.baseQuota ? <span className="trae-usage-member-quota-error">{errors.baseQuota}</span> : null}</label>
+        <div className="trae-usage-member-quota-field"><strong>{t("traeEnterprise.usage.overageQuotaAmount")}</strong><p className="trae-usage-member-quota-disabled"><IconInfoCircle aria-hidden="true" /><span>{t("traeEnterprise.usage.memberOverageHint")} <a href="https://console.volcengine.cn/common-buy/Trae%7C%7Cd72enhg0962n8f6kie1g" target="_blank" rel="noreferrer">{t("traeEnterprise.usage.overageQuotaAction")}</a></span></p></div>
+        <div className="trae-dialog-actions"><button className="trae-secondary-button" type="button" onClick={onClose}>{t("traeEnterprise.common.cancel")}</button><button className="trae-primary-button" type="submit">{t("traeEnterprise.common.save")}</button></div>
+      </form>
+    </TraeDialog>
+  );
+}
+
 function TraeUsageDonut() {
   const { t } = useTranslation();
   const theme = useResolvedTheme();
@@ -3562,9 +3884,9 @@ function TraeUsageDonut() {
     const node = chartRef.current;
     if (!node) return undefined;
     const isDark = theme === "dark";
-    const textColor = isDark ? "#f1f3f7" : "#30343b";
-    const tooltipBackground = isDark ? "#202124" : "#ffffff";
-    const tooltipBorder = isDark ? "#777b84" : "#d8dadd";
+    const textColor = "#ffffff";
+    const tooltipBackground = "#202124";
+    const tooltipBorder = "#1DC981";
     const chart = echarts.init(node, undefined, { renderer: "svg" });
     chart.setOption({
       animationDuration: 320,
@@ -3574,9 +3896,10 @@ function TraeUsageDonut() {
         borderColor: tooltipBorder,
         borderWidth: 1,
         textStyle: { color: textColor, fontSize: 13 },
+        extraCssText: "border:1px solid #1DC981 !important;background:#202124 !important;color:#ffffff !important;box-shadow:none;",
         formatter: (params: unknown) => {
-          const item = params as { name?: string; value?: number };
-          return `${item.name ?? ""}<br/><strong>${Number(item.value ?? 0).toFixed(7)}</strong>`;
+          const item = params as { marker?: string; name?: string; value?: number };
+          return `${item.marker ?? ""}<span style="color:#ffffff;font-size:13px;line-height:18px;">${item.name ?? ""}</span><br/><span style="display:inline-block;color:#ffffff;font-size:18px;font-weight:700;line-height:24px;">${Number(item.value ?? 0).toFixed(7)}</span>`;
         },
       },
       series: [{
@@ -3612,7 +3935,7 @@ function TraeUsageProgress({ value }: { value: number }) {
   return <div className="trae-usage-progress-track" aria-hidden="true"><i style={{ width: `${Math.min(100, Math.max(0, value))}%` }} /></div>;
 }
 
-function TraeUsageBoard({ onDetail, onQuota, onBuy }: { onDetail: (memberID: string) => void; onQuota: (member: TraeUsageMemberRow) => void; onBuy: () => void }) {
+function TraeUsageBoard({ onDetail, onQuota, onGlobalQuota, onBuy }: { onDetail: (memberID: string) => void; onQuota: (member: TraeUsageMemberRow) => void; onGlobalQuota: () => void; onBuy: () => void }) {
   const { t } = useTranslation();
   const [memberQuery, setMemberQuery] = useState("");
   const [memberScope, setMemberScope] = useState("all");
@@ -3637,9 +3960,9 @@ function TraeUsageBoard({ onDetail, onQuota, onBuy }: { onDetail: (memberID: str
   const filteredDepartments = usageDepartments.filter((row) => !departmentQuery.trim() || row.name.toLowerCase().includes(departmentQuery.trim().toLowerCase()));
   return <>
     <div className="trae-usage-summary trae-usage-summary--official">
-      <article className="trae-usage-summary-card trae-usage-summary-card--overall"><div className="trae-usage-summary-heading"><span>{t("traeEnterprise.usage.overall")}</span><IconInfoCircle aria-hidden="true" /></div><div className="trae-usage-overall-body"><div><strong>￥138.448</strong><span><i className="is-base" />{t("traeEnterprise.usage.base")}　￥138.448</span><span><i className="is-overage" />{t("traeEnterprise.usage.overage")}　￥0.000</span></div><TraeUsageDonut /></div></article>
-      <article className="trae-usage-summary-card"><div className="trae-usage-summary-heading"><span>{t("traeEnterprise.usage.base")}</span><IconInfoCircle aria-hidden="true" /></div><strong className="trae-usage-card-money">￥138.448 <small>/ ￥1,000</small></strong><TraeUsageProgress value={13.84} /><div className="trae-usage-limit-row"><span>♙ {t("traeEnterprise.usage.perMemberLimit")} ￥100</span><button className="trae-text-button" type="button" onClick={() => onQuota(traeUsageMemberRows[0])}><IconEdit aria-hidden="true" />{t("traeEnterprise.usage.adjust")}</button></div></article>
-      <article className="trae-usage-summary-card"><div className="trae-usage-summary-heading"><span>{t("traeEnterprise.usage.overage")}</span><IconInfoCircle aria-hidden="true" /><button className="trae-secondary-button trae-secondary-button--small" type="button" onClick={onBuy}>{t("traeEnterprise.usage.buy")}</button></div><strong className="trae-usage-empty-package">{t("traeEnterprise.usage.noPackage")}</strong></article>
+      <article className="trae-usage-summary-card trae-usage-summary-card--overall"><div className="trae-usage-overall-body"><div className="trae-usage-overall-copy"><div className="trae-usage-summary-heading"><span>{t("traeEnterprise.usage.overall")}</span><IconInfoCircle className="app-info-icon" aria-hidden="true" /></div><div className="trae-usage-overall-details"><strong>￥138.448</strong><span><i className="is-base" />{t("traeEnterprise.usage.base")}　￥138.448</span><span><i className="is-overage" />{t("traeEnterprise.usage.overage")}　￥0.000</span></div></div><TraeUsageDonut /></div></article>
+      <article className="trae-usage-summary-card"><div className="trae-usage-summary-heading"><span>{t("traeEnterprise.usage.base")}</span><IconInfoCircle className="app-info-icon" aria-hidden="true" /></div><strong className="trae-usage-card-money">￥138.448 <small>/ ￥1,000</small></strong><TraeUsageProgress value={13.84} /><div className="trae-usage-limit-row"><span>♙ {t("traeEnterprise.usage.perMemberLimit")} ￥100</span><button className="trae-text-button" type="button" onClick={onGlobalQuota}><IconEdit aria-hidden="true" />{t("traeEnterprise.usage.adjust")}</button></div></article>
+      <article className="trae-usage-summary-card"><div className="trae-usage-summary-heading"><span>{t("traeEnterprise.usage.overage")}</span><IconInfoCircle className="app-info-icon" aria-hidden="true" /><button className="trae-secondary-button trae-secondary-button--small" type="button" onClick={onBuy}>{t("traeEnterprise.usage.buy")}</button></div><strong className="trae-usage-empty-package">{t("traeEnterprise.usage.noPackage")}</strong></article>
     </div>
     <TraeSection title={t("traeEnterprise.usage.people")}>
       <TraeToolbar><label className="trae-inline-search trae-inline-search--wide"><IconSearch aria-hidden="true" /><input aria-label={t("traeEnterprise.usage.searchPeople")} placeholder={t("traeEnterprise.usage.searchPeople")} value={memberQuery} onChange={(event) => setMemberQuery(event.target.value)} /></label><TraeSelect label={t("traeEnterprise.usage.allMembers")} value={memberScope} onChange={setMemberScope} dropdownClassName="trae-usage-filter-dropdown" options={[{ value: "all", label: t("traeEnterprise.usage.allMembers") }, { value: "quota", label: t("traeEnterprise.usageFilters.quotaMembers") }]} /><TraeSelect label={t("traeEnterprise.usage.allAccounts")} value={account} onChange={setAccount} dropdownClassName="trae-usage-filter-dropdown" options={[{ value: "all", label: t("traeEnterprise.usage.allAccounts") }, { value: "全端账号", label: "全端账号" }, { value: "Work 专属账号", label: "Work 专属账号" }]} /><TraeSelect label={t("traeEnterprise.usageFilters.baseLabel")} value={usageType} onChange={setUsageType} dropdownClassName="trae-usage-filter-dropdown" options={[{ value: "all", label: t("traeEnterprise.usageFilters.all") }, { value: "normal", label: t("traeEnterprise.usageFilters.normal") }, { value: "warning", label: t("traeEnterprise.usageFilters.warning") }, { value: "exhausted", label: t("traeEnterprise.usageFilters.exhausted") }]} /></TraeToolbar>
@@ -3666,16 +3989,6 @@ function TraeUsageDetail({ memberID, onMemberChange }: { memberID: string; onMem
   const selectedRows = memberID === "all" ? traeUsageDetailRows : traeUsageDetailRows.filter((row) => row.member === traeUsageMemberRows.find((member) => member.id === memberID)?.name);
   // The demo total intentionally crosses Semi's seven-page truncation threshold.
   const totalDetailRows = 80;
-  const paginationLocale = useMemo(
-    () => ({
-      ...semiZhCN,
-      Pagination: {
-        ...semiZhCN.Pagination,
-        pageSize: "${pageSize}行/页",
-      },
-    }),
-    [],
-  );
   function setPreset(nextRange: string) {
     setRange(nextRange);
     if (nextRange === "today") setCustomRange([today, today]);
@@ -3703,28 +4016,20 @@ function TraeUsageDetail({ memberID, onMemberChange }: { memberID: string; onMem
     <div className="trae-usage-detail-toolbar">
       <TraeSelect label={t("traeEnterprise.usage.chooseMember")} value={memberID} onChange={(value) => { onMemberChange(value); setPage(1); }} searchable dropdownClassName="trae-usage-member-select-dropdown" options={[{ value: "all", label: t("traeEnterprise.usage.allMembers") }, ...traeUsageMemberRows.map((member) => ({ value: member.id, label: member.name }))]} />
       <div className="trae-usage-range-buttons">{[["today", t("traeEnterprise.usage.today")], ["7d", t("traeEnterprise.usage.last7")], ["30d", t("traeEnterprise.usage.last30")], ["custom", t("traeEnterprise.usage.custom")]].map(([value, label]) => <button key={value} className={range === value ? "is-active" : ""} type="button" onClick={() => setPreset(value)}>{label}</button>)}</div>
-      {range === "custom" ? <DatePicker className="trae-date-picker trae-usage-detail-date-picker" dropdownClassName="trae-date-picker-dropdown trae-usage-detail-date-dropdown" type="dateRange" value={customRange} format="yyyy/MM/dd" rangeSeparator=" - " showClear={false} disabledDate={(date) => !date || date < minDate || date > today} onChange={handleCustomRange} /> : null}
+      {range === "custom" ? <DatePicker className="trae-date-picker trae-usage-detail-date-picker" dropdownClassName="trae-date-picker-dropdown trae-usage-detail-date-dropdown" type="dateRange" value={customRange} format="yyyy-MM-dd" rangeSeparator=" ~ " showClear={false} disabledDate={(date) => !date || date < minDate || date > today} onChange={handleCustomRange} /> : null}
       <button className="trae-icon-button trae-usage-detail-download" type="button" aria-label={t("traeEnterprise.usage.download")} title={t("traeEnterprise.usage.download")} onClick={exportDetail}><IconDownload aria-hidden="true" /></button>
     </div>
     <div className="trae-table-scroll"><table className="trae-table trae-usage-detail-table"><thead><tr><th>{t("traeEnterprise.usage.detailDate")}</th><th>{t("traeEnterprise.usage.detailPerson")}</th><th>{t("traeEnterprise.usage.department")}</th><th>{t("traeEnterprise.usage.client")}</th><th>{t("traeEnterprise.usage.model")}</th><th>{t("traeEnterprise.usage.session")}</th><th>{t("traeEnterprise.usage.tokensConsumed")}</th><th>{t("traeEnterprise.usage.costConsumed")}</th><th>{t("traeEnterprise.usage.modelCalls")}</th><th>{t("traeEnterprise.usage.source")}</th></tr></thead><tbody>{selectedRows.map((row) => <tr key={row.session}><td>{row.date}</td><td><strong>{row.member}</strong><small>{row.email}</small></td><td>{row.department}</td><td>{row.client}</td><td>{row.model}</td><td><code>{row.session}</code></td><td><span>{t("traeEnterprise.usage.discounted")} </span>{row.tokens}</td><td><span>{t("traeEnterprise.usage.discounted")} </span>{row.cost}</td><td>{row.calls}</td><td>{row.source}</td></tr>)}</tbody></table>{selectedRows.length === 0 ? <TraeEmpty /> : null}</div>
-    <div className="trae-usage-pagination" aria-label={t("traeEnterprise.usage.pagination")}>
-      <ConfigProvider locale={paginationLocale}>
-        <Pagination
-          total={totalDetailRows}
-          currentPage={page}
-          pageSize={pageSize}
-          pageSizeOpts={[10, 20, 50, 100]}
-          showSizeChanger
-          hideOnSinglePage={false}
-          prevText="‹"
-          nextText="›"
-          onChange={(nextPage, nextPageSize) => {
-            setPage(nextPage);
-            setPageSize(nextPageSize);
-          }}
-        />
-      </ConfigProvider>
-    </div>
+    <TraePagination
+      ariaLabel={t("traeEnterprise.usage.pagination")}
+      total={totalDetailRows}
+      currentPage={page}
+      pageSize={pageSize}
+      onChange={(nextPage, nextPageSize) => {
+        setPage(nextPage);
+        setPageSize(nextPageSize);
+      }}
+    />
   </section>;
 }
 
@@ -3732,16 +4037,15 @@ export function TraeEnterpriseUsagePage() {
   const { t } = useTranslation();
   const [tab, setTab] = useState<"board" | "detail">("board");
   const [detailMemberID, setDetailMemberID] = useState("all");
-  const [dialog, setDialog] = useState<"limit" | "buy" | null>(null);
+  const [dialog, setDialog] = useState<"globalQuota" | "memberQuota" | "buy" | null>(null);
   const [quotaMember, setQuotaMember] = useState<TraeUsageMemberRow | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
-  function openQuota(member: TraeUsageMemberRow) { setQuotaMember(member); setDialog("limit"); }
+  function openMemberQuota(member: TraeUsageMemberRow) { setQuotaMember(member); setDialog("memberQuota"); }
   return <TraeShell title={t("traeEnterprise.usage.title")} className="trae-usage-page-official" action={<span className="trae-cycle-label trae-cycle-label--heading">{t("traeEnterprise.usage.cycle", { start: "2026/08/21", end: "2026/09/21" })}</span>}>
     <div className="trae-tabs" role="tablist">{(["board", "detail"] as const).map((item) => <button key={item} className={tab === item ? "is-active" : ""} type="button" role="tab" aria-selected={tab === item} onClick={() => setTab(item)}>{t(`traeEnterprise.usage.tabs.${item}`)}</button>)}</div>
-    {tab === "board" ? <TraeUsageBoard onDetail={(memberID) => { setDetailMemberID(memberID); setTab("detail"); }} onQuota={openQuota} onBuy={() => setDialog("buy")} /> : <TraeUsageDetail memberID={detailMemberID} onMemberChange={setDetailMemberID} />}
-    <TraeNotice message={notice} onClose={() => setNotice(null)} />
-    {dialog === "limit" ? <TraeDialog title={t("traeEnterprise.usage.limitTitle")} onClose={() => { setDialog(null); setQuotaMember(null); }}><form className="trae-dialog-form" onSubmit={(event) => { event.preventDefault(); setDialog(null); setQuotaMember(null); setNotice(t("traeEnterprise.common.success")); }}><p>{t("traeEnterprise.usage.limitHint")}</p><label>{t("traeEnterprise.usage.perMemberLimit")}<input required inputMode="decimal" defaultValue="100" placeholder={t("traeEnterprise.usage.limitPlaceholder")} /></label><div className="trae-dialog-actions"><button className="trae-secondary-button" type="button" onClick={() => setDialog(null)}>{t("traeEnterprise.common.cancel")}</button><button className="trae-primary-button" type="submit">{t("traeEnterprise.common.save")}</button></div></form></TraeDialog> : null}
-    {dialog === "buy" ? <TraeDialog title={t("traeEnterprise.usage.buyTitle")} onClose={() => setDialog(null)}><div className="trae-dialog-form"><p>{t("traeEnterprise.usage.buyHint")}</p><div className="trae-dialog-actions"><button className="trae-secondary-button" type="button" onClick={() => setDialog(null)}>{t("traeEnterprise.common.cancel")}</button><button className="trae-primary-button" type="button" onClick={() => { setDialog(null); setNotice(t("traeEnterprise.common.success")); }}>{t("traeEnterprise.common.confirm")}</button></div></div></TraeDialog> : null}
+    {tab === "board" ? <TraeUsageBoard onDetail={(memberID) => { setDetailMemberID(memberID); setTab("detail"); }} onQuota={openMemberQuota} onGlobalQuota={() => setDialog("globalQuota")} onBuy={() => setDialog("buy")} /> : <TraeUsageDetail memberID={detailMemberID} onMemberChange={setDetailMemberID} />}
+    {dialog === "globalQuota" ? <TraeUsageQuotaDialog onClose={() => setDialog(null)} onBuy={() => setDialog("buy")} /> : null}
+    {dialog === "memberQuota" && quotaMember ? <TraeUsageMemberQuotaDialog member={quotaMember} onClose={() => { setDialog(null); setQuotaMember(null); }} /> : null}
+    {dialog === "buy" ? <TraeDialog title={t("traeEnterprise.usage.buyTitle")} onClose={() => setDialog(null)}><div className="trae-dialog-form"><p>{t("traeEnterprise.usage.buyHint")}</p><div className="trae-dialog-actions"><button className="trae-secondary-button" type="button" onClick={() => setDialog(null)}>{t("traeEnterprise.common.cancel")}</button><button className="trae-primary-button" type="button" onClick={() => { setDialog(null); showTraeToast(t("traeEnterprise.common.success")); }}>{t("traeEnterprise.common.confirm")}</button></div></div></TraeDialog> : null}
   </TraeShell>;
 }
 
@@ -3749,6 +4053,12 @@ export function TraeEnterpriseAuditPage() {
   const { t } = useTranslation();
   const [action, setAction] = useState("all");
   const [operator, setOperator] = useState("all");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [dateRange, setDateRange] = useState<Date[]>(() => {
+    const today = startOfToday();
+    return [addDays(today, -30), today];
+  });
   const [detail, setDetail] = useState<(typeof auditRows)[number] | null>(null);
   function exportData() {
     exportEnterpriseCsv(
@@ -3770,8 +4080,10 @@ export function TraeEnterpriseAuditPage() {
       (action === "all" || row.action === action) &&
       (operator === "all" || row.operator === operator),
   );
+  const pageRows = rows.slice((page - 1) * pageSize, page * pageSize);
   return (
     <TraeShell
+      className="trae-audit-page"
       title={t("traeEnterprise.audit.title")}
       action={
         <button
@@ -3788,7 +4100,11 @@ export function TraeEnterpriseAuditPage() {
         <TraeSelect
           label={t("traeEnterprise.audit.type")}
           value={action}
-          onChange={setAction}
+          onChange={(value) => {
+            setAction(value);
+            setPage(1);
+          }}
+          dropdownClassName="trae-audit-select-dropdown"
           options={[
             { value: "all", label: t("traeEnterprise.audit.type") },
             ...auditRows
@@ -3803,7 +4119,12 @@ export function TraeEnterpriseAuditPage() {
         <TraeSelect
           label={t("traeEnterprise.audit.operator")}
           value={operator}
-          onChange={setOperator}
+          onChange={(value) => {
+            setOperator(value);
+            setPage(1);
+          }}
+          searchable
+          dropdownClassName="trae-audit-select-dropdown"
           options={[
             { value: "all", label: t("traeEnterprise.audit.operator") },
             ...auditRows
@@ -3815,52 +4136,27 @@ export function TraeEnterpriseAuditPage() {
               ),
           ]}
         />
-        <label className="trae-date-field trae-date-field--single">
-          <IconCalendar aria-hidden="true" />
-          <input
-            aria-label={t("traeEnterprise.audit.date")}
-            placeholder={t("traeEnterprise.audit.date")}
-          />
-        </label>
+        <TraeDateRangePicker value={dateRange} onChange={setDateRange} />
       </TraeToolbar>
       <div className="trae-table-scroll">
-        <table className="trae-table">
+        <table className="trae-table trae-audit-table">
           <thead>
             <tr>
-              <th>{t("traeEnterprise.audit.time")}</th>
-              <th>{t("traeEnterprise.audit.operator")}</th>
               <th>{t("traeEnterprise.audit.action")}</th>
-              <th>{t("traeEnterprise.audit.detail")}</th>
-              <th>{t("traeEnterprise.audit.result")}</th>
-              <th>{t("traeEnterprise.audit.ip")}</th>
-              <th />
+              <th>{t("traeEnterprise.audit.record")}</th>
+              <th>{t("traeEnterprise.audit.operator")}</th>
+              <th>{t("traeEnterprise.audit.time")}</th>
             </tr>
           </thead>
           <tbody>
-            {rows.map((row) => (
-              <tr key={row.id}>
-                <td>{row.time}</td>
-                <td>{row.operator}</td>
+            {pageRows.map((row) => (
+              <tr key={row.id} tabIndex={0} onClick={() => setDetail(row)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") setDetail(row); }}>
                 <td>{row.action}</td>
                 <td className="trae-table-detail">{row.detail}</td>
                 <td>
-                  <span className={`trae-status-badge is-${row.result}`}>
-                    <i />
-                    {row.result === "success"
-                      ? t("traeEnterprise.audit.success")
-                      : t("traeEnterprise.audit.failed")}
-                  </span>
+                  <span className="trae-audit-operator-cell"><strong>{row.operator}</strong><small>{row.operatorEmail}</small></span>
                 </td>
-                <td>{row.ip}</td>
-                <td>
-                  <button
-                    className="trae-text-button"
-                    type="button"
-                    onClick={() => setDetail(row)}
-                  >
-                    {t("traeEnterprise.audit.view")}
-                  </button>
-                </td>
+                <td>{row.time}</td>
               </tr>
             ))}
           </tbody>
@@ -3869,6 +4165,16 @@ export function TraeEnterpriseAuditPage() {
           <TraeEmpty hint={t("traeEnterprise.audit.empty")} />
         ) : null}
       </div>
+      <TraePagination
+        ariaLabel={t("traeEnterprise.usage.pagination")}
+        total={rows.length}
+        currentPage={page}
+        pageSize={pageSize}
+        onChange={(nextPage, nextPageSize) => {
+          setPage(nextPage);
+          setPageSize(nextPageSize);
+        }}
+      />
       {detail ? (
         <TraeDialog
           title={t("traeEnterprise.audit.detailTitle")}

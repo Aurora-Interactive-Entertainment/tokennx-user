@@ -1,0 +1,102 @@
+.personal-usage-page { --personal-usage-date-picker-width: 255px; --personal-usage-date-input-padding: 8px; --personal-usage-date-text-padding: 4px; min-height: 100%; }
+.personal-usage-page .trae-page-heading { margin-bottom: 28px; }
+.personal-usage-page .trae-page-heading h1 { display: flex; align-items: baseline; gap: 12px; }
+.personal-usage-page .trae-page-heading h1 small { color: var(--color-text-secondary); font-size: 13px; font-weight: 400; }
+.personal-usage-tabs { margin-bottom: 30px; }
+.personal-usage-board { min-width: 0; }
+.personal-usage-board-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
+.personal-usage-board-heading h2, .personal-usage-management > h2 { display: inline-flex; align-items: center; gap: 7px; margin: 0; color: var(--color-text-default-hover); font-size: 16px; font-weight: 650; }
+.personal-usage-board-heading h2 svg { color: var(--color-text-tertiary); font-size: 14px; }
+.personal-usage-chart-panel { min-width: 0; min-height: 398px; padding: 10px 24px 24px; border-radius: 7px; background: var(--color-bg-base-secondary); }
+.personal-usage-line-chart { width: 100%; height: 340px; }
+.personal-usage-chart-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 18px; min-height: 34px; padding: 4px 4px 0; color: var(--color-text-secondary); font-size: 12px; }
+.personal-usage-chart-legend span { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.personal-usage-chart-legend i { display: inline-block; width: 14px; height: 2px; border-radius: 1px; }
+.personal-usage-page .personal-usage-date-picker.semi-datepicker { width: var(--personal-usage-date-picker-width); min-width: var(--personal-usage-date-picker-width); }
+.personal-usage-page .personal-usage-date-picker .semi-datepicker-range-input-wrapper { padding-inline: var(--personal-usage-date-input-padding); }
+.personal-usage-page .personal-usage-date-picker .semi-datepicker-range-input-wrapper input { padding-inline: var(--personal-usage-date-text-padding); }
+.personal-usage-page .personal-usage-date-picker .semi-datepicker-range-input-separator { align-items: center; justify-content: center; text-align: center; }
+.personal-usage-date-dropdown { width: 610px; max-width: calc(100vw - 16px); overflow: hidden; border-radius: 8px; background: var(--color-bg-base-secondary) !important; }
+.semi-popover-wrapper:has(.personal-usage-date-dropdown), .semi-popover-wrapper:has(.personal-usage-date-dropdown) .semi-tooltip-content, .semi-popover-wrapper:has(.personal-usage-date-dropdown) .semi-popover { background: var(--color-bg-base-secondary) !important; line-height: 0; }
+.semi-popover-wrapper:has(.personal-usage-date-dropdown) { overflow: hidden; border-radius: 8px; }
+.personal-usage-date-dropdown .semi-datepicker, .personal-usage-date-dropdown .semi-datepicker-container, .personal-usage-date-dropdown .semi-datepicker-month-grid, .personal-usage-date-dropdown .semi-datepicker-month-grid-left, .personal-usage-date-dropdown .semi-datepicker-month-grid-right, .personal-usage-date-dropdown .semi-datepicker-month, .personal-usage-date-dropdown .semi-datepicker-yam, .personal-usage-date-dropdown .semi-datepicker-week, .personal-usage-date-dropdown .semi-datepicker-day { background: var(--color-bg-base-secondary) !important; }
+.personal-usage-date-dropdown .semi-datepicker-quick-control, .personal-usage-date-dropdown .semi-datepicker-quick-control-left, .personal-usage-date-dropdown .semi-datepicker-quick-control-left-content { background: var(--color-bg-base-secondary) !important; }
+.personal-usage-date-dropdown .semi-datepicker-container { box-sizing: border-box; overflow: hidden; border-radius: inherit; }
+.personal-usage-date-dropdown .semi-datepicker-container > div { width: 100%; }
+.personal-usage-date-dropdown .semi-datepicker-container > div > div { display: flex; width: 100%; min-width: 0; }
+.personal-usage-date-dropdown .semi-datepicker-container > div > div > div:last-child { min-width: 0; flex: 1 1 auto; box-sizing: border-box; padding-inline: 8px; }
+.personal-usage-date-dropdown .semi-datepicker-container > div > div > div:last-child > .semi-datepicker-month-grid { width: 100%; }
+.personal-usage-date-dropdown .semi-datepicker-quick-control { width: 104px; }
+.personal-usage-date-dropdown .semi-datepicker-quick-control-left-content { gap: 2px; padding: 8px; }
+.personal-usage-date-dropdown .semi-datepicker-quick-control-left-content > button { display: flex; width: 100%; height: 28px; align-items: center; justify-content: center; margin: 4px 0 0; padding: 0 8px; box-sizing: border-box; font-size: 13px; font-weight: 400 !important; transition: none !important; }
+/* Keep the quick-range hover overlay aligned with the active theme. */
+html[data-theme="dark"] .personal-usage-date-dropdown .semi-datepicker-quick-control-left-content > button:hover {
+  color: #ffffff !important;
+  background: rgba(224, 226, 242, .05) !important;
+}
+html[data-theme="light"] .personal-usage-date-dropdown .semi-datepicker-quick-control-left-content > button:hover {
+  color: #17181b !important;
+  background: rgba(23, 24, 27, .045) !important;
+}
+.personal-usage-date-dropdown .semi-datepicker-quick-control-left-content-item, .personal-usage-date-dropdown .semi-datepicker-quick-control-left-content-item-ellipsis, .personal-usage-date-dropdown .semi-datepicker-quick-control-left-content-item-ellipsis > span { display: flex; height: 28px; min-height: 28px; align-items: center; justify-content: center; padding: 0; color: inherit; font-size: 13px; font-weight: 400 !important; line-height: 28px; pointer-events: none; }
+.personal-usage-date-dropdown .semi-datepicker-quick-control-left-content-item:hover { background: transparent; }
+.personal-usage-date-dropdown .semi-datepicker-quick-control-left-content-item, .personal-usage-date-dropdown .semi-datepicker-quick-control-left-content-item-ellipsis { transition: none !important; }
+.personal-usage-date-dropdown .semi-datepicker-month-grid { min-height: 276px; gap: 8px; }
+.personal-usage-date-dropdown .semi-datepicker-month-grid-left, .personal-usage-date-dropdown .semi-datepicker-month-grid-right { flex-basis: 240px; min-height: 276px; }
+.personal-usage-date-dropdown .semi-datepicker-month-grid[x-preset-position='left'] .semi-datepicker-month, .personal-usage-date-dropdown .semi-datepicker-month-grid[x-preset-position='right'] .semi-datepicker-month { width: 240px; height: 234px !important; box-sizing: border-box; padding: 0 0 8px; }
+.personal-usage-date-dropdown .semi-datepicker-navigation { height: 42px; padding-inline: 8px; }
+.personal-usage-date-dropdown .semi-datepicker-navigation > button { margin: 0 !important; }
+.personal-usage-date-dropdown .semi-datepicker-navigation > button[aria-label='Previous year'], .personal-usage-date-dropdown .semi-datepicker-navigation > button[aria-label='Next year'] { display: none; }
+.personal-usage-date-dropdown .semi-datepicker-navigation-month .semi-button, .personal-usage-date-dropdown .semi-datepicker-navigation-month .semi-button-content { pointer-events: none; font-weight: 400 !important; }
+.personal-usage-date-dropdown .semi-datepicker-navigation-month .semi-button * { font-weight: 400 !important; }
+.personal-usage-date-dropdown .semi-datepicker-navigation > button .semi-icon { width: 15px; height: 15px; font-size: 15px; }
+.personal-usage-date-dropdown .semi-datepicker-weekday-item, .personal-usage-date-dropdown .semi-datepicker-day { width: 32px; height: 32px; font-size: 12px; font-weight: 400 !important; }
+.personal-usage-date-dropdown .semi-datepicker-weekday-item { line-height: 32px; }
+.personal-usage-date-dropdown .semi-datepicker-day-main { display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 400 !important; }
+.personal-usage-date-dropdown .semi-datepicker-footer { display: none; }
+.personal-usage-management > h2 { margin-bottom: 18px; }
+.personal-usage-model-card { display: flex; height: 290px; min-height: 290px; flex-direction: column; overflow: hidden; border: 1px solid var(--color-border-neutral-l1); border-radius: 7px; background: var(--color-bg-base-secondary); }
+.personal-usage-model-total, .personal-usage-model-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 52px; padding: 0 18px; }
+.personal-usage-model-total { min-height: 78px; flex: 0 0 78px; border-bottom: 1px solid var(--color-border-neutral-l1); color: var(--color-text-default); font-size: 13px; }
+.personal-usage-model-total strong, .personal-usage-model-row strong { color: var(--color-text-default-hover); font-size: 13px; font-weight: 500; white-space: nowrap; }
+.personal-usage-model-total strong small { color: var(--color-text-tertiary); font-size: 12px; font-weight: 400; }
+.personal-usage-model-total svg { margin-left: 4px; color: var(--color-text-tertiary); font-size: 13px; vertical-align: -2px; }
+.personal-usage-model-row { border-bottom: 1px solid var(--color-border-neutral-l1); color: var(--color-text-default); font-size: 13px; }
+.personal-usage-model-row:last-child { border-bottom: 0; }
+.personal-usage-model-row:hover { background: var(--color-bg-overlay-l1); }
+.personal-usage-model-list { min-height: 0; flex: 1 1 auto; overflow-y: auto; scrollbar-gutter: stable; }
+.personal-usage-model-list::-webkit-scrollbar { width: 6px; }
+.personal-usage-model-list::-webkit-scrollbar-thumb { border-radius: 6px; background: var(--scrollbar-thumb); }
+.personal-usage-model-list::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-thumb-hover); }
+.personal-usage-cue { margin-top: 18px; }
+.personal-usage-cue-toolbar { display: flex; align-items: center; gap: 8px; min-height: 32px; margin: 16px 0; }
+.personal-usage-cue-range-buttons { display: flex; height: 32px; box-sizing: border-box; align-items: center; gap: 2px; padding: 2px; border: 1px solid var(--color-border-neutral-l1); border-radius: 6px; background: var(--color-bg-base-secondary); }
+.personal-usage-cue-range-buttons button { min-height: 26px; padding: 0 12px; border: 0; border-radius: 4px; color: var(--color-text-tertiary); background: transparent; font-size: 12px; cursor: pointer; }
+.personal-usage-cue-range-buttons button:hover, .personal-usage-cue-range-buttons button.is-active { color: var(--color-text-default-hover); background: var(--color-bg-overlay-l2); }
+.personal-usage-cue-date-picker.semi-datepicker { width: var(--personal-usage-date-picker-width); min-width: var(--personal-usage-date-picker-width); height: 32px; }
+.personal-usage-cue-date-picker .semi-datepicker-range-input { height: 30px; }
+.personal-usage-cue-date-picker .semi-datepicker-range-input-wrapper input { width: 100%; min-width: 0; font-size: 13px; }
+.personal-usage-cue-date-dropdown { width: 508px; }
+.personal-usage-cue-date-dropdown .semi-datepicker-quick-control { display: none !important; }
+.personal-usage-cue-date-dropdown .semi-datepicker-container > div > div > div:last-child { width: 100%; padding-inline: 8px; }
+.personal-usage-cue-date-dropdown .semi-datepicker-month { width: 240px; height: 234px !important; box-sizing: border-box; padding: 0 0 8px; }
+.personal-usage-cue-download { display: inline-grid; width: 32px; height: 32px; margin-left: auto; place-items: center; padding: 0; border: 1px solid var(--color-border-neutral-l1); border-radius: 6px; color: var(--color-text-secondary); background: var(--color-bg-base-secondary); cursor: pointer; }
+.personal-usage-cue-download:hover { border-color: var(--color-border-neutral-l2); color: var(--color-text-default-hover); }
+.personal-usage-cue-table-wrap { min-width: 0; overflow-x: auto; border: 1px solid var(--color-border-neutral-l1); border-radius: 6px; background: var(--color-bg-base-secondary); }
+.personal-usage-cue-table { width: 100%; min-width: 1040px; border-collapse: collapse; table-layout: fixed; color: var(--color-text-default); }
+.personal-usage-cue-table th, .personal-usage-cue-table td { height: 48px; box-sizing: border-box; padding: 0 12px; border-bottom: 1px solid var(--color-border-neutral-l1); color: var(--color-text-secondary); font-size: 11px; text-align: left; white-space: nowrap; }
+.personal-usage-cue-table th { height: 42px; color: var(--color-text-tertiary); background: var(--color-bg-base-tertiary); font-weight: 600; }
+.personal-usage-cue-table tbody tr:nth-child(even) td { background: var(--color-bg-overlay-l1); }
+.personal-usage-cue-table tbody tr:hover td { background: var(--color-bg-overlay-l2); }
+.personal-usage-cue-table td { color: var(--color-text-default); }
+.personal-usage-cue-table tbody tr:last-child td { border-bottom: 0; }
+.personal-usage-cue-table th:nth-child(1), .personal-usage-cue-table td:nth-child(1) { width: 210px; }
+.personal-usage-cue-table th:nth-child(2), .personal-usage-cue-table td:nth-child(2) { width: 110px; }
+.personal-usage-cue-table th:nth-child(3), .personal-usage-cue-table td:nth-child(3) { width: 180px; }
+.personal-usage-cue-table th:nth-child(4), .personal-usage-cue-table td:nth-child(4) { width: 260px; }
+.personal-usage-cue-table th:nth-child(5), .personal-usage-cue-table td:nth-child(5) { width: 160px; }
+.personal-usage-cue-table th:nth-child(6), .personal-usage-cue-table td:nth-child(6) { width: 150px; text-align: right; }
+.personal-usage-cue-table th:nth-child(7), .personal-usage-cue-table td:nth-child(7) { width: 130px; text-align: right; }
+.personal-usage-cue-empty { display: grid; min-height: 230px; place-items: center; color: var(--color-text-tertiary); font-size: 13px; }
+@media (max-width: 720px) { .personal-usage-board-heading { align-items: stretch; flex-direction: column; } .personal-usage-page .personal-usage-date-picker.semi-datepicker { width: 100%; min-width: 0; } .personal-usage-date-dropdown { width: min(440px, calc(100vw - 16px)); } .personal-usage-date-dropdown .semi-datepicker-quick-control { width: 104px; } .personal-usage-date-dropdown .semi-datepicker-month-grid { min-height: 276px; } .personal-usage-date-dropdown .semi-datepicker-month-grid-left, .personal-usage-date-dropdown .semi-datepicker-month-grid-right { flex-basis: 240px; min-height: 276px; } .personal-usage-date-dropdown .semi-datepicker-weekday-item, .personal-usage-date-dropdown .semi-datepicker-day { width: 28px; height: 32px; font-size: 12px; } .personal-usage-date-dropdown .semi-datepicker-weekday-item { line-height: 32px; } .personal-usage-chart-panel { padding-inline: 12px; } }
+@media (max-width: 560px) { .personal-usage-page { padding: 20px 16px; } .personal-usage-page .trae-page-heading h1 { align-items: flex-start; flex-direction: column; gap: 4px; } .personal-usage-line-chart { height: 270px; } .personal-usage-chart-panel { min-height: 330px; } .personal-usage-model-card { height: 290px; min-height: 290px; } .personal-usage-cue-toolbar { align-items: stretch; flex-wrap: wrap; } .personal-usage-cue-range-buttons { width: 100%; } .personal-usage-cue-range-buttons button { flex: 1; padding-inline: 6px; } .personal-usage-cue-date-picker.semi-datepicker { width: calc(100% - 40px); min-width: 0; } .personal-usage-cue-download { margin-left: 0; } }

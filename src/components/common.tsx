@@ -1420,6 +1420,7 @@ const personalNavGroups: ConsoleNavGroup[] = [
     label: '数据分析',
     items: [
       { key: '/console/usage', label: '用量统计', icon: 'usage' },
+      { key: '/console/personal-usage', label: '个人用量', icon: 'usage' },
       { key: '/console/records', label: '调用记录', icon: 'records' },
     ],
   },
@@ -1485,6 +1486,7 @@ const enterpriseNavGroups: ConsoleNavGroup[] = [
     label: '我的数据',
     items: [
       { key: '/console/usage', label: '用量统计', icon: 'usage' },
+      { key: '/console/personal-usage', label: '个人用量', icon: 'usage' },
       { key: '/console/records', label: '调用记录', icon: 'records' },
     ],
   },
@@ -1512,7 +1514,7 @@ const CONSOLE_NAV_LABEL_KEYS: Record<string, string> = {
   '智能对话': 'console.nav.playground', '视频生成': 'console.nav.video', '数据分析': 'console.nav.analytics', '用量统计': 'console.nav.usage', '调用记录': 'console.nav.records',
   '账户管理': 'console.nav.account', '实名认证': 'console.nav.realName', '个人中心': 'console.nav.profile', '费用管理': 'console.nav.billing',
   'API 密钥管理': 'console.nav.apiKeys', '密钥管理': 'console.nav.apiKeys', '企业中心': 'console.nav.enterpriseCenter', '企业入驻': 'console.nav.enterpriseCreate', '企业管理': 'console.nav.enterpriseManagement',
-  '人员管理': 'console.nav.members', '用量管理': 'console.nav.enterpriseUsage', '操作日志': 'console.nav.audit', '我的数据': 'console.nav.myData',
+  '人员管理': 'console.nav.members', '用量管理': 'console.nav.enterpriseUsage', '操作日志': 'console.nav.audit', '我的数据': 'console.nav.myData', '个人用量': 'console.nav.personalUsage',
   '企业管理（新版）': 'traeEnterprise.nav.group', '订阅管理': 'traeEnterprise.nav.subscription',
   '企业设置': 'console.nav.enterpriseSettings', '通用设置': 'console.nav.settings', '模型管理': 'console.nav.enterpriseModels', '权限与标签': 'console.nav.governance', '账号信息': 'console.nav.accountInfo',
   '活动中心': 'console.nav.activityCenter', '邀请返现': 'console.nav.invitationReward', '认证返现': 'console.nav.realNameReward',
@@ -2060,6 +2062,29 @@ export function activeNavKey(pathname: string): string {
   return items.find((item) => pathname === item.key || pathname.startsWith(`${item.key}/`))?.key ?? ''
 }
 
+function ConsoleTopBreadcrumb({
+  groups,
+  navKey,
+}: {
+  groups: ConsoleNavGroup[]
+  navKey: string
+}) {
+  const { t } = useTranslation()
+  const activeGroup = groups.find((group) => group.items.some((item) => item.key === navKey))
+  const activeItem = activeGroup?.items.find((item) => item.key === navKey)
+  if (!activeGroup || !activeItem) return null
+  const groupLabel = activeGroup.key === 'enterprise-management-trae'
+    ? t('console.nav.enterpriseManagement')
+    : localizeConsoleNavLabel(t, activeGroup.label)
+  return (
+    <nav className="console-top-breadcrumb" aria-label="Breadcrumb">
+      <span>{groupLabel}</span>
+      <b aria-hidden="true">/</b>
+      <strong>{localizeConsoleNavLabel(t, activeItem.label)}</strong>
+    </nav>
+  )
+}
+
 export function isEnterprisePermissionPath(pathname: string): boolean {
   return enterpriseMenuPermissionKeyForPath(pathname) !== null
 }
@@ -2169,6 +2194,7 @@ export function ConsoleLayout({ children }: { children: ReactNode }) {
               <Button theme="borderless" icon={<IconMenu />} aria-label={t('console.common.openConsoleNav')} onClick={() => setSidebarOpen(true)} />
               <span>{localizeConsoleNavLabel(t, groups.flatMap((group) => group.items).find((item) => item.key === navKey)?.label ?? t('nav.console'))}</span>
             </div>
+            <ConsoleTopBreadcrumb groups={groups} navKey={navKey} />
             <main className="console-page">{children}</main>
           </Layout.Content>
         </Layout>
