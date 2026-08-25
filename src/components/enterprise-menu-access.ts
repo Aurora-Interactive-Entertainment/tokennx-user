@@ -7,9 +7,8 @@ import { invalidateAuth } from "@/store/auth-slice";
 import { useNavigate } from "react-router";
 import type { Workspace } from "@/data/app-state";
 
-// 中文：新版企业管理页面当前处于页面调整期，临时对所有已登录账号开放。
-// 页面完成后将此开关改回 false，即恢复企业空间和角色权限限制。
-export const TEMPORARILY_OPEN_TRAE_ENTERPRISE_MANAGEMENT = true;
+// 中文：页面调整期可将此开关设为 true 临时开放；当前恢复企业空间和角色权限限制。
+export const TEMPORARILY_OPEN_TRAE_ENTERPRISE_MANAGEMENT = false;
 
 // 中文：菜单只关心资源前缀，具体动作由企业角色权限矩阵继续控制。
 export const ENTERPRISE_MENU_PERMISSION_PREFIXES = {
