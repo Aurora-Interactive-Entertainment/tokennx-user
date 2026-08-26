@@ -8,6 +8,7 @@ import { store } from './store'
 import './i18n'
 import './theme'
 import './styles.css'
+import './components/console-form-controls.css'
 
 function applyInitialPerformanceMode(): void {
   if (typeof navigator === 'undefined' || typeof document === 'undefined') return

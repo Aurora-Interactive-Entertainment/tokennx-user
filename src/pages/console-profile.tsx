@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
 import Button from '@douyinfe/semi-ui/lib/es/button'
-import Input from '@douyinfe/semi-ui/lib/es/input'
 import Modal from '@/components/app-modal'
 import Switch from '@douyinfe/semi-ui/lib/es/switch'
+import { CompatInput as Input } from '@/components/semi-compat'
 import {
   getNotificationPreferences,
   getProfileEnterprises,

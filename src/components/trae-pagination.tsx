@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import ConfigProvider from "@douyinfe/semi-ui/lib/es/configProvider";
 import Pagination from "@douyinfe/semi-ui/lib/es/pagination";
@@ -11,6 +11,8 @@ type TraePaginationProps = {
   currentPage: number;
   pageSize: number;
   total: number;
+  summary?: ReactNode;
+  disabled?: boolean;
   pageSizeOpts?: number[];
   onChange: (page: number, pageSize: number) => void;
 };
@@ -20,6 +22,8 @@ export function TraePagination({
   currentPage,
   pageSize,
   total,
+  summary,
+  disabled = false,
   pageSizeOpts = [10, 20, 50, 100],
   onChange,
 }: TraePaginationProps) {
@@ -49,7 +53,13 @@ export function TraePagination({
   if (total <= 0) return null;
 
   return (
-    <div className="trae-usage-pagination" ref={rootRef}>
+    <div
+      className={`trae-usage-pagination${summary ? " trae-usage-pagination--with-summary" : ""}`}
+      ref={rootRef}
+    >
+      {summary ? (
+        <span className="trae-usage-pagination-summary">{summary}</span>
+      ) : null}
       <ConfigProvider locale={locale}>
         <nav aria-label={ariaLabel}>
           <Pagination
@@ -61,6 +71,7 @@ export function TraePagination({
             hideOnSinglePage={false}
             prevText="‹"
             nextText="›"
+            disabled={disabled}
             onChange={onChange}
           />
         </nav>

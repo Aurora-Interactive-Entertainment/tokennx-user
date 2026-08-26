@@ -1,3 +1,4 @@
+/* 后台分页统一沿用企业用量页已确认的紧凑样式。 */
 .trae-usage-pagination {
   display: flex;
   align-items: center;
@@ -5,6 +6,15 @@
   min-height: 44px;
   padding-top: 8px;
   font-size: 11px;
+}
+.trae-usage-pagination--with-summary {
+  justify-content: space-between;
+  gap: 12px;
+}
+.trae-usage-pagination-summary {
+  min-width: 0;
+  color: var(--color-text-secondary);
+  font-variant-numeric: tabular-nums;
 }
 .trae-usage-pagination .semi-page {
   display: flex;

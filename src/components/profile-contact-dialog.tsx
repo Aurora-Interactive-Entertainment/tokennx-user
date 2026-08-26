@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import Button from '@douyinfe/semi-ui/lib/es/button'
-import Input from '@douyinfe/semi-ui/lib/es/input'
 import Modal from '@/components/app-modal'
+import { CompatInput as Input } from '@/components/semi-compat'
 import {
   getProfileErrorMessage,
   isValidContactDestination,

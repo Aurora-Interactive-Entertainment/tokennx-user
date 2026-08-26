@@ -55,6 +55,12 @@ export const apiResources = {
         sessionExpired: '登录状态已失效，请重新登录',
         forbidden: '当前用户没有查看该工作空间模型的权限',
       },
+      personalUsage: {
+        loadFailed: '个人用量数据加载失败，请稍后重试',
+        invalidResponse: '个人用量接口响应格式无效，请稍后重试',
+        enterpriseMissing: '企业空间缺少企业 ID',
+        forbidden: '当前用户没有查看该空间个人 Token 消耗的权限',
+      },
       homepage: {
         invalidResponse: '首页内容响应格式无效，将继续展示默认内容',
       },
@@ -67,20 +73,6 @@ export const apiResources = {
         unavailable: 'API 密钥依赖服务暂时不可用，请稍后重试',
         expired: 'API 密钥已过期，无法重新启用',
         sessionExpired: '登录状态已失效，请重新登录',
-      },
-      usage: {
-        records: {
-          forbidden: '当前工作空间没有查看这些调用记录的权限',
-          invalidQuery: '调用记录筛选条件无效，请检查后重试',
-          unavailable: '调用记录服务暂时不可用，请稍后重试',
-          requestFailed: '调用记录请求失败，请稍后重试',
-        },
-        summary: {
-          forbidden: '当前工作空间没有查看用量统计的权限',
-          invalidQuery: '用量统计筛选条件无效，请检查后重试',
-          unavailable: '用量统计服务暂时不可用，请稍后重试',
-          requestFailed: '用量统计请求失败，请稍后重试',
-        },
       },
       billing: {
         requestFailed: '账务请求失败，请稍后重试',
@@ -207,6 +199,12 @@ export const apiResources = {
         sessionExpired: 'Your session has expired. Please sign in again.',
         forbidden: 'You do not have permission to view models in this workspace.',
       },
+      personalUsage: {
+        loadFailed: 'Unable to load personal usage data. Try again later.',
+        invalidResponse: 'The personal usage response is invalid. Try again later.',
+        enterpriseMissing: 'The enterprise workspace is missing an enterprise ID.',
+        forbidden: 'You do not have permission to view personal token usage in this workspace.',
+      },
       homepage: {
         invalidResponse: 'The homepage content response is invalid. Default content will remain visible.',
       },
@@ -219,20 +217,6 @@ export const apiResources = {
         unavailable: 'The API key dependency service is temporarily unavailable. Try again later.',
         expired: 'The API key has expired and cannot be enabled again.',
         sessionExpired: 'Your session has expired. Please sign in again.',
-      },
-      usage: {
-        records: {
-          forbidden: 'This workspace does not have permission to view these request records.',
-          invalidQuery: 'The request-record filters are invalid. Check them and try again.',
-          unavailable: 'The request-record service is temporarily unavailable. Try again later.',
-          requestFailed: 'The request-record request failed. Try again later.',
-        },
-        summary: {
-          forbidden: 'This workspace does not have permission to view usage statistics.',
-          invalidQuery: 'The usage filters are invalid. Check them and try again.',
-          unavailable: 'The usage service is temporarily unavailable. Try again later.',
-          requestFailed: 'The usage request failed. Try again later.',
-        },
       },
       billing: {
         requestFailed: 'The billing request failed. Try again later.',

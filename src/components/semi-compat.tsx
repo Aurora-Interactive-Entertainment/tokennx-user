@@ -57,6 +57,20 @@ export function CompatCard({
   );
 }
 
-export const CompatInput = Object.assign(SemiInput, {
-  TextArea: SemiTextArea,
+type CompatInputProps = ComponentProps<typeof SemiInput>;
+type CompatTextAreaProps = ComponentProps<typeof SemiTextArea>;
+
+function CompatInputBase({ className, ...props }: CompatInputProps) {
+  const mergedClassName = className ? `app-input ${className}` : "app-input";
+  return <SemiInput {...props} className={mergedClassName} />;
+}
+
+function CompatTextArea({ className, ...props }: CompatTextAreaProps) {
+  const mergedClassName = className ? `app-textarea ${className}` : "app-textarea";
+  return <SemiTextArea {...props} className={mergedClassName} />;
+}
+
+// 输入框与下拉框通过兼容层自动接入统一的 TRAE 控件样式。
+export const CompatInput = Object.assign(CompatInputBase, {
+  TextArea: CompatTextArea,
 });

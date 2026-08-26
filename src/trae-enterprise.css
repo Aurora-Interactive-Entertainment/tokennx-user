@@ -159,7 +159,15 @@ html[data-theme="dark"] .trae-date-picker-dropdown [class*="semi-datepicker-day-
 .trae-analysis-line-chart { position: relative; width: 100%; height: 250px; }
 .trae-analysis-ranking-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; }
 .trae-analysis-ranking-section { min-width: 0; margin-top: 24px; }
-.trae-analysis-ranking-section .trae-empty { min-height: 320px; }
+.trae-analysis-ranking-section .trae-section-heading { margin-bottom: 0; }
+.trae-analysis-ranking-card { box-sizing: border-box; min-width: 0; margin-top: 16px; padding: 20px; border-radius: 7px; background: var(--color-bg-menu); }
+.trae-analysis-ranking-list { min-width: 0; }
+.trae-analysis-ranking-row { display: flex; width: 100%; height: 56px; min-width: 0; box-sizing: border-box; align-items: center; gap: 16px; padding: 12px; border: 1px solid var(--color-border-neutral-l1); color: var(--color-text-default); background: var(--color-bg-menu); }
+.trae-analysis-ranking-row + .trae-analysis-ranking-row { border-top: 0; }
+.trae-analysis-ranking-row:last-child { border-bottom: 0; }
+.trae-analysis-ranking-rank { display: inline-grid; width: 32px; height: 32px; flex: 0 0 32px; place-items: center; border-radius: 4px; color: var(--color-brand); background: var(--color-bg-base-tertiary); font-size: 16px; font-weight: 600; line-height: 1; }
+.trae-analysis-ranking-name { min-width: 0; overflow: hidden; color: var(--color-text-default); font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
+.trae-analysis-ranking-count { margin-left: auto; flex: 0 0 auto; color: var(--color-text-default); font-size: 14px; white-space: nowrap; }
 .trae-analysis-pie-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 12px; }
 .trae-analysis-pie-section { min-width: 0; margin-top: 24px; }
 .trae-analysis-pie-content { display: grid; grid-template-columns: minmax(150px, .9fr) minmax(190px, 1.1fr); align-items: center; min-height: 320px; padding: 16px 18px; border: 1px solid var(--color-border-neutral-l1); border-radius: 7px; background: var(--color-bg-base-secondary); }
@@ -299,7 +307,6 @@ html[data-theme="dark"] .trae-date-picker-dropdown [class*="semi-datepicker-day-
 .trae-confirm-dialog-content .trae-dialog-actions { margin: 0; padding: 0; }
 .trae-confirm-dialog-content .trae-dialog-actions button { min-height: 30px; font-size: 13px; }
 .trae-member-action-dialog { width: min(480px, 100%); }
-.trae-member-action-dialog--reclaim { width: min(360px, 100%); }
 .trae-member-action-dialog > header { padding: 12px; border-bottom: 0; }
 .trae-dialog-title-with-icon { display: inline-flex; align-items: center; gap: 7px; }
 .trae-dialog-title-with-icon > svg { width: 16px; height: 16px; color: var(--color-text-tertiary); }
@@ -312,10 +319,9 @@ html[data-theme="dark"] .trae-date-picker-dropdown [class*="semi-datepicker-day-
 .trae-member-action-content > .trae-dialog-actions { margin-top: 18px; }
 .trae-member-action-content .trae-dialog-actions button { min-height: 30px; font-size: 13px; }
 .trae-member-action-dialog--department .trae-member-action-content > .trae-dialog-actions { margin-top: 8px; }
-.trae-member-action-dialog--reclaim .trae-member-action-content { padding-bottom: 12px; }
-.trae-member-action-dialog--reclaim .trae-member-action-content > .trae-dialog-actions { margin-top: 0; }
 .trae-member-action-link { display: inline; margin: 0; padding: 0; border: 0; color: var(--color-brand); background: transparent; font: inherit; font-size: 13px; cursor: pointer; }
-.trae-member-action-member { margin: 0 0 14px; padding: 10px 12px; border: 1px solid var(--color-border-neutral-l1); border-radius: 5px; color: var(--color-text-secondary); background: var(--color-bg-base-secondary); font-size: 13px; }
+.trae-member-action-member { display: grid; max-height: 132px; overflow-y: auto; margin: 0 0 14px; padding: 10px 12px; border: 1px solid var(--color-border-neutral-l1); border-radius: 5px; color: var(--color-text-secondary); background: var(--color-bg-base-secondary); font-size: 13px; scrollbar-width: thin; }
+.trae-member-action-member > span { overflow: hidden; padding-block: 3px; text-overflow: ellipsis; white-space: nowrap; }
 .trae-member-action-dialog--remove .trae-member-action-content > p { margin-bottom: 10px; }
 .trae-member-action-dialog--remove .trae-member-action-member { margin-bottom: 4px; padding-block: 5px; }
 .trae-member-action-dialog--remove .trae-member-action-content > .trae-dialog-actions { margin-top: 0; }
@@ -595,6 +601,7 @@ html[data-theme="dark"] .trae-date-picker-dropdown [class*="semi-datepicker-day-
   .trae-members-summary, .trae-metric-grid, .trae-metric-grid--three, .trae-usage-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .trae-analysis-grid { grid-template-columns: 1fr; }
   .trae-analysis-ranking-section .trae-empty { min-height: 280px; }
+  .trae-analysis-ranking-card { padding: 12px; }
   .trae-analysis-pie-grid { grid-template-columns: 1fr; }
   .trae-analysis-metric-grid.trae-metric-grid--three.trae-core-metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .trae-members-workspace, .trae-department-editor { grid-template-columns: 1fr; }
@@ -757,13 +764,6 @@ html[data-theme="dark"] .trae-date-picker-dropdown [class*="semi-datepicker-day-
 .trae-usage-page-official .trae-table tbody tr:hover td { background: var(--color-bg-overlay-l2); }
 .trae-usage-number { text-align: right !important; font-variant-numeric: tabular-nums; }
 .trae-usage-number > span.is-used { color: var(--color-success); }
-.trae-usage-department-table { min-width: 760px; table-layout: fixed; }
-.trae-usage-department-table th:first-child, .trae-usage-department-table td:first-child { width: 385px; }
-.trae-usage-department-table th:nth-child(2), .trae-usage-department-table td:nth-child(2) { width: 264px; }
-.trae-usage-department-table th:nth-child(3), .trae-usage-department-table td:nth-child(3) { width: 242px; }
-.trae-usage-department-table th:nth-child(4), .trae-usage-department-table td:nth-child(4) { width: 242px; }
-.trae-department-caret { display: inline-grid; width: 18px; height: 24px; place-items: center; padding: 0; border: 0; color: var(--color-text-tertiary); background: transparent; font: inherit; cursor: pointer; }
-.trae-department-caret:hover { color: var(--color-text-default-hover); }
 .trae-usage-department-search { height: 28px; }
 .trae-usage-detail-section { margin-top: 16px; }
 .trae-usage-detail-toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 15px; }

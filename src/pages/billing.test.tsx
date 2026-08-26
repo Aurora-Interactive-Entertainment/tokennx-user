@@ -234,7 +234,7 @@ describe('用户费用管理页面', () => {
     expect(within(ledgerRegion).getAllByText('充值').length).toBeGreaterThan(0)
     expect(within(ledgerRegion).getAllByText('赠送').length).toBeGreaterThan(0)
     expect(within(ledgerRegion).getByText('奖励发放: 注册奖励')).toBeInTheDocument()
-    expect(screen.getAllByRole('link', { name: '查看请求' }).some((link) => link.getAttribute('href') === '/console/records?request=request-usage-1')).toBe(true)
+    expect(within(ledgerRegion).getByText('request-usage-1')).toBeInTheDocument()
 
     const analysisCall = fetchMock.mock.calls.find(([input]) => new URL(String(input), window.location.origin).pathname.endsWith('/analysis'))
     expect(analysisCall).toBeDefined()

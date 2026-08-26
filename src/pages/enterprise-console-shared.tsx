@@ -116,7 +116,7 @@ export function EnterprisePageShell({ title, description, actions, capability, c
 
 export function EnterpriseLoading({ label }: { label?: string }) {
   const { t } = useTranslation()
-  return <div className="enterprise-loading" role="status"><span className="records-loading-spinner" />{label ?? t('console.enterprise.loadData')}</div>
+  return <div className="enterprise-loading" role="status"><span className="console-loading-spinner" />{label ?? t('console.enterprise.loadData')}</div>
 }
 
 export function EnterpriseError({ message, requestId, onRetry }: { message: string; requestId: string | null; onRetry: () => void }) {

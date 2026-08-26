@@ -1,0 +1,19 @@
+/* 中文：固定数字行和标签行，数字缩放时不会带动下方标签上下移动。 */
+.public-layout--manuscript-home .manuscript-promotion .manuscript-reward-stats .home-reward-stat {
+  grid-template-rows: 86px 27px;
+}
+
+.public-layout--manuscript-home .manuscript-promotion .manuscript-reward-stats .home-reward-stat__value {
+  align-self: end;
+  font-size: calc(100px * var(--home-reward-stat-scale, 1));
+}
+
+.public-layout--manuscript-home .manuscript-promotion .manuscript-reward-stats .home-reward-stat__label {
+  align-self: start;
+}
+
+@media (max-width: 480px) {
+  .public-layout--manuscript-home .manuscript-promotion .manuscript-reward-stats .home-reward-stat__value {
+    font-size: calc(82px * var(--home-reward-stat-scale, 1));
+  }
+}

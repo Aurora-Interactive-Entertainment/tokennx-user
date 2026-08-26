@@ -45,18 +45,12 @@ const EnterpriseCreatePage = lazy(() => loadConsoleAccountPages().then(({ Enterp
 const EnterpriseModelsPage = lazy(() => import('@/pages/enterprise-models').then(({ EnterpriseModelsPage }) => ({ default: EnterpriseModelsPage })))
 const EnterpriseSettingsPage = lazy(() => loadConsoleAccountPages().then(({ EnterpriseSettingsPage }) => ({ default: EnterpriseSettingsPage })))
 const InvitationsPage = lazy(() => loadConsoleAccountPages().then(({ InvitationsPage }) => ({ default: InvitationsPage })))
-const EnterpriseAnalyticsPage = lazy(() => import('@/pages/enterprise-analytics').then(({ EnterpriseAnalyticsPage }) => ({ default: EnterpriseAnalyticsPage })))
-const EnterpriseAuditLogPage = lazy(() => import('@/pages/enterprise-audit-log').then(({ EnterpriseAuditLogPage }) => ({ default: EnterpriseAuditLogPage })))
-const EnterpriseUsagePage = lazy(() => import('@/pages/enterprise-usage').then(({ EnterpriseUsagePage }) => ({ default: EnterpriseUsagePage })))
 const EnterpriseGovernancePage = lazy(() => import('@/pages/enterprise-governance').then(({ EnterpriseGovernancePage }) => ({ default: EnterpriseGovernancePage })))
-const MembersPage = lazy(() => import('@/pages/enterprise-members').then(({ MembersPage }) => ({ default: MembersPage })))
 const TraeEnterpriseAnalysisPage = lazy(() => import('@/pages/trae-enterprise').then(({ TraeEnterpriseAnalysisPage }) => ({ default: TraeEnterpriseAnalysisPage })))
 const TraeEnterpriseMembersPage = lazy(() => import('@/pages/trae-enterprise').then(({ TraeEnterpriseMembersPage }) => ({ default: TraeEnterpriseMembersPage })))
 const TraeEnterpriseSubscriptionPage = lazy(() => import('@/pages/trae-enterprise').then(({ TraeEnterpriseSubscriptionPage }) => ({ default: TraeEnterpriseSubscriptionPage })))
 const TraeEnterpriseUsagePage = lazy(() => import('@/pages/trae-enterprise').then(({ TraeEnterpriseUsagePage }) => ({ default: TraeEnterpriseUsagePage })))
 const TraeEnterpriseAuditPage = lazy(() => import('@/pages/trae-enterprise').then(({ TraeEnterpriseAuditPage }) => ({ default: TraeEnterpriseAuditPage })))
-const RecordsPage = lazy(() => import('@/pages/records').then(({ RecordsPage }) => ({ default: RecordsPage })))
-const UsagePage = lazy(() => import('@/pages/usage').then(({ UsagePage }) => ({ default: UsagePage })))
 const PersonalUsagePage = lazy(() => import('@/pages/personal-usage').then(({ PersonalUsagePage }) => ({ default: PersonalUsagePage })))
 const RealNamePage = lazy(() => import('@/pages/console-real-name').then(({ RealNamePage }) => ({ default: RealNamePage })))
 const SettingsPage = lazy(() => import('@/pages/console-profile').then(({ SettingsPage }) => ({ default: SettingsPage })))
@@ -199,20 +193,13 @@ export default function App({ onBootReady }: { onBootReady: () => void }) {
                 <Route path="video" element={<VideoPage />} />
                 <Route path="quickstart" element={<QuickstartPage />} />
                 <Route path="api-keys" element={<ApiKeysPage />} />
-                <Route path="usage" element={<UsagePage />} />
-                <Route path="personal-usage" element={<PersonalUsagePage />} />
-                <Route path="records" element={<RecordsPage />} />
+                <Route path="usage" element={<PersonalUsagePage />} />
                 <Route path="billing" element={<BillingPage />} />
                 <Route path="real-name" element={<RealNamePage />} />
                 <Route path="settings" element={<SettingsPage />} />
                 <Route path="invitations" element={<InvitationsPage />} />
                 <Route path="enterprise-create" element={<EnterpriseCreatePage />} />
-                <Route path="members" element={<MembersPage />} />
                 <Route path="enterprise-governance" element={<EnterpriseGovernancePage />} />
-                <Route path="enterprise-usage" element={<EnterpriseUsagePage />} />
-                <Route path="enterprise-records" element={<EnterpriseAuditLogPage />} />
-                <Route path="enterprise-audit-log" element={<EnterpriseAuditLogPage />} />
-                <Route path="enterprise-analytics" element={<EnterpriseAnalyticsPage />} />
                 <Route path="enterprise-models" element={<EnterpriseModelsPage />} />
                 <Route path="enterprise-settings" element={<EnterpriseSettingsPage />} />
                 <Route path="trae-enterprise/data-analysis" element={<TraeEnterpriseAnalysisPage />} />

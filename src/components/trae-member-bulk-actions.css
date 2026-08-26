@@ -1,0 +1,74 @@
+.trae-member-bulk-actions {
+  display: flex;
+  min-height: 64px;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border-neutral-l1);
+  border-top: 0;
+  color: var(--color-text-secondary);
+  background: var(--color-bg-base-secondary);
+  font-size: 13px;
+}
+
+.trae-member-bulk-count {
+  white-space: nowrap;
+}
+
+.trae-member-bulk-cancel {
+  padding: 0;
+  border: 0;
+  color: var(--color-brand);
+  background: transparent;
+  font: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.trae-member-bulk-buttons {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.trae-member-bulk-button-wrap {
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+
+.trae-member-bulk-button-wrap > button {
+  min-height: 32px;
+  padding: 0 13px;
+  border: 0;
+  border-radius: 4px;
+  color: var(--color-text-default-hover);
+  background: var(--color-bg-overlay-l3);
+  font: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.trae-member-bulk-button-wrap > button:hover:not(:disabled) {
+  background: var(--color-bg-overlay-l2);
+}
+
+.trae-member-bulk-button-wrap > button:disabled {
+  color: var(--color-text-tertiary);
+  background: var(--color-bg-overlay-l1);
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
+@media (max-width: 900px) {
+  .trae-member-bulk-actions {
+    flex-wrap: wrap;
+    gap: 8px 14px;
+  }
+
+  .trae-member-bulk-buttons {
+    width: 100%;
+  }
+}

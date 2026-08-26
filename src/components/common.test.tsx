@@ -144,7 +144,7 @@ describe('控制台导航路径匹配', () => {
   it('优先匹配最长路径并避免把控制台根路径误判为子页面', () => {
     expect(activeNavKey('/console/quickstart')).toBe('/console/quickstart')
     expect(activeNavKey('/console/models/deepseek-chat')).toBe('/console/models')
-    expect(activeNavKey('/console/enterprise-records/detail')).toBe('/console/enterprise-records')
+    expect(activeNavKey('/console/trae-enterprise/operation-log/detail')).toBe('/console/trae-enterprise/operation-log')
     expect(activeNavKey('/console/real-name')).toBe('/console/real-name')
     expect(activeNavKey('/console/enterprise-create')).toBe('/console/enterprise-create')
     expect(activeNavKey('/console/video')).toBe('/console/video')
@@ -165,7 +165,7 @@ describe('控制台导航路径匹配', () => {
 
     const navigation = screen.getByRole('navigation', { name: '控制台导航' })
     expect(navigation).toHaveTextContent('实名认证')
-    expect(navigation).toHaveTextContent('调用记录')
+    expect(navigation).not.toHaveTextContent('调用记录')
     expect(navigation).not.toHaveTextContent('使用日志')
     expect(navigation).not.toHaveTextContent('企业管理')
     expect(navigation).toHaveTextContent('视频生成')
@@ -185,7 +185,7 @@ describe('控制台导航路径匹配', () => {
   it('Header 消息图标打开全局客服并默认切换到通知栏目', async () => {
     const user = userEvent.setup()
     render(
-      <MemoryRouter initialEntries={['/console/records']}>
+      <MemoryRouter initialEntries={['/console/usage']}>
         <Provider store={createAppStore()}>
           <AppStoreProvider><ConsoleLayout><span>页面内容</span></ConsoleLayout></AppStoreProvider>
         </Provider>
@@ -252,7 +252,7 @@ describe('控制台导航路径匹配', () => {
       const settings = sections.find((section) => section.querySelector('.console-nav-section-title')?.textContent === '企业设置')
       expect(management).not.toBeUndefined()
       expect(settings).not.toBeUndefined()
-      expect(within(management as HTMLElement).getAllByRole('link').map((link) => link.textContent)).toEqual(['人员管理', '用量管理', '操作日志', '数据分析', '费用管理'])
+      expect(within(management as HTMLElement).getAllByRole('link').map((link) => link.textContent)).toEqual(['人员管理', '用量管理', '操作日志', '数据分析', '费用管理', '订阅管理'])
       expect(within(management as HTMLElement).queryByRole('link', { name: '权限与标签' })).toBeNull()
       expect(within(settings as HTMLElement).getAllByRole('link').map((link) => link.textContent)).toEqual(['通用设置', '模型管理', '权限与标签'])
     } finally {
@@ -287,8 +287,9 @@ describe('控制台导航路径匹配', () => {
       expect(navigation).toHaveTextContent('模型广场')
       expect(navigation).toHaveTextContent('智能对话')
       expect(navigation).toHaveTextContent('视频生成')
-      expect(navigation).toHaveTextContent('用量统计')
-      expect(navigation).toHaveTextContent('调用记录')
+      expect(navigation).toHaveTextContent('个人用量')
+      expect(navigation).not.toHaveTextContent('用量统计')
+      expect(navigation).not.toHaveTextContent('调用记录')
       expect(navigation).toHaveTextContent('账号信息')
       expect(navigation).toHaveTextContent('密钥管理')
       for (const label of ['企业设置', '通用设置', '模型管理', '权限与标签', '费用管理']) {
@@ -314,15 +315,19 @@ describe('控制台导航路径匹配', () => {
     expect(isEnterpriseOwner({ type: 'enterprise', role: 'owner' })).toBe(true)
     expect(isEnterpriseOwner({ type: 'enterprise', role: 'member' })).toBe(false)
     expect(isEnterpriseOwner({ type: 'personal', role: 'owner' })).toBe(false)
-    expect(consoleNavGroupsFor({ type: 'enterprise', role: 'member' }).flatMap((group) => group.items).map((item) => item.label)).toEqual(['快速接入', '模型广场', '智能对话', '视频生成', '用量统计', '个人用量', '调用记录', '账号信息', '密钥管理'])
+    expect(consoleNavGroupsFor({ type: 'enterprise', role: 'member' }).flatMap((group) => group.items).map((item) => item.label)).toEqual(['快速接入', '模型广场', '智能对话', '视频生成', '个人用量', '账号信息', '密钥管理'])
     expect(consoleNavGroupsFor({ type: 'enterprise', role: 'member' }, ['usage.detail']).flatMap((group) => group.items).map((item) => item.label)).toContain('用量管理')
     expect(consoleNavGroupsFor({ type: 'enterprise', role: 'member' }, ['billing.view']).flatMap((group) => group.items).map((item) => item.label)).toContain('费用管理')
-    expect(consoleNavGroupsFor({ type: 'enterprise', role: 'member' }, ['billing.view']).find((group) => group.key === 'enterprise-management')?.items.map((item) => item.label)).toContain('费用管理')
+    expect(consoleNavGroupsFor({ type: 'enterprise', role: 'member' }, ['billing.view']).find((group) => group.key === 'enterprise-management')?.items.map((item) => item.label)).toEqual(['费用管理', '订阅管理'])
     expect(consoleNavGroupsFor({ type: 'enterprise', role: 'member' }, ['billing.view']).find((group) => group.key === 'account')?.items.map((item) => item.label)).not.toContain('费用管理')
     expect(consoleNavGroupsFor({ type: 'enterprise', role: 'member' }, ['tags.edit']).flatMap((group) => group.items).map((item) => item.label)).toContain('权限与标签')
     expect(consoleNavGroupsFor({ type: 'enterprise', role: 'owner' }).flatMap((group) => group.items).map((item) => item.label)).toContain('费用管理')
     expect(isEnterprisePermissionPath('/console/enterprise-settings')).toBe(true)
-    expect(isEnterprisePermissionPath('/console/enterprise-records/detail')).toBe(true)
+    expect(isEnterprisePermissionPath('/console/trae-enterprise/operation-log/detail')).toBe(true)
+    expect(isEnterprisePermissionPath('/console/trae-enterprise/users')).toBe(true)
+    expect(isEnterprisePermissionPath('/console/trae-enterprise/usage')).toBe(true)
+    expect(isEnterprisePermissionPath('/console/trae-enterprise/data-analysis')).toBe(true)
+    expect(isEnterprisePermissionPath('/console/trae-enterprise/subscription')).toBe(true)
     expect(isEnterprisePermissionPath('/console/usage')).toBe(false)
   })
 
@@ -331,33 +336,6 @@ describe('控制台导航路径匹配', () => {
     window.localStorage.setItem('token-nx:user-front:v1', JSON.stringify({
       activeWorkspaceId: 'ent-member-direct',
       workspaces: [{ id: 'ent-member-direct', name: '成员企业', type: 'enterprise', role: 'member' }],
-    }))
-
-    try {
-      render(
-        <MemoryRouter initialEntries={['/console/enterprise-usage']}>
-          <Provider store={createAppStore()}>
-            <AppStoreProvider><LocationProbe /><ConsoleLayout><span>页面内容</span></ConsoleLayout></AppStoreProvider>
-          </Provider>
-        </MemoryRouter>,
-      )
-
-      await waitFor(() => expect(screen.getByTestId('common-location')).toHaveTextContent('/console/quickstart'))
-      expect(screen.getByRole('navigation', { name: '控制台导航' })).not.toHaveTextContent('企业管理')
-    } finally {
-      if (previousSnapshot === null) {
-        window.localStorage.removeItem('token-nx:user-front:v1')
-      } else {
-        window.localStorage.setItem('token-nx:user-front:v1', previousSnapshot)
-      }
-    }
-  })
-
-  it('企业成员直接打开新版企业管理入口时回到快速接入', async () => {
-    const previousSnapshot = window.localStorage.getItem('token-nx:user-front:v1')
-    window.localStorage.setItem('token-nx:user-front:v1', JSON.stringify({
-      activeWorkspaceId: 'ent-member-trae-direct',
-      workspaces: [{ id: 'ent-member-trae-direct', name: '成员企业', type: 'enterprise', role: 'member' }],
     }))
 
     try {
@@ -391,7 +369,7 @@ describe('控制台导航路径匹配', () => {
 
     try {
       render(
-        <MemoryRouter initialEntries={['/console/enterprise-usage']}>
+        <MemoryRouter initialEntries={['/console/trae-enterprise/usage']}>
           <Provider store={createAppStore()}>
             <AppStoreProvider><LocationProbe /><ConsoleLayout><span>页面内容</span></ConsoleLayout></AppStoreProvider>
           </Provider>
@@ -400,9 +378,9 @@ describe('控制台导航路径匹配', () => {
 
       await waitFor(() => expect(screen.getByRole('navigation', { name: '控制台导航' })).toHaveTextContent('用量管理'))
       const navigation = screen.getByRole('navigation', { name: '控制台导航' })
-      expect(navigation.querySelector('a[href="/console/members"]')).toBeNull()
+      expect(navigation.querySelector('a[href="/console/trae-enterprise/users"]')).toBeNull()
       expect(navigation.querySelector('a[href="/console/billing"]')).toBeNull()
-      expect(screen.getByTestId('common-location')).toHaveTextContent('/console/enterprise-usage')
+      expect(screen.getByTestId('common-location')).toHaveTextContent('/console/trae-enterprise/usage')
     } finally {
       if (previousSnapshot === null) {
         window.localStorage.removeItem('token-nx:user-front:v1')
@@ -817,7 +795,7 @@ describe('已登录用户菜单', () => {
     expect(menu).toHaveTextContent('快速接入')
     expect(menu).toHaveTextContent('智能对话')
     expect(menu).toHaveTextContent('视频生成')
-    expect(menu).toHaveTextContent('调用记录')
+    expect(menu).not.toHaveTextContent('调用记录')
     expect(menu).not.toHaveTextContent('使用日志')
     expect(menu).toHaveTextContent('费用管理')
     expect(menu).toHaveTextContent('密钥管理')
@@ -1083,7 +1061,7 @@ describe('已登录用户菜单', () => {
     expect(screen.getByRole('status', { name: '当前空间' })).toHaveTextContent('真实关联企业')
     const enterpriseNavigation = screen.getByRole('navigation', { name: '控制台导航' })
     expect(enterpriseNavigation).toHaveTextContent('我的数据')
-    expect(enterpriseNavigation).toHaveTextContent('调用记录')
+    expect(enterpriseNavigation).not.toHaveTextContent('调用记录')
     expect(enterpriseNavigation).not.toHaveTextContent('我的用量')
   })
 

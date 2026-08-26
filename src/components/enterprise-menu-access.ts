@@ -7,9 +7,6 @@ import { invalidateAuth } from "@/store/auth-slice";
 import { useNavigate } from "react-router";
 import type { Workspace } from "@/data/app-state";
 
-// 中文：页面调整期可将此开关设为 true 临时开放；当前恢复企业空间和角色权限限制。
-export const TEMPORARILY_OPEN_TRAE_ENTERPRISE_MANAGEMENT = false;
-
 // 中文：菜单只关心资源前缀，具体动作由企业角色权限矩阵继续控制。
 export const ENTERPRISE_MENU_PERMISSION_PREFIXES = {
   members: ["members."],
@@ -17,7 +14,6 @@ export const ENTERPRISE_MENU_PERMISSION_PREFIXES = {
   audit: ["audit."],
   analytics: ["analytics."],
   billing: ["billing."],
-  trae: ["trae."],
   settings: ["settings."],
   models: ["models."],
   governance: ["roles.", "tags."],
@@ -44,17 +40,12 @@ const ENTERPRISE_MENU_PATH_SCOPES: readonly {
   { path: "/console/enterprise-settings", scope: "settings" },
   { path: "/console/enterprise-models", scope: "models" },
   { path: "/console/enterprise-governance", scope: "governance" },
-  { path: "/console/enterprise-analytics", scope: "analytics" },
-  { path: "/console/enterprise-audit-log", scope: "audit" },
-  { path: "/console/enterprise-records", scope: "audit" },
-  { path: "/console/enterprise-usage", scope: "usage" },
-  { path: "/console/members", scope: "members" },
   { path: "/console/billing", scope: "billing" },
-  { path: "/console/trae-enterprise/data-analysis", scope: "trae" },
-  { path: "/console/trae-enterprise/users", scope: "trae" },
-  { path: "/console/trae-enterprise/subscription", scope: "trae" },
-  { path: "/console/trae-enterprise/usage", scope: "trae" },
-  { path: "/console/trae-enterprise/operation-log", scope: "trae" },
+  { path: "/console/trae-enterprise/users", scope: "members" },
+  { path: "/console/trae-enterprise/usage", scope: "usage" },
+  { path: "/console/trae-enterprise/operation-log", scope: "audit" },
+  { path: "/console/trae-enterprise/data-analysis", scope: "analytics" },
+  { path: "/console/trae-enterprise/subscription", scope: "billing" },
 ];
 
 export function isEnterpriseOwner(
@@ -83,10 +74,6 @@ export function enterpriseMenuPermissionKeyForPath(
     ({ path }) => pathname === path || pathname.startsWith(`${path}/`),
   );
   return match?.scope ?? null;
-}
-
-export function isTraeEnterpriseManagementPath(pathname: string): boolean {
-  return pathname === "/console/trae-enterprise" || pathname.startsWith("/console/trae-enterprise/");
 }
 
 function normalizePermissions(value: unknown): string[] {

@@ -41,6 +41,15 @@ import {
 } from "@douyinfe/semi-icons";
 import { exportEnterpriseCsv } from "./enterprise-console-shared";
 import { TraePagination } from "@/components/trae-pagination";
+import {
+  TraeUsageDepartmentTable,
+  type TraeUsageDepartmentNode,
+} from "@/components/trae-usage-department-table";
+import {
+  TraeMemberBulkActions,
+  type TraeMemberBulkAction,
+  type TraeMemberRole,
+} from "@/components/trae-member-bulk-actions";
 import { useResolvedTheme } from "@/theme";
 import "@/trae-enterprise.css";
 
@@ -76,7 +85,18 @@ function addDays(date: Date, amount: number) {
   return next;
 }
 
-const memberRows = [
+type TraeMemberRow = {
+  id: string;
+  name: string;
+  email: string;
+  status: "active" | "invited" | "suspended";
+  role: TraeMemberRole;
+  account: string;
+  joined: string;
+  department: string;
+};
+
+const memberRows: TraeMemberRow[] = [
   {
     id: "member-1",
     name: "han",
@@ -197,6 +217,11 @@ const auditRowSeeds = [
   },
 ];
 
+const analysisRankingRows = {
+  mcp: [{ name: "context7", count: 4 }],
+  agent: [{ name: "UI/UX优化顾问", count: 6 }],
+} as const;
+
 const auditRows = Array.from({ length: 60 }, (_, index) => {
   const seed = auditRowSeeds[index % auditRowSeeds.length];
   const day = String(25 - Math.floor(index / auditRowSeeds.length)).padStart(2, "0");
@@ -208,39 +233,6 @@ const auditRows = Array.from({ length: 60 }, (_, index) => {
     ip: "10.24.16.8",
   };
 });
-
-const usageRows = [
-  {
-    id: "usage-1",
-    date: "2026/08/22",
-    person: "Lina Chen",
-    account: "全端账号",
-    requests: 1284,
-    tokens: "2.84M",
-    cost: "¥18.42",
-    status: "正常",
-  },
-  {
-    id: "usage-2",
-    date: "2026/08/22",
-    person: "han",
-    account: "全端账号",
-    requests: 824,
-    tokens: "1.62M",
-    cost: "¥11.08",
-    status: "正常",
-  },
-  {
-    id: "usage-3",
-    date: "2026/08/21",
-    person: "张宇",
-    account: "Work 专属账号",
-    requests: 316,
-    tokens: "0.42M",
-    cost: "¥3.70",
-    status: "正常",
-  },
-];
 
 type TraeUsageMemberRow = {
   id: string;
@@ -269,15 +261,6 @@ const traeUsageDetailRows = [
   { date: "2026/08/24 10:50:41", member: "lhb", email: "1197715732@qq.com", department: "运营", client: "IDE", model: "Kimi-K2.7-Code", session: "6a8bb1791765869500995851", tokens: "278,297", cost: "￥0.436170", calls: "8", source: "基础用量" },
   { date: "2026/08/24 10:50:17", member: "lhb", email: "1197715732@qq.com", department: "运营", client: "IDE", model: "Kimi-K2.7-Code", session: "6a8bb1611765869500995850", tokens: "60,194", cost: "￥0.085340", calls: "2", source: "基础用量" },
 ];
-
-type TraeUsageDepartmentNode = {
-  id: string;
-  name: string;
-  total: string;
-  base: string;
-  overage: string;
-  children?: TraeUsageDepartmentNode[];
-};
 
 const traeUsageDepartmentTree: TraeUsageDepartmentNode[] = [
   {
@@ -323,21 +306,6 @@ const traeUsageDepartmentTree: TraeUsageDepartmentNode[] = [
     ],
   },
 ];
-
-function flattenTraeUsageDepartments(
-  nodes: TraeUsageDepartmentNode[],
-  expanded: Record<string, boolean>,
-  depth = 0,
-): Array<TraeUsageDepartmentNode & { depth: number; hasChildren: boolean; expanded: boolean }> {
-  return nodes.flatMap((node) => {
-    const hasChildren = Boolean(node.children?.length);
-    const isExpanded = expanded[node.id] !== false;
-    const row = { ...node, depth, hasChildren, expanded: isExpanded };
-    return hasChildren && isExpanded
-      ? [row, ...flattenTraeUsageDepartments(node.children ?? [], expanded, depth + 1)]
-      : [row];
-  });
-}
 
 function TraeShell({ title, action, children, className = "" }: TraePageProps) {
   return (
@@ -931,6 +899,38 @@ function TraeEmpty({ hint }: { hint?: string }) {
         <span>{t("traeEnterprise.common.noDataHint")}</span>
       )}
     </div>
+  );
+}
+
+function TraeAnalysisRanking({
+  title,
+  rows,
+  countLabel,
+}: {
+  title: string;
+  rows: readonly { name: string; count: number }[];
+  countLabel: string;
+}) {
+  return (
+    <TraeSection title={title} className="trae-analysis-ranking-section">
+      <div className="trae-analysis-ranking-card">
+        <div className="trae-analysis-ranking-list" role="list" aria-label={title}>
+          {rows.map((row, index) => (
+            <div className="trae-analysis-ranking-row" key={row.name} role="listitem">
+              <span className="trae-analysis-ranking-rank" aria-label={`${index + 1}`}>
+                {index + 1}
+              </span>
+              <span className="trae-analysis-ranking-name" title={row.name}>
+                {row.name}
+              </span>
+              <span className="trae-analysis-ranking-count">
+                {row.count} {countLabel}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </TraeSection>
   );
 }
 
@@ -1622,18 +1622,16 @@ export function TraeEnterpriseAnalysisPage() {
         </TraeSection>
       </div>
       <div className="trae-analysis-ranking-grid">
-        <TraeSection
+        <TraeAnalysisRanking
           title={t("traeEnterprise.analysis.mcp")}
-          className="trae-analysis-ranking-section"
-        >
-          <TraeEmpty hint={t("traeEnterprise.analysis.tPlusOne")} />
-        </TraeSection>
-        <TraeSection
+          rows={analysisRankingRows.mcp}
+          countLabel={t("traeEnterprise.analysis.countSuffix")}
+        />
+        <TraeAnalysisRanking
           title={t("traeEnterprise.analysis.agent")}
-          className="trae-analysis-ranking-section"
-        >
-          <TraeEmpty hint={t("traeEnterprise.analysis.tPlusOne")} />
-        </TraeSection>
+          rows={analysisRankingRows.agent}
+          countLabel={t("traeEnterprise.analysis.countSuffix")}
+        />
       </div>
       <div className="trae-analysis-pie-grid">
         <TraeSection
@@ -2375,26 +2373,28 @@ function TraeDepartmentDialog({
   );
 }
 
-type TraeMemberAction = "changeDepartment" | "reclaimAccount" | "changeRole" | "removeMember";
+type TraeMemberAction = "changeDepartment" | "changeRole" | "removeMember";
 
 function TraeMemberActionDialog({
   action,
-  member,
+  members,
   nodes,
   t,
   onClose,
   onComplete,
 }: {
   action: TraeMemberAction;
-  member: (typeof memberRows)[number];
+  members: TraeMemberRow[];
   nodes: TraeDepartmentNode[];
   t: Translate;
   onClose: () => void;
   onComplete: () => void;
 }) {
+  const member = members[0];
+  const memberCount = members.length;
   const [departmentID, setDepartmentID] = useState("company");
   const [role, setRole] = useState<"admin" | "member">(
-    member.role === "member" ? "member" : "admin",
+    member?.role === "member" ? "member" : "admin",
   );
   const title = t(`traeEnterprise.members.${action}`);
   const complete = () => {
@@ -2416,7 +2416,7 @@ function TraeMemberActionDialog({
     return (
       <TraeDialog className="trae-member-action-dialog trae-member-action-dialog--department" title={title} onClose={onClose}>
         <div className="trae-member-action-content">
-          <p>{t("traeEnterprise.memberDialogs.changeDepartmentHint", { count: 1 })}</p>
+          <p>{t("traeEnterprise.memberDialogs.changeDepartmentHint", { count: memberCount })}</p>
           <label className="trae-member-action-field">
             <span><b>*</b>{t("traeEnterprise.memberDialogs.department")}</span>
             <TraeDepartmentPicker
@@ -2432,26 +2432,6 @@ function TraeMemberActionDialog({
     );
   }
 
-  if (action === "reclaimAccount") {
-    return (
-      <TraeDialog
-        className="trae-member-action-dialog trae-member-action-dialog--reclaim"
-        title={<span className="trae-dialog-title-with-icon"><IconInfoCircle aria-hidden="true" />{title}</span>}
-        onClose={onClose}
-      >
-        <div className="trae-member-action-content">
-          <p>
-            {t("traeEnterprise.memberDialogs.reclaimHint")}{" "}
-            <button className="trae-member-action-link" type="button" onClick={() => showTraeToast(t("traeEnterprise.memberDialogs.learnMore"))}>
-              {t("traeEnterprise.memberDialogs.learnMore")}
-            </button>
-          </p>
-          {actions}
-        </div>
-      </TraeDialog>
-    );
-  }
-
   if (action === "removeMember") {
     return (
       <TraeDialog
@@ -2461,12 +2441,16 @@ function TraeMemberActionDialog({
       >
         <div className="trae-member-action-content">
           <p>
-            {t("traeEnterprise.memberDialogs.removeHint", { count: 1 })}{" "}
+            {t("traeEnterprise.memberDialogs.removeHint", { count: memberCount })}{" "}
             <button className="trae-member-action-link" type="button" onClick={() => showTraeToast(t("traeEnterprise.memberDialogs.learnMore"))}>
               {t("traeEnterprise.memberDialogs.learnMore")}
             </button>
           </p>
-          <div className="trae-member-action-member">{member.name}({member.email})</div>
+          <div className="trae-member-action-member">
+            {members.map((item) => (
+              <span key={item.id}>{item.name}({item.email})</span>
+            ))}
+          </div>
           <div className="trae-dialog-actions">
             <button className="trae-secondary-button" type="button" onClick={onClose}>
               {t("traeEnterprise.common.cancel")}
@@ -2483,7 +2467,11 @@ function TraeMemberActionDialog({
   return (
     <TraeDialog className="trae-member-action-dialog trae-member-action-dialog--role" title={title} onClose={onClose}>
       <div className="trae-member-action-content">
-        <p>{t("traeEnterprise.memberDialogs.roleHint", { name: member.name })}</p>
+        <p>
+          {memberCount === 1
+            ? t("traeEnterprise.memberDialogs.roleHint", { name: member.name })
+            : t("traeEnterprise.memberDialogs.roleBatchHint", { count: memberCount })}
+        </p>
         <div className="trae-role-options" role="radiogroup">
           <label className={`trae-role-option${role === "admin" ? " is-selected" : ""}`}>
             <input type="radio" name="member-role" value="admin" checked={role === "admin"} onChange={() => setRole("admin")} />
@@ -2565,11 +2553,10 @@ export function TraeEnterpriseMembersPage() {
   const [selectedDepartmentID, setSelectedDepartmentID] = useState("company");
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("all");
-  const [accountType, setAccountType] = useState("all");
   const [dialog, setDialog] = useState<"member" | "rules" | null>(null);
   const [memberActionDialog, setMemberActionDialog] = useState<{
     action: TraeMemberAction;
-    member: (typeof memberRows)[number];
+    members: TraeMemberRow[];
   } | null>(null);
   const [departmentDialog, setDepartmentDialog] =
     useState<DepartmentDialogState | null>(null);
@@ -2602,7 +2589,8 @@ export function TraeEnterpriseMembersPage() {
   // The demo session represents a regular enterprise administrator. Backend
   // auth can replace this value with the signed-in operator role when it is
   // available. Only the super administrator may perform protected actions.
-  const currentOperatorRole: string = "admin";
+  const currentOperatorMemberID = "current-operator";
+  const currentOperatorRole = "admin" as TraeMemberRole;
   const canManageProtectedActions = currentOperatorRole === "owner";
   useEffect(() => {
     if (!memberMenu) return undefined;
@@ -2638,10 +2626,14 @@ export function TraeEnterpriseMembersPage() {
             `${item.name} ${item.email}`
               .toLowerCase()
               .includes(query.trim().toLowerCase())) &&
-          (status === "all" || item.status === status) &&
-          (accountType === "all" || item.account === accountType),
+          (status === "all" || item.status === status),
       ),
-    [accountType, query, status],
+    [query, status],
+  );
+  const selectedMembers = useMemo(
+    () =>
+      memberRows.filter((member) => selectedMemberIDs.includes(member.id)),
+    [selectedMemberIDs],
   );
   const filteredRequests = useMemo(
     () => requestRows.filter((request) => {
@@ -2656,6 +2648,18 @@ export function TraeEnterpriseMembersPage() {
   function submitMember(_values: { email: string; role: string }) {
     setDialog(null);
     showTraeToast(t("traeEnterprise.members.addSuccess"));
+  }
+  function handleBulkMemberAction(action: TraeMemberBulkAction) {
+    if (
+      action === "changeDepartment" ||
+      action === "changeRole" ||
+      action === "removeMember"
+    ) {
+      setMemberActionDialog({ action, members: selectedMembers });
+      return;
+    }
+    showTraeToast(t(`traeEnterprise.members.${action}`));
+    setSelectedMemberIDs([]);
   }
   function saveDepartment(name: string, parentID: string, nodeID?: string) {
     if (nodeID)
@@ -2835,20 +2839,6 @@ export function TraeEnterpriseMembersPage() {
                 ]}
               />
               <TraeSelect
-                label={t("traeEnterprise.members.accountType")}
-                value={accountType}
-                onChange={setAccountType}
-                dropdownClassName="trae-members-filter-dropdown"
-                options={[
-                  {
-                    value: "all",
-                    label: t("traeEnterprise.members.accountType"),
-                  },
-                  { value: "全端账号", label: "全端账号" },
-                  { value: "Work 专属账号", label: "Work 专属账号" },
-                ]}
-              />
-              <TraeSelect
                 label={t("traeEnterprise.members.status")}
                 value={status}
                 onChange={setStatus}
@@ -2994,23 +2984,17 @@ export function TraeEnterpriseMembersPage() {
                             {(member.role === "owner"
                               ? [
                                   ["changeDepartment", false],
-                                  ["reclaimAccount", !canManageProtectedActions],
-                                  ["switchToWorkAccount", false],
                                   ["transferSuperAdmin", !canManageProtectedActions],
                                 ]
                               : [
                                   ["changeDepartment", false],
-                                  ["reclaimAccount", false],
                                   ["changeRole", false],
-                                  ["switchToWorkAccount", false],
                                   ["removeMember", false],
                                 ]
                             ).map(([action, disabled]) => {
                               const actionKey = String(action) as
                                 | "changeDepartment"
-                                | "reclaimAccount"
                                 | "changeRole"
-                                | "switchToWorkAccount"
                                 | "transferSuperAdmin"
                                 | "removeMember";
                               const isDanger = actionKey === "removeMember";
@@ -3024,11 +3008,10 @@ export function TraeEnterpriseMembersPage() {
                                     setMemberMenu(null);
                                     if (
                                       actionKey === "changeDepartment" ||
-                                      actionKey === "reclaimAccount" ||
                                       actionKey === "changeRole" ||
                                       actionKey === "removeMember"
                                     ) {
-                                      setMemberActionDialog({ action: actionKey, member });
+                                      setMemberActionDialog({ action: actionKey, members: [member] });
                                     } else {
                                       showTraeToast(t(`traeEnterprise.members.${actionKey}`));
                                     }
@@ -3051,6 +3034,15 @@ export function TraeEnterpriseMembersPage() {
                     <TraeEmpty hint={t("traeEnterprise.members.empty")} />
                   ) : undefined
                 }
+              />
+              <TraeMemberBulkActions
+                members={selectedMembers}
+                operator={{
+                  memberID: currentOperatorMemberID,
+                  role: currentOperatorRole,
+                }}
+                onCancel={() => setSelectedMemberIDs([])}
+                onAction={handleBulkMemberAction}
               />
             </div>
           </section>
@@ -3273,11 +3265,14 @@ export function TraeEnterpriseMembersPage() {
       {memberActionDialog ? (
         <TraeMemberActionDialog
           action={memberActionDialog.action}
-          member={memberActionDialog.member}
+          members={memberActionDialog.members}
           nodes={departments}
           t={t}
           onClose={() => setMemberActionDialog(null)}
-          onComplete={() => showTraeToast(t(`traeEnterprise.members.${memberActionDialog.action}`))}
+          onComplete={() => {
+            showTraeToast(t(`traeEnterprise.members.${memberActionDialog.action}`));
+            setSelectedMemberIDs([]);
+          }}
         />
       ) : null}
       {departmentDialog ? (
@@ -3480,304 +3475,6 @@ export function TraeEnterpriseSubscriptionPage() {
   );
 }
 
-// 保留旧看板实现，便于后续接入真实用量接口时迁移数据逻辑。
-function TraeEnterpriseUsageLegacyPage() {
-  const { t } = useTranslation();
-  const [tab, setTab] = useState<"board" | "detail">("board");
-  const [query, setQuery] = useState("");
-  const [dialog, setDialog] = useState<"limit" | "buy" | null>(null);
-  const filtered = usageRows.filter(
-    (row) =>
-      !query.trim() ||
-      `${row.person} ${row.account}`
-        .toLowerCase()
-        .includes(query.trim().toLowerCase()),
-  );
-  return (
-    <TraeShell title={t("traeEnterprise.usage.title")}>
-      <div className="trae-cycle-label">
-        {t("traeEnterprise.usage.cycle", {
-          start: "2026/08/21",
-          end: "2026/09/21",
-        })}
-      </div>
-      <div className="trae-tabs" role="tablist">
-        {(["board", "detail"] as const).map((item) => (
-          <button
-            className={tab === item ? "is-active" : ""}
-            type="button"
-            role="tab"
-            aria-selected={tab === item}
-            key={item}
-            onClick={() => setTab(item)}
-          >
-            {t(`traeEnterprise.usage.tabs.${item}`)}
-          </button>
-        ))}
-      </div>
-      {tab === "board" ? (
-        <>
-          <div className="trae-usage-summary">
-            <TraeMetricCard
-              label={t("traeEnterprise.usage.overall")}
-              value="¥0.000"
-            />
-            <TraeMetricCard
-              label={t("traeEnterprise.usage.base")}
-              value="¥0.000"
-            />
-            <TraeMetricCard
-              label={t("traeEnterprise.usage.overage")}
-              value="¥0.000"
-            />
-          </div>
-          <div className="trae-usage-capacity">
-            <article>
-              <div className="trae-usage-card-heading">
-                <span>{t("traeEnterprise.usage.base")}</span>
-                <button
-                  className="trae-secondary-button trae-secondary-button--small"
-                  type="button"
-                  onClick={() => setDialog("limit")}
-                >
-                  {t("traeEnterprise.usage.adjust")}
-                </button>
-              </div>
-              <strong>¥0.000</strong>
-              <span className="trae-muted">
-                {t("traeEnterprise.usage.exhausted")} ·{" "}
-                {t("traeEnterprise.usage.noLimit")}
-              </span>
-            </article>
-            <article>
-              <div className="trae-usage-card-heading">
-                <span>{t("traeEnterprise.usage.overage")}</span>
-                <button
-                  className="trae-secondary-button trae-secondary-button--small"
-                  type="button"
-                  onClick={() => setDialog("buy")}
-                >
-                  {t("traeEnterprise.usage.buy")}
-                </button>
-              </div>
-              <strong>¥0.000</strong>
-              <span className="trae-muted">
-                {t("traeEnterprise.usage.noPackage")}
-              </span>
-            </article>
-          </div>
-          <TraeSection title={t("traeEnterprise.usage.people")}>
-            <TraeToolbar>
-              <label className="trae-inline-search trae-inline-search--wide">
-                <IconSearch aria-hidden="true" />
-                <input
-                  aria-label={t("traeEnterprise.usage.searchPeople")}
-                  placeholder={t("traeEnterprise.usage.searchPeople")}
-                  value={query}
-                  onChange={(event) => setQuery(event.target.value)}
-                />
-              </label>
-              <TraeSelect
-                label={t("traeEnterprise.usage.allMembers")}
-                value="all"
-                onChange={() => undefined}
-                options={[
-                  { value: "all", label: t("traeEnterprise.usage.allMembers") },
-                ]}
-              />
-              <TraeSelect
-                label={t("traeEnterprise.usage.allAccounts")}
-                value="all"
-                onChange={() => undefined}
-                options={[
-                  {
-                    value: "all",
-                    label: t("traeEnterprise.usage.allAccounts"),
-                  },
-                ]}
-              />
-              <TraeSelect
-                label={t("traeEnterprise.usage.overageFilter")}
-                value="all"
-                onChange={() => undefined}
-                options={[
-                  {
-                    value: "all",
-                    label: `${t("traeEnterprise.usage.overageFilter")} · ${t("traeEnterprise.common.all")}`,
-                  },
-                ]}
-              />
-            </TraeToolbar>
-            {filtered.length ? (
-              <div className="trae-usage-person-grid">
-                {filtered.map((row, index) => (
-                  <article className="trae-usage-person-card" key={row.id}>
-                    <div className="trae-person-cell">
-                      <span className="trae-avatar">
-                        {row.person.slice(0, 1)}
-                      </span>
-                      <span>
-                        <strong>{row.person}</strong>
-                        <small>{row.account}</small>
-                      </span>
-                    </div>
-                    <div className="trae-usage-person-values">
-                      <span>
-                        {t("traeEnterprise.usage.requests")}{" "}
-                        <b>{row.requests.toLocaleString()}</b>
-                      </span>
-                      <span>
-                        {t("traeEnterprise.usage.tokens")} <b>{row.tokens}</b>
-                      </span>
-                      <span>
-                        {t("traeEnterprise.usage.cost")} <b>{row.cost}</b>
-                      </span>
-                    </div>
-                    <ProgressBar
-                      value={index === 0 ? 74 : index === 1 ? 48 : 22}
-                    />
-                  </article>
-                ))}
-              </div>
-            ) : (
-              <TraeEmpty />
-            )}
-          </TraeSection>
-          <TraeSection title={t("traeEnterprise.usage.departments")}>
-            <TraeEmpty />
-          </TraeSection>
-        </>
-      ) : (
-        <TraeSection title={t("traeEnterprise.usage.tabs.detail")}>
-          <TraeToolbar>
-            <TraeSelect
-              label={t("traeEnterprise.usage.allMembers")}
-              value="all"
-              onChange={() => undefined}
-              options={[
-                { value: "all", label: t("traeEnterprise.usage.allMembers") },
-              ]}
-            />
-            <label className="trae-date-field">
-              <IconCalendar aria-hidden="true" />
-              <input
-                type="date"
-                aria-label={t("traeEnterprise.analysis.start")}
-                defaultValue="2026-08-01"
-              />
-              <span>-</span>
-              <input
-                type="date"
-                aria-label={t("traeEnterprise.analysis.end")}
-                defaultValue="2026-08-22"
-              />
-            </label>
-          </TraeToolbar>
-          <div className="trae-table-scroll">
-            <table className="trae-table">
-              <thead>
-                <tr>
-                  <th>{t("traeEnterprise.usage.detailDate")}</th>
-                  <th>{t("traeEnterprise.usage.detailPerson")}</th>
-                  <th>{t("traeEnterprise.usage.detailAccount")}</th>
-                  <th>{t("traeEnterprise.usage.detailRequests")}</th>
-                  <th>{t("traeEnterprise.usage.detailTokens")}</th>
-                  <th>{t("traeEnterprise.usage.detailCost")}</th>
-                  <th>{t("traeEnterprise.usage.detailStatus")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {usageRows.map((row) => (
-                  <tr key={row.id}>
-                    <td>{row.date}</td>
-                    <td>{row.person}</td>
-                    <td>{row.account}</td>
-                    <td>{row.requests.toLocaleString()}</td>
-                    <td>{row.tokens}</td>
-                    <td>{row.cost}</td>
-                    <td>
-                      <span className="trae-status-badge is-active">
-                        <i />
-                        {row.status}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </TraeSection>
-      )}
-      {dialog === "limit" ? (
-        <TraeDialog
-          title={t("traeEnterprise.usage.limitTitle")}
-          onClose={() => setDialog(null)}
-        >
-          <form
-            className="trae-dialog-form"
-            onSubmit={(event) => {
-              event.preventDefault();
-              setDialog(null);
-              showTraeToast(t("traeEnterprise.common.success"));
-            }}
-          >
-            <p>{t("traeEnterprise.usage.limitHint")}</p>
-            <label>
-              {t("traeEnterprise.usage.limitTitle")}
-              <input
-                required
-                inputMode="decimal"
-                placeholder={t("traeEnterprise.usage.limitPlaceholder")}
-              />
-            </label>
-            <div className="trae-dialog-actions">
-              <button
-                className="trae-secondary-button"
-                type="button"
-                onClick={() => setDialog(null)}
-              >
-                {t("traeEnterprise.common.cancel")}
-              </button>
-              <button className="trae-primary-button" type="submit">
-                {t("traeEnterprise.common.save")}
-              </button>
-            </div>
-          </form>
-        </TraeDialog>
-      ) : null}
-      {dialog === "buy" ? (
-        <TraeDialog
-          title={t("traeEnterprise.usage.buyTitle")}
-          onClose={() => setDialog(null)}
-        >
-          <div className="trae-dialog-form">
-            <p>{t("traeEnterprise.usage.buyHint")}</p>
-            <div className="trae-dialog-actions">
-              <button
-                className="trae-secondary-button"
-                type="button"
-                onClick={() => setDialog(null)}
-              >
-                {t("traeEnterprise.common.cancel")}
-              </button>
-              <button
-                className="trae-primary-button"
-                type="button"
-                onClick={() => {
-                  setDialog(null);
-                  showTraeToast(t("traeEnterprise.common.success"));
-                }}
-              >
-                {t("traeEnterprise.common.confirm")}
-              </button>
-            </div>
-          </div>
-        </TraeDialog>
-      ) : null}
-    </TraeShell>
-  );
-}
-
 function TraeUsageQuotaDialog({ onClose, onBuy }: { onClose: () => void; onBuy: () => void }) {
   const { t } = useTranslation();
   const [tab, setTab] = useState<"base" | "overage">("base");
@@ -3942,13 +3639,6 @@ function TraeUsageBoard({ onDetail, onQuota, onGlobalQuota, onBuy }: { onDetail:
   const [account, setAccount] = useState("all");
   const [usageType, setUsageType] = useState("all");
   const [departmentQuery, setDepartmentQuery] = useState("");
-  const [expandedDepartments, setExpandedDepartments] = useState<Record<string, boolean>>({
-    company: true,
-    operation: true,
-    "test-level-one": true,
-    "test-level-three": false,
-    "test-level-four": false,
-  });
   const filteredMembers = traeUsageMemberRows.filter((member) => {
     const query = memberQuery.trim().toLowerCase();
     const usage = Number(member.base.replace(/[^0-9.]/g, ""));
@@ -3956,8 +3646,6 @@ function TraeUsageBoard({ onDetail, onQuota, onGlobalQuota, onBuy }: { onDetail:
     const matchesScope = memberScope === "all" || member.id === "usage-member-3";
     return matchesScope && matchesUsage && (!query || `${member.name} ${member.email}`.toLowerCase().includes(query)) && (account === "all" || member.account === account);
   });
-  const usageDepartments = flattenTraeUsageDepartments(traeUsageDepartmentTree, expandedDepartments);
-  const filteredDepartments = usageDepartments.filter((row) => !departmentQuery.trim() || row.name.toLowerCase().includes(departmentQuery.trim().toLowerCase()));
   return <>
     <div className="trae-usage-summary trae-usage-summary--official">
       <article className="trae-usage-summary-card trae-usage-summary-card--overall"><div className="trae-usage-overall-body"><div className="trae-usage-overall-copy"><div className="trae-usage-summary-heading"><span>{t("traeEnterprise.usage.overall")}</span><IconInfoCircle className="app-info-icon" aria-hidden="true" /></div><div className="trae-usage-overall-details"><strong>￥138.448</strong><span><i className="is-base" />{t("traeEnterprise.usage.base")}　￥138.448</span><span><i className="is-overage" />{t("traeEnterprise.usage.overage")}　￥0.000</span></div></div><TraeUsageDonut /></div></article>
@@ -3970,7 +3658,14 @@ function TraeUsageBoard({ onDetail, onQuota, onGlobalQuota, onBuy }: { onDetail:
     </TraeSection>
     <TraeSection title={t("traeEnterprise.usage.departments")}>
       <TraeToolbar><label className="trae-inline-search trae-inline-search--wide trae-usage-department-search"><IconSearch aria-hidden="true" /><input aria-label={t("traeEnterprise.usage.searchDepartment")} placeholder={t("traeEnterprise.usage.searchDepartment")} value={departmentQuery} onChange={(event) => setDepartmentQuery(event.target.value)} /></label></TraeToolbar>
-      <div className="trae-table-scroll"><table className="trae-table trae-usage-department-table"><thead><tr><th>{t("traeEnterprise.usage.department")}</th><th>{t("traeEnterprise.usage.periodTotal")}</th><th>{t("traeEnterprise.usage.baseAmount")}</th><th>{t("traeEnterprise.usage.overageAmount")}</th></tr></thead><tbody>{filteredDepartments.map((row) => <tr key={row.id}><td style={{ paddingLeft: `${12 + row.depth * 22}px` }}>{row.hasChildren ? <button className="trae-department-caret" type="button" aria-label={row.expanded ? "收起部门" : "展开部门"} onClick={() => setExpandedDepartments((current) => ({ ...current, [row.id]: !row.expanded }))}>{row.expanded ? "⌄" : "›"}</button> : <span className="trae-department-caret" aria-hidden="true" />}{row.name}</td><td className="trae-usage-number">{row.total}</td><td className="trae-usage-number">{row.base}</td><td className="trae-usage-number">{row.overage}</td></tr>)}</tbody></table></div>
+      <TraeUsageDepartmentTable
+        dataSource={traeUsageDepartmentTree}
+        departmentTitle={t("traeEnterprise.usage.department")}
+        periodTotalTitle={t("traeEnterprise.usage.periodTotal")}
+        baseAmountTitle={t("traeEnterprise.usage.baseAmount")}
+        overageAmountTitle={t("traeEnterprise.usage.overageAmount")}
+        query={departmentQuery}
+      />
     </TraeSection>
   </>;
 }
@@ -4026,8 +3721,8 @@ function TraeUsageDetail({ memberID, onMemberChange }: { memberID: string; onMem
       currentPage={page}
       pageSize={pageSize}
       onChange={(nextPage, nextPageSize) => {
-        setPage(nextPage);
         setPageSize(nextPageSize);
+        setPage(nextPageSize === pageSize ? nextPage : 1);
       }}
     />
   </section>;
@@ -4171,8 +3866,8 @@ export function TraeEnterpriseAuditPage() {
         currentPage={page}
         pageSize={pageSize}
         onChange={(nextPage, nextPageSize) => {
-          setPage(nextPage);
           setPageSize(nextPageSize);
+          setPage(nextPageSize === pageSize ? nextPage : 1);
         }}
       />
       {detail ? (

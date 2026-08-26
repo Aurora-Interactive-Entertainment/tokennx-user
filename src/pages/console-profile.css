@@ -159,8 +159,11 @@
 
 .settings-redesign-page .settings-control > .semi-input-wrapper {
   max-width: 520px;
-  border-color: transparent;
-  background: transparent;
+  height: 32px;
+  min-height: 32px;
+  border-color: var(--color-border-neutral-l2);
+  border-radius: 6px;
+  background: var(--color-bg-base-secondary);
   box-shadow: none;
 }
 
@@ -174,11 +177,13 @@
 
 .settings-redesign-page .settings-name-input-row > .semi-input-wrapper {
   min-width: 0;
+  height: 32px;
+  min-height: 32px;
   flex: 1 1 420px;
   max-width: 420px;
   border: 1px solid var(--color-border-neutral-l2);
-  border-radius: 8px;
-  background: var(--settings-muted-bg);
+  border-radius: 6px;
+  background: var(--color-bg-base-secondary);
 }
 
 .settings-redesign-page .settings-name-input-row > .settings-hint {
@@ -189,26 +194,27 @@
 
 .settings-redesign-page .settings-control > .semi-input-wrapper:hover {
   border-color: var(--color-border-neutral-l2);
-  background: var(--settings-muted-bg);
+  background: var(--color-bg-base-secondary);
 }
 
 .settings-redesign-page .settings-name-input-row > .semi-input-wrapper:hover {
   border-color: var(--color-border-neutral-l2);
-  background: var(--settings-muted-bg);
+  background: var(--color-bg-base-secondary);
 }
 
 .settings-redesign-page .settings-control > .semi-input-wrapper .semi-input {
-  padding-inline: 12px;
+  padding-inline: 10px;
   color: var(--color-text-default-hover);
-  font-size: 16px;
-  font-weight: 550;
+  font-size: 13px;
+  font-weight: 400;
 }
 
 .settings-redesign-page .settings-name-input-row > .semi-input-wrapper:focus-within,
 .settings-redesign-page .settings-name-input-row > .semi-input-wrapper-focus {
-  border-color: var(--settings-accent);
-  outline: 2px solid color-mix(in srgb, var(--settings-accent) 24%, transparent);
-  outline-offset: 1px;
+  border-color: var(--color-border-neutral-l2);
+  outline: 0;
+  background: var(--color-bg-base-secondary);
+  box-shadow: none;
 }
 
 .settings-redesign-page .settings-hint {

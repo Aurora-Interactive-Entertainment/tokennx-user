@@ -5,7 +5,6 @@ import { getBillingErrorMessage } from './billing'
 import { getEnterpriseErrorMessage } from './enterprise-console'
 import { getProfileErrorMessage } from './profile'
 import { getRealNameErrorMessage } from './real-name'
-import { getUsageRecordsErrorMessage, getUsageSummaryErrorMessage } from './usage-records'
 import { getUserApiKeyErrorMessage } from './user-api-keys'
 import { getUserModelsErrorMessage } from './user-models'
 
@@ -21,8 +20,6 @@ describe('API 错误提示语言', () => {
     expect(getRealNameErrorMessage(new ApiError('server', 503, 100002, null))).toBe('The real-name verification service is temporarily unavailable. Try again later.')
     expect(getUserModelsErrorMessage(new ApiError('server', 403, 120003, null))).toBe('You do not have permission to view models in this workspace.')
     expect(getUserApiKeyErrorMessage(new ApiError('server', 409, 100009, null))).toBe('The API key has expired and cannot be enabled again.')
-    expect(getUsageRecordsErrorMessage(new ApiError('server', 403, 120002, null))).toBe('This workspace does not have permission to view these request records.')
-    expect(getUsageSummaryErrorMessage(new ApiError('server', 503, 100002, null))).toBe('The usage service is temporarily unavailable. Try again later.')
     expect(getBillingErrorMessage(new ApiError('server', 409, 130006, null))).toBe('This reward has no balance available for revocation.')
     expect(getEnterpriseErrorMessage(new ApiError('server', 409, 140004, null))).toBe('The enterprise resource was updated by another operation. Refresh and try again.')
 

@@ -2,11 +2,10 @@ import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router'
 import Button from '@douyinfe/semi-ui/lib/es/button'
-import Input from '@douyinfe/semi-ui/lib/es/input'
 import Modal from '@/components/app-modal'
 import Toast from '@douyinfe/semi-ui/lib/es/toast'
 import { IconDeleteStroked, IconPlus } from '@douyinfe/semi-icons'
-import { CompatSelect as Select } from '@/components/semi-compat'
+import { CompatInput as Input, CompatSelect as Select } from '@/components/semi-compat'
 import {
   createEnterpriseRole,
   createEnterpriseTag,

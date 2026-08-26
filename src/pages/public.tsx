@@ -30,6 +30,7 @@ import { formatRankingTokens, RankingRecentUsageChart } from '@/components/ranki
 import { formatToolUsageTokens, ToolUsageClientsChart } from '@/components/tool-usage-chart'
 import { apiTimeToDate } from '@/utils/format'
 import { ModelsShowcase, type ModelsShowcaseGroup } from '@/components/public-models-showcase'
+import { HomeRewardStat } from '@/components/home-reward-stat'
 
 function formatPublicPrice(price: ModelPrice): ReactNode {
   return <ModelPriceSummary price={price} />
@@ -44,11 +45,9 @@ function modelPublicHref(model: { id: string; alias?: string }): string | undefi
 const HOME_MODEL_MOSAIC_COLUMNS = 6
 const HOME_REWARD_STATS = [
   { value: '00', unitKey: 'rewardPendingUnit', labelKey: 'rewardPending' },
-  { value: '00', unitKey: 'rewardApprovedUnit', labelKey: 'rewardApproved' },
+  { value: '00000', unitKey: 'rewardApprovedUnit', labelKey: 'rewardApproved' },
   { value: '00', unitKey: 'rewardRejectedUnit', labelKey: 'rewardRejected' },
 ] as const
-// 中文：收益数字超过两位时缩小字号（is-long），四位及以上再降一档（is-xlong），避免撑开统计格宽度。
-const HOME_REWARD_STAT_CLASS = (value: string): string | undefined => (value.length > 3 ? 'is-xlong' : value.length > 2 ? 'is-long' : undefined)
 const HOME_REWARD_AVATAR_COUNT = 6
 type HomePartner = { name: string; logoMarkup?: string; logoUrl?: string; href?: string; logoKind: 'wordmark' | 'mark' | 'css' }
 const PUBLIC_COMPANY_KEYS: Record<string, string> = {
@@ -922,7 +921,7 @@ export function HomePage({ onInitialScoreboardReady }: { onInitialScoreboardRead
 
         <section className="manuscript-section manuscript-promotion" aria-labelledby="homePromotionTitle">
           <div className="manuscript-section-heading"><div><h2 id="homePromotionTitle">{t('home.rebuild.promotionTitle')}</h2><p>{t('home.rebuild.manuscriptPromotionDescription')}</p></div></div>
-          <div className="manuscript-promotion-grid" role={isHomepageLoading ? 'status' : undefined} aria-busy={isHomepageLoading || undefined}>{isHomepageLoading ? <><span className="public-sr-only">{t('home.rebuild.loadingPromotions')}</span><HomePromotionSkeleton /></> : <><article className="manuscript-reward-card"><h3>{t('home.rebuild.rewardTitle')}</h3><p>{t('home.rebuild.rewardDescription')}</p><div className="manuscript-reward-marks" aria-hidden="true">{Array.from({ length: HOME_REWARD_AVATAR_COUNT }, (_, index) => <span className="manuscript-reward-avatar" aria-hidden="true" key={`reward-avatar-${index}`} />)}</div><div className="manuscript-reward-login"><span>{t('home.rebuild.rewardLoginHint')}</span><LoginRequiredAction returnPath="/console/invitations">{t('home.rebuild.rewardLoginAction')}</LoginRequiredAction></div><div className="manuscript-reward-stats">{HOME_REWARD_STATS.map(({ value, unitKey, labelKey }) => <span key={labelKey}><strong className={HOME_REWARD_STAT_CLASS(value)}>{value}<em>{t(`home.rebuild.${unitKey}`)}</em></strong><small>{t(`home.rebuild.${labelKey}`)}</small></span>)}</div></article><div className="manuscript-news-column">
+          <div className="manuscript-promotion-grid" role={isHomepageLoading ? 'status' : undefined} aria-busy={isHomepageLoading || undefined}>{isHomepageLoading ? <><span className="public-sr-only">{t('home.rebuild.loadingPromotions')}</span><HomePromotionSkeleton /></> : <><article className="manuscript-reward-card"><h3>{t('home.rebuild.rewardTitle')}</h3><p>{t('home.rebuild.rewardDescription')}</p><div className="manuscript-reward-marks" aria-hidden="true">{Array.from({ length: HOME_REWARD_AVATAR_COUNT }, (_, index) => <span className="manuscript-reward-avatar" aria-hidden="true" key={`reward-avatar-${index}`} />)}</div><div className="manuscript-reward-login"><span>{t('home.rebuild.rewardLoginHint')}</span><LoginRequiredAction returnPath="/console/invitations">{t('home.rebuild.rewardLoginAction')}</LoginRequiredAction></div><div className="manuscript-reward-stats">{HOME_REWARD_STATS.map(({ value, unitKey, labelKey }) => <HomeRewardStat value={value} unit={t(`home.rebuild.${unitKey}`)} label={t(`home.rebuild.${labelKey}`)} key={labelKey} />)}</div></article><div className="manuscript-news-column">
             {homepage?.ad_slots.length ? <ManagedAdSlots entries={homepage.ad_slots} /> : null}
             <div className="manuscript-news-grid">{managedNews.map((entry, index) => <ManagedNewsCard entry={entry} newsIndex={managedNewsSlots[index] ?? index % 2} key={entry.id} />)}</div>
           </div></>}</div>
@@ -1734,7 +1733,7 @@ export function StatusPage() {
       <section className="public-section"><div className="callout"><strong>{t('public.status.calloutTitle')}</strong><span>{t('public.status.calloutText')}</span></div></section>
       <section className="public-section" aria-labelledby="modelStatusTitle"><h2 id="modelStatusTitle">{t('public.status.modelTitle')}</h2><p>{t('public.status.modelDescription')}</p><div>{MODEL_CATALOG.map((model) => <div className="status-row" key={model.id}><span className="status-identity"><strong>{model.name}</strong><span>{publicCompanyLabel(t, model.company)}</span></span><span className="badge">{t('public.status.monitoringUnavailable')}</span></div>)}</div></section>
       <section className="public-section"><h2>{t('public.status.platformTitle')}</h2>{platformKeys.map((key) => <div className="status-row" key={key}><span>{t(`public.status.platform.${key}`)}</span><span className="badge">{t('public.status.monitoringUnavailable')}</span></div>)}</section>
-      <section className="public-section"><h2>{t('public.status.incidentTitle')}</h2><p>{t('public.status.incidentDescription')}</p><div className="public-actions"><LoginRequiredAction className="btn btn-primary" returnPath="/console/records">{t('public.status.viewRecords')}</LoginRequiredAction><Link className="btn btn-secondary" to="/docs">{t('public.status.viewErrors')}</Link></div></section>
+      <section className="public-section"><h2>{t('public.status.incidentTitle')}</h2><p>{t('public.status.incidentDescription')}</p><div className="public-actions"><Link className="btn btn-secondary" to="/docs">{t('public.status.viewErrors')}</Link></div></section>
     </PublicLayout>
   )
 }

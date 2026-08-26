@@ -1,14 +1,9 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import type {
-  AnalyticsFilters,
-  AnalyticsRange,
-} from "@/pages/enterprise-analytics-helpers";
+export const ANALYTICS_RANGE_OPTIONS = ["7d", "30d", "month", "custom"] as const;
+export type AnalyticsRange = (typeof ANALYTICS_RANGE_OPTIONS)[number];
 
-export type AnalyticsTimeRangeValue = Pick<
-  AnalyticsFilters,
-  "range" | "startDate" | "endDate"
->;
+export type AnalyticsTimeRangeValue = TimeRangeValue<AnalyticsRange>;
 
 export type TimeRangeValue<Range extends string> = {
   range: Range;

@@ -252,8 +252,7 @@ export const publicResources = {
           billing: '账单与用量处理',
         },
         incidentTitle: '请求异常',
-        incidentDescription: '请先保存 Request ID，并在控制台调用记录中查看状态、错误摘要和恢复建议。',
-        viewRecords: '查看调用记录',
+        incidentDescription: '请先保存 Request ID，再查看错误说明或联系技术支持排查。',
         viewErrors: '查看错误说明',
       },
       about: {
@@ -639,8 +638,7 @@ export const publicResources = {
           billing: 'Billing and usage processing',
         },
         incidentTitle: 'Request issues',
-        incidentDescription: 'Save the Request ID first, then inspect status, the redacted error summary, and recovery suggestions in request records.',
-        viewRecords: 'View request records',
+        incidentDescription: 'Save the Request ID first, then review the error guidance or contact technical support.',
         viewErrors: 'View error guidance',
       },
       about: {

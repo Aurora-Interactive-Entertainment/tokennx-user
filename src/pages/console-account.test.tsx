@@ -7,7 +7,7 @@ import { clearAuthTokens, getAccessToken, saveAuthTokens } from '@/auth/token-st
 import type { AuthResult } from '@/api/auth'
 import { AppStoreProvider, useAppStore } from '@/data/app-state'
 import { createAppStore } from '@/store'
-import { ApiKeysPage, RecordsPage } from './console-account'
+import { ApiKeysPage } from './console-account'
 
 const KEY_ID = 'key_demo_default'
 
@@ -178,7 +178,7 @@ describe('密钥管理页面', () => {
     expect(document.querySelector('.api-keys-console-page')).toHaveClass('api-keys-console-page--personal')
     expect(screen.getByRole('button', { name: /创建 API 密钥/ })).toBeInTheDocument()
     expect(screen.getByRole('group', { name: 'API Key 状态筛选' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: '详情' })).toHaveAttribute('href', '/console/records?keyId=key_demo_default')
+    expect(screen.getByRole('link', { name: '详情' })).toHaveAttribute('href', '/console/usage?tab=management')
     expect(screen.getByRole('button', { name: '编辑 API 密钥' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '禁用 API 密钥' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '删除 API 密钥' })).toBeInTheDocument()
@@ -322,8 +322,8 @@ describe('密钥管理页面', () => {
     })).toBe(true)
     const createdRow = await waitFor(() => screen.getByText('生产环境密钥').closest('tr') as HTMLElement)
     expect(screen.queryByText(/一次性密钥|只展示这一次/)).not.toBeInTheDocument()
+    expect(within(createdRow).getByRole('link', { name: '详情' })).toHaveAttribute('href', '/console/usage?tab=management')
     expect(within(createdRow).getByRole('button', { name: '复制完整 API 密钥' })).toBeInTheDocument()
-    expect(within(defaultRow).getByRole('link', { name: '详情' })).toHaveAttribute('href', '/console/records?keyId=key_demo_default')
 
     await user.click(within(defaultRow).getByRole('button', { name: '禁用 API 密钥' }))
     const disableDialog = screen.getByRole('heading', { name: '禁用 API 密钥' }).closest('[role="dialog"]')
@@ -340,42 +340,5 @@ describe('密钥管理页面', () => {
     await waitFor(() => expect(deleteConfirmButton).toBeEnabled())
     await user.click(deleteConfirmButton)
     await waitFor(() => expect(fetchMock.mock.calls.some(([url, options]) => String(url).includes(`/api/user/api-keys/${KEY_ID}`) && options?.method === 'DELETE')).toBe(true))
-  })
-})
-
-describe('调用记录页面', () => {
-  it('通过真实 API 加载记录并按 API 密钥深链筛选', async () => {
-    clearAuthTokens()
-    saveAuthTokens(authResult())
-    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(apiResponse({
-      account: { id: 'account-personal', type: 'personal', name: '个人空间' },
-      can_filter_members: false,
-      can_view_billing: true,
-      filters: {
-        api_keys: [{ id: KEY_ID, name: '默认密钥', source: 'api' }],
-        models: [{ code: 'deepseek-chat', alias: 'deepseek-public', name: 'DeepSeek V3', vendor: 'DeepSeek' }],
-        members: [],
-      },
-      items: [{
-        id: 'event-1', request_id: 'req_demo_0010', event_type: 'request.completed', occurred_at: '2026-07-14T10:20:41Z',
-        model_code: 'deepseek-chat', model_alias: 'deepseek-public', model_name: 'DeepSeek V3', status: 'success', source: 'api', api_key_id: KEY_ID, api_key_name: '默认密钥',
-        member_id: 'user-1', member_name: '接口用户', input_tokens: 1250, output_tokens: 480, cached_tokens: 100, cache_hit_rate: 8, latency_ms: 1330,
-        cost_yuan: '0.221000000', error_code: '', error_message: '', status_code: 200, channel: 'OpenAI', task_id: '', task_status: '', task_reason: '',
-      }],
-      page: 1, page_size: 20, total: 1,
-    }))
-    render(
-      <MemoryRouter initialEntries={[`/console/records?keyId=${KEY_ID}`]}>
-        <Provider store={createAppStore()}>
-          <AppStoreProvider><RecordsPage /></AppStoreProvider>
-        </Provider>
-      </MemoryRouter>,
-    )
-
-    expect(await screen.findByRole('heading', { name: '调用记录' })).toBeInTheDocument()
-    expect(screen.getByRole('combobox', { name: 'API 密钥' })).toHaveValue(KEY_ID)
-    expect(screen.getByText('req_demo_0010')).toBeInTheDocument()
-    expect(screen.queryByText('req_demo_0009')).not.toBeInTheDocument()
-    expect(fetchMock.mock.calls.some(([input]) => String(input).includes('/api/user/usage/records'))).toBe(true)
   })
 })

@@ -1,0 +1,205 @@
+/* 后台表单控件统一沿用新版企业管理页的输入框和下拉框样式。 */
+.app-input.semi-input-wrapper,
+.app-select.semi-select,
+.console-form-input {
+  box-sizing: border-box;
+  height: 32px;
+  min-height: 32px;
+  border: 1px solid var(--color-border-neutral-l2);
+  border-radius: 6px;
+  color: var(--color-text-default);
+  background: var(--color-bg-base-secondary);
+  box-shadow: none;
+  font-size: 13px;
+}
+
+.app-input.semi-input-wrapper:hover,
+.app-input.semi-input-wrapper-focus,
+.app-input.semi-input-wrapper-focus:hover,
+.app-select.semi-select:hover,
+.app-select.semi-select-open,
+.app-select.semi-select-focus,
+.console-form-input:hover,
+.console-form-input:focus,
+.console-form-input:focus-visible {
+  border-color: var(--color-border-neutral-l2);
+  outline: 0;
+  background: var(--color-bg-base-secondary);
+  box-shadow: none;
+}
+
+.app-input .semi-input {
+  height: 30px;
+  min-height: 0;
+  padding-inline: 10px;
+  border: 0;
+  outline: 0;
+  color: var(--color-text-default);
+  background: transparent;
+  font-size: 13px;
+}
+
+.app-input .semi-input::placeholder,
+.console-form-input::placeholder {
+  color: var(--color-text-tertiary);
+  opacity: 1;
+}
+
+.app-input .semi-input-prefix,
+.app-input .semi-input-suffix,
+.app-input .semi-input-clearbtn,
+.app-select .semi-select-arrow {
+  color: var(--color-text-tertiary);
+}
+
+.app-input.semi-input-wrapper-disabled,
+.app-select.semi-select-disabled,
+.console-form-input:disabled,
+.console-form-input[readonly] {
+  color: var(--color-text-tertiary);
+  background: var(--color-bg-base-tertiary);
+  cursor: not-allowed;
+  opacity: .72;
+}
+
+.app-input.semi-input-wrapper-error,
+.app-input.semi-input-wrapper-error:hover,
+.app-input.semi-input-wrapper-error.semi-input-wrapper-focus,
+.console-form-input[aria-invalid="true"] {
+  border-color: var(--color-error, #df7b83);
+}
+
+.app-select .semi-select-selection {
+  min-width: 0;
+  height: 30px;
+  padding-inline: 10px;
+}
+
+.app-select .semi-select-selection-text,
+.app-select .semi-select-selection-placeholder {
+  overflow: hidden;
+  color: inherit;
+  font-size: 13px;
+  line-height: 30px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-select-dropdown.semi-select-dropdown {
+  overflow: hidden;
+  padding: 4px 0;
+  border: 1px solid var(--color-border-neutral-l2);
+  border-radius: 6px;
+  background: var(--color-bg-menu);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, .28);
+}
+
+.app-select-dropdown .semi-select-option {
+  box-sizing: border-box;
+  height: 32px;
+  min-height: 32px;
+  margin: 2px 6px;
+  padding: 0 10px;
+  border-radius: 4px;
+  color: var(--color-text-secondary);
+  background: transparent;
+  font-size: 13px;
+  line-height: 32px;
+}
+
+.app-select-dropdown .semi-select-option-icon {
+  display: none;
+}
+
+.app-select-dropdown .semi-select-option-selected,
+.app-select-dropdown .semi-select-option-focused,
+.app-select-dropdown .semi-select-option:hover,
+.app-select-dropdown .semi-select-option-selected.semi-select-option-focused {
+  color: var(--color-text-default-hover);
+  background: var(--color-bg-overlay-l3);
+}
+
+.app-select-dropdown .semi-select-dropdown-search-wrapper {
+  box-sizing: border-box;
+  height: 32px;
+  margin: 0 6px 6px;
+  padding: 0 8px;
+  border: 1px solid var(--color-border-neutral-l2);
+  border-radius: 4px;
+  background: var(--color-bg-base-secondary);
+}
+
+.app-select-dropdown .semi-select-dropdown-search-wrapper .semi-input-wrapper,
+.app-select-dropdown .semi-select-dropdown-search-wrapper .semi-input {
+  height: 30px;
+  min-height: 30px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  font-size: 13px;
+}
+
+.app-textarea.semi-input-textarea-wrapper {
+  border: 1px solid var(--color-border-neutral-l2);
+  border-radius: 6px;
+  background: var(--color-bg-base-secondary);
+  box-shadow: none;
+}
+
+.app-textarea.semi-input-textarea-wrapper:hover,
+.app-textarea.semi-input-textarea-wrapper-focus {
+  border-color: var(--color-border-neutral-l2);
+  background: var(--color-bg-base-secondary);
+  box-shadow: none;
+}
+
+.app-textarea .semi-input-textarea {
+  padding: 8px 10px;
+  color: var(--color-text-default);
+  background: transparent;
+  font-size: 13px;
+}
+
+/* 原生后台输入框仅在明确的控制台表单范围内复用共享外观。 */
+.billing-console-page .input,
+.invoice-dialog .input,
+.source-input {
+  box-sizing: border-box;
+  height: 32px;
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--color-border-neutral-l2);
+  border-radius: 6px;
+  outline: 0;
+  color: var(--color-text-default);
+  background: var(--color-bg-base-secondary);
+  box-shadow: none;
+  font-size: 13px;
+}
+
+.billing-console-page .input:hover,
+.billing-console-page .input:focus,
+.invoice-dialog .input:hover,
+.invoice-dialog .input:focus,
+.source-input:hover,
+.source-input:focus {
+  border-color: var(--color-border-neutral-l2);
+  outline: 0;
+  background: var(--color-bg-base-secondary);
+  box-shadow: none;
+}
+
+textarea.source-input {
+  height: auto;
+  min-height: 72px;
+  padding-block: 8px;
+  resize: vertical;
+}
+
+@media (max-width: 560px) {
+  .app-select.semi-select,
+  .app-input.semi-input-wrapper,
+  .console-form-input {
+    max-width: 100%;
+  }
+}
