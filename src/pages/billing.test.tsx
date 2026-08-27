@@ -255,7 +255,7 @@ describe('用户费用管理页面', () => {
   it('使用账面余额展示，不因预授权释放回升可用余额', async () => {
     renderBilling({ analysisWallet: { paid_available_yuan: '99.999733000', bonus_available_yuan: '0.000000000', total_available_yuan: '99.999733000', total_balance_yuan: '100.000000000' } })
     expect((await screen.findAllByText('账户余额')).length).toBeGreaterThan(0)
-    expect(screen.getByText('¥100.000')).toBeInTheDocument()
+    expect(screen.getByText('¥100.0000')).toBeInTheDocument()
     expect(screen.getByTitle('¥100.000000000')).toBeInTheDocument()
     expect(screen.queryByText('¥99.999733')).toBeNull()
   })
@@ -284,7 +284,7 @@ describe('用户费用管理页面', () => {
     expect(screen.getByText('快捷填写金额')).toBeInTheDocument()
     expect(screen.getByText('支付宝扫码充值')).toBeInTheDocument()
     expect(screen.queryByLabelText('支付方式')).toBeNull()
-    await user.click(screen.getByRole('button', { name: '¥500.000' }))
+    await user.click(screen.getByRole('button', { name: '¥500.0000' }))
     await user.click(screen.getByRole('button', { name: '支付宝支付' }))
     await waitFor(() => expect(submit).toHaveBeenCalledOnce())
     const paymentFrame = await screen.findByTitle('支付宝支付二维码')

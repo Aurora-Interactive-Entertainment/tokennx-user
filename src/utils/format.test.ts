@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { apiTimeToMilliseconds, formatApiTime, formatApiTimeField, formatCount, formatCurrency, formatDecimal, formatLocalDateInput, formatNumber, formatSignedYuan, formatYuan, formatYuanExact, isApiTimeFieldName, isApiTimestamp, isZeroYuan, localDateToTimestamp, modelPriceSummary, relativeTime, shiftLocalDate, usageTotal } from './format'
+import { apiTimeToMilliseconds, BACKOFFICE_MONEY_DISPLAY_DECIMAL_PLACES, formatApiTime, formatApiTimeField, formatCount, formatCurrency, formatDecimal, formatLocalDateInput, formatNumber, formatSignedYuan, formatYuan, formatYuanExact, isApiTimeFieldName, isApiTimestamp, isZeroYuan, localDateToTimestamp, modelPriceSummary, relativeTime, shiftLocalDate, usageTotal } from './format'
 import { normalizeQuickstartLanguage, normalizeQuickstartProtocol, quickstartCodeSample } from './quickstart'
 import { findModel } from '@/data/models'
 
@@ -7,6 +7,7 @@ describe('展示格式与用量聚合', () => {
   beforeEach(() => vi.useRealTimers())
 
   it('格式化人民币和数字', () => {
+    expect(BACKOFFICE_MONEY_DISPLAY_DECIMAL_PLACES).toBe(4)
     expect(formatCurrency(10)).toBe('¥10.000')
     expect(formatCurrency(0.0012, 4)).toBe('¥0.0012')
     expect(formatDecimal(0.1)).toBe('0.100')

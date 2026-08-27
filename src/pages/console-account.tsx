@@ -9,7 +9,7 @@ import Switch from '@douyinfe/semi-ui/lib/es/switch'
 import Toast from '@douyinfe/semi-ui/lib/es/toast'
 import { IconArrowRight, IconBarChartHStroked, IconCopy, IconDeleteStroked, IconEditStroked, IconGift, IconKey, IconMinusCircleStroked, IconPlus, IconPlusCircleStroked, IconSearch, IconUserGroup } from '@douyinfe/semi-icons'
 import { BannerNotice, EmptyPanel, MetricCard, ModelLogo, PageTitle, SectionHeading } from '@/components/common'
-import { MoneyText } from '@/components/money'
+import { BackofficeMoneyText as MoneyText } from '@/components/money'
 import { CompatCard as Card, CompatInput as Input, CompatSelect as Select } from '@/components/semi-compat'
 import { useAppStore } from '@/data/app-state'
 import { modelAlias } from '@/data/models'
@@ -20,6 +20,7 @@ import { invalidateAuth } from '@/store/auth-slice'
 import { useAppDispatch } from '@/store/hooks'
 import { formatApiTime, type ApiTimeValue } from '@/utils/format'
 import { getInvitationOverview, type InvitationOverview } from '@/api/invitation'
+import { workspaceContextFor, workspaceContextKey } from '@/utils/workspace'
 
 export { EnterpriseCreatePage } from './enterprise-create'
 
@@ -91,10 +92,8 @@ export function ApiKeysPage() {
   const [reloadToken, setReloadToken] = useState(0)
   const [action, setAction] = useState<ApiKeyAction | null>(null)
   const [actionLoading, setActionLoading] = useState(false)
-  const workspaceContext = useMemo<UserApiKeyContext>(() => store.activeWorkspace.type === 'enterprise'
-    ? { account_type: 'enterprise', enterprise_id: store.activeWorkspace.id }
-    : { account_type: 'personal' }, [store.activeWorkspace.id, store.activeWorkspace.type])
-  const workspaceKey = `${workspaceContext.account_type}:${workspaceContext.account_type === 'enterprise' ? workspaceContext.enterprise_id : 'personal'}`
+  const workspaceContext = useMemo<UserApiKeyContext>(() => workspaceContextFor(store.activeWorkspace), [store.activeWorkspace.id, store.activeWorkspace.type])
+  const workspaceKey = workspaceContextKey(workspaceContext)
 
   useEffect(() => {
     setResult(null)
@@ -361,7 +360,7 @@ export function InvitationsPage() {
   if (loading) return <div className="invite-page"><div className="public-invitation-loading" role="status"><span className="console-loading-spinner" />{t('console.common.loading')}</div></div>
   if (error || !overview) return <div className="invite-page"><div className="public-invitation-empty" role="alert"><strong>{error || t('console.invitations.loadFailed')}</strong></div></div>
 
-  return <div className="invite-page"><header className="invite-hero"><span className="invite-hero-icon"><IconGift /></span><div><h1>{t('console.invitations.title')}</h1><p>{t('console.invitations.description')}</p></div></header><section className="invite-summary"><article><IconBarChartHStroked /><span>{t('console.invitations.total')}</span><strong><MoneyText value={overview.total_reward_yuan} digits={2} /></strong></article><article><IconUserGroup /><span>{t('console.invitations.count')}</span><strong>{overview.invited_count}</strong></article></section><section className="invite-link-card"><div className="invite-section-heading"><span className="invite-section-icon"><IconKey /></span><div><h2>{t('console.invitations.link')}</h2><p>{t('console.invitations.linkHint')}</p></div></div><div className="invite-link-row"><Input value={inviteLink} readOnly /><Button theme="solid" type="primary" icon={<IconCopy />} onClick={copyLink}>{copied ? t('console.invitations.copied') : t('console.invitations.copy')}</Button></div></section><section className="invite-records"><div className="invite-section-heading"><div><h2>{t('console.invitations.records')}</h2><p>{t('console.invitations.recordsHint')}</p></div></div><div className="source-table-scroll"><table className="invite-table"><thead><tr><th>{t('console.invitations.member')}</th><th>{t('console.invitations.status')}</th><th>{t('console.invitations.joinedAt')}</th></tr></thead><tbody>{overview.records.map((record) => <tr key={record.id}><td><strong>{record.display_name}</strong></td><td><span className="invite-status">{record.status === 'joined' ? t('console.invitations.joined') : record.status}</span></td><td>{formatApiTime(record.joined_at)}</td></tr>)}</tbody></table></div></section><section className="invite-rules"><h2>{t('console.invitations.rules')}</h2><ol><li>{t('console.invitations.ruleSource')}</li><li>{t('console.invitations.ruleStatus')}</li><li>{t('console.invitations.ruleSettlement')}</li></ol></section></div>
+  return <div className="invite-page"><header className="invite-hero"><span className="invite-hero-icon"><IconGift /></span><div><h1>{t('console.invitations.title')}</h1><p>{t('console.invitations.description')}</p></div></header><section className="invite-summary"><article><IconBarChartHStroked /><span>{t('console.invitations.total')}</span><strong><MoneyText value={overview.total_reward_yuan} /></strong></article><article><IconUserGroup /><span>{t('console.invitations.count')}</span><strong>{overview.invited_count}</strong></article></section><section className="invite-link-card"><div className="invite-section-heading"><span className="invite-section-icon"><IconKey /></span><div><h2>{t('console.invitations.link')}</h2><p>{t('console.invitations.linkHint')}</p></div></div><div className="invite-link-row"><Input value={inviteLink} readOnly /><Button theme="solid" type="primary" icon={<IconCopy />} onClick={copyLink}>{copied ? t('console.invitations.copied') : t('console.invitations.copy')}</Button></div></section><section className="invite-records"><div className="invite-section-heading"><div><h2>{t('console.invitations.records')}</h2><p>{t('console.invitations.recordsHint')}</p></div></div><div className="source-table-scroll"><table className="invite-table"><thead><tr><th>{t('console.invitations.member')}</th><th>{t('console.invitations.status')}</th><th>{t('console.invitations.joinedAt')}</th></tr></thead><tbody>{overview.records.map((record) => <tr key={record.id}><td><strong>{record.display_name}</strong></td><td><span className="invite-status">{record.status === 'joined' ? t('console.invitations.joined') : record.status}</span></td><td>{formatApiTime(record.joined_at)}</td></tr>)}</tbody></table></div></section><section className="invite-rules"><h2>{t('console.invitations.rules')}</h2><ol><li>{t('console.invitations.ruleSource')}</li><li>{t('console.invitations.ruleStatus')}</li><li>{t('console.invitations.ruleSettlement')}</li></ol></section></div>
 }
 
 export function EnterpriseSettingsPage() {

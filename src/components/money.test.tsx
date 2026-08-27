@@ -1,6 +1,6 @@
 import { render } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
-import { MoneyText } from './money'
+import { BackofficeMoneyText, MoneyText } from './money'
 
 describe('金额展示组件', () => {
   it('显示三位小数并在悬停提示中只显示后端原始金额', () => {
@@ -26,5 +26,12 @@ describe('金额展示组件', () => {
     const { container } = render(<MoneyText value="12.345" digits={2} />)
     expect(container.querySelector('[data-money-value]')).toHaveTextContent('¥12.35')
     expect(container.querySelector('[data-money-value]')).toHaveAttribute('title', '¥12.345')
+  })
+
+  it('后台金额组件默认显示四位小数', () => {
+    const { container } = render(<BackofficeMoneyText value="1.23456" />)
+    const amount = container.querySelector('[data-money-value]')
+    expect(amount).toHaveTextContent('¥1.2346')
+    expect(amount).toHaveAttribute('title', '¥1.23456')
   })
 })

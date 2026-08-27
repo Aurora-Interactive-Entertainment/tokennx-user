@@ -58,7 +58,7 @@ import { isAuthenticationFailure } from '@/api/http'
 import { useTranslation } from 'react-i18next'
 import { cycleThemeModeWithTransition, themeModeLabel, useResolvedTheme, useThemeMode } from '@/theme'
 import { getMockSupportReply, MOCK_SUPPORT_REPLY_DELAY_MS, type SupportChatMessage, type SupportLocale, type SupportMessageRole } from './support-chat'
-import { MoneyText } from './money'
+import { BackofficeMoneyText as MoneyText } from './money'
 import { ModelAvailability } from './model-availability'
 import { enterpriseMenuPermissionKeyForPath, hasEnterpriseMenuPermission, isEnterpriseOwner, type EnterpriseMenuAccess, type EnterpriseMenuPermissionKey, useEnterpriseMenuAccess } from './enterprise-menu-access'
 import { ENTERPRISE_CREATE_PATH, NEW_ENTERPRISE_CREATE_PATH } from '@/api/enterprise-certification'
@@ -67,13 +67,14 @@ import tokenNxLogo from '@/token-nx-logo.png'
 import headerLogo from '@/assets/figma-header/token-nx-header-logo.png'
 import headerTrialPill from '@/assets/figma-header/trial-pill.png'
 import headerTrialFreeTag from '@/assets/figma-header/trial-free-tag.svg'
-import publicMobileNavStyles from '@/public-mobile-nav.css?inline'
+import '@/public-mobile-nav.css'
 import '@/public-footer.css'
 import accountBadge from '@/assets/figma-account-badge.png'
 import manuscriptFooterLogo from '@/assets/figma-home/footer-logo.png'
 import './login-panel.css'
 import './account-settings-modal.css'
 import { appToast } from './app-toast'
+import { workspaceContextFor } from '@/utils/workspace'
 import { publishProfileUpdate, subscribeProfileUpdates } from '@/profile/profile-sync'
 
 const LazyProfileContactDialog = lazy(() => import('./profile-contact-dialog').then((module) => ({ default: module.ProfileContactDialog })))
@@ -141,7 +142,7 @@ type BillingOverviewCacheEntry = {
 }
 
 function billingOverviewContext(workspace: Pick<Workspace, 'id' | 'type'>): BillingContext {
-  return workspace.type === 'enterprise' ? { account_type: 'enterprise', enterprise_id: workspace.id } : { account_type: 'personal' }
+  return workspaceContextFor(workspace)
 }
 
 function billingOverviewKey(context: BillingContext): string {
@@ -1270,7 +1271,6 @@ export function PublicHeader({ enterpriseAccess, unreadNotificationCount = 0 }: 
 
   return (
     <>
-      <style>{publicMobileNavStyles}</style>
       <header className={`app-header public-header public-header--home${scrolled ? ' is-scrolled' : ''}${mobileOpen ? ' mobile-nav-open' : ''}`} ref={headerRef}>
       <div className="app-header-inner app-header-full public-header-inner">
         <button className="mobile-menu-button" type="button" aria-controls="public-mobile-nav" aria-expanded={mobileOpen} aria-label={mobileOpen ? t('nav.close') : t('nav.open')} onClick={() => setMobileOpen((open) => !open)}>

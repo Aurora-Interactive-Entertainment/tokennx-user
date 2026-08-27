@@ -29,14 +29,14 @@ import {
 } from '@/api/billing'
 import { BannerNotice, EmptyPanel, PageTitle } from '@/components/common'
 import { TraePagination } from '@/components/trae-pagination'
-import { MoneyText } from '@/components/money'
+import { BackofficeMoneyText as MoneyText } from '@/components/money'
 import { PaymentQRCodeFrame } from '@/components/payment-qr-frame'
 import { CompatSelect as Select } from '@/components/semi-compat'
 import { useAppStore, type Workspace } from '@/data/app-state'
 import { invalidateAuth } from '@/store/auth-slice'
 import { useAppDispatch } from '@/store/hooks'
 import i18n from '@/i18n'
-import { formatApiTime, formatCount, formatSignedYuanExact, formatYuan, formatYuanExact, isZeroYuan } from '@/utils/format'
+import { BACKOFFICE_MONEY_DISPLAY_DECIMAL_PLACES, formatApiTime, formatCount, formatSignedYuanExact, formatYuan, formatYuanExact, isZeroYuan } from '@/utils/format'
 
 export type BillingTab = 'overview' | 'recharge' | 'invoice'
 type ResourceStatus = 'idle' | 'loading' | 'success' | 'error'
@@ -194,7 +194,7 @@ export function validateInvoiceForm(form: InvoiceForm, available: string): Invoi
   const amount = parseAmount(form.amount_yuan)
   const availableAmount = Number(available)
   if (amount === null) errors.amount_yuan = i18n.t('console.billing.invoiceFormAmount')
-  else if (!Number.isFinite(availableAmount) || amount > availableAmount) errors.amount_yuan = i18n.t('console.billing.invoiceAmountExceeded', { amount: formatYuan(available) })
+  else if (!Number.isFinite(availableAmount) || amount > availableAmount) errors.amount_yuan = i18n.t('console.billing.invoiceAmountExceeded', { amount: formatYuan(available, BACKOFFICE_MONEY_DISPLAY_DECIMAL_PLACES) })
 
   const title = form.title.trim()
   if (!title) errors.title = i18n.t('console.billing.invoiceTitleRequired')
@@ -575,7 +575,7 @@ function InvoiceDialog({ open, available, form, errors, step, submitting, onClos
         <label className={fieldClass('taxpayer_type')}><span className="invoice-field-label">{i18n.t('console.billing.taxpayerType')}</span><select id="invoice-taxpayer-type" className="input" value={form.taxpayer_type} onChange={(event) => onChange('taxpayer_type', event.target.value)} aria-invalid={Boolean(errors.taxpayer_type)} aria-describedby="invoice-taxpayer_type-error"><option value="enterprise">{i18n.t('console.billing.enterprise')}</option><option value="personal">{i18n.t('console.billing.personal')}</option></select>{fieldError('taxpayer_type')}</label>
         <label className={fieldClass('invoice_type')}><span className="invoice-field-label">{i18n.t('console.billing.invoiceType')}</span><select id="invoice-type" className="input" value={form.invoice_type} onChange={(event) => onChange('invoice_type', event.target.value)} aria-invalid={Boolean(errors.invoice_type)} aria-describedby="invoice-invoice_type-error"><option value="special">{invoiceTypeLabel('special')}</option><option value="normal">{invoiceTypeLabel('normal')}</option></select>{fieldError('invoice_type')}</label>
         <label className={fieldClass('project_name')}><span className="invoice-field-label">{i18n.t('console.billing.projectName')}</span><input id="invoice-project-name" className="input" value={form.project_name} readOnly aria-invalid={Boolean(errors.project_name)} aria-describedby="invoice-project_name-error" />{fieldError('project_name')}<small className="invoice-field-note">{i18n.t('console.billing.projectNameHint')}</small></label>
-        <label className={fieldClass('amount_yuan')}><span className="invoice-field-label">{i18n.t('console.billing.invoiceAmountYuan')} <em>*</em></span><input id="invoice-amount" className="input" inputMode="decimal" type="number" min="0.01" max={available} step="0.01" value={form.amount_yuan} onChange={(event) => onChange('amount_yuan', event.target.value)} placeholder={i18n.t('console.billing.amountMax', { amount: formatYuan(available) })} required aria-invalid={Boolean(errors.amount_yuan)} aria-describedby="invoice-amount_yuan-error" />{fieldError('amount_yuan')}</label>
+        <label className={fieldClass('amount_yuan')}><span className="invoice-field-label">{i18n.t('console.billing.invoiceAmountYuan')} <em>*</em></span><input id="invoice-amount" className="input" inputMode="decimal" type="number" min="0.01" max={available} step="0.01" value={form.amount_yuan} onChange={(event) => onChange('amount_yuan', event.target.value)} placeholder={i18n.t('console.billing.amountMax', { amount: formatYuan(available, BACKOFFICE_MONEY_DISPLAY_DECIMAL_PLACES) })} required aria-invalid={Boolean(errors.amount_yuan)} aria-describedby="invoice-amount_yuan-error" />{fieldError('amount_yuan')}</label>
         <div className={fieldClass('email') + ' invoice-field-wide'}><label className="invoice-field-label" htmlFor="invoice-email">{i18n.t('console.billing.receivingEmail')} <em>*</em></label><input id="invoice-email" className="input" type="email" value={form.email} onChange={(event) => onChange('email', event.target.value)} placeholder={i18n.t('console.billing.accountEmail')} required aria-invalid={Boolean(errors.email)} aria-describedby="invoice-email-error" />{fieldError('email')}<small className="invoice-field-note">{i18n.t('console.billing.emailHint')}</small></div>
       </div>
       <p className="invoice-demo-note">{i18n.t('console.billing.invoiceSubmitDemo')}</p>

@@ -2,18 +2,10 @@ import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import DatePicker from "@douyinfe/semi-ui/lib/es/datePicker";
 import type { UsageTrendQuery } from "@/api/personal-usage";
+import { addLocalDays, startOfLocalToday } from "@/utils/date-range";
 
-export function startOfLocalToday(): Date {
-  const date = new Date();
-  date.setHours(0, 0, 0, 0);
-  return date;
-}
-
-export function addLocalDays(date: Date, amount: number): Date {
-  const next = new Date(date);
-  next.setDate(next.getDate() + amount);
-  return next;
-}
+// 保留原导出路径，避免个人用量相关调用方发生无意义的导入变更。
+export { addLocalDays, startOfLocalToday } from "@/utils/date-range";
 
 function utcStartOfLocalDate(date: Date): number {
   return Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());

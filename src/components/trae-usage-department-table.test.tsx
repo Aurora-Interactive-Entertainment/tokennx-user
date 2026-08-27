@@ -9,14 +9,14 @@ const dataSource: TraeUsageDepartmentNode[] = [
   {
     id: "company",
     name: "Company",
-    total: "￥10.000",
+    total: "￥10.0000",
     tokens: "1,000",
     requests: "10",
     children: [
       {
         id: "operation",
         name: "Operation",
-        total: "￥10.000",
+        total: "￥10.0000",
         tokens: "500",
         requests: "5",
       },

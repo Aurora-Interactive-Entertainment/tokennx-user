@@ -41,7 +41,8 @@ import {
   type EnterpriseRequestError,
 } from '@/pages/enterprise-console-shared'
 import { useResolvedTheme } from '@/theme'
-import { formatApiTime, formatCount, formatYuan } from '@/utils/format'
+import { BACKOFFICE_MONEY_DISPLAY_DECIMAL_PLACES, formatApiTime, formatCount, formatYuan } from '@/utils/format'
+import { addLocalDays as addDays, startOfLocalToday as startOfToday } from '@/utils/date-range'
 import './trae-enterprise-usage.css'
 
 echarts.use([PieChart, TooltipComponent, SVGRenderer])
@@ -71,18 +72,6 @@ function UsageSelect({ label, value, options, searchable = false, onChange }: Us
       {options.map((option) => <Select.Option key={option.value} value={option.value}>{option.label}</Select.Option>)}
     </Select>
   )
-}
-
-function startOfToday() {
-  const value = new Date()
-  value.setHours(0, 0, 0, 0)
-  return value
-}
-
-function addDays(value: Date, amount: number) {
-  const next = new Date(value)
-  next.setDate(next.getDate() + amount)
-  return next
 }
 
 function formatPeriodDate(value: string | number, language: string): string {
@@ -131,7 +120,7 @@ function UsageDonut({ usage, balance }: { usage: number; balance: number }) {
         extraCssText: 'border:1px solid #1DC981 !important;background:#202124 !important;color:#ffffff !important;box-shadow:none;',
         formatter: (params: unknown) => {
           const item = params as { name?: string; value?: number }
-          return `<span style="color:#ffffff;font-size:13px;line-height:18px;">${item.name ?? ''}</span><br/><span style="display:inline-block;color:#ffffff;font-size:18px;font-weight:700;line-height:24px;">${formatYuan(Number(item.value ?? 0), 3)}</span>`
+          return `<span style="color:#ffffff;font-size:13px;line-height:18px;">${item.name ?? ''}</span><br/><span style="display:inline-block;color:#ffffff;font-size:18px;font-weight:700;line-height:24px;">${formatYuan(Number(item.value ?? 0), BACKOFFICE_MONEY_DISPLAY_DECIMAL_PLACES)}</span>`
         },
       },
       series: [{
@@ -214,7 +203,7 @@ function mergeDepartmentUsage(
     return {
       id: node.id,
       name: node.name,
-      total: formatYuan(usage?.cost_yuan ?? '0', 3),
+      total: formatYuan(usage?.cost_yuan ?? '0', BACKOFFICE_MONEY_DISPLAY_DECIMAL_PLACES),
       tokens: formatCount(usage?.total_tokens ?? 0),
       requests: formatCount(usage?.request_count ?? 0),
       children: node.children?.map(mapNode),
@@ -226,14 +215,14 @@ function mergeDepartmentUsage(
     .map((item) => ({
       id: item.department_id,
       name: item.department_name,
-      total: formatYuan(item.cost_yuan, 3),
+      total: formatYuan(item.cost_yuan, BACKOFFICE_MONEY_DISPLAY_DECIMAL_PLACES),
       tokens: formatCount(item.total_tokens),
       requests: formatCount(item.request_count),
     }))
   return [{
     id: `enterprise-${context.id}`,
     name: context.name,
-    total: formatYuan(summary?.summary.total_cost_yuan ?? '0', 3),
+    total: formatYuan(summary?.summary.total_cost_yuan ?? '0', BACKOFFICE_MONEY_DISPLAY_DECIMAL_PLACES),
     tokens: formatCount((summary?.summary.input_tokens ?? 0) + (summary?.summary.output_tokens ?? 0)),
     requests: formatCount(summary?.summary.request_count ?? 0),
     children: [...knownNodes, ...unmatchedNodes],
@@ -334,8 +323,8 @@ export function TraeUsageBoard({ context, onDetail, onPeriodChange }: UsageBoard
             <div className="trae-usage-overall-copy">
               <div className="trae-usage-summary-heading"><span>{t('traeEnterprise.usage.overall')}</span><IconInfoCircle className="app-info-icon" aria-hidden="true" /></div>
               <div className="trae-usage-overall-details">
-                <strong>{formatYuan(accountAmount, 3)}</strong>
-                <span><i className="is-base" />{t('traeEnterprise.usage.usedCost')} {formatYuan(summary?.summary.total_cost_yuan ?? '0', 3)}</span>
+                <strong>{formatYuan(accountAmount, BACKOFFICE_MONEY_DISPLAY_DECIMAL_PLACES)}</strong>
+                <span><i className="is-base" />{t('traeEnterprise.usage.usedCost')} {formatYuan(summary?.summary.total_cost_yuan ?? '0', BACKOFFICE_MONEY_DISPLAY_DECIMAL_PLACES)}</span>
               </div>
             </div>
             <UsageDonut usage={Number.isFinite(totalCost) ? totalCost : 0} balance={Number.isFinite(accountBalance) ? accountBalance : 0} />
@@ -364,7 +353,7 @@ export function TraeUsageBoard({ context, onDetail, onPeriodChange }: UsageBoard
         <div className="trae-table-scroll" aria-busy={membersLoading}>
           <table className="trae-table trae-usage-board-table">
             <thead><tr><th>{t('traeEnterprise.usage.name')}</th><th>{t('traeEnterprise.usage.department')}</th><th>{t('traeEnterprise.usage.totalTokens')}</th><th>{t('traeEnterprise.usage.requestCount')}</th><th>{t('traeEnterprise.usage.totalCost')}</th><th>{t('traeEnterprise.usage.operation')}</th></tr></thead>
-            <tbody>{members.items.map((member) => <tr key={member.member_id}><td><span className="trae-person-cell"><span><strong>{member.member_name || '--'}</strong><small>{member.email || '--'}</small></span></span></td><td>{member.department_name || '--'}</td><td className="trae-usage-number">{formatCount(member.total_tokens)}</td><td className="trae-usage-number">{formatCount(member.request_count)}</td><td className="trae-usage-number">{formatYuan(member.cost_yuan, 3)}</td><td><button className="trae-text-button" type="button" onClick={() => onDetail(member.member_id)}>{t('traeEnterprise.usage.detailAction')}</button></td></tr>)}</tbody>
+            <tbody>{members.items.map((member) => <tr key={member.member_id}><td><span className="trae-person-cell"><span><strong>{member.member_name || '--'}</strong><small>{member.email || '--'}</small></span></span></td><td>{member.department_name || '--'}</td><td className="trae-usage-number">{formatCount(member.total_tokens)}</td><td className="trae-usage-number">{formatCount(member.request_count)}</td><td className="trae-usage-number">{formatYuan(member.cost_yuan, BACKOFFICE_MONEY_DISPLAY_DECIMAL_PLACES)}</td><td><button className="trae-text-button" type="button" onClick={() => onDetail(member.member_id)}>{t('traeEnterprise.usage.detailAction')}</button></td></tr>)}</tbody>
           </table>
           {members.items.length === 0 ? <TraeTableEmpty hint={t('traeEnterprise.usage.detailEmpty')} /> : null}
         </div>
@@ -508,7 +497,7 @@ export function TraeUsageDetail({ context, memberID, onMemberChange }: UsageDeta
       <div className="trae-table-scroll" aria-busy={loading}>
         <table className="trae-table trae-usage-detail-table">
           <thead><tr><th>{t('traeEnterprise.usage.detailDate')}</th><th>{t('traeEnterprise.usage.model')}</th><th>{t('traeEnterprise.usage.vendor')}</th><th>{t('traeEnterprise.usage.requestCount')}</th><th>{t('traeEnterprise.usage.successCount')}</th><th>{t('traeEnterprise.usage.errorCount')}</th><th>{t('traeEnterprise.usage.cancelledCount')}</th><th>{t('traeEnterprise.usage.inputTokens')}</th><th>{t('traeEnterprise.usage.outputTokens')}</th><th>{t('traeEnterprise.usage.cachedTokens')}</th><th>{t('traeEnterprise.usage.totalCost')}</th><th>{t('traeEnterprise.usage.averageLatency')}</th></tr></thead>
-          <tbody>{data.items.map((row) => <tr key={row.id}><td>{formatApiTime(row.bucket_start)}</td><td><strong>{row.model_alias || row.model_name || row.model_code}</strong><small>{row.model_code}</small></td><td>{row.vendor || '--'}</td><td className="trae-usage-number">{formatCount(row.requests)}</td><td className="trae-usage-number">{formatCount(row.success_count)}</td><td className="trae-usage-number">{formatCount(row.error_count)}</td><td className="trae-usage-number">{formatCount(row.cancelled_count)}</td><td className="trae-usage-number">{formatCount(row.input_tokens)}</td><td className="trae-usage-number">{formatCount(row.output_tokens)}</td><td className="trae-usage-number">{formatCount(row.cached_tokens)}</td><td className="trae-usage-number">{data.can_view_billing ? formatYuan(row.cost_yuan, 6) : '--'}</td><td className="trae-usage-number">{row.average_latency_ms == null ? '--' : `${Math.round(row.average_latency_ms)} ms`}</td></tr>)}</tbody>
+          <tbody>{data.items.map((row) => <tr key={row.id}><td>{formatApiTime(row.bucket_start)}</td><td><strong>{row.model_alias || row.model_name || row.model_code}</strong><small>{row.model_code}</small></td><td>{row.vendor || '--'}</td><td className="trae-usage-number">{formatCount(row.requests)}</td><td className="trae-usage-number">{formatCount(row.success_count)}</td><td className="trae-usage-number">{formatCount(row.error_count)}</td><td className="trae-usage-number">{formatCount(row.cancelled_count)}</td><td className="trae-usage-number">{formatCount(row.input_tokens)}</td><td className="trae-usage-number">{formatCount(row.output_tokens)}</td><td className="trae-usage-number">{formatCount(row.cached_tokens)}</td><td className="trae-usage-number">{data.can_view_billing ? formatYuan(row.cost_yuan, BACKOFFICE_MONEY_DISPLAY_DECIMAL_PLACES) : '--'}</td><td className="trae-usage-number">{row.average_latency_ms == null ? '--' : `${Math.round(row.average_latency_ms)} ms`}</td></tr>)}</tbody>
         </table>
         {data.items.length === 0 ? <TraeTableEmpty hint={t('traeEnterprise.usage.detailEmpty')} /> : null}
       </div>

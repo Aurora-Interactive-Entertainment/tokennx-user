@@ -3,6 +3,8 @@ import type { ModelRecord } from '@/data/models'
 import i18n, { getActiveLocale } from '@/i18n'
 
 export const MONEY_DISPLAY_DECIMAL_PLACES = 3
+// 中文：后台费用展示统一保留四位小数；公开页面继续使用通用默认值。
+export const BACKOFFICE_MONEY_DISPLAY_DECIMAL_PLACES = 4
 export type MoneyValue = string | number | null | undefined
 
 export function formatCurrency(value: number, digits = MONEY_DISPLAY_DECIMAL_PLACES): string {

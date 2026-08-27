@@ -120,7 +120,17 @@ export function ToolUsageClientsChart({ data }: { data: ToolUsageClients }) {
         axisLabel: { color: light ? '#737984' : '#8b8b8b', fontSize: 12, formatter: (value: number) => formatToolUsageTokens(value) },
         splitLine: { lineStyle: { color: light ? 'rgba(23,24,27,.08)' : 'rgba(255,255,255,.07)' } },
       },
-      series: seriesData.map((item, index) => ({ name: item.name, type: 'bar', stack: 'tokens', barMaxWidth: 42, emphasis: { focus: 'series' }, itemStyle: { color: MODEL_CHART_COLORS[index % MODEL_CHART_COLORS.length] }, data: item.values })),
+      series: seriesData.map((item, index) => ({
+        name: item.name,
+        type: 'bar',
+        stack: 'tokens',
+        barMaxWidth: 42,
+        // 堆叠柱按整根柱子响应 hover，避免单独突出当前工具色块。
+        emphasis: { focus: 'none', itemStyle: { opacity: 1 } },
+        blur: { itemStyle: { opacity: 1 } },
+        itemStyle: { color: MODEL_CHART_COLORS[index % MODEL_CHART_COLORS.length] },
+        data: item.values,
+      })),
     })
     const selectNearestWeek = (event: { offsetX: number }) => {
       const weekPositions = data.weeks.map((_, index) => Number(chart.convertToPixel({ xAxisIndex: 0 }, index)))

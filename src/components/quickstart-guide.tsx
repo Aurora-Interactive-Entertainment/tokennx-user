@@ -6,6 +6,7 @@ import Toast from '@douyinfe/semi-ui/lib/es/toast'
 import { IconCopy, IconFile, IconSearch } from '@douyinfe/semi-icons'
 import { CompatInput as Input } from '@/components/semi-compat'
 import { useAppStore } from '@/data/app-state'
+import { workspaceContextFor } from '@/utils/workspace'
 import { findModelInList, modelAlias, type ModelRecord } from '@/data/models'
 import { useUserModels } from '@/data/user-models'
 import { getUserApiKeys, type UserApiKey, type UserApiKeyContext } from '@/api/user-api-keys'
@@ -146,7 +147,7 @@ export function QuickstartGuide() {
   const [openStep, setOpenStep] = useState<QuickstartStep>(1)
   const [keys, setKeys] = useState<UserApiKey[]>([])
   const [keysLoading, setKeysLoading] = useState(true)
-  const workspaceContext = useMemo<UserApiKeyContext>(() => store.activeWorkspace.type === 'enterprise' ? { account_type: 'enterprise', enterprise_id: store.activeWorkspace.id } : { account_type: 'personal' }, [store.activeWorkspace.id, store.activeWorkspace.type])
+  const workspaceContext = useMemo<UserApiKeyContext>(() => workspaceContextFor(store.activeWorkspace), [store.activeWorkspace.id, store.activeWorkspace.type])
 
   useEffect(() => {
     const alias = model ? modelAlias(model) : ''

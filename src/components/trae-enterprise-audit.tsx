@@ -20,27 +20,10 @@ import {
   formatEnterpriseTime,
   useEnterpriseErrorHandler,
 } from "@/pages/enterprise-console-shared";
+import { addLocalDays as shiftDays, endOfLocalDay as endOfDay, startOfLocalDay as startOfDay } from "@/utils/date-range";
 import "./trae-enterprise-audit.css";
 
 type AuditSelectOption = { value: string; label: string };
-
-function startOfDay(value: Date): Date {
-  const result = new Date(value);
-  result.setHours(0, 0, 0, 0);
-  return result;
-}
-
-function endOfDay(value: Date): Date {
-  const result = new Date(value);
-  result.setHours(23, 59, 59, 999);
-  return result;
-}
-
-function shiftDays(value: Date, days: number): Date {
-  const result = new Date(value);
-  result.setDate(result.getDate() + days);
-  return result;
-}
 
 function mergeOptions(current: AuditSelectOption[], incoming: AuditSelectOption[]): AuditSelectOption[] {
   const options = new Map(current.map((option) => [option.value, option]));

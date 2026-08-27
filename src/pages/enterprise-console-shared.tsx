@@ -4,14 +4,14 @@ import { useNavigate } from 'react-router'
 import Button from '@douyinfe/semi-ui/lib/es/button'
 import { IconDownload, IconRefresh } from '@douyinfe/semi-icons'
 import { BannerNotice, EmptyPanel, PageTitle } from '@/components/common'
-import { MoneyText } from '@/components/money'
+import { BackofficeMoneyText as MoneyText } from '@/components/money'
 import { getAccessToken } from '@/auth/token-storage'
 import { getEnterpriseContext, getEnterpriseErrorMessage, getEnterpriseRequestId, type EnterpriseContext, type EnterpriseRequestContext, type EnterpriseRoleOption, type EnterpriseUsageMetrics, type EnterpriseUsageTrendPoint } from '@/api/enterprise-console'
 import { isAuthenticationFailure } from '@/api/http'
 import { invalidateAuth } from '@/store/auth-slice'
 import { useAppDispatch } from '@/store/hooks'
 import { useAppStore } from '@/data/app-state'
-import { formatCount, formatApiTime, formatYuan, type ApiTimeValue } from '@/utils/format'
+import { BACKOFFICE_MONEY_DISPLAY_DECIMAL_PLACES, formatCount, formatApiTime, formatYuan, type ApiTimeValue } from '@/utils/format'
 import i18n from '@/i18n'
 
 export type EnterpriseCapability = keyof EnterpriseContext['capabilities']
@@ -196,7 +196,7 @@ export function formatEnterpriseNumber(value: number | null | undefined): string
 }
 
 export function formatEnterpriseMoney(value: string | null | undefined): string {
-  return formatYuan(value)
+  return formatYuan(value, BACKOFFICE_MONEY_DISPLAY_DECIMAL_PLACES)
 }
 
 export function formatEnterpriseRate(value: number | null | undefined): string {

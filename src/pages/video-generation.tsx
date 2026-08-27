@@ -16,6 +16,7 @@ import { useAppStore } from '@/data/app-state'
 import { findModelInList, modelAlias, type ModelRecord } from '@/data/models'
 import { useUserModels } from '@/data/user-models'
 import { apiKeySupportsModel } from '@/utils/model-access'
+import { workspaceContextFor, workspaceContextKey } from '@/utils/workspace'
 
 const VIDEO_HISTORY_STORAGE_KEY = 'token-nx:video-history:v1'
 const VIDEO_HISTORY_LIMIT = 20
@@ -123,7 +124,7 @@ function writeVideoHistory(entries: VideoHistoryEntry[]): void {
 }
 
 function workspaceKeyFor(context: UserApiKeyContext): string {
-  return context.account_type === 'enterprise' ? `${context.account_type}:${context.enterprise_id}` : 'personal:personal'
+  return workspaceContextKey(context)
 }
 
 function createIdempotencyKey(): string {
@@ -249,7 +250,7 @@ export function VideoPage() {
   const store = useAppStore()
   const [searchParams] = useSearchParams()
   const { models, loading: modelsLoading, error: modelsError, refresh: refreshModels } = useUserModels()
-  const workspaceContext = useMemo<UserApiKeyContext>(() => store.activeWorkspace.type === 'enterprise' ? { account_type: 'enterprise', enterprise_id: store.activeWorkspace.id } : { account_type: 'personal' }, [store.activeWorkspace.id, store.activeWorkspace.type])
+  const workspaceContext = useMemo<UserApiKeyContext>(() => workspaceContextFor(store.activeWorkspace), [store.activeWorkspace.id, store.activeWorkspace.type])
   const workspaceKey = workspaceKeyFor(workspaceContext)
   const requestedModel = searchParams.get('model') ?? ''
   const [apiKeys, setApiKeys] = useState<UserApiKey[]>([])

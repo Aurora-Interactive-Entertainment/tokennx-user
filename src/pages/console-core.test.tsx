@@ -274,7 +274,7 @@ describe('控制台模型接入页面', () => {
 
     expect(await screen.findByText('接口返回的详情介绍')).toBeInTheDocument()
     expect(screen.getByText('详情厂商')).toBeInTheDocument()
-    expect(screen.getByText('0.020')).toBeInTheDocument()
+    expect(screen.getByText('0.0200')).toBeInTheDocument()
     expect(screen.getByText('1M')).toBeInTheDocument()
     expect(screen.getByText('98.5%')).toBeInTheDocument()
     expect(screen.getByText('7,237,576')).toBeInTheDocument()

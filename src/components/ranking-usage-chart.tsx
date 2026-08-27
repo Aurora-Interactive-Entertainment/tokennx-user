@@ -111,7 +111,9 @@ export function RankingRecentUsageChart({ data }: { data: RecentModelUsage }) {
         type: 'bar',
         stack: 'tokens',
         barMaxWidth: 42,
-        emphasis: { focus: 'series' },
+        // 堆叠柱按整根柱子响应 hover，避免单独突出当前模型色块。
+        emphasis: { focus: 'none', itemStyle: { opacity: 1 } },
+        blur: { itemStyle: { opacity: 1 } },
         itemStyle: { color: RANKING_SERIES_COLORS[index % RANKING_SERIES_COLORS.length] },
         data: usageByModel[index],
       })),

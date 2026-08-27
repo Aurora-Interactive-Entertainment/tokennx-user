@@ -9,7 +9,7 @@ import { IconAlertTriangle, IconArrowRight, IconChevronDown, IconCode, IconCopy,
 import { EmptyPanel, ModelCard, ModelLogo, PageTitle } from '@/components/common'
 import { ModelDetailDrawer } from '@/components/model-detail-drawer'
 import { MarkdownContent } from '@/components/markdown-content'
-import { MoneyText } from '@/components/money'
+import { BackofficeMoneyText as MoneyText } from '@/components/money'
 import { TraePagination } from '@/components/trae-pagination'
 import { CompatCard as Card, CompatInput as Input, CompatSelect as Select } from '@/components/semi-compat'
 import { useAppStore, type PlaygroundMessage } from '@/data/app-state'

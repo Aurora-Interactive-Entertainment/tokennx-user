@@ -34,6 +34,7 @@ import {
 } from "@/pages/enterprise-console-shared";
 import { useResolvedTheme } from "@/theme";
 import { formatCount } from "@/utils/format";
+import { addLocalDays as addDays, startOfLocalToday as startOfToday } from "@/utils/date-range";
 import "./trae-enterprise-analysis.css";
 
 echarts.use([LineChart, PieChart, GridComponent, TooltipComponent, SVGRenderer]);
@@ -57,18 +58,6 @@ type AnalysisProps = {
   context: EnterpriseContext;
   onExportChange?: (state: AnalysisExportState) => void;
 };
-
-function startOfToday(): Date {
-  const value = new Date();
-  value.setHours(0, 0, 0, 0);
-  return value;
-}
-
-function addDays(value: Date, amount: number): Date {
-  const next = new Date(value);
-  next.setDate(next.getDate() + amount);
-  return next;
-}
 
 function dateKey(value: Date): string {
   return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}-${String(value.getDate()).padStart(2, "0")}`;

@@ -51,6 +51,13 @@ function ensureStorage(name: 'localStorage' | 'sessionStorage'): void {
 ensureStorage('localStorage')
 ensureStorage('sessionStorage')
 
+// jsdom 不实现滚动 API；补充空实现，避免路由滚动复位逻辑污染测试输出。
+Object.defineProperty(window, 'scrollTo', {
+  configurable: true,
+  writable: true,
+  value: () => undefined,
+})
+
 Object.defineProperty(HTMLCanvasElement.prototype, 'getContext', {
   configurable: true,
   value: () => ({

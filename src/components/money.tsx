@@ -1,5 +1,5 @@
 import type { MoneyValue } from '@/utils/format'
-import { formatSignedYuan, formatSignedYuanExact, formatYuan, formatYuanExact } from '@/utils/format'
+import { BACKOFFICE_MONEY_DISPLAY_DECIMAL_PLACES, formatSignedYuan, formatSignedYuanExact, formatYuan, formatYuanExact } from '@/utils/format'
 import type { ModelPrice } from '@/data/models'
 import { useTranslation } from 'react-i18next'
 
@@ -27,18 +27,22 @@ export function MoneyText({ value, rawValue = value, direction, withCurrency = t
   return <span className={className || undefined} data-money-value={String(rawValue ?? '')} title={title}>{visibleValue}</span>
 }
 
-function ModelPriceValue({ value, rawValue }: { value: number | undefined; rawValue?: string }) {
-  return <MoneyText value={value} rawValue={rawValue} withCurrency={false} />
+export function BackofficeMoneyText(props: MoneyTextProps) {
+  return <MoneyText {...props} digits={props.digits ?? BACKOFFICE_MONEY_DISPLAY_DECIMAL_PLACES} />
 }
 
-export function ModelPriceSummary({ price }: { price: ModelPrice }) {
+function ModelPriceValue({ value, rawValue, digits }: { value: number | undefined; rawValue?: string; digits?: number }) {
+  return <MoneyText value={value} rawValue={rawValue} withCurrency={false} digits={digits} />
+}
+
+export function ModelPriceSummary({ price, digits }: { price: ModelPrice; digits?: number }) {
   const { t } = useTranslation()
   if (price.input !== undefined && price.output !== undefined) {
-    return <><span>{t('public.priceSummary.input')} <ModelPriceValue value={price.input} rawValue={price.inputRaw} /></span><span> / {t('public.priceSummary.output')} <ModelPriceValue value={price.output} rawValue={price.outputRaw} /> {price.unit}</span></>
+    return <><span>{t('public.priceSummary.input')} <ModelPriceValue value={price.input} rawValue={price.inputRaw} digits={digits} /></span><span> / {t('public.priceSummary.output')} <ModelPriceValue value={price.output} rawValue={price.outputRaw} digits={digits} /> {price.unit}</span></>
   }
   if (price.standard !== undefined && price.hd !== undefined) {
-    return <><span>{t('public.priceSummary.standard')} <ModelPriceValue value={price.standard} rawValue={price.standardRaw} /></span><span> / {t('public.priceSummary.hd')} <ModelPriceValue value={price.hd} rawValue={price.hdRaw} /> {price.unit}</span></>
+    return <><span>{t('public.priceSummary.standard')} <ModelPriceValue value={price.standard} rawValue={price.standardRaw} digits={digits} /></span><span> / {t('public.priceSummary.hd')} <ModelPriceValue value={price.hd} rawValue={price.hdRaw} digits={digits} /> {price.unit}</span></>
   }
-  if (price.base !== undefined) return <><ModelPriceValue value={price.base} rawValue={price.baseRaw} /> {price.unit}</>
+  if (price.base !== undefined) return <><ModelPriceValue value={price.base} rawValue={price.baseRaw} digits={digits} /> {price.unit}</>
   return <>{t('public.priceSummary.pending')}</>
 }

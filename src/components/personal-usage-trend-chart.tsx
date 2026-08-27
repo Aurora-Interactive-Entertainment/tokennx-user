@@ -107,7 +107,7 @@ export function PersonalUsageTrendChart({
             dateStyle: "medium",
             timeZone: "UTC",
           }).format(data.xAxis.data[index]);
-          return `<div style="font-size:12px;line-height:24px"><div>${date}</div>${seriesMeta.map((series) => `<div style="display:flex;gap:8px;min-width:190px"><i style="width:8px;height:8px;margin-top:8px;border-radius:50%;background:${series.color}"></i><span style="flex:1">${series.label}</span><strong>${new Intl.NumberFormat(i18n.language, { maximumFractionDigits: series.name === "cost" ? 6 : 0 }).format(values.get(series.name)?.[index] ?? 0)}</strong></div>`).join("")}</div>`;
+          return `<div style="font-size:12px;line-height:24px"><div>${date}</div>${seriesMeta.map((series) => `<div style="display:flex;gap:8px;min-width:190px"><i style="width:8px;height:8px;margin-top:8px;border-radius:50%;background:${series.color}"></i><span style="flex:1">${series.label}</span><strong>${new Intl.NumberFormat(i18n.language, { minimumFractionDigits: series.name === "cost" ? 4 : 0, maximumFractionDigits: series.name === "cost" ? 4 : 0 }).format(values.get(series.name)?.[index] ?? 0)}</strong></div>`).join("")}</div>`;
         },
       },
       xAxis: {

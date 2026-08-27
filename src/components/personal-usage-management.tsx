@@ -22,14 +22,13 @@ import {
   startOfLocalToday,
 } from "./personal-usage-date-picker";
 import { exportEnterpriseCsv } from "@/pages/enterprise-console-shared";
+import { BACKOFFICE_MONEY_DISPLAY_DECIMAL_PLACES, formatYuan as formatMoneyYuan } from "@/utils/format";
 
 type CueRange = "today" | "7d" | "30d" | "custom";
 
-function formatYuan(value: string): string {
-  const amount = Number(value);
-  return Number.isFinite(amount)
-    ? `￥${amount.toLocaleString(undefined, { minimumFractionDigits: 3, maximumFractionDigits: 3 })}`
-    : "--";
+function formatPersonalUsageYuan(value: string): string {
+  // 中文：保留个人用量页原有的全角人民币符号，只统一金额精度和舍入规则。
+  return formatMoneyYuan(value, BACKOFFICE_MONEY_DISPLAY_DECIMAL_PLACES).replace("¥", "￥");
 }
 
 function ResourceStatus({
@@ -94,9 +93,9 @@ function PersonalUsageOverview() {
         <div className="personal-usage-model-total">
           <span>{t("console.personalUsage.total")}</span>
           <strong>
-            {data ? formatYuan(data.total_cost_yuan) : "--"}{" "}
+            {data ? formatPersonalUsageYuan(data.total_cost_yuan) : "--"}{" "}
             <small>
-              | {data ? formatYuan(data.account_balance_yuan) : "--"}{" "}
+              | {data ? formatPersonalUsageYuan(data.account_balance_yuan) : "--"}{" "}
               <Tooltip
                 className="app-info-tooltip"
                 content={t("console.personalUsage.balanceHint")}
@@ -121,7 +120,7 @@ function PersonalUsageOverview() {
                 title={row.vendor}
               >
                 <span>{row.name}</span>
-                <strong>{formatYuan(row.total_cost_yuan)}</strong>
+                <strong>{formatPersonalUsageYuan(row.total_cost_yuan)}</strong>
               </div>
             ))}
           </div>

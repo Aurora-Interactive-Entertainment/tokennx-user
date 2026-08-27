@@ -9,7 +9,7 @@ import modelCardArt from '@/assets/figma-home/model-card-art.png'
 import promoModelLogo from '@/assets/figma-home/promo-model-logo.svg'
 import promoBannerArt from '@/assets/figma-home/promo-banner.png'
 import promoArticleArt from '@/assets/figma-home/promo-article.png'
-import mobileHomeStyles from '@/mobile-home.css?inline'
+import '@/mobile-home.css'
 import '@/docs-page.css'
 import { ModelPriceSummary } from '@/components/money'
 import { ModelAvailability } from '@/components/model-availability'
@@ -910,7 +910,6 @@ export function HomePage({ onInitialScoreboardReady }: { onInitialScoreboardRead
 
   return (
     <PublicLayout mainClassName="home-page home-page--manuscript">
-      <style>{mobileHomeStyles}</style>
       <div className="manuscript-home-shell">
         <section className="manuscript-hero" aria-labelledby="homeTitle">
           <div className="manuscript-hero-copy">
