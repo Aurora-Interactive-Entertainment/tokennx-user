@@ -1,0 +1,345 @@
+/* 数据分析页沿用原页面的卡片、图表和排行视觉，仅在组件内补回相关样式。 */
+.trae-analysis-content {
+  min-width: 0;
+}
+
+/* 分析页筛选器与同栏日期控件统一为 32px 高度，且不影响其它成员选择器。 */
+.trae-analysis-content > .trae-toolbar .trae-member-select.semi-select {
+  width: 200px;
+  height: 32px;
+  font-size: 13px;
+}
+
+.trae-analysis-content > .trae-toolbar .trae-member-select .semi-select-selection {
+  height: 30px;
+  padding-inline: 8px;
+}
+
+.trae-analysis-content > .trae-toolbar .trae-member-select .semi-select-selection-text,
+.trae-analysis-content > .trae-toolbar .trae-member-select .semi-select-selection-placeholder {
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.trae-analysis-member-select-dropdown {
+  width: 240px;
+}
+
+.trae-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.trae-analysis-metric-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+  gap: 16px;
+  justify-items: start;
+}
+
+.trae-metric-grid--three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.trae-analysis-metric-grid.trae-metric-grid--three {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+}
+
+.trae-analysis-metric-grid .trae-metric-card {
+  width: min(100%, 340px);
+}
+
+.trae-analysis-metric-grid.trae-metric-grid--three.trae-core-metric-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  justify-items: stretch;
+}
+
+.trae-analysis-metric-grid.trae-core-metric-grid .trae-metric-card {
+  width: 100%;
+}
+
+.trae-metric-card {
+  display: flex;
+  min-width: 0;
+  min-height: 108px;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 24px;
+  border: 1px solid var(--color-border-neutral-l1);
+  border-radius: 7px;
+  background: var(--color-bg-base-secondary);
+}
+
+.trae-metric-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+
+.trae-metric-label.is-info-inline {
+  justify-content: flex-start;
+}
+
+.trae-metric-label svg {
+  flex: 0 0 auto;
+  color: var(--color-text-tertiary);
+  font-size: 14px;
+}
+
+.trae-metric-info {
+  display: inline-flex;
+  align-items: center;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+}
+
+.trae-metric-info:hover,
+.trae-metric-info:focus,
+.trae-metric-info:focus-visible {
+  outline: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.trae-metric-card strong {
+  color: var(--color-text-default-hover);
+  font-size: 22px;
+  font-weight: 650;
+  line-height: 1;
+}
+
+.trae-metric-card.is-success strong {
+  color: var(--color-success);
+}
+
+.trae-chart-panel {
+  min-height: 380px;
+  padding: 10px 24px 24px;
+  border: 1px solid var(--color-border-neutral-l1);
+  border-radius: 7px;
+  background: var(--color-bg-base-secondary);
+}
+
+.trae-line-chart-wrap {
+  min-width: 0;
+}
+
+.trae-line-chart {
+  position: relative;
+  width: 100%;
+  height: 340px;
+  min-height: 0;
+}
+
+.trae-chart-legend {
+  display: flex;
+  min-height: 34px;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px 18px;
+  padding: 4px 4px 0;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+
+.trae-chart-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.trae-chart-legend i {
+  display: inline-block;
+  width: 14px;
+  height: 2px;
+  border-radius: 1px;
+}
+
+.trae-analysis-ranking-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 18px;
+}
+
+.trae-analysis-ranking-section {
+  min-width: 0;
+  margin-top: 24px;
+}
+
+.trae-analysis-ranking-section .trae-section-heading {
+  margin-bottom: 0;
+}
+
+.trae-analysis-ranking-card {
+  box-sizing: border-box;
+  min-width: 0;
+  margin-top: 16px;
+  padding: 20px;
+  border-radius: 7px;
+  background: var(--color-bg-menu);
+}
+
+.trae-analysis-ranking-card > .trae-empty {
+  min-height: 192px;
+  border: 0;
+  background: transparent;
+}
+
+.trae-analysis-ranking-list {
+  min-width: 0;
+}
+
+.trae-analysis-ranking-row {
+  display: flex;
+  width: 100%;
+  height: 56px;
+  min-width: 0;
+  box-sizing: border-box;
+  align-items: center;
+  gap: 16px;
+  padding: 12px;
+  color: var(--color-text-default);
+  background: var(--color-bg-menu);
+}
+
+.trae-analysis-ranking-rank {
+  display: inline-grid;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  place-items: center;
+  border-radius: 4px;
+  color: var(--color-brand);
+  background: var(--color-bg-base-tertiary);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.trae-analysis-ranking-name {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-text-default);
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trae-analysis-ranking-count {
+  margin-left: auto;
+  flex: 0 0 auto;
+  color: var(--color-text-default);
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.trae-analysis-pie-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px 12px;
+}
+
+.trae-analysis-pie-section {
+  min-width: 0;
+  margin-top: 24px;
+}
+
+.trae-analysis-pie-content {
+  display: grid;
+  min-height: 320px;
+  grid-template-columns: minmax(150px, 0.9fr) minmax(190px, 1.1fr);
+  align-items: center;
+  padding: 16px 18px;
+  border: 1px solid var(--color-border-neutral-l1);
+  border-radius: 7px;
+  background: var(--color-bg-base-secondary);
+}
+
+.trae-analysis-pie-legend {
+  display: grid;
+  min-width: 0;
+  align-content: center;
+  gap: 11px;
+}
+
+.trae-analysis-pie-legend-item {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: 9px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  line-height: 1.3;
+}
+
+.trae-analysis-pie-legend-item i {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+}
+
+.trae-analysis-pie-legend-item span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trae-analysis-pie-legend-item b {
+  color: var(--color-success);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.trae-analysis-pie-chart {
+  width: 100%;
+  height: 286px;
+  min-width: 0;
+}
+
+.trae-analysis-pie-empty {
+  grid-template-columns: 1fr;
+}
+
+.trae-analysis-pie-empty > .trae-empty {
+  min-height: 286px;
+  padding: 0;
+  border: 0;
+}
+
+@media (max-width: 820px) {
+  .trae-analysis-pie-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .trae-analysis-metric-grid,
+  .trae-analysis-metric-grid.trae-metric-grid--three,
+  .trae-analysis-metric-grid.trae-metric-grid--three.trae-core-metric-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .trae-analysis-metric-grid .trae-metric-card {
+    width: 100%;
+  }
+
+  .trae-chart-panel {
+    padding-inline: 12px;
+  }
+
+  .trae-analysis-pie-content {
+    grid-template-columns: 1fr;
+  }
+
+  .trae-analysis-pie-legend {
+    padding: 8px 4px 0;
+  }
+}

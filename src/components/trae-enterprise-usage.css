@@ -1,0 +1,18 @@
+/* 企业用量接口页的加载、空态和两列摘要布局。 */
+.trae-usage-summary--official { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.trae-usage-summary-card--account { align-content: space-between; }
+.trae-usage-account-stats { display: flex; align-items: center; justify-content: flex-start; gap: 16px; color: var(--color-text-tertiary); font-size: 12px; }
+.trae-usage-account-stats span { min-width: 0; }
+.trae-usage-account-stats b { margin-left: 4px; color: var(--color-text-secondary); font-variant-numeric: tabular-nums; }
+/* 左右摘要卡使用相同的上、中、下三行节奏。 */
+.trae-usage-summary-card--overall { min-height: 176px; padding: 16px 22px; }
+.trae-usage-summary-card--overall .trae-usage-overall-body { min-height: 0; align-items: stretch; }
+.trae-usage-summary-card--overall .trae-usage-overall-copy { display: grid; height: auto; align-self: stretch; grid-template-rows: auto 1fr auto; gap: 12px; }
+.trae-usage-summary-card--overall .trae-usage-overall-details { display: contents; }
+.trae-usage-summary-card--overall .trae-usage-overall-details strong { align-self: center; }
+.trae-usage-summary-card--overall .trae-usage-overall-details span { align-self: end; }
+.trae-usage-summary-card--overall .trae-usage-donut { align-self: center; }
+.trae-usage-page-official .enterprise-loading, .trae-usage-page-official .enterprise-error-panel { margin-block: 4px 12px; }
+.trae-usage-page-official .trae-icon-button:disabled { cursor: not-allowed; opacity: 0.45; }
+@media (max-width: 820px) { .trae-usage-summary--official { grid-template-columns: 1fr; } }
+@media (max-width: 560px) { .trae-usage-account-stats { align-items: flex-start; flex-direction: column; gap: 6px; } }

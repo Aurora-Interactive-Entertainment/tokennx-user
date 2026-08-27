@@ -1415,6 +1415,7 @@ const personalNavGroups: ConsoleNavGroup[] = [
     label: '账户管理',
     items: [
       { key: '/console/real-name', label: '实名认证', icon: 'real-name' },
+      { key: '/console/trae-enterprise/subscription', label: '订阅管理', icon: 'billing' },
       { key: '/console/settings', label: '个人中心', icon: 'account' },
       { key: '/console/billing', label: '费用管理', icon: 'billing' },
       { key: '/console/api-keys', label: '密钥管理', icon: 'api-keys' },
@@ -2199,7 +2200,7 @@ const PUBLIC_FOOTER_DOC_HREFS = {
 const MANUSCRIPT_FOOTER_GROUPS = [
   { titleKey: 'footer.product', mobileTitleKey: 'footer.product', links: [{ labelKey: 'footer.chat', path: '/console/playground', requiresLogin: true }, { labelKey: 'footer.video', path: '/console/video', requiresLogin: true }, { labelKey: 'footer.ranking', path: '/rankings' }, { labelKey: 'footer.agentRanking', path: '/apps' }] },
   { titleKey: 'footer.docs', mobileTitleKey: 'footer.docs', links: [{ labelKey: 'footer.platformIntro', path: PUBLIC_FOOTER_DOC_HREFS.platformIntro }, { labelKey: 'footer.userGuide', path: '/docs' }, { labelKey: 'footer.apiDocs', path: PUBLIC_FOOTER_DOC_HREFS.apiDocs }, { labelKey: 'footer.faq', path: PUBLIC_FOOTER_DOC_HREFS.faq }] },
-  { titleKey: 'footer.pricing', mobileTitleKey: 'footer.pricing', links: [{ labelKey: 'footer.apiPrice', path: '/models' }, { labelKey: 'footer.subscriptionPrice', path: '/console/billing?tab=subscription', requiresLogin: true }] },
+  { titleKey: 'footer.pricing', mobileTitleKey: 'footer.pricing', links: [{ labelKey: 'footer.apiPrice', path: '/models' }, { labelKey: 'footer.subscriptionPrice', path: '/console/trae-enterprise/subscription', requiresLogin: true }] },
   { titleKey: 'footer.legal', mobileTitleKey: 'footer.legal', links: [{ labelKey: 'footer.userAgreement', path: '/terms' }, { labelKey: 'footer.privacyAgreement', path: '/privacy' }, { labelKey: 'footer.rechargeAgreement', path: '/recharge-agreement' }] },
 ] as const
 

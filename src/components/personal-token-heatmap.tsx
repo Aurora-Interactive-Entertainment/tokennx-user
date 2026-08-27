@@ -106,7 +106,9 @@ export function PersonalTokenHeatmap({
     const values = new Map(sorted.map((item) => [item.date, item]));
     const firstDate = utcDate(sorted[0].date);
     const lastDate = utcDate(sorted[sorted.length - 1].date);
-    const gridStart = addUtcDays(firstDate, -firstDate.getUTCDay());
+    // 统一使用周一作为第一行，避免周日占据无标签的首行造成错位观感。
+    const firstWeekday = (firstDate.getUTCDay() + 6) % 7;
+    const gridStart = addUtcDays(firstDate, -firstWeekday);
     const max = Math.max(...sorted.map((item) => item.total_tokens), 0);
     const days: HeatmapDay[] = [];
     const months: Array<{ label: string; column: number }> = [
@@ -123,7 +125,7 @@ export function PersonalTokenHeatmap({
           ...item,
           level: tokenLevel(item.total_tokens, max),
           column,
-          row: date.getUTCDay(),
+          row: (date.getUTCDay() + 6) % 7,
         });
       if (
         date >= firstDate &&
@@ -134,9 +136,16 @@ export function PersonalTokenHeatmap({
         previousMonth = date.getUTCMonth();
       }
     }
+    // 月份切换过近时优先保留后一个标签，避免年初跨月时出现月份断档。
+    const visibleMonths = months.filter((month, index) => {
+      if (index === 0) {
+        return months.length < 2 || months[1].column - month.column >= 3;
+      }
+      return month.column - months[index - 1].column >= 3 || index === 1;
+    });
     return {
       days,
-      months,
+      months: visibleMonths,
       columns: Math.max(
         53,
         Math.ceil(
@@ -152,9 +161,9 @@ export function PersonalTokenHeatmap({
   );
   const weekdays = useMemo(
     () =>
-      [1, 3, 5].map((day) => ({
+      [0, 2, 4].map((day) => ({
         day,
-        label: dayFormatter.format(new Date(Date.UTC(2026, 7, 23 + day))),
+        label: dayFormatter.format(new Date(Date.UTC(2026, 7, 24 + day))),
       })),
     [dayFormatter],
   );
@@ -199,58 +208,68 @@ export function PersonalTokenHeatmap({
         ) : (
           <div className="personal-token-heatmap-scroll">
             <div
-              className="personal-token-heatmap-chart"
+              className="personal-token-heatmap-track"
               style={
                 { "--heatmap-columns": heatmap.columns } as React.CSSProperties
               }
-              role="grid"
-              aria-label={t("console.personalUsage.tokenHeatmap.ariaLabel")}
             >
-              <div className="personal-token-heatmap-months" aria-hidden="true">
-                {heatmap.months.map((month) => (
-                  <span
-                    key={`${month.label}-${month.column}`}
-                    style={{ gridColumn: month.column + 1 }}
-                  >
-                    {month.label}
-                  </span>
-                ))}
-              </div>
               <div
-                className="personal-token-heatmap-weekdays"
-                aria-hidden="true"
+                className="personal-token-heatmap-chart"
+                role="grid"
+                aria-label={t("console.personalUsage.tokenHeatmap.ariaLabel")}
               >
-                {weekdays.map((weekday) => (
-                  <span key={weekday.day} style={{ gridRow: weekday.day + 1 }}>
-                    {weekday.label}
-                  </span>
-                ))}
-              </div>
-              <div className="personal-token-heatmap-cells">
-                {heatmap.days.map((day) => {
-                  const label = t(
-                    "console.personalUsage.tokenHeatmap.dayLabel",
-                    {
-                      date: dateFormatter.format(utcDate(day.date)),
-                      total: formatTokens(day.total_tokens),
-                      input: formatTokens(day.input_tokens),
-                      output: formatTokens(day.output_tokens),
-                    },
-                  );
-                  return (
+                <div
+                  className="personal-token-heatmap-months"
+                  aria-hidden="true"
+                >
+                  {heatmap.months.map((month) => (
                     <span
-                      key={day.date}
-                      className={`personal-token-heatmap-cell level-${day.level}`}
-                      style={{
-                        gridColumn: day.column + 1,
-                        gridRow: day.row + 1,
-                      }}
-                      role="gridcell"
-                      aria-label={label}
-                      title={label}
-                    />
-                  );
-                })}
+                      key={`${month.label}-${month.column}`}
+                      style={{ gridColumn: month.column + 1 }}
+                    >
+                      {month.label}
+                    </span>
+                  ))}
+                </div>
+                <div
+                  className="personal-token-heatmap-weekdays"
+                  aria-hidden="true"
+                >
+                  {weekdays.map((weekday) => (
+                    <span
+                      key={weekday.day}
+                      style={{ gridRow: weekday.day + 1 }}
+                    >
+                      {weekday.label}
+                    </span>
+                  ))}
+                </div>
+                <div className="personal-token-heatmap-cells">
+                  {heatmap.days.map((day) => {
+                    const label = t(
+                      "console.personalUsage.tokenHeatmap.dayLabel",
+                      {
+                        date: dateFormatter.format(utcDate(day.date)),
+                        total: formatTokens(day.total_tokens),
+                        input: formatTokens(day.input_tokens),
+                        output: formatTokens(day.output_tokens),
+                      },
+                    );
+                    return (
+                      <span
+                        key={day.date}
+                        className={`personal-token-heatmap-cell level-${day.level}`}
+                        style={{
+                          gridColumn: day.column + 1,
+                          gridRow: day.row + 1,
+                        }}
+                        role="gridcell"
+                        aria-label={label}
+                        title={label}
+                      />
+                    );
+                  })}
+                </div>
               </div>
               <div
                 className="personal-token-heatmap-legend"

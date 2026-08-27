@@ -1,0 +1,258 @@
+/* 企业审计日志页独立样式，颜色统一使用全局主题变量。 */
+.trae-audit-page > .trae-toolbar .trae-select.semi-select {
+  width: 240px;
+  height: 32px;
+  font-size: 13px;
+}
+
+.trae-audit-page > .trae-toolbar .trae-select .semi-select-selection-text,
+.trae-audit-page > .trae-toolbar .trae-select .semi-select-selection-placeholder {
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.trae-audit-page > .trae-toolbar .trae-date-picker.semi-datepicker {
+  width: 255px;
+}
+
+.trae-audit-page > .trae-toolbar .trae-date-picker .semi-datepicker-range-input {
+  height: 32px;
+}
+
+.trae-audit-page > .trae-toolbar .trae-date-picker .semi-datepicker-range-input-wrapper input,
+.trae-audit-page > .trae-toolbar .trae-date-picker .semi-datepicker-range-input-separator {
+  font-size: 13px;
+}
+
+.trae-audit-page .trae-primary-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+  transform: none;
+}
+
+.trae-audit-select-dropdown {
+  min-width: 240px;
+  padding: 4px 0;
+  border-radius: 6px;
+}
+
+.trae-audit-select-dropdown .semi-select-option {
+  box-sizing: border-box;
+  height: 32px;
+  min-height: 32px;
+  margin: 2px 6px;
+  padding: 0 10px;
+  border-radius: 4px;
+  line-height: 32px;
+}
+
+.trae-audit-select-dropdown .semi-select-option-icon {
+  display: none;
+}
+
+.trae-audit-select-dropdown .semi-select-option-selected,
+.trae-audit-select-dropdown .semi-select-option-focused,
+.trae-audit-select-dropdown .semi-select-option:hover {
+  color: var(--color-text-default-hover);
+  background: var(--color-bg-overlay-l3);
+}
+
+.trae-audit-select-dropdown .semi-select-dropdown-search-wrapper {
+  box-sizing: border-box;
+  height: 32px;
+  margin: 0 6px 6px;
+  padding: 0;
+}
+
+.trae-audit-select-dropdown .semi-select-dropdown-search-wrapper .semi-input-wrapper,
+.trae-audit-select-dropdown .semi-select-dropdown-search-wrapper .semi-input {
+  height: 30px;
+  min-height: 30px;
+}
+
+.trae-audit-table {
+  min-width: 920px;
+  table-layout: fixed;
+}
+
+.trae-audit-table th:nth-child(1),
+.trae-audit-table td:nth-child(1) { width: 230px; }
+.trae-audit-table th:nth-child(2),
+.trae-audit-table td:nth-child(2) { width: auto; }
+.trae-audit-table th:nth-child(3),
+.trae-audit-table td:nth-child(3) { width: 240px; }
+.trae-audit-table th:nth-child(4),
+.trae-audit-table td:nth-child(4) { width: 180px; }
+
+.trae-audit-table tbody tr:nth-child(even) td {
+  background: var(--color-bg-overlay-l1);
+}
+
+.trae-audit-table tbody tr:hover td,
+.trae-audit-table tbody tr:focus-visible td {
+  background: var(--color-bg-overlay-l2);
+}
+
+.trae-audit-table tbody tr {
+  cursor: pointer;
+}
+
+.trae-audit-table tbody tr:focus-visible {
+  outline: 2px solid var(--color-brand);
+  outline-offset: -2px;
+}
+
+.trae-audit-action-cell,
+.trae-audit-record-cell,
+.trae-audit-operator-cell {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+  white-space: normal;
+}
+
+.trae-audit-action-cell strong,
+.trae-audit-operator-cell strong {
+  overflow: hidden;
+  color: var(--color-text-default-hover);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 18px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trae-audit-operator-cell small,
+.trae-audit-record-cell > span {
+  overflow: hidden;
+  color: var(--color-text-tertiary);
+  font-size: 12px;
+  line-height: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trae-audit-record-cell {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.trae-audit-result {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  min-height: 20px;
+  padding: 0 7px;
+  border: 1px solid var(--color-border-neutral-l2);
+  border-radius: 4px;
+  color: var(--color-text-secondary);
+  background: var(--color-bg-base-tertiary);
+  font-size: 11px;
+  line-height: 18px;
+  white-space: nowrap;
+}
+
+.trae-audit-result.is-success {
+  border-color: color-mix(in srgb, var(--color-success) 32%, transparent);
+  color: var(--color-success);
+}
+
+.trae-audit-result.is-partial {
+  border-color: color-mix(in srgb, var(--color-warning, #d9a95e) 34%, transparent);
+  color: var(--color-warning, #d9a95e);
+}
+
+.trae-audit-result.is-failure {
+  border-color: color-mix(in srgb, var(--color-danger, #d66b73) 32%, transparent);
+  color: var(--color-danger, #d66b73);
+}
+
+.trae-audit-detail-modal.semi-modal {
+  width: min(680px, calc(100vw - 32px));
+}
+
+.trae-audit-detail-modal .semi-modal-content {
+  color: var(--color-text-default);
+  background: var(--color-bg-menu);
+}
+
+.trae-audit-detail-list {
+  display: grid;
+  gap: 0;
+  margin: 0;
+}
+
+.trae-audit-detail-list > div {
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr);
+  gap: 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--color-border-neutral-l1);
+}
+
+.trae-audit-detail-list > div:last-child {
+  border-bottom: 0;
+}
+
+.trae-audit-detail-list dt {
+  color: var(--color-text-tertiary);
+  font-size: 12px;
+}
+
+.trae-audit-detail-list dd {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  margin: 0;
+  color: var(--color-text-default-hover);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.trae-audit-detail-list dd strong {
+  font-weight: 550;
+}
+
+.trae-audit-detail-list dd small {
+  color: var(--color-text-tertiary);
+}
+
+.trae-audit-detail-list code,
+.trae-audit-detail-list pre {
+  color: var(--color-text-secondary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.trae-audit-detail-list pre {
+  width: 100%;
+  max-height: 220px;
+  overflow: auto;
+  margin: 0;
+  padding: 10px;
+  border: 1px solid var(--color-border-neutral-l1);
+  border-radius: 6px;
+  background: var(--color-bg-base-secondary);
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.trae-audit-change-row dd {
+  display: block;
+}
+
+@media (max-width: 720px) {
+  .trae-audit-page > .trae-toolbar .trae-select.semi-select,
+  .trae-audit-page > .trae-toolbar .trae-date-picker.semi-datepicker {
+    width: 100%;
+  }
+
+  .trae-audit-detail-list > div {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+}

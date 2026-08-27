@@ -8,6 +8,21 @@
   font-size: calc(100px * var(--home-reward-stat-scale, 1));
 }
 
+/* Let units shrink inside the stat card without changing the Chinese typography. */
+.public-layout--manuscript-home .manuscript-promotion .manuscript-reward-stats .home-reward-stat__unit {
+  min-width: 0;
+  flex: 0 1 auto;
+}
+
+/* English units are longer than the Chinese units, so use a compact size in English mode. */
+html[lang="en"] .public-layout--manuscript-home .manuscript-promotion .manuscript-reward-stats .home-reward-stat__unit {
+  font-size: 14px;
+}
+
+html[lang="en"] .public-layout--manuscript-home .manuscript-promotion .manuscript-reward-stats .home-reward-stat__unit--long {
+  font-size: 10px;
+}
+
 .public-layout--manuscript-home .manuscript-promotion .manuscript-reward-stats .home-reward-stat__label {
   align-self: start;
 }
@@ -15,5 +30,15 @@
 @media (max-width: 480px) {
   .public-layout--manuscript-home .manuscript-promotion .manuscript-reward-stats .home-reward-stat__value {
     font-size: calc(82px * var(--home-reward-stat-scale, 1));
+  }
+}
+
+@media (max-width: 570px) {
+  html[lang="en"] .public-layout--manuscript-home .manuscript-promotion .manuscript-reward-stats .home-reward-stat__unit {
+    font-size: 11px;
+  }
+
+  html[lang="en"] .public-layout--manuscript-home .manuscript-promotion .manuscript-reward-stats .home-reward-stat__unit--long {
+    font-size: 9px;
   }
 }

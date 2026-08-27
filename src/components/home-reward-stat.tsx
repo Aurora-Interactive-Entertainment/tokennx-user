@@ -27,7 +27,7 @@ export function HomeRewardStat({ value, unit, label }: HomeRewardStatProps) {
   return (
     <span className="home-reward-stat">
       <strong className="home-reward-stat__value" style={style}>
-        {value}<em>{unit}</em>
+        {value}<em className={`home-reward-stat__unit${unit.trim().length > 4 ? ' home-reward-stat__unit--long' : ''}`}>{unit}</em>
       </strong>
       <small className="home-reward-stat__label">{label}</small>
     </span>

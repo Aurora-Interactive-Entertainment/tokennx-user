@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import Table from "@douyinfe/semi-ui/lib/es/table";
+import { useTranslation } from "react-i18next";
+import { TraeTableEmpty } from "./trae-table-empty";
 import "./trae-usage-department-table.css";
 
 export type TraeUsageDepartmentNode = {
   id: string;
   name: string;
   total: string;
-  base: string;
-  overage: string;
+  tokens: string;
+  requests: string;
   children?: TraeUsageDepartmentNode[];
 };
 
@@ -15,8 +17,8 @@ type TraeUsageDepartmentTableProps = {
   dataSource: TraeUsageDepartmentNode[];
   departmentTitle: string;
   periodTotalTitle: string;
-  baseAmountTitle: string;
-  overageAmountTitle: string;
+  tokenTitle: string;
+  requestTitle: string;
   query: string;
 };
 
@@ -46,15 +48,12 @@ export function TraeUsageDepartmentTable({
   dataSource,
   departmentTitle,
   periodTotalTitle,
-  baseAmountTitle,
-  overageAmountTitle,
+  tokenTitle,
+  requestTitle,
   query,
 }: TraeUsageDepartmentTableProps) {
-  const [expandedRowKeys, setExpandedRowKeys] = useState<Array<string | number>>([
-    "company",
-    "operation",
-    "test-level-one",
-  ]);
+  const { t } = useTranslation();
+  const [expandedRowKeys, setExpandedRowKeys] = useState<Array<string | number>>([]);
   const normalizedQuery = query.trim().toLocaleLowerCase();
   const filteredData = useMemo(
     () => filterDepartmentTree(dataSource, normalizedQuery),
@@ -62,16 +61,21 @@ export function TraeUsageDepartmentTable({
   );
 
   useEffect(() => {
-    if (!normalizedQuery) return;
+    if (!normalizedQuery) {
+      // 首次加载真实目录时展开企业根节点，后续收起状态由 Semi 自己维护。
+      setExpandedRowKeys((current) => current.length > 0 ? current : dataSource.slice(0, 1).map((node) => node.id));
+      return;
+    }
     // 搜索条件变化时展开匹配路径一次，后续仍交给 Semi 响应用户的收起操作。
     setExpandedRowKeys(collectExpandableKeys(filteredData));
-  }, [filteredData, normalizedQuery]);
+  }, [dataSource, filteredData, normalizedQuery]);
 
   return (
     <div className="trae-usage-department-table-scroll">
       <Table<TraeUsageDepartmentNode>
         className="trae-usage-department-table"
         dataSource={filteredData}
+        empty={<TraeTableEmpty hint={t("traeEnterprise.common.noDataHint")} />}
         rowKey="id"
         childrenRecordName="children"
         expandedRowKeys={expandedRowKeys}
@@ -99,17 +103,17 @@ export function TraeUsageDepartmentTable({
             className: "trae-usage-department-amount",
           },
           {
-            title: baseAmountTitle,
-            dataIndex: "base",
-            key: "base",
+            title: tokenTitle,
+            dataIndex: "tokens",
+            key: "tokens",
             width: "22%",
             align: "right",
             className: "trae-usage-department-amount",
           },
           {
-            title: overageAmountTitle,
-            dataIndex: "overage",
-            key: "overage",
+            title: requestTitle,
+            dataIndex: "requests",
+            key: "requests",
             width: "22%",
             align: "right",
             className: "trae-usage-department-amount",

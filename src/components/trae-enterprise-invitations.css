@@ -1,0 +1,40 @@
+.trae-invitation-panel { min-width: 0; padding-top: 16px; margin: 0 var(--trae-members-page-gutter, 32px); }
+.trae-invitation-toolbar { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-bottom: 18px; }
+.trae-invitation-status-select { width: 136px; height: 32px; font-size: 13px; }
+.trae-invitation-toolbar .trae-secondary-button { min-height: 32px; padding-inline: 10px; font-size: 13px; }
+.trae-invitation-table { min-width: 1050px; }
+.trae-table.trae-invitation-table th, .trae-table.trae-invitation-table td { height: 45px; font-size: 13px; }
+.trae-table.trae-invitation-table th { color: var(--color-text-tertiary); }
+.trae-invitation-table tbody tr:nth-child(even):not(:has(.trae-table-empty)) td { background: var(--color-bg-overlay-l1); }
+.trae-invitation-table tbody tr:hover td { background: var(--color-bg-overlay-l2); }
+.trae-invitation-method { display: inline-flex; align-items: center; gap: 7px; color: var(--color-text-default-hover); font-weight: 550; }
+.trae-invitation-method svg { width: 15px; height: 15px; color: var(--color-text-tertiary); }
+.trae-invitation-url { display: block; max-width: 300px; overflow: hidden; color: var(--color-text-secondary); font-family: var(--font-mono); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.trae-invitation-role { display: inline-flex; min-height: 24px; align-items: center; padding: 0 8px; border-radius: 4px; color: var(--color-text-secondary); background: var(--color-bg-overlay-l2); font-size: 11px; }
+.trae-invitation-actions { display: flex; align-items: center; gap: 12px; }
+.trae-invitation-actions button { display: inline-flex; align-items: center; gap: 4px; padding: 0; border: 0; color: var(--color-text-default); background: transparent; font: inherit; font-size: 13px; cursor: pointer; }
+.trae-invitation-actions button:hover { color: var(--color-brand); }
+.trae-invitation-actions svg { width: 14px; height: 14px; }
+.trae-invitation-create-dialog { width: min(560px, 100%); }
+.trae-invitation-create-dialog > header, .trae-invitation-usage-dialog > header { border-bottom: 0; }
+.trae-invitation-create-form { gap: 14px; }
+.trae-invitation-intro { display: grid; gap: 6px; padding: 12px; border: 1px solid var(--color-border-neutral-l1); border-radius: 6px; background: var(--color-bg-base-secondary); }
+.trae-invitation-intro strong { color: var(--color-text-default-hover); font-size: 16px; }
+.trae-invitation-intro span, .trae-invitation-form-hint { color: var(--color-text-secondary); font-size: 13px; line-height: 1.5; }
+.trae-invitation-form-hint { margin: -5px 0 0; }
+.trae-invitation-usage-dialog { width: min(600px, 100%); }
+.trae-invitation-usage-content { padding: 0 12px 12px; }
+.trae-invitation-usage-summary { display: flex; gap: 42px; padding: 4px 0 18px; }
+.trae-invitation-usage-summary div { display: grid; gap: 5px; }
+.trae-invitation-usage-summary span { color: var(--color-text-tertiary); font-size: 12px; }
+.trae-invitation-usage-summary strong { color: var(--color-text-default-hover); font-size: 17px; font-weight: 550; }
+.trae-invitation-no-usage { display: grid; min-height: 180px; place-content: center; justify-items: center; gap: 9px; text-align: center; }
+.trae-invitation-no-usage strong { color: var(--color-text-secondary); font-size: 16px; }
+.trae-invitation-no-usage span { color: var(--color-text-tertiary); font-size: 13px; }
+.trae-invitation-usage-list { display: grid; max-height: 260px; overflow-y: auto; border-top: 1px solid var(--color-border-neutral-l1); }
+.trae-invitation-usage-list > div { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 48px; border-bottom: 1px solid var(--color-border-neutral-l1); }
+.trae-invitation-usage-list > div > span { display: grid; gap: 2px; min-width: 0; }
+.trae-invitation-usage-list strong { color: var(--color-text-default-hover); font-size: 13px; }
+.trae-invitation-usage-list small, .trae-invitation-usage-list time { color: var(--color-text-tertiary); font-size: 11px; }
+.trae-invitation-usage-content > .trae-dialog-actions { margin-top: 14px; }
+@media (max-width: 700px) { .trae-invitation-panel { margin-inline: var(--trae-members-page-gutter, 12px); } .trae-invitation-toolbar { justify-content: stretch; } .trae-invitation-status-select { flex: 1; } }

@@ -19,7 +19,7 @@ import { getPublicHomepage, getPublicHomepageAssetURL, getPublicHomepageMediaURL
 import { getModelUsageLeaderboard, getRecentModelUsage, type ModelUsageLeaderboard, type RecentModelUsage } from '@/api/model-rankings'
 import { getToolUsageClients, getToolUsageLeaderboard, type ToolUsageClients, type ToolUsageLeaderboard } from '@/api/tool-usage'
 import { getPublicDocument, getPublicDocumentAssetUrl, getPublicDocsTree, publicDocumentHref, type PublicDocument, type PublicDocsLocale, type PublicDocsNode } from '@/api/public-docs'
-import { getPublicModelMarket, type PublicMarketModel, type PublicModelMarket } from '@/api/public-model-market'
+import { getPublicModelMarket, type PublicMarketModel, type PublicMarketTopic, type PublicModelMarket } from '@/api/public-model-market'
 import { isApiError } from '@/api/http'
 import { findModel, findModelInList, modelAlias, modelRouteKey, MODEL_CATALOG, MODALITY_LABELS, type ModelAvailabilityHour, type ModelModality, type ModelPrice, type ModelRecord } from '@/data/models'
 import { getAccessToken } from '@/auth/token-storage'
@@ -45,7 +45,7 @@ function modelPublicHref(model: { id: string; alias?: string }): string | undefi
 const HOME_MODEL_MOSAIC_COLUMNS = 6
 const HOME_REWARD_STATS = [
   { value: '00', unitKey: 'rewardPendingUnit', labelKey: 'rewardPending' },
-  { value: '00000', unitKey: 'rewardApprovedUnit', labelKey: 'rewardApproved' },
+  { value: '00', unitKey: 'rewardApprovedUnit', labelKey: 'rewardApproved' },
   { value: '00', unitKey: 'rewardRejectedUnit', labelKey: 'rewardRejected' },
 ] as const
 const HOME_REWARD_AVATAR_COUNT = 6
@@ -167,6 +167,31 @@ function homepagePrice(value: string | number | undefined): string {
 
 function homepageMediaURL(objectID: string | undefined, fallbackURL: unknown): string | undefined {
   return getPublicHomepageAssetURL(objectID) ?? getPublicHomepageMediaURL(fallbackURL)
+}
+
+function homepageString(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined
+  const normalized = value.trim()
+  return normalized || undefined
+}
+
+// 首页运营条目在不同版本接口中可能把图片放在翻译字段或条目根字段，统一从接口数据解析。
+function homepageEntryMediaURL(entry: HomepageEntry, language: string): string | undefined {
+  const locale = homepageLocale(language)
+  const localizedContent = entry.data.translations?.[locale]
+  const fallbackLocale = locale === 'en-US' ? 'zh-CN' : 'en-US'
+  const fallbackContent = entry.data.translations?.[fallbackLocale]
+  const rootData = entry.data
+  const rootObjectID = homepageString(rootData.image_object_id)
+  const rootImageURL = homepageString(rootData.image_url) ?? homepageString(rootData.cover_url)
+  return homepageMediaURL(
+    homepageString(localizedContent?.image_object_id) ?? homepageString(fallbackContent?.image_object_id) ?? rootObjectID,
+    homepageString(localizedContent?.image_url)
+      ?? homepageString(localizedContent?.cover_url)
+      ?? homepageString(fallbackContent?.image_url)
+      ?? homepageString(fallbackContent?.cover_url)
+      ?? rootImageURL,
+  )
 }
 
 function useHomeMetrics(): { tokenVolume: number; apiCalls: number; initialRequestFinished: boolean } {
@@ -619,7 +644,7 @@ function ManagedNewsCard({ entry, newsIndex }: { entry: HomepageEntry; newsIndex
   const href = `/news/${encodeURIComponent(entry.id)}`
   const title = t(`home.rebuild.news.${newsIndex}.title`)
   const description = t(`home.rebuild.news.${newsIndex}.description`)
-  const coverURL = getPublicHomepageMediaURL(entry.data.cover_url)
+  const coverURL = homepageEntryMediaURL(entry, i18n.language)
   const card = <><div className="manuscript-news-copy"><h3 title={title}>{title}</h3><p title={description}>{description}</p><small>{homepageDate(entry.updated_at, i18n.language)} <b className="manuscript-news-new">{t('public.home.newBadge')}</b></small></div><div className={`manuscript-news-art manuscript-news-art--${newsIndex}`} aria-hidden="true"><img className="manuscript-news-art-image" src={coverURL || promoArticleArt} alt="" loading="lazy" decoding="async" width={850} height={333} onError={(event) => {
     if (event.currentTarget.getAttribute('src') !== promoArticleArt) event.currentTarget.src = promoArticleArt
     // 中文：封面失效时回退到本地默认图，避免卡片出现破图。
@@ -632,9 +657,7 @@ function ManagedAdSlots({ entries }: { entries: HomepageEntry[] }) {
   const { t, i18n } = useTranslation()
   return <div className="manuscript-ad-slots">{entries.map((entry) => {
     const content = homepageTranslation(entry, i18n.language)
-    // 中文：广告封面以接口 image_url 为准，兼容语言内容字段与条目根字段。
-    // 中文：广告位优先使用接口 image_url，缺失时再回退到对象资源地址。
-    const imageURL = getPublicHomepageMediaURL(content.image_url ?? entry.data.image_url) ?? getPublicHomepageAssetURL(content.image_object_id)
+    const imageURL = homepageEntryMediaURL(entry, i18n.language)
     const ad = <img src={imageURL || promoBannerArt} alt={content.title || t('home.rebuild.adSlot')} loading="lazy" decoding="async" width={850} height={193} />
     // 中文：推广广告统一承接邀请活动，未登录时由公共登录弹窗完成后续跳转。
     return <LoginRequiredAction className="manuscript-ad-slot" key={entry.id} returnPath="/console/invitations">{ad}</LoginRequiredAction>
@@ -784,6 +807,7 @@ export function HomePage({ onInitialScoreboardReady }: { onInitialScoreboardRead
   const homepageRequestIdRef = useRef(0)
   const initialAuthStatusRef = useRef(authStatus)
   const previousAuthStatusRef = useRef(authStatus)
+  const homepageLanguageRef = useRef(i18n.language)
 
   useEffect(() => {
     const litePerformance = /MicroMessenger/i.test(navigator.userAgent) || (window.matchMedia?.('(pointer: coarse)').matches ?? false) || (navigator.hardwareConcurrency > 0 && navigator.hardwareConcurrency <= 4)
@@ -865,6 +889,12 @@ export function HomePage({ onInitialScoreboardReady }: { onInitialScoreboardRead
       refreshHomepage()
     }
   }, [authStatus, refreshHomepage])
+
+  useEffect(() => {
+    if (homepageLanguageRef.current === i18n.language) return
+    homepageLanguageRef.current = i18n.language
+    refreshHomepage(authStatus === 'authenticated' ? getAccessToken() ?? undefined : undefined)
+  }, [authStatus, i18n.language, refreshHomepage])
 
   const homeMetrics = useHomeMetrics()
   const animatedTokenVolume = useScoreboardValue(homeMetrics.tokenVolume)
@@ -968,6 +998,14 @@ function fallbackShowcaseGroups(): ModelsShowcaseGroup[] {
   ]
 }
 
+function publicMarketTopicTitleKey(topic: PublicMarketTopic): string | undefined {
+  const topicName = `${topic.id} ${topic.name} ${topic.name_en ?? ''}`.toLowerCase()
+  if (/文本|text/.test(topicName)) return 'public.models.groups.textTitle'
+  if (/图片|图像|image/.test(topicName)) return 'public.models.groups.imageTitle'
+  if (/视频|video/.test(topicName)) return 'public.models.groups.videoTitle'
+  return undefined
+}
+
 export function ModelsPublicPage() {
   const { i18n } = useTranslation()
   const [market, setMarket] = useState<PublicModelMarket | null>(null)
@@ -986,13 +1024,16 @@ export function ModelsPublicPage() {
     const modelById = new Map<string, PublicMarketModel>()
     market.carousels.forEach((carousel) => { if (carousel.model) modelById.set(carousel.model.id, carousel.model) })
     market.topics.forEach((topic) => topic.models?.forEach((model) => modelById.set(model.id, model)))
-    const mappedGroups = market.topics.map((topic, index) => ({
-      id: topic.id,
-      title: english ? topic.name_en || topic.name : topic.name,
-      description: '',
-      models: (topic.models ?? topic.model_ids?.flatMap((id) => { const model = modelById.get(id); return model ? [model] : [] }) ?? []).map(publicMarketModelToRecord),
-      carousels: index === 0 ? market.carousels : [],
-    })).filter((group) => group.models.length > 0)
+    const mappedGroups = market.topics.map((topic, index) => {
+      const titleKey = publicMarketTopicTitleKey(topic)
+      return {
+        id: topic.id,
+        ...(titleKey ? { titleKey } : { title: english ? topic.name_en || topic.name : topic.name }),
+        description: '',
+        models: (topic.models ?? topic.model_ids?.flatMap((id) => { const model = modelById.get(id); return model ? [model] : [] }) ?? []).map(publicMarketModelToRecord),
+        carousels: index === 0 ? market.carousels : [],
+      }
+    }).filter((group) => group.models.length > 0)
     if (mappedGroups.length) return mappedGroups
     const fallback = fallbackShowcaseGroups()
     fallback[0].carousels = market.carousels
@@ -1519,6 +1560,7 @@ export function DocsPage() {
   const [activeHeading, setActiveHeading] = useState('')
   const [collapsedHeadings, setCollapsedHeadings] = useState<Set<string>>(() => new Set())
   const [expandedDirectories, setExpandedDirectories] = useState<Set<string>>(() => new Set())
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
 
   const rootNodes = useMemo(() => tree.filter((node) => !node.parent_id), [tree])
   const childrenByParent = useMemo(() => buildDocsChildrenMap(tree), [tree])
@@ -1590,6 +1632,10 @@ export function DocsPage() {
   useEffect(() => {
     if (currentDocument && currentDocument.id === publicId && slug !== currentDocument.slug) navigate(publicDocumentHref(currentDocument), { replace: true })
   }, [currentDocument, navigate, publicId, slug])
+
+  useEffect(() => {
+    setMobileSidebarOpen(false)
+  }, [publicId])
 
   useEffect(() => {
     const nextExpanded = new Set(selectedNode ? docsDirectoryAncestors(tree, selectedNode.id) : [])
@@ -1691,7 +1737,10 @@ export function DocsPage() {
       </nav>
 
       <div className="docs-shell" aria-busy={loading || undefined}>
-        <aside className={`docs-sidebar${isFlatSidebar ? ' docs-sidebar--flat' : ''}`} aria-label={t('public.docs.manuscript.sidebarLabel')}>
+        <aside className={`docs-sidebar${isFlatSidebar ? ' docs-sidebar--flat' : ''}${mobileSidebarOpen ? ' is-mobile-open' : ''}`} aria-label={t('public.docs.manuscript.sidebarLabel')} onClick={(event) => { if ((event.target as Element).closest('a')) setMobileSidebarOpen(false) }}>
+          <button className="docs-mobile-sidebar-toggle" type="button" aria-expanded={mobileSidebarOpen} aria-label={`${mobileSidebarOpen ? t('public.docs.manuscript.collapse') : t('public.docs.manuscript.expand')} ${t('public.docs.manuscript.sidebarLabel')}`} onClick={() => setMobileSidebarOpen((open) => !open)}>
+            <span>{selectedNode?.title ?? t('public.docs.manuscript.sidebarLabel')}</span><IconChevronDown aria-hidden="true" />
+          </button>
           <nav>{activeRoot ? <DocsSidebarNodes childrenByParent={childrenByParent} parentId={activeRoot.id} selectedId={selectedNode?.id} expandedDirectories={expandedDirectories} labels={{ collapse: t('public.docs.manuscript.collapse'), expand: t('public.docs.manuscript.expand') }} onToggle={toggleDirectory} onPrefetch={prefetchDocument} /> : null}</nav>
         </aside>
 

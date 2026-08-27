@@ -1,0 +1,45 @@
+.trae-table-empty {
+  display: grid;
+  min-height: 160px;
+  place-content: center;
+  justify-items: center;
+  gap: 7px;
+  padding: 20px;
+  border: 0;
+  color: var(--color-text-tertiary);
+  background: transparent;
+  text-align: center;
+}
+
+.trae-table-empty svg {
+  width: 23px;
+  height: 23px;
+  color: var(--color-text-tertiary);
+}
+
+.trae-table-empty strong {
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 550;
+}
+
+.trae-table-empty span {
+  font-size: 11px;
+}
+
+/* Semi 的占位行只负责承载空状态，不能再绘制一层背景或内边距。 */
+.semi-table-placeholder:has(.trae-table-empty) {
+  padding: 0;
+  border-bottom: 0;
+  background: transparent;
+}
+
+.semi-table-empty:has(.trae-table-empty) {
+  width: 100%;
+}
+
+.trae-table tbody tr:has(.trae-table-empty) > td {
+  height: auto;
+  padding: 0;
+  background: transparent;
+}

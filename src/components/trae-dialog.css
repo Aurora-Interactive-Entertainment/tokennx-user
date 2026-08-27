@@ -1,0 +1,57 @@
+.trae-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 150;
+  display: grid;
+  place-items: center;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.trae-dialog {
+  width: min(460px, 100%);
+  border: 1px solid var(--color-border-neutral-l2);
+  border-radius: 8px;
+  background: var(--color-bg-menu);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.3);
+}
+
+.trae-dialog > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+  border-bottom: 1px solid var(--color-border-neutral-l1);
+}
+
+.trae-dialog > header h2 {
+  color: var(--color-text-default-hover);
+  font-size: 16px;
+}
+
+.trae-dialog > header button {
+  display: inline-grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: 0;
+  border-radius: 5px;
+  color: var(--color-text-tertiary);
+  background: transparent;
+  cursor: pointer;
+}
+
+.trae-dialog > header button:hover {
+  color: var(--color-text-default-hover);
+  background: var(--color-bg-overlay-l3);
+}
+
+@media (max-width: 560px) {
+  .trae-dialog-backdrop {
+    align-items: end;
+    padding: 12px;
+  }
+}

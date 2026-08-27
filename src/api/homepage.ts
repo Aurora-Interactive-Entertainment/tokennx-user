@@ -27,6 +27,7 @@ export interface HomepageTranslation {
   summary?: string
   content_html?: string
   image_url?: string
+  cover_url?: string
   image_object_id?: string
   link_url?: string
   name?: string

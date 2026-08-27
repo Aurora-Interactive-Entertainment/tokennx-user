@@ -245,11 +245,11 @@ describe('用户费用管理页面', () => {
     expect(new Headers(analysisCall?.[1]?.headers).get('X-Request-ID')).toBeTruthy()
   })
 
-  it('套餐入口查询参数会直接打开订阅与资源包页签', () => {
+  it('已移除的订阅页签查询参数会回到账务概览', () => {
     renderBilling({ tab: 'subscription' })
 
-    expect(screen.getByRole('tab', { name: '订阅与资源包' })).toHaveAttribute('aria-selected', 'true')
-    expect(screen.getByRole('heading', { name: '在线订阅暂未开放' })).toBeInTheDocument()
+    expect(screen.queryByRole('tab', { name: '订阅与资源包' })).toBeNull()
+    expect(screen.getByRole('tab', { name: '费用' })).toHaveAttribute('aria-selected', 'true')
   })
 
   it('使用账面余额展示，不因预授权释放回升可用余额', async () => {
@@ -300,8 +300,6 @@ describe('用户费用管理页面', () => {
     expect(JSON.parse(String(paymentStartCall?.[1]?.body))).toEqual({ scene: 'pc' })
     expect(new Headers(paymentStartCall?.[1]?.headers).get('Idempotency-Key')).toBeTruthy()
 
-    await user.click(screen.getByRole('tab', { name: '订阅与资源包' }))
-    expect(screen.getByText('在线订阅暂未开放')).toBeInTheDocument()
     await user.click(screen.getByRole('tab', { name: '费用' }))
     screen.getByRole('tab', { name: '费用' }).focus()
     await user.keyboard('{ArrowRight}')

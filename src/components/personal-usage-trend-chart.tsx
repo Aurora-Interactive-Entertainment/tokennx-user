@@ -87,7 +87,9 @@ export function PersonalUsageTrendChart({
     );
     chart.setOption({
       animationDuration: 320,
-      grid: { left: 48, right: 52, top: 22, bottom: 42, containLabel: true },
+      // The chart panel owns horizontal padding; containLabel reserves only the
+      // space required by the left and right value-axis labels.
+      grid: { left: 0, right: 0, top: 22, bottom: 42, containLabel: true },
       tooltip: {
         trigger: "axis",
         confine: true,

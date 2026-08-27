@@ -1,5 +1,5 @@
 import { getAccessToken } from '@/auth/token-storage'
-import type { ApiTimestamp } from '@/utils/format'
+import type { ApiTimeValue, ApiTimestamp } from '@/utils/format'
 import i18n from '@/i18n'
 import { fetchAuthenticatedJson } from './authenticated'
 import { ApiError, isApiError, type FetchJsonOptions } from './http'
@@ -24,6 +24,10 @@ export interface EnterpriseCapabilities {
   can_view_usage: boolean
   can_view_audit: boolean
   can_view_analytics: boolean
+  // 部门接口使用的细粒度能力；旧服务端可能省略，故保持可选兼容。
+  can_view_departments?: boolean
+  can_manage_departments?: boolean
+  can_manage_department_members?: boolean
 }
 
 export interface EnterpriseRoleOption {
@@ -123,11 +127,42 @@ export interface EnterpriseMember {
   tags: EnterpriseTagRef[]
   budget?: EnterpriseBudget | null
   version: number
+  department?: { id: string; name: string } | null
 }
 
 export interface EnterpriseMemberPage {
   context: EnterpriseContext
   items: EnterpriseMember[]
+  total: number
+  page: number
+  page_size: number
+}
+
+export interface EnterpriseDepartmentLimits {
+  daily_cost_limit_yuan: string | null
+  weekly_cost_limit_yuan: string | null
+  monthly_cost_limit_yuan: string | null
+  concurrency_limit: number | null
+  rpm_limit: number | null
+  tpm_limit: number | null
+}
+
+export interface EnterpriseDepartment {
+  id: string
+  parent_id?: string | null
+  name: string
+  depth: number
+  child_count: number
+  member_count: number
+  limits?: { configured: EnterpriseDepartmentLimits; effective: EnterpriseDepartmentLimits }
+  version: number
+  created_at: ApiTimeValue
+  updated_at: ApiTimeValue
+}
+
+export interface EnterpriseDepartmentPage {
+  context: EnterpriseContext
+  items: EnterpriseDepartment[]
   total: number
   page: number
   page_size: number
@@ -153,6 +188,7 @@ export interface EnterpriseTag {
 export interface EnterpriseJoinRequest {
   id: string
   applicant_user_id: string
+  invitation_link_id?: string
   applicant_name: string
   applicant_contact: string
   requested_role: string
@@ -160,9 +196,9 @@ export interface EnterpriseJoinRequest {
   status: string
   rejection_reason?: string
   reviewed_by_member_id?: string
-  reviewed_at?: ApiTimestamp | null
-  created_at: ApiTimestamp
-  updated_at: ApiTimestamp
+  reviewed_at?: ApiTimeValue | null
+  created_at: ApiTimeValue
+  updated_at: ApiTimeValue
   version: number
 }
 
@@ -180,11 +216,11 @@ export interface EnterpriseInvitation {
   role_name: string
   max_uses: number
   used_count: number
-  expires_at?: ApiTimestamp | null
+  expires_at?: ApiTimeValue | null
   status: string
   inviter_name: string
-  created_at: ApiTimestamp
-  updated_at: ApiTimestamp
+  created_at: ApiTimeValue
+  updated_at: ApiTimeValue
   invite_token?: string
   invite_url?: string
   version: number
@@ -202,7 +238,7 @@ export interface EnterpriseInvitationUsage {
   user_id: string
   member_id?: string
   user_name: string
-  joined_at: ApiTimestamp
+  joined_at: ApiTimeValue
 }
 
 export interface EnterpriseInvitationPreview {
@@ -223,8 +259,8 @@ export interface EnterpriseInvitationPreview {
 
 export interface EnterpriseUsagePeriod {
   range: string
-  start_at: ApiTimestamp
-  end_at: ApiTimestamp
+  start_at: ApiTimeValue
+  end_at: ApiTimeValue
   label: string
 }
 
@@ -303,17 +339,97 @@ export interface EnterpriseUsageResponse {
   total_members: number
 }
 
+export interface EnterpriseAnalyticsMetrics {
+  request_count: number
+  cached_tokens: number
+  active_members: number
+  total_members: number
+  success_rate: number | null
+  average_latency_ms: number | null
+  peak_rpm: number
+  peak_tpm: number
+  latest_data_date: string
+  latest_day_input_tokens: number
+  latest_day_output_tokens: number
+  cumulative_input_tokens: number
+  cumulative_output_tokens: number
+  cumulative_request_count: number
+}
+
+export interface EnterpriseAnalyticsTool {
+  id: string
+  name: string
+  request_count: number
+  total_tokens: number
+  cost_yuan: string
+  latest_day_cost_yuan: string
+}
+
+export interface EnterpriseAnalyticsMember {
+  id: string
+  name: string
+  role: string
+  request_count: number
+  input_tokens: number
+  output_tokens: number
+  total_tokens: number
+  cost_yuan: string
+}
+
+export interface EnterpriseAnalyticsModel {
+  id?: string
+  code: string
+  alias: string
+  name: string
+  request_count: number
+  input_tokens: number
+  output_tokens: number
+  total_tokens: number
+  cost_yuan: string
+}
+
+export interface EnterpriseAnalyticsModelTrendPoint {
+  bucket: string
+  code: string
+  alias: string
+  name: string
+  total_tokens: number
+}
+
+export interface EnterpriseAnalyticsMemberModelTrendPoint {
+  bucket: string
+  member_id: string
+  member_name: string
+  code: string
+  name: string
+  total_tokens: number
+}
+
+/** Daily aggregate values returned by the enterprise analytics endpoint. */
+export interface EnterpriseAnalyticsDailyUsageTrendPoint {
+  date?: string
+  bucket?: string
+  value?: number
+  active_members?: number
+  active_member_count?: number
+  members?: number
+  count?: number
+  total_members?: number
+  request_count?: number
+  input_tokens?: number
+  output_tokens?: number
+  total_tokens?: number
+}
+
 export interface EnterpriseAnalyticsResponse {
-  context: EnterpriseContext
   period: EnterpriseUsagePeriod
-  metrics: EnterpriseUsageMetrics
-  trend: EnterpriseUsageTrendPoint[]
-  members: EnterpriseDimensionUsage[]
-  models: EnterpriseDimensionUsage[]
-  api_keys: EnterpriseDimensionUsage[]
-  sources: EnterpriseDimensionUsage[]
-  // 中文：协议维度由后端按需提供，旧接口未返回时页面展示诚实空态。
-  protocols?: EnterpriseDimensionUsage[]
+  metrics: EnterpriseAnalyticsMetrics
+  tools: EnterpriseAnalyticsTool[]
+  members: EnterpriseAnalyticsMember[]
+  models: EnterpriseAnalyticsModel[]
+  daily_usage_trend: EnterpriseAnalyticsDailyUsageTrendPoint[]
+  model_token_trend: EnterpriseAnalyticsModelTrendPoint[]
+  member_model_trend: EnterpriseAnalyticsMemberModelTrendPoint[]
 }
 
 export interface EnterpriseAuditLog {
@@ -331,7 +447,7 @@ export interface EnterpriseAuditLog {
   before: Record<string, unknown>
   after: Record<string, unknown>
   request_id: string
-  occurred_at: ApiTimestamp
+  occurred_at: ApiTimeValue
 }
 
 export interface EnterpriseAuditLogPage {
@@ -351,6 +467,21 @@ export type EnterpriseMembersRequest = EnterpriseListOptions & {
   role?: string
   tag_id?: string
   status?: string
+}
+
+export type EnterpriseDepartmentMembersRequest = EnterpriseListOptions & {
+  page?: number
+  page_size?: number
+  name?: string
+  email?: string
+  phone?: string
+}
+
+export type EnterpriseDepartmentsRequest = EnterpriseListOptions & {
+  page?: number
+  page_size?: number
+  parent_id?: string | null
+  name?: string
 }
 
 export type EnterpriseModelsRequest = EnterpriseListOptions & {
@@ -382,6 +513,14 @@ export type EnterpriseUsageRequest = EnterpriseListOptions & {
   member_id?: string
   page?: number
   page_size?: number
+}
+
+export type EnterpriseAnalyticsRequest = EnterpriseListOptions & {
+  range?: 'today' | '7d' | '30d' | 'month' | 'custom'
+  month?: string
+  start_at?: ApiTimestamp
+  end_at?: ApiTimestamp
+  member_id?: string
 }
 
 export type EnterpriseAuditLogsRequest = EnterpriseListOptions & {
@@ -416,7 +555,7 @@ export type EnterpriseRoleInput = {
 export type EnterpriseInvitationInput = {
   role: string
   max_uses: number
-  expires_at: ApiTimestamp | null
+  expires_at: ApiTimeValue | null
 }
 
 export type EnterpriseInvitationJoinInput = {
@@ -507,6 +646,40 @@ export function getEnterpriseMembers(context: EnterpriseRequestContext, options:
   return fetchAuthenticatedJson<EnterpriseMemberPage>(`${enterpriseBasePath(context)}/members?${query}`, requestOptions(options))
 }
 
+export function getEnterpriseDepartments(context: EnterpriseRequestContext, options: EnterpriseDepartmentsRequest = {}): Promise<EnterpriseDepartmentPage> {
+  const query = createEnterpriseQuery({ ...listOptions(options), parent_id: options.parent_id, name: options.name })
+  return fetchAuthenticatedJson<EnterpriseDepartmentPage>(`${enterpriseBasePath(context)}/departments?${query}`, requestOptions(options))
+}
+
+export function getEnterpriseDepartment(context: EnterpriseRequestContext, departmentID: string, options: EnterpriseListOptions = {}): Promise<EnterpriseDepartment> {
+  return fetchAuthenticatedJson<EnterpriseDepartment>(`${enterpriseBasePath(context)}/departments/${encodeURIComponent(departmentID.trim())}`, requestOptions(options))
+}
+
+export function getEnterpriseDepartmentMembers(context: EnterpriseRequestContext, departmentID: string, options: EnterpriseDepartmentMembersRequest = {}): Promise<EnterpriseMemberPage> {
+  const query = createEnterpriseQuery({ ...listOptions(options), name: options.name, email: options.email, phone: options.phone })
+  return fetchAuthenticatedJson<EnterpriseMemberPage>(`${enterpriseBasePath(context)}/departments/${encodeURIComponent(departmentID.trim())}/members?${query}`, requestOptions(options))
+}
+
+export function createEnterpriseDepartment(context: EnterpriseRequestContext, input: { parent_id?: string | null; name: string } & Partial<EnterpriseDepartmentLimits>, options: EnterpriseListOptions = {}): Promise<EnterpriseDepartment> {
+  return mutate<EnterpriseDepartment>(`${enterpriseBasePath(context)}/departments`, 'POST', input, options)
+}
+
+export function updateEnterpriseDepartment(context: EnterpriseRequestContext, departmentID: string, input: { parent_id?: string | null; name: string; expected_version: number } & Partial<EnterpriseDepartmentLimits>, options: EnterpriseListOptions = {}): Promise<EnterpriseDepartment> {
+  return mutate<EnterpriseDepartment>(`${enterpriseBasePath(context)}/departments/${encodeURIComponent(departmentID.trim())}`, 'PUT', input, options)
+}
+
+export function deleteEnterpriseDepartment(context: EnterpriseRequestContext, departmentID: string, expectedVersion: number, options: EnterpriseListOptions = {}): Promise<void> {
+  return mutate<void>(`${enterpriseBasePath(context)}/departments/${encodeURIComponent(departmentID.trim())}`, 'DELETE', { expected_version: expectedVersion }, options)
+}
+
+export function updateEnterpriseMemberDepartment(context: EnterpriseRequestContext, memberID: string, input: { department_id: string; expected_version: number }, options: EnterpriseListOptions = {}): Promise<EnterpriseMember> {
+  return mutate<EnterpriseMember>(`${memberPath(context, memberID)}/department`, 'PUT', input, options)
+}
+
+export function removeEnterpriseMember(context: EnterpriseRequestContext, memberID: string, expectedVersion: number, options: EnterpriseListOptions = {}): Promise<EnterpriseMember> {
+  return mutate<EnterpriseMember>(memberPath(context, memberID), 'DELETE', { expected_version: expectedVersion }, options)
+}
+
 // 中文：治理页面需要完整成员目录，按服务端允许的分页大小逐页读取，避免请求超出后端分页上限。
 export async function getAllEnterpriseMembers(context: EnterpriseRequestContext, options: EnterpriseListOptions = {}): Promise<EnterpriseMember[]> {
   const members: EnterpriseMember[] = []
@@ -558,20 +731,25 @@ function createUsageQuery(options: EnterpriseUsageRequest): string {
   return createEnterpriseQuery({ range: options.range, month: options.month, start_at: options.start_at, end_at: options.end_at, member_id: options.member_id, ...listOptions(options) })
 }
 
+function createAnalyticsQuery(options: EnterpriseAnalyticsRequest): string {
+  return createEnterpriseQuery({ range: options.range, month: options.month, start_at: options.start_at, end_at: options.end_at, member_id: options.member_id })
+}
+
 export function getEnterpriseUsage(context: EnterpriseRequestContext, options: EnterpriseUsageRequest = {}): Promise<EnterpriseUsageResponse> {
   return fetchAuthenticatedJson<EnterpriseUsageResponse>(`${enterpriseBasePath(context)}/usage?${createUsageQuery(options)}`, requestOptions(options))
 }
 
-export function getEnterpriseAnalytics(context: EnterpriseRequestContext, options: EnterpriseUsageRequest = {}): Promise<EnterpriseAnalyticsResponse> {
-  return fetchAuthenticatedJson<EnterpriseAnalyticsResponse>(`${enterpriseBasePath(context)}/analytics?${createUsageQuery(options)}`, requestOptions(options))
-    // 中文：后端在暂无用量等场景可能省略数组字段，统一兜底为空数组，避免页面读取 undefined.length 崩溃。
+export function getEnterpriseAnalytics(context: EnterpriseRequestContext, options: EnterpriseAnalyticsRequest = {}): Promise<EnterpriseAnalyticsResponse> {
+  return fetchAuthenticatedJson<EnterpriseAnalyticsResponse>(`${enterpriseBasePath(context)}/analytics?${createAnalyticsQuery(options)}`, requestOptions(options))
+    // 中文：分析接口的列表均非分页字段，暂无用量时统一归一为空数组，避免图表和表格读取 undefined。
     .then((response) => ({
       ...response,
-      trend: response.trend ?? [],
+      tools: response.tools ?? [],
       members: response.members ?? [],
       models: response.models ?? [],
-      api_keys: response.api_keys ?? [],
-      sources: response.sources ?? [],
+      daily_usage_trend: Array.isArray(response.daily_usage_trend) ? response.daily_usage_trend : [],
+      model_token_trend: response.model_token_trend ?? [],
+      member_model_trend: response.member_model_trend ?? [],
     }))
 }
 

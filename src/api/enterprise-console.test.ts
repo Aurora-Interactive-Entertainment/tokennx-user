@@ -17,6 +17,11 @@ import {
   getEnterpriseJoinRequests,
   getEnterpriseMember,
   getEnterpriseMembers,
+  getEnterpriseDepartments,
+  getEnterpriseDepartmentMembers,
+  createEnterpriseDepartment,
+  updateEnterpriseMemberDepartment,
+  removeEnterpriseMember,
   getEnterpriseModels,
   getEnterpriseTags,
   getEnterpriseUsage,
@@ -92,6 +97,24 @@ describe('企业控制台 API 客户端', () => {
     expect(requestURL.searchParams.get('include_disabled')).toBe('1')
   })
 
+  it('按企业部门接口契约生成部门、部门成员和成员变更请求', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => apiResponse({ items: [], total: 0, page: 1, page_size: 10 }))
+    await getEnterpriseDepartments(CONTEXT, { parent_id: 'dept-root', page_size: 10, accessToken: 'token' })
+    await getEnterpriseDepartmentMembers(CONTEXT, 'dept-sales', { name: '张', page: 2, accessToken: 'token' })
+    await createEnterpriseDepartment(CONTEXT, { parent_id: null, name: '研发' }, { accessToken: 'token' })
+    await updateEnterpriseMemberDepartment(CONTEXT, 'member-1', { department_id: 'dept-sales', expected_version: 3 }, { accessToken: 'token' })
+    await removeEnterpriseMember(CONTEXT, 'member-1', 4, { accessToken: 'token' })
+    const requests = fetchMock.mock.calls.map(([input, init]) => ({ url: new URL(String(input), window.location.origin), method: init?.method, body: init?.body ? JSON.parse(String(init.body)) : null }))
+    expect(requests[0]?.url.pathname).toBe('/api/user/enterprise/ent%2F01K0NX/departments')
+    expect(requests[0]?.url.searchParams.get('parent_id')).toBe('dept-root')
+    expect(requests[1]?.url.pathname).toBe('/api/user/enterprise/ent%2F01K0NX/departments/dept-sales/members')
+    expect(requests[1]?.url.searchParams.get('name')).toBe('张')
+    expect(requests[2]?.method).toBe('POST')
+    expect(requests[3]?.body).toEqual({ department_id: 'dept-sales', expected_version: 3 })
+    expect(requests[4]?.method).toBe('DELETE')
+    expect(requests[4]?.body).toEqual({ expected_version: 4 })
+  })
+
   it('按服务端分页限制读取全部企业成员', async () => {
     const firstPageItems = Array.from({ length: ENTERPRISE_PAGE_SIZE }, (_, index) => ({ id: `member-${index + 1}` }))
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
@@ -114,7 +137,7 @@ describe('企业控制台 API 客户端', () => {
   it('覆盖用量、分析、日志列表和日志详情的筛选参数', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => apiResponse({}))
     await getEnterpriseUsage(CONTEXT, { range: 'custom', start_at: Date.parse('2026-07-01T00:00:00.000Z'), end_at: Date.parse('2026-07-08T00:00:00.000Z'), member_id: 'member-2', page: 2, accessToken: 'token' })
-    await getEnterpriseAnalytics(CONTEXT, { range: 'month', month: '2026-07', page_size: 50, accessToken: 'token' })
+    await getEnterpriseAnalytics(CONTEXT, { range: 'month', month: '2026-07', member_id: 'member-2', accessToken: 'token' })
     await getEnterpriseAuditLogs(CONTEXT, { page: 3, category: 'member', action: 'role.update', actor_id: 'member-1', result: 'success', start_at: Date.parse('2026-07-01T00:00:00.000Z'), end_at: Date.parse('2026-07-31T00:00:00.000Z'), accessToken: 'token' })
     await getEnterpriseAuditLog(CONTEXT, 'event/1', { accessToken: 'token' })
 
@@ -123,10 +146,36 @@ describe('企业控制台 API 客户端', () => {
     expect(urls[0]?.searchParams.get('range')).toBe('custom')
     expect(urls[0]?.searchParams.get('member_id')).toBe('member-2')
     expect(urls[1]?.searchParams.get('month')).toBe('2026-07')
-    expect(urls[1]?.searchParams.get('page_size')).toBe('50')
+    expect(urls[1]?.searchParams.get('member_id')).toBe('member-2')
     expect(urls[2]?.searchParams.get('action')).toBe('role.update')
     expect(urls[2]?.searchParams.get('actor_id')).toBe('member-1')
     expect(urls[3]?.pathname).toBe('/api/user/enterprise/ent%2F01K0NX/audit-logs/event%2F1')
+  })
+
+  it('按企业分析接口契约返回指标并归一化缺省列表', async () => {
+    const response = {
+      period: { range: 'custom', start_at: '2026-08-01T00:00:00Z', end_at: '2026-08-08T00:00:00Z', label: '8 月 1 日至 8 日' },
+      metrics: { request_count: 12, cached_tokens: 300, active_members: 2, total_members: 4, success_rate: 91.5, average_latency_ms: 680.5, peak_rpm: 3, peak_tpm: 2400, latest_data_date: '2026-08-07', latest_day_input_tokens: 100, latest_day_output_tokens: 80, cumulative_input_tokens: 1000, cumulative_output_tokens: 800, cumulative_request_count: 20 },
+      daily_usage_trend: [{ date: '2026-08-07', active_members: 2 }],
+    }
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => apiResponse(response))
+
+    const result = await getEnterpriseAnalytics(CONTEXT, { range: 'custom', start_at: 1000, end_at: 2000, member_id: 'member-1', accessToken: 'token' })
+
+    expect(result.metrics.request_count).toBe(12)
+    expect(result.tools).toEqual([])
+    expect(result.members).toEqual([])
+    expect(result.models).toEqual([])
+    expect(result.daily_usage_trend).toEqual([{ date: '2026-08-07', active_members: 2 }])
+    expect(result.model_token_trend).toEqual([])
+    expect(result.member_model_trend).toEqual([])
+    const url = new URL(String(fetchMock.mock.calls[0]?.[0]), window.location.origin)
+    expect(url.searchParams.get('range')).toBe('custom')
+    expect(url.searchParams.get('start_at')).toBe('1000')
+    expect(url.searchParams.get('end_at')).toBe('2000')
+    expect(url.searchParams.get('member_id')).toBe('member-1')
+    expect(url.searchParams.has('page')).toBe(false)
+    expect(url.searchParams.has('page_size')).toBe(false)
   })
 
   it('按接口契约发送成员、标签、申请和邀请写请求', async () => {

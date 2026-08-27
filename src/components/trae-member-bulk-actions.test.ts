@@ -61,12 +61,12 @@ describe("getTraeBulkActionAvailability", () => {
     ).toEqual({ disabled: false });
   });
 
-  it("enables resend only when every selected member is pending activation", () => {
-    const invited = { ...admin, status: "invited" } as const;
+  it("enables resend only when every selected member is pending review", () => {
+    const pending = { ...admin, status: "pending" } as const;
     expect(
       getTraeBulkActionAvailability(
         "sendInvite",
-        [invited],
+        [pending],
         regularAdminOperator,
       ),
     ).toEqual({ disabled: false });

@@ -103,7 +103,7 @@ export const consoleResources = {
       enterprise: {
         gated: '请先切换到企业空间，再查看企业控制台数据。', contextLoading: '正在读取企业空间权限...', contextFailed: '企业空间上下文加载失败', noPermission: '当前成员没有查看此企业页面的权限，请联系企业所有者或管理员。', loadData: '正在加载企业数据...', reload: '重新加载', refresh: '刷新', exportCurrent: '导出当前数据',
         roleUnnamed: '未命名角色', memberActive: '正常', memberSuspended: '已暂停', memberRemoved: '已移出', memberUnknown: '未知状态', pendingReview: '待审核', approved: '已通过', rejected: '已拒绝', cancelled: '已撤回',
-        invitationActive: '生效中', revoked: '已撤销', invitationDisabled: '已停用', expired: '已过期', exhausted: '已用尽', resultSuccess: '成功', resultFailed: '失败', resultUnknown: '未知结果',
+        invitationActive: '生效中', revoked: '已撤销', invitationDisabled: '已停用', expired: '已过期', exhausted: '已用尽', resultSuccess: '成功', resultFailed: '失败', resultDenied: '已拒绝', resultPartial: '部分成功', resultUnknown: '未知结果',
         requestId: '请求 ID', chooseDate: '请选择开始日期和结束日期', dateOrder: '开始日期不能晚于结束日期', startDate: '开始日期', endDate: '结束日期',
         model: {
           title: '模型管理', description: '管理本企业空间已启用的模型，成员只能使用已启用模型', allModalities: '全部模态', text: '文本', image: '图像', video: '视频', audio: '语音', embedding: '向量嵌入', rerank: '重排序', multimodal: '多模态', other: '其他',
@@ -247,7 +247,7 @@ export const consoleResources = {
       enterprise: {
         gated: 'Switch to an enterprise workspace to view enterprise console data.', contextLoading: 'Reading enterprise workspace permissions...', contextFailed: 'Failed to load enterprise workspace context', noPermission: 'You do not have permission to view this enterprise page. Contact the enterprise owner or administrator.', loadData: 'Loading enterprise data...', reload: 'Reload', refresh: 'Refresh', exportCurrent: 'Export current data',
         roleUnnamed: 'Unnamed role', memberActive: 'Active', memberSuspended: 'Suspended', memberRemoved: 'Removed', memberUnknown: 'Unknown status', pendingReview: 'Pending review', approved: 'Approved', rejected: 'Rejected', cancelled: 'Withdrawn',
-        invitationActive: 'Active', revoked: 'Revoked', invitationDisabled: 'Disabled', expired: 'Expired', exhausted: 'Exhausted', resultSuccess: 'Success', resultFailed: 'Failed', resultUnknown: 'Unknown result',
+        invitationActive: 'Active', revoked: 'Revoked', invitationDisabled: 'Disabled', expired: 'Expired', exhausted: 'Exhausted', resultSuccess: 'Success', resultFailed: 'Failed', resultDenied: 'Denied', resultPartial: 'Partially succeeded', resultUnknown: 'Unknown result',
         requestId: 'Request ID', chooseDate: 'Select a start date and end date', dateOrder: 'The start date cannot be later than the end date', startDate: 'Start date', endDate: 'End date',
         model: {
           title: 'Model management', description: 'Manage models enabled for this enterprise workspace; members can use enabled models only', allModalities: 'All modalities', text: 'Text', image: 'Image', video: 'Video', audio: 'Audio', embedding: 'Embedding', rerank: 'Reranking', multimodal: 'Multimodal', other: 'Other',

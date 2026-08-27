@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import "./trae-member-bulk-actions.css";
 
 export type TraeMemberRole = "owner" | "admin" | "member";
-export type TraeMemberStatus = "active" | "invited" | "suspended";
+export type TraeMemberStatus = "active" | "pending" | "suspended";
 
 export type TraeBulkMember = {
   id: string;
@@ -49,7 +49,7 @@ export function getTraeBulkActionAvailability(
   if (action === "sendInvite") {
     if (hasRestrictedSuperAdmin)
       return { disabled: true, reason: "protectedMember" };
-    return members.every((member) => member.status === "invited")
+    return members.every((member) => member.status === "pending")
       ? { disabled: false }
       : { disabled: true, reason: "inviteUnavailable" };
   }

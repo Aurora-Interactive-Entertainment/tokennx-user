@@ -63,15 +63,21 @@
   overflow-x: auto;
   padding-bottom: 4px;
 }
-.personal-token-heatmap-chart {
+.personal-token-heatmap-track {
   --heatmap-cell: 13px;
   --heatmap-gap: 4px;
   --heatmap-label-width: 34px;
+  --heatmap-min-width: calc(
+    var(--heatmap-label-width) + var(--heatmap-columns) *
+      (var(--heatmap-cell) + var(--heatmap-gap)) - var(--heatmap-gap)
+  );
+  width: max(100%, var(--heatmap-min-width));
+  min-width: var(--heatmap-min-width);
+}
+.personal-token-heatmap-chart {
   position: relative;
-  width: max-content;
-  min-width: 100%;
+  width: 100%;
   padding-top: 24px;
-  padding-bottom: 30px;
   box-sizing: border-box;
 }
 .personal-token-heatmap-months {
@@ -79,11 +85,11 @@
   top: 0;
   left: var(--heatmap-label-width);
   display: grid;
-  width: calc(
-    var(--heatmap-columns) * (var(--heatmap-cell) + var(--heatmap-gap)) -
-      var(--heatmap-gap)
+  width: calc(100% - var(--heatmap-label-width));
+  grid-template-columns: repeat(
+    var(--heatmap-columns),
+    minmax(var(--heatmap-cell), 1fr)
   );
-  grid-template-columns: repeat(var(--heatmap-columns), var(--heatmap-cell));
   column-gap: var(--heatmap-gap);
   color: var(--color-text-secondary);
   font-size: 11px;
@@ -106,10 +112,13 @@
 }
 .personal-token-heatmap-cells {
   display: grid;
-  width: max-content;
+  width: calc(100% - var(--heatmap-label-width));
   height: calc(7 * var(--heatmap-cell) + 6 * var(--heatmap-gap));
   margin-left: var(--heatmap-label-width);
-  grid-template-columns: repeat(var(--heatmap-columns), var(--heatmap-cell));
+  grid-template-columns: repeat(
+    var(--heatmap-columns),
+    minmax(var(--heatmap-cell), 1fr)
+  );
   grid-template-rows: repeat(7, var(--heatmap-cell));
   gap: var(--heatmap-gap);
 }
@@ -151,12 +160,11 @@
   background: var(--personal-token-level-4);
 }
 .personal-token-heatmap-legend {
-  position: absolute;
-  right: 0;
-  bottom: 0;
   display: flex;
+  justify-content: flex-end;
   align-items: center;
   gap: 4px;
+  margin-top: 14px;
   color: var(--color-text-tertiary);
   font-size: 10px;
 }
@@ -195,5 +203,9 @@ html[data-theme="dark"] .personal-token-heatmap-section {
   }
   .personal-token-heatmap-panel {
     padding-inline: 12px;
+  }
+  .personal-token-heatmap-track {
+    --heatmap-cell: 12px;
+    --heatmap-gap: 3px;
   }
 }

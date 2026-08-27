@@ -50,7 +50,7 @@ const TraeEnterpriseAnalysisPage = lazy(() => import('@/pages/trae-enterprise').
 const TraeEnterpriseMembersPage = lazy(() => import('@/pages/trae-enterprise').then(({ TraeEnterpriseMembersPage }) => ({ default: TraeEnterpriseMembersPage })))
 const TraeEnterpriseSubscriptionPage = lazy(() => import('@/pages/trae-enterprise').then(({ TraeEnterpriseSubscriptionPage }) => ({ default: TraeEnterpriseSubscriptionPage })))
 const TraeEnterpriseUsagePage = lazy(() => import('@/pages/trae-enterprise').then(({ TraeEnterpriseUsagePage }) => ({ default: TraeEnterpriseUsagePage })))
-const TraeEnterpriseAuditPage = lazy(() => import('@/pages/trae-enterprise').then(({ TraeEnterpriseAuditPage }) => ({ default: TraeEnterpriseAuditPage })))
+const TraeEnterpriseAuditPage = lazy(() => import('@/pages/trae-enterprise-audit').then(({ TraeEnterpriseAuditPage }) => ({ default: TraeEnterpriseAuditPage })))
 const PersonalUsagePage = lazy(() => import('@/pages/personal-usage').then(({ PersonalUsagePage }) => ({ default: PersonalUsagePage })))
 const RealNamePage = lazy(() => import('@/pages/console-real-name').then(({ RealNamePage }) => ({ default: RealNamePage })))
 const SettingsPage = lazy(() => import('@/pages/console-profile').then(({ SettingsPage }) => ({ default: SettingsPage })))

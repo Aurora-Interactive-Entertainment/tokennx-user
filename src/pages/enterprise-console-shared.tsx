@@ -90,14 +90,17 @@ type EnterprisePageShellProps = {
   actions?: ReactNode
   capability?: EnterpriseCapability
   className?: string
+  showHeader?: boolean
   children: (context: EnterpriseContext) => ReactNode
 }
 
-export function EnterprisePageShell({ title, description, actions, capability, className = '', children }: EnterprisePageShellProps) {
+export function EnterprisePageShell({ title, description, actions, capability, className = '', showHeader = true, children }: EnterprisePageShellProps) {
   const { t } = useTranslation()
   const store = useAppStore()
   const { context, loading, error, reload } = useEnterpriseConsoleContext()
-  const pageTitle = <PageTitle title={title} description={description} actions={actions} />
+  // Some redesigned pages own their heading and actions while still relying on
+  // this shell for enterprise context, permissions, loading, and error states.
+  const pageTitle = showHeader ? <PageTitle title={title} description={description} actions={actions} /> : null
 
   if (store.activeWorkspace.type !== 'enterprise') {
     return <div className="page-stack enterprise-gated-page">{pageTitle}<BannerNotice tone="warning">{t('console.enterprise.gated')}</BannerNotice></div>
@@ -179,6 +182,8 @@ export function invitationStatusLabel(value: string): string {
 export function auditResultLabel(value: string): string {
   if (value === 'success' || value === 'succeeded') return i18n.t('console.enterprise.resultSuccess')
   if (value === 'failed' || value === 'failure') return i18n.t('console.enterprise.resultFailed')
+  if (value === 'denied') return i18n.t('console.enterprise.resultDenied')
+  if (value === 'partial') return i18n.t('console.enterprise.resultPartial')
   return value || i18n.t('console.enterprise.resultUnknown')
 }
 

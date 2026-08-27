@@ -10,15 +10,15 @@ const dataSource: TraeUsageDepartmentNode[] = [
     id: "company",
     name: "Company",
     total: "￥10.000",
-    base: "￥8.000",
-    overage: "￥2.000",
+    tokens: "1,000",
+    requests: "10",
     children: [
       {
         id: "operation",
         name: "Operation",
         total: "￥10.000",
-        base: "￥8.000",
-        overage: "￥2.000",
+        tokens: "500",
+        requests: "5",
       },
     ],
   },
@@ -30,8 +30,8 @@ function renderTable(query = "") {
       dataSource={dataSource}
       departmentTitle="Department"
       periodTotalTitle="Total"
-      baseAmountTitle="Base"
-      overageAmountTitle="Overage"
+      tokenTitle="Tokens"
+      requestTitle="Requests"
       query={query}
     />,
   );

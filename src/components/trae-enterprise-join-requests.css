@@ -1,0 +1,149 @@
+.trae-request-table {
+  min-width: 820px;
+}
+
+.trae-table.trae-request-table th,
+.trae-table.trae-request-table td {
+  height: 45px;
+  font-size: 13px;
+}
+
+.trae-table.trae-request-table th {
+  color: var(--color-text-tertiary);
+}
+
+.trae-request-table tbody tr:nth-child(even):not(:has(.trae-table-empty)) td {
+  background: var(--color-bg-overlay-l1);
+}
+
+.trae-request-table tbody tr:hover td {
+  background: var(--color-bg-overlay-l2);
+}
+
+/* 筛选和翻页时保留当前行高，只弱化内容，避免整个页面上下跳动。 */
+.trae-request-table.is-loading tbody {
+  opacity: 0.62;
+  pointer-events: none;
+}
+
+.trae-request-applicant,
+.trae-request-info {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.trae-request-applicant strong,
+.trae-request-info strong {
+  overflow: hidden;
+  color: var(--color-text-default-hover);
+  font-size: 13px;
+  font-weight: 550;
+  text-overflow: ellipsis;
+}
+
+.trae-request-applicant small,
+.trae-request-info small {
+  max-width: 280px;
+  overflow: hidden;
+  color: var(--color-text-tertiary);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trae-request-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.trae-request-actions button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.trae-request-approve {
+  color: var(--color-brand);
+}
+
+.trae-request-reject {
+  color: #f65a5a;
+}
+
+.trae-request-actions button:hover {
+  filter: brightness(1.12);
+}
+
+.trae-request-state {
+  display: flex;
+  min-height: 160px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+
+.trae-request-table td:has(> .trae-request-state),
+.trae-request-table td:has(> .enterprise-error-panel) {
+  height: auto;
+  padding: 0;
+}
+
+.trae-request-review-dialog > header {
+  border-bottom: 0;
+}
+
+.trae-request-reject-form {
+  gap: 12px;
+}
+
+.trae-request-reject-form .semi-input-textarea-wrapper,
+.trae-request-reject-form .semi-input-textarea-wrapper:hover,
+.trae-request-reject-form .semi-input-textarea-wrapper-focus {
+  border-color: var(--color-border-neutral-l2);
+  border-radius: 5px;
+  background: var(--color-bg-base-secondary);
+  box-shadow: none;
+}
+
+.trae-request-reject-form .semi-input-textarea-wrapper-error,
+.trae-request-reject-form .semi-input-textarea-wrapper-error:hover,
+.trae-request-reject-form .semi-input-textarea-wrapper-error.semi-input-textarea-wrapper-focus {
+  border-color: #f65a5a;
+}
+
+.trae-request-reject-form textarea {
+  color: var(--color-text-default);
+  background: transparent;
+  font-size: 13px;
+}
+
+.trae-request-review-error {
+  margin: 0;
+  color: #f65a5a !important;
+  font-size: 11px !important;
+}
+
+.trae-request-review-dialog .trae-danger-button {
+  min-height: 30px;
+  padding: 0 14px;
+  border-radius: 5px;
+  font-size: 13px;
+}
+
+@media (max-width: 700px) {
+  .trae-request-panel > .trae-toolbar {
+    flex-wrap: wrap;
+  }
+
+  .trae-request-search,
+  .trae-request-panel > .trae-toolbar .trae-select.semi-select {
+    width: 100%;
+  }
+}

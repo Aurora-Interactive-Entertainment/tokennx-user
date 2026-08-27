@@ -38,7 +38,7 @@ import { useAppDispatch } from '@/store/hooks'
 import i18n from '@/i18n'
 import { formatApiTime, formatCount, formatSignedYuanExact, formatYuan, formatYuanExact, isZeroYuan } from '@/utils/format'
 
-export type BillingTab = 'overview' | 'recharge' | 'subscription' | 'invoice'
+export type BillingTab = 'overview' | 'recharge' | 'invoice'
 type ResourceStatus = 'idle' | 'loading' | 'success' | 'error'
 type BillingSource = 'all' | 'model_consume' | 'recharge' | 'reward'
 type InvoiceTaxpayerType = 'enterprise' | 'personal'
@@ -65,7 +65,6 @@ export type InvoiceFormErrors = Partial<Record<keyof InvoiceForm, string>>
 const BILLING_TABS: readonly [BillingTab, string][] = [
   ['overview', 'console.billing.costTab'],
   ['recharge', 'console.billing.recharge'],
-  ['subscription', 'console.billing.subscriptionPack'],
   ['invoice', 'console.billing.invoice'],
 ]
 
@@ -559,10 +558,6 @@ function RechargeTab({ context, onOrderUpdated, onAuthFailure }: { context: Bill
   )
 }
 
-function SubscriptionTab() {
-  return <section className="empty-state billing-empty-subscription"><h3>{i18n.t('console.billing.subscriptionClosed')}</h3><p>{i18n.t('console.billing.subscriptionClosedHint')}</p></section>
-}
-
 function InvoiceHistory({ response, downloadingInvoiceID, onDownload }: { response: BillingInvoiceResponse; downloadingInvoiceID: string | null; onDownload: (item: BillingInvoiceItem) => void }) {
   const history = response.history
   return <section className="invoice-history" aria-labelledby="invoiceHistoryHeading"><h2 id="invoiceHistoryHeading">{i18n.t('console.billing.invoiceHistory')}</h2>{history.items.length === 0 ? <EmptyPanel title={i18n.t('console.billing.noInvoice')} description={i18n.t('console.billing.invoiceHint')} /> : <div className="invoice-table-scroll" role="region" aria-label={i18n.t('console.billing.invoiceHistoryTable')} tabIndex={0}><table className="invoice-history-table"><thead><tr><th>{i18n.t('console.billing.submittedAt')}</th><th>{i18n.t('console.billing.invoiceAmount')}</th><th>{i18n.t('console.billing.invoiceEntity')}</th><th>{i18n.t('console.billing.invoiceMethod')}</th><th>{i18n.t('console.billing.invoiceTitle')}</th><th>{i18n.t('console.billing.invoiceType')}</th><th>{i18n.t('console.billing.status')}</th><th>{i18n.t('console.billing.operation')}</th></tr></thead><tbody>{history.items.map((item) => { const downloading = downloadingInvoiceID === item.id; return <tr key={item.id}><td>{formatApiTime(item.submitted_at)}</td><td><MoneyText value={item.amount_yuan} /></td><td>{response.account.name}</td><td>{i18n.t('console.billing.manualApply')}</td><td>{item.title_masked || '--'}</td><td>{invoiceTypeLabel(item.invoice_type)}</td><td><span className={invoiceStatusClass(item.status)}>{invoiceStatusLabel(item)}</span></td><td>{item.download_url ? <a href={item.download_url} download aria-busy={downloading} aria-disabled={downloading} onClick={(event) => { event.preventDefault(); if (!downloading) onDownload(item) }}>{downloading ? i18n.t('console.billing.downloading') : i18n.t('console.billing.view')}</a> : <span className="invoice-status-pending">{i18n.t('console.billing.invoiceProcessing')}</span>}</td></tr> })}</tbody></table></div>}</section>
@@ -841,9 +836,8 @@ export function BillingPage() {
   }
 
   let content: ReactNode
-  if (activeTab === 'overview') content = <AnalysisTab state={analysisState} periodValue={period} apiKeyID={apiKeyID} model={model} source={source} requestedRecordId={requestedRecordId} onRecharge={() => onTabChange('recharge')} onSubscription={() => onTabChange('subscription')} onInvoice={() => onTabChange('invoice')} onSourceChange={(value) => { setSource(value); setAnalysisPage(BILLING_FIRST_PAGE) }} onFilterChange={changeAnalysisFilter} onPageChange={setAnalysisPage} onPageSizeChange={(nextPageSize) => { setAnalysisPageSize(nextPageSize); setAnalysisPage(BILLING_FIRST_PAGE) }} page={analysisPage} pageSize={analysisPageSize} onRetry={() => setReloadToken((value) => value + 1)} onExport={exportCSV} />
+  if (activeTab === 'overview') content = <AnalysisTab state={analysisState} periodValue={period} apiKeyID={apiKeyID} model={model} source={source} requestedRecordId={requestedRecordId} onRecharge={() => onTabChange('recharge')} onSubscription={() => navigate('/console/trae-enterprise/subscription')} onInvoice={() => onTabChange('invoice')} onSourceChange={(value) => { setSource(value); setAnalysisPage(BILLING_FIRST_PAGE) }} onFilterChange={changeAnalysisFilter} onPageChange={setAnalysisPage} onPageSizeChange={(nextPageSize) => { setAnalysisPageSize(nextPageSize); setAnalysisPage(BILLING_FIRST_PAGE) }} page={analysisPage} pageSize={analysisPageSize} onRetry={() => setReloadToken((value) => value + 1)} onExport={exportCSV} />
   else if (activeTab === 'recharge') content = <RechargeTab context={context} onOrderUpdated={() => setReloadToken((value) => value + 1)} onAuthFailure={handleAuthFailure} />
-  else if (activeTab === 'subscription') content = <SubscriptionTab />
   else content = <InvoiceTab state={invoiceState} faqOpen={invoiceFaqOpen} downloadingInvoiceID={downloadingInvoiceID} onToggleFaq={() => setInvoiceFaqOpen((value) => !value)} onRetry={() => setReloadToken((value) => value + 1)} onOpenDialog={openInvoiceDialog} onDownload={(item) => void downloadInvoice(item)} onPageChange={setInvoicePage} onPageSizeChange={(nextPageSize) => { setInvoicePageSize(nextPageSize); setInvoicePage(BILLING_FIRST_PAGE) }} page={invoicePage} pageSize={invoicePageSize} />
 
   return <div className="page-stack billing-console-page"><PageTitle title={t('console.billing.title')} description={t('console.billing.description')} /><RequestFocus data={analysisState.data} requestId={requestedRecordId} /><PaymentReturnNotice state={paymentReturnState} onRetry={() => setPaymentReturnRetryToken((value) => value + 1)} /><div className="billing-tabs" role="tablist" aria-label={t('console.billing.title')}>{BILLING_TABS.map(([key, label], index) => <button id={`tab-${key}`} type="button" role="tab" aria-controls={`panel-${key}`} aria-selected={activeTab === key} tabIndex={activeTab === key ? 0 : -1} className={activeTab === key ? 'active' : ''} key={key} onClick={() => onTabChange(key)} onKeyDown={(event) => onTabKeyDown(event, index)}>{t(label)}</button>)}</div><div className="billing-tab-panel" role="tabpanel" id={`panel-${activeTab}`} aria-labelledby={`tab-${activeTab}`}>{content}</div><InvoiceDialog open={dialogOpen} available={invoiceState.data?.available_amount_yuan ?? '0.00'} form={invoiceForm} errors={invoiceFormErrors} step={dialogStep} submitting={submittingInvoice} onClose={closeInvoiceDialog} onChange={updateInvoiceForm} onNext={nextInvoiceStep} onBack={() => { setDialogStep(1); setInvoiceFormErrors({}) }} onSubmit={() => void submitInvoice()} /></div>

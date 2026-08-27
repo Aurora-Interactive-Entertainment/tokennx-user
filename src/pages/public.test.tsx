@@ -437,6 +437,39 @@ describe('公开模型页面', () => {
     expect(document.querySelector('.manuscript-partner-grid a[data-copy="duplicate"]')).toBeNull()
   })
 
+  it('英文首页广告缺少英文图片字段时仍使用接口资源', async () => {
+    await i18n.changeLanguage('en-US')
+    vi.mocked(globalThis.fetch).mockResolvedValueOnce(new Response(JSON.stringify({
+      code: 0,
+      msg: 'success',
+      data: {
+        cards: [],
+        promotion_models: [],
+        ad_slots: [{
+          id: 'ad-en-fallback',
+          kind: 'ad_slot',
+          status: 'active',
+          sort_order: 1,
+          pinned: false,
+          data: {
+            translations: {
+              'en-US': { title: 'English promotion' },
+              'zh-CN': { title: '中文推广', image_url: 'https://cdn.example.com/promotion.png' },
+            },
+          },
+        }],
+        news: [],
+        partners: [],
+      },
+    }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
+
+    renderPage(<HomePage />, '/')
+
+    const adImage = await screen.findByRole('img', { name: 'English promotion' })
+    expect(adImage).toHaveAttribute('src', 'https://cdn.example.com/promotion.png')
+    expect(adImage).not.toHaveAttribute('src', '/src/assets/figma-home/promo-banner.png')
+  })
+
   it('首页内容接口失败时停止骨架并允许重新加载', async () => {
     vi.mocked(globalThis.fetch).mockRejectedValueOnce(new Error('offline'))
     renderPage(<HomePage />, '/')
@@ -458,7 +491,7 @@ describe('公开模型页面', () => {
     expect(screen.getByRole('heading', { name: 'Deepseek V4 Pro' })).toBeInTheDocument()
     expect(screen.getByRole('tablist', { name: 'Featured model carousel' })).toBeInTheDocument()
     expect(screen.getAllByRole('tab')).toHaveLength(5)
-    expect(screen.getByRole('heading', { name: 'Text generation' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Text models' })).toBeInTheDocument()
     expect(screen.getAllByText('Input / M Tokens').length).toBeGreaterThan(0)
     expect(screen.queryByText('模型目录')).toBeNull()
   })
