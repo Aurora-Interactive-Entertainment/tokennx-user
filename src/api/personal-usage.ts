@@ -101,6 +101,8 @@ export interface UsageRecordsQuery {
   page_size: number;
   start_at?: number;
   end_at?: number;
+  /** 中文：按 API 密钥筛选明细，后端字段稳定后只需在此处对齐。 */
+  api_key_id?: string;
 }
 
 export interface DailyTokenUsageItem {
@@ -174,10 +176,12 @@ function isUsageOverviewResponse(
 
 export function getUsageOverview(
   signal?: AbortSignal,
+  apiKeyID?: string,
 ): Promise<UsageOverviewResponse> {
-  return fetchAuthenticatedJson<unknown>(USER_USAGE_OVERVIEW_PATH, {
-    signal,
-  }).then((value) => {
+  const params = new URLSearchParams();
+  if (apiKeyID?.trim()) params.set("api_key_id", apiKeyID.trim());
+  const path = params.toString() ? `${USER_USAGE_OVERVIEW_PATH}?${params.toString()}` : USER_USAGE_OVERVIEW_PATH;
+  return fetchAuthenticatedJson<unknown>(path, { signal }).then((value) => {
     if (!isUsageOverviewResponse(value)) throw invalidResponse();
     return value;
   });
@@ -291,6 +295,7 @@ export function getUsageRecords(
   if (query.start_at !== undefined)
     params.set("start_at", String(query.start_at));
   if (query.end_at !== undefined) params.set("end_at", String(query.end_at));
+  if (query.api_key_id?.trim()) params.set("api_key_id", query.api_key_id.trim());
   return fetchAuthenticatedJson<unknown>(
     `${USER_USAGE_RECORDS_PATH}?${params.toString()}`,
     { signal },

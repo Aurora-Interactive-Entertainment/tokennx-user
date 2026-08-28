@@ -1150,7 +1150,7 @@ export function RankingsPage() {
             <div className="ranking-model-list" aria-live="polite">{leaderboardLoading && !leaderboard ? <div className="ranking-data-state" role="status">{t('public.rankings.loading')}</div> : leaderboardError && !leaderboard ? <div className="ranking-data-state is-error" role="alert">{leaderboardError}</div> : leaderboard?.items.length ? leaderboard.items.map((model) => <article className="ranking-model-row" key={model.code}>
               <span className="ranking-model-number">{model.rank}.</span>
               <RankingModelLogo code={model.code} name={model.name} />
-              <div className="ranking-model-name"><strong>{model.name}</strong><span>全新的 CSA+HCA 混合注意力架构</span></div>
+              <div className="ranking-model-name"><strong>{model.name}</strong><span>{t('public.rankings.architectureHint')}</span></div>
               <div className="ranking-model-metric"><strong>{formatRankingTokens(model.total_tokens)} tokens</strong><span className={trendClass(model.change_rate)}>{trendLabel(model.change_rate)}</span></div>
             </article>) : <div className="ranking-data-state">{t('public.rankings.empty')}</div>}</div>
           </section>

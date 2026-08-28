@@ -3,13 +3,14 @@ import { useTranslation } from 'react-i18next'
 import * as echarts from 'echarts/core'
 import { BarChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent } from 'echarts/components'
-import { SVGRenderer } from 'echarts/renderers'
+import { CanvasRenderer, SVGRenderer } from 'echarts/renderers'
 import type { ToolUsageClients } from '@/api/tool-usage'
 import { MODEL_CHART_COLORS } from '@/components/chart-colors'
 import { ChartHoverLegend } from '@/components/chart-hover-legend'
 import { useResolvedTheme } from '@/theme'
+import { getChartRenderer } from '@/components/chart-renderer'
 
-echarts.use([BarChart, GridComponent, TooltipComponent, SVGRenderer])
+echarts.use([BarChart, GridComponent, TooltipComponent, CanvasRenderer, SVGRenderer])
 
 export function formatToolUsageTokens(value: number): string {
   if (value >= 1_000_000_000_000) return `${(value / 1_000_000_000_000).toFixed(value >= 10_000_000_000_000 ? 0 : 1)}T`
@@ -40,6 +41,7 @@ export function ToolUsageClientsChart({ data }: { data: ToolUsageClients }) {
   const chartRef = useRef<HTMLDivElement>(null)
   const theme = useResolvedTheme()
   const [selectedWeekIndex, setSelectedWeekIndex] = useState(Math.max(0, data.weeks.length - 1))
+  const selectedWeekIndexRef = useRef(Math.max(0, data.weeks.length - 1))
   const [legendVisible, setLegendVisible] = useState(false)
   const [legendPosition, setLegendPosition] = useState<{ x: number; y: number } | null>(null)
   const legendPositionRef = useRef<{ x: number; y: number } | null>(null)
@@ -66,12 +68,17 @@ export function ToolUsageClientsChart({ data }: { data: ToolUsageClients }) {
 
   /** 同时更新 ref 与 state，保证回调内能立即读到最新坐标。 */
   const applyLegendPosition = (position: { x: number; y: number } | null) => {
+    const previous = legendPositionRef.current
+    if (previous === position || (previous && position && Math.abs(previous.x - position.x) < 1 && Math.abs(previous.y - position.y) < 1)) return
     legendPositionRef.current = position
     setLegendPosition(position)
   }
 
   useEffect(() => {
-    setSelectedWeekIndex(Math.max(0, data.weeks.length - 1))
+    const lastIndex = Math.max(0, data.weeks.length - 1)
+    selectedWeekIndexRef.current = lastIndex
+    setSelectedWeekIndex(lastIndex)
+    legendVisibleRef.current = false
     setLegendVisible(false)
     applyLegendPosition(null)
   }, [data.weeks])
@@ -79,7 +86,7 @@ export function ToolUsageClientsChart({ data }: { data: ToolUsageClients }) {
   useEffect(() => {
     const node = chartRef.current
     if (!node || data.weeks.length === 0 || seriesData.length === 0) return undefined
-    const chart = echarts.init(node, undefined, { renderer: 'svg' })
+    const chart = echarts.init(node, undefined, { renderer: getChartRenderer() })
     const light = theme === 'light'
     const responsiveOption = () => {
       const mobile = node.clientWidth <= 560
@@ -105,7 +112,7 @@ export function ToolUsageClientsChart({ data }: { data: ToolUsageClients }) {
     chart.setOption({
       animationDuration: 420,
       grid: initialResponsiveOption.grid,
-      tooltip: { trigger: 'axis', showContent: false, confine: true, axisPointer: { type: 'shadow' } },
+      tooltip: { trigger: 'axis', showContent: false, confine: true, axisPointer: { type: 'shadow', animation: false } },
       xAxis: { type: 'category', axisLine: { lineStyle: { color: light ? 'rgba(23,24,27,.16)' : 'rgba(255,255,255,.14)' } }, axisTick: { show: false }, ...initialResponsiveOption.xAxis },
       yAxis: {
         type: 'value',
@@ -132,8 +139,8 @@ export function ToolUsageClientsChart({ data }: { data: ToolUsageClients }) {
         data: item.values,
       })),
     })
+    let weekPositions = data.weeks.map((_, index) => Number(chart.convertToPixel({ xAxisIndex: 0 }, index)))
     const selectNearestWeek = (event: { offsetX: number }) => {
-      const weekPositions = data.weeks.map((_, index) => Number(chart.convertToPixel({ xAxisIndex: 0 }, index)))
       let nearestIndex = 0
       let nearestDistance = Number.POSITIVE_INFINITY
       weekPositions.forEach((position, index) => {
@@ -143,6 +150,8 @@ export function ToolUsageClientsChart({ data }: { data: ToolUsageClients }) {
           nearestIndex = index
         }
       })
+      if (nearestIndex === selectedWeekIndexRef.current) return
+      selectedWeekIndexRef.current = nearestIndex
       setSelectedWeekIndex(nearestIndex)
     }
     /** 右侧空间足够时停靠面板右侧，否则换算为面板坐标跟随鼠标显示。 */
@@ -170,17 +179,35 @@ export function ToolUsageClientsChart({ data }: { data: ToolUsageClients }) {
     const hoverMedia = window.matchMedia('(hover: hover) and (pointer: fine)')
     const supportsHover = () => hoverMedia.matches && node.clientWidth > 560
     let hoverInteraction = supportsHover()
-    const handlePointerMove = (event: { offsetX: number; event?: { clientX: number; clientY: number } }) => {
-      if (!hoverInteraction) return
+    type PointerMoveEvent = { offsetX: number; event?: { clientX: number; clientY: number } }
+    let pendingPointerEvent: PointerMoveEvent | null = null
+    let pointerFrame: number | null = null
+    const processPointerMove = () => {
+      pointerFrame = null
+      const event = pendingPointerEvent
+      pendingPointerEvent = null
+      if (!event || !hoverInteraction) return
       selectNearestWeek(event)
-      setLegendVisible(true)
+      if (!legendVisibleRef.current) {
+        legendVisibleRef.current = true
+        setLegendVisible(true)
+      }
       if (event.event) {
         lastPointerRef.current = { x: event.event.clientX, y: event.event.clientY }
         updateLegendPosition(event.event.clientX, event.event.clientY)
       }
     }
+    const handlePointerMove = (event: PointerMoveEvent) => {
+      if (!hoverInteraction) return
+      pendingPointerEvent = event
+      if (pointerFrame === null) pointerFrame = requestAnimationFrame(processPointerMove)
+    }
     const handlePointerOut = () => {
       if (hoverInteraction) {
+        pendingPointerEvent = null
+        if (pointerFrame !== null) cancelAnimationFrame(pointerFrame)
+        pointerFrame = null
+        legendVisibleRef.current = false
         setLegendVisible(false)
         applyLegendPosition(null)
       }
@@ -188,6 +215,7 @@ export function ToolUsageClientsChart({ data }: { data: ToolUsageClients }) {
     const handleChartTap = (event: { offsetX: number; event?: { clientX: number; clientY: number } }) => {
       if (hoverInteraction) return
       selectNearestWeek(event)
+      legendVisibleRef.current = true
       setLegendVisible(true)
       if (event.event) {
         lastPointerRef.current = { x: event.event.clientX, y: event.event.clientY }
@@ -197,6 +225,7 @@ export function ToolUsageClientsChart({ data }: { data: ToolUsageClients }) {
     const handleOutsideTap = (event: PointerEvent) => {
       const panel = node.closest('.apps-chart-panel')
       if (!hoverInteraction && event.target instanceof Node && !panel?.contains(event.target)) {
+        legendVisibleRef.current = false
         setLegendVisible(false)
         applyLegendPosition(null)
       }
@@ -208,6 +237,7 @@ export function ToolUsageClientsChart({ data }: { data: ToolUsageClients }) {
     let mobile = node.clientWidth <= 560
     const resizeObserver = typeof ResizeObserver === 'function' ? new ResizeObserver(() => {
       chart.resize()
+      weekPositions = data.weeks.map((_, index) => Number(chart.convertToPixel({ xAxisIndex: 0 }, index)))
       const nextMobile = node.clientWidth <= 560
       if (nextMobile !== mobile) {
         mobile = nextMobile
@@ -216,6 +246,7 @@ export function ToolUsageClientsChart({ data }: { data: ToolUsageClients }) {
       const nextHoverInteraction = supportsHover()
       if (nextHoverInteraction !== hoverInteraction) {
         hoverInteraction = nextHoverInteraction
+        legendVisibleRef.current = false
         setLegendVisible(false)
         applyLegendPosition(null)
         return
@@ -227,6 +258,7 @@ export function ToolUsageClientsChart({ data }: { data: ToolUsageClients }) {
     }) : null
     resizeObserver?.observe(node)
     return () => {
+      if (pointerFrame !== null) cancelAnimationFrame(pointerFrame)
       resizeObserver?.disconnect()
       document.removeEventListener('pointerdown', handleOutsideTap, true)
       chart.getZr().off('mousemove', handlePointerMove)

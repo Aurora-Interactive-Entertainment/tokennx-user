@@ -1,0 +1,328 @@
+/* 中文：客服通知面板使用独立层级，通知列表不复用聊天消息的气泡样式。 */
+.manuscript-support-panel:has(.manuscript-support-notifications) {
+  border-color: rgba(255, 255, 255, 0.18);
+  border-radius: 24px;
+  padding: 16px;
+}
+
+.manuscript-support-panel:has(.manuscript-support-notifications)
+  .manuscript-support-tabs {
+  flex-basis: 48px;
+  height: 48px;
+  border-radius: 24px;
+}
+
+.manuscript-support-panel:has(.manuscript-support-notifications)
+  .manuscript-support-tab-thumb {
+  top: 3px;
+  left: 3px;
+  height: calc(100% - 6px);
+  border-radius: 21px;
+}
+
+.manuscript-support-panel:has(.manuscript-support-notifications)
+  .manuscript-support-tab {
+  gap: 8px;
+  border-radius: 21px;
+  font-size: 15px;
+  font-weight: 650;
+}
+
+.manuscript-support-panel:has(.manuscript-support-notifications)
+  .manuscript-support-tab
+  .semi-icon {
+  width: 18px;
+  height: 18px;
+  flex-basis: 18px;
+}
+
+.manuscript-support-notifications:has(
+  .manuscript-support-notification-content
+) {
+  display: flex;
+  align-items: stretch;
+  justify-content: flex-start;
+  padding: 22px 2px 2px;
+  text-align: left;
+}
+
+.manuscript-support-notification-content {
+  width: 100%;
+  gap: 14px;
+}
+
+/* 中文：提高通知列表选择器权重，确保组件样式覆盖全局基础按钮样式。 */
+.manuscript-support-panel:has(.manuscript-support-notifications)
+  .manuscript-support-notification-content {
+  box-sizing: border-box;
+}
+
+.manuscript-support-panel:has(.manuscript-support-notifications)
+  .manuscript-support-notification-list {
+  box-sizing: border-box;
+  overflow-x: hidden;
+}
+
+.manuscript-support-panel:has(.manuscript-support-notifications)
+  .manuscript-support-notification-item {
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.manuscript-support-panel:has(.manuscript-support-notifications)
+  .manuscript-support-notification-toolbar {
+  min-height: 28px;
+  padding: 0 2px;
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 13px;
+  font-weight: 550;
+}
+
+.manuscript-support-panel:has(.manuscript-support-notifications)
+  .manuscript-support-notification-toolbar
+  button {
+  min-height: 28px;
+  padding: 4px 10px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  color: rgba(255, 255, 255, 0.82);
+  transition:
+    color 0.18s ease,
+    background-color 0.18s ease,
+    border-color 0.18s ease;
+}
+
+.manuscript-support-panel:has(.manuscript-support-notifications)
+  .manuscript-support-notification-toolbar
+  button:hover:not(:disabled) {
+  border-color: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.manuscript-support-panel:has(.manuscript-support-notifications)
+  .manuscript-support-notification-list {
+  gap: 10px;
+  padding: 2px;
+  scrollbar-color: rgba(255, 255, 255, 0.24) transparent;
+}
+
+.manuscript-support-panel:has(.manuscript-support-notifications)
+  .manuscript-support-notification-item {
+  position: relative;
+  align-items: flex-start;
+  gap: 11px;
+  padding: 14px 14px 13px 16px;
+  border-color: rgba(255, 255, 255, 0.14);
+  border-radius: 12px;
+  color: rgba(255, 255, 255, 0.76);
+  background: rgba(255, 255, 255, 0.075);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+  transition:
+    border-color 0.18s ease,
+    background-color 0.18s ease,
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.manuscript-support-panel:has(.manuscript-support-notifications)
+  .manuscript-support-notification-item.is-unread {
+  border-color: rgba(116, 167, 255, 0.32);
+  background: linear-gradient(
+    110deg,
+    rgba(116, 167, 255, 0.13),
+    rgba(255, 255, 255, 0.075) 42%
+  );
+  box-shadow:
+    inset 3px 0 0 #74a7ff,
+    0 4px 14px rgba(0, 0, 0, 0.12);
+}
+
+.manuscript-support-panel:has(.manuscript-support-notifications)
+  .manuscript-support-notification-item:hover {
+  border-color: rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 7px 18px rgba(0, 0, 0, 0.18);
+  transform: translateY(-1px);
+}
+
+.manuscript-support-panel:has(.manuscript-support-notifications)
+  .manuscript-support-notification-item.is-unread:hover {
+  border-color: rgba(116, 167, 255, 0.52);
+  background: linear-gradient(
+    110deg,
+    rgba(116, 167, 255, 0.18),
+    rgba(255, 255, 255, 0.11) 42%
+  );
+}
+
+.manuscript-support-panel:has(.manuscript-support-notifications)
+  .manuscript-support-notification-item.is-read {
+  opacity: 0.68;
+}
+
+.manuscript-support-panel:has(.manuscript-support-notifications)
+  .manuscript-support-notification-item.is-read
+  .manuscript-support-notification-severity {
+  background: #8f96a3;
+  box-shadow: 0 0 0 3px rgba(143, 150, 163, 0.1);
+}
+
+.manuscript-support-panel:has(.manuscript-support-notifications)
+  .manuscript-support-notification-severity {
+  width: 8px;
+  height: 8px;
+  flex-basis: 8px;
+  margin-top: 5px;
+  box-shadow: 0 0 0 3px rgba(143, 150, 163, 0.12);
+}
+
+.manuscript-support-panel:has(.manuscript-support-notifications)
+  .manuscript-support-notification-severity.is-info {
+  box-shadow: 0 0 0 3px rgba(116, 167, 255, 0.14);
+}
+
+.manuscript-support-panel:has(.manuscript-support-notifications)
+  .manuscript-support-notification-copy {
+  gap: 5px;
+}
+
+.manuscript-support-panel:has(.manuscript-support-notifications)
+  .manuscript-support-notification-copy
+  strong {
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.manuscript-support-panel:has(.manuscript-support-notifications)
+  .manuscript-support-notification-copy
+  > span {
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.manuscript-support-panel:has(.manuscript-support-notifications)
+  .manuscript-support-notification-copy
+  time {
+  margin-top: 2px;
+  color: rgba(255, 255, 255, 0.46);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+/* 中文：浅色主题保持白色表面，但以冷灰边框和蓝色未读强调替代深色玻璃层。 */
+html[data-theme="light"]
+  .manuscript-support-panel:has(.manuscript-support-notifications) {
+  border-color: rgba(23, 24, 27, 0.16);
+  box-shadow: 0 22px 58px rgba(23, 24, 27, 0.2);
+}
+
+html[data-theme="light"]
+  .manuscript-support-notifications:has(
+    .manuscript-support-notification-content
+  ) {
+  color: #626975;
+}
+
+html[data-theme="light"]
+  .manuscript-support-panel:has(.manuscript-support-notifications)
+  .manuscript-support-notification-toolbar {
+  color: #626975;
+}
+
+html[data-theme="light"]
+  .manuscript-support-panel:has(.manuscript-support-notifications)
+  .manuscript-support-notification-toolbar
+  button {
+  color: #4e5560;
+}
+
+html[data-theme="light"]
+  .manuscript-support-panel:has(.manuscript-support-notifications)
+  .manuscript-support-notification-toolbar
+  button:hover:not(:disabled) {
+  border-color: rgba(23, 24, 27, 0.12);
+  color: #17181b;
+  background: rgba(23, 24, 27, 0.06);
+}
+
+html[data-theme="light"]
+  .manuscript-support-panel:has(.manuscript-support-notifications)
+  .manuscript-support-panel:has(.manuscript-support-notifications)
+  .manuscript-support-notification-item {
+  border-color: rgba(23, 24, 27, 0.11);
+  color: #30343b;
+  background: #f8f9fa;
+  box-shadow: 0 4px 14px rgba(23, 24, 27, 0.06);
+}
+
+html[data-theme="light"]
+  .manuscript-support-panel:has(.manuscript-support-notifications)
+  .manuscript-support-notification-item.is-unread {
+  border-color: rgba(79, 132, 222, 0.36);
+  background: linear-gradient(110deg, #f0f5ff, #f8f9fa 46%);
+  box-shadow:
+    inset 3px 0 0 #4f84de,
+    0 4px 14px rgba(23, 24, 27, 0.06);
+}
+
+html[data-theme="light"]
+  .manuscript-support-panel:has(.manuscript-support-notifications)
+  .manuscript-support-notification-item:hover {
+  border-color: rgba(23, 24, 27, 0.2);
+  background: #f3f4f6;
+  box-shadow: 0 7px 18px rgba(23, 24, 27, 0.1);
+}
+
+html[data-theme="light"]
+  .manuscript-support-panel:has(.manuscript-support-notifications)
+  .manuscript-support-notification-item.is-unread:hover {
+  border-color: rgba(79, 132, 222, 0.52);
+  background: linear-gradient(110deg, #e8f0ff, #f4f6fa 46%);
+}
+
+html[data-theme="light"]
+  .manuscript-support-panel:has(.manuscript-support-notifications)
+  .manuscript-support-notification-copy
+  strong {
+  color: #17181b;
+}
+
+html[data-theme="light"]
+  .manuscript-support-panel:has(.manuscript-support-notifications)
+  .manuscript-support-notification-copy
+  > span {
+  color: #626975;
+}
+
+html[data-theme="light"]
+  .manuscript-support-panel:has(.manuscript-support-notifications)
+  .manuscript-support-notification-copy
+  time {
+  color: #8a9099;
+}
+
+@media (max-width: 680px) {
+  .manuscript-support-panel:has(.manuscript-support-notifications) {
+    padding: 12px;
+  }
+
+  .manuscript-support-notifications:has(
+    .manuscript-support-notification-content
+  ) {
+    padding-top: 18px;
+  }
+
+  .manuscript-support-notification-item {
+    padding: 13px 13px 12px 15px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .manuscript-support-notification-toolbar button,
+  .manuscript-support-notification-item {
+    transition: none;
+  }
+}

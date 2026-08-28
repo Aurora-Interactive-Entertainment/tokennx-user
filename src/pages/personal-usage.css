@@ -1,10 +1,11 @@
 .personal-usage-page { --personal-usage-date-picker-width: 255px; --personal-usage-date-input-padding: 8px; --personal-usage-date-text-padding: 4px; min-height: 100%; }
-.personal-usage-page .trae-page-heading { margin-bottom: 28px; }
+/* 中文：个人用量页沿用企业页标题基线，统一标题与内容的 32px 间距。 */
+.personal-usage-page .trae-page-heading { margin-bottom: 32px; }
 .personal-usage-page .trae-page-heading h1 { display: flex; align-items: baseline; gap: 12px; }
 .personal-usage-page .trae-page-heading h1 small { color: var(--color-text-secondary); font-size: 13px; font-weight: 400; }
 .personal-usage-tabs { margin-bottom: 30px; }
 .personal-usage-board { min-width: 0; }
-.personal-usage-board-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
+.personal-usage-board-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin: 18px 0; }
 .personal-usage-board-heading h2,
 .personal-usage-management > h2 { display: inline-flex; align-items: center; gap: 7px; margin: 0; color: var(--color-text-default-hover); font-size: 16px; font-weight: 650; }
 .personal-usage-board-heading h2 svg { color: var(--color-text-tertiary); font-size: 14px; }
@@ -114,7 +115,10 @@ html[data-theme="light"]
 .personal-usage-date-dropdown .semi-datepicker-weekday-item { line-height: 32px; }
 .personal-usage-date-dropdown .semi-datepicker-day-main { display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 400 !important; }
 .personal-usage-date-dropdown .semi-datepicker-footer { display: none; }
-.personal-usage-management > h2 { margin-bottom: 18px; }
+.personal-usage-management-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
+.personal-usage-management-heading h2 { margin: 0; }
+.personal-usage-key-select.semi-select { width: 240px; height: 32px; font-size: 13px; }
+.personal-usage-key-dropdown { min-width: 240px; }
 .personal-usage-model-card { display: flex; height: 290px; min-height: 290px; flex-direction: column; overflow: hidden; border: 1px solid var(--color-border-neutral-l1); border-radius: 7px; background: var(--color-bg-base-secondary); }
 .personal-usage-model-total,
 .personal-usage-model-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 52px; padding: 0 18px; }
@@ -175,6 +179,7 @@ html[data-theme="light"]
 .personal-usage-cue-table th:nth-child(7),
 .personal-usage-cue-table td:nth-child(7) { width: 130px; text-align: right; }
 .personal-usage-cue-empty { display: grid; min-height: 230px; place-items: center; color: var(--color-text-tertiary); font-size: 13px; }
+@media (max-width: 560px) { .personal-usage-management-heading { align-items: stretch; flex-direction: column; } .personal-usage-key-select.semi-select { width: 100%; } }
 @media (max-width: 720px) { .personal-usage-board-heading { align-items: stretch; flex-direction: column; } .personal-usage-page .personal-usage-date-picker.semi-datepicker { width: 100%; min-width: 0; } .personal-usage-date-dropdown { width: min(440px, calc(100vw - 16px)); } .personal-usage-date-dropdown .semi-datepicker-quick-control { width: 104px; } .personal-usage-date-dropdown .semi-datepicker-month-grid { min-height: 276px; } .personal-usage-date-dropdown .semi-datepicker-month-grid-left,
   .personal-usage-date-dropdown .semi-datepicker-month-grid-right { flex-basis: 240px; min-height: 276px; } .personal-usage-date-dropdown .semi-datepicker-weekday-item,
   .personal-usage-date-dropdown .semi-datepicker-day { width: 28px; height: 32px; font-size: 12px; } .personal-usage-date-dropdown .semi-datepicker-weekday-item { line-height: 32px; } .personal-usage-chart-panel { padding-inline: 12px; } }

@@ -14,8 +14,8 @@ import Tooltip from "@douyinfe/semi-ui/lib/es/tooltip";
 import { IconFile, IconInfoCircle } from "@douyinfe/semi-icons";
 import * as echarts from "echarts/core";
 import { LineChart, PieChart } from "echarts/charts";
-import { GridComponent, TooltipComponent } from "echarts/components";
-import { SVGRenderer } from "echarts/renderers";
+import { AxisPointerComponent, GridComponent, TooltipComponent } from "echarts/components";
+import { CanvasRenderer, SVGRenderer } from "echarts/renderers";
 import {
   getAllEnterpriseMembers,
   getEnterpriseAnalytics,
@@ -26,6 +26,11 @@ import {
   type EnterpriseMember,
 } from "@/api/enterprise-console";
 import {
+  getEnterpriseUsageDepartments,
+  type EnterpriseUsageDepartment,
+  type EnterpriseUsageDepartmentsRequest,
+} from "@/api/enterprise-usage";
+import {
   EnterpriseError,
   EnterpriseLoading,
   exportEnterpriseCsv,
@@ -34,10 +39,11 @@ import {
 } from "@/pages/enterprise-console-shared";
 import { useResolvedTheme } from "@/theme";
 import { formatCount } from "@/utils/format";
+import { getChartRenderer } from "@/components/chart-renderer";
 import { addLocalDays as addDays, startOfLocalToday as startOfToday } from "@/utils/date-range";
 import "./trae-enterprise-analysis.css";
 
-echarts.use([LineChart, PieChart, GridComponent, TooltipComponent, SVGRenderer]);
+echarts.use([LineChart, PieChart, GridComponent, TooltipComponent, AxisPointerComponent, CanvasRenderer, SVGRenderer]);
 
 const CHART_COLORS = [
   "#55c7ad",
@@ -121,6 +127,41 @@ function getRequestOptions(
   };
 }
 
+function getDepartmentUsageOptions(dateRange: Date[]): Omit<EnterpriseUsageDepartmentsRequest, "page" | "page_size" | "signal"> {
+  const start = dateRange[0];
+  const end = dateRange[1];
+  if (!start || !end) return { range: "30d" };
+  const rangeEnd = new Date(end);
+  rangeEnd.setHours(23, 59, 59, 999);
+  return {
+    range: "custom",
+    start_at: start.getTime(),
+    end_at: Math.min(Date.now(), rangeEnd.getTime()),
+  };
+}
+
+async function loadAllDepartmentUsage(
+  enterpriseID: string,
+  dateRange: Date[],
+  signal: AbortSignal,
+): Promise<EnterpriseUsageDepartment[]> {
+  const items: EnterpriseUsageDepartment[] = [];
+  const period = getDepartmentUsageOptions(dateRange);
+  let page = 1;
+  let total = 0;
+  do {
+    const response = await getEnterpriseUsageDepartments(
+      { enterprise_id: enterpriseID },
+      { ...period, page, page_size: 100, signal },
+    );
+    items.push(...(response.items ?? []));
+    total = response.total ?? items.length;
+    if (response.items.length === 0 || items.length >= total) break;
+    page += 1;
+  } while (page <= Math.ceil(total / 100));
+  return items;
+}
+
 function TraeDateRangePicker({
   value,
   onChange,
@@ -178,10 +219,12 @@ function TraeDateRangePicker({
 function TraeMetricCard({
   label,
   value,
+  unit,
   tone = "",
 }: {
   label: string;
   value: string;
+  unit?: string;
   tone?: string;
 }) {
   return (
@@ -200,7 +243,10 @@ function TraeMetricCard({
           </span>
         </Tooltip>
       </div>
-      <strong>{value}</strong>
+      <div className="trae-metric-value-row">
+        <strong>{value}</strong>
+        {unit ? <span>{unit}</span> : null}
+      </div>
     </article>
   );
 }
@@ -278,7 +324,7 @@ function PeopleTrendChart({
   useEffect(() => {
     const node = chartRef.current;
     if (!node || dates.length === 0) return undefined;
-    const chart = echarts.init(node, undefined, { renderer: "svg" });
+    const chart = echarts.init(node, undefined, { renderer: getChartRenderer() });
     const dark = theme === "dark";
     const gridColor = dark ? "rgba(255,255,255,.1)" : "rgba(23,24,27,.1)";
     const textColor = dark ? "#aeb3bf" : "#5d6470";
@@ -290,6 +336,20 @@ function PeopleTrendChart({
       tooltip: {
         trigger: "axis",
         confine: true,
+        // 中文：关闭 tooltip 的默认过渡，避免快速移动时浮层出现拖尾。
+        transitionDuration: 0,
+        axisPointer: {
+          type: "cross",
+          snap: false,
+          animation: false,
+          lineStyle: { color: dark ? "#8d93a0" : "#7b838f", width: 1, type: "dashed" },
+          crossStyle: { color: dark ? "#8d93a0" : "#7b838f", width: 1, type: "dashed" },
+          label: {
+            show: true,
+            color: dark ? "#f2f4f8" : "#30343b",
+            backgroundColor: dark ? "#4b5260" : "#dfe3e8",
+          },
+        },
         backgroundColor: dark ? "#202124" : "#ffffff",
         borderColor: dark ? "#777b84" : "#d8dadd",
         textStyle: { color: dark ? "#f2f4f8" : "#30343b", fontSize: 12 },
@@ -408,7 +468,13 @@ function TraeAnalysisRanking({
   );
 }
 
-function ModelPieChart({ data }: { data: EnterpriseAnalyticsResponse["models"] }) {
+function ModelPieChart({
+  data,
+  title,
+}: {
+  data: EnterpriseAnalyticsResponse["models"];
+  title: string;
+}) {
   const { t } = useTranslation();
   const theme = useResolvedTheme();
   const chartRef = useRef<HTMLDivElement>(null);
@@ -416,15 +482,11 @@ function ModelPieChart({ data }: { data: EnterpriseAnalyticsResponse["models"] }
     const sorted = [...data]
       .filter((item) => item.total_tokens > 0)
       .sort((a, b) => b.total_tokens - a.total_tokens);
-    const top = sorted.slice(0, 6).map((item) => ({
+    return sorted.map((item) => ({
       name: item.alias || item.name || item.code,
       value: item.total_tokens,
     }));
-    const other = sorted.slice(6).reduce((sum, item) => sum + item.total_tokens, 0);
-    return other > 0
-      ? [...top, { name: t("traeEnterprise.analysis.other"), value: other }]
-      : top;
-  }, [data, t]);
+  }, [data]);
   const total = distribution.reduce((sum, item) => sum + item.value, 0);
 
   useEffect(() => {
@@ -437,7 +499,8 @@ function ModelPieChart({ data }: { data: EnterpriseAnalyticsResponse["models"] }
       tooltip: {
         trigger: "item",
         backgroundColor: "#202124",
-        borderColor: "#1dc981",
+        borderColor: "transparent",
+        borderWidth: 0,
         textStyle: { color: "#ffffff", fontSize: 13 },
         formatter: (params: unknown) => {
           const item = params as { name?: string; percent?: number };
@@ -454,6 +517,7 @@ function ModelPieChart({ data }: { data: EnterpriseAnalyticsResponse["models"] }
           avoidLabelOverlap: true,
           itemStyle: { borderColor: dark ? "#24262b" : "#ffffff", borderWidth: 2 },
           label: {
+            position: "inside",
             color: dark ? "#ffffff" : "#30343b",
             fontSize: 11,
             fontWeight: 600,
@@ -464,9 +528,7 @@ function ModelPieChart({ data }: { data: EnterpriseAnalyticsResponse["models"] }
             },
           },
           labelLine: {
-            length: 12,
-            length2: 8,
-            lineStyle: { color: dark ? "#8c929f" : "#a1a7b1", width: 1 },
+            show: false,
           },
           data: distribution.map((item, index) => ({
             ...item,
@@ -489,7 +551,7 @@ function ModelPieChart({ data }: { data: EnterpriseAnalyticsResponse["models"] }
   if (distribution.length === 0) return <TraeEmpty hint={t("traeEnterprise.analysis.noModels")} />;
   return (
     <div className="trae-analysis-pie-content">
-      <div className="trae-analysis-pie-legend" aria-label={t("traeEnterprise.analysis.models")}>
+      <div className="trae-analysis-pie-legend" aria-label={title}>
         {distribution.map((item, index) => (
           <div className="trae-analysis-pie-legend-item" key={item.name}>
             <i style={{ backgroundColor: CHART_COLORS[index % CHART_COLORS.length] }} />
@@ -502,7 +564,7 @@ function ModelPieChart({ data }: { data: EnterpriseAnalyticsResponse["models"] }
         className="trae-analysis-pie-chart"
         ref={chartRef}
         role="img"
-        aria-label={t("traeEnterprise.analysis.models")}
+        aria-label={title}
       />
     </div>
   );
@@ -544,6 +606,7 @@ export function TraeEnterpriseAnalysis({ context, onExportChange }: AnalysisProp
   });
   const [members, setMembers] = useState<EnterpriseMember[]>([]);
   const [data, setData] = useState<EnterpriseAnalyticsResponse | null>(null);
+  const [departmentUsage, setDepartmentUsage] = useState<EnterpriseUsageDepartment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<EnterpriseRequestError | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
@@ -585,6 +648,16 @@ export function TraeEnterpriseAnalysis({ context, onExportChange }: AnalysisProp
     };
   }, [context.id, dateRange, handleError, reloadToken, scope]);
 
+  useEffect(() => {
+    const controller = new AbortController();
+    loadAllDepartmentUsage(context.id, dateRange, controller.signal)
+      .then(setDepartmentUsage)
+      .catch((reason: unknown) => {
+        if (!controller.signal.aborted) setDepartmentUsage([]);
+      });
+    return () => controller.abort();
+  }, [context.id, dateRange]);
+
   const exportData = useCallback(() => {
     if (!data) return;
     exportEnterpriseCsv(
@@ -608,10 +681,10 @@ export function TraeEnterpriseAnalysis({ context, onExportChange }: AnalysisProp
   const cumulativeTokens = (metrics?.cumulative_input_tokens ?? 0) + (metrics?.cumulative_output_tokens ?? 0);
   const latestDayTokens = (metrics?.latest_day_input_tokens ?? 0) + (metrics?.latest_day_output_tokens ?? 0);
   const personMetrics = [
-    [t("traeEnterprise.analysis.activeMembersCount"), metrics ? formatCount(metrics.active_members) : "--"],
-    [t("traeEnterprise.analysis.totalMembersCount"), metrics ? formatCount(metrics.total_members) : "--"],
-    [t("traeEnterprise.analysis.cumulativeTokens"), metrics ? formatCount(cumulativeTokens) : "--"],
-    [t("traeEnterprise.analysis.latestDayTokens"), metrics ? formatCount(latestDayTokens) : "--"],
+    [t("traeEnterprise.analysis.activeMembersCount"), metrics ? formatCount(metrics.active_members) : "--", t("traeEnterprise.analysis.memberUnit")],
+    [t("traeEnterprise.analysis.totalMembersCount"), metrics ? formatCount(metrics.total_members) : "--", t("traeEnterprise.analysis.memberUnit")],
+    [t("traeEnterprise.analysis.cumulativeTokens"), metrics ? formatCount(cumulativeTokens) : "--", t("traeEnterprise.analysis.tokenUnit")],
+    [t("traeEnterprise.analysis.latestDayTokens"), metrics ? formatCount(latestDayTokens) : "--", t("traeEnterprise.analysis.tokenUnit")],
   ];
   const toolRows = (data?.tools ?? [])
     .filter((tool) => !/agent|智能体/i.test(`${tool.id} ${tool.name}`))
@@ -671,8 +744,8 @@ export function TraeEnterpriseAnalysis({ context, onExportChange }: AnalysisProp
 
       <TraeSection title={t("traeEnterprise.analysis.people")}>
         <div className="trae-metric-grid trae-analysis-metric-grid">
-          {personMetrics.map(([label, value]) => (
-            <TraeMetricCard key={label} label={label} value={value} />
+          {personMetrics.map(([label, value, unit]) => (
+            <TraeMetricCard key={label} label={label} value={value} unit={unit} />
           ))}
         </div>
       </TraeSection>
@@ -685,9 +758,9 @@ export function TraeEnterpriseAnalysis({ context, onExportChange }: AnalysisProp
 
       <TraeSection title={t("traeEnterprise.analysis.core")}>
         <div className="trae-metric-grid trae-metric-grid--three trae-analysis-metric-grid trae-core-metric-grid">
-          <TraeMetricCard label={t("traeEnterprise.analysis.peakRpm")} value={metrics ? formatCount(metrics.peak_rpm) : "--"} />
-          <TraeMetricCard label={t("traeEnterprise.analysis.peakTpm")} value={metrics ? formatCount(metrics.peak_tpm) : "--"} />
-          <TraeMetricCard label={t("traeEnterprise.analysis.requestCount")} value={metrics ? formatCount(metrics.request_count) : "--"} />
+          <TraeMetricCard label={t("traeEnterprise.analysis.peakRpm")} value={metrics ? formatCount(metrics.peak_rpm) : "--"} unit={t("traeEnterprise.analysis.rpmUnit")} />
+          <TraeMetricCard label={t("traeEnterprise.analysis.peakTpm")} value={metrics ? formatCount(metrics.peak_tpm) : "--"} unit={t("traeEnterprise.analysis.tpmUnit")} />
+          <TraeMetricCard label={t("traeEnterprise.analysis.requestCount")} value={metrics ? formatCount(metrics.request_count) : "--"} unit={t("traeEnterprise.analysis.countSuffix")} />
         </div>
       </TraeSection>
 
@@ -698,12 +771,28 @@ export function TraeEnterpriseAnalysis({ context, onExportChange }: AnalysisProp
 
       <div className="trae-analysis-pie-grid">
         <TraeSection title={t("traeEnterprise.analysis.models")} className="trae-analysis-pie-section">
-          {data ? <ModelPieChart data={data.models} /> : <TraeEmpty />}
+          {data ? <ModelPieChart data={data.models} title={t("traeEnterprise.analysis.models")} /> : <TraeEmpty />}
         </TraeSection>
-        <TraeSection title={t("traeEnterprise.analysis.languages")} className="trae-analysis-pie-section">
-          <div className="trae-analysis-pie-content trae-analysis-pie-empty">
-            <TraeEmpty />
-          </div>
+        <TraeSection title={t("traeEnterprise.analysis.departments")} className="trae-analysis-pie-section">
+          {departmentUsage.length > 0 ? (
+            <ModelPieChart
+              title={t("traeEnterprise.analysis.departments")}
+              data={departmentUsage.map((item) => ({
+                alias: item.department_name,
+                name: item.department_name,
+                code: item.department_id,
+                request_count: 0,
+                input_tokens: 0,
+                output_tokens: 0,
+                total_tokens: item.total_tokens,
+                cost_yuan: item.cost_yuan,
+              }))}
+            />
+          ) : (
+            <div className="trae-analysis-pie-content trae-analysis-pie-empty">
+              <TraeEmpty hint={t("traeEnterprise.analysis.noDepartments")} />
+            </div>
+          )}
         </TraeSection>
       </div>
     </div>

@@ -13,8 +13,14 @@ export const PROFILE_VERIFICATION_CODE_LENGTH = 6
 export const PROFILE_DEFAULT_RETRY_SECONDS = 60
 
 export const PROFILE_NOTIFICATION_CODES = [
+  'onboarding',
+  'security_alerts',
+  'billing_updates',
   'low_balance',
+  'usage_alerts',
+  'workflow_results',
   'invitations',
+  'service_updates',
   'product_updates',
 ] as const
 
@@ -72,7 +78,16 @@ export interface EnterpriseMembership {
 export interface NotificationPreference {
   code: NotificationPreferenceCode | string
   enabled: boolean
+  email_enabled?: boolean
+  sms_enabled?: boolean
   default_enabled: boolean
+  default_email_enabled?: boolean
+  default_sms_enabled?: boolean
+  email_supported?: boolean
+  sms_supported?: boolean
+  mandatory?: boolean
+  threshold_supported?: boolean
+  threshold_amount_nano?: number
   version: number
 }
 

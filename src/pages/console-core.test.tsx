@@ -280,6 +280,10 @@ describe('控制台模型接入页面', () => {
     expect(screen.getByText('7,237,576')).toBeInTheDocument()
     expect(document.querySelectorAll('.model-detail-chart-bars')).toHaveLength(1)
     expect(document.querySelectorAll('.model-detail-chart-line')).toHaveLength(2)
+    const activityBars = Array.from(document.querySelectorAll<HTMLElement>('.model-detail-chart-bars > span'))
+    expect(activityBars.length).toBeGreaterThan(0)
+    expect(activityBars.every((bar) => bar.tabIndex === 0 && bar.dataset.tooltip)).toBe(true)
+    expect(activityBars[0]?.querySelector('b')).toHaveTextContent(activityBars[0]?.dataset.tooltip ?? '')
   })
 
   it('分页后切换搜索会回到第一页，并按当前结果显示范围', async () => {

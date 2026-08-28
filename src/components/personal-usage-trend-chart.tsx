@@ -3,8 +3,12 @@ import { useTranslation } from "react-i18next";
 import { IconRefresh } from "@douyinfe/semi-icons";
 import * as echarts from "echarts/core";
 import { LineChart } from "echarts/charts";
-import { GridComponent, TooltipComponent } from "echarts/components";
-import { SVGRenderer } from "echarts/renderers";
+import {
+  AxisPointerComponent,
+  GridComponent,
+  TooltipComponent,
+} from "echarts/components";
+import { CanvasRenderer, SVGRenderer } from "echarts/renderers";
 import {
   getPersonalUsageErrorMessage,
   getUsageTrend,
@@ -14,8 +18,16 @@ import {
 } from "@/api/personal-usage";
 import { dateRangeToTrendQuery } from "./personal-usage-date-picker";
 import { useResolvedTheme } from "@/theme";
+import { getChartRenderer } from "@/components/chart-renderer";
 
-echarts.use([LineChart, GridComponent, TooltipComponent, SVGRenderer]);
+echarts.use([
+  LineChart,
+  GridComponent,
+  TooltipComponent,
+  AxisPointerComponent,
+  CanvasRenderer,
+  SVGRenderer,
+]);
 
 const SERIES_COLORS: Record<UsageTrendSeriesName, string> = {
   requests: "#4f79e8",
@@ -64,11 +76,27 @@ export function PersonalUsageTrendChart({
       })),
     [t],
   );
+  const tooltipDateFormatter = useMemo(
+    () => new Intl.DateTimeFormat(i18n.language, { dateStyle: "medium", timeZone: "UTC" }),
+    [i18n.language],
+  );
+  const tooltipNumberFormatters = useMemo(
+    () => new Map(
+      seriesMeta.map((series) => [
+        series.name,
+        new Intl.NumberFormat(i18n.language, {
+          minimumFractionDigits: series.name === "cost" ? 4 : 0,
+          maximumFractionDigits: series.name === "cost" ? 4 : 0,
+        }),
+      ]),
+    ),
+    [i18n.language, seriesMeta],
+  );
 
   useEffect(() => {
     const node = chartRef.current;
     if (!node || !data || data.xAxis.data.length === 0) return undefined;
-    const chart = echarts.init(node, undefined, { renderer: "svg" });
+    const chart = echarts.init(node, undefined, { renderer: getChartRenderer() });
     const isDark = theme === "dark";
     const labels = data.xAxis.data.map((timestamp) =>
       new Intl.DateTimeFormat(i18n.language, {
@@ -93,6 +121,28 @@ export function PersonalUsageTrendChart({
       tooltip: {
         trigger: "axis",
         confine: true,
+        // 中文：关闭默认浮层过渡，让 tooltip 与指针保持同步。
+        transitionDuration: 0,
+        axisPointer: {
+          type: "cross",
+          snap: false,
+          animation: false,
+          lineStyle: {
+            type: "dashed",
+            width: 1,
+            color: isDark ? "#aeb3bf" : "#68717d",
+          },
+          crossStyle: {
+            type: "dashed",
+            width: 1,
+            color: isDark ? "#aeb3bf" : "#68717d",
+          },
+          label: {
+            show: true,
+            backgroundColor: isDark ? "#53699b" : "#7188e8",
+            color: "#fff",
+          },
+        },
         backgroundColor: isDark ? "#202124" : "#ffffff",
         borderColor: isDark ? "#777b84" : "#d8dadd",
         borderWidth: 1,
@@ -103,11 +153,8 @@ export function PersonalUsageTrendChart({
             dataIndex?: number;
           }>;
           const index = items[0]?.dataIndex ?? 0;
-          const date = new Intl.DateTimeFormat(i18n.language, {
-            dateStyle: "medium",
-            timeZone: "UTC",
-          }).format(data.xAxis.data[index]);
-          return `<div style="font-size:12px;line-height:24px"><div>${date}</div>${seriesMeta.map((series) => `<div style="display:flex;gap:8px;min-width:190px"><i style="width:8px;height:8px;margin-top:8px;border-radius:50%;background:${series.color}"></i><span style="flex:1">${series.label}</span><strong>${new Intl.NumberFormat(i18n.language, { minimumFractionDigits: series.name === "cost" ? 4 : 0, maximumFractionDigits: series.name === "cost" ? 4 : 0 }).format(values.get(series.name)?.[index] ?? 0)}</strong></div>`).join("")}</div>`;
+          const date = tooltipDateFormatter.format(data.xAxis.data[index]);
+          return `<div style="font-size:12px;line-height:24px"><div>${date}</div>${seriesMeta.map((series) => `<div style="display:flex;gap:8px;min-width:190px"><i style="width:8px;height:8px;margin-top:8px;border-radius:50%;background:${series.color}"></i><span style="flex:1">${series.label}</span><strong>${tooltipNumberFormatters.get(series.name)?.format(values.get(series.name)?.[index] ?? 0) ?? 0}</strong></div>`).join("")}</div>`;
         },
       },
       xAxis: {
@@ -160,7 +207,7 @@ export function PersonalUsageTrendChart({
       resizeObserver?.disconnect();
       chart.dispose();
     };
-  }, [data, i18n.language, seriesMeta, theme]);
+  }, [data, seriesMeta, theme, tooltipDateFormatter, tooltipNumberFormatters]);
 
   return (
     <div className="personal-usage-line-wrap">

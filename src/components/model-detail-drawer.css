@@ -8,6 +8,7 @@
 }
 
 .model-detail-chart-bars > span {
+  position: relative;
   display: grid;
   grid-template-rows: 1fr auto;
   align-items: end;
@@ -17,6 +18,7 @@
 }
 
 .model-detail-chart-bars i {
+  position: relative;
   display: block;
   width: 100%;
   min-height: 2px;
@@ -24,6 +26,51 @@
   border-radius: 3px 3px 1px 1px;
   background: var(--color-brand-primary, #72b8e8);
   opacity: .86;
+  transition: opacity .16s ease, filter .16s ease, transform .16s ease;
+  transform-origin: center bottom;
+}
+
+/* 中文：柱状图提示同时支持鼠标悬停和键盘聚焦，避免依赖原生 title 的显示时机。 */
+.model-detail-chart-bars > span:hover i,
+.model-detail-chart-bars > span:focus-visible i {
+  opacity: 1;
+  filter: brightness(1.12);
+  transform: scaleY(1.04);
+}
+
+.model-detail-chart-bars > span:focus-visible {
+  outline: 2px solid var(--color-brand, #7d9cff);
+  outline-offset: 3px;
+  border-radius: 3px;
+}
+
+.model-detail-chart-bars i b {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  z-index: 2;
+  display: none;
+  width: max-content;
+  max-width: min(220px, calc(100vw - 32px));
+  padding: 5px 8px;
+  border: 1px solid var(--color-border-neutral-l2);
+  border-radius: 4px;
+  color: var(--color-text-default-hover);
+  background: var(--color-bg-menu);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, .24);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 16px;
+  pointer-events: none;
+  text-align: center;
+  white-space: nowrap;
+  transform: translateX(-50%);
+}
+
+.model-detail-chart-bars > span:hover i b,
+.model-detail-chart-bars > span:focus-visible i b {
+  display: block;
 }
 
 .model-detail-chart-bars .is-missing i {

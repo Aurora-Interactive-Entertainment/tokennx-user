@@ -1,0 +1,466 @@
+.subscription-page {
+  position: relative;
+  gap: 28px;
+}
+
+.subscription-page > .page-title-row {
+  padding-right: 150px;
+  /* 中文：订阅管理沿用后台统一标题区，不额外绘制底部分隔线。 */
+  border-bottom: 0;
+  padding-bottom: 22px;
+}
+
+.subscription-page .section-heading h2 {
+  font-size: 18px;
+  font-weight: 650;
+}
+
+.subscription-page .page-actions .semi-button {
+  width: 36px;
+  min-width: 36px;
+  padding: 0;
+}
+
+.subscription-overview,
+.subscription-plans-section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.subscription-overview-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.65fr) repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.subscription-current-card,
+.subscription-model-card {
+  min-width: 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  background: var(--bg-panel);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.06);
+}
+
+.subscription-current-card {
+  padding: 26px 28px 22px;
+}
+
+.subscription-current-card__title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.subscription-current-card h3 {
+  margin: 18px 0 5px;
+  color: var(--text-primary);
+  font-size: 24px;
+  line-height: 1.1;
+}
+
+.subscription-current-card h3 small {
+  margin-left: 6px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.subscription-current-card > p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.subscription-current-card .subscription-current-upgrade.semi-button {
+  min-width: 76px;
+  min-height: 32px;
+  margin: 0;
+  padding-inline: 14px;
+  border-radius: var(--radius-6);
+  font-size: 13px;
+}
+
+.subscription-card-divider {
+  margin: 22px 0 14px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.subscription-current-card .subscription-current-hint {
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.subscription-model-card {
+  display: flex;
+  flex-direction: column;
+  padding: 25px 24px 20px;
+}
+
+.subscription-model-card h3 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 16px;
+}
+
+.subscription-model-card p {
+  margin: 6px 0 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.subscription-progress {
+  height: 16px;
+  margin-top: auto;
+  padding: 4px;
+  border-radius: 4px;
+  background: var(--bg-base-soft);
+}
+
+.subscription-progress span {
+  display: block;
+  width: 0;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--brand);
+}
+
+.subscription-model-card small {
+  margin-top: 11px;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.subscription-plan-grid {
+  display: grid;
+  align-items: stretch;
+  /* 中文：卡片按可用内容区自适应收缩，避免右侧套餐被视口裁切。 */
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.subscription-plan-card {
+  display: flex;
+  align-self: stretch;
+  min-width: 0;
+  min-height: 360px;
+  flex-direction: column;
+  padding: 28px 28px 26px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 18px;
+  background: var(--bg-panel);
+  color: var(--text-primary);
+  transition: transform 180ms ease, box-shadow 180ms ease;
+}
+
+/* 中文：卡片 hover 仅做轻微上浮，保持网格尺寸和背景颜色稳定。 */
+.subscription-plan-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 18px 34px rgba(0, 0, 0, 0.2);
+}
+
+.subscription-plan-card--starter,
+.subscription-plan-card--max,
+.subscription-plan-card--ultra {
+  border-color: transparent;
+  color: #fff;
+}
+
+.subscription-plan-card--starter { background: linear-gradient(145deg, #31b9ef, #168be4); }
+.subscription-plan-card--max { background: linear-gradient(145deg, #465fa4, #263b78); }
+.subscription-plan-card--ultra { background: linear-gradient(145deg, #4d5870, #242c3e); }
+
+.subscription-plan-heading {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.subscription-plan-heading > div {
+  min-width: 0;
+}
+
+.subscription-plan-heading h3 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 36px;
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+.subscription-plan-heading span {
+  display: block;
+  margin-top: 7px;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.subscription-plan-card--starter .subscription-plan-heading span,
+.subscription-plan-card--max .subscription-plan-heading span,
+.subscription-plan-card--ultra .subscription-plan-heading span { color: rgba(255, 255, 255, 0.72); }
+
+.subscription-current-badge {
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.22);
+  color: inherit !important;
+  font-size: 11px !important;
+}
+
+.subscription-plan-price {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  margin-top: 24px;
+}
+
+.subscription-plan-price strong { font-size: 26px; }
+.subscription-plan-price span { font-size: 12px; color: var(--text-secondary); }
+.subscription-plan-price small { margin-left: auto; color: var(--text-secondary); font-size: 12px; }
+.subscription-plan-card--starter .subscription-plan-price span,
+.subscription-plan-card--starter .subscription-plan-price small,
+.subscription-plan-card--max .subscription-plan-price span,
+.subscription-plan-card--max .subscription-plan-price small,
+.subscription-plan-card--ultra .subscription-plan-price span,
+.subscription-plan-card--ultra .subscription-plan-price small { color: rgba(255,255,255,.72); }
+
+.subscription-plan-description {
+  /* 中文：为套餐说明预留统一的四行空间，让四张卡片的按钮处于同一高度。 */
+  min-height: 96px;
+  margin: 8px 0 18px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.subscription-plan-card--starter .subscription-plan-description,
+.subscription-plan-card--max .subscription-plan-description,
+.subscription-plan-card--ultra .subscription-plan-description { color: rgba(255,255,255,.78); }
+
+.subscription-plan-action {
+  position: relative;
+  width: 100%;
+  border-radius: 10px;
+  overflow: hidden;
+  isolation: isolate;
+  transition: transform 160ms ease;
+}
+
+/* 中文：按钮只做轻微放大和扫光，不改变原有背景色或文字颜色。 */
+.subscription-plan-action::after {
+  position: absolute;
+  top: -30%;
+  bottom: -30%;
+  left: 0;
+  width: 32%;
+  content: "";
+  pointer-events: none;
+  background: linear-gradient(105deg, transparent 0%, rgba(255, 255, 255, 0.04) 35%, rgba(255, 255, 255, 0.38) 50%, rgba(255, 255, 255, 0.04) 65%, transparent 100%);
+  transform: translateX(-180%) skewX(-16deg);
+}
+
+.subscription-plan-action:hover:not(:disabled) {
+  transform: scale(1.025);
+}
+
+.subscription-plan-action:hover:not(:disabled)::after {
+  animation: subscription-button-sheen 700ms ease-out;
+}
+
+@keyframes subscription-button-sheen {
+  from { transform: translateX(-180%) skewX(-16deg); }
+  to { transform: translateX(460%) skewX(-16deg); }
+}
+
+.subscription-plan-card--starter .subscription-plan-action,
+.subscription-plan-card--max .subscription-plan-action,
+.subscription-plan-card--ultra .subscription-plan-action { border-color: rgba(255,255,255,.35); background: rgba(255,255,255,.12); color: #fff; }
+
+.subscription-plan-card--starter .subscription-plan-action:hover:not(:disabled),
+.subscription-plan-card--max .subscription-plan-action:hover:not(:disabled),
+.subscription-plan-card--ultra .subscription-plan-action:hover:not(:disabled) {
+  background: rgba(255,255,255,.12) !important;
+  border-color: rgba(255,255,255,.35) !important;
+  border-radius: 10px !important;
+  color: #fff !important;
+}
+
+.subscription-plan-features { margin-top: 24px; }
+.subscription-plan-features > span { color: var(--text-secondary); font-size: 12px; }
+.subscription-plan-card--starter .subscription-plan-features > span,
+.subscription-plan-card--max .subscription-plan-features > span,
+.subscription-plan-card--ultra .subscription-plan-features > span { color: rgba(255,255,255,.72); }
+
+.subscription-plan-features ul { display: grid; gap: 9px; margin: 12px 0 0; padding: 0; list-style: none; }
+.subscription-plan-features li { display: flex; min-width: 0; align-items: flex-start; gap: 7px; color: var(--text-secondary); font-size: 12px; line-height: 1.45; overflow-wrap: anywhere; }
+.subscription-plan-features li .semi-icon { flex: 0 0 auto; color: #36be86; font-size: 15px; }
+.subscription-plan-card--starter .subscription-plan-features li,
+.subscription-plan-card--max .subscription-plan-features li,
+.subscription-plan-card--ultra .subscription-plan-features li { color: rgba(255,255,255,.86); }
+.subscription-plan-card--starter .subscription-plan-features li .semi-icon,
+.subscription-plan-card--max .subscription-plan-features li .semi-icon,
+.subscription-plan-card--ultra .subscription-plan-features li .semi-icon { color: #b8f5d8; }
+
+.subscription-error { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border: 1px solid var(--color-border-warning, #d6a94c); border-radius: 6px; color: var(--text-primary); font-size: 12px; }
+.subscription-error small { color: var(--text-tertiary); }
+
+.subscription-upgrade-options {
+  display: grid;
+  gap: var(--spacing-12);
+  /* 中文：滚动容器会裁切溢出，为卡片阴影预留内部缓冲区。 */
+  padding: 10px var(--spacing-12) 14px;
+}
+
+.subscription-upgrade-option {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: var(--spacing-12);
+  padding: var(--spacing-16);
+  border: 1px solid rgba(0,0,0,5%);
+  border-radius: var(--spacing-16);
+  background: var(--color-bg-base-secondary);
+  color: var(--color-text-default);
+  text-align: left;
+  /* 中文：升级计划卡片保持常态阴影，避免只有悬停时才有浮层层次。 */
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+  cursor: pointer;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.subscription-upgrade-option:hover {
+  border-color: var(--color-border-neutral-l2);
+  background: var(--color-bg-overlay-l1);
+  box-shadow: 0 6px 14px -8px rgba(0, 0, 0, 0.2);
+  transform: translateY(-1px);
+}
+
+.subscription-upgrade-option.is-selected {
+  border-color: transparent;
+  background: var(--color-bg-overlay-l2);
+  box-shadow: 0 10px 20px -8px rgba(0, 0, 0, 0.3);
+  transform: translateY(-2px);
+}
+
+.subscription-upgrade-option:focus-visible:not(.is-selected) {
+  outline: 2px solid var(--color-action-primary);
+  outline-offset: 2px;
+}
+
+.subscription-upgrade-option.is-selected:focus-visible {
+  outline: 0;
+}
+
+.subscription-upgrade-option__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.subscription-upgrade-option__top strong {
+  display: block;
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.subscription-upgrade-option__top small {
+  display: block;
+  margin-top: var(--spacing-4);
+  color: var(--color-text-tertiary);
+  font-size: 13px;
+}
+
+.subscription-upgrade-check {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
+  place-items: center;
+  border: 1px solid var(--color-border-neutral-l2);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--color-action-on-primary);
+  font-size: 14px;
+}
+
+.subscription-upgrade-option.is-selected .subscription-upgrade-check {
+  border-color: var(--color-action-primary);
+  background: var(--color-action-primary);
+}
+
+.subscription-upgrade-option__divider {
+  width: 100%;
+  border-top: 1px solid var(--color-border-neutral-l1);
+}
+
+.subscription-upgrade-option__price {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.subscription-upgrade-option__price small {
+  color: var(--color-text-tertiary);
+  font-size: 13px;
+  font-weight: 400;
+}
+
+@media (max-width: 680px) {
+  .subscription-upgrade-modal .semi-modal {
+    width: calc(100vw - var(--spacing-32)) !important;
+    max-width: none;
+  }
+
+  .subscription-upgrade-modal .semi-modal-content {
+    padding-inline: var(--spacing-16);
+  }
+
+  .subscription-upgrade-option {
+    padding: var(--spacing-14);
+  }
+
+  .subscription-upgrade-options {
+    padding-inline: var(--spacing-8);
+  }
+}
+
+@media (max-width: 900px) {
+  .subscription-overview-grid { grid-template-columns: 1fr 1fr; }
+  .subscription-current-card { grid-column: 1 / -1; }
+}
+
+/* 中文：四列需要较宽的内容区，空间不足时固定降为两列，避免卡片压缩到不可读。 */
+@media (max-width: 1540px) {
+  .subscription-plan-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 680px) {
+  .subscription-page > .page-title-row { padding-right: 0; }
+  .subscription-page > .page-title-row .page-actions { width: auto; flex: 0 0 auto; align-self: flex-start; }
+  .subscription-overview-grid,
+  .subscription-plan-grid { grid-template-columns: minmax(0, 1fr); }
+  .subscription-plan-card { min-width: 0; }
+  .subscription-current-card { grid-column: auto; }
+}
+
+html[data-theme="light"] .subscription-current-card,
+html[data-theme="light"] .subscription-model-card,
+html[data-theme="light"] .subscription-plan-card--free,
+html[data-theme="light"] .subscription-upgrade-option {
+  background: #fff;
+}
+
+html[data-theme="light"] .subscription-upgrade-option {
+  border-color: rgba(0, 0, 0, 0.06);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+}

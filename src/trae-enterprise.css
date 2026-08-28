@@ -1,8 +1,9 @@
 /* Trae-style enterprise workspace. The old enterprise pages keep their own classes and routes. */
 .trae-page { width: 100%; min-width: 0; padding: var(--console-page-gutter, 32px); color: var(--color-text-default); }
 .console-page:has(> .trae-page) { padding-inline: 0; }
-.trae-page-heading { display: flex; align-items: center; justify-content: space-between; gap: 20px; min-height: 44px; margin-bottom: 26px; }
-.trae-page-heading h1 { color: var(--color-text-default-hover); font-size: 22px; font-weight: 650; line-height: 1.35; }
+/* 中文：新版企业页标题统一为 30px 行高，并与首个内容块保持 32px 间距。 */
+.trae-page-heading { display: flex; align-items: center; justify-content: space-between; gap: 20px; min-height: 30px; margin-bottom: 32px; }
+.trae-page-heading h1 { color: var(--color-text-default-hover); font-size: 22px; font-weight: 650; line-height: 30px; }
 .trae-page-heading-action { display: flex; align-items: center; gap: 8px; }
 .trae-toolbar { display: flex; align-items: center; gap: 10px; min-width: 0; margin-bottom: 22px; flex-wrap: wrap; }
 .trae-select.semi-select { width: 200px; height: 38px; min-width: 0; border: 1px solid var(--color-border-neutral-l2); border-radius: 6px; color: var(--color-text-secondary); background: var(--color-bg-base-secondary); }
@@ -102,7 +103,7 @@ html[data-theme="dark"] .trae-date-picker-dropdown [class*="semi-datepicker-day-
 .trae-empty svg { font-size: 23px; color: var(--color-text-tertiary); }
 .trae-empty strong { color: var(--color-text-secondary); font-size: 13px; font-weight: 550; }
 .trae-empty span { font-size: 11px; }
-.trae-tabs { display: flex; align-items: center; gap: 4px; margin-bottom: 20px; border-bottom: 1px solid var(--color-border-neutral-l1); }
+.trae-tabs { display: flex; align-items: center; gap: 4px; margin-bottom: 20px; border-bottom: 0; }
 .trae-tabs button { position: relative; min-height: 38px; padding: 0 16px; border: 0; color: var(--color-text-secondary); background: transparent; font: inherit; font-size: 13px; cursor: pointer; }
 .trae-tabs button::after { position: absolute; right: 16px; bottom: -1px; left: 16px; height: 2px; background: transparent; content: ''; }
 .trae-tabs button:hover { color: var(--color-text-default-hover); }
@@ -289,10 +290,10 @@ html[data-theme="dark"] .trae-date-picker-dropdown [class*="semi-datepicker-day-
 .trae-members-page { --trae-members-page-gutter: var(--console-page-gutter, 32px); padding: 0; background: var(--color-bg-base-primary); }
 /* page-stack 已扩展到控制台内容边缘，这里移除其默认子项边距，避免形成双重留白。 */
 .console-page > .trae-enterprise-members-shell.page-stack > .trae-members-page { margin-inline: 0; }
-.trae-members-header { display: flex; align-items: center; justify-content: space-between; gap: 24px; min-height: 114px; padding: var(--trae-members-page-gutter); border-bottom: 0; background: var(--color-bg-base-primary); }
+.trae-members-header { display: flex; align-items: center; justify-content: space-between; gap: 24px; min-height: 94px; padding: var(--trae-members-page-gutter); border-bottom: 0; background: var(--color-bg-base-primary); }
 .trae-members-header-main { display: flex; align-items: baseline; gap: 20px; min-width: 0; }
-.trae-members-header h1 { flex: 0 0 auto; color: var(--color-text-default-hover); font-size: 25px; font-weight: 650; line-height: 1.2; }
-.trae-members-header-stats { display: flex; align-items: center; gap: 18px; min-width: 0; color: var(--color-text-tertiary); font-size: 14px; white-space: nowrap; }
+.trae-members-header h1 { flex: 0 0 auto; color: var(--color-text-default-hover); font-size: 22px; font-weight: 650; line-height: 1.2; }
+.trae-members-header-stats { display: flex; align-items: center; gap: 18px; min-width: 0; color: var(--color-text-tertiary); font-size: 14px; line-height: 20px; white-space: nowrap; }
 .trae-members-header-stats b { margin-left: 4px; color: var(--color-text-default-hover); font-weight: 650; }
 .trae-members-header-stats i { width: 1px; height: 18px; background: var(--color-border-neutral-l2); }
 .trae-member-add-action { position: relative; }
@@ -304,7 +305,12 @@ html[data-theme="dark"] .trae-date-picker-dropdown [class*="semi-datepicker-day-
 .trae-member-add-menu button svg { width: 16px; height: 16px; flex: 0 0 16px; }
 .trae-member-add-menu button:hover { color: var(--color-text-default-hover); background: var(--color-bg-overlay-l3); }
 .trae-members-page > .trae-tabs { position: relative; gap: 24px; margin: 0; padding: 0 var(--trae-members-page-gutter); border-bottom: 0; }
-.trae-members-page > .trae-tabs::after { position: absolute; right: var(--trae-members-page-gutter); bottom: 0; left: var(--trae-members-page-gutter); height: 1px; background: var(--color-border-neutral-l1); content: ''; }
+/* 中文：Semi Tabs 替换旧手写页签后，沿用人员管理页内容区的左右边距。 */
+.trae-members-page > .console-tabs { margin: 0 var(--trae-members-page-gutter) 30px; }
+.trae-members-page > .console-tabs .semi-tabs-tab { margin-right: 24px; padding-inline: 0; font-size: 13px; }
+.trae-members-page > .console-tabs .semi-tabs-tab:last-of-type { margin-right: 0; }
+/* 中文：人员管理页与用量管理页统一，不保留页签容器的整条底线。 */
+.trae-members-page > .trae-tabs::after { content: none; }
 .trae-members-page > .trae-tabs button { z-index: 1; min-height: 44px; padding-inline: 0; margin-right: 0; font-size: 13px; font-weight: 600; }
 .trae-members-page > .trae-tabs button::after { right: 0; left: 0; }
 .trae-members-page > .trae-members-workspace, .trae-members-page > .trae-department-editor { margin: 0 var(--trae-members-page-gutter) 36px; border: 0; border-radius: 0; background: transparent; grid-template-columns: 240px minmax(0, 1fr); min-height: 0; align-items: stretch; }
@@ -481,7 +487,7 @@ html[data-theme="dark"] .trae-date-picker-dropdown [class*="semi-datepicker-day-
 
 /* 订阅页保持截图中的窄内容列，避免宽屏下卡片被拉得过宽。 */
 .trae-subscription-page { width: min(784px, 100%); margin-inline: auto; }
-.trae-subscription-page .trae-page-heading { margin-bottom: 26px; }
+.trae-subscription-page .trae-page-heading { margin-bottom: 32px; }
 .trae-subscription-page .trae-subscription-manage-button { width: 92px; min-height: 28px; padding-inline: 8px; }
 .trae-subscription-page .trae-subscription-top { gap: 12px; }
 .trae-subscription-page .trae-subscription-card { min-height: 106px; padding: 16px; }
@@ -535,6 +541,8 @@ html[data-theme="dark"] .trae-date-picker-dropdown [class*="semi-datepicker-day-
   .trae-members-header-main { align-items: flex-start; flex-direction: column; gap: 12px; }
   .trae-members-header-stats { flex-wrap: wrap; white-space: normal; }
   .trae-members-page > .trae-tabs { padding: 18px var(--trae-members-page-gutter) 0; overflow-x: auto; }
+  .trae-members-page > .console-tabs { margin: 0 var(--trae-members-page-gutter) 24px; }
+  .trae-members-page > .console-tabs .semi-tabs-tab { font-size: 14px; }
   .trae-members-page > .trae-tabs::after { right: var(--trae-members-page-gutter); left: var(--trae-members-page-gutter); }
   .trae-members-page > .trae-members-workspace, .trae-members-page > .trae-department-editor { margin: 0 var(--trae-members-page-gutter) 24px; grid-template-columns: 1fr; }
   .trae-departments-management { margin: 16px var(--trae-members-page-gutter) 24px; }

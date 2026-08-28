@@ -52,8 +52,9 @@ function NewsCard({ article, language, index, localizedNewsLabel }: { article: N
 }
 
 function NewsListSkeleton() {
+  const { t } = useTranslation()
   return (
-    <div className="news-list-grid news-list-skeleton" aria-busy="true" aria-label="Loading news">
+    <div className="news-list-grid news-list-skeleton" aria-busy="true" aria-label={t('news.loadingLabel')}>
       {Array.from({ length: 6 }).map((_, index) => (
         <div className="news-card-skeleton" key={index}>
           <Skeleton.Image className="news-card-skeleton-cover" />

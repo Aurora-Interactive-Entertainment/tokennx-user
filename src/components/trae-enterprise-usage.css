@@ -4,6 +4,7 @@
 .trae-usage-account-stats { display: flex; align-items: center; justify-content: flex-start; gap: 16px; color: var(--color-text-tertiary); font-size: 12px; }
 .trae-usage-account-stats span { min-width: 0; }
 .trae-usage-account-stats b { margin-left: 4px; color: var(--color-text-secondary); font-variant-numeric: tabular-nums; }
+.trae-usage-card-money span { margin-left: 8px; color: var(--color-text-secondary); font-size: 13px; font-weight: 400; line-height: 1; }
 /* 左右摘要卡使用相同的上、中、下三行节奏。 */
 .trae-usage-summary-card--overall { min-height: 176px; padding: 16px 22px; }
 .trae-usage-summary-card--overall .trae-usage-overall-body { min-height: 0; align-items: stretch; }

@@ -298,6 +298,7 @@ export function TraeEnterpriseAudit({ context }: { context: EnterpriseContext })
                 <tr>
                   <th>{t("traeEnterprise.audit.action")}</th>
                   <th>{t("traeEnterprise.audit.record")}</th>
+                  <th>{t("traeEnterprise.audit.status")}</th>
                   <th>{t("traeEnterprise.audit.operator")}</th>
                   <th>{t("traeEnterprise.audit.time")}</th>
                 </tr>
@@ -313,7 +314,8 @@ export function TraeEnterpriseAudit({ context }: { context: EnterpriseContext })
                     }}
                   >
                     <td><span className="trae-audit-action-cell"><strong>{actionLabel(log)}</strong></span></td>
-                    <td><span className="trae-audit-record-cell"><span title={resourceLabel(log)}>{resourceLabel(log)}</span><small className={`trae-audit-result ${resultClass(log.result)}`}>{auditResultLabel(log.result)}</small></span></td>
+                    <td><span className="trae-audit-record-cell"><span title={resourceLabel(log)}>{resourceLabel(log)}</span></span></td>
+                    <td><span className={`trae-audit-result ${resultClass(log.result)}`}>{auditResultLabel(log.result)}</span></td>
                     <td><span className="trae-audit-operator-cell"><strong>{log.actor_name || log.actor_id || "--"}</strong><small>{log.actor_contact || log.actor_id || "--"}</small></span></td>
                     <td>{formatEnterpriseTime(log.occurred_at)}</td>
                   </tr>

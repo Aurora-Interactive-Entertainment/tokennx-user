@@ -1,31 +1,25 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router'
 import Button from '@douyinfe/semi-ui/lib/es/button'
 import Modal from '@/components/app-modal'
 import Switch from '@douyinfe/semi-ui/lib/es/switch'
-import { CompatInput as Input } from '@/components/semi-compat'
 import {
   getNotificationPreferences,
   getProfileEnterprises,
   getProfileErrorMessage,
   getUserProfile,
   isNotificationPreferenceCode,
-  isValidDisplayName,
   limitDisplayNameLength,
-  PROFILE_DISPLAY_NAME_MAX_LENGTH,
-  PROFILE_NOTIFICATION_CODES,
   updateNotificationPreferences,
-  updateProfileNickname,
-  type ContactProvider,
   type EnterpriseMembership,
   type NotificationPreferenceCode,
   type NotificationPreferences,
   type UserProfile,
 } from '@/api/profile'
-import { getAccessToken, getVerifiedPhone } from '@/auth/token-storage'
+import { getAccessToken } from '@/auth/token-storage'
 import { isAuthenticationFailure } from '@/api/http'
-import { ProfileContactDialog } from '@/components/profile-contact-dialog'
-import { BannerNotice, PageTitle } from '@/components/common'
+import { AccountSettingsModal, BannerNotice, PageTitle } from '@/components/common'
+import { SettingsAnchorLayout, type SettingsAnchorItem } from '@/components/settings-anchor-layout'
 import { NEW_ENTERPRISE_CREATE_PATH } from '@/api/enterprise-certification'
 import { useAppStore } from '@/data/app-state'
 import { getEnterpriseContext, type EnterpriseContext, type EnterpriseRoleOption } from '@/api/enterprise-console'
@@ -37,20 +31,16 @@ import { publishProfileUpdate, subscribeProfileUpdates } from '@/profile/profile
 import './console-profile.css'
 
 const PREFERENCE_DEFINITIONS: Record<NotificationPreferenceCode, { labelKey: string; descriptionKey: string }> = {
+  onboarding: { labelKey: 'profile.notifications.onboarding', descriptionKey: 'profile.notifications.onboardingDescription' },
+  security_alerts: { labelKey: 'profile.notifications.securityAlerts', descriptionKey: 'profile.notifications.securityAlertsDescription' },
+  billing_updates: { labelKey: 'profile.notifications.billingUpdates', descriptionKey: 'profile.notifications.billingUpdatesDescription' },
   low_balance: { labelKey: 'profile.notifications.lowBalance', descriptionKey: 'profile.notifications.lowBalanceDescription' },
+  usage_alerts: { labelKey: 'profile.notifications.usageAlerts', descriptionKey: 'profile.notifications.usageAlertsDescription' },
+  workflow_results: { labelKey: 'profile.notifications.workflowResults', descriptionKey: 'profile.notifications.workflowResultsDescription' },
   invitations: { labelKey: 'profile.notifications.invitations', descriptionKey: 'profile.notifications.invitationsDescription' },
+  service_updates: { labelKey: 'profile.notifications.serviceUpdates', descriptionKey: 'profile.notifications.serviceUpdatesDescription' },
   product_updates: { labelKey: 'profile.notifications.productUpdates', descriptionKey: 'profile.notifications.productUpdatesDescription' },
 }
-
-const ENTERPRISE_CAPABILITY_DEFINITIONS: Array<{ key: keyof EnterpriseContext['capabilities']; labelKey: string }> = [
-  { key: 'can_manage_members', labelKey: 'profile.enterprise.permissions.manageMembers' },
-  { key: 'can_manage_roles', labelKey: 'profile.enterprise.permissions.manageRoles' },
-  { key: 'can_manage_tags', labelKey: 'profile.enterprise.permissions.manageTags' },
-  { key: 'can_manage_usage', labelKey: 'profile.enterprise.permissions.manageUsage' },
-  { key: 'can_view_usage', labelKey: 'profile.enterprise.permissions.viewUsage' },
-  { key: 'can_view_audit', labelKey: 'profile.enterprise.permissions.viewAudit' },
-  { key: 'can_view_analytics', labelKey: 'profile.enterprise.permissions.viewAnalytics' },
-]
 
 function profileToAuthUser(profile: UserProfile) {
   return {
@@ -86,14 +76,11 @@ export function SettingsPage() {
   const [enterprises, setEnterprises] = useState<EnterpriseMembership[]>([])
   const [preferences, setPreferences] = useState<NotificationPreferences | null>(null)
   const [enterpriseContext, setEnterpriseContext] = useState<EnterpriseContext | null>(null)
-  const [displayName, setDisplayName] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [savingNickname, setSavingNickname] = useState(false)
   const [savingPreference, setSavingPreference] = useState<NotificationPreferenceCode | null>(null)
-  const [contactProvider, setContactProvider] = useState<ContactProvider | null>(null)
+  const [accountSettingsOpen, setAccountSettingsOpen] = useState(false)
   const [deactivateVisible, setDeactivateVisible] = useState(false)
-  const nicknameRequestPending = useRef(false)
 
   const invalidateSession = useCallback((): void => {
     dispatch(invalidateAuth())
@@ -113,7 +100,6 @@ export function SettingsPage() {
     setEnterprises([])
     setPreferences(null)
     setEnterpriseContext(null)
-    setDisplayName('')
     const accessToken = getAccessToken()
     if (!accessToken) {
       invalidateSession()
@@ -129,7 +115,6 @@ export function SettingsPage() {
       ])
       const normalizedProfile = normalizeProfile(nextProfile)
       setProfile(normalizedProfile)
-      setDisplayName(normalizedProfile.display_name)
       setEnterprises(nextEnterprises)
       setPreferences(nextPreferences)
       setEnterpriseContext(nextEnterpriseContext)
@@ -148,10 +133,10 @@ export function SettingsPage() {
 
   const preferenceItems = useMemo(() => {
     if (!preferences) return []
-    return PROFILE_NOTIFICATION_CODES.flatMap((code) => {
-      const item = preferences.items.find((preference) => preference.code === code)
-      return item ? [{ code, item }] : []
-    })
+    // 中文：按接口返回顺序展示固定白名单中的全部通知分类，兼容后端新增字段。
+    return preferences.items.flatMap((item) => (
+      isNotificationPreferenceCode(item.code) ? [{ code: item.code, item }] : []
+    ))
   }, [preferences])
 
   const workspaceItems = useMemo(() => {
@@ -176,47 +161,21 @@ export function SettingsPage() {
     ]
   }, [enterprises, enterpriseContext, profile, store.activeWorkspace.id, store.activeWorkspace.type, t])
 
+  const anchorItems = useMemo<SettingsAnchorItem[]>(() => [
+    { id: 'settings-account', label: t('profile.account.title') },
+    ...(!enterpriseWorkspace ? [{ id: 'settings-notifications', label: t('profile.notifications.title') }] : []),
+    { id: 'settings-workspaces', label: t('profile.workspace.title') },
+    ...(!enterpriseWorkspace ? [{ id: 'settings-security', label: t('profile.security.title') }] : []),
+  ], [enterpriseWorkspace, t])
+
   const applyProfile = useCallback((nextProfile: UserProfile, publish = true): void => {
     const normalizedProfile = normalizeProfile(nextProfile)
     setProfile(normalizedProfile)
-    setDisplayName(normalizedProfile.display_name)
     dispatch(updateAuthenticatedUser(profileToAuthUser(normalizedProfile)))
     if (publish) publishProfileUpdate(normalizedProfile)
   }, [dispatch])
 
   useEffect(() => subscribeProfileUpdates((nextProfile) => applyProfile(nextProfile, false)), [applyProfile])
-
-  async function saveNickname(): Promise<void> {
-    if (nicknameRequestPending.current) return
-    const normalizedName = displayName.trim()
-    if (!normalizedName) {
-      Toast.warning(t('profile.personal.emptyName'))
-      return
-    }
-    if (!isValidDisplayName(normalizedName)) {
-      Toast.warning(t('profile.personal.nameTooLong', { count: PROFILE_DISPLAY_NAME_MAX_LENGTH }))
-      return
-    }
-    const accessToken = getAccessToken()
-    if (!accessToken || !profile) {
-      if (!accessToken) invalidateSession()
-      else Toast.error(t('profile.messages.loginExpired'))
-      return
-    }
-    if (normalizedName === profile.display_name) return
-    nicknameRequestPending.current = true
-    setSavingNickname(true)
-    try {
-      const nextProfile = await updateProfileNickname(accessToken, normalizedName)
-      applyProfile(nextProfile)
-      Toast.success(t('profile.personal.saved'))
-    } catch (requestError) {
-      if (!handleProfileError(requestError)) Toast.error(getProfileErrorMessage(requestError))
-    } finally {
-      nicknameRequestPending.current = false
-      setSavingNickname(false)
-    }
-  }
 
   async function savePreference(code: NotificationPreferenceCode, enabled: boolean): Promise<void> {
     const accessToken = getAccessToken()
@@ -234,95 +193,6 @@ export function SettingsPage() {
     } finally {
       setSavingPreference(null)
     }
-  }
-
-  async function copyUserId(): Promise<void> {
-    if (!profile) return
-    try {
-      await navigator.clipboard.writeText(profile.id)
-      Toast.success(t('profile.messages.copied'))
-    } catch {
-      Toast.error(t('profile.messages.copyFailed'))
-    }
-  }
-
-  function renderProfileAvatar(): React.ReactNode {
-    if (profile?.avatar_url) return <img className="settings-avatar-image" src={profile.avatar_url} alt="" />
-    return <span>{(profile?.display_name || '?').slice(0, 1).toUpperCase()}</span>
-  }
-
-  // 中文：企业空间和个人空间共用个人资料编辑区，保证账号展示与更新规则一致。
-  function renderPersonalProfileSection(currentProfile: UserProfile): React.ReactNode {
-    return <section className="settings-section settings-card settings-card--personal" aria-labelledby="profile-personal-title">
-      <div className="settings-section-head">
-        <h2 id="profile-personal-title">{t('profile.personal.title')}</h2>
-        <p>{t('profile.personal.description')}</p>
-        <p className="settings-hint">{t('profile.personal.dataHint')}</p>
-      </div>
-      <div className="settings-form">
-        <div className="settings-row settings-row--avatar">
-          <span className="settings-label">{t('profile.personal.avatar')}</span>
-          <div className="settings-control">
-            <div className="settings-avatar" aria-label={t('profile.personal.avatar')}>{renderProfileAvatar()}</div>
-            <p className="settings-hint">{t('profile.personal.avatarHint')}</p>
-          </div>
-        </div>
-        <div className="settings-row settings-row--name">
-          <label className="settings-label" htmlFor="profile-display-name">{t('profile.personal.nickname')}</label>
-          <div className="settings-control">
-            <div className="settings-name-input-row">
-              <Input
-                id="profile-display-name"
-                value={displayName}
-                onChange={(value) => setDisplayName(limitDisplayNameLength(value))}
-                onBlur={() => { void saveNickname() }}
-                onKeyDown={(event) => {
-                  if (event.key !== 'Enter' || event.nativeEvent.isComposing) return
-                  event.preventDefault()
-                  void saveNickname()
-                }}
-                maxLength={PROFILE_DISPLAY_NAME_MAX_LENGTH}
-                autoComplete="nickname"
-                aria-describedby="profile-display-name-hint"
-                aria-busy={savingNickname}
-                disabled={savingNickname}
-              />
-              <p className="settings-hint" id="profile-display-name-hint">{t('profile.personal.nicknameHint', { count: PROFILE_DISPLAY_NAME_MAX_LENGTH })}</p>
-            </div>
-          </div>
-        </div>
-        <div className="settings-row settings-row--phone">
-          <span className="settings-label" id="profile-phone-label">{t('profile.contact.phone')}</span>
-          <div className="settings-control">
-            <div className="settings-inline" aria-labelledby="profile-phone-label">
-              <span className="settings-readonly">{currentProfile.phone.bound ? currentProfile.phone.masked_identifier : t('profile.contact.unbound')}</span>
-              <Button className="settings-secondary-button" theme="outline" size="small" onClick={() => setContactProvider('phone')}>{currentProfile.phone.bound ? t('profile.contact.changePhone') : t('profile.contact.bindPhone')}</Button>
-            </div>
-            <p className="settings-hint">{t('profile.personal.phoneHint')}</p>
-          </div>
-        </div>
-        <div className="settings-row settings-row--email">
-          <span className="settings-label" id="profile-email-label">{t('profile.contact.email')}</span>
-          <div className="settings-control">
-            <div className="settings-inline" aria-labelledby="profile-email-label">
-              <span className="settings-readonly">{currentProfile.email.bound ? currentProfile.email.masked_identifier : t('profile.contact.unboundEmail')}</span>
-              <Button className="settings-secondary-button" theme="outline" size="small" onClick={() => setContactProvider('email')}>{currentProfile.email.bound ? t('profile.contact.changeEmail') : t('profile.contact.bindEmail')}</Button>
-            </div>
-            <p className="settings-hint">{t('profile.personal.emailHint')}</p>
-          </div>
-        </div>
-        <div className="settings-row settings-row--user-id">
-          <span className="settings-label" id="profile-user-id-label">{t('profile.overview.id')}</span>
-          <div className="settings-control">
-            <div className="settings-inline" aria-labelledby="profile-user-id-label">
-              <code className="settings-readonly">{currentProfile.id}</code>
-              <Button className="settings-secondary-button" theme="outline" size="small" onClick={() => { void copyUserId() }}>{t('profile.overview.copyShort')}</Button>
-            </div>
-            <p className="settings-hint">{t('profile.personal.userIdHint')}</p>
-          </div>
-        </div>
-      </div>
-    </section>
   }
 
   if (loading && !profile) {
@@ -347,100 +217,82 @@ export function SettingsPage() {
 
   if (!profile || (!enterpriseWorkspace && !preferences) || (enterpriseWorkspace && !enterpriseContext)) return null
 
-  const enterprisePermissions = enterpriseContext
-    ? ENTERPRISE_CAPABILITY_DEFINITIONS.filter(({ key }) => enterpriseContext.capabilities[key]).map(({ labelKey }) => t(labelKey))
-    : []
-
-  async function copyEnterpriseMemberID(): Promise<void> {
-    if (!enterpriseContext) return
-    try {
-      await navigator.clipboard.writeText(enterpriseContext.member_id)
-      Toast.success(t('profile.enterprise.messages.memberIdCopied'))
-    } catch {
-      Toast.error(t('profile.messages.copyFailed'))
-    }
-  }
-
   return (
     <div className={`page-stack settings-console-page settings-redesign-page ${enterpriseWorkspace ? 'settings-redesign-page--enterprise' : 'settings-redesign-page--personal'}`}>
-      <PageTitle title={enterpriseWorkspace ? t('profile.enterprise.title') : t('profile.title')} description={enterpriseWorkspace ? t('profile.enterprise.description') : t('profile.description')} />
+      {/* 中文：个人设置按空间保留对应的账户、通知与工作空间内容。 */}
+      <PageTitle title={t('profile.title')} description={t('profile.description')} />
       <div className="settings-page-inner">
         {error ? <BannerNotice tone="warning" compact><div className="profile-error-content"><span>{error}</span><Button className="settings-secondary-button" theme="outline" size="small" loading={loading} disabled={loading} onClick={() => { void loadProfile() }}>{t('profile.retry')}</Button></div></BannerNotice> : null}
-
-        {renderPersonalProfileSection(profile)}
-
-        {enterpriseWorkspace ? <section className="settings-section settings-card settings-card--enterprise" aria-labelledby="profile-enterprise-title">
-          <div className="settings-section-head">
-            <h2 id="profile-enterprise-title">{t('profile.enterprise.accountTitle')}</h2>
-            <p>{t('profile.enterprise.accountDescription')}</p>
-          </div>
-          <div className="settings-form enterprise-account-form">
-            <div className="settings-row settings-row--enterprise-name"><span className="settings-label">{t('profile.enterprise.name')}</span><div className="settings-control"><span className="settings-readonly">{enterpriseContext?.name}</span></div></div>
-            <div className="settings-row settings-row--enterprise-code"><span className="settings-label">{t('profile.enterprise.code')}</span><div className="settings-control"><code className="settings-readonly">{enterpriseContext?.code}</code></div></div>
-            <div className="settings-row settings-row--member-id"><span className="settings-label">{t('profile.enterprise.memberId')}</span><div className="settings-control"><div className="settings-inline"><code className="settings-readonly">{enterpriseContext?.member_id}</code><Button className="settings-secondary-button" theme="outline" size="small" onClick={() => { void copyEnterpriseMemberID() }}>{t('profile.overview.copyShort')}</Button></div></div></div>
-            <div className="settings-row settings-row--role"><span className="settings-label">{t('profile.enterprise.role')}</span><div className="settings-control"><span className="settings-readonly">{enterpriseContext ? roleLabels(enterpriseContext.roles.length ? enterpriseContext.roles : [enterpriseContext.role], profile.locale, enterpriseContext.role_options) : '--'}</span></div></div>
-            <div className="settings-row settings-row--permissions"><span className="settings-label">{t('profile.enterprise.permissions.title')}</span><div className="settings-control"><div className="enterprise-permission-list">{enterprisePermissions.length ? enterprisePermissions.map((permission) => <span className="model-tag" key={permission}>{permission}</span>) : <span className="settings-readonly">{t('profile.enterprise.permissions.none')}</span>}</div></div></div>
-          </div>
-        </section> : null}
-
-        {!enterpriseWorkspace ? <section className="settings-section settings-card settings-card--notifications" aria-labelledby="profile-notification-title">
-          <div className="settings-section-head">
-            <h2 id="profile-notification-title">{t('profile.notifications.title')}</h2>
-            <p>{t('profile.notifications.description')}</p>
-          </div>
-          <div className="notification-list">
-            {preferenceItems.map(({ code, item }) => {
-              const definition = isNotificationPreferenceCode(code) ? PREFERENCE_DEFINITIONS[code] : null
-              if (!definition) return null
-              return (
-                <label className="notification-row" htmlFor={`profile-notification-${code}`} key={code}>
-                  <span><strong>{t(definition.labelKey)}</strong><small>{t(definition.descriptionKey)}</small></span>
-                  <Switch id={`profile-notification-${code}`} aria-label={t(definition.labelKey)} checked={item.enabled} disabled={Boolean(savingPreference)} loading={savingPreference === code} onChange={(enabled) => { void savePreference(code, enabled) }} />
-                </label>
-              )
-            })}
-          </div>
-        </section> : null}
-
-        <section className="settings-section settings-card settings-card--workspace" aria-labelledby="profile-workspace-title">
-          <div className="settings-section-head">
-            <h2 id="profile-workspace-title">{t('profile.workspace.title')}</h2>
-            <p>{t('profile.workspace.description')}</p>
-          </div>
-          <div className="workspace-list">
-            {workspaceItems.map((workspace) => (
-              <div className="workspace-item" key={workspace.id}>
-                <div><strong>{workspace.name}</strong><small>{workspace.type}</small></div>
-                <span>{workspace.current ? t('profile.workspace.current') : workspace.role}</span>
+        <SettingsAnchorLayout items={anchorItems} navigationLabel={t('profile.navigation.label')}>
+          <section id="settings-account" className="settings-section settings-anchor-section" aria-labelledby="profile-account-title">
+            <header className="settings-section-head">
+              <h2 id="profile-account-title">{t('profile.account.title')}</h2>
+              <p>{t('profile.account.description')}</p>
+            </header>
+            <div className="settings-card settings-card--account">
+              <div className="settings-account-row">
+                <div><strong>{t('profile.account.user')}</strong><p>{t('profile.account.userDescription')}</p></div>
+                <Button className="settings-primary-button" theme="solid" type="primary" onClick={() => setAccountSettingsOpen(true)}>{t('profile.account.manage')}</Button>
               </div>
-            ))}
-          </div>
-          <Button className="settings-secondary-button" theme="outline" onClick={() => navigate(NEW_ENTERPRISE_CREATE_PATH)}>{t('profile.workspace.create')}</Button>
-          <p className="settings-hint">{t('profile.workspace.createHint')}</p>
-        </section>
+            </div>
+          </section>
 
-        {!enterpriseWorkspace ? <section className="settings-section settings-card settings-card--security" aria-labelledby="profile-security-title">
-          <div className="settings-section-head">
-            <h2 className="danger-copy" id="profile-security-title">{t('profile.security.title')}</h2>
-            <p>{t('profile.security.description')}</p>
-          </div>
-          <div className="settings-actions">
-            <Button className="settings-danger-button" theme="outline" type="danger" onClick={() => setDeactivateVisible(true)}>{t('profile.security.deactivate')}</Button>
-            <span className="settings-hint">{t('profile.security.deactivateHint')}</span>
-          </div>
-        </section> : null}
+          {!enterpriseWorkspace ? <section id="settings-notifications" className="settings-section settings-anchor-section" aria-labelledby="profile-notification-title">
+            <header className="settings-section-head">
+              <h2 id="profile-notification-title">{t('profile.notifications.title')}</h2>
+              <p>{t('profile.notifications.description')}</p>
+            </header>
+            <div className="settings-card settings-card--notifications">
+              <div className="notification-list">
+                {preferenceItems.map(({ code, item }) => {
+                  const definition = isNotificationPreferenceCode(code) ? PREFERENCE_DEFINITIONS[code] : null
+                  if (!definition) return null
+                  return (
+                    <label className="notification-row" htmlFor={`profile-notification-${code}`} key={code}>
+                      <span><strong>{t(definition.labelKey)}</strong><small>{t(definition.descriptionKey)}</small></span>
+                      <Switch id={`profile-notification-${code}`} aria-label={t(definition.labelKey)} checked={item.enabled} disabled={Boolean(savingPreference) || item.mandatory === true} loading={savingPreference === code} onChange={(enabled) => { void savePreference(code, enabled) }} />
+                    </label>
+                  )
+                })}
+              </div>
+            </div>
+          </section> : null}
+
+          <section id="settings-workspaces" className="settings-section settings-anchor-section" aria-labelledby="profile-workspace-title">
+            <header className="settings-section-head">
+              <h2 id="profile-workspace-title">{t('profile.workspace.title')}</h2>
+              <p>{t('profile.workspace.description')}</p>
+            </header>
+            <div className="settings-card settings-card--workspace">
+              <div className="workspace-list">
+                {workspaceItems.map((workspace) => (
+                  <div className="workspace-item" key={workspace.id}>
+                    <div><strong>{workspace.name}</strong><small>{workspace.type}</small></div>
+                    <span>{workspace.current ? t('profile.workspace.current') : workspace.role}</span>
+                  </div>
+                ))}
+              </div>
+              <Button className="settings-secondary-button" theme="outline" onClick={() => navigate(NEW_ENTERPRISE_CREATE_PATH)}>{t('profile.workspace.create')}</Button>
+              <p className="settings-hint">{t('profile.workspace.createHint')}</p>
+            </div>
+          </section>
+
+          {!enterpriseWorkspace ? <section id="settings-security" className="settings-section settings-anchor-section" aria-labelledby="profile-security-title">
+            <header className="settings-section-head">
+              <h2 className="danger-copy" id="profile-security-title">{t('profile.security.title')}</h2>
+              <p>{t('profile.security.description')}</p>
+            </header>
+            <div className="settings-card settings-card--security">
+              <div className="settings-actions">
+                <Button className="settings-danger-button" theme="outline" type="danger" onClick={() => setDeactivateVisible(true)}>{t('profile.security.deactivate')}</Button>
+                <span className="settings-hint">{t('profile.security.deactivateHint')}</span>
+              </div>
+            </div>
+          </section> : null}
+        </SettingsAnchorLayout>
       </div>
 
-      {contactProvider ? <ProfileContactDialog
-        visible
-        provider={contactProvider}
-        currentContact={profile[contactProvider]}
-        currentDestination={contactProvider === 'phone' ? getVerifiedPhone(profile.id) ?? undefined : undefined}
-        accessToken={getAccessToken()}
-        onAuthFailure={invalidateSession}
-        onCancel={() => setContactProvider(null)}
-        onSaved={(nextProfile) => { applyProfile(nextProfile); setContactProvider(null) }}
-      /> : null}
+      {accountSettingsOpen ? <AccountSettingsModal onClose={() => setAccountSettingsOpen(false)} /> : null}
       <Modal
         className="profile-security-modal"
         centered

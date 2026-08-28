@@ -120,7 +120,8 @@ function MetricBarChart({ title, points, unit, unavailableLabel }: { title: stri
         const height = value === null ? 0 : maximum > 0 ? Math.max(6, Math.round((value / maximum) * 100)) : 6
         const label = new Date(point.timestamp).toISOString().slice(5, 10)
         const style = { '--model-metric-height': `${height}%` } as CSSProperties
-        return <span className={value === null ? 'is-missing' : ''} key={point.timestamp} title={`${label}: ${value === null ? unavailableLabel : `${formatNumber(value)} ${unit}`}`}><i style={style} /><small>{label}</small></span>
+        const tooltip = `${label}: ${value === null ? unavailableLabel : `${formatNumber(value)} ${unit}`}`
+        return <span className={value === null ? 'is-missing' : ''} key={point.timestamp} title={tooltip} tabIndex={0} aria-label={tooltip} data-tooltip={tooltip}><i style={style}><b aria-hidden="true">{tooltip}</b></i><small>{label}</small></span>
       })}
     </div>
   )

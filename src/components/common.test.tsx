@@ -255,7 +255,7 @@ describe('控制台导航路径匹配', () => {
       expect(settings).not.toBeUndefined()
       expect(within(management as HTMLElement).getAllByRole('link').map((link) => link.textContent)).toEqual(['人员管理', '用量管理', '操作日志', '数据分析', '费用管理', '订阅管理'])
       expect(within(management as HTMLElement).queryByRole('link', { name: '权限与标签' })).toBeNull()
-      expect(within(settings as HTMLElement).getAllByRole('link').map((link) => link.textContent)).toEqual(['通用设置', '模型管理', '权限与标签'])
+      expect(within(settings as HTMLElement).getAllByRole('link').map((link) => link.textContent)).toEqual(['企业设置', '模型管理', '权限与标签'])
     } finally {
       if (previousSnapshot === null) {
         window.localStorage.removeItem('token-nx:user-front:v1')
@@ -292,15 +292,15 @@ describe('控制台导航路径匹配', () => {
       expect(navigation).not.toHaveTextContent('用量统计')
       expect(navigation).not.toHaveTextContent('调用记录')
       expect(navigation).toHaveTextContent('账号信息')
-      expect(navigation).toHaveTextContent('密钥管理')
-      for (const label of ['企业设置', '通用设置', '模型管理', '权限与标签', '费用管理']) {
+      expect(navigation).toHaveTextContent('我的密钥')
+      for (const label of ['企业设置', '模型管理', '权限与标签', '费用管理']) {
         expect(navigation).not.toHaveTextContent(label)
       }
       expect(navigation).not.toHaveTextContent('企业管理（新版）')
 
       await userEvent.setup().click(screen.getByRole('button', { name: '打开用户菜单' }))
       const menu = screen.getByRole('menu', { name: '用户菜单' })
-      expect(menu).toHaveTextContent('密钥管理')
+      expect(menu).toHaveTextContent('我的密钥')
       expect(menu).not.toHaveTextContent('企业管理')
       expect(menu).not.toHaveTextContent('费用管理')
     } finally {
@@ -799,7 +799,7 @@ describe('已登录用户菜单', () => {
     expect(menu).not.toHaveTextContent('调用记录')
     expect(menu).not.toHaveTextContent('使用日志')
     expect(menu).toHaveTextContent('费用管理')
-    expect(menu).toHaveTextContent('密钥管理')
+    expect(menu).toHaveTextContent('我的密钥')
     expect(menu).toHaveTextContent('邀请返现')
     expect(menu).toHaveTextContent('认证返现')
     expect(menu).not.toHaveTextContent('文档中心')
@@ -828,7 +828,7 @@ describe('已登录用户菜单', () => {
 
     await user.hover(screen.getByRole('button', { name: '打开用户菜单' }))
     await user.click(screen.getByRole('button', { name: '账户设置' }))
-    const dialog = await screen.findByRole('dialog', { name: '个人中心' })
+    const dialog = await screen.findByRole('dialog', { name: '个人设置' })
     await waitFor(() => expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith('/api/user/profile'))).toBe(true))
     expect(dialog).toHaveTextContent('个人资料')
     expect(dialog).toHaveTextContent('账户')
@@ -864,7 +864,7 @@ describe('已登录用户菜单', () => {
     render(<MemoryRouter initialEntries={['/']}><Provider store={appStore}><AppStoreProvider><PublicHeader /></AppStoreProvider></Provider></MemoryRouter>)
     await user.hover(screen.getByRole('button', { name: '打开用户菜单' }))
     await user.click(screen.getByRole('button', { name: '账户设置' }))
-    const dialog = await screen.findByRole('dialog', { name: '个人中心' })
+    const dialog = await screen.findByRole('dialog', { name: '个人设置' })
     await waitFor(() => expect(within(dialog).getByRole('button', { name: '昵称' })).toBeEnabled())
 
     await user.click(within(dialog).getByRole('button', { name: '昵称' }))
@@ -913,7 +913,7 @@ describe('已登录用户菜单', () => {
       await user.click(screen.getByRole('button', { name: '打开用户菜单' }))
       const menu = screen.getByRole('menu', { name: '用户菜单' })
       await user.click(screen.getByRole('button', { name: '账户设置' }))
-      const dialog = await screen.findByRole('dialog', { name: '个人中心' })
+      const dialog = await screen.findByRole('dialog', { name: '个人设置' })
       expect(header).toHaveClass('mobile-nav-open')
       expect(menu).toHaveClass('open')
 

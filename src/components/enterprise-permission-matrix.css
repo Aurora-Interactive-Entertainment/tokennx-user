@@ -1,0 +1,174 @@
+/* 中文：权限矩阵保持企业后台的紧凑信息密度，状态列固定为滑块。 */
+.enterprise-governance-permission-matrix {
+  display: grid;
+  box-sizing: border-box;
+  min-width: 0;
+  gap: var(--spacing-16);
+  padding: var(--spacing-24) var(--spacing-32);
+  border: 1px solid var(--color-border-neutral-l1);
+  border-radius: var(--radius-8);
+  background: var(--color-bg-base-secondary);
+}
+
+.enterprise-governance-permission-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--spacing-16);
+}
+
+.enterprise-governance-permission-heading h3 {
+  margin: 0;
+  color: var(--color-text-default-hover);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.enterprise-governance-permission-heading p {
+  margin: var(--spacing-6) 0 0;
+  color: var(--color-text-tertiary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.enterprise-governance-permission-heading > span {
+  flex: 0 0 auto;
+  color: var(--color-text-tertiary);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.enterprise-governance-permission-groups {
+  display: grid;
+  gap: var(--spacing-16);
+}
+
+.enterprise-governance-permission-group {
+  min-width: 0;
+}
+
+.enterprise-governance-permission-group > h3 {
+  margin: 0;
+  padding: var(--spacing-14) 0 var(--spacing-8);
+  color: var(--color-text-default);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.enterprise-governance-permission-list {
+  display: grid;
+  min-width: 0;
+}
+
+/* 中文：分组标题上下不加分隔线，权限行之间仍保留原有层次。 */
+.enterprise-governance-permission-row {
+  display: grid;
+  grid-template-columns: minmax(160px, 0.9fr) minmax(240px, 1.5fr) 48px;
+  align-items: center;
+  gap: var(--spacing-16);
+  min-height: 58px;
+  padding: var(--spacing-8) 0;
+  border-block: 1px solid var(--color-border-neutral-l1);
+}
+
+/* 中文：相邻内容项共享分隔线，保持上下边框的视觉效果但不产生双线。 */
+.enterprise-governance-permission-row + .enterprise-governance-permission-row {
+  border-top: 0;
+}
+
+.enterprise-governance-permission-label {
+  min-width: 0;
+  color: var(--color-text-default);
+  font-size: 13px;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.enterprise-governance-permission-description {
+  min-width: 0;
+  color: var(--color-text-tertiary);
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.enterprise-governance-permission-control {
+  display: flex;
+  min-width: 48px;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.enterprise-governance-permission-control .semi-switch {
+  flex: 0 0 auto;
+  background: var(--color-bg-overlay-l4);
+}
+
+.enterprise-governance-permission-control .semi-switch:hover {
+  background: var(--color-border-neutral-l3);
+}
+
+.enterprise-governance-permission-control .semi-switch-checked,
+.enterprise-governance-permission-control .semi-switch-checked:hover {
+  background: var(--color-brand);
+}
+
+.enterprise-governance-permission-control .semi-switch-focus {
+  outline-color: color-mix(in srgb, var(--color-brand) 42%, transparent);
+}
+
+.enterprise-governance-permission-control .semi-switch-disabled {
+  opacity: 0.58;
+}
+
+.enterprise-governance-permission-control
+  .semi-switch-disabled.semi-switch-checked {
+  border-color: transparent;
+  background: var(--color-brand);
+}
+
+@media (max-width: 900px) {
+  .enterprise-governance-permission-row {
+    grid-template-columns: minmax(140px, 0.8fr) minmax(200px, 1.2fr) 48px;
+    gap: var(--spacing-12);
+  }
+}
+
+@media (max-width: 760px) {
+  .enterprise-governance-permission-row {
+    grid-template-columns: minmax(0, 1fr) 48px;
+    gap: var(--spacing-6) var(--spacing-12);
+    padding: var(--spacing-10) 0;
+  }
+
+  .enterprise-governance-permission-description {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    padding-right: 60px;
+  }
+
+  .enterprise-governance-permission-control {
+    grid-column: 2;
+    grid-row: 1;
+  }
+}
+
+@media (max-width: 480px) {
+  .enterprise-governance-permission-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: var(--spacing-8);
+  }
+
+  .enterprise-governance-permission-description {
+    padding-right: 0;
+  }
+
+  .enterprise-governance-permission-groups {
+    gap: var(--spacing-12);
+  }
+
+  .enterprise-governance-permission-matrix {
+    padding: var(--spacing-20) var(--spacing-16);
+  }
+}

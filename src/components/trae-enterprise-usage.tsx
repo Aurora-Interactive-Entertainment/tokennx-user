@@ -332,7 +332,10 @@ export function TraeUsageBoard({ context, onDetail, onPeriodChange }: UsageBoard
         </article>
         <article className="trae-usage-summary-card trae-usage-summary-card--account">
           <div className="trae-usage-summary-heading"><span>{t('traeEnterprise.usage.totalTokens')}</span><IconInfoCircle className="app-info-icon" aria-hidden="true" /></div>
-          <strong className="trae-usage-card-money">{formatCount(totalTokens)}</strong>
+          <strong className="trae-usage-card-money">
+            {formatCount(totalTokens)}
+            <span>{t('traeEnterprise.usage.tokenUnit')}</span>
+          </strong>
           <div className="trae-usage-account-stats">
             <span>{t('traeEnterprise.usage.requestCount')} <b>{formatCount(summary?.summary.request_count ?? 0)}</b></span>
           </div>

@@ -1,0 +1,43 @@
+.console-tabs {
+  min-width: 0;
+  margin-bottom: 30px;
+}
+
+.console-tabs .semi-tabs-bar {
+  overflow-x: auto;
+  overflow-y: hidden;
+  border-bottom: 1px solid var(--color-border-neutral-l1);
+  scrollbar-width: none;
+}
+
+.console-tabs .semi-tabs-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.console-tabs .semi-tabs-tab {
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.console-tabs .semi-tabs-tab:hover,
+.console-tabs .semi-tabs-tab-active,
+.console-tabs .semi-tabs-tab-active:hover {
+  color: var(--color-text-default-hover) !important;
+  font-weight: 600;
+}
+
+.console-tabs .semi-tabs-tab-line.semi-tabs-tab-active,
+.console-tabs .semi-tabs-tab-line.semi-tabs-tab-active:hover {
+  border-bottom-color: var(--color-text-default-hover) !important;
+}
+
+.console-tabs .semi-tabs-content {
+  display: none;
+}
+
+@media (max-width: 720px) {
+  .console-tabs {
+    margin-bottom: 24px;
+  }
+}

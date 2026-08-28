@@ -23,7 +23,8 @@ export function ChartHoverLegend({ visible, ariaLabel, dateTime, dateLabel, item
   return (
     <aside
       className={`chart-hover-legend${className ? ` ${className}` : ''}${visible ? ' is-visible' : ''}${position ? ' is-following' : ''}`}
-      style={position ? { left: position.x, top: position.y } : undefined}
+      // 中文：跟随鼠标时使用 transform，避免频繁修改 left/top 触发布局。
+      style={position ? { left: 0, top: 0, transform: `translate3d(${position.x}px, ${position.y}px, 0)` } : undefined}
       aria-hidden={!visible}
       aria-label={ariaLabel}
     >

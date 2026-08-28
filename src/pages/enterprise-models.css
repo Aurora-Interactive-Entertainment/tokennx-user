@@ -11,8 +11,11 @@
   margin-left: auto !important;
 }
 
+/* 中文：标题与下方模型列表共用左边界，覆盖后台页面通用标题的水平内边距。 */
 .enterprise-console-page.enterprise-models-page > .page-title-row {
   margin-bottom: 16px;
+  padding-right: 0 !important;
+  padding-left: 0 !important;
   border-bottom: 0;
 }
 
@@ -114,16 +117,6 @@
   color: var(--color-text-tertiary);
   font-size: 11px;
 }
-.enterprise-model-default-badge {
-  flex: 0 0 auto;
-  padding: 1px 4px;
-  border: 1px solid #313237;
-  border-radius: 2px;
-  background: #292b2e;
-  color: #9599a6 !important;
-  line-height: 16px;
-}
-
 .enterprise-model-badge {
   display: inline-grid;
   width: 28px;
@@ -276,10 +269,6 @@
   border-color: #33c192;
   background: #33c192;
 }
-.enterprise-model-switch.is-on.is-default {
-  border-color: #174639;
-  background: #174639;
-}
 .enterprise-model-switch.is-on > span {
   background: #fff;
   transform: translateX(16px);
@@ -287,9 +276,6 @@
 .enterprise-model-switch:disabled {
   cursor: not-allowed;
   opacity: 0.55;
-}
-.enterprise-model-switch.is-default:disabled {
-  opacity: 1;
 }
 .enterprise-model-switch:not(:disabled):hover {
   border-color: var(--color-border-neutral-l3);

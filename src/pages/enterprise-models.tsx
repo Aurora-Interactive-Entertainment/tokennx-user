@@ -36,7 +36,6 @@ import {
 import './enterprise-models.css';
 
 type DirectoryModel = EnterpriseModel & {
-  isDefault?: boolean;
   iconKey?: string;
 };
 type VisibilityScope = 'all' | 'partial';
@@ -122,7 +121,6 @@ const SYSTEM_MODELS: DirectoryModel[] = MODEL_SEEDS.map(
     capabilities: ['chat'],
     enabled,
     setting_version: 1,
-    isDefault: id === 'doubao-seed-evolving',
     iconKey,
   }),
 );
@@ -186,39 +184,14 @@ function modelIcon(model: DirectoryModel): string {
 }
 
 function normalizeDirectory(data: EnterpriseModelPage): EnterpriseModelPage {
-  const screenshotModel = data.items.some((item) =>
-    SYSTEM_MODELS.some((model) => model.id === item.id),
-  );
-  const byID = new Map(data.items.map((item) => [item.id, item]));
-  const defaultModel = SYSTEM_MODELS[0];
-
-  // The default model is a platform invariant: it stays visible and enabled
-  // even if the directory API omits it or returns a stale disabled state.
-  if (!screenshotModel && data.items.length > 0) {
-    const items = [
-      {
-        ...defaultModel,
-        ...(byID.get(defaultModel.id) ?? {}),
-        isDefault: true,
-        enabled: true,
-      },
-      ...data.items.filter((item) => item.id !== defaultModel.id),
-    ];
-    return {
-      ...data,
-      items,
-      total: items.length,
-      page_size: items.length,
-      enabled_count: items.filter((item) => item.enabled).length,
-      disabled_count: items.filter((item) => !item.enabled).length,
-    };
-  }
-
-  const items = SYSTEM_MODELS.map((model) => ({
-    ...model,
-    ...(byID.get(model.id) ?? {}),
-    ...(model.isDefault ? { isDefault: true, enabled: true } : {}),
-  }));
+  const modelMeta = new Map(SYSTEM_MODELS.map((model) => [model.id, model]));
+  // 中文：接口有数据时完全遵循服务端返回的可用模型，不再人为注入或锁定默认模型。
+  const items = data.items.length > 0
+    ? data.items.map((item) => ({
+        ...item,
+        iconKey: modelMeta.get(item.id)?.iconKey,
+      }))
+    : SYSTEM_MODELS;
   return {
     ...data,
     items,
@@ -703,7 +676,7 @@ function ModelStateControl({
   return (
     <div className="enterprise-model-state">
       <ModelScopeIndicator scope={scope} t={t} />
-      {canManage && !model.isDefault ? (
+      {canManage ? (
         <div className="enterprise-model-actions">
           <button
             type="button"
@@ -732,13 +705,12 @@ function ModelStateControl({
         </div>
       ) : null}
       <button
-        className={`enterprise-model-switch${model.enabled ? ' is-on' : ''}${model.isDefault ? ' is-default' : ''}`}
+        className={`enterprise-model-switch${model.enabled ? ' is-on' : ''}`}
         type="button"
         role="switch"
         aria-checked={model.enabled}
         aria-label={`${model.enabled ? t('console.enterprise.model.disable') : t('console.enterprise.model.enable')} ${model.name}`}
-        title={model.isDefault ? t('console.enterprise.model.defaultModelHint') : undefined}
-        disabled={!canManage || model.isDefault || saving}
+        disabled={!canManage || saving}
         aria-busy={saving}
         onClick={() => onToggle(model)}
       >
@@ -785,11 +757,6 @@ function ModelsTable({
                   </span>
                   <span>
                     <strong title={model.name}>{model.name}</strong>
-                    {model.isDefault ? (
-                      <small className="enterprise-model-default-badge">
-                        {t('console.enterprise.model.defaultModel')}
-                      </small>
-                    ) : null}
                   </span>
                 </div>
               </td>
@@ -862,7 +829,7 @@ function ModelsContent({ context }: { context: EnterpriseContext }) {
     };
   }, [context.id, handleError, reloadToken]);
   async function toggleModel(model: DirectoryModel): Promise<void> {
-    if (!canManage || model.isDefault || savingModelID) return;
+    if (!canManage || savingModelID) return;
     setSavingModelID(model.id);
     setActionError(null);
     try {

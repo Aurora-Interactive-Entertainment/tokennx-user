@@ -193,6 +193,14 @@ describe("personal usage API", () => {
       new Headers(fetchMock.mock.calls[0]?.[1]?.headers).get("Authorization"),
     ).toBe("Bearer usage-token");
   });
+  it("passes a selected API key to overview and records queries", async () => {
+    const overviewFetch = mockApiResponse(overviewPayload);
+    await getUsageOverview(undefined, " key-1 ");
+    expect(String(overviewFetch.mock.calls[0]?.[0])).toBe("/api/user/usage/overview?api_key_id=key-1");
+    const recordsFetch = mockApiResponse(recordsPayload);
+    await getUsageRecords({ account_type: "personal" }, { page: 1, page_size: 10, api_key_id: " key-1 " });
+    expect(new URL(String(recordsFetch.mock.calls[0]?.[0]), "http://local").searchParams.get("api_key_id")).toBe("key-1");
+  });
 
   it("queries personal trend data with the exact custom UTC bounds", async () => {
     const fetchMock = mockApiResponse(trendPayload);

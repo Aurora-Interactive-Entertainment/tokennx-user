@@ -26,6 +26,15 @@ import "./trae-enterprise-invitations.css";
 
 const INVITATION_PAGE_SIZE = 10;
 
+/** 返回本地时区当天的日期值，供原生 date 输入框的最小日期使用。 */
+function getTodayDateInputValue() {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, "0");
+  const day = String(today.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 type CreateInvitationValues = {
   maxUses: string | number;
   expiresAt?: string;
@@ -145,11 +154,14 @@ export function TraeEnterpriseInvitations({
   async function submitCreate(values: CreateInvitationValues) {
     const maxUses = Number(values.maxUses);
     if (!Number.isInteger(maxUses) || maxUses < 1 || maxUses > 999) return;
+    const expiresAtValue = values.expiresAt?.trim() ?? "";
+    // 原生日期输入框可被手动修改，因此提交时也要确保日期不早于今天。
+    if (expiresAtValue && expiresAtValue < getTodayDateInputValue()) return;
     setCreating(true);
     setCreateError(null);
     try {
-      const expiresAt = values.expiresAt?.trim()
-        ? `${values.expiresAt.trim()}T23:59:59.999Z`
+      const expiresAt = expiresAtValue
+        ? `${expiresAtValue}T23:59:59.999Z`
         : null;
       await createEnterpriseInvitation(
         { enterprise_id: context.id },
@@ -284,7 +296,12 @@ export function TraeEnterpriseInvitations({
               <span>{t("traeEnterprise.inviteList.createHint")}</span>
             </div>
             <Form.Input field="maxUses" label={t("traeEnterprise.inviteList.maxUses")} type="number" min={1} max={999} rules={[{ required: true, message: t("traeEnterprise.inviteList.maxUsesRequired") }]} />
-            <Form.Input field="expiresAt" label={t("traeEnterprise.inviteList.expiresAt")} type="date" />
+            <Form.Input
+              field="expiresAt"
+              label={t("traeEnterprise.inviteList.expiresAt")}
+              type="date"
+              min={getTodayDateInputValue()}
+            />
             <Form.Select field="role" label={t("traeEnterprise.inviteList.targetRole")}>
               {roleItems.map((role) => <Form.Select.Option key={role.code} value={role.code}>{role.name}</Form.Select.Option>)}
             </Form.Select>

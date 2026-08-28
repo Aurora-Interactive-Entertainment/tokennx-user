@@ -88,9 +88,11 @@ describe("Trae 企业操作日志", () => {
   it("按接口分页加载日志，并以本地自然日构造完整时间范围", async () => {
     renderAudit();
 
-    expect(await screen.findByText("enterprise.member.status.update")).toBeInTheDocument();
+    expect(await screen.findByText("更新成员状态")).toBeInTheDocument();
     expect(screen.getByText("enterprise_member · member_2")).toBeInTheDocument();
     expect(screen.getByText("管理员")).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "操作状态" })).toBeInTheDocument();
+    expect(screen.getByText("成功", { selector: ".trae-audit-result" })).toBeInTheDocument();
 
     const [, options] = getEnterpriseAuditLogsMock.mock.calls[0]!;
     if (!options) throw new Error("审计日志请求参数缺失");
@@ -108,7 +110,7 @@ describe("Trae 企业操作日志", () => {
     const user = userEvent.setup();
     renderAudit();
 
-    await user.click(await screen.findByText("enterprise.member.status.update"));
+    await user.click(await screen.findByText("更新成员状态"));
 
     const dialog = await screen.findByRole("dialog", { name: "操作详情" });
     expect(dialog).toHaveTextContent("enterprise_member · member_2");

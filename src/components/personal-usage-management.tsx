@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Tooltip from "@douyinfe/semi-ui/lib/es/tooltip";
+import Select from "@douyinfe/semi-ui/lib/es/select";
 import {
   IconDownload,
   IconInfoCircle,
@@ -14,6 +15,7 @@ import {
   type UsageOverviewResponse,
   type UsageRecordsResponse,
 } from "@/api/personal-usage";
+import type { UserApiKey } from "@/api/user-api-keys";
 import { TraePagination } from "./trae-pagination";
 import {
   addLocalDays,
@@ -61,7 +63,7 @@ function ResourceStatus({
   return null;
 }
 
-function PersonalUsageOverview() {
+function PersonalUsageOverview({ apiKeyID }: { apiKeyID?: string }) {
   const { t } = useTranslation();
   const [data, setData] = useState<UsageOverviewResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -72,7 +74,7 @@ function PersonalUsageOverview() {
     const controller = new AbortController();
     setLoading(true);
     setError("");
-    void getUsageOverview(controller.signal)
+    void getUsageOverview(controller.signal, apiKeyID)
       .then(setData)
       .catch((reason: unknown) => {
         if (!controller.signal.aborted)
@@ -82,7 +84,7 @@ function PersonalUsageOverview() {
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [reloadKey]);
+  }, [apiKeyID, reloadKey]);
 
   return (
     <>
@@ -142,7 +144,7 @@ function rangeDates(range: CueRange, customRange: Date[]): Date[] {
   return customRange;
 }
 
-function PersonalUsageRecords({ context }: { context: PersonalUsageContext }) {
+function PersonalUsageRecords({ context, apiKeyID }: { context: PersonalUsageContext; apiKeyID?: string }) {
   const { t, i18n } = useTranslation();
   const today = useMemo(() => startOfLocalToday(), []);
   const [range, setRange] = useState<CueRange>("today");
@@ -176,6 +178,7 @@ function PersonalUsageRecords({ context }: { context: PersonalUsageContext }) {
         page_size: pageSize,
         start_at: bounds.startAt,
         end_at: bounds.endAt,
+        api_key_id: apiKeyID,
       },
       controller.signal,
     )
@@ -191,7 +194,7 @@ function PersonalUsageRecords({ context }: { context: PersonalUsageContext }) {
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [bounds.endAt, bounds.startAt, context, page, pageSize, reloadKey]);
+  }, [apiKeyID, bounds.endAt, bounds.startAt, context, page, pageSize, reloadKey]);
 
   function selectRange(nextRange: CueRange) {
     setRange(nextRange);
@@ -351,16 +354,32 @@ function PersonalUsageRecords({ context }: { context: PersonalUsageContext }) {
 
 export function PersonalUsageManagement({
   context,
+  apiKeyID,
+  apiKeys,
+  apiKeysLoading,
+  onApiKeyChange,
 }: {
   context: PersonalUsageContext;
+  apiKeyID?: string;
+  apiKeys: UserApiKey[];
+  apiKeysLoading?: boolean;
+  onApiKeyChange: (value: string) => void;
 }) {
+  const { t } = useTranslation();
+  const keyOptions = [{ value: "all", label: t("console.personalUsage.cue.allKeys") }, ...apiKeys.map((key) => ({ value: key.id, label: key.name || key.masked_key || key.id }))];
   return (
     <section
       className="personal-usage-management"
       aria-labelledby="personal-usage-model-title"
     >
-      <PersonalUsageOverview />
-      <PersonalUsageRecords context={context} />
+      <div className="personal-usage-management-heading">
+        <h2 id="personal-usage-model-title">{t("console.personalUsage.models")}</h2>
+        <Select className="trae-select personal-usage-key-select" dropdownClassName="trae-select-dropdown trae-members-filter-dropdown personal-usage-key-dropdown" value={apiKeyID || "all"} loading={apiKeysLoading} onChange={(value) => onApiKeyChange(String(value))} aria-label={t("console.personalUsage.cue.keyFilter")}>
+          {keyOptions.map((option) => <Select.Option key={option.value} value={option.value}>{option.label}</Select.Option>)}
+        </Select>
+      </div>
+      <PersonalUsageOverview apiKeyID={apiKeyID} />
+      <PersonalUsageRecords context={context} apiKeyID={apiKeyID} />
     </section>
   );
 }

@@ -154,6 +154,47 @@ export interface BillingAnalysisFilters {
   models: BillingAnalysisModel[]
 }
 
+export interface BillingDailyModelCost {
+  date: string
+  model_id?: string
+  model_code?: string
+  model_name?: string
+  cost_yuan: string
+}
+
+export interface BillingDailyBillingTypeCost {
+  date: string
+  billing_type: 'subscription' | 'balance' | string
+  cost_yuan: string
+}
+
+export interface BillingDailyApiKeyCost {
+  date: string
+  api_key_id?: string
+  api_key_name?: string
+  cost_yuan: string
+}
+
+/** 中文：费用分析接口返回的 ECharts 趋势图结构。日期轴使用 UTC 日桶时间戳，序列值单位为元。 */
+export interface BillingCostChartSeries {
+  name: string
+  type: 'line' | string
+  stack?: string
+  data: number[]
+}
+
+export interface BillingCostChart {
+  xAxis: {
+    type: 'category' | string
+    boundaryGap: boolean
+    data: number[]
+  }
+  yAxis: {
+    type: 'value' | string
+  }
+  series: BillingCostChartSeries[]
+}
+
 export interface BillingAnalysisMetrics {
   total_cost_yuan: string
   input_cost_yuan: string
@@ -192,10 +233,14 @@ export interface BillingLedgerItem {
 export interface BillingAnalysisResponse {
   account: BillingAccount
   wallet: Pick<BillingWallet, 'currency' | 'status' | 'paid_available_yuan' | 'bonus_available_yuan' | 'total_available_yuan' | 'total_balance_yuan' | 'debt_yuan'>
-  period: { value: string; label: string; start: ApiTimestamp; end: ApiTimestamp }
-  filters: BillingAnalysisFilters
+  period?: { value: string; label: string; start: ApiTimestamp; end: ApiTimestamp }
+  filters?: BillingAnalysisFilters
   metrics: BillingAnalysisMetrics
-  ledger: BillingPageResult<BillingLedgerItem>
+  // 中文：兼容新版 ECharts 结构和旧版数组/分页结构，便于灰度期间平滑切换。
+  model_daily_costs?: BillingCostChart | BillingDailyModelCost[] | BillingPageResult<BillingDailyModelCost>
+  billing_type_daily_costs?: BillingCostChart | BillingDailyBillingTypeCost[] | BillingPageResult<BillingDailyBillingTypeCost>
+  api_key_daily_costs?: BillingCostChart | BillingDailyApiKeyCost[] | BillingPageResult<BillingDailyApiKeyCost>
+  ledger?: BillingPageResult<BillingLedgerItem>
 }
 
 export type BillingInvoiceStatus = 'submitted' | 'reviewing' | 'approved' | 'rejected' | 'issued' | 'voided' | string
@@ -296,9 +341,14 @@ export type BillingStatementDirectionFilter = 'all' | BillingStatementDirection
 
 export interface BillingAnalysisRequestOptions extends BillingRequestOptions {
   period?: string
+  start_at?: string | number
+  end_at?: string | number
   api_key_id?: string
   model?: string
-  source?: 'all' | 'model_consume' | 'recharge' | 'reward'
+  source?: string
+  billing_type?: 'subscription' | 'balance' | string
+  member_id?: string
+  department_id?: string
 }
 
 export function createBillingQuery(context: BillingContext, extra: Record<string, string | number | undefined> = {}): string {
@@ -359,13 +409,30 @@ export function getBillingStatements(context: BillingContext, options: BillingRe
 }
 
 export function getBillingAnalysis(context: BillingContext, options: BillingAnalysisRequestOptions = {}): Promise<BillingAnalysisResponse> {
-  const page = listOptions(options)
+  // 中文：费用分析接口使用时间范围，period 仅作为旧调用方的兼容输入。
+  let startAt = options.start_at
+  let endAt = options.end_at
+  if ((!startAt || !endAt) && options.period) {
+    const match = /^(\d{4})-(\d{1,2})$/.exec(options.period.trim())
+    if (match) {
+      const year = Number(match[1])
+      const month = Number(match[2])
+      const start = new Date(Date.UTC(year, month - 1, 1))
+      const end = new Date(Date.UTC(year, month, 1))
+      startAt = start.getTime()
+      endAt = end.getTime()
+    }
+  }
   const query = createBillingQuery(context, {
-    ...page,
     period: options.period,
+    start_at: startAt,
+    end_at: endAt,
     api_key_id: options.api_key_id,
     model: options.model,
-    source: options.source ?? 'all',
+    source: options.source,
+    billing_type: options.billing_type,
+    member_id: options.member_id,
+    department_id: options.department_id,
   })
   return fetchAuthenticatedJson<BillingAnalysisResponse>(`${BILLING_PATH}/analysis?${query}`, requestOptions(options))
 }

@@ -168,7 +168,25 @@ function renderPage(observeLocation = false, enterprise = false) {
   return { appStore, ...render(<MemoryRouter initialEntries={['/console/settings']}><Provider store={appStore}><AppStoreProvider>{observeLocation ? <LocationProbe /> : null}<SettingsPage /></AppStoreProvider></Provider></MemoryRouter>) }
 }
 
-describe('个人中心页面', () => {
+async function openAccountSettings(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(await screen.findByRole('button', { name: '管理' }))
+  const dialog = await screen.findByRole('dialog', { name: '个人设置' })
+  await waitFor(() => expect(within(dialog).getByRole('button', { name: '昵称' })).toBeEnabled())
+  return dialog
+}
+
+async function openNicknameEditor(user: ReturnType<typeof userEvent.setup>) {
+  const dialog = await openAccountSettings(user)
+  await user.click(within(dialog).getByRole('button', { name: '昵称' }))
+  return within(dialog).getByRole('textbox', { name: '昵称' })
+}
+
+async function getContactInput(id: string) {
+  await waitFor(() => expect(document.querySelector(`#${id}`)).not.toBeNull())
+  return document.querySelector<HTMLInputElement>(`#${id}`)!
+}
+
+describe('个人设置页面', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
     clearAuthTokens()
@@ -182,18 +200,19 @@ describe('个人中心页面', () => {
     const { fetchMock } = mockProfileApi()
     const { appStore } = renderPage()
 
-    expect(await screen.findByRole('heading', { name: '个人中心' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: '个人资料' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: '个人设置' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '账户' })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: '个人资料' })).not.toBeInTheDocument()
     expect(screen.getByRole('heading', { name: '通知偏好' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: '工作空间' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: '账号安全' })).toBeInTheDocument()
-    expect(screen.getByDisplayValue('接口用户')).toBeInTheDocument()
-    expect(screen.getByText('01K0USERPUBLICIDEXAMPLE01')).toBeInTheDocument()
-    expect(screen.getByText('138****5678')).toBeInTheDocument()
+    expect(screen.getByText('管理登录凭据、安全设置，或删除你的账户。')).toBeInTheDocument()
     expect(screen.getByText('接口用户 的个人空间')).toBeInTheDocument()
     expect(screen.getByText('示例企业')).toBeInTheDocument()
     expect(document.querySelector('.settings-console-page .profile-overview-section')).toBeNull()
     expect(document.querySelectorAll('.settings-section')).toHaveLength(4)
+    expect(screen.getByRole('navigation', { name: '个人设置导航' })).toHaveTextContent('账户通知偏好工作空间账号安全')
+    expect(document.querySelector('#settings-account > .settings-section-head + .settings-card')).not.toBeNull()
     expect(screen.getAllByRole('switch')).toHaveLength(3)
     expect(appStore.getState().auth.user?.phone_masked).toBe('138****5678')
     expect(fetchMock).toHaveBeenCalledTimes(3)
@@ -203,7 +222,7 @@ describe('个人中心页面', () => {
     const { fetchMock } = mockProfileApi({ expireAccess: true })
     renderPage()
 
-    expect(await screen.findByDisplayValue('接口用户')).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: '账户' })).toBeInTheDocument()
     expect(getAccessToken()).toBe('refreshed-profile-token')
     expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith('/api/auth/refresh'))).toBe(true)
   })
@@ -222,7 +241,7 @@ describe('个人中心页面', () => {
     const user = userEvent.setup()
     const { fetchMock } = mockProfileApi()
     const { appStore } = renderPage()
-    const input = await screen.findByLabelText('昵称')
+    const input = await openNicknameEditor(user)
 
     await user.clear(input)
     await user.type(input, '  更新后的昵称  ')
@@ -236,7 +255,7 @@ describe('个人中心页面', () => {
         && JSON.parse(String(options?.body)).display_name === '更新后的昵称'
     })).toBe(true))
     expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith('/api/user/profile/nickname'))).toHaveLength(1)
-    expect(input).toHaveValue('更新后的昵称')
+    expect(screen.getByRole('dialog', { name: '个人设置' })).toHaveTextContent('更新后的昵称')
     expect(appStore.getState().auth.user?.display_name).toBe('更新后的昵称')
     expect(screen.queryByRole('button', { name: '保存更改' })).not.toBeInTheDocument()
   })
@@ -246,7 +265,7 @@ describe('个人中心页面', () => {
     const { fetchMock } = mockProfileApi()
     renderPage()
 
-    const input = await screen.findByLabelText('昵称')
+    const input = await openNicknameEditor(user)
     const longName = '名'.repeat(PROFILE_DISPLAY_NAME_MAX_LENGTH + 1)
     await user.clear(input)
     await user.type(input, longName)
@@ -263,7 +282,7 @@ describe('个人中心页面', () => {
     const { fetchMock } = mockProfileApi()
     renderPage()
 
-    const input = await screen.findByLabelText('昵称')
+    const input = await openNicknameEditor(user)
     await user.click(input)
     await user.keyboard('{Enter}')
     await user.tab()
@@ -275,7 +294,7 @@ describe('个人中心页面', () => {
     const user = userEvent.setup()
     const { fetchMock } = mockProfileApi({ nicknameFailures: 1 })
     const { appStore } = renderPage()
-    const input = await screen.findByLabelText('昵称')
+    const input = await openNicknameEditor(user)
 
     await user.clear(input)
     await user.type(input, '待重试昵称')
@@ -306,28 +325,43 @@ describe('个人中心页面', () => {
     expect(JSON.parse(String(preferenceRequest?.[1]?.body))).toEqual({ values: { low_balance: false } })
   })
 
+  it('点击左侧锚点时滚动到对应区块并同步高亮', async () => {
+    const user = userEvent.setup()
+    const scrollIntoView = vi.fn()
+    Object.defineProperty(Element.prototype, 'scrollIntoView', { configurable: true, value: scrollIntoView })
+    mockProfileApi()
+    renderPage()
+
+    const navigation = await screen.findByRole('navigation', { name: '个人设置导航' })
+    const workspaceAnchor = within(navigation).getByRole('button', { name: '工作空间' })
+    await user.click(workspaceAnchor)
+
+    expect(scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' })
+    expect(workspaceAnchor).toHaveAttribute('aria-current', 'location')
+    expect(window.location.hash).toBe('#settings-workspaces')
+  })
+
   it('更换手机号需要当前值和新值分别验证，并提交双验证码', async () => {
     const user = userEvent.setup()
     const { fetchMock } = mockProfileApi()
     renderPage()
 
-    await user.click(await screen.findByRole('button', { name: '更换手机号' }))
-    const contactDialog = screen.getByRole('dialog')
+    await openAccountSettings(user)
+    await user.click(await screen.findByRole('button', { name: '手机号' }))
+    const currentDestination = await getContactInput('profile-phone-current-destination')
+    const contactDialog = document.querySelector<HTMLElement>('.profile-contact-modal [role="dialog"]')
     expect(contactDialog).toHaveTextContent('当前联系方式')
     const contactModal = document.querySelector('.profile-contact-modal')
     expect(contactModal?.querySelector('.semi-modal')).toHaveClass('semi-modal-centered')
     expect(contactModal).toContainElement(contactDialog)
-    const currentDestination = document.querySelector<HTMLInputElement>('#profile-phone-current-destination')
-    const newDestination = document.querySelector<HTMLInputElement>('#profile-phone-new-destination')
-    if (!currentDestination || !newDestination) throw new Error('联系方式输入框未渲染')
+    const newDestination = await getContactInput('profile-phone-new-destination')
     expect(currentDestination).toHaveValue('13812345678')
     expect(currentDestination).toHaveAttribute('readonly')
     await user.type(newDestination, '13912345678')
     await user.click(screen.getByRole('button', { name: '发送当前验证码' }))
     await user.click(screen.getByRole('button', { name: '发送新验证码' }))
-    const currentCode = document.querySelector<HTMLInputElement>('#profile-phone-currentCode')
-    const newCode = document.querySelector<HTMLInputElement>('#profile-phone-newCode')
-    if (!currentCode || !newCode) throw new Error('验证码输入框未渲染')
+    const currentCode = await getContactInput('profile-phone-currentCode')
+    const newCode = await getContactInput('profile-phone-newCode')
     await user.type(currentCode, '123456')
     await user.type(newCode, '654321')
     await user.click(screen.getByRole('button', { name: '保存联系方式' }))
@@ -357,10 +391,10 @@ describe('个人中心页面', () => {
       </MemoryRouter>,
     )
 
-    const pageNameInput = await screen.findByDisplayValue(PROFILE.display_name)
+    expect(await screen.findByText(`${PROFILE.display_name} 的个人空间`)).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '打开用户菜单' }))
     await user.click(screen.getByRole('button', { name: '账户设置' }))
-    const dialog = await screen.findByRole('dialog', { name: '个人中心' })
+    const dialog = await screen.findByRole('dialog', { name: '个人设置' })
     await waitFor(() => expect(within(dialog).getByRole('button', { name: '昵称' })).toBeEnabled())
     await user.click(within(dialog).getByRole('button', { name: '昵称' }))
     const modalNameInput = within(dialog).getByRole('textbox', { name: '昵称' })
@@ -368,7 +402,7 @@ describe('个人中心页面', () => {
     await user.type(modalNameInput, '同步昵称')
     await user.click(within(dialog).getByRole('button', { name: '保存更改' }))
 
-    await waitFor(() => expect(pageNameInput).toHaveValue('同步昵称'))
+    await waitFor(() => expect(screen.getByText('同步昵称 的个人空间')).toBeInTheDocument())
     expect(appStore.getState().auth.user?.display_name).toBe('同步昵称')
     expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith('/api/user/profile/nickname'))).toHaveLength(1)
   })
@@ -378,10 +412,10 @@ describe('个人中心页面', () => {
     const { fetchMock } = mockProfileApi()
     renderPage()
 
-    await user.click(await screen.findByRole('button', { name: '更换手机号' }))
-    const currentDestination = document.querySelector<HTMLInputElement>('#profile-phone-current-destination')
-    const newDestination = document.querySelector<HTMLInputElement>('#profile-phone-new-destination')
-    if (!currentDestination || !newDestination) throw new Error('联系方式输入框未渲染')
+    await openAccountSettings(user)
+    await user.click(await screen.findByRole('button', { name: '手机号' }))
+    const currentDestination = await getContactInput('profile-phone-current-destination')
+    const newDestination = await getContactInput('profile-phone-new-destination')
     expect(currentDestination).toHaveValue('13812345678')
     await user.type(newDestination, '13812345678')
     await user.click(screen.getByRole('button', { name: '发送新验证码' }))
@@ -397,9 +431,9 @@ describe('个人中心页面', () => {
     const { fetchMock } = mockProfileApi()
     renderPage()
 
-    await user.click(await screen.findByRole('button', { name: '更换手机号' }))
-    const newDestination = document.querySelector<HTMLInputElement>('#profile-phone-new-destination')
-    if (!newDestination) throw new Error('新手机号输入框未渲染')
+    await openAccountSettings(user)
+    await user.click(await screen.findByRole('button', { name: '手机号' }))
+    const newDestination = await getContactInput('profile-phone-new-destination')
     await user.type(newDestination, '12345')
     await user.click(screen.getByRole('button', { name: '发送新验证码' }))
 
@@ -413,9 +447,9 @@ describe('个人中心页面', () => {
     mockProfileApi()
     renderPage()
 
-    await user.click(await screen.findByRole('button', { name: '更换手机号' }))
-    const currentDestination = document.querySelector<HTMLInputElement>('#profile-phone-current-destination')
-    if (!currentDestination) throw new Error('当前手机号输入框未渲染')
+    await openAccountSettings(user)
+    await user.click(await screen.findByRole('button', { name: '手机号' }))
+    const currentDestination = await getContactInput('profile-phone-current-destination')
     expect(currentDestination).toHaveValue('13812345678')
     await user.click(screen.getByRole('button', { name: '发送当前验证码' }))
     expect(await screen.findByRole('button', { name: '60 秒后重试' })).toBeInTheDocument()
@@ -429,12 +463,12 @@ describe('个人中心页面', () => {
     const { fetchMock } = mockProfileApi({ phoneFailures: 1 })
     renderPage()
 
-    await user.click(await screen.findByRole('button', { name: '更换手机号' }))
-    const currentDestination = document.querySelector<HTMLInputElement>('#profile-phone-current-destination')
-    const newDestination = document.querySelector<HTMLInputElement>('#profile-phone-new-destination')
-    const currentCode = document.querySelector<HTMLInputElement>('#profile-phone-currentCode')
-    const newCode = document.querySelector<HTMLInputElement>('#profile-phone-newCode')
-    if (!currentDestination || !newDestination || !currentCode || !newCode) throw new Error('手机号表单未渲染')
+    await openAccountSettings(user)
+    await user.click(await screen.findByRole('button', { name: '手机号' }))
+    const currentDestination = await getContactInput('profile-phone-current-destination')
+    const newDestination = await getContactInput('profile-phone-new-destination')
+    const currentCode = await getContactInput('profile-phone-currentCode')
+    const newCode = await getContactInput('profile-phone-newCode')
     expect(currentDestination).toHaveValue('13812345678')
     await user.type(currentCode, '123456')
     await user.type(newDestination, '13912345678')
@@ -442,7 +476,7 @@ describe('个人中心页面', () => {
     await user.click(screen.getByRole('button', { name: '保存联系方式' }))
 
     await waitFor(() => expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith('/api/user/profile/phone'))).toHaveLength(1))
-    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(document.querySelector('.profile-contact-modal [role="dialog"]')).toBeInTheDocument()
     expect(currentDestination).toHaveValue('13812345678')
     expect(currentCode).toHaveValue('123456')
     expect(newDestination).toHaveValue('13912345678')
@@ -458,13 +492,12 @@ describe('个人中心页面', () => {
     const { fetchMock } = mockProfileApi()
     renderPage()
 
-    await user.click(await screen.findByRole('button', { name: '添加邮箱' }))
-    expect(screen.getByRole('dialog')).toHaveTextContent('绑定邮箱')
+    await openAccountSettings(user)
+    await user.click(await screen.findByRole('button', { name: /绑定邮箱/ }))
+    const newDestination = await getContactInput('profile-email-new-destination')
+    expect(document.querySelector('.profile-contact-modal [role="dialog"]')).toHaveTextContent('绑定邮箱')
     expect(document.querySelector('#profile-email-current-destination')).toBeNull()
-
-    const newDestination = document.querySelector<HTMLInputElement>('#profile-email-new-destination')
-    const newCode = document.querySelector<HTMLInputElement>('#profile-email-newCode')
-    if (!newDestination || !newCode) throw new Error('邮箱绑定表单未渲染')
+    const newCode = await getContactInput('profile-email-newCode')
     await user.type(newDestination, 'new@example.com')
     await user.click(screen.getByRole('button', { name: '发送新验证码' }))
     await user.type(newCode, '654321')
@@ -475,7 +508,7 @@ describe('个人中心页面', () => {
     expect(JSON.parse(String(codeRequest?.[1]?.body))).toEqual({ provider_code: 'email', purpose: 'new', destination: 'new@example.com' })
     const updateRequest = fetchMock.mock.calls.find(([url, options]) => String(url).endsWith('/api/user/profile/email') && options?.method === 'PUT')
     expect(JSON.parse(String(updateRequest?.[1]?.body))).toEqual({ new_destination: 'new@example.com', new_code: '654321' })
-    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await waitFor(() => expect(document.querySelector('.profile-contact-modal [role="dialog"]')).not.toBeInTheDocument())
     expect(await screen.findByText('n***@example.com')).toBeInTheDocument()
   })
 
@@ -484,13 +517,13 @@ describe('个人中心页面', () => {
     const { fetchMock } = mockProfileApi({ emailBound: true })
     renderPage()
 
-    await user.click(await screen.findByRole('button', { name: '更换邮箱' }))
-    expect(screen.getByRole('dialog')).toHaveTextContent('更换邮箱')
-    const currentDestination = document.querySelector<HTMLInputElement>('#profile-email-current-destination')
-    const currentCode = document.querySelector<HTMLInputElement>('#profile-email-currentCode')
-    const newDestination = document.querySelector<HTMLInputElement>('#profile-email-new-destination')
-    const newCode = document.querySelector<HTMLInputElement>('#profile-email-newCode')
-    if (!currentDestination || !currentCode || !newDestination || !newCode) throw new Error('邮箱更换表单未渲染')
+    await openAccountSettings(user)
+    await user.click(await screen.findByRole('button', { name: /更换邮箱/ }))
+    const currentDestination = await getContactInput('profile-email-current-destination')
+    expect(document.querySelector('.profile-contact-modal [role="dialog"]')).toHaveTextContent('更换邮箱')
+    const currentCode = await getContactInput('profile-email-currentCode')
+    const newDestination = await getContactInput('profile-email-new-destination')
+    const newCode = await getContactInput('profile-email-newCode')
 
     await user.type(currentDestination, 'old@example.com')
     await user.click(screen.getByRole('button', { name: '发送当前验证码' }))
@@ -506,7 +539,7 @@ describe('个人中心页面', () => {
     expect(JSON.parse(String(codeRequests[1][1]?.body))).toEqual({ provider_code: 'email', purpose: 'new', destination: 'new@example.com' })
     const updateRequest = fetchMock.mock.calls.find(([url, options]) => String(url).endsWith('/api/user/profile/email') && options?.method === 'PUT')
     expect(JSON.parse(String(updateRequest?.[1]?.body))).toEqual({ current_destination: 'old@example.com', current_code: '123456', new_destination: 'new@example.com', new_code: '654321' })
-    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await waitFor(() => expect(document.querySelector('.profile-contact-modal [role="dialog"]')).not.toBeInTheDocument())
   })
 
   it('邮箱保存失败时展示后端错误并保留全部输入用于重试', async () => {
@@ -514,12 +547,12 @@ describe('个人中心页面', () => {
     const { fetchMock } = mockProfileApi({ emailBound: true, emailFailures: 1 })
     renderPage()
 
-    await user.click(await screen.findByRole('button', { name: '更换邮箱' }))
-    const currentDestination = document.querySelector<HTMLInputElement>('#profile-email-current-destination')
-    const currentCode = document.querySelector<HTMLInputElement>('#profile-email-currentCode')
-    const newDestination = document.querySelector<HTMLInputElement>('#profile-email-new-destination')
-    const newCode = document.querySelector<HTMLInputElement>('#profile-email-newCode')
-    if (!currentDestination || !currentCode || !newDestination || !newCode) throw new Error('邮箱更换表单未渲染')
+    await openAccountSettings(user)
+    await user.click(await screen.findByRole('button', { name: /更换邮箱/ }))
+    const currentDestination = await getContactInput('profile-email-current-destination')
+    const currentCode = await getContactInput('profile-email-currentCode')
+    const newDestination = await getContactInput('profile-email-new-destination')
+    const newCode = await getContactInput('profile-email-newCode')
     await user.type(currentDestination, 'old@example.com')
     await user.type(currentCode, '123456')
     await user.type(newDestination, 'new@example.com')
@@ -529,7 +562,7 @@ describe('个人中心页面', () => {
 
     await waitFor(() => expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith('/api/user/profile/email'))).toHaveLength(1))
     expect(await screen.findByText('该邮箱已被其他账号绑定')).toBeInTheDocument()
-    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(document.querySelector('.profile-contact-modal [role="dialog"]')).toBeInTheDocument()
     expect(currentDestination).toHaveValue('old@example.com')
     expect(currentCode).toHaveValue('123456')
     expect(newDestination).toHaveValue('new@example.com')
@@ -538,7 +571,7 @@ describe('个人中心页面', () => {
 
     await user.click(saveButton)
     await waitFor(() => expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith('/api/user/profile/email'))).toHaveLength(2))
-    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await waitFor(() => expect(document.querySelector('.profile-contact-modal [role="dialog"]')).not.toBeInTheDocument())
   })
 
   it('复制用户 ID 并保留参考页的工作空间与安全入口', async () => {
@@ -550,8 +583,10 @@ describe('个人中心页面', () => {
     renderPage()
 
     await screen.findByRole('heading', { name: '工作空间' })
-    await user.click(screen.getByRole('button', { name: '复制' }))
+    const accountDialog = await openAccountSettings(user)
+    await user.click(within(accountDialog).getByRole('button', { name: '复制用户 ID' }))
     await waitFor(() => expect(writeText).toHaveBeenCalledWith(PROFILE.id))
+    await user.click(within(accountDialog).getByRole('button', { name: /关闭/ }))
 
     await user.click(screen.getByRole('button', { name: '进入注销流程' }))
     const securityDialog = screen.getByRole('dialog')
@@ -574,27 +609,26 @@ describe('个人中心页面', () => {
     await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent(NEW_ENTERPRISE_CREATE_PATH))
   })
 
-  it('企业空间同时展示企业账号和当前成员的个人资料', async () => {
+  it('企业空间隐藏企业账号信息并保留账户管理入口', async () => {
     const user = userEvent.setup()
     const { fetchMock } = mockProfileApi()
     renderPage(false, true)
 
-    expect(await screen.findByRole('heading', { name: '企业账号' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: '个人资料' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: '企业账号信息' })).toBeInTheDocument()
-    expect(screen.getAllByText('示例企业')).toHaveLength(2)
-    expect(screen.getByText('ENT-001')).toBeInTheDocument()
-    expect(screen.getByText('01K0MEMBERPUBLICIDEXAMPLE1')).toBeInTheDocument()
-    expect(screen.getAllByText('所有者')).toHaveLength(1)
-    expect(screen.getByLabelText('昵称')).toHaveValue(PROFILE.display_name)
-    expect(screen.getByText(PROFILE.id)).toBeInTheDocument()
-    expect(screen.getByText('138****5678')).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: '个人设置' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '账户' })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: '个人资料' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: '企业账号信息' })).not.toBeInTheDocument()
+    expect(screen.getAllByText('示例企业')).toHaveLength(1)
+    expect(screen.queryByText('ENT-001')).not.toBeInTheDocument()
+    expect(screen.queryByText('01K0MEMBERPUBLICIDEXAMPLE1')).not.toBeInTheDocument()
+    expect(screen.getByRole('navigation', { name: '个人设置导航' })).toHaveTextContent('账户工作空间')
     expect(screen.queryByRole('heading', { name: '通知偏好' })).not.toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: '账号安全' })).not.toBeInTheDocument()
     expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith('/api/user/enterprise/01K0ENTERPRISEPUBLICIDEX01/context'))).toBe(true)
 
-    await user.clear(screen.getByLabelText('昵称'))
-    await user.type(screen.getByLabelText('昵称'), '企业空间中的新昵称')
+    const nicknameInput = await openNicknameEditor(user)
+    await user.clear(nicknameInput)
+    await user.type(nicknameInput, '企业空间中的新昵称')
     await user.keyboard('{Enter}')
     await waitFor(() => expect(fetchMock.mock.calls.some(([url, options]) => String(url).endsWith('/api/user/profile/nickname') && JSON.parse(String(options?.body)).display_name === '企业空间中的新昵称')).toBe(true))
   })

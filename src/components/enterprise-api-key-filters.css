@@ -1,0 +1,100 @@
+.enterprise-api-key-filters {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+}
+
+.enterprise-api-key-filter-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.enterprise-api-key-filter-select.semi-select {
+  width: 240px;
+  height: 32px !important;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--color-border-neutral-l2);
+  border-radius: 6px;
+  color: var(--color-text-secondary);
+  background: var(--color-bg-base-secondary);
+}
+
+.enterprise-api-key-member-filter.semi-select {
+  width: 240px;
+}
+
+.enterprise-api-key-filter-select .semi-select-selection {
+  min-width: 0;
+  height: 30px !important;
+  display: flex;
+  align-items: center;
+  padding-inline: 12px;
+}
+
+.enterprise-api-key-filter-select .semi-select-arrow {
+  height: 30px;
+}
+
+.enterprise-api-key-filter-select .semi-select-selection-text,
+.enterprise-api-key-filter-select .semi-select-selection-placeholder {
+  overflow: hidden;
+  font-size: 13px;
+  line-height: 30px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.enterprise-api-key-filter-dropdown {
+  overflow: hidden;
+  min-width: 240px;
+  max-width: min(420px, calc(100vw - var(--spacing-24)));
+  padding: 4px 0;
+  border-radius: 6px;
+  background: var(--color-bg-menu);
+}
+
+.enterprise-api-key-filter-dropdown .semi-select-option {
+  box-sizing: border-box;
+  min-height: 32px;
+  height: 32px;
+  margin: 2px 6px;
+  padding: 0 10px;
+  border-radius: 4px;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  line-height: 32px;
+}
+
+/* 中文：筛选下拉框采用操作日志的无勾选列表样式。 */
+.enterprise-api-key-filter-dropdown .semi-select-option-icon {
+  display: none;
+}
+
+.enterprise-api-key-filter-dropdown .semi-select-option-selected,
+.enterprise-api-key-filter-dropdown .semi-select-option-focused,
+.enterprise-api-key-filter-dropdown .semi-select-option:hover {
+  color: var(--color-text-default-hover);
+  background: var(--color-bg-overlay-l3);
+}
+
+@media (max-width: 720px) {
+  .enterprise-api-key-filters {
+    width: 100%;
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .enterprise-api-key-filter-select.semi-select,
+  .enterprise-api-key-member-filter.semi-select {
+    width: 100%;
+  }
+}

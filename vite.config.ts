@@ -1,4 +1,5 @@
 import { fileURLToPath, URL } from 'node:url'
+import { semiTheming } from '@douyinfe/semi-vite-plugin'
 import react from '@vitejs/plugin-react'
 import { defineConfig, loadEnv } from 'vite'
 
@@ -8,7 +9,13 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
 
   return {
-    plugins: [react()],
+    plugins: [
+      // 中文：使用 Semi 官方 Vite 插件提供主题编译入口，结构型 token 保持官方默认值。
+      semiTheming({
+        include: fileURLToPath(new URL('./src/theme/semi-theme.scss', import.meta.url)),
+      }),
+      react(),
+    ],
     resolve: {
       alias: {
         '@': fileURLToPath(new URL('./src', import.meta.url)),

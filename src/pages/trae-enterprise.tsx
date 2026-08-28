@@ -57,6 +57,7 @@ import {
   type EnterpriseMember,
 } from "@/api/enterprise-console";
 import { EnterprisePageShell, useEnterpriseConsoleContext, useEnterpriseErrorHandler, EnterpriseError, EnterpriseLoading } from "./enterprise-console-shared";
+import { ConsoleTabs } from "@/components/console-tabs";
 import { formatApiTime } from "@/utils/format";
 import "@/trae-enterprise.css";
 
@@ -91,6 +92,15 @@ type TraeMemberRow = {
 
 // 其他企业分析组件使用同一行模型；成员管理页本身只展示服务端返回的数据。
 const memberRows: TraeMemberRow[] = [];
+
+// 中文：当前企业上下文尚未返回订阅席位明细，先沿用订阅页的演示配额展示。
+const TRAE_MEMBER_SEAT_SUMMARY = {
+  total: 10,
+  allOccupied: 4,
+  allCapacity: 10,
+  workOccupied: 0,
+  workCapacity: 20,
+} as const;
 
 function toTraeMemberRow(member: EnterpriseMember): TraeMemberRow {
   const role = member.role === "owner" ? "owner" : member.role === "administrator" || member.role === "admin" ? "admin" : "member";
@@ -1669,6 +1679,11 @@ function TraeEnterpriseMembersContent({ context }: { context: EnterpriseContext 
       <header className="trae-members-header">
         <div className="trae-members-header-main">
           <h1>{t("traeEnterprise.members.title")}</h1>
+          <div className="trae-members-header-stats" aria-label={t("traeEnterprise.members.seats")}>
+            <span>{t("traeEnterprise.members.seats")} <b>{TRAE_MEMBER_SEAT_SUMMARY.total}</b></span>
+            <span>{t("traeEnterprise.members.occupied")} <b>{TRAE_MEMBER_SEAT_SUMMARY.allOccupied}/{TRAE_MEMBER_SEAT_SUMMARY.allCapacity}</b></span>
+            <span>{t("traeEnterprise.members.workOccupied")} <b>{TRAE_MEMBER_SEAT_SUMMARY.workOccupied}/{TRAE_MEMBER_SEAT_SUMMARY.workCapacity}</b></span>
+          </div>
         </div>
         <div className="trae-page-heading-action">
           <div ref={memberAddMenuRef} className="trae-member-add-action">
@@ -1700,23 +1715,19 @@ function TraeEnterpriseMembersContent({ context }: { context: EnterpriseContext 
           </div>
         </div>
       </header>
-      <div className="trae-tabs" role="tablist">
-        {(["people", "departments", "requests", "invitations"] as const).map((item) => (
-          <button
-            key={item}
-            className={tab === item ? "is-active" : ""}
-            type="button"
-            role="tab"
-            aria-selected={tab === item}
-            onClick={() => {
-              setTab(item);
-              if (item !== "invitations") setInvitationCreateOpen(false);
-            }}
-          >
-            {item === "invitations" ? t("traeEnterprise.inviteList.tab") : t(`traeEnterprise.members.tabs.${item}`)}
-          </button>
-        ))}
-      </div>
+      <ConsoleTabs
+        items={(["people", "departments", "requests", "invitations"] as const).map((item) => ({
+          itemKey: item,
+          tab: item === "invitations" ? t("traeEnterprise.inviteList.tab") : t(`traeEnterprise.members.tabs.${item}`),
+        }))}
+        activeKey={tab}
+        onChange={(value) => {
+          const nextTab = value as "people" | "departments" | "requests" | "invitations";
+          setTab(nextTab);
+          if (nextTab !== "invitations") setInvitationCreateOpen(false);
+        }}
+        ariaLabel={t("traeEnterprise.members.title")}
+      />
       {tab === "people" ? (
         <div
           className={`trae-members-workspace${collapsed ? " is-department-tree-collapsed" : ""}`}
@@ -2277,8 +2288,8 @@ export function TraeEnterpriseSubscriptionPage() {
             </div>
             <strong className="trae-capacity-number"><i><IconUserGroup aria-hidden="true" /></i>4 / 10</strong>
             <div className="trae-capacity-legend trae-capacity-legend--split">
-              <span className="is-green">全端账号 10</span>
-              <span className="is-purple">Work 专属账号 20</span>
+              <span className="is-green">{t("traeEnterprise.subscription.allAccount")} 10</span>
+              <span className="is-purple">{t("traeEnterprise.subscription.workAccount")} 20</span>
             </div>
             <ProgressBar value={40} tone="is-mixed" />
           </div>
@@ -2291,12 +2302,12 @@ export function TraeEnterpriseSubscriptionPage() {
             <strong className="trae-capacity-number"><i><IconUserListStroked aria-hidden="true" /></i>30</strong>
             <div className="trae-capacity-legend trae-capacity-legend--usage">
               <span>
-                全端账号 <b>4 / 10</b>
+                {t("traeEnterprise.subscription.allAccount")} <b>4 / 10</b>
                 <em>{t("traeEnterprise.subscription.remaining")} 6</em>
               </span>
               <ProgressBar value={40} tone="is-success" />
               <span>
-                Work 专属账号 <b>0 / 20</b>
+                {t("traeEnterprise.subscription.workAccount")} <b>0 / 20</b>
                 <em>{t("traeEnterprise.subscription.remaining")} 20</em>
               </span>
               <ProgressBar value={0} tone="is-empty" />
@@ -2348,7 +2359,12 @@ export function TraeEnterpriseUsagePage() {
   const [period, setPeriod] = useState<{ start: string; end: string } | null>(null);
   const handlePeriodChange = useCallback((nextPeriod: { start: string; end: string }) => setPeriod(nextPeriod), []);
   return <TraeShell title={t("traeEnterprise.usage.title")} className="trae-usage-page-official" action={period ? <span className="trae-cycle-label trae-cycle-label--heading">{t("traeEnterprise.usage.cycle", period)}</span> : undefined}>
-    <div className="trae-tabs" role="tablist">{(["board", "detail"] as const).map((item) => <button key={item} className={tab === item ? "is-active" : ""} type="button" role="tab" aria-selected={tab === item} onClick={() => setTab(item)}>{t(`traeEnterprise.usage.tabs.${item}`)}</button>)}</div>
+    <ConsoleTabs
+      items={(["board", "detail"] as const).map((item) => ({ itemKey: item, tab: t(`traeEnterprise.usage.tabs.${item}`) }))}
+      activeKey={tab}
+      onChange={(value) => setTab(value as "board" | "detail")}
+      ariaLabel={t("traeEnterprise.usage.title")}
+    />
     {loading || !context && !error ? <EnterpriseLoading label={t("console.enterprise.contextLoading")} /> : error || !context ? <EnterpriseError message={error?.message ?? t("console.enterprise.contextFailed")} requestId={error?.requestId ?? null} onRetry={reload} /> : <Suspense fallback={<EnterpriseLoading label={t("console.enterprise.loadData")} />}>{tab === "board" ? <TraeUsageBoard context={context} onPeriodChange={handlePeriodChange} onDetail={(memberID) => { setDetailMemberID(memberID); setTab("detail"); }} /> : <TraeUsageDetail context={context} memberID={detailMemberID} onMemberChange={setDetailMemberID} />}</Suspense>}
   </TraeShell>;
 }

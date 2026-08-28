@@ -16,6 +16,7 @@ export const ENTERPRISE_MENU_PERMISSION_PREFIXES = {
   billing: ["billing."],
   settings: ["settings."],
   models: ["models."],
+  keys: ["keys."],
   governance: ["roles.", "tags."],
 } as const;
 
@@ -46,6 +47,7 @@ const ENTERPRISE_MENU_PATH_SCOPES: readonly {
   { path: "/console/trae-enterprise/operation-log", scope: "audit" },
   { path: "/console/trae-enterprise/data-analysis", scope: "analytics" },
   { path: "/console/trae-enterprise/subscription", scope: "billing" },
+  { path: "/console/enterprise-api-keys", scope: "keys" },
 ];
 
 export function isEnterpriseOwner(

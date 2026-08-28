@@ -1,20 +1,32 @@
-/* Account center surfaces: a quiet, information-first treatment shared by both workspaces. */
+/* 中文：此页使用文档滚动，避免控制台外层的 overflow 阻断左侧导航吸顶。 */
+.console-main-layout:has(.settings-redesign-page) {
+  overflow: visible;
+}
+
+/* 中文：个人设置页沿用控制台色彩变量，确保浅色与深色模式保持一致。 */
 .settings-redesign-page {
   --settings-card-bg: var(--color-bg-base-secondary);
   --settings-row-line: var(--color-border-neutral-l1);
   --settings-muted-bg: var(--color-bg-base-tertiary);
-  --settings-accent: var(--color-brand);
+  --settings-accent: var(--color-action-primary);
   gap: 24px;
 }
 
-.settings-redesign-page > .page-title-row,
-.settings-redesign-page > .settings-page-inner {
-  width: min(920px, calc(100% - 56px));
-}
-
+/* 中文：标题和内容都贴齐控制台左边界，不再使用设置页的居中宽度。 */
 .settings-redesign-page > .page-title-row {
+  box-sizing: border-box;
+  width: 100%;
+  margin-right: 0 !important;
+  margin-left: 0 !important;
   min-height: auto;
   padding-top: 14px;
+}
+
+.settings-redesign-page > .settings-page-inner {
+  width: auto;
+  max-width: none;
+  margin-right: var(--console-page-gutter) !important;
+  margin-left: var(--console-page-gutter) !important;
 }
 
 .settings-redesign-page .page-title {
@@ -31,22 +43,78 @@
 }
 
 .settings-redesign-page .settings-page-inner {
+  display: grid;
   gap: 24px;
 }
 
-.settings-redesign-page .settings-section.settings-card {
-  padding: 28px 32px 30px;
-  border: 1px solid var(--settings-row-line);
-  border-radius: 8px;
-  background: var(--settings-card-bg);
+.settings-anchor-layout {
+  display: grid;
+  width: 100%;
+  grid-template-columns: 208px minmax(0, 1fr);
+  align-items: start;
+  gap: 40px;
+}
+
+.settings-anchor-nav {
+  position: sticky;
+  z-index: 2;
+  top: 88px;
+  display: grid;
+  width: auto;
+  max-height: max(160px, calc(100vh - 112px));
+  align-self: start;
+  gap: 4px;
+  overflow-y: auto;
+}
+
+.settings-anchor-link {
+  width: 100%;
+  min-height: 38px;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 6px;
+  color: var(--color-text-secondary);
+  background: transparent;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 22px;
+  text-align: left;
+  cursor: pointer;
+  transition: color 160ms ease, background-color 160ms ease;
+}
+
+.settings-anchor-link:hover {
+  color: var(--color-text-default-hover);
+  background: var(--color-bg-base-tertiary);
+}
+
+.settings-anchor-link.is-active {
+  color: var(--color-text-default-hover);
+  background: var(--color-bg-overlay-l2);
+  font-weight: 600;
+}
+
+.settings-anchor-content {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  grid-column: 2;
+  gap: 52px;
+}
+
+.settings-redesign-page .settings-section.settings-anchor-section {
+  scroll-margin-top: 24px;
+  padding: 0;
+  border: 0;
 }
 
 .settings-redesign-page .settings-section-head {
-  margin-bottom: 18px;
+  margin-bottom: 16px;
 }
 
 .settings-redesign-page .settings-section-head h2 {
-  margin-bottom: 4px;
+  margin: 0 0 4px;
   color: var(--color-text-default-hover);
   font-size: 20px;
   font-weight: 650;
@@ -55,15 +123,50 @@
 
 .settings-redesign-page .settings-section-head p {
   max-width: 760px;
+  margin: 0;
   color: var(--color-text-secondary);
   font-size: 13px;
   line-height: 1.65;
 }
 
-.settings-redesign-page .settings-section-head .settings-hint {
-  margin-top: 2px;
-  color: var(--color-text-tertiary);
-  font-size: 12px;
+.settings-redesign-page .settings-card {
+  padding: 8px 16px;
+  border: 1px solid var(--settings-row-line);
+  border-radius: 8px;
+  background: var(--settings-card-bg);
+}
+
+.settings-redesign-page .settings-card--account {
+  padding-block: 0;
+}
+
+.settings-account-row {
+  display: flex;
+  min-height: 112px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 24px 4px;
+}
+
+.settings-account-row > div {
+  min-width: 0;
+}
+
+.settings-account-row strong {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--color-text-default-hover);
+  font-size: 16px;
+  font-weight: 650;
+  line-height: 1.5;
+}
+
+.settings-account-row p {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  line-height: 1.6;
 }
 
 .settings-redesign-page .settings-form {
@@ -72,9 +175,9 @@
 
 .settings-redesign-page .settings-row {
   min-width: 0;
-  grid-template-columns: 128px minmax(0, 1fr);
+  grid-template-columns: 144px minmax(0, 1fr);
   align-items: center;
-  min-height: 70px;
+  min-height: 68px;
   gap: 20px;
   padding: 14px 0;
   border-top: 1px solid var(--settings-row-line);
@@ -82,22 +185,6 @@
 
 .settings-redesign-page .settings-row:first-child {
   border-top: 0;
-}
-
-.settings-redesign-page .settings-row--avatar {
-  display: block;
-  min-height: auto;
-  padding: 0 0 22px;
-}
-
-.settings-redesign-page .settings-row--avatar > .settings-label {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  clip-path: inset(50%);
-  white-space: nowrap;
 }
 
 .settings-redesign-page .settings-label {
@@ -111,20 +198,6 @@
   min-width: 0;
 }
 
-.settings-redesign-page .settings-avatar {
-  width: 76px;
-  height: 76px;
-  border: 0;
-  background: var(--color-text-default-hover);
-  color: var(--color-bg-base-default);
-  font-size: 27px;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, .16);
-}
-
-.settings-redesign-page .settings-avatar-image {
-  display: block;
-}
-
 .settings-redesign-page .settings-readonly {
   min-height: 0;
   padding: 0;
@@ -132,7 +205,7 @@
   border-radius: 0;
   background: transparent;
   color: var(--color-text-default-hover);
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 550;
   line-height: 1.5;
 }
@@ -157,84 +230,25 @@
   overflow-wrap: anywhere;
 }
 
-.settings-redesign-page .settings-control > .semi-input-wrapper {
-  max-width: 520px;
-  height: 32px;
-  min-height: 32px;
-  border-color: var(--color-border-neutral-l2);
-  border-radius: 6px;
-  background: var(--color-bg-base-secondary);
-  box-shadow: none;
-}
-
-.settings-redesign-page .settings-name-input-row {
-  display: flex;
-  width: min(100%, 520px);
-  min-width: 0;
-  align-items: center;
-  gap: 10px;
-}
-
-.settings-redesign-page .settings-name-input-row > .semi-input-wrapper {
-  min-width: 0;
-  height: 32px;
-  min-height: 32px;
-  flex: 1 1 420px;
-  max-width: 420px;
-  border: 1px solid var(--color-border-neutral-l2);
-  border-radius: 6px;
-  background: var(--color-bg-base-secondary);
-}
-
-.settings-redesign-page .settings-name-input-row > .settings-hint {
-  flex: 0 0 auto;
-  margin: 0;
-  white-space: nowrap;
-}
-
-.settings-redesign-page .settings-control > .semi-input-wrapper:hover {
-  border-color: var(--color-border-neutral-l2);
-  background: var(--color-bg-base-secondary);
-}
-
-.settings-redesign-page .settings-name-input-row > .semi-input-wrapper:hover {
-  border-color: var(--color-border-neutral-l2);
-  background: var(--color-bg-base-secondary);
-}
-
-.settings-redesign-page .settings-control > .semi-input-wrapper .semi-input {
-  padding-inline: 10px;
-  color: var(--color-text-default-hover);
-  font-size: 13px;
-  font-weight: 400;
-}
-
-.settings-redesign-page .settings-name-input-row > .semi-input-wrapper:focus-within,
-.settings-redesign-page .settings-name-input-row > .semi-input-wrapper-focus {
-  border-color: var(--color-border-neutral-l2);
-  outline: 0;
-  background: var(--color-bg-base-secondary);
-  box-shadow: none;
-}
-
 .settings-redesign-page .settings-hint {
-  margin-top: 4px;
+  margin-top: 5px;
   color: var(--color-text-tertiary);
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.5;
 }
 
-.settings-redesign-page .settings-row:not(.settings-row--avatar):not(.settings-row--name) > .settings-control > .settings-hint {
-  display: none;
-}
-
-.settings-redesign-page .settings-row .semi-button {
+.settings-redesign-page .settings-row .semi-button,
+.settings-redesign-page .settings-account-row .semi-button {
   flex: 0 0 auto;
-  min-height: 38px;
-  padding-inline: 14px;
-  border-radius: 8px;
+  min-height: 30px;
+  padding-inline: 18px;
+  border-radius: 7px;
   font-size: 13px;
   font-weight: 600;
+}
+
+.settings-redesign-page .settings-account-row .settings-primary-button {
+  min-width: 67px;
 }
 
 .settings-redesign-page .settings-secondary-button {
@@ -256,14 +270,8 @@
   color: var(--color-action-on-primary);
 }
 
-.settings-redesign-page .settings-card--notifications .settings-section-head,
-.settings-redesign-page .settings-card--workspace .settings-section-head {
-  margin-bottom: 14px;
-}
-
 .settings-redesign-page .notification-list {
   display: grid;
-  gap: 0;
 }
 
 .settings-redesign-page .notification-row {
@@ -288,21 +296,17 @@
   font-size: 12px;
 }
 
-.settings-redesign-page .notification-row .semi-switch {
-  flex: 0 0 auto;
-}
-
 .settings-redesign-page .workspace-list {
   display: grid;
-  gap: 12px;
-  margin-bottom: 20px;
+  gap: 10px;
+  margin: 12px 0 20px;
 }
 
 .settings-redesign-page .workspace-item {
   min-height: 66px;
   padding: 13px 16px;
   border: 1px solid transparent;
-  border-radius: 8px;
+  border-radius: 7px;
   background: var(--settings-muted-bg);
 }
 
@@ -340,22 +344,18 @@
   line-height: 1.2;
 }
 
-.settings-redesign-page .workspace-item > span:first-letter {
-  color: inherit;
+.settings-redesign-page .settings-card--workspace {
+  padding-bottom: 24px;
 }
 
 .settings-redesign-page .settings-card--security {
+  padding-block: 18px;
   border-color: color-mix(in srgb, var(--color-error, #df7b83) 32%, var(--settings-row-line));
-}
-
-.settings-redesign-page .settings-card--security .settings-section-head {
-  padding-bottom: 18px;
-  border-bottom: 1px solid var(--settings-row-line);
 }
 
 .settings-redesign-page .settings-card--security .settings-actions {
   justify-content: space-between;
-  min-height: 52px;
+  min-height: 42px;
 }
 
 .settings-redesign-page .settings-card--security .settings-danger-button {
@@ -370,27 +370,12 @@
   background: color-mix(in srgb, var(--color-error, #df7b83) 10%, transparent);
 }
 
-.settings-redesign-page .enterprise-permission-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.settings-redesign-page .enterprise-permission-list .model-tag {
-  border-radius: 7px;
-  background: var(--settings-muted-bg);
-  color: var(--color-text-secondary);
-}
-
-.settings-redesign-page .settings-card--enterprise .settings-row:first-child {
-  border-top: 1px solid var(--settings-row-line);
-}
-
 @media (max-width: 900px) {
-  .settings-redesign-page > .page-title-row,
-  .settings-redesign-page > .settings-page-inner {
-    width: calc(100% - 40px);
+  .settings-anchor-layout {
+    grid-template-columns: 148px minmax(0, 1fr);
+    gap: 28px;
   }
+
 }
 
 @media (max-width: 720px) {
@@ -398,14 +383,53 @@
     gap: 18px;
   }
 
-  .settings-redesign-page > .page-title-row,
-  .settings-redesign-page > .settings-page-inner {
-    width: calc(100% - 32px);
+  .settings-anchor-layout {
+    display: block;
   }
 
-  .settings-redesign-page .settings-section.settings-card {
-    padding: 22px 18px 24px;
-    border-radius: 8px;
+  .settings-anchor-nav {
+    position: sticky;
+    z-index: 3;
+    top: 72px;
+    left: auto;
+    display: flex;
+    width: 100%;
+    max-height: none;
+    margin-bottom: 32px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 6px 0;
+    background: var(--color-bg-base-default);
+    scrollbar-width: none;
+  }
+
+  .settings-anchor-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .settings-anchor-link {
+    width: auto;
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  .settings-anchor-content {
+    grid-column: auto;
+    gap: 40px;
+  }
+
+  .settings-redesign-page .settings-section.settings-anchor-section {
+    scroll-margin-top: 58px;
+  }
+
+  .settings-redesign-page .settings-card {
+    padding-inline: 18px;
+  }
+
+  .settings-account-row {
+    min-height: 104px;
+    gap: 16px;
+    padding-block: 20px;
   }
 
   .settings-redesign-page .settings-section-head h2 {
@@ -420,10 +444,6 @@
     padding: 14px 0;
   }
 
-  .settings-redesign-page .settings-label {
-    font-size: 13px;
-  }
-
   .settings-redesign-page .settings-inline {
     align-items: stretch;
     flex-direction: column;
@@ -432,22 +452,6 @@
 
   .settings-redesign-page .settings-inline .semi-button {
     align-self: flex-start;
-  }
-
-  .settings-redesign-page .settings-name-input-row {
-    width: 100%;
-    align-items: flex-start;
-    flex-wrap: wrap;
-    gap: 4px 8px;
-  }
-
-  .settings-redesign-page .settings-name-input-row > .semi-input-wrapper {
-    flex-basis: 100%;
-    max-width: 100%;
-  }
-
-  .settings-redesign-page .settings-name-input-row > .settings-hint {
-    white-space: normal;
   }
 
   .settings-redesign-page .settings-card--security .settings-actions {
@@ -460,8 +464,19 @@
   }
 }
 
+@media (max-width: 420px) {
+  .settings-account-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .settings-redesign-page .settings-account-row .settings-primary-button {
+    align-self: stretch;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .settings-redesign-page .workspace-item,
+  .settings-anchor-link,
   .settings-redesign-page .semi-button {
     transition: none;
   }

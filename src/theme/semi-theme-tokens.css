@@ -1,0 +1,45 @@
+/*
+ * 项目主题颜色契约：自研页面优先使用 --app-theme-*，Semi 组件继续使用官方 --semi-*。
+ * 所有值都引用现有颜色变量，主题切换时无需维护第二份固定色值。
+ */
+:root {
+  --app-theme-brand: var(--color-brand);
+  --app-theme-action-primary: var(--color-action-primary);
+  --app-theme-action-primary-hover: var(--color-action-primary-hover);
+  --app-theme-action-on-primary: var(--color-action-on-primary);
+  --app-theme-bg-base: var(--color-bg-base-default);
+  --app-theme-bg-surface: var(--color-bg-base-secondary);
+  --app-theme-bg-elevated: var(--color-bg-base-tertiary);
+  --app-theme-bg-menu: var(--color-bg-menu);
+  --app-theme-bg-hover: var(--color-bg-overlay-l2);
+  --app-theme-bg-active: var(--color-bg-overlay-l3);
+  --app-theme-text-primary: var(--color-text-default-hover);
+  --app-theme-text-default: var(--color-text-default);
+  --app-theme-text-secondary: var(--color-text-secondary);
+  --app-theme-text-tertiary: var(--color-text-tertiary);
+  --app-theme-border-subtle: var(--color-border-neutral-l1);
+  --app-theme-border-default: var(--color-border-neutral-l2);
+  --app-theme-border-strong: var(--color-border-neutral-l3);
+  --app-theme-success: var(--color-success);
+}
+
+/*
+ * 与现有 Semi 覆盖保持同值。仅映射颜色，不定义字体、尺寸、圆角或间距，
+ * Portal 挂载的弹窗、下拉框和提示也能通过 body 获得一致主题。
+ */
+body[theme-mode='light'],
+body[theme-mode='dark'] {
+  --semi-color-primary: var(--app-theme-action-primary) !important;
+  --semi-color-primary-hover: var(--app-theme-action-primary-hover) !important;
+  --semi-color-primary-active: var(--app-theme-action-primary) !important;
+  --semi-color-secondary: var(--color-bg-overlay-l3) !important;
+  --semi-color-secondary-hover: var(--color-bg-overlay-l4) !important;
+  --semi-color-secondary-active: var(--color-bg-overlay-l3) !important;
+  --semi-color-fill-0: var(--color-bg-overlay-l2) !important;
+  --semi-color-fill-1: var(--color-bg-overlay-l3) !important;
+  --semi-color-border: var(--app-theme-border-default) !important;
+  --semi-color-focus-border: var(--app-theme-border-strong) !important;
+  --semi-color-text-0: var(--app-theme-text-primary) !important;
+  --semi-color-text-1: var(--app-theme-text-default) !important;
+  --semi-color-text-2: var(--app-theme-text-secondary) !important;
+}

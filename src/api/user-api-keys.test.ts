@@ -4,6 +4,9 @@ import { clearAuthTokens, saveAuthTokens } from '@/auth/token-storage'
 import type { AuthResult } from './auth'
 import {
   createUserApiKey,
+  getEnterpriseApiKeys,
+  createEnterpriseApiKey,
+  batchManageEnterpriseApiKeys,
   disableUserApiKey,
   enableUserApiKey,
   getUserApiKeyActivity,
@@ -109,5 +112,19 @@ describe('用户 API 密钥接口封装', () => {
     expect(getUserApiKeyErrorMessage(new ApiError('服务错误', 409, 100006, 'req-2'))).toBe('API 密钥状态已变化，请刷新后重试')
     expect(getUserApiKeyErrorMessage(new ApiError('服务错误', 409, 100009, 'req-3'))).toBe('API 密钥已过期，无法重新启用')
     expect(getUserApiKeyErrorMessage(new Error('offline'))).toBe('API 密钥请求失败，请稍后重试')
+  })
+
+  it('企业密钥管理使用企业专用列表、创建和批量接口', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => response({ items: [], available_models: [], updated: 0 }))
+    await getEnterpriseApiKeys({ account_type: 'enterprise', enterprise_id: 'ent/01' }, 'active', 'member-1')
+    expect(lastRequest(fetchMock).url).toBe('/api/user/enterprise/ent%2F01/api-keys?status=active&member_id=member-1')
+
+    await createEnterpriseApiKey({ account_type: 'enterprise', enterprise_id: 'ent/01' }, { ...mutation, member_id: 'member-1' })
+    expect(lastRequest(fetchMock).url).toBe('/api/user/enterprise/ent%2F01/api-keys')
+    expect(lastRequest(fetchMock).options?.method).toBe('POST')
+
+    await batchManageEnterpriseApiKeys({ account_type: 'enterprise', enterprise_id: 'ent/01' }, { action: 'disable', items: [{ key_id: 'key-1' }] })
+    expect(lastRequest(fetchMock).url).toBe('/api/user/enterprise/ent%2F01/api-keys/batch')
+    expect(lastRequest(fetchMock).options?.method).toBe('POST')
   })
 })

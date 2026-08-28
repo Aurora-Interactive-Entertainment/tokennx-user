@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, useLocation } from 'react-router'
 import { Provider } from 'react-redux'
@@ -135,7 +135,7 @@ function WorkspaceSwitchProbe() {
   return <button type="button" onClick={() => store.switchWorkspace('enterprise-1')}>切换到企业空间</button>
 }
 
-function renderPage(observeLocation = false, initialEntry = '/console/api-keys', includeWorkspaceProbe = false) {
+function renderPage(observeLocation = false, initialEntry = '/console/api-keys', includeWorkspaceProbe = false, mode: 'mine' | 'enterprise' = 'mine') {
   const appStore = createAppStore()
   appStore.dispatch({ type: 'auth/loginWithEmail/fulfilled', payload: authResult().user })
   return {
@@ -146,7 +146,7 @@ function renderPage(observeLocation = false, initialEntry = '/console/api-keys',
           <AppStoreProvider>
             {observeLocation ? <LocationProbe /> : null}
             {includeWorkspaceProbe ? <WorkspaceSwitchProbe /> : null}
-            <ApiKeysPage />
+            <ApiKeysPage mode={mode} />
           </AppStoreProvider>
         </Provider>
       </MemoryRouter>,
@@ -166,19 +166,23 @@ describe('密钥管理页面', () => {
     mockApiKeyApi()
     renderPage()
 
-    expect(await screen.findByRole('heading', { name: '密钥管理' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: '我的密钥' })).toBeInTheDocument()
     expect(screen.queryByText(/安全提示|本地演示模式/)).not.toBeInTheDocument()
     expect(screen.getByText('默认密钥')).toBeInTheDocument()
-    expect(screen.getByText('¥12.5000')).toBeInTheDocument()
-    expect(screen.getAllByTitle('¥100.000000000').every((element) => element.textContent === '¥100.0000')).toBe(true)
-    expect(screen.getAllByTitle('¥12.500000000').length).toBeGreaterThan(0)
-    expect(screen.getAllByTitle('¥100.000000000').length).toBeGreaterThan(0)
     expect(screen.getByText('nx_live_••••abcd')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '复制完整 API 密钥' })).toBeInTheDocument()
     expect(document.querySelector('.api-keys-console-page')).toHaveClass('api-keys-console-page--personal')
+    expect(screen.getAllByRole('columnheader').map((header) => header.textContent)).toEqual([
+      '名称',
+      'API 密钥',
+      '创建人',
+      '状态',
+      '创建时间',
+      '操作',
+    ])
     expect(screen.getByRole('button', { name: /创建 API 密钥/ })).toBeInTheDocument()
     expect(screen.getByRole('group', { name: 'API Key 状态筛选' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: '详情' })).toHaveAttribute('href', '/console/usage?tab=management')
+    expect(screen.queryByRole('link', { name: '详情' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: '编辑 API 密钥' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '禁用 API 密钥' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '删除 API 密钥' })).toBeInTheDocument()
@@ -196,6 +200,58 @@ describe('密钥管理页面', () => {
     expect(await screen.findByRole('columnheader', { name: '创建人' })).toBeInTheDocument()
     expect(document.querySelector('.api-keys-console-page')).not.toHaveClass('api-keys-console-page--personal')
     expect(screen.getByText('接口用户')).toBeInTheDocument()
+  })
+
+  // 中文：密钥管理页的部门筛选在前端按成员目录过滤，人员筛选则使用企业密钥接口参数。
+  it('企业密钥管理支持按部门和可搜索人员筛选', async () => {
+    const user = userEvent.setup()
+    window.localStorage.setItem('token-nx:user-front:v1', JSON.stringify({
+      activeWorkspaceId: 'enterprise-1',
+      workspaces: [{ id: 'enterprise-1', name: '示例企业', type: 'enterprise', role: 'owner' }],
+    }))
+    const salesKey = { ...structuredClone(KEY_ITEM), creator: { ...KEY_ITEM.creator, id: 'user-sales', display_name: '销售成员' } }
+    const engineeringKey = { ...structuredClone(KEY_ITEM), id: 'key-engineering', name: '研发密钥', creator: { ...KEY_ITEM.creator, id: 'user-engineering', display_name: '研发成员' } }
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = new URL(String(input), 'https://saas.example.com')
+      if (url.pathname === '/api/user/enterprise/enterprise-1/departments') {
+        return apiResponse({ context: {}, items: [
+          { id: 'department-sales', name: '销售部', parent_id: null, depth: 1, child_count: 0, member_count: 1, version: 1, created_at: KEY_ITEM.created_at, updated_at: KEY_ITEM.created_at },
+          { id: 'department-engineering', name: '研发部', parent_id: null, depth: 1, child_count: 0, member_count: 1, version: 1, created_at: KEY_ITEM.created_at, updated_at: KEY_ITEM.created_at },
+        ], total: 2, page: 1, page_size: 20 })
+      }
+      if (url.pathname === '/api/user/enterprise/enterprise-1/members') {
+        return apiResponse({ context: {}, items: [
+          { id: 'member-sales', user_id: 'user-sales', display_name: '销售成员', masked_contact: '138****0001', status: 'active', department: { id: 'department-sales', name: '销售部' } },
+          { id: 'member-engineering', user_id: 'user-engineering', display_name: '研发成员', masked_contact: '138****0002', status: 'active', department: { id: 'department-engineering', name: '研发部' } },
+        ], total: 2, page: 1, page_size: 20 })
+      }
+      if (url.pathname === '/api/user/enterprise/enterprise-1/api-keys') {
+        const items = url.searchParams.get('member_id') === 'member-sales' ? [salesKey] : [salesKey, engineeringKey]
+        return apiResponse({ items, available_models: [] })
+      }
+      throw new Error(`unexpected request: ${url}`)
+    })
+
+    renderPage(false, '/console/enterprise-api-keys', false, 'enterprise')
+
+    expect(await screen.findByRole('combobox', { name: '部门筛选' })).toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: '人员筛选' })).toBeInTheDocument()
+    await screen.findByText('研发密钥')
+
+    await user.click(screen.getByRole('combobox', { name: '部门筛选' }))
+    const departmentOption = (await screen.findByText('销售部')).closest('.semi-select-option')
+    expect(departmentOption).not.toBeNull()
+    fireEvent.click(departmentOption as HTMLElement)
+    await waitFor(() => expect(screen.queryByText('研发密钥')).not.toBeInTheDocument())
+
+    await user.click(screen.getByRole('combobox', { name: '人员筛选' }))
+    const search = await screen.findByPlaceholderText('搜索人员昵称或手机号...')
+    await user.type(search, '销售')
+    fireEvent.click(await screen.findByRole('option', { name: /销售成员/ }))
+    await waitFor(() => expect(fetchMock.mock.calls.some(([input]) => {
+      const url = new URL(String(input), 'https://saas.example.com')
+      return url.pathname === '/api/user/enterprise/enterprise-1/api-keys' && url.searchParams.get('member_id') === 'member-sales'
+    })).toBe(true))
   })
 
   it('切换空间后清理旧密钥并按企业账务主体重新加载', async () => {
@@ -228,13 +284,13 @@ describe('密钥管理页面', () => {
     expect(appStore.getState().auth).toMatchObject({ status: 'unauthenticated', user: null })
   })
 
-  it('按参考页展示关闭限制和未选择模型状态', async () => {
+  it('我的密钥不渲染限制和模型列', async () => {
     mockApiKeyApi({ limitsDisabled: true, noSelectedModels: true })
     renderPage()
 
     const row = (await screen.findByText('默认密钥')).closest('tr') as HTMLElement
-    expect(within(row).getByText('已关闭')).toBeInTheDocument()
-    expect(within(row).getByText('未选择')).toBeInTheDocument()
+    expect(within(row).queryByText('已关闭')).not.toBeInTheDocument()
+    expect(within(row).queryByText('未选择')).not.toBeInTheDocument()
   })
 
   // 中文：模型权限表单使用别名识别模型，并排除没有可用别名的模型。
@@ -267,7 +323,7 @@ describe('密钥管理页面', () => {
     }))
     renderPage()
 
-    await screen.findByRole('heading', { name: '密钥管理' })
+    await screen.findByRole('heading', { name: '我的密钥' })
     await user.click(screen.getAllByRole('button', { name: /创建 API 密钥/ })[0])
     await user.click(screen.getByRole('radio', { name: '指定模型' }))
 
@@ -322,7 +378,7 @@ describe('密钥管理页面', () => {
     })).toBe(true)
     const createdRow = await waitFor(() => screen.getByText('生产环境密钥').closest('tr') as HTMLElement)
     expect(screen.queryByText(/一次性密钥|只展示这一次/)).not.toBeInTheDocument()
-    expect(within(createdRow).getByRole('link', { name: '详情' })).toHaveAttribute('href', '/console/usage?tab=management')
+    expect(within(createdRow).queryByRole('link', { name: '详情' })).not.toBeInTheDocument()
     expect(within(createdRow).getByRole('button', { name: '复制完整 API 密钥' })).toBeInTheDocument()
 
     await user.click(within(defaultRow).getByRole('button', { name: '禁用 API 密钥' }))

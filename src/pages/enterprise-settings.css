@@ -1,0 +1,191 @@
+/* 中文：企业设置页单独维护资料卡片的视觉密度，避免影响其他设置页面。 */
+.enterprise-settings-page {
+  --enterprise-success-bg: #dcf8e7;
+  --enterprise-success-text: #168a4a;
+}
+
+html[data-theme="dark"] .enterprise-settings-page {
+  --enterprise-success-bg: rgba(57, 211, 121, 0.14);
+  --enterprise-success-text: #55d98a;
+}
+
+.enterprise-settings-page .settings-anchor-content {
+  gap: 44px;
+}
+
+.enterprise-settings-page .settings-section-head {
+  margin-bottom: 18px;
+}
+
+.enterprise-settings-page .settings-section-head h2 {
+  margin-bottom: 5px;
+  font-size: 22px;
+  line-height: 1.35;
+}
+
+.enterprise-settings-page .settings-section-head p {
+  max-width: none;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.enterprise-settings-page .enterprise-settings-card {
+  box-sizing: border-box;
+  display: grid;
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+  gap: 30px;
+  padding: 30px 32px 32px;
+  border-color: var(--color-border-neutral-l1);
+  border-radius: 8px;
+}
+
+.enterprise-settings-page .enterprise-read-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 28px 56px;
+}
+
+.enterprise-settings-page .enterprise-read-grid > div {
+  align-content: start;
+  gap: 7px;
+}
+
+.enterprise-settings-page .enterprise-read-grid span,
+.enterprise-settings-page .enterprise-description-field {
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.enterprise-settings-page .enterprise-read-grid strong {
+  color: var(--color-text-default-hover);
+  font-size: 15px;
+  font-weight: 550;
+  line-height: 1.5;
+}
+
+.enterprise-settings-page .source-status-badge.active {
+  width: fit-content;
+  min-height: 28px;
+  justify-self: start;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: var(--enterprise-success-bg);
+  color: var(--enterprise-success-text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.enterprise-settings-page .enterprise-settings-card--protection {
+  gap: 18px;
+  padding-block: 24px;
+}
+
+.enterprise-settings-page .enterprise-settings-card--protection p {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.enterprise-settings-page .enterprise-settings-card--protection p:first-child {
+  line-height: 1;
+}
+
+.enterprise-settings-page .enterprise-settings-card--ownership {
+  display: flex;
+  min-height: 88px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding-block: 20px;
+}
+
+.enterprise-settings-page .enterprise-settings-card--ownership .owner-row {
+  min-width: 0;
+  gap: 14px;
+}
+
+.enterprise-settings-page .enterprise-settings-card--ownership .owner-avatar {
+  width: 48px;
+  height: 48px;
+  flex: 0 0 48px;
+  border-radius: 8px;
+  font-size: 18px;
+}
+
+.enterprise-settings-page
+  .enterprise-settings-card--ownership
+  .owner-row
+  strong {
+  min-width: 0;
+  color: var(--color-text-default-hover);
+  font-size: 15px;
+  font-weight: 550;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.enterprise-settings-page
+  .enterprise-settings-card--ownership
+  .owner-row
+  small {
+  margin-top: 3px;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.enterprise-settings-page .enterprise-settings-card--ownership .semi-button {
+  min-height: 36px;
+  flex: 0 0 auto;
+  padding-inline: 18px;
+  border-radius: 7px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+@media (max-width: 900px) {
+  .enterprise-settings-page .enterprise-read-grid {
+    column-gap: 32px;
+  }
+}
+
+@media (max-width: 720px) {
+  .enterprise-settings-page .settings-anchor-content {
+    gap: 38px;
+  }
+
+  .enterprise-settings-page .settings-section-head h2 {
+    font-size: 20px;
+  }
+
+  .enterprise-settings-page .settings-section-head p {
+    font-size: 13px;
+  }
+
+  .enterprise-settings-page .enterprise-settings-card {
+    gap: 24px;
+    padding: 22px 20px;
+  }
+
+  .enterprise-settings-page .enterprise-read-grid {
+    grid-template-columns: 1fr;
+    gap: 22px;
+  }
+
+  .enterprise-settings-page .enterprise-settings-card--protection {
+    gap: 16px;
+  }
+
+  .enterprise-settings-page .enterprise-settings-card--ownership {
+    min-height: 0;
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .enterprise-settings-page .enterprise-settings-card--ownership .semi-button {
+    width: 100%;
+  }
+}

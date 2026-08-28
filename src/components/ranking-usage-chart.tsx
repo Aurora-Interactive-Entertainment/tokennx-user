@@ -3,13 +3,14 @@ import { useTranslation } from 'react-i18next'
 import * as echarts from 'echarts/core'
 import { BarChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent } from 'echarts/components'
-import { SVGRenderer } from 'echarts/renderers'
+import { CanvasRenderer, SVGRenderer } from 'echarts/renderers'
 import type { RecentModelUsage } from '@/api/model-rankings'
 import { MODEL_CHART_COLORS } from '@/components/chart-colors'
 import { ChartHoverLegend } from '@/components/chart-hover-legend'
 import { useResolvedTheme } from '@/theme'
+import { getChartRenderer } from '@/components/chart-renderer'
 
-echarts.use([BarChart, GridComponent, TooltipComponent, SVGRenderer])
+echarts.use([BarChart, GridComponent, TooltipComponent, CanvasRenderer, SVGRenderer])
 
 export const RANKING_SERIES_COLORS = MODEL_CHART_COLORS
 
@@ -44,21 +45,26 @@ export function RankingRecentUsageChart({ data }: { data: RecentModelUsage }) {
   const chartRef = useRef<HTMLDivElement>(null)
   const theme = useResolvedTheme()
   const [selectedWeekIndex, setSelectedWeekIndex] = useState(Math.max(0, data.weeks.length - 1))
+  const selectedWeekIndexRef = useRef(Math.max(0, data.weeks.length - 1))
   const [legendVisible, setLegendVisible] = useState(false)
+  const legendVisibleRef = useRef(false)
   const usageByModel = useMemo(() => data.items.map((item) => {
     const weekly = new Map(item.weekly_usage.map((usage) => [new Date(usage.week_start).toISOString().slice(0, 10), usage.total_tokens]))
     return data.weeks.map((week) => weekly.get(week) ?? 0)
   }), [data.items, data.weeks])
 
   useEffect(() => {
-    setSelectedWeekIndex(Math.max(0, data.weeks.length - 1))
+    const lastIndex = Math.max(0, data.weeks.length - 1)
+    selectedWeekIndexRef.current = lastIndex
+    setSelectedWeekIndex(lastIndex)
+    legendVisibleRef.current = false
     setLegendVisible(false)
   }, [data.weeks])
 
   useEffect(() => {
     const node = chartRef.current
     if (!node || data.weeks.length === 0 || data.items.length === 0) return undefined
-    const chart = echarts.init(node, undefined, { renderer: 'svg' })
+    const chart = echarts.init(node, undefined, { renderer: getChartRenderer() })
     const light = theme === 'light'
     const responsiveOption = () => {
       const mobile = node.clientWidth <= 560
@@ -89,7 +95,7 @@ export function RankingRecentUsageChart({ data }: { data: RecentModelUsage }) {
         trigger: 'axis',
         showContent: false,
         confine: true,
-        axisPointer: { type: 'shadow' },
+        axisPointer: { type: 'shadow', animation: false },
       },
       xAxis: {
         type: 'category',
@@ -118,8 +124,8 @@ export function RankingRecentUsageChart({ data }: { data: RecentModelUsage }) {
         data: usageByModel[index],
       })),
     })
+    let weekPositions = data.weeks.map((_, index) => Number(chart.convertToPixel({ xAxisIndex: 0 }, index)))
     const selectNearestWeek = (event: { offsetX: number }) => {
-      const weekPositions = data.weeks.map((_, index) => Number(chart.convertToPixel({ xAxisIndex: 0 }, index)))
       let nearestIndex = 0
       let nearestDistance = Number.POSITIVE_INFINITY
       weekPositions.forEach((position, index) => {
@@ -129,29 +135,52 @@ export function RankingRecentUsageChart({ data }: { data: RecentModelUsage }) {
           nearestIndex = index
         }
       })
+      if (nearestIndex === selectedWeekIndexRef.current) return
+      selectedWeekIndexRef.current = nearestIndex
       setSelectedWeekIndex(nearestIndex)
     }
     const hoverMedia = window.matchMedia('(hover: hover) and (pointer: fine)')
     const supportsHover = () => hoverMedia.matches && node.clientWidth > 560
     let hoverInteraction = supportsHover()
+    let pointerFrame: number | null = null
+    let pendingOffsetX: number | null = null
+    const processPointerMove = () => {
+      pointerFrame = null
+      if (pendingOffsetX === null || !hoverInteraction) return
+      const offsetX = pendingOffsetX
+      pendingOffsetX = null
+      selectNearestWeek({ offsetX })
+      if (!legendVisibleRef.current) {
+        legendVisibleRef.current = true
+        setLegendVisible(true)
+      }
+    }
     const handlePointerMove = (event: { offsetX: number }) => {
       if (!hoverInteraction) return
-      selectNearestWeek(event)
-      setLegendVisible(true)
+      pendingOffsetX = event.offsetX
+      if (pointerFrame === null) pointerFrame = requestAnimationFrame(processPointerMove)
     }
     const handlePointerOut = () => {
       if (hoverInteraction) {
+        pendingOffsetX = null
+        if (pointerFrame !== null) cancelAnimationFrame(pointerFrame)
+        pointerFrame = null
+        legendVisibleRef.current = false
         setLegendVisible(false)
       }
     }
     const handleChartTap = (event: { offsetX: number }) => {
       if (hoverInteraction) return
       selectNearestWeek(event)
+      legendVisibleRef.current = true
       setLegendVisible(true)
     }
     const handleOutsideTap = (event: PointerEvent) => {
       const layout = node.closest('.ranking-chart-layout')
-      if (!hoverInteraction && event.target instanceof Node && !layout?.contains(event.target)) setLegendVisible(false)
+      if (!hoverInteraction && event.target instanceof Node && !layout?.contains(event.target)) {
+        legendVisibleRef.current = false
+        setLegendVisible(false)
+      }
     }
     chart.getZr().on('mousemove', handlePointerMove)
     chart.getZr().on('globalout', handlePointerOut)
@@ -160,6 +189,7 @@ export function RankingRecentUsageChart({ data }: { data: RecentModelUsage }) {
     let mobile = node.clientWidth <= 560
     const resizeObserver = typeof ResizeObserver === 'function' ? new ResizeObserver(() => {
       chart.resize()
+      weekPositions = data.weeks.map((_, index) => Number(chart.convertToPixel({ xAxisIndex: 0 }, index)))
       const nextMobile = node.clientWidth <= 560
       if (nextMobile !== mobile) {
         mobile = nextMobile
@@ -168,11 +198,13 @@ export function RankingRecentUsageChart({ data }: { data: RecentModelUsage }) {
       const nextHoverInteraction = supportsHover()
       if (nextHoverInteraction !== hoverInteraction) {
         hoverInteraction = nextHoverInteraction
+        legendVisibleRef.current = false
         setLegendVisible(false)
       }
     }) : null
     resizeObserver?.observe(node)
     return () => {
+      if (pointerFrame !== null) cancelAnimationFrame(pointerFrame)
       resizeObserver?.disconnect()
       document.removeEventListener('pointerdown', handleOutsideTap, true)
       chart.getZr().off('mousemove', handlePointerMove)
