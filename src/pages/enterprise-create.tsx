@@ -17,6 +17,7 @@ import {
   ENTERPRISE_LICENSE_MAX_BYTES,
   ENTERPRISE_NAME_MAX_LENGTH,
   confirmEnterpriseFaceVerification,
+  getEnterpriseFaceVerificationStatus,
   getEnterpriseCertification,
   getEnterpriseCertificationErrorMessage,
   normalizeEnterpriseCreditCode,
@@ -37,6 +38,7 @@ import { useAppDispatch } from '@/store/hooks'
 import './enterprise-create.css'
 
 type EnterpriseStep = 1 | 2 | 3 | 4
+const FACE_STATUS_POLL_INTERVAL_MS = 3_000
 
 interface CertificationFormState {
   enterpriseName: string
@@ -252,9 +254,11 @@ export function EnterpriseCreatePage() {
   const [faceModalVisible, setFaceModalVisible] = useState(false)
   const [faceUrl, setFaceUrl] = useState('')
   const [faceConfirmError, setFaceConfirmError] = useState('')
+  const [facePollRestartKey, setFacePollRestartKey] = useState(0)
   const [errorMessage, setErrorMessage] = useState('')
   const [workspaceRefreshError, setWorkspaceRefreshError] = useState('')
   const refreshedEnterpriseId = useRef<string | null>(null)
+  const faceConfirmationTriggered = useRef(false)
   const firstStatusLoaded = useRef(false)
   const [completedOnEntry, setCompletedOnEntry] = useState(false)
 
@@ -407,7 +411,7 @@ export function EnterpriseCreatePage() {
     }
   }
 
-  async function confirmFace(): Promise<void> {
+  const confirmFace = useCallback(async (): Promise<void> => {
     const accessToken = getAccessToken()
     if (!accessToken) { invalidateSession(); return }
     setConfirmingFace(true)
@@ -421,12 +425,65 @@ export function EnterpriseCreatePage() {
     } catch (error: unknown) {
       if (isAuthenticationFailure(error)) invalidateSession()
       else {
+        // 中文：确认失败后用户可能重新扫码，清除防重标记并恢复状态轮询。
+        faceConfirmationTriggered.current = false
+        setFacePollRestartKey((previous) => previous + 1)
         setFaceConfirmError(isApiError(error) && error.message.trim() ? error.message : getEnterpriseCertificationErrorMessage(error))
       }
     } finally {
       setConfirmingFace(false)
     }
-  }
+  }, [invalidateSession])
+
+  useEffect(() => {
+    if (!faceModalVisible) {
+      faceConfirmationTriggered.current = false
+      return
+    }
+
+    let cancelled = false
+    let timer: number | undefined
+
+    const pollFaceStatus = async (): Promise<void> => {
+      const accessToken = getAccessToken()
+      if (!accessToken) {
+        if (!cancelled) invalidateSession()
+        return
+      }
+
+      try {
+        const result = await getEnterpriseFaceVerificationStatus(accessToken)
+        if (cancelled) return
+        setCertification(result)
+        if (result.face_url) setFaceUrl(result.face_url)
+
+        // 中文：状态接口确认刷脸通过后自动提交确认，用户无需再点击“我已认证完成”。
+        if (result.status === 'approved' && !faceConfirmationTriggered.current) {
+          faceConfirmationTriggered.current = true
+          void confirmFace()
+          return
+        }
+
+        // 中文：弹窗打开期间持续轮询，中间状态变化不应阻止用户再次扫码认证。
+        timer = window.setTimeout(() => { void pollFaceStatus() }, FACE_STATUS_POLL_INTERVAL_MS)
+      } catch (error: unknown) {
+        if (cancelled) return
+        if (isAuthenticationFailure(error)) {
+          invalidateSession()
+          return
+        }
+        // 中文：单次轮询失败不结束核身流程，下一次轮询继续获取服务端状态。
+        timer = window.setTimeout(() => { void pollFaceStatus() }, FACE_STATUS_POLL_INTERVAL_MS)
+      }
+    }
+
+    // 中文：首次查询延迟一个轮询周期，避免弹窗打开时与发起核身请求并发。
+    timer = window.setTimeout(() => { void pollFaceStatus() }, FACE_STATUS_POLL_INTERVAL_MS)
+    return () => {
+      cancelled = true
+      if (timer !== undefined) window.clearTimeout(timer)
+    }
+  }, [confirmFace, faceModalVisible, facePollRestartKey, invalidateSession])
 
   if (loading && !certification) return <div className="page-stack enterprise-create-page"><PageTitle title={t('console.enterpriseCreate.title')} description={t('console.enterpriseCreate.description')} /><div className="profile-state-panel" role="status">{t('console.enterpriseCreate.loading')}</div></div>
 

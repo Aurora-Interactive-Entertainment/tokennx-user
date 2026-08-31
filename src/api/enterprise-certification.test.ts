@@ -2,6 +2,7 @@ import '@/i18n'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   confirmEnterpriseFaceVerification,
+  getEnterpriseFaceVerificationStatus,
   getEnterpriseCertification,
   normalizeEnterpriseCreditCode,
   startEnterpriseFaceVerification,
@@ -55,6 +56,13 @@ describe('enterprise certification API', () => {
     await confirmEnterpriseFaceVerification('enterprise-token')
     expect(fetchMock.mock.calls.at(-1)?.[0]).toBe('/api/user/enterprise/certification/face/confirm')
     expect(fetchMock.mock.calls.at(-1)?.[1]?.body).toBeUndefined()
+  })
+
+  it('queries the face verification status endpoint', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(response({ status: 'checking', current_stage: 'face_verification' }))
+    await expect(getEnterpriseFaceVerificationStatus('enterprise-token')).resolves.toEqual({ status: 'checking', current_stage: 'face_verification' })
+    expect(fetchMock.mock.calls.at(-1)?.[0]).toBe('/api/user/enterprise/certification/face/status')
+    expect(fetchMock.mock.calls.at(-1)?.[1]?.method).toBeUndefined()
   })
 
   it('normalizes credit codes and validates every required submission field', () => {

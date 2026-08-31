@@ -6532,7 +6532,7 @@ body[theme-mode] {
   opacity: 1;
 }
 .real-name-verification-modal .semi-modal-header {
-  padding: var(--spacing-20) var(--spacing-24) var(--spacing-12);
+  /* padding: var(--spacing-20) var(--spacing-24) var(--spacing-12); */
   border-bottom-color: var(--color-border-neutral-l1);
 }
 .real-name-verification-modal .semi-modal-body-wrapper {
