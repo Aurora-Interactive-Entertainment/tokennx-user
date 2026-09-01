@@ -555,7 +555,8 @@ export type EnterpriseRoleInput = {
 export type EnterpriseInvitationInput = {
   role: string
   max_uses: number
-  expires_at: ApiTimeValue | null
+  expires_at: ApiTimestamp | null
+  department_id: string
 }
 
 export type EnterpriseInvitationJoinInput = {

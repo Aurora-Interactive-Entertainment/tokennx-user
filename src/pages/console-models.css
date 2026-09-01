@@ -1,9 +1,4 @@
 /* 中文：模型广场卡片对齐源站的白底网格、紧凑信息面板和底部操作区。 */
-@property --model-card-glow-angle {
-  syntax: "<angle>";
-  inherits: false;
-  initial-value: 0deg;
-}
 
 .models-console-page .model-card-grid {
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 400px), 1fr));
@@ -16,78 +11,123 @@
 }
 
 .models-console-page .model-card {
-  --model-card-glow-angle: 0deg;
-  display: flex;
+  --model-card-grid-line: color-mix(
+    in srgb,
+    var(--color-border-neutral-l1) 42%,
+    transparent
+  );
+  position: relative;
+  z-index: 0;
+  display: block;
   box-sizing: border-box;
   width: 100%;
-  max-width: 545px;
+  max-width: 595px;
   min-width: min(400px, 100%);
   justify-self: center;
   height: 340px;
   min-height: 340px;
-  flex-direction: column;
   isolation: isolate;
-  overflow: hidden;
-  border: 1px solid var(--color-border-neutral-l1);
+  overflow: visible;
+  padding: 0;
+  border: 0;
   border-radius: 22px;
-  background-color: var(--color-bg-base-secondary);
-  background-image:
-    linear-gradient(var(--color-border-neutral-l1) 1px, transparent 1px),
-    linear-gradient(90deg, var(--color-border-neutral-l1) 1px, transparent 1px);
-  background-position: -1px -1px;
-  background-size: 40px 40px;
-  box-shadow: 0 2px 10px color-mix(in srgb, var(--color-text-default) 3%, transparent);
-  transition:
-    border-color 0.22s ease,
-    box-shadow 0.22s ease,
-    transform 0.22s ease;
+  background: transparent;
+  box-shadow: none;
+  transition: transform 0.3s ease;
 }
 
-/* 中文：仅保留渐变的边框区域，让亮色光带沿卡片边缘顺时针循环。 */
-.models-console-page .model-card::before {
-  content: "";
-  position: absolute;
-  z-index: 3;
-  inset: 0;
-  padding: 2px;
+.models-console-page .model-card-surface {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  min-height: inherit;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--color-border-neutral-l1);
   border-radius: inherit;
+  background-color: var(--color-bg-base-secondary);
+  background-image:
+    linear-gradient(var(--model-card-grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--model-card-grid-line) 1px, transparent 1px);
+  background-position: -1px -1px;
+  background-size: 40px 40px;
+  box-shadow: 0 2px 10px
+    color-mix(in srgb, var(--color-text-default) 3%, transparent);
+  transition:
+    border-color 0.22s ease,
+    box-shadow 0.22s ease;
+}
+
+/* 中文：两层共用静态渐变，仅旋转合成层；柔光与清晰光带都只跟随亮段。 */
+.models-console-page .model-card-glow {
+  position: absolute;
+  inset: -2px;
+  z-index: 0;
+  overflow: hidden;
+  border-radius: 24px;
   opacity: 0;
   pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.models-console-page .model-card-glow--blur {
+  z-index: 0;
+  filter: blur(8px);
+  transition-duration: 0.5s;
+}
+
+.models-console-page .model-card-glow--line {
+  z-index: 1;
+}
+
+.models-console-page .model-card-glow-rotor {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 250%;
+  aspect-ratio: 1;
   background: conic-gradient(
-    from var(--model-card-glow-angle),
     transparent 0deg,
-    transparent 270deg,
-    color-mix(in srgb, var(--color-action-primary) 28%, transparent) 294deg,
-    #d7e8ff 320deg,
-    #76abff 342deg,
-    transparent 360deg
+    transparent 240deg,
+    rgba(102, 158, 255, 0.5) 340deg,
+    rgba(156, 220, 255, 0.5) 360deg
   );
-  -webkit-mask:
-    linear-gradient(#fff 0 0) content-box,
-    linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask:
-    linear-gradient(#fff 0 0) content-box,
-    linear-gradient(#fff 0 0);
-  mask-composite: exclude;
-  transition: opacity 0.18s ease;
+  transform: translate(-50%, -50%) rotate(0deg);
+  transform-origin: center;
+  animation: model-card-glow-spin 3s linear infinite paused;
 }
 
 .models-console-page .model-card:hover,
 .models-console-page .model-card:focus-within {
-  border-color: color-mix(in srgb, var(--color-action-primary) 48%, #8bb6ff);
-  background-color: var(--color-bg-base-secondary);
-  background-image:
-    linear-gradient(var(--color-border-neutral-l1) 1px, transparent 1px),
-    linear-gradient(90deg, var(--color-border-neutral-l1) 1px, transparent 1px);
-  box-shadow: 0 10px 26px color-mix(in srgb, #6d9ff5 22%, transparent);
+  z-index: 1;
+  background: transparent;
+  box-shadow: none;
   transform: translateY(-3px);
 }
 
-.models-console-page .model-card:hover::before,
-.models-console-page .model-card:focus-within::before {
+.models-console-page .model-card:hover .model-card-surface,
+.models-console-page .model-card:focus-within .model-card-surface {
+  border-color: var(--color-border-neutral-l1);
+  background-color: var(--color-bg-base-secondary);
+  background-image:
+    linear-gradient(var(--model-card-grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--model-card-grid-line) 1px, transparent 1px);
+  box-shadow: 0 10px 24px
+    color-mix(in srgb, var(--color-text-default) 8%, transparent);
+}
+
+.models-console-page .model-card:hover .model-card-glow,
+.models-console-page .model-card:focus-within .model-card-glow {
   opacity: 1;
-  animation: model-card-border-spin 2.2s linear infinite;
+}
+
+.models-console-page .model-card:hover .model-card-glow-rotor,
+.models-console-page .model-card:focus-within .model-card-glow-rotor {
+  animation-play-state: running;
+  will-change: transform;
 }
 
 .models-console-page .model-card-link {
@@ -123,7 +163,9 @@
   padding-right: 136px;
 }
 
-.models-console-page .model-card:has(.model-card-tag:nth-child(2)) .model-card-topline {
+.models-console-page
+  .model-card:has(.model-card-tag:nth-child(2))
+  .model-card-topline {
   padding-right: 250px;
 }
 
@@ -169,7 +211,8 @@
 
 .models-console-page .model-card-copy.semi-button {
   z-index: 4;
-  top: 62px;
+  /* 中文：与模型别名行垂直居中，按钮保持在卡片主体外以避免交互元素嵌套。 */
+  top: 54px;
   right: 20px;
   width: 24px;
   height: 24px;
@@ -242,7 +285,11 @@
   margin: 0;
   padding: 10px 16px 6px;
   border-radius: 14px;
-  background: color-mix(in srgb, var(--color-bg-base-default) 76%, var(--color-bg-overlay-l2));
+  background: color-mix(
+    in srgb,
+    var(--color-bg-base-default) 76%,
+    var(--color-bg-overlay-l2)
+  );
 }
 
 .models-console-page .model-card-io {
@@ -361,7 +408,10 @@
   line-height: 18px;
 }
 
-.models-console-page .model-card-availability .model-availability-heading > strong {
+.models-console-page
+  .model-card-availability
+  .model-availability-heading
+  > strong {
   color: var(--color-text-tertiary);
   font-size: 11px;
   font-weight: 500;
@@ -424,20 +474,33 @@ html[data-theme="light"] .models-console-page .model-card-info-panel {
   background: #f7f7f7;
 }
 
-@keyframes model-card-border-spin {
+@keyframes model-card-glow-spin {
   to {
-    --model-card-glow-angle: 360deg;
+    transform: translate(-50%, -50%) rotate(360deg);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .models-console-page .model-card:hover::before,
-  .models-console-page .model-card:focus-within::before {
+  .models-console-page .model-card {
+    transition: none;
+  }
+
+  .models-console-page .model-card:hover,
+  .models-console-page .model-card:focus-within {
+    transform: none;
+  }
+
+  .models-console-page .model-card-glow-rotor {
     animation: none;
   }
 }
 
 @media (max-width: 720px) {
+  /* 中文：移动端没有稳定 hover，隐藏大尺寸光效层以减少合成与绘制开销。 */
+  .models-console-page .model-card-glow {
+    display: none;
+  }
+
   .models-console-page .model-card-grid {
     grid-template-columns: 1fr;
   }
@@ -447,7 +510,7 @@ html[data-theme="light"] .models-console-page .model-card-info-panel {
   }
 
   .models-console-page .model-card {
-    width: min(545px, 100%);
+    width: min(595px, 100%);
     height: auto;
     min-height: 0;
   }

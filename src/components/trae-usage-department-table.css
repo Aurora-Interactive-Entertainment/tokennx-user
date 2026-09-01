@@ -3,12 +3,13 @@
   overflow-x: auto;
   border: 1px solid var(--color-border-neutral-l1);
   border-radius: 6px;
+  background: var(--color-bg-base-secondary);
 }
 
 .trae-usage-department-table.semi-table-wrapper {
   min-width: 760px;
   border: 0;
-  background: transparent;
+  background: var(--color-bg-base-secondary);
 }
 
 .trae-usage-department-table .semi-table-container {

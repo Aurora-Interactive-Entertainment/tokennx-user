@@ -857,7 +857,7 @@ export function RealNamePage() {
         visible={Boolean(receipt)}
         onCancel={cancelVerification}
         footer={null}
-        width={1080}
+        width={720}
         maskClosable={false}
       >
         <div

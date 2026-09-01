@@ -6,11 +6,12 @@ import DatePicker from '@douyinfe/semi-ui/lib/es/datePicker'
 import Modal from '@/components/app-modal'
 import Toast from '@douyinfe/semi-ui/lib/es/toast'
 import { IconDownload, IconRefresh, IconTickCircle } from '@douyinfe/semi-icons'
-import { isAuthenticationFailure } from '@/api/http'
+import { isApiError, isAuthenticationFailure } from '@/api/http'
 import {
   BILLING_FIRST_PAGE,
   BILLING_PAGE_SIZE,
 	getBillingAnalysis,
+	getBillingStatements,
 	getBillingErrorMessage,
 	createBillingPaymentOrder,
 	getBillingPaymentOrder,
@@ -24,8 +25,9 @@ import {
   type BillingInvoiceInput,
   type BillingInvoiceItem,
   type BillingInvoiceResponse,
-  type BillingLedgerItem,
+  type BillingPageResult,
   type BillingPaymentOrder,
+  type BillingPaymentStartResult,
   type BillingStatementLine,
 } from '@/api/billing'
 import { getAllEnterpriseMembers, getEnterpriseDepartments, type EnterpriseDepartment, type EnterpriseMember } from '@/api/enterprise-console'
@@ -33,6 +35,7 @@ import { BannerNotice, EmptyPanel, PageTitle } from '@/components/common'
 import { TraePagination } from '@/components/trae-pagination'
 import { BackofficeMoneyText as MoneyText } from '@/components/money'
 import { PaymentQRCodeFrame } from '@/components/payment-qr-frame'
+import { PaymentQRCode } from '@/components/payment-qr-code'
 import { CompatSelect as Select } from '@/components/semi-compat'
 import alipayIcon from '@/assets/payment-icons/alipay.svg'
 import wechatIcon from '@/assets/payment-icons/wechat.svg'
@@ -44,10 +47,11 @@ import { BACKOFFICE_MONEY_DISPLAY_DECIMAL_PLACES, formatApiTime, formatCount, fo
 import { addLocalDays, endOfLocalDay, startOfLocalDay } from '@/utils/date-range'
 import { BillingCostCharts } from '@/components/billing-cost-charts'
 import { ConsoleTabs } from '@/components/console-tabs'
+import RealNameRequiredDialog from '@/components/real-name-required-dialog'
 
 export type BillingTab = 'overview' | 'invoice'
 type ResourceStatus = 'idle' | 'loading' | 'success' | 'error'
-type BillingSource = 'all' | 'model_consume' | 'recharge' | 'reward'
+type BillingStatementTypeFilter = 'all' | 'model_consume' | 'recharge' | 'reward'
 type InvoiceTaxpayerType = 'enterprise' | 'personal'
 
 export interface ResourceState<T> {
@@ -185,30 +189,22 @@ function invoiceTypeLabel(type: string): string {
   return i18n.t(type === 'special' ? 'console.billing.invoiceTypeSpecial' : 'console.billing.invoiceTypeNormal')
 }
 
-function signedLedgerAmount(item: BillingLedgerItem): string {
-  return formatSignedYuanExact(item.amount_yuan, item.direction)
-}
-
-function ledgerReference(item: BillingLedgerItem): string {
-  return item.model_alias?.trim() || item.api_key_id?.trim() || ''
-}
-
-// 账本类型按服务端稳定标识展示，确保赠送记录不会落入模型消费的兜底分支。
-export function ledgerKindLabel(kind: BillingLedgerItem['kind']): string {
-  if (kind === 'recharge') return i18n.t('console.billing.recharge')
-  if (kind === 'reward') return i18n.t('console.billing.gift')
-  return i18n.t('console.billing.modelConsumption')
-}
-
 export function statementKindLabel(line: Pick<BillingStatementLine, 'line_type' | 'source_type' | 'title' | 'description'>): string {
   const source = `${line.line_type} ${line.source_type} ${line.title} ${line.description}`.toLocaleLowerCase()
   if (source.includes('partial') || source.includes('部分')) return i18n.t('console.billing.statementPartialRevoke')
   if (source.includes('revoke') || source.includes('撤销')) return i18n.t('console.billing.statementRevoke')
   if (source.includes('expire') || source.includes('过期')) return i18n.t('console.billing.statementRewardExpired')
+  if ((source.includes('model') || source.includes('模型')) && (source.includes('consume') || source.includes('usage') || source.includes('消费'))) return i18n.t('console.billing.modelConsumption')
   if (source.includes('consume') || source.includes('usage') || source.includes('消费')) return i18n.t('console.billing.statementConsume')
+  if (source.includes('recharge') || source.includes('topup') || source.includes('top-up') || source.includes('充值')) return i18n.t('console.billing.recharge')
   if (source.includes('reward') || source.includes('grant') || source.includes('bonus') || source.includes('奖励') || source.includes('赠送')) return i18n.t('console.billing.statementRewardGranted')
   if (source.includes('other') || source.includes('其他')) return i18n.t('console.billing.statementOther')
   return i18n.language.startsWith('en') ? line.line_type || i18n.t('console.billing.statementOther') : line.title || line.line_type
+}
+
+function statementDescription(line: BillingStatementLine): string {
+  const values = [line.title, line.description].map((value) => value.trim()).filter(Boolean)
+  return [...new Set(values)].join(' · ') || '--'
 }
 
 function escapeCSV(value: string): string {
@@ -285,13 +281,6 @@ const EMPTY_ANALYSIS_METRICS: BillingAnalysisResponse['metrics'] = {
   video_count: '0',
 }
 
-const EMPTY_ANALYSIS_LEDGER: BillingAnalysisResponse['ledger'] = {
-  items: [],
-  page: BILLING_FIRST_PAGE,
-  page_size: BILLING_PAGE_SIZE,
-  total: 0,
-}
-
 export function paymentStatusCopy(status: string): { tone: 'info' | 'warning' | 'success'; label: string } {
   if (status === 'paid') return { tone: 'success', label: i18n.t('console.billing.paymentStatusPaid') }
   if (status === 'pending') return { tone: 'info', label: i18n.t('console.billing.paymentStatusPending') }
@@ -306,6 +295,17 @@ function isPaymentActive(status: string): boolean {
   return PAYMENT_ACTIVE_STATUSES.has(status)
 }
 
+function extractPaymentQRCodeValue(payment: BillingPaymentStartResult): string {
+  const candidates = [
+    payment.transaction?.payment_url,
+    payment.payment_url,
+    payment.qr_code,
+    payment.qr_code_url,
+    payment.qr_url,
+  ]
+  return candidates.find((value): value is string => typeof value === 'string' && Boolean(value.trim()))?.trim() ?? ''
+}
+
 export function PaymentReturnNotice({ state, onRetry }: { state: ResourceState<BillingPaymentOrder>; onRetry: () => void }) {
   if (state.status === 'idle') return null
   if (state.status === 'loading') return <BannerNotice><span>{i18n.t('console.billing.paymentQuerying')}</span></BannerNotice>
@@ -315,16 +315,41 @@ export function PaymentReturnNotice({ state, onRetry }: { state: ResourceState<B
   return <BannerNotice tone={copy.tone}><span className="billing-request-error-copy"><strong>{copy.label}</strong><small>{i18n.t('console.billing.paymentReturnOrder', { orderNo: state.data.order_no })}</small></span></BannerNotice>
 }
 
-function Metric({ label, value, note, tone = '', action }: { label: string; value: ReactNode; note: ReactNode; tone?: string; action?: ReactNode }) {
-  return <article className={`metric-card billing-metric-card${tone ? ` ${tone}` : ''}`}><span className="metric-label">{label}</span><strong className="metric-value">{value}</strong>{action ?? <span className="metric-note">{note}</span>}{action ? <span className="metric-note">{note}</span> : null}</article>
+function Metric({ label, value, note, tone = '', action }: { label: string; value: ReactNode; note?: ReactNode; tone?: string; action?: ReactNode }) {
+  return <article className={`metric-card billing-metric-card${tone ? ` ${tone}` : ''}`}><span className="metric-label">{label}</span>{action ? <div className="metric-action-slot">{action}</div> : null}<strong className="metric-value">{value}</strong>{note ? <span className="metric-note">{note}</span> : null}</article>
 }
 
 function BillingPagination({ page, total, pageSize, label, disabled, onPageChange, onPageSizeChange }: { page: number; total: number; pageSize: number; label: string; disabled: boolean; onPageChange: (page: number) => void; onPageSizeChange: (pageSize: number) => void }) {
   return <TraePagination ariaLabel={label} currentPage={page} pageSize={pageSize} total={total} summary={i18n.t('console.billing.pagination', { page, total: formatCount(total) })} disabled={disabled} onChange={(nextPage, nextPageSize) => { if (nextPageSize !== pageSize) onPageSizeChange(nextPageSize); else onPageChange(nextPage) }} />
 }
 
-function LedgerTable({ items }: { items: BillingLedgerItem[] }) {
-  return <div className="source-table-scroll billing-ledger-scroll" role="region" aria-label={i18n.t('console.billing.ledgerTable')} tabIndex={0}><table className="ledger-table"><thead><tr><th>{i18n.t('console.billing.time')}</th><th>{i18n.t('console.billing.type')}</th><th>{i18n.t('console.billing.source')}</th><th>{i18n.t('console.billing.relatedDescription')}</th><th>{i18n.t('console.billing.amountChange')}</th><th>{i18n.t('console.billing.balance')}</th></tr></thead><tbody>{items.map((item) => <tr key={`${item.kind}-${item.id}`}><td>{formatApiTime(item.occurred_at)}</td><td>{ledgerKindLabel(item.kind)}</td><td>{item.channel || '--'}</td><td><strong>{item.description || '--'}</strong>{item.request_id && item.kind !== 'reward' ? <small>{item.request_id}</small> : null}{ledgerReference(item) ? <small>{ledgerReference(item)}</small> : null}</td><td className={item.direction === 'income' ? 'amount-positive' : 'amount-negative'}><MoneyText value={item.amount_yuan} direction={item.direction} /></td><td>{item.balance_after_yuan ? <MoneyText value={item.balance_after_yuan} /> : '--'}</td></tr>)}</tbody></table></div>
+function LedgerTable({ items }: { items: BillingStatementLine[] }) {
+  return <div className="source-table-scroll billing-ledger-scroll" role="region" aria-label={i18n.t('console.billing.ledgerTable')} tabIndex={0}><table className="ledger-table"><thead><tr><th>{i18n.t('console.billing.time')}</th><th>{i18n.t('console.billing.type')}</th><th>{i18n.t('console.billing.relatedDescription')}</th><th>{i18n.t('console.billing.amountChange')}</th><th>{i18n.t('console.billing.balance')}</th></tr></thead><tbody>{items.map((item) => <tr key={item.id}><td>{formatApiTime(item.occurred_at)}</td><td>{statementKindLabel(item)}</td><td><strong>{statementDescription(item)}</strong>{item.request_id ? <small>{item.request_id}</small> : null}</td><td className={item.direction === 'income' ? 'amount-positive' : item.direction === 'expense' ? 'amount-negative' : ''}><MoneyText value={item.amount_yuan} direction={item.direction} /></td><td>{item.balance_after_yuan ? <MoneyText value={item.balance_after_yuan} /> : '--'}</td></tr>)}</tbody></table></div>
+}
+
+function BillingLedgerSection({ state, lineType, page, pageSize, onLineTypeChange, onPageChange, onPageSizeChange, onRetry, onExport }: { state: ResourceState<BillingPageResult<BillingStatementLine>>; lineType: BillingStatementTypeFilter; page: number; pageSize: number; onLineTypeChange: (value: BillingStatementTypeFilter) => void; onPageChange: (value: number) => void; onPageSizeChange: (value: number) => void; onRetry: () => void; onExport: () => void }) {
+  const data = state.data
+  const loading = state.status === 'loading' || state.status === 'idle'
+  return <section className="analysis-section billing-ledger-section" aria-labelledby="billingLedgerHeading">
+    <div className="section-heading">
+      <h2 id="billingLedgerHeading">{i18n.t('console.billing.ledger')}</h2>
+      <div className="ledger-toolbar">
+        <span className="section-meta">{i18n.t('console.billing.ledgerCount', { count: formatCount(data?.total ?? 0) })}</span>
+        <label className="ledger-filter-field" htmlFor="billing-ledger-type-filter">
+          <span id="billing-ledger-type-filter-label">{i18n.t('console.billing.consumptionType')}</span>
+          <Select id="billing-ledger-type-filter" className="billing-filter" dropdownClassName="billing-filter-dropdown" aria-labelledby="billing-ledger-type-filter-label" value={lineType} disabled={loading} onChange={(value) => onLineTypeChange(String(value) as BillingStatementTypeFilter)} onSelect={(value) => onLineTypeChange(String(value) as BillingStatementTypeFilter)}>
+            <Select.Option value="all">{i18n.t('console.billing.all')}</Select.Option>
+            <Select.Option value="model_consume">{i18n.t('console.billing.modelConsumption')}</Select.Option>
+            <Select.Option value="recharge">{i18n.t('console.billing.recharge')}</Select.Option>
+            <Select.Option value="reward">{i18n.t('console.billing.gift')}</Select.Option>
+          </Select>
+        </label>
+        <Button theme="outline" size="small" icon={<IconDownload />} disabled={!data?.items.length || loading} onClick={onExport}>{i18n.t('console.billing.exportCsv')}</Button>
+      </div>
+    </div>
+    {loading && !data ? <BillingLoading label={i18n.t('console.billing.loadingLedger')} /> : state.status === 'error' ? <BillingError state={state} onRetry={onRetry} /> : !data?.items.length ? <EmptyPanel surface="table" title={i18n.t('console.billing.noLedger')} description={i18n.t('console.billing.adjustLedger')} /> : <div className="table-scroll"><LedgerTable items={data.items} /></div>}
+    <BillingPagination page={data?.page ?? page} pageSize={data?.page_size ?? pageSize} total={data?.total ?? 0} label={i18n.t('console.billing.ledgerPagination')} disabled={loading} onPageChange={onPageChange} onPageSizeChange={onPageSizeChange} />
+  </section>
 }
 
 function RequestFocus({ data, requestId }: { data: BillingAnalysisResponse | null; requestId: string }) {
@@ -333,7 +358,7 @@ function RequestFocus({ data, requestId }: { data: BillingAnalysisResponse | nul
   return <div className="callout request-focus" aria-live="polite"><strong>{entry ? i18n.t('console.billing.requestSummary', { requestId }) : i18n.t('console.billing.requestNotFound', { requestId })}</strong><span>{entry ? <>{entry.description} · {entry.direction === 'expense' ? i18n.t('console.common.success') : i18n.t('console.billing.notBilled')} · {entry.direction === 'expense' ? <>{i18n.t('console.billing.cost')} <MoneyText value={entry.amount_yuan} /></> : i18n.t('console.billing.notBilled')}</> : i18n.t('console.billing.cleanedRequest')}</span><div className="request-focus-actions"><Link className="btn btn-secondary btn-sm" to="/console/billing">{i18n.t('console.billing.allLedger')}</Link></div></div>
 }
 
-function AnalysisTab({ state, dateRange, apiKeyID, model, billingType, departmentID, memberID, departments, members, directoryLoading, directoryEnabled, onRecharge, onSubscription, onFilterChange, onDateRangeChange, onRetry }: { state: ResourceState<BillingAnalysisResponse>; dateRange: Date[]; apiKeyID: string; model: string; billingType: string; departmentID: string; memberID: string; departments: EnterpriseDepartment[]; members: EnterpriseMember[]; directoryLoading: boolean; directoryEnabled: boolean; onRecharge: () => void; onSubscription: () => void; onFilterChange: (key: 'apiKey' | 'model' | 'billingType' | 'department' | 'member', value: string) => void; onDateRangeChange: (value: Date[]) => void; onRetry: () => void }) {
+function AnalysisTab({ state, ledger, dateRange, apiKeyID, model, billingType, departmentID, memberID, departments, members, directoryLoading, directoryEnabled, onRecharge, onSubscription, onFilterChange, onDateRangeChange, onRetry }: { state: ResourceState<BillingAnalysisResponse>; ledger: ReactNode; dateRange: Date[]; apiKeyID: string; model: string; billingType: string; departmentID: string; memberID: string; departments: EnterpriseDepartment[]; members: EnterpriseMember[]; directoryLoading: boolean; directoryEnabled: boolean; onRecharge: () => void; onSubscription: () => void; onFilterChange: (key: 'apiKey' | 'model' | 'billingType' | 'department' | 'member', value: string) => void; onDateRangeChange: (value: Date[]) => void; onRetry: () => void }) {
   if (state.status === 'loading' || state.status === 'idle') return <BillingLoading label={i18n.t('console.billing.loadingAnalysis')} />
   if (state.status === 'error') return <BillingError state={state} onRetry={onRetry} />
   const data = state.data
@@ -439,17 +464,20 @@ function AnalysisTab({ state, dateRange, apiKeyID, model, billingType, departmen
         <Metric label={i18n.t('console.billing.averageMillionTokenCost')} value={<MoneyText value={metrics.average_million_token_yuan} />} note={i18n.t('console.billing.textCallsOnly')} />
       </div>
       <BillingCostCharts modelCosts={data.model_daily_costs ?? []} billingTypeCosts={data.billing_type_daily_costs ?? []} apiKeyCosts={data.api_key_daily_costs ?? []} />
+      {ledger}
     </section>
   )
 }
 
 // 中文：充值表单独立复用在充值管理页面，费用页仅保留费用概览和发票页签。
 export function RechargeTab({ context, onOrderUpdated, onAuthFailure }: { context: BillingContext; onOrderUpdated: () => void; onAuthFailure: () => void }) {
+  const navigate = useNavigate()
   const [amount, setAmount] = useState('')
   const [selected, setSelected] = useState<number | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [paymentOrder, setPaymentOrder] = useState<BillingPaymentOrder | null>(null)
   const [paymentFormHTML, setPaymentFormHTML] = useState('')
+  const [paymentQRCodeValue, setPaymentQRCodeValue] = useState('')
   const [paymentFormError, setPaymentFormError] = useState('')
   const [paymentQueryError, setPaymentQueryError] = useState('')
   const [paymentQuerying, setPaymentQuerying] = useState(false)
@@ -457,14 +485,25 @@ export function RechargeTab({ context, onOrderUpdated, onAuthFailure }: { contex
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false)
   const [agreementAccepted, setAgreementAccepted] = useState(true)
   const [paymentMethod, setPaymentMethod] = useState<'alipay' | 'wechat'>('alipay')
-  const personalOnly = context.account_type === 'personal'
+  const [realNameDialogOpen, setRealNameDialogOpen] = useState(false)
 
   const handlePaymentFormError = useCallback((error: unknown) => {
     setPaymentFormError(getBillingErrorMessage(error))
   }, [])
 
+  function closePaymentDialog(): void {
+    // 中文：关闭二维码弹窗即结束本次支付会话，避免后台继续查单或复用旧二维码。
+    setPaymentDialogOpen(false)
+    setPaymentOrder(null)
+    setPaymentFormHTML('')
+    setPaymentQRCodeValue('')
+    setPaymentFormError('')
+    setPaymentQueryError('')
+    setPaymentQuerying(false)
+  }
+
   useEffect(() => {
-    if (!paymentOrder || !isPaymentActive(paymentOrder.status)) return
+    if (!paymentDialogOpen || !paymentOrder || !isPaymentActive(paymentOrder.status)) return
     const controller = new AbortController()
     let disposed = false
     let timer: number | undefined
@@ -498,7 +537,7 @@ export function RechargeTab({ context, onOrderUpdated, onAuthFailure }: { contex
       controller.abort()
       if (timer !== undefined) window.clearTimeout(timer)
     }
-  }, [onOrderUpdated, paymentOrder?.id, paymentOrder?.status, paymentRefreshToken])
+  }, [onOrderUpdated, paymentDialogOpen, paymentOrder?.id, paymentOrder?.status, paymentRefreshToken])
 
   function choose(value: number): void {
     setSelected(value)
@@ -515,22 +554,22 @@ export function RechargeTab({ context, onOrderUpdated, onAuthFailure }: { contex
       Toast.error(i18n.t('console.billing.quickAmountError'))
       return
     }
-    if (!personalOnly) {
-      Toast.warning(i18n.t('console.billing.enterpriseRechargeUnavailable'))
-      return
-    }
     if (submitting) return
     setSubmitting(true)
     setPaymentOrder(null)
     setPaymentDialogOpen(false)
     setPaymentFormHTML('')
+    setPaymentQRCodeValue('')
     setPaymentFormError('')
     setPaymentQueryError('')
     try {
       const order = await createBillingPaymentOrder(context, { amount_yuan: amount.trim() }, createIdempotencyKey('payment-order'))
-      const payment = await startBillingPayment(context, order.id, createIdempotencyKey('payment-start'))
+      const payment = await startBillingPayment(order.id, createIdempotencyKey('payment-start'))
       setPaymentOrder(payment.order)
-      if (!payment.form_html.trim()) {
+      const qrCodeValue = extractPaymentQRCodeValue(payment)
+      const formHTML = payment.form_html?.trim() ?? ''
+      setPaymentQRCodeValue(qrCodeValue)
+      if (!formHTML && !qrCodeValue) {
         if (payment.order.status === 'paid') {
           onOrderUpdated()
           Toast.success(i18n.t('console.billing.paymentStatusPaid'))
@@ -538,11 +577,17 @@ export function RechargeTab({ context, onOrderUpdated, onAuthFailure }: { contex
         }
         throw new Error(i18n.t('api.billing.paymentFormInvalid'))
       }
-      setPaymentFormHTML(payment.form_html)
+      setPaymentFormHTML(formHTML)
       setPaymentDialogOpen(true)
     } catch (error) {
       if (isAuthenticationFailure(error)) {
         onAuthFailure()
+        return
+      }
+      if (isApiError(error) && error.code === 140008) {
+        // 中文：后端业务码是实名认证拦截时，同时保留真实 msg 并展示引导弹窗。
+        Toast.error(getBillingErrorMessage(error))
+        setRealNameDialogOpen(true)
         return
       }
       Toast.error(getBillingErrorMessage(error))
@@ -557,10 +602,9 @@ export function RechargeTab({ context, onOrderUpdated, onAuthFailure }: { contex
 
   return (
     <section className="billing-subpage billing-recharge-page">
-      {!personalOnly ? <BannerNotice tone="warning">{i18n.t('console.billing.enterpriseRechargeUnavailable')}</BannerNotice> : null}
       <div className="recharge-form-panel">
         <div className="recharge-form-row recharge-amount-row">
-          <div className="recharge-form-label">{i18n.t('console.billing.paymentAmount')}</div>
+          <div className="recharge-form-label"><strong>{i18n.t('console.billing.paymentAmount')}</strong><span className="recharge-required">（{i18n.t('console.billing.required')}）</span></div>
           <div className="recharge-amount-content">
             <div className="recharge-options" id="rechargeOptions">
               {RECHARGE_OPTIONS.map((value) => <button type="button" className={`recharge-option${selected === value ? ' active' : ''}`} aria-pressed={selected === value} key={value} onClick={() => choose(value)}><span className="recharge-amount">¥{value}</span></button>)}
@@ -573,33 +617,39 @@ export function RechargeTab({ context, onOrderUpdated, onAuthFailure }: { contex
           <div className="recharge-custom-input-wrap"><input id="rechargeCustomAmount" className="input" inputMode="decimal" type="number" min={MIN_RECHARGE_AMOUNT} step="0.01" value={amount} onChange={(event) => { setSelected(null); setAmount(event.target.value) }} placeholder={i18n.t('console.billing.rechargeInput')} /><span>{i18n.t('console.billing.amountUnit')}</span></div>
         </div>
         <div className="recharge-form-row recharge-method-row">
-          <div className="recharge-form-label">{i18n.t('console.billing.paymentMethod')}</div>
+          <div className="recharge-form-label"><strong>{i18n.t('console.billing.paymentMethod')}</strong><span className="recharge-required">（{i18n.t('console.billing.required')}）</span></div>
           <div className="recharge-method-controls">
             <button type="button" className={`recharge-method-option${paymentMethod === 'alipay' ? ' is-selected' : ''}`} aria-label={i18n.t('console.billing.alipayPay')} aria-pressed={paymentMethod === 'alipay'} onClick={() => setPaymentMethod('alipay')}><img className="recharge-method-icon" src={alipayIcon} alt="" /><span>{i18n.t('console.billing.alipay')}</span></button>
             <button type="button" className={`recharge-method-option${paymentMethod === 'wechat' ? ' is-selected' : ''}`} aria-pressed={paymentMethod === 'wechat'} onClick={() => setPaymentMethod('wechat')}><img className="recharge-method-icon" src={wechatIcon} alt="" /><span>{i18n.t('console.billing.wechat')}</span></button>
           </div>
         </div>
-        <Button className="recharge-confirm-button" theme="solid" type="primary" loading={submitting} disabled={!personalOnly || submitting || !agreementAccepted || rechargeAmount === null || rechargeAmount < MIN_RECHARGE_AMOUNT} onClick={() => void handleRecharge()}>{i18n.t('console.billing.confirmPayment')}</Button>
         <label className="recharge-agreement"><input type="checkbox" checked={agreementAccepted} onChange={(event) => setAgreementAccepted(event.target.checked)} /><span>{i18n.t('console.billing.rechargeAgreementPrefix')} <Link to="/recharge-agreement">{i18n.t('footer.rechargeAgreement')}</Link></span></label>
+        <Button className="recharge-confirm-button" theme="solid" type="primary" aria-label={i18n.t('console.billing.confirmPayment')} loading={submitting} disabled={submitting || !agreementAccepted || rechargeAmount === null || rechargeAmount < MIN_RECHARGE_AMOUNT} onClick={() => void handleRecharge()}><span>{i18n.t('console.billing.confirmPayment')}</span>{rechargeAmount !== null ? <span aria-hidden="true"> {formatYuan(rechargeAmount, 2)}</span> : null}</Button>
+        <p className="billing-demo-note">{i18n.t('console.billing.paymentSecurityNote')}</p>
       </div>
-      <p className="billing-demo-note">{i18n.t('console.billing.paymentSecurityNote')}</p>
-      {paymentOrder && paymentCopy && paymentFormHTML && !paymentDialogOpen ? <div className="payment-order-summary"><BannerNotice tone={paymentCopy.tone}><span>{paymentCopy.label}</span></BannerNotice><Button theme="outline" size="small" onClick={() => setPaymentDialogOpen(true)}>{i18n.t('console.billing.viewPaymentQr')}</Button></div> : null}
-      {paymentOrder && paymentCopy && paymentDialogOpen ? <Modal visible title={i18n.t('console.billing.rechargeModalTitle')} onCancel={() => setPaymentDialogOpen(false)} footer={null} className="payment-qr-dialog">
+      {paymentOrder && paymentCopy && paymentDialogOpen ? <Modal visible title={i18n.t('console.billing.rechargeModalTitle')} onCancel={closePaymentDialog} footer={null} className="payment-qr-dialog">
         <div className="payment-qr-dialog-content">
           <div className="payment-qr-dialog-order"><p>{i18n.t('console.billing.paymentReturnOrder', { orderNo: paymentOrder.order_no })}</p><span>{paymentCopy.label}</span></div>
           <strong className="payment-qr-dialog-amount">{formatYuan(paymentOrder.amount_yuan, 2)}</strong>
           {paymentQueryError ? <BannerNotice tone="warning"><span>{paymentQueryError}</span></BannerNotice> : null}
           {paymentFormError ? <BannerNotice tone="warning"><span>{paymentFormError}</span></BannerNotice> : null}
-          {paymentActive && paymentFormHTML ? <><p className="payment-qr-hint">{i18n.t('console.billing.paymentFrameHint')}</p><PaymentQRCodeFrame formHTML={paymentFormHTML} title={i18n.t('console.billing.paymentFrameTitle')} errorMessage={i18n.t('api.billing.paymentFormInvalid')} onError={handlePaymentFormError} /><Button className="payment-qr-refresh-button" theme="outline" size="small" icon={<IconRefresh />} loading={paymentQuerying} disabled={!paymentActive || paymentQuerying} onClick={() => { setPaymentQueryError(''); setPaymentRefreshToken((value) => value + 1) }}>{i18n.t('console.billing.paymentRefresh')}</Button></> : null}
+          {paymentActive && (paymentQRCodeValue || paymentFormHTML) ? <><p className="payment-qr-hint">{i18n.t('console.billing.paymentFrameHint')}</p>{paymentQRCodeValue ? <PaymentQRCode value={paymentQRCodeValue} title={i18n.t('console.billing.paymentFrameTitle')} errorMessage={i18n.t('api.billing.paymentFormInvalid')} onError={handlePaymentFormError} /> : <PaymentQRCodeFrame formHTML={paymentFormHTML} title={i18n.t('console.billing.paymentFrameTitle')} errorMessage={i18n.t('api.billing.paymentFormInvalid')} onError={handlePaymentFormError} />}<Button className="payment-qr-refresh-button" theme="outline" size="small" icon={<IconRefresh />} loading={paymentQuerying} disabled={!paymentActive || paymentQuerying} onClick={() => { setPaymentQueryError(''); setPaymentRefreshToken((value) => value + 1) }}>{i18n.t('console.billing.paymentRefresh')}</Button></> : null}
         </div>
       </Modal> : null}
+      <RealNameRequiredDialog
+        visible={realNameDialogOpen}
+        onCancel={() => setRealNameDialogOpen(false)}
+        onCompleted={() => setRealNameDialogOpen(false)}
+        // 中文：直接切换路由，避免先关闭弹窗再导航造成短暂的遮罩闪烁。
+        onVerify={() => navigate('/console/real-name')}
+      />
     </section>
   )
 }
 
 function InvoiceHistory({ response, downloadingInvoiceID, onDownload }: { response: BillingInvoiceResponse; downloadingInvoiceID: string | null; onDownload: (item: BillingInvoiceItem) => void }) {
   const history = response.history
-  return <section className="invoice-history" aria-labelledby="invoiceHistoryHeading"><h2 id="invoiceHistoryHeading">{i18n.t('console.billing.invoiceHistory')}</h2>{history.items.length === 0 ? <EmptyPanel title={i18n.t('console.billing.noInvoice')} description={i18n.t('console.billing.invoiceHint')} /> : <div className="invoice-table-scroll" role="region" aria-label={i18n.t('console.billing.invoiceHistoryTable')} tabIndex={0}><table className="invoice-history-table"><thead><tr><th>{i18n.t('console.billing.submittedAt')}</th><th>{i18n.t('console.billing.invoiceAmount')}</th><th>{i18n.t('console.billing.invoiceEntity')}</th><th>{i18n.t('console.billing.invoiceMethod')}</th><th>{i18n.t('console.billing.invoiceTitle')}</th><th>{i18n.t('console.billing.invoiceType')}</th><th>{i18n.t('console.billing.status')}</th><th>{i18n.t('console.billing.operation')}</th></tr></thead><tbody>{history.items.map((item) => { const downloading = downloadingInvoiceID === item.id; return <tr key={item.id}><td>{formatApiTime(item.submitted_at)}</td><td><MoneyText value={item.amount_yuan} /></td><td>{response.account.name}</td><td>{i18n.t('console.billing.manualApply')}</td><td>{item.title_masked || '--'}</td><td>{invoiceTypeLabel(item.invoice_type)}</td><td><span className={invoiceStatusClass(item.status)}>{invoiceStatusLabel(item)}</span></td><td>{item.download_url ? <a href={item.download_url} download aria-busy={downloading} aria-disabled={downloading} onClick={(event) => { event.preventDefault(); if (!downloading) onDownload(item) }}>{downloading ? i18n.t('console.billing.downloading') : i18n.t('console.billing.view')}</a> : <span className="invoice-status-pending">{i18n.t('console.billing.invoiceProcessing')}</span>}</td></tr> })}</tbody></table></div>}</section>
+  return <section className="invoice-history" aria-labelledby="invoiceHistoryHeading"><h2 id="invoiceHistoryHeading">{i18n.t('console.billing.invoiceHistory')}</h2>{history.items.length === 0 ? <EmptyPanel surface="table" title={i18n.t('console.billing.noInvoice')} description={i18n.t('console.billing.invoiceHint')} /> : <div className="invoice-table-scroll" role="region" aria-label={i18n.t('console.billing.invoiceHistoryTable')} tabIndex={0}><table className="invoice-history-table"><thead><tr><th>{i18n.t('console.billing.submittedAt')}</th><th>{i18n.t('console.billing.invoiceAmount')}</th><th>{i18n.t('console.billing.invoiceEntity')}</th><th>{i18n.t('console.billing.invoiceMethod')}</th><th>{i18n.t('console.billing.invoiceTitle')}</th><th>{i18n.t('console.billing.invoiceType')}</th><th>{i18n.t('console.billing.status')}</th><th>{i18n.t('console.billing.operation')}</th></tr></thead><tbody>{history.items.map((item) => { const downloading = downloadingInvoiceID === item.id; return <tr key={item.id}><td>{formatApiTime(item.submitted_at)}</td><td><MoneyText value={item.amount_yuan} /></td><td>{response.account.name}</td><td>{i18n.t('console.billing.manualApply')}</td><td>{item.title_masked || '--'}</td><td>{invoiceTypeLabel(item.invoice_type)}</td><td><span className={invoiceStatusClass(item.status)}>{invoiceStatusLabel(item)}</span></td><td>{item.download_url ? <a href={item.download_url} download aria-busy={downloading} aria-disabled={downloading} onClick={(event) => { event.preventDefault(); if (!downloading) onDownload(item) }}>{downloading ? i18n.t('console.billing.downloading') : i18n.t('console.billing.view')}</a> : <span className="invoice-status-pending">{i18n.t('console.billing.invoiceProcessing')}</span>}</td></tr> })}</tbody></table></div>}</section>
 }
 
 function InvoiceDialog({ open, available, form, errors, step, submitting, onClose, onChange, onNext, onBack, onSubmit }: { open: boolean; available: string; form: InvoiceForm; errors: InvoiceFormErrors; step: 1 | 2 | 3; submitting: boolean; onClose: () => void; onChange: (key: keyof InvoiceForm, value: string) => void; onNext: () => void; onBack: () => void; onSubmit: () => void }) {
@@ -632,7 +682,7 @@ function InvoiceTab({ state, faqOpen, downloadingInvoiceID, onToggleFaq, onRetry
   if (state.status === 'error') return <BillingError state={state} onRetry={onRetry} />
   if (!state.data) return <EmptyPanel title={i18n.t('console.billing.invoiceInfo')} description={i18n.t('console.billing.invoiceInfoHint')} />
   const data = state.data
-  return <section id="invoiceSection" className="invoice-page" aria-labelledby="invoiceHeading" tabIndex={-1}><h2 id="invoiceHeading" className="sr-only">{i18n.t('console.billing.invoice')}</h2><div className="invoice-faq"><button type="button" className="invoice-faq-toggle" aria-expanded={faqOpen} aria-controls="invoiceFaqBody" onClick={onToggleFaq}><span>{i18n.t('console.billing.invoiceFaq')}</span><span className="sr-only">{i18n.t('console.billing.invoiceFaqToggle')}</span></button><div className="invoice-faq-body" id="invoiceFaqBody" hidden={!faqOpen}>{i18n.t('console.billing.invoiceFaqHint')}</div></div><div id="invoiceOverview" data-invoice-view="overview"><p className="invoice-demo-note">{i18n.t('console.billing.localInvoiceNote')}</p><div className="invoice-metrics" aria-label={i18n.t('console.billing.invoiceOverview')}><Metric label={i18n.t('console.billing.availableAmount')} value={<MoneyText value={data.available_amount_yuan} />} note={i18n.t('console.billing.available')} tone="invoice-metric-primary" action={<Button className="invoice-metric-action" theme="solid" type="primary" size="small" onClick={onOpenDialog} disabled={isZeroYuan(data.available_amount_yuan)}>{i18n.t('console.billing.invoiceNow')}</Button>} /><Metric label={i18n.t('console.billing.issued')} value={formatCount(data.issued_count ?? 0)} note={i18n.t('console.billing.issuedDone')} /><Metric label={i18n.t('console.billing.issuing')} value={formatCount(data.pending_count ?? 0)} note={i18n.t('console.billing.waiting')} /></div><InvoiceHistory response={data} downloadingInvoiceID={downloadingInvoiceID} onDownload={onDownload} /><BillingPagination page={page} total={data.history.total} pageSize={data.history.page_size || pageSize} label={i18n.t('console.billing.invoiceHistory')} disabled={state.status !== 'success'} onPageChange={onPageChange} onPageSizeChange={onPageSizeChange} /></div></section>
+  return <section id="invoiceSection" className="invoice-page" aria-labelledby="invoiceHeading" tabIndex={-1}><h2 id="invoiceHeading" className="sr-only">{i18n.t('console.billing.invoice')}</h2><div className="invoice-faq"><button type="button" className="invoice-faq-toggle" aria-expanded={faqOpen} aria-controls="invoiceFaqBody" onClick={onToggleFaq}><span>{i18n.t('console.billing.invoiceFaq')}</span><span className="sr-only">{i18n.t('console.billing.invoiceFaqToggle')}</span></button><div className="invoice-faq-body" id="invoiceFaqBody" hidden={!faqOpen}>{i18n.t('console.billing.invoiceFaqHint')}</div></div><div id="invoiceOverview" data-invoice-view="overview"><p className="invoice-demo-note">{i18n.t('console.billing.localInvoiceNote')}</p><div className="invoice-metrics" aria-label={i18n.t('console.billing.invoiceOverview')}><Metric label={i18n.t('console.billing.availableAmount')} value={<MoneyText value={data.available_amount_yuan} />} tone="invoice-metric-primary" action={<Button className="invoice-metric-action" theme="solid" type="primary" size="small" onClick={onOpenDialog} disabled={isZeroYuan(data.available_amount_yuan)}>{i18n.t('console.billing.invoiceNow')}</Button>} /><Metric label={i18n.t('console.billing.issued')} value={formatCount(data.issued_count ?? 0)} note={i18n.t('console.billing.issuedDone')} /><Metric label={i18n.t('console.billing.issuing')} value={formatCount(data.pending_count ?? 0)} note={i18n.t('console.billing.waiting')} /></div><InvoiceHistory response={data} downloadingInvoiceID={downloadingInvoiceID} onDownload={onDownload} /><BillingPagination page={page} total={data.history.total} pageSize={data.history.page_size || pageSize} label={i18n.t('console.billing.invoiceHistory')} disabled={state.status !== 'success'} onPageChange={onPageChange} onPageSizeChange={onPageSizeChange} /></div></section>
 }
 
 export function BillingPage() {
@@ -649,8 +699,9 @@ export function BillingPage() {
   const paymentReturnOrderID = useMemo(() => new URLSearchParams(location.search).get('order_id')?.trim() ?? '', [location.search])
   const [activeTab, setActiveTab] = useState<BillingTab>(requestedTab)
   const [reloadToken, setReloadToken] = useState(0)
-  const [analysisPage, setAnalysisPage] = useState(BILLING_FIRST_PAGE)
-  const [analysisPageSize, setAnalysisPageSize] = useState(BILLING_PAGE_SIZE)
+  const [ledgerPage, setLedgerPage] = useState(BILLING_FIRST_PAGE)
+  const [ledgerPageSize, setLedgerPageSize] = useState(BILLING_PAGE_SIZE)
+  const [ledgerLineType, setLedgerLineType] = useState<BillingStatementTypeFilter>('all')
   const [invoicePage, setInvoicePage] = useState(BILLING_FIRST_PAGE)
   const [invoicePageSize, setInvoicePageSize] = useState(BILLING_PAGE_SIZE)
   const [period, setPeriod] = useState(currentPeriod)
@@ -664,6 +715,7 @@ export function BillingPage() {
   const [members, setMembers] = useState<EnterpriseMember[]>([])
   const [directoryLoading, setDirectoryLoading] = useState(false)
   const [analysisState, setAnalysisState] = useState<ResourceState<BillingAnalysisResponse>>(resourceState())
+  const [ledgerState, setLedgerState] = useState<ResourceState<BillingPageResult<BillingStatementLine>>>(resourceState())
   const [invoiceState, setInvoiceState] = useState<ResourceState<BillingInvoiceResponse>>(resourceState())
   const [invoiceFaqOpen, setInvoiceFaqOpen] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -697,8 +749,9 @@ export function BillingPage() {
 
   useEffect(() => {
     setActiveTab(requestedTab)
-    setAnalysisPage(BILLING_FIRST_PAGE)
-    setAnalysisPageSize(BILLING_PAGE_SIZE)
+    setLedgerPage(BILLING_FIRST_PAGE)
+    setLedgerPageSize(BILLING_PAGE_SIZE)
+    setLedgerLineType('all')
     setInvoicePage(BILLING_FIRST_PAGE)
     setInvoicePageSize(BILLING_PAGE_SIZE)
     setApiKeyID('')
@@ -710,6 +763,7 @@ export function BillingPage() {
     setMembers([])
     setPeriod(currentPeriod())
     setDateRange(defaultBillingDateRange())
+    setLedgerState(resourceState())
     setInvoiceState(resourceState())
     setPaymentReturnState(resourceState())
   }, [contextKey, requestedTab])
@@ -779,6 +833,29 @@ export function BillingPage() {
   }, [apiKeyID, billingType, context, dateRange, departmentID, handleAuthFailure, loadError, memberID, model, reloadToken])
 
   useEffect(() => {
+    if (activeTab !== 'overview') return
+    const controller = new AbortController()
+    setLedgerState((previous) => ({ ...resourceState('loading'), data: previous.data }))
+    // 中文：账本是独立的完整流水列表，仅使用自身分页和类型筛选。
+    void getBillingStatements(context, {
+      page: ledgerPage,
+      page_size: ledgerPageSize,
+      line_type: ledgerLineType === 'all' ? undefined : ledgerLineType,
+      signal: controller.signal,
+    }).then((data) => {
+      if (!controller.signal.aborted) setLedgerState({ status: 'success', data, error: '', requestId: null })
+    }).catch((error: unknown) => {
+      if (controller.signal.aborted) return
+      if (isAuthenticationFailure(error)) {
+        handleAuthFailure()
+        return
+      }
+      setLedgerState(loadError(error))
+    })
+    return () => controller.abort()
+  }, [activeTab, context, handleAuthFailure, ledgerLineType, ledgerPage, ledgerPageSize, loadError, reloadToken])
+
+  useEffect(() => {
     if (activeTab !== 'invoice') return
     const controller = new AbortController()
     setInvoiceState((previous) => ({ ...resourceState('loading'), data: previous.data }))
@@ -809,8 +886,8 @@ export function BillingPage() {
   }
 
   function exportCSV(): void {
-    const ledger = analysisState.data?.ledger?.items ?? []
-    const rows = [[t('console.billing.time'), t('console.billing.type'), t('console.billing.source'), t('console.billing.relatedDescription'), t('console.billing.amountChange'), t('console.billing.balance')], ...ledger.map((item) => [formatApiTime(item.occurred_at), ledgerKindLabel(item.kind), item.channel, item.description, signedLedgerAmount(item), item.balance_after_yuan ? formatYuanExact(item.balance_after_yuan) : '--'])]
+    const ledger = ledgerState.data?.items ?? []
+    const rows = [[t('console.billing.time'), t('console.billing.type'), t('console.billing.relatedDescription'), t('console.billing.amountChange'), t('console.billing.balance')], ...ledger.map((item) => [formatApiTime(item.occurred_at), statementKindLabel(item), statementDescription(item), formatSignedYuanExact(item.amount_yuan, item.direction), item.balance_after_yuan ? formatYuanExact(item.balance_after_yuan) : '--'])]
     const csv = `\uFEFF${rows.map((row) => row.map(escapeCSV).join(',')).join('\n')}`
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
     const anchor = document.createElement('a')
@@ -911,8 +988,10 @@ export function BillingPage() {
     if (tab === 'invoice' && invoiceState.status === 'idle') setInvoicePage(BILLING_FIRST_PAGE)
   }
 
+  const ledgerSection = <BillingLedgerSection state={ledgerState} lineType={ledgerLineType} page={ledgerPage} pageSize={ledgerPageSize} onLineTypeChange={(value) => { setLedgerLineType(value); setLedgerPage(BILLING_FIRST_PAGE) }} onPageChange={setLedgerPage} onPageSizeChange={(value) => { setLedgerPageSize(value); setLedgerPage(BILLING_FIRST_PAGE) }} onRetry={() => setReloadToken((value) => value + 1)} onExport={exportCSV} />
+
   let content: ReactNode
-  if (activeTab === 'overview') content = <AnalysisTab state={analysisState} dateRange={dateRange} apiKeyID={apiKeyID} model={model} billingType={billingType} departmentID={departmentID} memberID={memberID} departments={departments} members={members} directoryLoading={directoryLoading} directoryEnabled={context.account_type === 'enterprise'} onRecharge={() => navigate('/console/recharge')} onSubscription={() => navigate('/console/trae-enterprise/subscription')} onFilterChange={changeAnalysisFilter} onDateRangeChange={changeAnalysisDateRange} onRetry={() => setReloadToken((value) => value + 1)} />
+  if (activeTab === 'overview') content = <AnalysisTab state={analysisState} ledger={ledgerSection} dateRange={dateRange} apiKeyID={apiKeyID} model={model} billingType={billingType} departmentID={departmentID} memberID={memberID} departments={departments} members={members} directoryLoading={directoryLoading} directoryEnabled={context.account_type === 'enterprise'} onRecharge={() => navigate('/console/recharge')} onSubscription={() => navigate('/console/trae-enterprise/subscription')} onFilterChange={changeAnalysisFilter} onDateRangeChange={changeAnalysisDateRange} onRetry={() => setReloadToken((value) => value + 1)} />
   else content = <InvoiceTab state={invoiceState} faqOpen={invoiceFaqOpen} downloadingInvoiceID={downloadingInvoiceID} onToggleFaq={() => setInvoiceFaqOpen((value) => !value)} onRetry={() => setReloadToken((value) => value + 1)} onOpenDialog={openInvoiceDialog} onDownload={(item) => void downloadInvoice(item)} onPageChange={setInvoicePage} onPageSizeChange={(nextPageSize) => { setInvoicePageSize(nextPageSize); setInvoicePage(BILLING_FIRST_PAGE) }} page={invoicePage} pageSize={invoicePageSize} />
 
   return <div className="page-stack billing-console-page"><PageTitle title={t('console.billing.title')} description={t('console.billing.description')} /><RequestFocus data={analysisState.data} requestId={requestedRecordId} /><PaymentReturnNotice state={paymentReturnState} onRetry={() => setPaymentReturnRetryToken((value) => value + 1)} /><ConsoleTabs items={BILLING_TABS.map(([itemKey, label]) => ({ itemKey, tab: t(label) }))} activeKey={activeTab} onChange={(value) => onTabChange(value as BillingTab)} ariaLabel={t('console.billing.title')} /><div className="billing-tab-panel" role="tabpanel" id={`panel-${activeTab}`} aria-labelledby={`tab-${activeTab}`}>{content}</div><InvoiceDialog open={dialogOpen} available={invoiceState.data?.available_amount_yuan ?? '0.00'} form={invoiceForm} errors={invoiceFormErrors} step={dialogStep} submitting={submittingInvoice} onClose={closeInvoiceDialog} onChange={updateInvoiceForm} onNext={nextInvoiceStep} onBack={() => { setDialogStep(1); setInvoiceFormErrors({}) }} onSubmit={() => void submitInvoice()} /></div>

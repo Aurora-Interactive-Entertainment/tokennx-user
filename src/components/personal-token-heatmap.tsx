@@ -7,6 +7,10 @@ import {
   type DailyTokenUsageItem,
   type PersonalUsageContext,
 } from "@/api/personal-usage";
+import {
+  createTokenHeatmapThresholds,
+  tokenHeatmapLevel,
+} from "@/utils/token-heatmap-levels";
 import "./personal-token-heatmap.css";
 
 type HeatmapDay = DailyTokenUsageItem & {
@@ -27,12 +31,6 @@ function addUtcDays(date: Date, amount: number): Date {
 
 function dateKey(date: Date): string {
   return date.toISOString().slice(0, 10);
-}
-
-function tokenLevel(value: number, max: number): number {
-  if (value <= 0 || max <= 0) return 0;
-  const ratio = Math.log1p(value) / Math.log1p(max);
-  return Math.min(4, Math.max(1, Math.ceil(ratio * 4)));
 }
 
 export function PersonalTokenHeatmap({
@@ -109,7 +107,9 @@ export function PersonalTokenHeatmap({
     // 统一使用周一作为第一行，避免周日占据无标签的首行造成错位观感。
     const firstWeekday = (firstDate.getUTCDay() + 6) % 7;
     const gridStart = addUtcDays(firstDate, -firstWeekday);
-    const max = Math.max(...sorted.map((item) => item.total_tokens), 0);
+    const thresholds = createTokenHeatmapThresholds(
+      sorted.map((item) => item.total_tokens),
+    );
     const days: HeatmapDay[] = [];
     const months: Array<{ label: string; column: number }> = [
       { label: monthFormatter.format(firstDate), column: 0 },
@@ -123,7 +123,7 @@ export function PersonalTokenHeatmap({
       if (item)
         days.push({
           ...item,
-          level: tokenLevel(item.total_tokens, max),
+          level: tokenHeatmapLevel(item.total_tokens, thresholds),
           column,
           row: (date.getUTCDay() + 6) % 7,
         });

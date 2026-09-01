@@ -305,13 +305,25 @@ function BootReadyWatcher({ onBootReady }: { onBootReady: () => void }) {
   return null;
 }
 
+function AuthScopedStoreProvider({ children }: { children: ReactNode }) {
+  const auth = useAppSelector((state) => state.auth)
+  const userId = auth.status === 'authenticated'
+    ? auth.user?.id ?? null
+    : auth.status === 'unauthenticated'
+      ? null
+      : ''
+  // 中文：账号作用域变化时重新挂载，避免 effect 刷新前短暂渲染上一个账号的历史。
+  const scopeKey = `${auth.status}:${auth.user?.id ?? ''}`
+  return <AppStoreProvider key={scopeKey} userId={userId}>{children}</AppStoreProvider>
+}
+
 export default function App({ onBootReady }: { onBootReady: () => void }) {
   return (
     <BrowserRouter>
       <SeoManager />
       <ScrollToTop />
-      <AppStoreProvider>
-        <AuthBootstrap>
+      <AuthBootstrap>
+        <AuthScopedStoreProvider>
           <BootReadyWatcher onBootReady={onBootReady} />
           <Suspense fallback={<AppLoadingFallback />}>
             <Routes>
@@ -427,8 +439,8 @@ export default function App({ onBootReady }: { onBootReady: () => void }) {
               <Route path="*" element={<NotFoundPage />} />
             </Routes>
           </Suspense>
-        </AuthBootstrap>
-      </AppStoreProvider>
+        </AuthScopedStoreProvider>
+      </AuthBootstrap>
     </BrowserRouter>
   );
 }

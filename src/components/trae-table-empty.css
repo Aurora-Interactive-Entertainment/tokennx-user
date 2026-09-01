@@ -7,7 +7,7 @@
   padding: 20px;
   border: 0;
   color: var(--color-text-tertiary);
-  background: transparent;
+  background: var(--color-bg-base-secondary);
   text-align: center;
 }
 
@@ -27,11 +27,11 @@
   font-size: 11px;
 }
 
-/* Semi 的占位行只负责承载空状态，不能再绘制一层背景或内边距。 */
+/* 中文：Semi 的占位区域与原生表格空行统一使用表格表面色。 */
 .semi-table-placeholder:has(.trae-table-empty) {
   padding: 0;
   border-bottom: 0;
-  background: transparent;
+  background: var(--color-bg-base-secondary);
 }
 
 .semi-table-empty:has(.trae-table-empty) {
@@ -41,5 +41,5 @@
 .trae-table tbody tr:has(.trae-table-empty) > td {
   height: auto;
   padding: 0;
-  background: transparent;
+  background: var(--color-bg-base-secondary);
 }

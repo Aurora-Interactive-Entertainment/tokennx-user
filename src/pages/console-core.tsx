@@ -7,7 +7,7 @@ import Popover from '@douyinfe/semi-ui/lib/es/popover'
 import Tooltip from '@douyinfe/semi-ui/lib/es/tooltip'
 import Modal from '@/components/app-modal'
 import Toast from '@douyinfe/semi-ui/lib/es/toast'
-import { IconAlertTriangle, IconArrowLeft, IconArrowRight, IconChevronDown, IconClose, IconCommentStroked, IconCopy, IconEdit, IconExpand, IconPlus, IconRedo, IconSearch, IconSend, IconSetting, IconShrink, IconStop } from '@douyinfe/semi-icons'
+import { IconAlertTriangle, IconArrowLeft, IconArrowRight, IconChevronDown, IconClose, IconCommentStroked, IconCopy, IconCopyStroked, IconDeleteStroked, IconEdit, IconExpand, IconPlus, IconRedo, IconRedoStroked, IconSearch, IconSend, IconSetting, IconShrink, IconStop } from '@douyinfe/semi-icons'
 import { EmptyPanel, ModelCard, ModelLogo, PageTitle } from '@/components/common'
 import { appToast } from '@/components/app-toast'
 import { ModelDetailDrawer } from '@/components/model-detail-drawer'
@@ -204,6 +204,12 @@ function lastUserMessage(session: { messages: PlaygroundMessage[]; prompt: strin
   return [...session.messages].reverse().find((message) => message.role === 'user')?.content ?? session.prompt
 }
 
+// 中文：消息时间只展示月日和时分，保持气泡下方信息紧凑。
+function formatMessageTime(value: string): string {
+  const match = value.match(/\d{4}[-/](\d{1,2})[-/](\d{1,2})[ T](\d{2}:\d{2})/)
+  return match ? `${match[1].padStart(2, '0')}-${match[2].padStart(2, '0')} ${match[3]}` : value
+}
+
 // 中文：分段之前的消息只用于展示，不再进入后续模型请求。
 function sessionContextStart(session: PlaygroundSession): number {
   return session.contextBreaks?.at(-1) ?? 0
@@ -234,6 +240,11 @@ function PlaygroundWorkspaceNotice({ message, description, action, tone = 'error
   </div>
 }
 
+// 中文：回复区操作统一使用 Semi 图标按钮，固定尺寸以避免图标切换或加载时布局抖动。
+function PlaygroundMessageIconButton({ label, icon, disabled = false, onClick }: { label: string; icon: ReactNode; disabled?: boolean; onClick: () => void }) {
+  return <Button className="message-icon-action" theme="borderless" size="small" icon={icon} aria-label={label} title={label} disabled={disabled} onClick={onClick} />
+}
+
 export { apiKeySupportsModel } from '@/utils/model-access'
 
 export function PlaygroundPage() {
@@ -243,7 +254,8 @@ export function PlaygroundPage() {
   const store = useAppStore()
   const { models, loading: modelsLoading, error: modelsError, refresh: refreshModels } = useUserModels()
   const [searchParams] = useSearchParams()
-  const initialModelId = searchParams.get('model') ?? store.selectedModelId
+  const requestedModelAlias = searchParams.get('model')?.trim() ?? ''
+  const initialModelId = requestedModelAlias || store.selectedModelId
   const [modelId, setModelId] = useState(initialModelId)
   const [prompt, setPrompt] = useState('')
   const [running, setRunning] = useState(false)
@@ -258,6 +270,8 @@ export function PlaygroundPage() {
   const [streamingResponse, setStreamingResponse] = useState('')
   const [streamingReasoning, setStreamingReasoning] = useState('')
   const [editingAttemptId, setEditingAttemptId] = useState('')
+  const [editingUserAttemptId, setEditingUserAttemptId] = useState('')
+  const [editingUserPrompt, setEditingUserPrompt] = useState('')
   const [retryingAttemptId, setRetryingAttemptId] = useState('')
   const requestControllerRef = useRef<AbortController | null>(null)
   const streamingResponseRef = useRef('')
@@ -277,6 +291,12 @@ export function PlaygroundPage() {
   )
   const selectedModel = findModelInList(selectableModels, modelId) ?? selectableModels[0]
 
+  function deleteAttempt(attemptId: string): void {
+    if (!selectedSession) return
+    store.deletePlaygroundAttempt(selectedSession.id, attemptId)
+    appToast.info(t('console.playground.deletedAttempt'))
+  }
+
   function handleMessageScroll(event: React.UIEvent<HTMLDivElement>): void {
     const element = event.currentTarget
     followMessageBottomRef.current = element.scrollHeight - element.scrollTop - element.clientHeight <= 40
@@ -294,6 +314,8 @@ export function PlaygroundPage() {
     abortReasonRef.current = 'navigation'
     setSelectedSessionId('')
     setEditingAttemptId('')
+    setEditingUserAttemptId('')
+    setEditingUserPrompt('')
     setRetryingAttemptId('')
     setActivePrompt('')
     setStreamingResponse('')
@@ -302,13 +324,18 @@ export function PlaygroundPage() {
   }, [workspaceKey])
 
   useEffect(() => {
-    if (selectableModels.some((model) => modelAlias(model) === modelId)) return
+    // 中文：从模型广场跳转时，接口加载期间先保留 URL 指定的模型，避免被首个模型抢先覆盖。
+    if (modelsLoading) return
+    if (selectableModels.some((model) => modelAlias(model) === modelId)) {
+      if (store.selectedModelId !== modelId) store.setSelectedModelId(modelId)
+      return
+    }
     const fallback = selectableModels[0]
     const fallbackAlias = fallback ? modelAlias(fallback) : ''
     if (modelId === fallbackAlias) return
     setModelId(fallbackAlias)
     store.setSelectedModelId(fallbackAlias)
-  }, [modelId, selectableModels, store])
+  }, [modelId, modelsLoading, selectableModels, store])
 
   useEffect(() => () => {
     abortReasonRef.current = 'navigation'
@@ -326,10 +353,18 @@ export function PlaygroundPage() {
 
   async function runTest(promptValue = prompt, replaceAttemptValue = editingAttemptId): Promise<void> {
     const trimmedPrompt = promptValue.trim()
+    const replacingAttemptId = replaceAttemptValue || undefined
+    const replacementIndex = replacingAttemptId && selectedSession
+      ? selectedSession.messages.findIndex((message) => message.attemptId === replacingAttemptId)
+      : -1
+    const requestContextMessages = replacementIndex >= 0
+      ? (selectedSession?.messages ?? []).slice(0, replacementIndex)
+      : currentContextMessages
     if (running) return
     if (!trimmedPrompt) { Toast.warning(t('console.playground.promptRequired')); return }
     if (!selectedModel || !modelAlias(selectedModel)) { Toast.warning(t('console.playground.noTextModelAlias')); return }
-    if (!canContinueConversation) { Toast.warning(t('console.playground.newSessionLimit')); return }
+    const replacingCompleteAttempt = Boolean(replacingAttemptId && selectedSession?.messages.some((message) => message.attemptId === replacingAttemptId && message.role === 'assistant' && message.status === 'complete'))
+    if (!canContinueConversation && !replacingCompleteAttempt) { Toast.warning(t('console.playground.newSessionLimit')); return }
     const accessToken = getAccessToken()
     if (!accessToken) {
       clearAuthTokens({ force: true })
@@ -352,7 +387,6 @@ export function PlaygroundPage() {
     const controller = new AbortController()
     requestControllerRef.current = controller
     abortReasonRef.current = null
-    const replacingAttemptId = replaceAttemptValue || undefined
     setRunning(true)
     setRetryingAttemptId(replacingAttemptId ?? '')
     setActivePrompt(trimmedPrompt)
@@ -363,7 +397,7 @@ export function PlaygroundPage() {
     streamingReasoningRef.current = ''
     try {
       const messages: ChatCompletionMessage[] = [
-        ...currentContextMessages
+        ...requestContextMessages
           .filter((message) => message.status !== 'failed')
           .map((message) => ({ role: message.role, content: message.content })),
         { role: 'user', content: trimmedPrompt },
@@ -408,6 +442,8 @@ export function PlaygroundPage() {
       streamingResponseRef.current = ''
       streamingReasoningRef.current = ''
       setEditingAttemptId('')
+      setEditingUserAttemptId('')
+      setEditingUserPrompt('')
       setRetryingAttemptId('')
     } catch (error: unknown) {
       if (controller.signal.aborted && abortReasonRef.current === 'navigation') {
@@ -416,6 +452,8 @@ export function PlaygroundPage() {
         setStreamingReasoning('')
         streamingResponseRef.current = ''
         streamingReasoningRef.current = ''
+        setEditingUserAttemptId('')
+        setEditingUserPrompt('')
         setRetryingAttemptId('')
         return
       }
@@ -444,6 +482,8 @@ export function PlaygroundPage() {
       streamingResponseRef.current = ''
       streamingReasoningRef.current = ''
       setEditingAttemptId('')
+      setEditingUserAttemptId('')
+      setEditingUserPrompt('')
       setRetryingAttemptId('')
       if (controller.signal.aborted && abortReasonRef.current === 'user') appToast.info(message)
       else appToast.error(message)
@@ -460,6 +500,8 @@ export function PlaygroundPage() {
     if (running) abortGeneration('navigation')
     setSelectedSessionId('')
     setEditingAttemptId('')
+    setEditingUserAttemptId('')
+    setEditingUserPrompt('')
     setRetryingAttemptId('')
     setActivePrompt('')
     setStreamingResponse('')
@@ -474,6 +516,8 @@ export function PlaygroundPage() {
     if (!selectedSession || !hasCurrentContextMessages || running) return
     store.clearPlaygroundContext(selectedSession.id)
     setEditingAttemptId('')
+    setEditingUserAttemptId('')
+    setEditingUserPrompt('')
     setRetryingAttemptId('')
     setContextMenuVisible(false)
     followMessageBottomRef.current = true
@@ -487,6 +531,8 @@ export function PlaygroundPage() {
     setModelId(sessionAlias)
     store.setSelectedModelId(sessionAlias)
     setEditingAttemptId('')
+    setEditingUserAttemptId('')
+    setEditingUserPrompt('')
     setRetryingAttemptId('')
     setActivePrompt('')
     setStreamingResponse('')
@@ -513,7 +559,24 @@ export function PlaygroundPage() {
     const failedUserMessage = selectedSession?.messages.find((message) => message.attemptId === attemptId && message.role === 'user' && message.status === 'failed')
     if (!failedUserMessage) return
     setEditingAttemptId(attemptId)
+    setEditingUserAttemptId('')
+    setEditingUserPrompt('')
     setPrompt(failedUserMessage.content)
+  }
+
+  // 中文：普通用户消息在原位置进入编辑态，提交后替换该轮并重新请求模型。
+  function editUserAttempt(attemptId: string): void {
+    if (running) return
+    const userMessage = selectedSession?.messages.find((message) => message.attemptId === attemptId && message.role === 'user' && message.status === 'complete')
+    if (!userMessage) return
+    setEditingUserAttemptId(attemptId)
+    setEditingUserPrompt(userMessage.content)
+  }
+
+  function cancelUserEdit(): void {
+    if (running) return
+    setEditingUserAttemptId('')
+    setEditingUserPrompt('')
   }
 
   // 中文：重试沿用当前会话上下文；失败尝试可被同一条消息替换，成功尝试则追加一轮新响应。
@@ -522,6 +585,8 @@ export function PlaygroundPage() {
     if (!userMessage || running) return
     const failed = userMessage.status === 'failed'
     setEditingAttemptId(failed ? attemptId : '')
+    setEditingUserAttemptId('')
+    setEditingUserPrompt('')
     void runTest(userMessage.content, failed ? attemptId : '')
   }
 
@@ -531,18 +596,35 @@ export function PlaygroundPage() {
     const reasoning = streaming ? streamingReasoning : message.reasoning
     const isAssistant = message.role === 'assistant'
     const isFailed = !streaming && message.status === 'failed'
-    return <div className={`message ${isAssistant ? 'ai' : 'user'}${isFailed ? ' is-failed' : ''}`} key={message.id}>
+    const isEditing = !streaming && !isAssistant && !isFailed && editingUserAttemptId === message.attemptId
+    return <div className={`message ${isAssistant ? 'ai' : 'user'}${isFailed ? ' is-failed' : ''}${isEditing ? ' is-editing' : ''}`} key={message.id}>
       {isAssistant ? <div className="message-avatar message-avatar--assistant">{selectedModel?.company?.slice(0, 1) ?? 'N'}</div> : null}
       <div className="message-body">
         {isAssistant ? <div className="message-author"><span>{selectedModel?.name ?? t('console.playground.unnamedModel')}</span><small>{selectedModel?.company ?? 'Token NX'}</small></div> : null}
         {isAssistant && reasoning ? <details className="message-reasoning" open={streaming && running}><summary>{streaming && running ? t('console.playground.thinkingNow') : t('console.playground.thinking')}</summary><MarkdownContent content={reasoning} className="message-reasoning-content" /></details> : null}
-        {!isFailed || content ? <div className="message-bubble">
-          {streaming && !hasStreamingResponse ? <span className="message-loading" role="status" aria-label={t('console.playground.messageLoading')} /> : isAssistant ? <MarkdownContent content={content || t('console.playground.responseEmpty')} /> : content}
-          {streaming && running ? <span className="message-cursor" aria-hidden="true" /> : null}
-        </div> : null}
-        {isAssistant && !streaming && !isFailed ? <div className="message-footer"><div className="message-meta"><span>{t('console.playground.elapsed')} <strong>{message.latency === null ? '--' : `${message.latency}ms`}</strong></span><span>{t('console.common.input')} <strong>{formatTokenMetric(message.inputTokens, t)}</strong></span><span>{t('console.common.output')} <strong>{formatTokenMetric(message.outputTokens, t)}</strong></span><span>{t('console.playground.cost')} <strong>{formatSessionCost(message.cost, t)}</strong></span></div><div className="message-actions"><span className="message-icon-action" role="button" tabIndex={0} aria-label={t('console.playground.copyReply')} title={t('console.playground.copyReply')} onClick={() => copyMessage(message.content, t('console.playground.copiedReply'))} onKeyDown={(event) => activateAction(event, () => copyMessage(message.content, t('console.playground.copiedReply')))}><IconCopy aria-hidden="true" /></span><span className={`message-icon-action${running ? ' is-disabled' : ''}`} role="button" tabIndex={running ? -1 : 0} aria-disabled={running} aria-label={t('console.playground.retry')} title={t('console.playground.retry')} onClick={() => retryAttempt(message.attemptId)} onKeyDown={(event) => activateAction(event, () => retryAttempt(message.attemptId))}><IconRedo aria-hidden="true" /></span></div></div> : null}
-        {!streaming && !isAssistant && message.content ? <div className="message-actions"><span className="message-icon-action" role="button" tabIndex={0} aria-label={t('console.playground.copyUserMessage')} title={t('console.playground.copyUserMessage')} onClick={() => copyMessage(message.content, t('console.playground.copiedUserMessage'))} onKeyDown={(event) => activateAction(event, () => copyMessage(message.content, t('console.playground.copiedUserMessage')))}><IconCopy aria-hidden="true" /></span></div> : null}
-        {isFailed && isAssistant ? <div className="message-actions"><span className="message-icon-action" role="button" tabIndex={0} aria-label={t('console.playground.editFailed')} title={t('console.playground.editFailed')} onClick={() => editFailedAttempt(message.attemptId)} onKeyDown={(event) => activateAction(event, () => editFailedAttempt(message.attemptId))}><IconEdit aria-hidden="true" /></span><span className={`message-icon-action${running ? ' is-disabled' : ''}`} role="button" tabIndex={running ? -1 : 0} aria-disabled={running} aria-label={t('console.playground.retry')} title={t('console.playground.retry')} onClick={() => retryAttempt(message.attemptId)} onKeyDown={(event) => activateAction(event, () => retryAttempt(message.attemptId))}><IconRedo aria-hidden="true" /></span></div> : null}
+        {isEditing ? <div className="user-message-editor">
+          <Input.TextArea className="message-editor-input" value={editingUserPrompt} onChange={(value) => setEditingUserPrompt(limitPlaygroundPrompt(value))} maxLength={PLAYGROUND_MAX_INPUT_CHARACTERS} rows={4} autoFocus aria-label={t('console.playground.editMessageInput')} onKeyDown={(event) => {
+            if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+              event.preventDefault()
+              if (!running) void runTest(editingUserPrompt, message.attemptId)
+            }
+          }} />
+          <div className="user-message-editor-footer">
+            <span className="user-message-editor-hint">{t('console.playground.editMessageHint')}</span>
+            <div className="user-message-editor-actions">
+              <span className="message-icon-action" role="button" tabIndex={0} aria-label={t('console.playground.cancelEdit')} title={t('console.playground.cancelEdit')} onClick={cancelUserEdit} onKeyDown={(event) => activateAction(event, cancelUserEdit)}><IconClose aria-hidden="true" /></span>
+              <span className={`message-icon-action${!editingUserPrompt.trim() || running ? ' is-disabled' : ''}`} role="button" tabIndex={!editingUserPrompt.trim() || running ? -1 : 0} aria-disabled={!editingUserPrompt.trim() || running} aria-label={t('console.playground.sendEditedMessage')} title={t('console.playground.sendEditedMessage')} onClick={() => { if (editingUserPrompt.trim() && !running) void runTest(editingUserPrompt, message.attemptId) }} onKeyDown={(event) => activateAction(event, () => { if (editingUserPrompt.trim() && !running) void runTest(editingUserPrompt, message.attemptId) })}><IconSend aria-hidden="true" /></span>
+            </div>
+          </div>
+        </div> : <>
+          {!isFailed || content ? <div className="message-bubble">
+            {streaming && !hasStreamingResponse ? <span className="message-loading" role="status" aria-label={t('console.playground.messageLoading')} /> : isAssistant ? <MarkdownContent content={content || t('console.playground.responseEmpty')} /> : content}
+            {streaming && running ? <span className="message-cursor" aria-hidden="true" /> : null}
+          </div> : null}
+          {isAssistant && !streaming && !isFailed ? <div className="message-footer"><div className="message-meta"><span>{t('console.playground.elapsed')} <strong>{message.latency === null ? '--' : `${message.latency}ms`}</strong></span><span>{t('console.common.input')} <strong>{formatTokenMetric(message.inputTokens, t)}</strong></span><span>{t('console.common.output')} <strong>{formatTokenMetric(message.outputTokens, t)}</strong></span><span>{t('console.playground.cost')} <strong>{formatSessionCost(message.cost, t)}</strong></span></div><div className="message-actions"><PlaygroundMessageIconButton label={t('console.playground.copyReply')} icon={<IconCopyStroked aria-hidden="true" />} onClick={() => copyMessage(message.content, t('console.playground.copiedReply'))} /><PlaygroundMessageIconButton label={t('console.playground.retry')} icon={<IconRedoStroked aria-hidden="true" />} disabled={running} onClick={() => retryAttempt(message.attemptId)} /><PlaygroundMessageIconButton label={t('console.playground.deleteAttempt')} icon={<IconDeleteStroked aria-hidden="true" />} disabled={running} onClick={() => deleteAttempt(message.attemptId)} /></div></div> : null}
+          {!streaming && !isAssistant && message.content ? <div className="user-message-footer"><time dateTime={message.createdAt}>{formatMessageTime(message.createdAt)}</time><div className="user-message-actions"><span className="message-icon-action" role="button" tabIndex={0} aria-label={t('console.playground.copyUserMessage')} title={t('console.playground.copyUserMessage')} onClick={() => copyMessage(message.content, t('console.playground.copiedUserMessage'))} onKeyDown={(event) => activateAction(event, () => copyMessage(message.content, t('console.playground.copiedUserMessage')))}><IconCopy aria-hidden="true" /></span>{!isFailed ? <span className="message-icon-action" role="button" tabIndex={0} aria-label={t('console.playground.editMessage')} title={t('console.playground.editMessage')} onClick={() => editUserAttempt(message.attemptId)} onKeyDown={(event) => activateAction(event, () => editUserAttempt(message.attemptId))}><IconEdit aria-hidden="true" /></span> : null}</div></div> : null}
+          {isFailed && isAssistant ? <div className="message-actions"><span className="message-icon-action" role="button" tabIndex={0} aria-label={t('console.playground.editFailed')} title={t('console.playground.editFailed')} onClick={() => editFailedAttempt(message.attemptId)} onKeyDown={(event) => activateAction(event, () => editFailedAttempt(message.attemptId))}><IconEdit aria-hidden="true" /></span><span className={`message-icon-action${running ? ' is-disabled' : ''}`} role="button" tabIndex={running ? -1 : 0} aria-disabled={running} aria-label={t('console.playground.retry')} title={t('console.playground.retry')} onClick={() => retryAttempt(message.attemptId)} onKeyDown={(event) => activateAction(event, () => retryAttempt(message.attemptId))}><IconRedo aria-hidden="true" /></span></div> : null}
+        </>}
       </div>
     </div>
   }
@@ -565,7 +647,7 @@ export function PlaygroundPage() {
             <label className="sr-only" htmlFor="playground-model">{t('console.playground.chooseModel')}</label>
             <div className="model-picker">
               <span className="model-picker-avatar" aria-hidden="true">{selectedModel?.company?.slice(0, 1) ?? 'N'}</span>
-              <Select className="playground-model-select" dropdownClassName="playground-select-dropdown" id="playground-model" aria-label={t('console.playground.chooseModel')} value={selectedModel ? modelAlias(selectedModel) : ''} onChange={(value) => { const nextModelAlias = String(value); setModelId(nextModelAlias); store.setSelectedModelId(nextModelAlias); setSelectedSessionId(''); setEditingAttemptId(''); setRetryingAttemptId('') }} disabled={selectableModels.length === 0}>{selectableModels.map((model) => <Select.Option key={model.id} value={modelAlias(model)}>{model.name} | {model.company}</Select.Option>)}</Select>
+              <Select className="playground-model-select" dropdownClassName="playground-select-dropdown" id="playground-model" aria-label={t('console.playground.chooseModel')} value={selectedModel ? modelAlias(selectedModel) : ''} onChange={(value) => { const nextModelAlias = String(value); setModelId(nextModelAlias); store.setSelectedModelId(nextModelAlias); setSelectedSessionId(''); setEditingAttemptId(''); setEditingUserAttemptId(''); setEditingUserPrompt(''); setRetryingAttemptId('') }} disabled={selectableModels.length === 0}>{selectableModels.map((model) => <Select.Option key={model.id} value={modelAlias(model)}>{model.name} | {model.company}</Select.Option>)}</Select>
             </div>
             <Button className="icon-button" theme="borderless" icon={<IconSetting />} aria-label={t('console.playground.modelParams')} title={t('console.playground.modelParams')} onClick={() => setParamsVisible(true)} disabled={!selectedModel} />
           </div>

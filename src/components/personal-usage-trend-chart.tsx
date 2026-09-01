@@ -34,6 +34,7 @@ const SERIES_COLORS: Record<UsageTrendSeriesName, string> = {
   tokens: "#24c98b",
   cost: "#a998ff",
 };
+const TOKEN_UNIT_SCALE = 1_000_000;
 
 export function PersonalUsageTrendChart({
   context,
@@ -86,7 +87,8 @@ export function PersonalUsageTrendChart({
         series.name,
         new Intl.NumberFormat(i18n.language, {
           minimumFractionDigits: series.name === "cost" ? 4 : 0,
-          maximumFractionDigits: series.name === "cost" ? 4 : 0,
+          maximumFractionDigits:
+            series.name === "cost" ? 4 : series.name === "tokens" ? 2 : 0,
         }),
       ]),
     ),
@@ -110,8 +112,14 @@ export function PersonalUsageTrendChart({
     const surface =
       getComputedStyle(node.closest(".personal-usage-chart-panel") ?? node)
         .backgroundColor || (isDark ? "#202124" : "#ffffff");
+    // 中文：Token 数据以百万为单位展示，避免与请求数共用坐标轴时量级差距过大。
     const values = new Map(
-      data.series.map((series) => [series.name, series.data]),
+      data.series.map((series) => [
+        series.name,
+        series.name === "tokens"
+          ? series.data.map((value) => value / TOKEN_UNIT_SCALE)
+          : series.data,
+      ]),
     );
     chart.setOption({
       animationDuration: 320,

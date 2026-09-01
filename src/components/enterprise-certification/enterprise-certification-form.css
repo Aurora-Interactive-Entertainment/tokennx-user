@@ -1,0 +1,373 @@
+.enterprise-certification-form {
+  display: grid;
+  gap: 28px;
+}
+
+.enterprise-form-section {
+  min-width: 0;
+  display: grid;
+  gap: 18px;
+}
+
+.enterprise-form-section + .enterprise-form-section {
+  padding-top: 2px;
+}
+
+.enterprise-form-section-title {
+  position: relative;
+  margin: 0 0 4px;
+  padding-left: 14px;
+  color: var(--color-text-default-hover);
+  font-size: 17px;
+  font-weight: 650;
+  line-height: 1.5;
+}
+
+.enterprise-form-section-title::before {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 0;
+  width: 3px;
+  border-radius: 2px;
+  background: #2f5bff;
+  content: "";
+}
+
+.enterprise-form-row {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(150px, 190px) minmax(0, 1fr);
+  gap: 16px 26px;
+  align-items: start;
+}
+
+.enterprise-form-label {
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.enterprise-form-label > span {
+  margin-left: 4px;
+  color: var(--danger);
+}
+
+.enterprise-form-control {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.enterprise-form-control > .app-input.semi-input-wrapper {
+  width: 100%;
+  height: 40px;
+  min-height: 40px;
+  border-radius: 4px;
+  background: var(--color-bg-base-default);
+}
+
+.enterprise-form-control > .app-input .semi-input {
+  height: 38px;
+  padding-inline: 14px;
+  font-size: 13px;
+}
+
+.enterprise-field-hint {
+  display: block;
+  color: var(--color-text-tertiary);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.enterprise-field-error {
+  display: block;
+  color: var(--danger);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.enterprise-file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+}
+
+.enterprise-material-layout {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.enterprise-material-tile {
+  position: relative;
+  width: 112px;
+  height: 112px;
+  display: grid;
+  flex: 0 0 112px;
+  place-content: center;
+  justify-items: center;
+  gap: 8px;
+  overflow: hidden;
+  padding: 8px;
+  border: 1px dashed var(--color-border-neutral-l2);
+  border-radius: 4px;
+  outline: 0;
+  background: var(--color-bg-base-default);
+  color: var(--color-text-default);
+  font: inherit;
+  cursor: pointer;
+}
+
+.enterprise-material-tile:hover,
+.enterprise-material-tile:focus-visible,
+.enterprise-material-tile.is-uploading {
+  border-color: #2f5bff;
+}
+
+.enterprise-material-tile:focus-visible {
+  box-shadow: 0 0 0 2px color-mix(in srgb, #2f5bff 22%, transparent);
+}
+
+.enterprise-material-tile.is-error {
+  border-color: var(--danger);
+}
+
+.enterprise-material-tile:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.enterprise-material-tile > .semi-icon {
+  font-size: 25px;
+}
+
+.enterprise-material-tile > span {
+  font-size: 13px;
+}
+
+.enterprise-material-tile img {
+  position: absolute;
+  inset: 7px;
+  width: calc(100% - 14px);
+  height: calc(100% - 14px);
+  object-fit: contain;
+  background: #fff;
+}
+
+.enterprise-material-tile img + span {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  padding: 5px;
+  background: rgba(0, 0, 0, 0.68);
+  color: #fff;
+  font-size: 11px;
+}
+
+.enterprise-material-copy {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+  color: var(--color-text-tertiary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.enterprise-material-file-name {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 4px;
+  color: var(--color-text-default);
+}
+
+.enterprise-material-file-name > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.enterprise-material-file-name .semi-button {
+  flex: 0 0 auto;
+}
+
+.enterprise-recognition-status {
+  width: calc(100% - 216px);
+  max-width: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: -8px 0 0 216px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border-neutral-l1);
+  border-radius: 4px;
+  background: var(--color-bg-overlay-l1);
+}
+
+.enterprise-recognition-status > span:last-child {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.enterprise-recognition-status strong {
+  color: var(--color-text-default);
+  font-size: 12px;
+}
+
+.enterprise-recognition-status small {
+  color: var(--color-text-tertiary);
+  font-size: 11px;
+}
+
+.enterprise-radio-control {
+  min-height: 40px;
+  align-content: center;
+}
+
+.enterprise-radio-control label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-text-default);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.enterprise-radio-control input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: #2f5bff;
+}
+
+.enterprise-applicant-radios {
+  display: flex;
+  flex-direction: row;
+  gap: 42px;
+}
+
+.enterprise-agent-section {
+  padding-top: 4px;
+  border-top: 1px solid var(--color-border-neutral-l1);
+}
+
+.enterprise-certification-consent {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  color: var(--color-text-default);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.enterprise-certification-consent input {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  margin: 2px 0 0;
+  accent-color: #2f5bff;
+}
+
+.enterprise-certification-consent a {
+  color: #4169e1;
+}
+
+.enterprise-consent-error {
+  margin-top: -22px;
+  padding-left: 25px;
+}
+
+.enterprise-certification-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-top: 2px;
+}
+
+.enterprise-certification-actions .semi-button {
+  min-width: 116px;
+  height: 40px;
+  border-radius: 4px;
+}
+
+.enterprise-certification-actions .semi-button-primary {
+  border-color: var(--color-action-primary);
+  background: var(--color-action-primary);
+  color: var(--color-action-on-primary);
+}
+
+.enterprise-certification-actions .semi-button-primary:hover {
+  border-color: var(--color-action-primary-hover);
+  background: var(--color-action-primary-hover);
+  color: var(--color-action-on-primary);
+}
+
+@media (max-width: 760px) {
+  .enterprise-certification-form {
+    gap: 24px;
+  }
+
+  .enterprise-form-section {
+    gap: 15px;
+  }
+
+  .enterprise-form-row {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  .enterprise-form-label {
+    min-height: auto;
+  }
+
+  .enterprise-material-layout {
+    align-items: flex-start;
+  }
+
+  .enterprise-material-tile {
+    width: 96px;
+    height: 96px;
+    flex-basis: 96px;
+  }
+
+  .enterprise-recognition-status {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .enterprise-applicant-radios {
+    gap: 28px;
+  }
+}
+
+@media (max-width: 480px) {
+  .enterprise-material-layout {
+    flex-direction: column;
+  }
+
+  .enterprise-material-tile {
+    width: 112px;
+    height: 112px;
+    flex-basis: 112px;
+  }
+
+  .enterprise-certification-actions {
+    align-items: stretch;
+    flex-direction: column-reverse;
+  }
+
+  .enterprise-certification-actions .semi-button {
+    width: 100%;
+  }
+}

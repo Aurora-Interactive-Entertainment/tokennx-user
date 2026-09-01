@@ -18,6 +18,12 @@
 .trae-invitation-create-dialog { width: min(560px, 100%); }
 .trae-invitation-create-dialog > header, .trae-invitation-usage-dialog > header { border-bottom: 0; }
 .trae-invitation-create-form { gap: 14px; }
+.trae-invitation-expiry-picker.semi-datepicker { width: 100%; min-width: 0; }
+/* 单日期面板不需要范围选择器的双月布局，避免弹层右侧出现空白。 */
+.trae-invitation-expiry-dropdown.semi-datepicker { width: 300px !important; max-width: calc(100vw - 24px); }
+.trae-invitation-expiry-dropdown .semi-datepicker-container > div > div > div:last-child { width: 100%; padding-inline: 8px; }
+.trae-invitation-expiry-dropdown .semi-datepicker-month-grid-left { flex: 1 1 auto; }
+.trae-invitation-expiry-dropdown .semi-datepicker-month { width: 100% !important; }
 .trae-invitation-intro { display: grid; gap: 6px; padding: 12px; border: 1px solid var(--color-border-neutral-l1); border-radius: 6px; background: var(--color-bg-base-secondary); }
 .trae-invitation-intro strong { color: var(--color-text-default-hover); font-size: 16px; }
 .trae-invitation-intro span, .trae-invitation-form-hint { color: var(--color-text-secondary); font-size: 13px; line-height: 1.5; }

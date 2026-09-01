@@ -332,12 +332,25 @@ export interface BillingPaymentCreateInput {
 export interface BillingPaymentStartResult {
   order: BillingPaymentOrder
   transaction: BillingPaymentTransaction
-  form_html: string
+  form_html?: string
+  /** 中文：新支付接口可直接返回二维码内容，旧接口仍通过 form_html 兼容。 */
+  payment_url?: string
+  qr_code?: string
+  qr_code_url?: string
+  qr_url?: string
 }
 
 export const BILLING_PAYMENT_SCENE_PC: BillingPaymentScene = 'pc'
 
 export type BillingStatementDirectionFilter = 'all' | BillingStatementDirection
+
+export interface BillingStatementRequestOptions extends BillingRequestOptions {
+  direction?: BillingStatementDirectionFilter
+  line_type?: string
+  source_type?: string
+  started_at?: string
+  ended_at?: string
+}
 
 export interface BillingAnalysisRequestOptions extends BillingRequestOptions {
   period?: string
@@ -402,9 +415,16 @@ export function getBillingBonusGrants(context: BillingContext, options: BillingR
   return fetchAuthenticatedJson<BillingPageResult<BillingBonusGrant>>(`${BILLING_PATH}/bonus-grants?${query}`, requestOptions(options))
 }
 
-export function getBillingStatements(context: BillingContext, options: BillingRequestOptions & { direction?: BillingStatementDirectionFilter } = {}): Promise<BillingPageResult<BillingStatementLine>> {
+export function getBillingStatements(context: BillingContext, options: BillingStatementRequestOptions = {}): Promise<BillingPageResult<BillingStatementLine>> {
   const page = listOptions(options)
-  const query = createBillingQuery(context, { ...page, direction: options.direction ?? 'all' })
+  const query = createBillingQuery(context, {
+    ...page,
+    direction: options.direction,
+    line_type: options.line_type,
+    source_type: options.source_type,
+    started_at: options.started_at,
+    ended_at: options.ended_at,
+  })
   return fetchAuthenticatedJson<BillingPageResult<BillingStatementLine>>(`${BILLING_PATH}/statements?${query}`, requestOptions(options))
 }
 
@@ -455,13 +475,6 @@ export function submitBillingInvoice(context: BillingContext, input: BillingInvo
 
 const PAYMENT_ORDER_PATH = '/api/user/payment/orders'
 
-function paymentContextQuery(context: BillingContext): string {
-  if (context.account_type !== 'personal') {
-    throw new ApiError(i18n.t('api.billing.paymentPersonalOnly'), 400, 140001, null)
-  }
-  return createBillingQuery(context)
-}
-
 function paymentIdempotencyOptions(idempotencyKey: string, options: Pick<BillingRequestOptions, 'accessToken' | 'signal'>): FetchJsonOptions {
   const normalizedKey = idempotencyKey.trim()
   if (!normalizedKey) throw new ApiError(i18n.t('api.billing.paymentIdempotencyRequired'), 400, 140001, null)
@@ -475,15 +488,15 @@ function paymentOrderPath(orderID: string, suffix = ''): string {
 }
 
 export function createBillingPaymentOrder(context: BillingContext, input: BillingPaymentCreateInput, idempotencyKey: string, options: Pick<BillingRequestOptions, 'accessToken' | 'signal'> = {}): Promise<BillingPaymentOrder> {
-  const query = paymentContextQuery(context)
+  // 中文：订单创建时发送当前账务主体，企业充值因此直接进入对应企业钱包。
+  const query = createBillingQuery(context)
   return fetchAuthenticatedJson<BillingPaymentOrder>(`${PAYMENT_ORDER_PATH}?${query}`, {
     ...paymentIdempotencyOptions(idempotencyKey, options),
     body: input,
   })
 }
 
-export function startBillingPayment(context: BillingContext, orderID: string, idempotencyKey: string, options: Pick<BillingRequestOptions, 'accessToken' | 'signal'> = {}): Promise<BillingPaymentStartResult> {
-  paymentContextQuery(context)
+export function startBillingPayment(orderID: string, idempotencyKey: string, options: Pick<BillingRequestOptions, 'accessToken' | 'signal'> = {}): Promise<BillingPaymentStartResult> {
   return fetchAuthenticatedJson<BillingPaymentStartResult>(paymentOrderPath(orderID, '/pay'), {
     ...paymentIdempotencyOptions(idempotencyKey, options),
     body: { scene: BILLING_PAYMENT_SCENE_PC },
@@ -530,6 +543,8 @@ const BILLING_ERROR_KEYS: Record<number, string> = {
 
 export function getBillingErrorMessage(error: unknown): string {
   if (!isApiError(error)) return i18n.t('api.billing.requestFailed')
+  // 中文：实名认证业务码可能使用 403 HTTP 状态，必须优先展示服务端返回的真实提示。
+  if (error.code === 140008) return error.message.trim() || i18n.t('api.billing.errors.140008')
   if (error.status === 403 || error.code === 120001) return i18n.t('api.billing.forbidden')
   const messageKey = BILLING_ERROR_KEYS[error.code]
   return messageKey ? i18n.t(messageKey) : error.message

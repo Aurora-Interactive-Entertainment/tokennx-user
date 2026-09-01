@@ -5,6 +5,7 @@ import {
   useState,
   type ChangeEvent,
   type KeyboardEvent,
+  type ReactNode,
 } from "react";
 import { useTranslation } from "react-i18next";
 import Button from "@douyinfe/semi-ui/lib/es/button";
@@ -14,25 +15,213 @@ import {
   IconArrowRight,
   IconChevronDown,
   IconClose,
-  IconEdit,
+  IconCopy,
+  IconDeleteStroked,
+  IconEditStroked,
   IconImage,
+  IconInfoCircle,
+  IconMoreStroked,
   IconPlus,
+  IconRefresh,
   IconSearch,
-  IconUpload,
   IconSend,
   IconStop,
 } from "@douyinfe/semi-icons";
 import { CompatInput as Input } from "@/components/semi-compat";
+import { useAppSelector } from "@/store/hooks";
+import {
+  IMAGE_SESSION_HISTORY_KEY,
+  readUserSessionHistory,
+  writeUserSessionHistory,
+} from "@/utils/ephemeral-history";
 import "./image-generation.css";
 
-type ImageMode = "generate" | "edit";
 type ImageHistory = {
   id: string;
   prompt: string;
-  mode: ImageMode;
+  title: string;
   createdAt: string;
+  model: string;
+  ratio: string;
+  size: string;
+  format: "jpeg" | "png";
+  outputs: number;
+  status: "succeeded" | "failed";
+  requestId: string;
+  errorMessage?: string;
   preview?: string;
 };
+
+function isImageHistory(value: unknown): value is ImageHistory {
+  if (!value || typeof value !== "object") return false;
+  const item = value as Partial<ImageHistory>;
+  return typeof item.id === "string"
+    && typeof item.prompt === "string"
+    && typeof item.title === "string"
+    && typeof item.createdAt === "string"
+    && typeof item.model === "string"
+    && typeof item.ratio === "string"
+    && typeof item.size === "string"
+    && (item.format === "jpeg" || item.format === "png")
+    && typeof item.outputs === "number"
+    && Number.isFinite(item.outputs)
+    && (item.status === "succeeded" || item.status === "failed")
+    && typeof item.requestId === "string"
+    && (item.errorMessage === undefined || typeof item.errorMessage === "string")
+    && (item.preview === undefined || typeof item.preview === "string");
+}
+
+function compactImageHistoryEntry(item: ImageHistory): Omit<ImageHistory, "preview"> {
+  return {
+    id: item.id.slice(0, 256),
+    prompt: item.prompt.slice(0, 8_000),
+    title: item.title.slice(0, 8_000),
+    createdAt: item.createdAt.slice(0, 128),
+    model: item.model.slice(0, 1_024),
+    ratio: item.ratio.slice(0, 32),
+    size: item.size.slice(0, 64),
+    format: item.format,
+    outputs: Math.max(0, Math.min(20, Math.floor(item.outputs))),
+    status: item.status,
+    requestId: item.requestId.slice(0, 512),
+    ...(item.errorMessage ? { errorMessage: item.errorMessage.slice(0, 4_000) } : {}),
+  };
+}
+
+type ImageResultCardProps = {
+  item: ImageHistory;
+  onEdit: (prompt: string) => void;
+  onRegenerate: (prompt: string) => void;
+  onDelete: (id: string) => void;
+};
+
+// 中文：结果卡片字段与后端任务响应保持一一对应，接入接口时只需替换数据来源。
+function ImageResultCard({
+  item,
+  onEdit,
+  onRegenerate,
+  onDelete,
+}: ImageResultCardProps): ReactNode {
+  const { t } = useTranslation();
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [requestCopied, setRequestCopied] = useState(false);
+  const moreWrapRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!moreOpen) return;
+    const handleOutsidePointer = (event: PointerEvent) => {
+      if (event.target instanceof Node && !moreWrapRef.current?.contains(event.target)) {
+        setMoreOpen(false);
+      }
+    };
+    document.addEventListener("pointerdown", handleOutsidePointer);
+    return () => document.removeEventListener("pointerdown", handleOutsidePointer);
+  }, [moreOpen]);
+
+  async function copyRequestId(): Promise<void> {
+    if (!navigator.clipboard?.writeText) return;
+    try {
+      await navigator.clipboard.writeText(item.requestId);
+      setRequestCopied(true);
+      window.setTimeout(() => setRequestCopied(false), 1600);
+    } catch {
+      setRequestCopied(false);
+    }
+  }
+
+  return (
+    <article className="image-result-card">
+      <header className="image-result-heading">
+        <strong>{item.title}</strong>
+        <div className="image-result-meta">
+          <span>{item.model}</span>
+          <span aria-hidden="true">·</span>
+          <span>{item.ratio}</span>
+          <span aria-hidden="true">·</span>
+          <span>{item.size}</span>
+          <span aria-hidden="true">·</span>
+          <span>
+            {item.outputs} {t("console.image.outputs")}
+          </span>
+          <Tooltip content={t("console.image.resultDetails")} position="top">
+            <span
+              className="image-result-info"
+              role="img"
+              aria-label={t("console.image.resultDetails")}
+            >
+              <IconInfoCircle aria-hidden="true" />
+            </span>
+          </Tooltip>
+        </div>
+      </header>
+
+      {item.status === "failed" ? (
+        <div className="image-result-error" role="alert">
+          <strong>{t("console.image.resultFailed")}</strong>
+          <p>{item.errorMessage ?? t("console.image.generationError")}</p>
+          <button type="button" className="image-request-id" onClick={copyRequestId}>
+            <IconCopy aria-hidden="true" />
+            {requestCopied
+              ? t("console.image.copySuccess")
+              : t("console.image.copyRequestId")}
+          </button>
+        </div>
+      ) : item.preview ? (
+        <img src={item.preview} alt={item.prompt} />
+      ) : (
+        <div className="image-result-placeholder" aria-label={t("console.image.resultSuccess")}>
+          <IconImage aria-hidden="true" />
+          <span>{t("console.image.resultSuccess")}</span>
+        </div>
+      )}
+
+      <footer className="image-result-actions">
+        <Button
+          theme="outline"
+          size="small"
+          icon={<IconEditStroked />}
+          onClick={() => onEdit(item.prompt)}
+        >
+          {t("console.image.editPrompt")}
+        </Button>
+        <Button
+          theme="outline"
+          size="small"
+          icon={<IconRefresh />}
+          onClick={() => onRegenerate(item.prompt)}
+        >
+          {t("console.image.regenerate")}
+        </Button>
+        <div className="image-result-more-wrap" ref={moreWrapRef}>
+          <Button
+            theme="outline"
+            size="small"
+            icon={<IconMoreStroked />}
+            aria-label={t("console.image.moreActions")}
+            title={t("console.image.moreActions")}
+            aria-expanded={moreOpen}
+            onClick={() => setMoreOpen((value) => !value)}
+          />
+          {moreOpen ? (
+            <div className="image-result-more-menu" role="menu">
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setMoreOpen(false);
+                  onDelete(item.id);
+                }}
+              >
+                <IconDeleteStroked aria-hidden="true" />
+                {t("console.image.deleteResult")}
+              </button>
+            </div>
+          ) : null}
+        </div>
+      </footer>
+    </article>
+  );
+}
 
 // 中文：历史栏使用 div 交互项时补齐键盘操作，与智能对话页保持一致。
 function activateImageAction(
@@ -94,6 +283,84 @@ function modelDefaultRatio(model: string): string {
   return MODEL_DEFAULT_RATIOS[model] ?? "1:1";
 }
 
+function ImageModelAvatar({ model: _model }: { model: string }): ReactNode {
+  return (
+    <span className="image-model-avatar" aria-hidden="true">
+      <IconImage />
+    </span>
+  );
+}
+
+function ImageSelectedModels({
+  selected,
+  ratio,
+  size,
+  format,
+  onOpen,
+}: {
+  selected: string[];
+  ratio: string;
+  size: string;
+  format: "jpeg" | "png";
+  onOpen: () => void;
+}): ReactNode {
+  const { t } = useTranslation();
+  const visibleAvatars = selected.slice(0, 3);
+  return (
+    <div className="image-selected-models">
+      <Button
+        theme="borderless"
+        className={`image-model-trigger${selected.length > 1 ? " is-multiple" : ""}`}
+        onClick={onOpen}
+        aria-label={
+          selected.length > 1
+            ? t("console.image.modelsSelected", { count: selected.length })
+            : selected[0] ?? t("console.image.chooseModel")
+        }
+      >
+        {selected.length > 1 ? (
+          <span className="image-model-avatar-stack" aria-hidden="true">
+            {visibleAvatars.map((model) => (
+              <ImageModelAvatar key={model} model={model} />
+            ))}
+          </span>
+        ) : selected.length === 1 ? (
+          <>
+            <ImageModelAvatar model={selected[0]} />
+            <span className="image-model-trigger-name">{selected[0]}</span>
+          </>
+        ) : (
+          <>
+            <ImageModelAvatar model="" />
+            <span className="image-model-trigger-name">{t("console.image.chooseModel")}</span>
+          </>
+        )}
+        <IconChevronDown className="image-chevron" aria-hidden="true" />
+      </Button>
+      {selected.length > 0 ? (
+        <div className="image-model-hover-card" role="tooltip">
+          {selected.map((model) => (
+            <div className="image-model-hover-item" key={model}>
+              <ImageModelAvatar model={model} />
+              <span className="image-model-hover-copy">
+                <strong>{model}</strong>
+                <small>
+                  {t("console.image.modelOutputMeta", {
+                    ratio,
+                    size,
+                    format: format.toUpperCase(),
+                    count: 1,
+                  })}
+                </small>
+              </span>
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function ImageModelPicker({
   visible,
   selected,
@@ -103,7 +370,6 @@ function ImageModelPicker({
   quality,
   onClose,
   onConfirm,
-  onToggle,
   onPreviewModel,
   onFormatChange,
   onRatioChange,
@@ -117,8 +383,7 @@ function ImageModelPicker({
   size: string;
   quality: string;
   onClose: () => void;
-  onConfirm: () => void;
-  onToggle: (model: string) => void;
+  onConfirm: (models: string[]) => void;
   onPreviewModel: (model: string) => void;
   onFormatChange: (format: "jpeg" | "png") => void;
   onRatioChange: (ratio: string) => void;
@@ -128,9 +393,13 @@ function ImageModelPicker({
   const { t } = useTranslation();
   const [query, setQuery] = useState("");
   const [previewModel, setPreviewModel] = useState(selected[0] ?? IMAGE_MODELS[0][0]);
+  const [draftSelected, setDraftSelected] = useState<string[]>(selected);
   useEffect(() => {
-    if (visible) setPreviewModel(selected[0] ?? IMAGE_MODELS[0][0]);
-  }, [visible]);
+    if (visible) {
+      setPreviewModel(selected[0] ?? IMAGE_MODELS[0][0]);
+      setDraftSelected(selected);
+    }
+  }, [selected, visible]);
   const filtered = useMemo(
     () =>
       IMAGE_MODELS.filter(([name, provider]) =>
@@ -180,7 +449,7 @@ function ImageModelPicker({
               {filtered.map(([name, provider]) => (
                 <button
                   type="button"
-                  className={`image-model-option${selected.includes(name) ? " is-selected" : ""}${previewModel === name ? " is-previewing" : ""}`}
+                  className={`image-model-option${draftSelected.includes(name) ? " is-selected" : ""}${previewModel === name ? " is-previewing" : ""}`}
                   key={name}
                   onClick={() => {
                     setPreviewModel(name);
@@ -198,11 +467,15 @@ function ImageModelPicker({
                   </span>
                   <input
                     type="checkbox"
-                    checked={selected.includes(name)}
+                    checked={draftSelected.includes(name)}
                     onClick={(event) => event.stopPropagation()}
                     onChange={(event) => {
                       event.stopPropagation();
-                      onToggle(name);
+                      setDraftSelected((current) =>
+                        current.includes(name)
+                          ? current.filter((item) => item !== name)
+                          : [...current, name],
+                      );
                     }}
                     aria-label={name}
                   />
@@ -318,13 +591,13 @@ function ImageModelPicker({
           <Button
             theme="solid"
             type="primary"
-            disabled={selected.length === 0}
+            disabled={draftSelected.length === 0}
             aria-label={t("console.image.chooseModels", {
-              count: selected.length,
+              count: draftSelected.length,
             })}
-            onClick={onConfirm}
+            onClick={() => onConfirm(draftSelected)}
           >
-            {t("console.common.confirm")}
+            {t("console.image.chooseModels", { count: draftSelected.length })}
           </Button>
         </footer>
       </section>
@@ -334,7 +607,12 @@ function ImageModelPicker({
 
 export function ImagePage() {
   const { t } = useTranslation();
-  const [mode, setMode] = useState<ImageMode>("generate");
+  const auth = useAppSelector((state) => state.auth);
+  const userId = auth.status === "authenticated"
+    ? auth.user?.id ?? null
+    : auth.status === "unauthenticated"
+      ? null
+      : "";
   const [historyCollapsed, setHistoryCollapsed] = useState(false);
   const [prompt, setPrompt] = useState("");
   const [selectedModels, setSelectedModels] = useState<string[]>([
@@ -345,11 +623,34 @@ export function ImagePage() {
   const [size, setSize] = useState("1K");
   const [quality, setQuality] = useState("Auto");
   const [pickerVisible, setPickerVisible] = useState(false);
-  const [history, setHistory] = useState<ImageHistory[]>([]);
+  const [history, setHistory] = useState<ImageHistory[]>(() =>
+    readUserSessionHistory(IMAGE_SESSION_HISTORY_KEY, userId, isImageHistory),
+  );
+  const historyOwnerRef = useRef(userId);
+  const historyHydratingRef = useRef(true);
   const [generating, setGenerating] = useState(false);
   const [uploadedImage, setUploadedImage] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const generationTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    historyOwnerRef.current = userId;
+    historyHydratingRef.current = true;
+    setHistory(readUserSessionHistory(IMAGE_SESSION_HISTORY_KEY, userId, isImageHistory));
+  }, [userId]);
+
+  useEffect(() => {
+    if (historyOwnerRef.current !== userId || historyHydratingRef.current) {
+      historyHydratingRef.current = false;
+      return;
+    }
+    // 中文：不保存 blob/data URL 预览，避免上传图片和大体积二进制内容进入本地存储。
+    writeUserSessionHistory(
+      IMAGE_SESSION_HISTORY_KEY,
+      userId,
+      history.map(compactImageHistoryEntry),
+    );
+  }, [history, userId]);
 
   useEffect(
     () => () => {
@@ -359,14 +660,6 @@ export function ImagePage() {
     },
     [uploadedImage],
   );
-
-  function toggleModel(model: string): void {
-    setSelectedModels((current) =>
-      current.includes(model)
-        ? current.filter((item) => item !== model)
-        : [...current, model],
-    );
-  }
 
   function previewModel(model: string): void {
     setRatio(modelDefaultRatio(model));
@@ -379,17 +672,41 @@ export function ImagePage() {
     setUploadedImage(URL.createObjectURL(file));
   }
 
-  function createGeneration(): void {
-    if (generating || !prompt.trim() || selectedModels.length === 0) return;
+  const composerInputRef = useRef<HTMLTextAreaElement>(null);
+
+  function createGeneration(promptOverride?: string): void {
+    const generationPrompt = (promptOverride ?? prompt).trim();
+    if (generating || !generationPrompt || selectedModels.length === 0) return;
+    const requestId = `image-${Date.now()}`;
+    const generationModels = selectedModels.join(", ");
+    const generationOutputs = selectedModels.length;
+    const generationRatio = ratio;
+    const generationSize = size;
+    const generationFormat = format;
+    if (promptOverride !== undefined) setPrompt(generationPrompt);
     setGenerating(true);
     // 中文：这里是后端图片任务接口的接入边界，先用本地状态还原生成中的交互。
     generationTimerRef.current = window.setTimeout(() => {
+      if (historyOwnerRef.current !== userId) {
+        setGenerating(false);
+        generationTimerRef.current = null;
+        return;
+      }
       setHistory((current) => [
         {
           id: `${Date.now()}`,
-          prompt: prompt.trim(),
-          mode,
+          prompt: generationPrompt,
+          title: t("console.image.resultTitle", { prompt: generationPrompt }),
           createdAt: new Date().toLocaleTimeString(),
+          model: generationModels,
+          ratio: generationRatio,
+          size: generationSize,
+          format: generationFormat,
+          outputs: generationOutputs,
+          // 中文：本地占位结果先模拟接口失败响应，方便直接调试错误态布局。
+          status: "failed",
+          requestId,
+          errorMessage: t("console.image.generationError"),
           preview: uploadedImage || undefined,
         },
         ...current,
@@ -421,32 +738,6 @@ export function ImagePage() {
     >
       <section className="image-shell" aria-label={t("console.image.title")}>
         <div className="image-modebar">
-          <div
-            className="image-mode-switch"
-            role="tablist"
-            aria-label={t("console.image.mode")}
-          >
-            <button
-              type="button"
-              role="tab"
-              aria-selected={mode === "generate"}
-              className={mode === "generate" ? "is-active" : ""}
-              onClick={() => setMode("generate")}
-            >
-              <IconImage aria-hidden="true" />
-              {t("console.image.generateMode")}
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={mode === "edit"}
-              className={mode === "edit" ? "is-active" : ""}
-              onClick={() => setMode("edit")}
-            >
-              <IconEdit aria-hidden="true" />
-              {t("console.image.editMode")}
-            </button>
-          </div>
           <button
             className="image-mobile-history"
             type="button"
@@ -521,11 +812,7 @@ export function ImagePage() {
                   key={item.id}
                   onClick={() => setPrompt(item.prompt)}
                 >
-                  <strong>
-                    {item.mode === "generate"
-                      ? t("console.image.generateMode")
-                      : t("console.image.editMode")}
-                  </strong>
+                  <strong>{item.title}</strong>
                   <span>{item.createdAt}</span>
                   <small>{item.prompt}</small>
                 </button>
@@ -534,137 +821,85 @@ export function ImagePage() {
           )}
         </aside>
         <main className="image-workspace">
-          {mode === "generate" ? (
-            <>
-              <div
-                className={`image-generate-stage${history.length ? " has-results" : ""}`}
-              >
-                {history.length ? (
-                  <div className="image-results" aria-live="polite">
-                    {history.map((item) => (
-                      <article className="image-result-card" key={item.id}>
-                        {item.preview ? (
-                          <img src={item.preview} alt="" />
-                        ) : (
-                          <div className="image-result-placeholder">
-                            <IconImage aria-hidden="true" />
-                          </div>
-                        )}
-                        <span>{item.prompt}</span>
-                      </article>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="image-welcome">
-                    <div className="image-welcome-art">
-                      <span />
-                      <span />
-                      <span />
-                      <span />
-                    </div>
-                    <strong>{t("console.image.welcomeTitle")}</strong>
-                    <p>{t("console.image.welcomeHint")}</p>
-                  </div>
-                )}
-              </div>
-              <div className="image-composer">
-                <div className="image-composer-main">
-                  <button
-                    type="button"
-                    className="image-add-reference"
-                    aria-label={t("console.image.addReference")}
-                    onClick={() => fileInputRef.current?.click()}
-                  >
-                    <IconPlus aria-hidden="true" />
-                    <span>{t("console.image.referenceShort")}</span>
-                  </button>
-                  <Input.TextArea
-                    value={prompt}
-                    onChange={(value) => setPrompt(value.slice(0, 8000))}
-                    rows={2}
-                    placeholder={t("console.image.promptPlaceholder")}
-                    aria-label={t("console.image.promptLabel")}
-                    disabled={generating}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" && !event.shiftKey) {
-                        event.preventDefault();
-                        createGeneration();
-                      }
+          <div
+            className={`image-generate-stage${history.length ? " has-results" : ""}`}
+          >
+            {history.length ? (
+              <div className="image-results" aria-live="polite">
+                {history.map((item) => (
+                  <ImageResultCard
+                    key={item.id}
+                    item={item}
+                    onEdit={(nextPrompt) => {
+                      setPrompt(nextPrompt);
+                      window.requestAnimationFrame(() => composerInputRef.current?.focus());
                     }}
+                    onRegenerate={(nextPrompt) => createGeneration(nextPrompt)}
+                    onDelete={(id) =>
+                      setHistory((current) => current.filter((entry) => entry.id !== id))
+                    }
                   />
-                </div>
-                <div className="image-composer-controls">
-                  <Button
-                    theme="borderless"
-                    className="image-model-trigger"
-                    onClick={() => setPickerVisible(true)}
-                    aria-label={t("console.image.chooseModel")}
-                  >
-                    <IconImage aria-hidden="true" />
-                    {selectedModels.length === 1
-                      ? selectedModels[0]
-                      : selectedModels.length
-                        ? t("console.image.modelsSelected", {
-                            count: selectedModels.length,
-                          })
-                        : t("console.image.chooseModel")}
-                    <IconChevronDown className="image-chevron" aria-hidden="true" />
-                  </Button>
-                  <Button
-                    className="image-generate-button"
-                    theme="solid"
-                    type="primary"
-                    icon={generating ? <IconStop /> : <IconSend />}
-                    aria-label={t("console.image.generate")}
-                    disabled={generating ? false : !canGenerate}
-                    onClick={generating ? stopGeneration : createGeneration}
-                  />
-                </div>
+                ))}
               </div>
-            </>
-          ) : (
-            <div className="image-edit-empty">
-              {uploadedImage ? (
-                <img
-                  src={uploadedImage}
-                  alt={t("console.image.uploadedPreview")}
-                />
-              ) : (
-                <div className="image-edit-art">
+            ) : (
+              <div className="image-welcome">
+                <div className="image-welcome-art">
+                  <span />
                   <span />
                   <span />
                   <span />
                 </div>
-              )}
-              <strong>
-                {uploadedImage
-                  ? t("console.image.editReady")
-                  : t("console.image.editTitle")}
-              </strong>
-              <p>
-                {uploadedImage
-                  ? t("console.image.editHint")
-                  : t("console.image.editSubtitle")}
-              </p>
-              {uploadedImage ? (
-                <Input.TextArea
-                  value={prompt}
-                  onChange={setPrompt}
-                  rows={2}
-                  placeholder={t("console.image.editPromptPlaceholder")}
-                  aria-label={t("console.image.promptLabel")}
-                />
-              ) : null}
-              <Button
-                theme="solid"
-                type="primary"
-                icon={<IconUpload />}
+                <strong>{t("console.image.welcomeTitle")}</strong>
+                <p>{t("console.image.welcomeHint")}</p>
+              </div>
+            )}
+          </div>
+          <div className="image-composer">
+            <div className="image-composer-main">
+              <button
+                type="button"
+                className="image-add-reference"
+                aria-label={t("console.image.addReference")}
                 onClick={() => fileInputRef.current?.click()}
               >
-                {t("console.image.upload")}
-              </Button>
+                <IconPlus aria-hidden="true" />
+                <span>{t("console.image.referenceShort")}</span>
+              </button>
+              <Input.TextArea
+                ref={composerInputRef}
+                value={prompt}
+                onChange={(value) => setPrompt(value.slice(0, 8000))}
+                rows={2}
+                placeholder={t("console.image.promptPlaceholder")}
+                aria-label={t("console.image.promptLabel")}
+                disabled={generating}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" && !event.shiftKey) {
+                    event.preventDefault();
+                    createGeneration();
+                  }
+                }}
+              />
             </div>
-          )}
+            <div className="image-composer-controls">
+              <ImageSelectedModels
+                selected={selectedModels}
+                ratio={ratio}
+                size={size}
+                format={format}
+                onOpen={() => setPickerVisible(true)}
+              />
+              <Button
+                className="image-generate-button"
+                theme="solid"
+                type="primary"
+                icon={generating ? <IconStop /> : <IconSend />}
+                aria-label={t("console.image.generate")}
+                disabled={generating ? false : !canGenerate}
+                onClick={generating ? () => stopGeneration() : () => createGeneration()}
+              />
+            </div>
+          </div>
         </main>
       </section>
       <input
@@ -680,8 +915,10 @@ export function ImagePage() {
         selected={selectedModels}
         format={format}
         onClose={() => setPickerVisible(false)}
-        onConfirm={() => setPickerVisible(false)}
-        onToggle={toggleModel}
+        onConfirm={(models) => {
+          setSelectedModels(models);
+          setPickerVisible(false);
+        }}
         onPreviewModel={previewModel}
         onFormatChange={setFormat}
         ratio={ratio}

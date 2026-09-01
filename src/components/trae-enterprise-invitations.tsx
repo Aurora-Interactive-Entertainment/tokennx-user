@@ -19,6 +19,7 @@ import {
   type EnterpriseRequestError,
 } from "@/pages/enterprise-console-shared";
 import { formatApiTime } from "@/utils/format";
+import { startOfLocalDay } from "@/utils/date-range";
 import { TraeDialog } from "./trae-dialog";
 import { TraePagination } from "./trae-pagination";
 import { TraeTableEmpty } from "./trae-table-empty";
@@ -26,25 +27,37 @@ import "./trae-enterprise-invitations.css";
 
 const INVITATION_PAGE_SIZE = 10;
 
-/** 返回本地时区当天的日期值，供原生 date 输入框的最小日期使用。 */
-function getTodayDateInputValue() {
-  const today = new Date();
-  const year = today.getFullYear();
-  const month = String(today.getMonth() + 1).padStart(2, "0");
-  const day = String(today.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
 type CreateInvitationValues = {
   maxUses: string | number;
-  expiresAt?: string;
+  expiresAt?: Date | string;
   role: string;
+  departmentId: string;
 };
+
+/** 将邀请有效期自然日转换为接口要求的 UTC 毫秒时间戳。 */
+export function invitationExpiryTimestamp(value: Date) {
+  return Date.UTC(value.getFullYear(), value.getMonth(), value.getDate(), 23, 59, 59, 999);
+}
+
+/** 兼容 Semi 输入框手动录入产生的日期字符串，并始终按本地自然日解析。 */
+function normalizeDateValue(value: Date | string | undefined) {
+  if (value instanceof Date) return Number.isNaN(value.getTime()) ? undefined : value;
+  if (!value) return undefined;
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value.trim());
+  if (!match) return undefined;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(year, month - 1, day);
+  if (Number.isNaN(date.getTime()) || date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return undefined;
+  return date;
+}
 
 type TraeEnterpriseInvitationsProps = {
   context: EnterpriseContext;
   createOpen: boolean;
   onCreateOpenChange: (open: boolean) => void;
+  departments?: Array<{ id: string; name: string }>;
 };
 
 function inviteStatusClass(status: string) {
@@ -62,6 +75,7 @@ export function TraeEnterpriseInvitations({
   context,
   createOpen,
   onCreateOpenChange,
+  departments = [],
 }: TraeEnterpriseInvitationsProps) {
   const { t } = useTranslation();
   const handleError = useEnterpriseErrorHandler();
@@ -154,18 +168,18 @@ export function TraeEnterpriseInvitations({
   async function submitCreate(values: CreateInvitationValues) {
     const maxUses = Number(values.maxUses);
     if (!Number.isInteger(maxUses) || maxUses < 1 || maxUses > 999) return;
-    const expiresAtValue = values.expiresAt?.trim() ?? "";
-    // 原生日期输入框可被手动修改，因此提交时也要确保日期不早于今天。
-    if (expiresAtValue && expiresAtValue < getTodayDateInputValue()) return;
+    const expiresAtValue = normalizeDateValue(values.expiresAt);
+    const hasExpiryInput = values.expiresAt instanceof Date || (typeof values.expiresAt === "string" && values.expiresAt.trim() !== "");
+    if (hasExpiryInput && !expiresAtValue) return;
+    // 选择器之外仍可能通过表单 API 写入日期，因此提交时再次限制不能早于今天。
+    if (expiresAtValue && startOfLocalDay(expiresAtValue) < startOfLocalDay(new Date())) return;
     setCreating(true);
     setCreateError(null);
     try {
-      const expiresAt = expiresAtValue
-        ? `${expiresAtValue}T23:59:59.999Z`
-        : null;
+      const expiresAt = expiresAtValue ? invitationExpiryTimestamp(expiresAtValue) : null;
       await createEnterpriseInvitation(
         { enterprise_id: context.id },
-        { role: values.role || defaultRole, max_uses: maxUses, expires_at: expiresAt },
+        { role: values.role || defaultRole, max_uses: maxUses, expires_at: expiresAt, department_id: values.departmentId },
         { accessToken: getAccessToken() ?? undefined },
       );
       onCreateOpenChange(false);
@@ -286,7 +300,7 @@ export function TraeEnterpriseInvitations({
           <Form<CreateInvitationValues>
             className="trae-dialog-form trae-invitation-create-form"
             labelPosition="top"
-            initValues={{ role: defaultRole, maxUses: 10, expiresAt: "" }}
+            initValues={{ role: defaultRole, maxUses: 10, expiresAt: undefined, departmentId: "" }}
             autoScrollToError
             showValidateIcon={false}
             onSubmit={(values) => void submitCreate(values)}
@@ -296,14 +310,32 @@ export function TraeEnterpriseInvitations({
               <span>{t("traeEnterprise.inviteList.createHint")}</span>
             </div>
             <Form.Input field="maxUses" label={t("traeEnterprise.inviteList.maxUses")} type="number" min={1} max={999} rules={[{ required: true, message: t("traeEnterprise.inviteList.maxUsesRequired") }]} />
-            <Form.Input
+            <Form.DatePicker
               field="expiresAt"
               label={t("traeEnterprise.inviteList.expiresAt")}
+              className="trae-date-picker trae-invitation-expiry-picker"
+              dropdownClassName="trae-date-picker-dropdown trae-invitation-expiry-dropdown"
               type="date"
-              min={getTodayDateInputValue()}
+              format="yyyy-MM-dd"
+              placeholder={t("traeEnterprise.inviteList.expiresAt")}
+              defaultPickerValue={startOfLocalDay(new Date())}
+              disabledDate={(date) => !date || startOfLocalDay(date) < startOfLocalDay(new Date())}
+              showClear
             />
-            <Form.Select field="role" label={t("traeEnterprise.inviteList.targetRole")}>
+            <Form.Select
+              field="role"
+              label={t("traeEnterprise.inviteList.targetRole")}
+              rules={[{ required: true, message: t("traeEnterprise.inviteList.targetRoleRequired") }]}
+            >
               {roleItems.map((role) => <Form.Select.Option key={role.code} value={role.code}>{role.name}</Form.Select.Option>)}
+            </Form.Select>
+            <Form.Select
+              field="departmentId"
+              label={t("traeEnterprise.inviteList.department")}
+              rules={[{ required: true, message: t("traeEnterprise.inviteList.departmentRequired") }]}
+              placeholder={t("traeEnterprise.inviteList.departmentPlaceholder")}
+            >
+              {departments.map((department) => <Form.Select.Option key={department.id} value={department.id}>{department.name}</Form.Select.Option>)}
             </Form.Select>
             <p className="trae-invitation-form-hint">{t("traeEnterprise.inviteList.roleHint")}</p>
             {createError ? <p className="trae-request-review-error">{createError.message}</p> : null}

@@ -1104,6 +1104,7 @@ export function ApiKeysPage({
         </div>
       ) : rows.length === 0 ? (
         <EmptyPanel
+          surface="table"
           title={t("console.account.noKeys")}
           description={t("console.account.noKeysHint")}
           action={

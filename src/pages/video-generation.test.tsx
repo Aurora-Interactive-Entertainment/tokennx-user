@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
 import { Provider } from 'react-redux'
@@ -67,7 +67,7 @@ vi.mock('@douyinfe/semi-ui', () => {
 
 vi.mock('@douyinfe/semi-icons', () => {
   const MockIcon = () => null
-  return { IconAlertTriangle: MockIcon, IconArrowUp: MockIcon, IconCheckCircleStroked: MockIcon, IconClose: MockIcon, IconDeleteStroked: MockIcon, IconDownload: MockIcon, IconHistory: MockIcon, IconImage: MockIcon, IconLoading: MockIcon, IconMuteStroked: MockIcon, IconPlus: MockIcon, IconRefresh: MockIcon, IconSetting: MockIcon, IconStop: MockIcon, IconVideo: MockIcon, IconVolume2: MockIcon }
+  return { IconAlertTriangle: MockIcon, IconArrowUp: MockIcon, IconCheckCircleStroked: MockIcon, IconChevronDownStroked: MockIcon, IconChevronUpDown: MockIcon, IconClockStroked: MockIcon, IconClose: MockIcon, IconDeleteStroked: MockIcon, IconDownload: MockIcon, IconEditStroked: MockIcon, IconFilterStroked: MockIcon, IconHistory: MockIcon, IconImage: MockIcon, IconImageStroked: MockIcon, IconInfoCircle: MockIcon, IconLoading: MockIcon, IconMuteStroked: MockIcon, IconMoreStroked: MockIcon, IconPlus: MockIcon, IconRefresh: MockIcon, IconSearch: MockIcon, IconSortStroked: MockIcon, IconSetting: MockIcon, IconStop: MockIcon, IconTick: MockIcon, IconVideo: MockIcon, IconVideoStroked: MockIcon, IconVolume2: MockIcon }
 })
 
 vi.mock('@/components/semi-compat', () => {
@@ -161,7 +161,7 @@ describe('视频生成页面', () => {
     await user.type(screen.getByLabelText('视频提示词'), '一座城市从夜晚变成白天')
     await user.click(screen.getByRole('button', { name: '生成视频' }))
     await waitFor(() => expect(submitVideoGeneration).toHaveBeenCalledTimes(1))
-    await user.click(await screen.findByRole('button', { name: '取消生成' }))
+    await user.click(within(screen.getByRole('article')).getByRole('button', { name: '取消生成' }))
 
     await waitFor(() => expect(cancelVideoTask).toHaveBeenCalledWith('nx_live_video_secret', 'task-video-1'))
     await waitFor(() => expect(getVideoTask).toHaveBeenCalledWith('nx_live_video_secret', 'task-video-1', expect.anything()), { timeout: 2_500 })
@@ -181,23 +181,27 @@ describe('视频生成页面', () => {
     expect(document.querySelector('.video-history-panel')).toBeInTheDocument()
   })
 
-  it('生成模式弹层只负责模式切换，并支持点击外部收起', async () => {
+  it('历史生成弹窗点击工作区其他位置会收起', async () => {
     const user = userEvent.setup()
     renderVideoPage()
 
     await screen.findByRole('option', { name: /CogVideo/ })
-    await user.click(screen.getByRole('button', { name: '参考图' }))
-
-    expect(screen.getByRole('menu')).toHaveTextContent('生成模式')
-    expect(screen.getByRole('menu')).toHaveTextContent('首尾帧')
-    expect(screen.queryByLabelText('参考图 URL')).toBeNull()
-
-    await user.click(screen.getByRole('button', { name: '首尾帧' }))
-    expect(screen.getByRole('button', { name: '首帧 URL' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '末帧 URL' })).toBeInTheDocument()
+    const panel = document.querySelector('.video-history-panel')
+    await user.click(screen.getByRole('button', { name: '历史生成' }))
+    expect(panel).toHaveClass('is-open')
 
     await user.click(screen.getByText('准备开始生成'))
-    expect(screen.queryByRole('menu')).toBeNull()
+    expect(panel).not.toHaveClass('is-open')
+  })
+
+  it('生成模式 Select 支持参考图与首尾帧切换', async () => {
+    const user = userEvent.setup()
+    renderVideoPage()
+
+    await screen.findByRole('option', { name: /CogVideo/ })
+    await user.selectOptions(screen.getByRole('combobox', { name: '参考图' }), 'first-last')
+    expect(screen.getByRole('button', { name: '首帧 URL' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '末帧 URL' })).toBeInTheDocument()
   })
 
   it('模型、比例和时长弹层按参考页交互并保持互斥', async () => {
@@ -205,23 +209,12 @@ describe('视频生成页面', () => {
     renderVideoPage()
 
     await screen.findByRole('option', { name: /CogVideo/ })
-    const modelTrigger = screen.getByRole('button', { name: /智谱AI: CogVideo/ })
-    await user.click(modelTrigger)
-    expect(screen.getByRole('listbox', { name: '视频模型' })).toHaveTextContent('智谱AI: CogVideo')
-
-    await user.click(within(screen.getByRole('listbox', { name: '视频模型' })).getByRole('option', { name: /Other Video/ }))
-    expect(screen.getByRole('button', { name: /Other Video/ })).toBeInTheDocument()
-
-    await user.click(screen.getByRole('button', { name: /adaptive · 480P/ }))
-    expect(screen.getByRole('dialog', { name: '比例' })).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: '1:1' }))
-    expect(screen.getByRole('button', { name: /1:1 · 480P/ })).toBeInTheDocument()
-
-    await user.click(screen.getByRole('button', { name: /5秒/ }))
-    expect(screen.getByRole('dialog', { name: '时长' })).toBeInTheDocument()
-    const durationSlider = screen.getByRole('slider', { name: '时长' })
-    fireEvent.change(durationSlider, { target: { value: '10' } })
-    expect(screen.getByRole('spinbutton', { name: '时长' })).toHaveValue(10)
+    const modelSelect = screen.getByRole('combobox', { name: '视频模型' })
+    expect(modelSelect).toHaveValue('cogvideo-public')
+    await user.selectOptions(modelSelect, 'other-video-public')
+    expect(modelSelect).toHaveValue('other-video-public')
+    expect(screen.getByRole('combobox', { name: '比例' })).toHaveValue('settings')
+    expect(screen.getByRole('combobox', { name: '时长' })).toHaveValue('duration')
   })
 
   it('工作区缺少可用密钥时在结果区内显示提示', async () => {
@@ -231,5 +224,26 @@ describe('视频生成页面', () => {
     await waitFor(() => expect(document.querySelector('.video-workspace-notice')).toBeInTheDocument())
     expect(document.querySelector('.video-workspace.experience-workbench')).toBeInTheDocument()
     expect(document.querySelector('.video-console-page > .banner-notice')).toBeNull()
+  })
+
+  it('提交失败仍保留可编辑、重试和删除的结果卡片', async () => {
+    const user = userEvent.setup()
+    vi.mocked(submitVideoGeneration).mockRejectedValue(new Error('余额不足'))
+    renderVideoPage()
+
+    await screen.findByRole('option', { name: /CogVideo/ })
+    await user.type(screen.getByLabelText('视频提示词'), '一只猫在窗边看雨')
+    await user.click(screen.getByRole('button', { name: '生成视频' }))
+
+    expect(await screen.findByText('余额不足')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '编辑' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '重新生成' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '编辑' }))
+    expect(screen.getByLabelText('视频提示词')).toHaveValue('一只猫在窗边看雨')
+
+    await user.click(screen.getByRole('button', { name: '更多操作' }))
+    await user.click(await screen.findByText('删除'))
+    expect(screen.queryByText('余额不足')).toBeNull()
   })
 })

@@ -12,7 +12,7 @@ import {
   type EnterpriseInvitation,
 } from "@/api/enterprise-console";
 import { createAppStore } from "@/store";
-import { TraeEnterpriseInvitations } from "./trae-enterprise-invitations";
+import { invitationExpiryTimestamp, TraeEnterpriseInvitations } from "./trae-enterprise-invitations";
 
 vi.mock("@/api/enterprise-console", async () => {
   const actual = await vi.importActual<typeof import("@/api/enterprise-console")>("@/api/enterprise-console");
@@ -75,13 +75,22 @@ function renderInvitations(createOpen = false) {
   return render(
     <MemoryRouter>
       <Provider store={createAppStore()}>
-        <TraeEnterpriseInvitations context={CONTEXT} createOpen={createOpen} onCreateOpenChange={vi.fn()} />
+        <TraeEnterpriseInvitations
+          context={CONTEXT}
+          departments={[{ id: "dept_sales", name: "销售部" }]}
+          createOpen={createOpen}
+          onCreateOpenChange={vi.fn()}
+        />
       </Provider>
     </MemoryRouter>,
   );
 }
 
 describe("Trae 企业邀请链接", () => {
+  it("将有效期自然日转换为 UTC 毫秒时间戳", () => {
+    expect(invitationExpiryTimestamp(new Date(2026, 8, 2))).toBe(Date.UTC(2026, 8, 2, 23, 59, 59, 999));
+  });
+
   it("按每页 10 条查询邀请列表并展示链接操作", async () => {
     renderInvitations();
     expect(await screen.findByText("邀请链接")).toBeInTheDocument();
@@ -92,20 +101,15 @@ describe("Trae 企业邀请链接", () => {
     );
   });
 
-  it("创建邀请时提交角色、次数和有效期", async () => {
+  it("创建邀请时要求选择所属部门", async () => {
     const user = userEvent.setup();
     renderInvitations(true);
     const dialog = screen.getByRole("dialog", { name: "邀请成员" });
     await user.clear(within(dialog).getByLabelText("可使用次数"));
     await user.type(within(dialog).getByLabelText("可使用次数"), "10");
     await user.click(within(dialog).getByRole("button", { name: "生成邀请链接" }));
-    await waitFor(() => {
-      expect(createInvitationMock).toHaveBeenCalledWith(
-        { enterprise_id: "ent_test" },
-        { role: "member", max_uses: 10, expires_at: null },
-        expect.any(Object),
-      );
-    });
+    await waitFor(() => expect(createInvitationMock).not.toHaveBeenCalled());
+    expect(screen.getAllByText("请选择所属部门").length).toBeGreaterThan(0);
   });
 
   it("点击使用情况后查询对应邀请链接的使用记录", async () => {

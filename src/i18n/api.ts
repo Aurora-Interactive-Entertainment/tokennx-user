@@ -77,7 +77,6 @@ export const apiResources = {
       billing: {
         requestFailed: '账务请求失败，请稍后重试',
         contextMissing: '企业账务上下文缺少企业 ID',
-        paymentPersonalOnly: '当前支付宝充值仅支持个人空间',
         paymentIdempotencyRequired: '支付请求缺少幂等标识，请重试',
         paymentOrderRequired: '支付订单编号不能为空',
         paymentSceneInvalid: '请选择电脑网站或手机网站支付方式',
@@ -106,7 +105,7 @@ export const apiResources = {
           '140005': '支付订单幂等请求冲突，请重新发起',
           '140006': '支付金额校验失败，请联系管理员',
           '140007': '支付宝渠道暂不可用，请稍后重试',
-          '140008': '充值前需要完成实名认证',
+          '140008': '完成实名认证后才能充值',
         },
       },
       enterprise: {
@@ -221,7 +220,6 @@ export const apiResources = {
       billing: {
         requestFailed: 'The billing request failed. Try again later.',
         contextMissing: 'The enterprise billing context is missing an enterprise ID.',
-        paymentPersonalOnly: 'Alipay top-ups are currently available only in the personal workspace.',
         paymentIdempotencyRequired: 'The payment request is missing an idempotency key. Try again.',
         paymentOrderRequired: 'The payment order ID is required.',
         paymentSceneInvalid: 'Choose computer-website or mobile-website payment.',

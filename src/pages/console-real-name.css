@@ -5,7 +5,10 @@
 }
 
 .real-name-workspace {
-  width: 100%;
+  /* 中文：page-stack 会统一注入左右边距，使用 auto 避免 width:100% 叠加边距产生横向溢出。 */
+  width: auto;
+  max-width: 100%;
+  min-width: 0;
   min-height: 430px;
   box-sizing: border-box;
   padding: 24px 28px 32px;
@@ -158,15 +161,29 @@
 
 .real-name-control > .semi-input-wrapper,
 .real-name-control > .semi-select {
+  display: flex;
+  align-items: center;
   width: 100%;
   min-height: 40px;
   border-radius: 4px;
   font-weight: 400;
 }
 
+/* 中文：统一输入框与下拉框内容的垂直对齐，避免提示文字在控件内偏上或偏下。 */
+.real-name-control > .semi-select .semi-select-selection {
+  display: flex;
+  align-items: center;
+  min-height: 38px;
+  box-sizing: border-box;
+}
+
 .real-name-control > .semi-input-wrapper .semi-input,
 .real-name-control > .semi-select .semi-select-selection-text {
   font-size: 14px;
+}
+
+.real-name-control > .semi-input-wrapper .semi-input {
+  line-height: 20px;
 }
 
 .real-name-control > .semi-input-wrapper-error,
@@ -336,7 +353,8 @@
 }
 
 .personal-real-name-verification-modal .semi-modal {
-  width: min(1080px, calc(100vw - 48px)) !important;
+  /* 中文：个人认证弹窗保持紧凑，避免二维码流程占据整块工作区。 */
+  width: min(720px, calc(100vw - 48px)) !important;
   max-width: none;
   max-height: calc(100dvh - 48px);
   margin: 0;
@@ -344,7 +362,7 @@
 }
 
 .personal-real-name-verification-modal .semi-modal-content {
-  min-height: min(600px, calc(100dvh - 48px));
+  min-height: min(520px, calc(100dvh - 48px));
   isolation: isolate;
   overflow: hidden;
   border: 1px solid var(--color-border-neutral-l1);
@@ -361,37 +379,55 @@
 }
 
 .personal-real-name-verification-modal .semi-modal-header {
-  min-height: 58px;
+  min-height: 48px;
   box-sizing: border-box;
-  padding: 20px 24px 0;
+  padding: 14px 18px 0;
   border: 0;
 }
 
+/* 中文：关闭按钮随弹窗同步缩小，同时保留清晰的键盘焦点反馈。 */
+.personal-real-name-verification-modal .semi-button.semi-modal-close {
+  top: 10px;
+  right: 10px;
+  width: 30px;
+  min-width: 30px;
+  height: 30px;
+  min-height: 30px;
+  padding: 0;
+  border-radius: 5px;
+}
+
+.personal-real-name-verification-modal
+  .semi-button.semi-modal-close:focus-visible {
+  outline: 2px solid #2450ff;
+  outline-offset: 2px;
+}
+
 .personal-real-name-verification-modal .semi-modal-body-wrapper {
-  padding: 0 32px 40px;
+  padding: 0 28px 30px;
 }
 
 .personal-real-name-verification-dialog {
   display: grid;
-  min-height: 480px;
   justify-items: center;
   align-content: center;
-  padding: 4px 0 18px;
+  padding: 0 0 12px;
+  gap: 10px;
   text-align: center;
 }
 
 .personal-real-name-qr-frame {
   position: relative;
-  width: 220px;
-  height: 220px;
+  width: 180px;
+  height: 180px;
   overflow: hidden;
   background: #fff;
 }
 
 .personal-real-name-verification-dialog canvas {
   display: block;
-  width: 220px;
-  height: 220px;
+  width: 180px;
+  height: 180px;
   background: #fff;
 }
 
@@ -413,16 +449,16 @@
 
 .personal-real-name-qr-expired-overlay span {
   color: #fff;
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 600;
 }
 
 .personal-real-name-verification-dialog h2 {
-  margin: 20px 0 10px;
+  margin: 16px 0 6px;
   color: var(--color-text-default-hover);
-  font-size: 24px;
+  font-size: 20px;
   font-weight: 600;
-  line-height: 34px;
+  line-height: 28px;
   letter-spacing: 0;
 }
 
@@ -430,23 +466,23 @@
   max-width: 650px;
   margin: 0;
   color: var(--color-text-tertiary);
-  font-size: 15px;
-  line-height: 28px;
+  font-size: 13px;
+  line-height: 22px;
 }
 
 .personal-real-name-dialog-actions {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12px;
-  margin-top: 24px;
+  gap: 10px;
+  margin-top: 18px;
 }
 
 .personal-real-name-dialog-actions .semi-button {
-  width: 220px;
-  height: 56px;
-  border-radius: 6px;
-  font-size: 16px;
+  width: 180px;
+  height: 44px;
+  border-radius: 5px;
+  font-size: 14px;
   font-weight: 600;
 }
 
@@ -470,8 +506,8 @@
 }
 
 .personal-real-name-open-mobile-action.semi-button {
-  min-width: 220px;
-  height: 48px;
+  min-width: 180px;
+  height: 44px;
   border-color: #2450ff;
   background: #2450ff;
 }
@@ -591,44 +627,45 @@ html[data-theme="light"] .personal-real-name-qr-expired-overlay span {
   }
 
   .personal-real-name-verification-modal .semi-modal-content {
-    min-height: calc(100dvh - 24px);
+    min-height: 0;
     border-radius: 10px;
   }
 
   .personal-real-name-verification-modal .semi-modal-header {
-    min-height: 52px;
-    padding: 16px 16px 0;
+    min-height: 44px;
+    padding: 12px 12px 0;
   }
 
   .personal-real-name-verification-modal .semi-modal-body-wrapper {
-    padding: 0 18px 28px;
+    padding: 0 18px 22px;
   }
 
   .personal-real-name-verification-dialog {
-    min-height: calc(100dvh - 112px);
+    min-height: 0;
+    padding-bottom: 4px;
   }
 
   .personal-real-name-verification-dialog h2 {
-    margin-top: 18px;
-    font-size: 21px;
-    line-height: 30px;
+    margin-top: 14px;
+    font-size: 18px;
+    line-height: 26px;
   }
 
   .personal-real-name-verification-dialog > p {
-    font-size: 14px;
-    line-height: 23px;
+    font-size: 13px;
+    line-height: 21px;
   }
 
   .personal-real-name-dialog-actions {
     width: 100%;
-    margin-top: 22px;
+    margin-top: 16px;
   }
 
   .personal-real-name-dialog-actions .semi-button {
     width: 50%;
     min-width: 0;
-    height: 48px;
+    height: 42px;
     padding-inline: 10px;
-    font-size: 14px;
+    font-size: 13px;
   }
 }

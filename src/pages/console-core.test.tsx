@@ -218,6 +218,16 @@ describe('控制台模型接入页面', () => {
     expect(clipboardWriteText).toHaveBeenCalledWith('deepseek-public')
   })
 
+  it('点击模型广场对话按钮时携带当前模型别名', async () => {
+    const user = userEvent.setup()
+    renderConsolePage(<><ConsoleModelsPage /><CurrentLocation /></>, ['/console/models'])
+
+    await waitFor(() => expect(screen.getByText('3 个模型')).toBeInTheDocument())
+    await user.click(screen.getAllByRole('button', { name: '对话' })[1] as HTMLButtonElement)
+
+    expect(screen.getByTestId('current-location')).toHaveTextContent('/console/playground?model=qwen-public')
+  })
+
   it('将活动放在顶部筛选区且不显示数量，并保留模型类型计数和零项禁用', async () => {
     vi.mocked(globalThis.fetch).mockResolvedValue(new Response(JSON.stringify({
       code: 0,
@@ -335,13 +345,27 @@ describe('控制台模型接入页面', () => {
     })
     expect(modelSelect).toHaveAttribute('aria-disabled', 'false')
     expect(document.getElementById('playground-api-key')).toBeNull()
-    expect(screen.getByText('对话记录仅保存在当前浏览器中，刷新页面不会丢失；清理浏览器缓存后将被清除。')).toBeInTheDocument()
+    expect(screen.getByText('对话记录会按账号保存在本地，关闭浏览器后仍可继续查看；清理浏览器缓存后将被清除。')).toBeInTheDocument()
     expect(document.querySelector('.message-list')).toHaveClass('is-centered')
     expect(screen.queryByRole('link', { name: '管理 API Key' })).toBeNull()
     await user.click(modelSelect)
     expect(await screen.findByRole('option', { name: /后端 DeepSeek/ })).toBeInTheDocument()
     expect(screen.getByRole('option', { name: /后端 Qwen/ })).toBeInTheDocument()
     expect(screen.queryByRole('option', { name: /后端 Vision/ })).toBeNull()
+  })
+
+  it('从模型广场跳转后保留 URL 指定的模型', async () => {
+    renderConsolePage(<PlaygroundPage />, ['/console/playground?model=qwen-public'])
+
+    const modelSelect = await waitFor(() => {
+      const element = document.getElementById('playground-model')
+      if (!element) throw new Error('模型选择器尚未渲染')
+      expect(element).toHaveTextContent('后端 Qwen')
+      return element
+    })
+
+    expect(modelSelect).toHaveTextContent('后端 Qwen')
+    expect(screen.getByText(/后端 Qwen · qwen-public · Temperature 0\.7 · Max Tokens 2000/)).toBeInTheDocument()
   })
 
   it('把登录令牌、所选模型和用户输入交给模型请求并展示真实回复', async () => {
@@ -539,6 +563,31 @@ describe('控制台模型接入页面', () => {
     expect(await screen.findByText('重试成功')).toBeInTheDocument()
     expect(screen.queryByText('失败问题')).toBeNull()
     expect(screen.queryByRole('button', { name: '编辑失败消息' })).toBeNull()
+  })
+
+  it('普通用户消息悬停显示时间和编辑入口，编辑后替换原轮次', async () => {
+    const user = userEvent.setup()
+    vi.mocked(streamChatCompletion)
+      .mockResolvedValueOnce({ content: '旧回复', reasoning: '', requestId: 'req-old', inputTokens: 1, outputTokens: 1, finishReason: 'stop', latencyMs: 10 })
+      .mockResolvedValueOnce({ content: '新回复', reasoning: '', requestId: 'req-new', inputTokens: 2, outputTokens: 2, finishReason: 'stop', latencyMs: 12 })
+
+    renderConsolePage(<PlaygroundPage />, ['/console/playground?model=deepseek-chat'])
+    await user.type(await screen.findByLabelText('测试提示词'), '旧问题')
+    await user.click(screen.getByRole('button', { name: '发送' }))
+    expect(await screen.findByText('旧回复')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '编辑消息' }))
+    const editor = await screen.findByLabelText('编辑用户消息')
+    expect(editor).toHaveValue('旧问题')
+    await user.clear(editor)
+    await user.type(editor, '新问题')
+    await user.click(screen.getByRole('button', { name: '发送编辑后的消息' }))
+
+    await waitFor(() => expect(streamChatCompletion).toHaveBeenCalledTimes(2))
+    expect(vi.mocked(streamChatCompletion).mock.calls[1]?.[0].messages).toEqual([{ role: 'user', content: '新问题' }])
+    expect(await screen.findByText('新回复')).toBeInTheDocument()
+    expect(screen.queryByText('旧问题')).toBeNull()
+    expect(screen.queryByText('旧回复')).toBeNull()
   })
 
   it('运行时错误使用接口返回文案并显示顶部提示', async () => {

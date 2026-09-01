@@ -98,8 +98,6 @@ const TRAE_MEMBER_SEAT_SUMMARY = {
   total: 10,
   allOccupied: 4,
   allCapacity: 10,
-  workOccupied: 0,
-  workCapacity: 20,
 } as const;
 
 function toTraeMemberRow(member: EnterpriseMember): TraeMemberRow {
@@ -299,6 +297,14 @@ function findTraeDepartmentNode(
     if (child) return child;
   }
   return undefined;
+}
+
+// 邀请表单只展示真实部门，排除人员管理页用于承载整棵树的企业虚拟根节点。
+function flattenInvitationDepartments(nodes: TraeDepartmentNode[]): Array<{ id: string; name: string }> {
+  return nodes.flatMap((node) => [
+    ...(node.isVirtual ? [] : [{ id: node.id, name: node.name }]),
+    ...flattenInvitationDepartments(node.children ?? []),
+  ]);
 }
 
 function containsTraeDepartmentNode(
@@ -1682,7 +1688,6 @@ function TraeEnterpriseMembersContent({ context }: { context: EnterpriseContext 
           <div className="trae-members-header-stats" aria-label={t("traeEnterprise.members.seats")}>
             <span>{t("traeEnterprise.members.seats")} <b>{TRAE_MEMBER_SEAT_SUMMARY.total}</b></span>
             <span>{t("traeEnterprise.members.occupied")} <b>{TRAE_MEMBER_SEAT_SUMMARY.allOccupied}/{TRAE_MEMBER_SEAT_SUMMARY.allCapacity}</b></span>
-            <span>{t("traeEnterprise.members.workOccupied")} <b>{TRAE_MEMBER_SEAT_SUMMARY.workOccupied}/{TRAE_MEMBER_SEAT_SUMMARY.workCapacity}</b></span>
           </div>
         </div>
         <div className="trae-page-heading-action">
@@ -2026,6 +2031,7 @@ function TraeEnterpriseMembersContent({ context }: { context: EnterpriseContext 
       ) : (
         <TraeEnterpriseInvitations
           context={context}
+          departments={flattenInvitationDepartments(departments)}
           createOpen={invitationCreateOpen}
           onCreateOpenChange={setInvitationCreateOpen}
         />

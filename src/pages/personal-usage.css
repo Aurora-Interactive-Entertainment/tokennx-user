@@ -178,7 +178,7 @@ html[data-theme="light"]
 .personal-usage-cue-table td:nth-child(6) { width: 150px; text-align: right; }
 .personal-usage-cue-table th:nth-child(7),
 .personal-usage-cue-table td:nth-child(7) { width: 130px; text-align: right; }
-.personal-usage-cue-empty { display: grid; min-height: 230px; place-items: center; color: var(--color-text-tertiary); font-size: 13px; }
+.personal-usage-cue-empty { display: grid; min-height: 230px; place-items: center; color: var(--color-text-tertiary); background: var(--color-bg-base-secondary); font-size: 13px; }
 @media (max-width: 560px) { .personal-usage-management-heading { align-items: stretch; flex-direction: column; } .personal-usage-key-select.semi-select { width: 100%; } }
 @media (max-width: 720px) { .personal-usage-board-heading { align-items: stretch; flex-direction: column; } .personal-usage-page .personal-usage-date-picker.semi-datepicker { width: 100%; min-width: 0; } .personal-usage-date-dropdown { width: min(440px, calc(100vw - 16px)); } .personal-usage-date-dropdown .semi-datepicker-quick-control { width: 104px; } .personal-usage-date-dropdown .semi-datepicker-month-grid { min-height: 276px; } .personal-usage-date-dropdown .semi-datepicker-month-grid-left,
   .personal-usage-date-dropdown .semi-datepicker-month-grid-right { flex-basis: 240px; min-height: 276px; } .personal-usage-date-dropdown .semi-datepicker-weekday-item,

@@ -68,29 +68,31 @@ beforeEach(() => {
 })
 
 describe('企业邀请页面', () => {
-  it('未登录时展示邀请信息和登录面板，并保留当前邀请地址', async () => {
+  it('未登录时点击申请加入会打开登录弹窗', async () => {
+    const user = userEvent.setup()
     renderJoin()
 
-    expect(await screen.findByRole('heading', { name: '加入企业' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: '研发空间' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: '加入 研发空间' })).toBeInTheDocument()
+    expect(screen.getByText('邀请人：空间管理员')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '申请加入' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '申请加入' }))
+    expect(await screen.findByRole('dialog', { name: '登录 Token NX' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: '手机号登录' })).toBeInTheDocument()
-    expect(screen.queryByLabelText('邮箱')).not.toBeInTheDocument()
-    expect(screen.getByText('登录后会保留当前邀请 Token，无需重新打开邀请链接。')).toBeInTheDocument()
     expect(getInvitationPreviewMock).toHaveBeenCalledWith('join-token/abc', expect.objectContaining({ accessToken: undefined, signal: expect.any(AbortSignal) }))
     expect(submitInvitationJoinMock).not.toHaveBeenCalled()
   })
 
-  it('登录后展示申请表单并提交当前邀请 Token', async () => {
+  it('登录后点击申请加入会直接提交当前邀请 Token', async () => {
     const user = userEvent.setup()
     renderJoin(true)
 
-    await screen.findByRole('heading', { name: '申请加入企业' })
-    await user.type(screen.getByLabelText('申请说明（可选）'), '申请加入研发空间')
-    await user.click(screen.getByRole('button', { name: '提交加入申请' }))
+    await screen.findByRole('heading', { name: '加入 研发空间' })
+    await user.click(screen.getByRole('button', { name: '申请加入' }))
 
-    await waitFor(() => expect(submitInvitationJoinMock).toHaveBeenCalledWith({ token: 'join-token/abc', request_message: '申请加入研发空间' }, { accessToken: 'join-access-token' }))
-    expect(await screen.findByText('加入申请已提交')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: '提交加入申请' })).not.toBeInTheDocument()
+    await waitFor(() => expect(submitInvitationJoinMock).toHaveBeenCalledWith({ token: 'join-token/abc', request_message: '' }, { accessToken: 'join-access-token' }))
+    expect(await screen.findByRole('heading', { name: '已申请' })).toBeInTheDocument()
+    expect(screen.getByText('已提交加入研发空间的申请，请等待企业管理员审核。审批结果将以邮件形式通知，请注意查收。')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '申请加入' })).not.toBeInTheDocument()
   })
 
   it('已过期邀请显示失效原因且不提供申请按钮', async () => {
@@ -99,6 +101,6 @@ describe('企业邀请页面', () => {
 
     expect(await screen.findByText('已过期')).toBeInTheDocument()
     expect(screen.getByText('这条邀请链接已超过有效期，无法继续提交加入申请。')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: '提交加入申请' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '申请加入' })).not.toBeInTheDocument()
   })
 })

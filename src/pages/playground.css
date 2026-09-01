@@ -409,6 +409,98 @@
   max-width: min(72%, 620px);
 }
 
+/* 中文：用户消息默认只保留气泡，辅助信息在悬停或键盘聚焦时出现。 */
+.message.user .message-bubble {
+  width: fit-content;
+  margin-inline-start: auto;
+  transition: background-color 120ms ease;
+}
+
+.user-message-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  /* 中文：操作区始终占位，hover 只切换显隐，避免消息列表发生位移。 */
+  min-height: 28px;
+  max-height: 28px;
+  margin-top: 4px;
+  overflow: hidden;
+  color: var(--color-text-tertiary);
+  font-size: 11px;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 120ms ease, visibility 0s linear 120ms;
+}
+
+.message.user:hover .user-message-footer,
+.message.user:focus-within .user-message-footer {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transition-delay: 0s;
+}
+
+.user-message-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.message.user.is-editing .message-body {
+  width: min(100%, 920px);
+  max-width: 100%;
+}
+
+.user-message-editor {
+  width: 100%;
+  overflow: hidden;
+  border: 1px solid var(--color-border-neutral-l2);
+  border-radius: 12px;
+  background: var(--color-bg-base-default);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 6%);
+}
+
+.message-editor-input.semi-input-wrapper,
+.message-editor-input {
+  width: 100%;
+  min-height: 108px;
+  border: 0 !important;
+  border-radius: 0;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.message-editor-input textarea {
+  min-height: 108px;
+  padding: 14px 16px;
+  border: 0;
+  color: var(--color-text-default);
+  background: transparent;
+  resize: vertical;
+}
+
+.user-message-editor-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 8px 8px 14px;
+  border-top: 1px solid var(--color-border-neutral-l1);
+}
+
+.user-message-editor-hint {
+  color: var(--color-text-tertiary);
+  font-size: 11px;
+}
+
+.user-message-editor-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .message-avatar {
   width: 28px;
   height: 28px;
@@ -519,6 +611,11 @@
   margin-top: 0;
 }
 
+/* 中文：助手回复的操作入口靠左显示，元数据紧随其后。 */
+.message-footer .message-actions {
+  order: -1;
+}
+
 .message-actions {
   gap: 2px;
   margin-top: 7px;
@@ -535,8 +632,24 @@
   transition: background-color 120ms ease, color 120ms ease;
 }
 
+/* 中文：Semi Button 负责交互状态，尺寸在回复元数据变化时保持固定。 */
+.message-icon-action.semi-button {
+  display: inline-flex;
+  width: 28px;
+  min-width: 28px;
+  height: 28px;
+  min-height: 28px;
+  padding: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+}
+
 .message-icon-action .semi-icon {
-  color: #666b73;
+  width: 16px;
+  height: 16px;
+  font-size: 16px;
+  color: currentColor;
 }
 
 .message-icon-action.is-disabled {

@@ -1,12 +1,12 @@
-import '@/i18n'
-import { act, render, screen, waitFor } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
-import { MemoryRouter, useLocation } from 'react-router'
-import { Provider } from 'react-redux'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { clearAuthTokens, saveAuthTokens } from '@/auth/token-storage'
-import type { AuthResult } from '@/api/auth'
-import { ApiError } from '@/api/http'
+import "@/i18n";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { MemoryRouter, useLocation } from "react-router";
+import { Provider } from "react-redux";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { clearAuthTokens, saveAuthTokens } from "@/auth/token-storage";
+import type { AuthResult } from "@/api/auth";
+import { ApiError } from "@/api/http";
 import {
   confirmEnterpriseFaceVerification,
   getEnterpriseCertification,
@@ -15,172 +15,461 @@ import {
   submitEnterpriseCertification,
   uploadEnterpriseCertificationMaterial,
   type EnterpriseCertification,
-} from '@/api/enterprise-certification'
-import { getProfileEnterprises, type EnterpriseMembership } from '@/api/profile'
-import { AppStoreProvider, useAppStore } from '@/data/app-state'
-import { createAppStore } from '@/store'
-import i18n from '@/i18n'
-import { EnterpriseCreatePage } from './console-account'
+} from "@/api/enterprise-certification";
+import {
+  getProfileEnterprises,
+  type EnterpriseMembership,
+} from "@/api/profile";
+import { AppStoreProvider, useAppStore } from "@/data/app-state";
+import { createAppStore } from "@/store";
+import i18n from "@/i18n";
+import { EnterpriseCreatePage } from "./console-account";
 
-vi.mock('qrcode', () => ({ default: { toCanvas: vi.fn().mockResolvedValue(undefined) } }))
-vi.mock('@/api/enterprise-certification', async () => {
-  const actual = await vi.importActual<typeof import('@/api/enterprise-certification')>('@/api/enterprise-certification')
-  return { ...actual, getEnterpriseCertification: vi.fn(), uploadEnterpriseCertificationMaterial: vi.fn(), submitEnterpriseCertification: vi.fn(), startEnterpriseFaceVerification: vi.fn(), confirmEnterpriseFaceVerification: vi.fn() }
-})
-vi.mock('@/api/profile', async () => {
-  const actual = await vi.importActual<typeof import('@/api/profile')>('@/api/profile')
-  return { ...actual, getProfileEnterprises: vi.fn() }
-})
+vi.mock("qrcode", () => ({
+  default: { toCanvas: vi.fn().mockResolvedValue(undefined) },
+}));
+vi.mock("@/api/enterprise-certification", async () => {
+  const actual = await vi.importActual<
+    typeof import("@/api/enterprise-certification")
+  >("@/api/enterprise-certification");
+  return {
+    ...actual,
+    getEnterpriseCertification: vi.fn(),
+    uploadEnterpriseCertificationMaterial: vi.fn(),
+    submitEnterpriseCertification: vi.fn(),
+    startEnterpriseFaceVerification: vi.fn(),
+    confirmEnterpriseFaceVerification: vi.fn(),
+  };
+});
+vi.mock("@/api/profile", async () => {
+  const actual =
+    await vi.importActual<typeof import("@/api/profile")>("@/api/profile");
+  return { ...actual, getProfileEnterprises: vi.fn() };
+});
 
-const getCertificationMock = vi.mocked(getEnterpriseCertification)
-const uploadMaterialMock = vi.mocked(uploadEnterpriseCertificationMaterial)
-const submitCertificationMock = vi.mocked(submitEnterpriseCertification)
-const startFaceMock = vi.mocked(startEnterpriseFaceVerification)
-const confirmFaceMock = vi.mocked(confirmEnterpriseFaceVerification)
-const getProfileEnterprisesMock = vi.mocked(getProfileEnterprises)
+const getCertificationMock = vi.mocked(getEnterpriseCertification);
+const uploadMaterialMock = vi.mocked(uploadEnterpriseCertificationMaterial);
+const submitCertificationMock = vi.mocked(submitEnterpriseCertification);
+const startFaceMock = vi.mocked(startEnterpriseFaceVerification);
+const confirmFaceMock = vi.mocked(confirmEnterpriseFaceVerification);
+const getProfileEnterprisesMock = vi.mocked(getProfileEnterprises);
 
 const AUTH_RESULT: AuthResult = {
-  status: 'succeeded', binding_required: false, access_token: 'enterprise-token', refresh_token: 'enterprise-refresh', refresh_expires_at: Date.UTC(2099, 0, 1),
-  user: { id: '01K0USERPUBLICIDEXAMPLE01', display_name: '测试用户', avatar_url: '', locale: 'zh-CN', timezone: 'Asia/Shanghai', status: 'active' },
-}
-const UNSUBMITTED: EnterpriseCertification = { status: 'unsubmitted', current_stage: 'not_started' }
-const COMPLETED: EnterpriseCertification = { status: 'approved', current_stage: 'completed', enterprise_id: 'ent_test', enterprise_name: '测试企业', credit_code_masked: '9133**********AB2C', legal_representative_masked: '张*' }
-const FACE_REQUIRED: EnterpriseCertification = { status: 'checking', current_stage: 'face_verification_required', enterprise_name: '测试企业', credit_code_masked: '9133**********AB2C', applicant_type: 'legal_representative' }
-const MEMBERSHIP: EnterpriseMembership = { id: 'mem_test', enterprise_id: 'ent_test', enterprise_name: '测试企业', enterprise_code: 'ent_test', member_status: 'active', join_source: 'certification', roles: ['owner'], owner: true, joined_at: Date.parse('2026-07-29T00:00:00Z'), exited_at: null, version: 1 }
+  status: "succeeded",
+  binding_required: false,
+  access_token: "enterprise-token",
+  refresh_token: "enterprise-refresh",
+  refresh_expires_at: Date.UTC(2099, 0, 1),
+  user: {
+    id: "01K0USERPUBLICIDEXAMPLE01",
+    display_name: "测试用户",
+    avatar_url: "",
+    locale: "zh-CN",
+    timezone: "Asia/Shanghai",
+    status: "active",
+  },
+};
+const UNSUBMITTED: EnterpriseCertification = {
+  status: "unsubmitted",
+  current_stage: "not_started",
+};
+const COMPLETED: EnterpriseCertification = {
+  status: "approved",
+  current_stage: "completed",
+  applicant_type: "legal_representative",
+  enterprise_id: "ent_test",
+  enterprise_name: "测试企业",
+  credit_code_masked: "9133**********AB2C",
+  legal_representative_masked: "张*",
+};
+const FACE_REQUIRED: EnterpriseCertification = {
+  id: "cert_test",
+  status: "checking",
+  current_stage: "face_verification_required",
+  enterprise_name: "测试企业",
+  credit_code_masked: "9133**********AB2C",
+  applicant_type: "legal_representative",
+};
+const FACE_ACTIVE: EnterpriseCertification = {
+  ...FACE_REQUIRED,
+  current_stage: "face_verification",
+  face_url: "https://example.com/face",
+};
+const MANUAL_REVIEW: EnterpriseCertification = {
+  id: "cert_agent",
+  status: "submitted",
+  current_stage: "manual_review",
+  applicant_type: "authorized_agent",
+  enterprise_name: "测试企业",
+  credit_code_masked: "9133**********AB2C",
+  authorized_agent_name_masked: "王*",
+};
+const MEMBERSHIP: EnterpriseMembership = {
+  id: "mem_test",
+  enterprise_id: "ent_test",
+  enterprise_name: "测试企业",
+  enterprise_code: "ent_test",
+  member_status: "active",
+  join_source: "certification",
+  roles: ["owner"],
+  owner: true,
+  joined_at: Date.parse("2026-07-29T00:00:00Z"),
+  exited_at: null,
+  version: 1,
+};
 
-function LocationProbe() { return <output data-testid="location">{useLocation().pathname}</output> }
-function WorkspaceProbe() { const store = useAppStore(); return <output data-testid="workspace-names">{store.workspaces.map((workspace) => workspace.name).join('|')}</output> }
-function renderPage(initialEntry = '/console/enterprise-create') {
-  const appStore = createAppStore()
-  appStore.dispatch({ type: 'auth/loginWithEmail/fulfilled', payload: AUTH_RESULT.user })
-  return render(<MemoryRouter initialEntries={[initialEntry]}><Provider store={appStore}><AppStoreProvider><EnterpriseCreatePage /><LocationProbe /><WorkspaceProbe /></AppStoreProvider></Provider></MemoryRouter>)
+function LocationProbe() {
+  return <output data-testid="location">{useLocation().pathname}</output>;
+}
+function WorkspaceProbe() {
+  const store = useAppStore();
+  return (
+    <output data-testid="workspace-names">
+      {store.workspaces.map((workspace) => workspace.name).join("|")}
+    </output>
+  );
+}
+function renderPage(initialEntry = "/console/enterprise-create") {
+  const appStore = createAppStore();
+  appStore.dispatch({
+    type: "auth/loginWithEmail/fulfilled",
+    payload: AUTH_RESULT.user,
+  });
+  return render(
+    <MemoryRouter initialEntries={[initialEntry]}>
+      <Provider store={appStore}>
+        <AppStoreProvider>
+          <EnterpriseCreatePage />
+          <LocationProbe />
+          <WorkspaceProbe />
+        </AppStoreProvider>
+      </Provider>
+    </MemoryRouter>,
+  );
 }
 
-describe('enterprise verification page', () => {
+async function uploadLicense(
+  container: HTMLElement,
+  user: ReturnType<typeof userEvent.setup>,
+): Promise<void> {
+  const input = container.querySelector<HTMLInputElement>(
+    "#enterprise-license",
+  );
+  expect(input).not.toBeNull();
+  await user.upload(
+    input as HTMLInputElement,
+    new File(["png"], "license.png", { type: "image/png" }),
+  );
+}
+
+async function fillBaseFields(
+  user: ReturnType<typeof userEvent.setup>,
+): Promise<void> {
+  const name = screen.getByRole("textbox", { name: /企业名称/ });
+  if (!(name as HTMLInputElement).value) await user.type(name, "测试企业");
+  const code = screen.getByRole("textbox", { name: /统一社会信用代码/ });
+  if (!(code as HTMLInputElement).value)
+    await user.type(code, "91330100MA1FL0AB2C");
+  const legalName = screen.getByRole("textbox", {
+    name: /^法定代表人$/,
+  });
+  if (!(legalName as HTMLInputElement).value)
+    await user.type(legalName, "张三");
+  await user.type(
+    screen.getByRole("textbox", { name: /法定代表人身份证件号/ }),
+    "110101199001011234",
+  );
+  await user.type(screen.getByRole("textbox", { name: /企业联系人/ }), "李四");
+  await user.type(
+    screen.getByRole("textbox", { name: /联系电话/ }),
+    "0571-12345678",
+  );
+}
+
+describe("enterprise verification page", () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    clearAuthTokens()
-    window.localStorage.clear()
-    saveAuthTokens(AUTH_RESULT)
-    getCertificationMock.mockResolvedValue(UNSUBMITTED)
-    getProfileEnterprisesMock.mockResolvedValue([])
-    vi.stubGlobal('URL', { ...URL, createObjectURL: vi.fn(() => 'blob:license'), revokeObjectURL: vi.fn() })
-  })
+    vi.clearAllMocks();
+    clearAuthTokens();
+    window.localStorage.clear();
+    saveAuthTokens(AUTH_RESULT);
+    getCertificationMock.mockResolvedValue(UNSUBMITTED);
+    getProfileEnterprisesMock.mockResolvedValue([]);
+    startFaceMock.mockResolvedValue(FACE_ACTIVE);
+    confirmFaceMock.mockResolvedValue(FACE_ACTIVE);
+    vi.stubGlobal("URL", {
+      ...URL,
+      createObjectURL: vi.fn(() => "blob:material"),
+      revokeObjectURL: vi.fn(),
+    });
+  });
 
-  it('always queries status and shows the identity choices for a new application', async () => {
-    renderPage(NEW_ENTERPRISE_CREATE_PATH)
-    expect(await screen.findByRole('heading', { name: '你将以什么身份办理？' })).toBeInTheDocument()
-    expect(getCertificationMock).toHaveBeenCalledWith('enterprise-token')
-    expect(screen.getByRole('button', { name: /我是企业经办人/ })).toBeDisabled()
-  })
+  it("shows the reference-style form without other-organization logic", async () => {
+    const user = userEvent.setup();
+    renderPage(NEW_ENTERPRISE_CREATE_PATH);
+    expect(
+      await screen.findByRole("heading", { name: "基本信息" }),
+    ).toBeInTheDocument();
+    expect(getCertificationMock).toHaveBeenCalledWith("enterprise-token");
+    expect(screen.getByRole("radio", { name: "企业" })).toBeChecked();
+    expect(
+      screen.queryByRole("radio", { name: "其他组织" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "法定代表人" })).toBeChecked();
+    expect(screen.getByRole("radio", { name: "代办人" })).not.toBeChecked();
+    expect(
+      within(screen.getByRole("list", { name: "企业认证步骤" })).getAllByRole(
+        "listitem",
+      ),
+    ).toHaveLength(3);
 
-  it('shows the completed result immediately and refreshes enterprise workspaces', async () => {
-    getCertificationMock.mockResolvedValue(COMPLETED)
-    getProfileEnterprisesMock.mockResolvedValue([MEMBERSHIP])
-    renderPage()
-    expect(await screen.findByRole('heading', { name: '企业认证已完成' })).toBeInTheDocument()
-    expect(screen.queryByRole('heading', { name: '你将以什么身份办理？' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('list', { name: '企业认证步骤' })).not.toBeInTheDocument()
-    await waitFor(() => expect(getProfileEnterprisesMock).toHaveBeenCalledWith('enterprise-token'))
-    expect(screen.getByTestId('workspace-names')).toHaveTextContent('测试企业')
-  })
+    await user.click(screen.getByRole("button", { name: "提交认证" }));
+    expect(await screen.findByText("营业执照必填")).toBeInTheDocument();
+    expect(screen.getByText("法定代表人必填")).toBeInTheDocument();
+  });
 
-  it('uploads a license, fills OCR fields, and submits the complete request', async () => {
-    const user = userEvent.setup()
-    let resolveUpload: ((result: Awaited<ReturnType<typeof uploadEnterpriseCertificationMaterial>>) => void) | undefined
-    uploadMaterialMock.mockImplementation(() => new Promise((resolve) => { resolveUpload = resolve }))
-    submitCertificationMock.mockResolvedValue(FACE_REQUIRED)
-    const view = renderPage()
-    await user.click(await screen.findByRole('button', { name: /我是法定代表人/ }))
-    const input = view.container.querySelector<HTMLInputElement>('input[type="file"]')
-    expect(input).not.toBeNull()
-    await user.upload(input as HTMLInputElement, new File(['png'], 'license.png', { type: 'image/png' }))
-    expect(await screen.findByText('正在识别营业执照')).toBeInTheDocument()
-    expect(screen.queryByRole('textbox', { name: /企业名称/ })).not.toBeInTheDocument()
-    await act(async () => { resolveUpload?.({ resource_url: '/material/license', file_name: 'license.png', mime_type: 'image/png', size_bytes: 3, recognition: { enterprise_name: '测试企业', credit_code: '91330100MA1FL0AB2C', legal_representative: '张三' } }) })
-    expect(await screen.findByRole('textbox', { name: /企业名称/ })).toHaveValue('测试企业')
-    await user.type(screen.getByRole('textbox', { name: /法定代表人身份证号/ }), '110101199001011234')
-    await user.type(screen.getByRole('textbox', { name: /企业联系人/ }), '李四')
-    await user.type(screen.getByRole('textbox', { name: /联系电话/ }), '0571-12345678')
-    await user.click(screen.getByRole('checkbox', { name: /我确认以上企业信息/ }))
-    await user.click(screen.getByRole('button', { name: '确认并继续' }))
-    await waitFor(() => expect(submitCertificationMock).toHaveBeenCalledWith('enterprise-token', {
-      enterprise_name: '测试企业', credit_code: '91330100MA1FL0AB2C', legal_representative: '张三', legal_representative_id: '110101199001011234', contact_name: '李四', contact_phone: '0571-12345678', applicant_type: 'legal_representative', license_url: '/material/license', consent: true,
-    }))
-    expect(await screen.findByRole('heading', { name: '完成身份核验' })).toBeInTheDocument()
-  })
+  it("shows the completed result and refreshes enterprise workspaces", async () => {
+    getCertificationMock.mockResolvedValue(COMPLETED);
+    getProfileEnterprisesMock.mockResolvedValue([MEMBERSHIP]);
+    renderPage();
+    expect(
+      await screen.findByRole("heading", { name: "企业认证已完成" }),
+    ).toBeInTheDocument();
+    expect(
+      within(screen.getByRole("list", { name: "企业认证步骤" })).getAllByRole(
+        "listitem",
+      ),
+    ).toHaveLength(3);
+    await waitFor(() =>
+      expect(getProfileEnterprisesMock).toHaveBeenCalledWith(
+        "enterprise-token",
+      ),
+    );
+    expect(screen.getByTestId("workspace-names")).toHaveTextContent("测试企业");
+  });
 
-  it('requires face consent, then starts and confirms the Alipay verification', async () => {
-    const user = userEvent.setup()
-    getCertificationMock.mockResolvedValue(FACE_REQUIRED)
-    startFaceMock.mockResolvedValue({ ...FACE_REQUIRED, current_stage: 'face_verification', face_url: 'https://example.com/face' })
-    confirmFaceMock.mockResolvedValue(COMPLETED)
-    renderPage()
-    await user.click(await screen.findByRole('button', { name: '获取人脸识别二维码' }))
-    expect(await screen.findByText('需要确认授权')).toBeInTheDocument()
-    await user.click(screen.getByRole('checkbox', { name: /我确认由法定代表人本人完成核验/ }))
-    await user.click(screen.getByRole('button', { name: '获取人脸识别二维码' }))
-    expect(await screen.findByRole('dialog')).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: '我已认证完成' }))
-    expect(await screen.findByRole('heading', { name: '企业认证已完成' })).toBeInTheDocument()
-    expect(confirmFaceMock).toHaveBeenCalledWith('enterprise-token')
-  })
+  it("submits the legal representative form and opens face verification automatically", async () => {
+    const user = userEvent.setup();
+    let resolveUpload:
+      | ((
+          result: Awaited<
+            ReturnType<typeof uploadEnterpriseCertificationMaterial>
+          >,
+        ) => void)
+      | undefined;
+    uploadMaterialMock.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveUpload = resolve;
+        }),
+    );
+    submitCertificationMock.mockResolvedValue(FACE_REQUIRED);
+    const view = renderPage();
+    await screen.findByRole("heading", { name: "基本信息" });
+    await uploadLicense(view.container, user);
+    expect(await screen.findByText("正在识别营业执照")).toBeInTheDocument();
+    await act(async () => {
+      resolveUpload?.({
+        resource_url: "/material/license",
+        file_name: "license.png",
+        mime_type: "image/png",
+        size_bytes: 3,
+        recognition: {
+          enterprise_name: "测试企业",
+          credit_code: "91330100MA1FL0AB2C",
+          legal_representative: "张三",
+        },
+      });
+    });
+    await fillBaseFields(user);
+    await user.click(screen.getByRole("checkbox", { name: /我已阅读并同意/ }));
+    await user.click(screen.getByRole("button", { name: "提交认证" }));
+    await waitFor(() =>
+      expect(submitCertificationMock).toHaveBeenCalledWith("enterprise-token", {
+        enterprise_name: "测试企业",
+        credit_code: "91330100MA1FL0AB2C",
+        legal_representative: "张三",
+        legal_representative_id: "110101199001011234",
+        contact_name: "李四",
+        contact_phone: "0571-12345678",
+        applicant_type: "legal_representative",
+        license_url: "/material/license",
+        consent: true,
+      }),
+    );
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "基本信息" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "法人扫码核验" }),
+    ).not.toBeInTheDocument();
+    expect(startFaceMock).toHaveBeenCalledTimes(1);
+  });
 
-  it('shows a pending hint when manual confirmation has no face result yet', async () => {
-    const user = userEvent.setup()
-    getCertificationMock.mockResolvedValue(FACE_REQUIRED)
-    startFaceMock.mockResolvedValue({ ...FACE_REQUIRED, current_stage: 'face_verification', face_url: 'https://example.com/face' })
-    confirmFaceMock.mockResolvedValue({ ...FACE_REQUIRED, current_stage: 'face_verification', face_url: 'https://example.com/face' })
-    renderPage()
+  it("submits agent materials and goes directly to the two-step manual review page", async () => {
+    const user = userEvent.setup();
+    uploadMaterialMock.mockImplementation((_token, file, materialType) =>
+      Promise.resolve(
+        materialType === "authorization_letter"
+          ? {
+              resource_url: "/material/authorization",
+              file_name: file.name,
+              mime_type: file.type,
+              size_bytes: file.size,
+            }
+          : {
+              resource_url: "/material/license",
+              file_name: file.name,
+              mime_type: file.type,
+              size_bytes: file.size,
+              recognition: {
+                enterprise_name: "测试企业",
+                credit_code: "91330100MA1FL0AB2C",
+                legal_representative: "张三",
+              },
+            },
+      ),
+    );
+    submitCertificationMock.mockResolvedValue(MANUAL_REVIEW);
+    const view = renderPage();
+    await user.click(await screen.findByRole("radio", { name: "代办人" }));
+    expect(
+      within(screen.getByRole("list", { name: "企业认证步骤" })).getAllByRole(
+        "listitem",
+      ),
+    ).toHaveLength(2);
+    await uploadLicense(view.container, user);
+    const authorizationInput = view.container.querySelector<HTMLInputElement>(
+      "#enterprise-authorization",
+    );
+    expect(authorizationInput).not.toBeNull();
+    await user.upload(
+      authorizationInput as HTMLInputElement,
+      new File(["pdf"], "authorization.pdf", { type: "application/pdf" }),
+    );
+    await fillBaseFields(user);
+    await user.type(
+      screen.getByRole("textbox", { name: /被授权经办人姓名/ }),
+      "王五",
+    );
+    await user.type(
+      screen.getByRole("textbox", { name: /被授权经办人身份证号/ }),
+      "110101199001010015",
+    );
+    await user.click(screen.getByRole("checkbox", { name: /我已阅读并同意/ }));
+    await user.click(screen.getByRole("button", { name: "提交认证" }));
+    await waitFor(() =>
+      expect(submitCertificationMock).toHaveBeenCalledWith(
+        "enterprise-token",
+        expect.objectContaining({
+          applicant_type: "authorized_agent",
+          authorized_agent_name: "王五",
+          authorized_agent_id: "110101199001010015",
+          authorization_url: "/material/authorization",
+        }),
+      ),
+    );
+    expect(
+      await screen.findByRole("heading", { name: "企业资料审核中" }),
+    ).toBeInTheDocument();
+    expect(startFaceMock).not.toHaveBeenCalled();
+    expect(confirmFaceMock).not.toHaveBeenCalled();
+  });
 
-    await user.click(await screen.findByRole('checkbox', { name: new RegExp(i18n.t('console.enterpriseCreate.faceConsent').slice(0, 8)) }))
-    await user.click(screen.getByRole('button', { name: i18n.t('console.enterpriseCreate.getFaceQr') }))
-    await user.click(await screen.findByRole('button', { name: i18n.t('console.enterpriseCreate.faceCompleted') }))
+  it("restores an agent application directly into manual review", async () => {
+    getCertificationMock.mockResolvedValue(MANUAL_REVIEW);
+    renderPage();
+    expect(
+      await screen.findByRole("heading", { name: "企业资料审核中" }),
+    ).toBeInTheDocument();
+    expect(
+      within(screen.getByRole("list", { name: "企业认证步骤" })).getAllByRole(
+        "listitem",
+      ),
+    ).toHaveLength(2);
+    expect(startFaceMock).not.toHaveBeenCalled();
+  });
 
-    expect(await screen.findByText(i18n.t('console.enterpriseCreate.faceConfirmPendingTitle'))).toBeInTheDocument()
-    expect(screen.getByText(i18n.t('console.enterpriseCreate.faceConfirmPendingMessage'))).toBeInTheDocument()
-    expect(screen.getByRole('dialog')).toBeInTheDocument()
-  })
+  it("keeps the face dialog open when confirmation is still pending", async () => {
+    const user = userEvent.setup();
+    getCertificationMock.mockResolvedValue(FACE_REQUIRED);
+    confirmFaceMock.mockResolvedValue(FACE_ACTIVE);
+    renderPage();
+    // 中文：法人进入核验阶段后会自动发起刷脸并打开二维码弹窗。
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    expect(startFaceMock).toHaveBeenCalledTimes(1);
+    await user.click(
+      screen.getByRole("button", {
+        name: i18n.t("console.enterpriseCreate.faceCompleted"),
+      }),
+    );
+    expect(
+      await screen.findByText(
+        i18n.t("console.enterpriseCreate.faceConfirmPendingTitle"),
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+  });
 
-  it('keeps the face dialog open and shows the API message when confirmation fails', async () => {
-    const user = userEvent.setup()
-    getCertificationMock.mockResolvedValue(FACE_REQUIRED)
-    startFaceMock.mockResolvedValue({ ...FACE_REQUIRED, current_stage: 'face_verification', face_url: 'https://example.com/face' })
-    confirmFaceMock.mockRejectedValue(new ApiError('请求参数无效', 400, 100001, 'request-face-confirm'))
-    renderPage()
+  it("returns to the information step when the face dialog is closed", async () => {
+    const user = userEvent.setup();
+    getCertificationMock.mockResolvedValue(FACE_ACTIVE);
+    renderPage();
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    expect(startFaceMock).not.toHaveBeenCalled();
+    expect(
+      screen.getByRole("button", {
+        name: i18n.t("console.enterpriseCreate.closeFace"),
+      }),
+    ).toHaveClass("semi-button-outline");
+    expect(
+      screen.getByRole("button", {
+        name: i18n.t("console.enterpriseCreate.faceCompleted"),
+      }),
+    ).toHaveClass("semi-button-solid");
+    await user.click(
+      screen.getByRole("button", {
+        name: i18n.t("console.enterpriseCreate.closeFace"),
+      }),
+    );
+    expect(
+      await screen.findByRole("heading", { name: "基本信息" }),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole("radio", { name: "代办人" }));
+    expect(screen.getByRole("radio", { name: "代办人" })).toBeChecked();
+    expect(
+      screen.getByRole("heading", { name: "基本信息" }),
+    ).toBeInTheDocument();
+  });
 
-    await user.click(await screen.findByRole('checkbox', { name: new RegExp(i18n.t('console.enterpriseCreate.faceConsent').slice(0, 8)) }))
-    await user.click(screen.getByRole('button', { name: i18n.t('console.enterpriseCreate.getFaceQr') }))
-    const dialog = await screen.findByRole('dialog')
-    await user.click(screen.getByRole('button', { name: i18n.t('console.enterpriseCreate.faceCompleted') }))
+  it("shows the API message when face confirmation fails", async () => {
+    const user = userEvent.setup();
+    getCertificationMock.mockResolvedValue(FACE_REQUIRED);
+    confirmFaceMock.mockRejectedValue(
+      new ApiError("请求参数无效", 400, 100001, "request-face-confirm"),
+    );
+    renderPage();
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    expect(startFaceMock).toHaveBeenCalledTimes(1);
+    await user.click(
+      screen.getByRole("button", {
+        name: i18n.t("console.enterpriseCreate.faceCompleted"),
+      }),
+    );
+    expect(await screen.findByText("请求参数无效")).toBeInTheDocument();
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+  });
 
-    expect(await screen.findByText(i18n.t('console.enterpriseCreate.faceConfirmFailedTitle'))).toBeInTheDocument()
-    expect(screen.getByText('请求参数无效')).toBeInTheDocument()
-    expect(dialog).toBeInTheDocument()
-    await waitFor(() => expect(confirmFaceMock.mock.calls.length).toBeGreaterThan(1), { timeout: 4_500 })
-    expect(screen.getByText('请求参数无效')).toBeInTheDocument()
-  })
-
-  it('keeps background confirmation errors silent and continues polling', async () => {
-    const user = userEvent.setup()
-    getCertificationMock.mockResolvedValue(FACE_REQUIRED)
-    startFaceMock.mockResolvedValue({ ...FACE_REQUIRED, current_stage: 'face_verification', face_url: 'https://example.com/face' })
-    confirmFaceMock.mockRejectedValue(new ApiError('尚未完成认证', 409, 100001, 'request-face-poll'))
-    renderPage()
-
-    await user.click(await screen.findByRole('checkbox', { name: new RegExp(i18n.t('console.enterpriseCreate.faceConsent').slice(0, 8)) }))
-    await user.click(screen.getByRole('button', { name: i18n.t('console.enterpriseCreate.getFaceQr') }))
-    expect(await screen.findByRole('dialog')).toBeInTheDocument()
-
-    await waitFor(() => expect(confirmFaceMock.mock.calls.length).toBeGreaterThan(1), { timeout: 7_500 })
-    expect(screen.queryByText(i18n.t('console.enterpriseCreate.faceConfirmFailedTitle'))).not.toBeInTheDocument()
-    expect(screen.queryByText('尚未完成认证')).not.toBeInTheDocument()
-  }, 9_000)
-
-  it('invalidates an expired session and returns to the home page', async () => {
-    getCertificationMock.mockRejectedValue(new ApiError('expired', 401, 110001, 'request-2'))
-    renderPage()
-    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/'))
-    expect(window.sessionStorage.getItem('token-nx:user-front:refresh')).toBeNull()
-  })
-})
+  it("invalidates an expired session and returns to the home page", async () => {
+    getCertificationMock.mockRejectedValue(
+      new ApiError("expired", 401, 110001, "request-2"),
+    );
+    renderPage();
+    await waitFor(() =>
+      expect(screen.getByTestId("location")).toHaveTextContent("/"),
+    );
+    expect(
+      window.sessionStorage.getItem("token-nx:user-front:refresh"),
+    ).toBeNull();
+  });
+});

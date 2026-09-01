@@ -7,7 +7,7 @@ import { isAuthenticationFailure } from '@/api/http'
 import { useAppStore } from '@/data/app-state'
 import { invalidateAuth } from '@/store/auth-slice'
 import { useAppDispatch } from '@/store/hooks'
-import { billingContextForWorkspace, PaymentReturnNotice, RechargeTab, type ResourceState } from './billing'
+import { billingContextForWorkspace, billingContextKey, PaymentReturnNotice, RechargeTab, type ResourceState } from './billing'
 
 export function RechargePage() {
   const { t } = useTranslation()
@@ -50,7 +50,7 @@ export function RechargePage() {
     <div className="page-stack billing-console-page recharge-console-page">
       <PageTitle title={t('console.nav.recharge')} />
       <PaymentReturnNotice state={paymentReturnState} onRetry={() => setPaymentReturnRetryToken((value) => value + 1)} />
-      <RechargeTab context={context} onOrderUpdated={() => undefined} onAuthFailure={handleAuthFailure} />
+      <RechargeTab key={billingContextKey(context)} context={context} onOrderUpdated={() => undefined} onAuthFailure={handleAuthFailure} />
     </div>
   )
 }

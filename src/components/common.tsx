@@ -884,66 +884,81 @@ export function ModelCard({
 
   return (
     <article className={`model-card${compact ? " model-card--compact" : ""}`}>
-      <Button
-        className="model-card-copy"
-        theme="borderless"
-        icon={<IconCopyStroked />}
-        aria-label={t("console.models.modelAlias", { name: model.name })}
-        title={t("console.common.copyAlias")}
-        onClick={copyAlias}
-        disabled={!publicAlias}
-      />
-      {onSelect ? (
-        <button
-          type="button"
-          className="model-card-link model-card-link--button"
-          aria-label={`${t("console.common.viewDetails")}: ${model.name}`}
-          onClick={() => onSelect(model)}
-        >
-          {cardBody}
-        </button>
-      ) : (
-        <Link
-          className={`model-card-link${routeKey ? "" : " model-card-link--disabled"}`}
-          to={
-            routeKey
-              ? `/console/models/${encodeURIComponent(routeKey)}`
-              : "/console/models"
-          }
-          aria-disabled={!routeKey}
-          onClick={(event) => {
-            if (!routeKey) event.preventDefault();
-          }}
-          aria-label={`${t("console.common.viewDetails")}: ${model.name}`}
-        >
-          {cardBody}
-        </Link>
-      )}
-      {onApi || onChat ? (
-        <div className="model-card-actions">
-          {onApi ? (
-            <Button
-              className="model-card-action model-card-action--api"
-              theme="outline"
-              disabled={!publicAlias}
-              onClick={() => onApi(model)}
-            >
-              {t("console.models.apiCall")}
-            </Button>
-          ) : null}
-          {onChat ? (
-            <Button
-              className="model-card-action model-card-action--chat"
-              theme="solid"
-              type="primary"
-              disabled={!publicAlias}
-              onClick={() => onChat(model)}
-            >
-              {t("console.models.chat")}
-            </Button>
-          ) : null}
-        </div>
-      ) : null}
+      {/* 中文：光效层与内容表面分离，旋转动画只触发合成，不重绘卡片正文。 */}
+      <span
+        className="model-card-glow model-card-glow--blur"
+        aria-hidden="true"
+      >
+        <span className="model-card-glow-rotor" />
+      </span>
+      <span
+        className="model-card-glow model-card-glow--line"
+        aria-hidden="true"
+      >
+        <span className="model-card-glow-rotor" />
+      </span>
+      <div className="model-card-surface">
+        <Button
+          className="model-card-copy"
+          theme="borderless"
+          icon={<IconCopyStroked />}
+          aria-label={t("console.models.modelAlias", { name: model.name })}
+          title={t("console.common.copyAlias")}
+          onClick={copyAlias}
+          disabled={!publicAlias}
+        />
+        {onSelect ? (
+          <button
+            type="button"
+            className="model-card-link model-card-link--button"
+            aria-label={`${t("console.common.viewDetails")}: ${model.name}`}
+            onClick={() => onSelect(model)}
+          >
+            {cardBody}
+          </button>
+        ) : (
+          <Link
+            className={`model-card-link${routeKey ? "" : " model-card-link--disabled"}`}
+            to={
+              routeKey
+                ? `/console/models/${encodeURIComponent(routeKey)}`
+                : "/console/models"
+            }
+            aria-disabled={!routeKey}
+            onClick={(event) => {
+              if (!routeKey) event.preventDefault();
+            }}
+            aria-label={`${t("console.common.viewDetails")}: ${model.name}`}
+          >
+            {cardBody}
+          </Link>
+        )}
+        {onApi || onChat ? (
+          <div className="model-card-actions">
+            {onApi ? (
+              <Button
+                className="model-card-action model-card-action--api"
+                theme="outline"
+                disabled={!publicAlias}
+                onClick={() => onApi(model)}
+              >
+                {t("console.models.apiCall")}
+              </Button>
+            ) : null}
+            {onChat ? (
+              <Button
+                className="model-card-action model-card-action--chat"
+                theme="solid"
+                type="primary"
+                disabled={!publicAlias}
+                onClick={() => onChat(model)}
+              >
+                {t("console.models.chat")}
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
     </article>
   );
 }
@@ -2728,6 +2743,13 @@ const enterpriseNavGroups: ConsoleNavGroup[] = [
         icon: "api-keys",
         permissionScope: "keys",
       },
+      // 中文：企业充值复用个人充值页，但入口归入企业管理并沿用账务权限。
+      {
+        key: "/console/recharge",
+        label: "充值管理",
+        icon: "billing",
+        permissionScope: "billing",
+      },
     ],
   },
   {
@@ -2764,7 +2786,6 @@ const enterpriseNavGroups: ConsoleNavGroup[] = [
     label: "账户管理",
     items: [
       { key: "/console/settings", label: "个人设置", icon: "account" },
-      { key: "/console/recharge", label: "充值管理", icon: "billing" },
       { key: "/console/api-keys", label: "我的密钥", icon: "api-keys" },
     ],
   },
@@ -4804,13 +4825,16 @@ export function EmptyPanel({
   title,
   description,
   action,
+  surface = "plain",
 }: {
   title: string;
   description: string;
   action?: ReactNode;
+  surface?: "plain" | "table";
 }) {
+  // 中文：表格空状态保留表格表面色，普通页面空状态继续沿用透明背景。
   return (
-    <div className="empty-panel">
+    <div className={`empty-panel${surface === "table" ? " empty-panel--table" : ""}`}>
       <IconFile size="extra-large" />
       <h3>{title}</h3>
       <p>{description}</p>

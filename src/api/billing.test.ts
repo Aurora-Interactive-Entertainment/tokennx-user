@@ -47,7 +47,7 @@ describe('用户账务 API 客户端', () => {
     await getBillingSummary(ENTERPRISE_CONTEXT, { accessToken: 'billing-token' })
     await getBillingRewards(PERSONAL_CONTEXT, { page: 2, page_size: 50, accessToken: 'billing-token' })
     await getBillingBonusGrants(ENTERPRISE_CONTEXT, { page: 3, page_size: 10, accessToken: 'billing-token' })
-    await getBillingStatements(PERSONAL_CONTEXT, { page: 4, page_size: 30, direction: 'expense', accessToken: 'billing-token' })
+    await getBillingStatements(PERSONAL_CONTEXT, { page: 4, page_size: 30, direction: 'expense', line_type: 'model_consume', source_type: 'runtime', started_at: '2026-08-01T00:00:00.000Z', ended_at: '2026-09-01T00:00:00.000Z', accessToken: 'billing-token' })
 
     const urls = fetchMock.mock.calls.map(([input]) => new URL(String(input), window.location.origin))
     expect(urls.map((url) => url.pathname)).toEqual([
@@ -64,6 +64,10 @@ describe('用户账务 API 客户端', () => {
     expect(urls[2].searchParams.get('page_size')).toBe('50')
     expect(urls[3].searchParams.get('page')).toBe('3')
     expect(urls[4].searchParams.get('direction')).toBe('expense')
+    expect(urls[4].searchParams.get('line_type')).toBe('model_consume')
+    expect(urls[4].searchParams.get('source_type')).toBe('runtime')
+    expect(urls[4].searchParams.get('started_at')).toBe('2026-08-01T00:00:00.000Z')
+    expect(urls[4].searchParams.get('ended_at')).toBe('2026-09-01T00:00:00.000Z')
     expect(new Headers(fetchMock.mock.calls[0]?.[1]?.headers).get('X-Request-ID')).toBeTruthy()
     expect(new Headers(fetchMock.mock.calls[0]?.[1]?.headers).get('Authorization')).toBe('Bearer billing-token')
   })
@@ -99,7 +103,7 @@ describe('用户账务 API 客户端', () => {
     })
 
     await createBillingPaymentOrder(PERSONAL_CONTEXT, { amount_yuan: '50.00', description: '账户充值' }, 'payment-order-1', { accessToken: 'billing-token' })
-    await startBillingPayment(PERSONAL_CONTEXT, 'order-1', 'payment-start-1', { accessToken: 'billing-token' })
+    await startBillingPayment('order-1', 'payment-start-1', { accessToken: 'billing-token' })
     await getBillingPaymentOrder('order-1', { accessToken: 'billing-token' })
     await closeBillingPaymentOrder('order-1', { accessToken: 'billing-token' })
 
@@ -122,9 +126,15 @@ describe('用户账务 API 客户端', () => {
     expect(new Headers(calls[1].options?.headers).get('Authorization')).toBe('Bearer billing-token')
   })
 
-  it('拒绝企业充值上下文和缺失支付幂等标识', async () => {
-    expect(() => createBillingPaymentOrder(ENTERPRISE_CONTEXT, { amount_yuan: '20.00' }, 'payment-order-1')).toThrowError('当前支付宝充值仅支持个人空间')
-    expect(() => startBillingPayment(PERSONAL_CONTEXT, 'order-1', '  ')).toThrowError('支付请求缺少幂等标识，请重试')
+  it('企业充值订单发送企业账务主体，并拒绝缺失支付幂等标识', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => apiResponse({ id: 'order-enterprise' }))
+
+    await createBillingPaymentOrder(ENTERPRISE_CONTEXT, { amount_yuan: '20.00' }, 'payment-order-enterprise', { accessToken: 'billing-token' })
+
+    const orderURL = new URL(String(fetchMock.mock.calls[0]?.[0]), window.location.origin)
+    expect(orderURL.searchParams.get('account_type')).toBe('enterprise')
+    expect(orderURL.searchParams.get('enterprise_id')).toBe(ENTERPRISE_CONTEXT.enterprise_id)
+    expect(() => startBillingPayment('order-1', '  ')).toThrowError('支付请求缺少幂等标识，请重试')
     expect(() => closeBillingPaymentOrder('  ')).toThrowError('支付订单编号不能为空')
   })
 
@@ -134,6 +144,7 @@ describe('用户账务 API 客户端', () => {
     expect(getBillingErrorMessage(new ApiError('revoked', 409, 130006, 'req-130006'))).toBe('该奖励没有可撤销余额')
     expect(getBillingErrorMessage(new ApiError('invoice unavailable', 409, 130011, 'req-130011'))).toBe('当前可开票金额不足')
     expect(getBillingErrorMessage(new ApiError('payment unavailable', 503, 140007, 'req-140007'))).toBe('支付宝渠道暂不可用，请稍后重试')
+    expect(getBillingErrorMessage(new ApiError('完成实名认证后才能充值', 403, 140008, 'req-140008'))).toBe('完成实名认证后才能充值')
     expect(getBillingErrorMessage(new Error('offline'))).toBe('账务请求失败，请稍后重试')
     expect(getBillingRequestId(new ApiError('bad', 400, 100001, 'req-1'))).toBe('req-1')
     expect(getBillingRequestId(new Error('bad'))).toBeNull()

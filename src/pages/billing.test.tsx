@@ -5,12 +5,12 @@ import { MemoryRouter } from 'react-router'
 import { Provider } from 'react-redux'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { AuthResult } from '@/api/auth'
-import type { BillingAnalysisResponse, BillingInvoiceItem, BillingInvoiceResponse } from '@/api/billing'
+import type { BillingAnalysisResponse, BillingInvoiceItem, BillingInvoiceResponse, BillingPageResult, BillingStatementLine } from '@/api/billing'
 import { clearAuthTokens, saveAuthTokens } from '@/auth/token-storage'
 import { AppStoreProvider, useAppStore } from '@/data/app-state'
 import { createAppStore } from '@/store'
 import i18n from '@/i18n'
-import { BillingPage, billingContextForWorkspace, billingContextKey, ledgerKindLabel, statementKindLabel, validateInvoiceForm } from './billing'
+import { BillingPage, billingContextForWorkspace, billingContextKey, statementKindLabel, validateInvoiceForm } from './billing'
 
 const AUTH_RESULT: AuthResult = {
   status: 'succeeded',
@@ -152,6 +152,19 @@ function makeInvoices(item: BillingInvoiceItem = makeInvoice()): BillingInvoiceR
   }
 }
 
+function makeStatements(): BillingPageResult<BillingStatementLine> {
+  return {
+    items: [
+      { id: 'statement-usage', line_type: 'model_consume', source_type: 'runtime', title: '模型调用消费', description: 'gpt-public', direction: 'expense', amount_yuan: '4.120000000', balance_after_yuan: '105.880000000', occurred_at: Date.parse('2026-07-23T08:30:00Z'), request_id: 'request-usage-1' },
+      { id: 'statement-recharge', line_type: 'recharge', source_type: 'payment', title: '账户充值', description: '支付宝充值到账', direction: 'income', amount_yuan: '50.000000000', balance_after_yuan: '110.000000000', occurred_at: Date.parse('2026-07-22T08:30:00Z'), request_id: 'ORDER-1' },
+      { id: 'statement-reward', line_type: 'reward_grant', source_type: 'reward', title: '奖励到账', description: '注册奖励到账', direction: 'income', amount_yuan: '10.000000000', balance_after_yuan: '60.000000000', occurred_at: Date.parse('2026-07-21T08:30:00Z'), request_id: 'reward-event-1' },
+    ],
+    page: 1,
+    page_size: 20,
+    total: 3,
+  }
+}
+
 function WorkspaceControl() {
   const store = useAppStore()
   return <button type="button" onClick={() => {
@@ -175,6 +188,7 @@ function renderBilling(config: { analysisError?: boolean; invoiceError?: boolean
       if (config.analysisError) return apiResponse({}, 403, 120001, '无权限', 'analysis-denied')
       return apiResponse(url.searchParams.get('account_type') === 'enterprise' ? makeAnalysis(true) : analysis)
     }
+    if (url.pathname === '/api/user/billing/statements') return apiResponse(makeStatements())
     if (url.pathname === '/api/user/payment/orders' && requestOptions?.method === 'POST') {
       paymentOrderInput = { body: String(requestOptions.body), headers: new Headers(requestOptions.headers) }
       return apiResponse({ id: 'payment-order-1', order_no: 'PAY-202608040001', status: 'pending', amount_yuan: '500.00' })
@@ -224,25 +238,28 @@ describe('用户费用管理页面', () => {
     expect(await screen.findByRole('heading', { name: '费用分析' })).toBeInTheDocument()
     expect(screen.getByText('本期总费用')).toBeInTheDocument()
     expect(screen.getByText('平均每百万 Token 费用')).toBeInTheDocument()
-    expect(screen.getByText('图片数量')).toBeInTheDocument()
-    expect(screen.getByText('2 张')).toBeInTheDocument()
-    const imageCost = screen.getByTitle('¥0.300000000')
-    expect(imageCost).toHaveTextContent('¥0.300')
+    expect(screen.getByRole('figure', { name: '按模型总费用' })).toBeInTheDocument()
     expect(screen.getByText('账本明细')).toBeInTheDocument()
     const ledgerRegion = screen.getByRole('region', { name: '账本明细表' })
-    expect(within(ledgerRegion).getAllByText('模型消费').length).toBeGreaterThan(0)
-    expect(within(ledgerRegion).getAllByText('充值').length).toBeGreaterThan(0)
-    expect(within(ledgerRegion).getAllByText('赠送').length).toBeGreaterThan(0)
-    expect(within(ledgerRegion).getByText('奖励发放: 注册奖励')).toBeInTheDocument()
+    expect(within(ledgerRegion).getByText('模型消费')).toBeInTheDocument()
+    expect(within(ledgerRegion).getByText('充值')).toBeInTheDocument()
+    expect(within(ledgerRegion).getByText('奖励到账')).toBeInTheDocument()
+    expect(within(ledgerRegion).getByText('奖励到账 · 注册奖励到账')).toBeInTheDocument()
     expect(within(ledgerRegion).getByText('request-usage-1')).toBeInTheDocument()
 
     const analysisCall = fetchMock.mock.calls.find(([input]) => new URL(String(input), window.location.origin).pathname.endsWith('/analysis'))
     expect(analysisCall).toBeDefined()
     const analysisURL = new URL(String(analysisCall?.[0]), window.location.origin)
     expect(analysisURL.searchParams.get('account_type')).toBe('personal')
-    expect(analysisURL.searchParams.get('source')).toBe('all')
-    expect(analysisURL.searchParams.get('page_size')).toBe('20')
     expect(new Headers(analysisCall?.[1]?.headers).get('X-Request-ID')).toBeTruthy()
+    const statementCall = fetchMock.mock.calls.find(([input]) => new URL(String(input), window.location.origin).pathname.endsWith('/statements'))
+    expect(statementCall).toBeDefined()
+    const statementURL = new URL(String(statementCall?.[0]), window.location.origin)
+    expect(statementURL.searchParams.get('page')).toBe('1')
+    expect(statementURL.searchParams.get('page_size')).toBe('20')
+    expect(statementURL.searchParams.get('direction')).toBeNull()
+    expect(statementURL.searchParams.get('started_at')).toBeNull()
+    expect(statementURL.searchParams.get('ended_at')).toBeNull()
   })
 
   it('已移除的订阅页签查询参数会回到账务概览', () => {
@@ -260,50 +277,25 @@ describe('用户费用管理页面', () => {
     expect(screen.queryByText('¥99.999733')).toBeNull()
   })
 
-  it('支持筛选、Tab 键盘切换、电脑网站支付宝扫码充值和订阅空状态', async () => {
+  it('支持分析筛选、账本类型筛选和 Tab 键盘切换', async () => {
     const user = userEvent.setup()
-    const submit = vi.spyOn(HTMLFormElement.prototype, 'submit').mockImplementation(function (this: HTMLFormElement) {
-      this.setAttribute('data-payment-test', 'submitted')
-    })
-    const { fetchMock } = renderBilling({ paymentStatus: 'paying' })
+    const { fetchMock } = renderBilling()
     await screen.findByRole('heading', { name: '费用分析' })
     await user.click(screen.getByRole('combobox', { name: 'API 密钥' }))
     fireEvent.click(await screen.findByRole('option', { name: /主密钥/ }))
     await user.click(await screen.findByRole('combobox', { name: '模型' }))
     fireEvent.click(await screen.findByRole('option', { name: /测试模型/ }))
-    await user.click(await screen.findByRole('combobox', { name: '账期' }))
-    fireEvent.click(await screen.findByRole('option', { name: /2026年6月/ }))
     await user.click(await screen.findByRole('combobox', { name: '消费类型' }))
     fireEvent.click(await screen.findByRole('option', { name: /充值/ }))
     await waitFor(() => {
-      const calls = fetchMock.mock.calls.map(([input]) => new URL(String(input), window.location.origin)).filter((url) => url.pathname.endsWith('/analysis'))
-      expect(calls.map((url) => Object.fromEntries(url.searchParams))).toContainEqual(expect.objectContaining({ api_key_id: 'key-public-1', model: 'gpt-public', period: '2026-06', source: 'recharge' }))
+      const analysisCalls = fetchMock.mock.calls.map(([input]) => new URL(String(input), window.location.origin)).filter((url) => url.pathname.endsWith('/analysis'))
+      expect(analysisCalls.map((url) => Object.fromEntries(url.searchParams))).toContainEqual(expect.objectContaining({ api_key_id: 'key-public-1', model: 'gpt-public' }))
+      const statementCalls = fetchMock.mock.calls.map(([input]) => new URL(String(input), window.location.origin)).filter((url) => url.pathname.endsWith('/statements'))
+      expect(statementCalls.map((url) => Object.fromEntries(url.searchParams))).toContainEqual(expect.objectContaining({ line_type: 'recharge', page: '1', page_size: '20' }))
     })
 
-    await user.click(screen.getByRole('tab', { name: '充值' }))
-    expect(screen.getByText('快捷填写金额')).toBeInTheDocument()
-    expect(screen.getByText('支付宝扫码充值')).toBeInTheDocument()
-    expect(screen.queryByLabelText('支付方式')).toBeNull()
-    await user.click(screen.getByRole('button', { name: '¥500.0000' }))
-    await user.click(screen.getByRole('button', { name: '支付宝支付' }))
-    await waitFor(() => expect(submit).toHaveBeenCalledOnce())
-    const paymentFrame = await screen.findByTitle('支付宝支付二维码')
-    const paymentForm = document.querySelector<HTMLFormElement>('form[data-payment-test]')
-    expect(paymentForm).not.toBeNull()
-    expect(paymentForm).toHaveAttribute('target', paymentFrame.getAttribute('name') ?? '')
-    expect(paymentFrame).toHaveAttribute('name', expect.stringMatching(/^alipay-payment-/))
-    const paymentOrderCall = fetchMock.mock.calls.find(([input, options]) => new URL(String(input), window.location.origin).pathname === '/api/user/payment/orders' && options?.method === 'POST')
-    expect(paymentOrderCall).toBeDefined()
-    expect(JSON.parse(String(paymentOrderCall?.[1]?.body))).toMatchObject({ amount_yuan: '500' })
-    expect(new Headers(paymentOrderCall?.[1]?.headers).get('Idempotency-Key')).toBeTruthy()
-    const paymentStartCall = fetchMock.mock.calls.find(([input, options]) => new URL(String(input), window.location.origin).pathname.endsWith('/pay') && options?.method === 'POST')
-    expect(JSON.parse(String(paymentStartCall?.[1]?.body))).toEqual({ scene: 'pc' })
-    expect(new Headers(paymentStartCall?.[1]?.headers).get('Idempotency-Key')).toBeTruthy()
-
-    await user.click(screen.getByRole('tab', { name: '费用' }))
-    screen.getByRole('tab', { name: '费用' }).focus()
-    await user.keyboard('{ArrowRight}')
-    expect(screen.getByRole('tab', { name: '充值' })).toHaveAttribute('aria-selected', 'true')
+    await user.click(screen.getByRole('tab', { name: '发票' }))
+    expect(screen.getByRole('tab', { name: '发票' })).toHaveAttribute('aria-selected', 'true')
   })
 
   it('支付回跳只按服务端订单状态确认到账', async () => {
@@ -314,7 +306,7 @@ describe('用户费用管理页面', () => {
     expect(queryCall).toBeDefined()
   })
 
-  it('企业空间禁用个人支付宝充值入口', async () => {
+  it('企业空间按企业账务主体查询流水', async () => {
     const user = userEvent.setup()
     const { fetchMock } = renderBilling()
     await user.click(screen.getByRole('button', { name: '切换到企业空间' }))
@@ -325,10 +317,13 @@ describe('用户费用管理页面', () => {
       })
       expect(enterpriseAnalysisCall).toBeDefined()
     })
-    await user.click(screen.getByRole('tab', { name: '充值' }))
-    expect(screen.getByText('当前企业空间暂不支持个人支付宝充值，请切换到个人空间。')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '支付宝支付' })).toBeDisabled()
-    expect(fetchMock.mock.calls.some(([input]) => new URL(String(input), window.location.origin).pathname === '/api/user/payment/orders')).toBe(false)
+    await waitFor(() => {
+      const enterpriseStatementCall = fetchMock.mock.calls.find(([input]) => {
+        const url = new URL(String(input), window.location.origin)
+        return url.pathname === '/api/user/billing/statements' && url.searchParams.get('account_type') === 'enterprise'
+      })
+      expect(new URL(String(enterpriseStatementCall?.[0]), window.location.origin).searchParams.get('enterprise_id')).toBe('enterprise-real')
+    })
   })
 
   it('支持请求聚焦和账本 CSV 导出', async () => {
@@ -340,7 +335,7 @@ describe('用户费用管理页面', () => {
     const requestFocus = (await screen.findByText('请求 request-usage-1')).closest('.request-focus')
     expect(requestFocus).not.toBeNull()
     expect(within(requestFocus as HTMLElement).getByTitle('¥4.120000000')).toHaveTextContent('¥4.120')
-    expect(screen.getAllByRole('row')).toHaveLength(2)
+    expect(screen.getAllByRole('row')).toHaveLength(4)
     await user.click(screen.getByRole('button', { name: /导出 CSV/ }))
     expect(createObjectURL).toHaveBeenCalledOnce()
     expect(click).toHaveBeenCalledOnce()
@@ -359,6 +354,10 @@ describe('用户费用管理页面', () => {
     expect(await screen.findByText('常见开票问题')).toBeInTheDocument()
     expect(screen.getByText('本地演示数据：以下金额与历史不代表真实开票资格、已开具记录或税务结果。')).toBeInTheDocument()
     expect(screen.getByText('开票历史记录')).toBeInTheDocument()
+    expect(screen.queryByText('可申请')).not.toBeInTheDocument()
+    const availableMetric = screen.getByText('可开票金额').closest('.billing-metric-card') as HTMLElement
+    expect(availableMetric).not.toBeNull()
+    expect(within(availableMetric).getByRole('button', { name: '立即开票' })).toBeInTheDocument()
     expect(screen.getAllByText('开票中').length).toBeGreaterThan(0)
     expect(screen.getAllByText('1').length).toBeGreaterThanOrEqual(2)
     await user.click(screen.getByRole('button', { name: /常见开票问题/ }))
@@ -441,8 +440,7 @@ describe('用户费用管理页面', () => {
     renderBilling({ invoice })
 
     expect(await screen.findByRole('heading', { name: 'Cost analysis' })).toBeInTheDocument()
-    expect(screen.getByText('2 images')).toBeInTheDocument()
-    expect(screen.getByText('1 items')).toBeInTheDocument()
+    expect(await screen.findByText('3 entries')).toBeInTheDocument()
     await user.click(screen.getByRole('tab', { name: 'Invoices' }))
     expect(await screen.findByText('Submitted')).toBeInTheDocument()
     await user.click(await screen.findByRole('button', { name: 'Invoice now' }))
@@ -466,16 +464,11 @@ describe('费用页纯函数', () => {
   it('根据稳定字段区分流水类型', () => {
     const line = { line_type: 'reward_grant', source_type: 'reward', title: '奖励到账', description: '注册奖励到账' } as const
     expect(statementKindLabel(line)).toBe('奖励到账')
-    expect(statementKindLabel({ ...line, line_type: 'usage_consume', source_type: 'usage', title: '模型消费', description: '模型调用消费' })).toBe('消费')
+    expect(statementKindLabel({ ...line, line_type: 'usage_consume', source_type: 'usage', title: '模型消费', description: '模型调用消费' })).toBe('模型消费')
     expect(statementKindLabel({ ...line, line_type: 'reward_expired', title: '调整', description: '过期' })).toBe('奖励过期')
     expect(statementKindLabel({ ...line, line_type: 'reward_revoke_partial', title: '调整', description: '部分撤销' })).toBe('部分撤销')
     expect(statementKindLabel({ ...line, line_type: 'reward_revoke_full', title: '调整', description: '全部撤销' })).toBe('全部撤销')
     expect(statementKindLabel({ ...line, line_type: 'other', source_type: 'other', title: '其他', description: '' })).toBe('其他')
   })
 
-  it('按账本类型展示赠送记录', () => {
-    expect(ledgerKindLabel('reward')).toBe('赠送')
-    expect(ledgerKindLabel('recharge')).toBe('充值')
-    expect(ledgerKindLabel('model_consume')).toBe('模型消费')
-  })
 })

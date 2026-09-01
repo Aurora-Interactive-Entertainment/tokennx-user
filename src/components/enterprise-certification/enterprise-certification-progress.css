@@ -1,0 +1,105 @@
+.enterprise-certification-progress {
+  width: min(100%, 960px);
+  display: grid;
+  grid-template-columns: repeat(
+    var(--enterprise-step-count, 3),
+    minmax(0, 1fr)
+  );
+  margin: 0 auto;
+  padding: 12px 0 32px;
+  list-style: none;
+}
+
+.enterprise-certification-progress.is-agent {
+  --enterprise-step-count: 2;
+}
+
+.enterprise-certification-progress li {
+  position: relative;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--color-text-tertiary);
+}
+
+.enterprise-certification-progress li:not(:last-child)::after {
+  position: absolute;
+  z-index: 0;
+  top: 50%;
+  right: 16px;
+  left: 48px;
+  height: 1px;
+  background: var(--color-border-neutral-l1);
+  content: "";
+}
+
+.enterprise-progress-marker,
+.enterprise-certification-progress strong {
+  position: relative;
+  z-index: 1;
+}
+
+.enterprise-progress-marker {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  flex: 0 0 30px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--color-bg-base-tertiary);
+  color: var(--color-text-tertiary);
+  font-size: 12px;
+}
+
+.enterprise-certification-progress strong {
+  padding-right: 16px;
+  background: var(--color-bg-base-secondary);
+  color: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.enterprise-certification-progress li.is-current,
+.enterprise-certification-progress li.is-completed {
+  color: var(--color-text-default-hover);
+}
+
+.enterprise-certification-progress li.is-current .enterprise-progress-marker {
+  background: #2f5bff;
+  color: #fff;
+}
+
+.enterprise-certification-progress li.is-completed .enterprise-progress-marker {
+  background: var(--success);
+  color: #fff;
+}
+
+@media (max-width: 700px) {
+  .enterprise-certification-progress {
+    padding: 4px 0 24px;
+  }
+
+  .enterprise-certification-progress li {
+    gap: 7px;
+  }
+
+  .enterprise-certification-progress li:not(:last-child)::after {
+    right: 8px;
+    left: 38px;
+  }
+
+  .enterprise-progress-marker {
+    width: 26px;
+    height: 26px;
+    flex-basis: 26px;
+  }
+
+  .enterprise-certification-progress strong {
+    max-width: 92px;
+    padding-right: 8px;
+    font-size: 11px;
+    white-space: normal;
+  }
+}

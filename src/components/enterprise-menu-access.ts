@@ -42,6 +42,7 @@ const ENTERPRISE_MENU_PATH_SCOPES: readonly {
   { path: "/console/enterprise-models", scope: "models" },
   { path: "/console/enterprise-governance", scope: "governance" },
   { path: "/console/billing", scope: "billing" },
+  { path: "/console/recharge", scope: "billing" },
   { path: "/console/trae-enterprise/users", scope: "members" },
   { path: "/console/trae-enterprise/usage", scope: "usage" },
   { path: "/console/trae-enterprise/operation-log", scope: "audit" },

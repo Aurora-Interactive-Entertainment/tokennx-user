@@ -1,7 +1,7 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { canStartPlaygroundRound, PLAYGROUND_MAX_ROUNDS } from '@/utils/playground'
+import { LEGACY_PLAYGROUND_HISTORY_KEY, LEGACY_VIDEO_HISTORY_KEY, PLAYGROUND_SESSION_HISTORY_KEY, readUserSessionHistory, writeUserSessionHistory } from '@/utils/ephemeral-history'
 const STORAGE_KEY = 'token-nx:user-front:v1'
-const PLAYGROUND_STORAGE_KEY = 'token-nx:playground:v1'
 
 export type WorkspaceType = 'personal' | 'enterprise'
 export type WorkspaceRole = string
@@ -203,9 +203,9 @@ function loadSnapshot(): AppSnapshot {
   }
 }
 
-function loadPlaygroundSessions(): PlaygroundSession[] {
+function loadLegacyPlaygroundSessions(): PlaygroundSession[] {
   try {
-    const raw = localStorage.getItem(PLAYGROUND_STORAGE_KEY)
+    const raw = localStorage.getItem(LEGACY_PLAYGROUND_HISTORY_KEY)
     if (!raw) return EMPTY_PLAYGROUND_SESSIONS
     const parsed = JSON.parse(raw)
     if (!Array.isArray(parsed)) return EMPTY_PLAYGROUND_SESSIONS
@@ -223,6 +223,43 @@ function saveSnapshot(snapshot: AppSnapshot): void {
   }
 }
 
+function isPlaygroundSession(value: unknown): value is PlaygroundSession {
+  return Boolean(
+    value
+    && typeof value === 'object'
+    && typeof (value as PlaygroundSession).id === 'string'
+    && typeof (value as PlaygroundSession).modelId === 'string'
+    && Array.isArray((value as PlaygroundSession).messages),
+  )
+}
+
+function compactPlaygroundSession(session: PlaygroundSession): PlaygroundSession {
+  const clip = (value: string | null, max: number): string | null => value === null ? null : value.slice(0, max)
+  return {
+    ...session,
+    prompt: session.prompt.slice(0, 8_000),
+    response: session.response.slice(0, 16_000),
+    messages: session.messages.map((message) => ({
+      ...message,
+      content: message.content.slice(0, 16_000),
+      reasoning: message.reasoning.slice(0, 8_000),
+      error: clip(message.error, 4_000),
+    })),
+  }
+}
+
+// 中文：替换消息时截断目标轮次及其后续内容，避免编辑后旧回复继续残留在时间线中。
+function preparePlaygroundReplacement(session: PlaygroundSession, attemptId: string): {
+  messages: PlaygroundMessage[]
+  contextBreaks: number[]
+} | undefined {
+  const targetIndex = session.messages.findIndex((message) => message.attemptId === attemptId)
+  if (targetIndex < 0) return undefined
+  const messages = session.messages.slice(0, targetIndex)
+  const contextBreaks = (session.contextBreaks ?? []).filter((index) => index <= messages.length)
+  return { messages, contextBreaks }
+}
+
 function createId(prefix: string): string {
   return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`
 }
@@ -238,24 +275,65 @@ export interface AppStoreValue extends AppSnapshot {
   deleteApiKey: (keyId: string) => void
   runPlayground: (input: PlaygroundRunInput) => PlaygroundSession
   recordPlaygroundFailure: (input: PlaygroundFailureInput) => PlaygroundSession
+  deletePlaygroundAttempt: (sessionId: string, attemptId: string) => void
   clearPlaygroundContext: (sessionId: string) => PlaygroundSession | undefined
   updateProfile: (input: Pick<AppSnapshot, 'nickname' | 'phone' | 'avatar'>) => void
 }
 
 const AppStoreContext = createContext<AppStoreValue | null>(null)
 
-export function AppStoreProvider({ children }: { children: ReactNode }) {
-  const [snapshot, setSnapshot] = useState<AppSnapshot>(loadSnapshot)
-  const [playgroundSessions, setPlaygroundSessions] = useState<PlaygroundSession[]>(loadPlaygroundSessions)
+type AppStoreProviderWithUserProps = {
+  children: ReactNode
+  userId?: string | null
+}
 
-  // 中文：会话单独存储，刷新页面可恢复；清理浏览器存储时随之清除。
+export function AppStoreProvider({ children, userId }: AppStoreProviderWithUserProps) {
+  // 中文：按账号作用域挂载，防止切换用户时旧会话在 effect 刷新前短暂可见。
+  const scopeKey = userId === undefined
+    ? 'legacy'
+    : userId === null
+      ? 'guest'
+      : `user:${userId}`
+  return <AppStoreProviderWithUser key={scopeKey} children={children} userId={userId} />
+}
+
+function AppStoreProviderWithUser({ children, userId }: AppStoreProviderWithUserProps) {
+  const [snapshot, setSnapshot] = useState<AppSnapshot>(loadSnapshot)
+  const [playgroundSessions, setPlaygroundSessions] = useState<PlaygroundSession[]>(() => userId === undefined
+    ? loadLegacyPlaygroundSessions()
+    : readUserSessionHistory(PLAYGROUND_SESSION_HISTORY_KEY, userId, isPlaygroundSession))
+  const playgroundOwnerRef = useRef(userId)
+  const playgroundHydratingRef = useRef(userId !== undefined)
+
   useEffect(() => {
+    if (userId === undefined) return
+    playgroundOwnerRef.current = userId
+    playgroundHydratingRef.current = true
+    setPlaygroundSessions(readUserSessionHistory(PLAYGROUND_SESSION_HISTORY_KEY, userId, isPlaygroundSession))
     try {
-      localStorage.setItem(PLAYGROUND_STORAGE_KEY, JSON.stringify(playgroundSessions))
+      localStorage.removeItem(LEGACY_PLAYGROUND_HISTORY_KEY)
+      localStorage.removeItem(LEGACY_VIDEO_HISTORY_KEY)
+    } catch {
+      // 中文：迁移到账号隔离存储时，旧的未隔离记录无法继续保留。
+    }
+  }, [userId])
+
+  // 中文：登录用户的对话按账号写入本地存储，并在账号切换时阻止旧状态写入新账号。
+  useEffect(() => {
+    if (userId !== undefined) {
+      if (playgroundOwnerRef.current !== userId || playgroundHydratingRef.current) {
+        playgroundHydratingRef.current = false
+        return
+      }
+      writeUserSessionHistory(PLAYGROUND_SESSION_HISTORY_KEY, userId, playgroundSessions.map(compactPlaygroundSession))
+      return
+    }
+    try {
+      localStorage.setItem(LEGACY_PLAYGROUND_HISTORY_KEY, JSON.stringify(playgroundSessions))
     } catch {
       // 存储不可用时继续保留内存会话。
     }
-  }, [playgroundSessions])
+  }, [playgroundSessions, userId])
   const [selectedModelId, setSelectedModelId] = useState('deepseek-public')
 
   const updateSnapshot = useCallback((updater: (previous: AppSnapshot) => AppSnapshot) => {
@@ -309,14 +387,13 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
   const runPlayground = useCallback((input: PlaygroundRunInput) => {
     const existing = input.sessionId ? playgroundSessions.find((item) => item.id === input.sessionId) : undefined
-    if (existing && !canStartPlaygroundRound(existing.rounds)) {
+    const replacement = input.replaceAttemptId && existing
+      ? preparePlaygroundReplacement(existing, input.replaceAttemptId)
+      : undefined
+    if (input.replaceAttemptId && !replacement) throw new Error('待替换的尝试不存在')
+    // 中文：编辑已有完整轮次会先截断再重答，即使原会话已满轮也允许替换，不会增加轮次。
+    if (existing && !replacement && !canStartPlaygroundRound(existing.rounds)) {
       throw new Error(`智能会话最多支持 ${PLAYGROUND_MAX_ROUNDS} 轮对话`)
-    }
-    const replacingFailedAttempt = input.replaceAttemptId
-      ? existing?.messages.some((message) => message.attemptId === input.replaceAttemptId && message.status === 'failed')
-      : false
-    if (input.replaceAttemptId && !replacingFailedAttempt) {
-      throw new Error('待替换的失败尝试不存在')
     }
     const createdAt = new Date().toLocaleString('zh-CN', { hour12: false }).slice(0, 19)
     const requestId = input.requestId?.trim() || createId('req')
@@ -326,9 +403,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     const outputTokens = input.outputTokens ?? null
     const cost = input.cost ?? null
     const latency = input.latency ?? null
-    const messages = input.replaceAttemptId
-      ? (existing?.messages ?? []).filter((message) => message.attemptId !== input.replaceAttemptId)
-      : (existing?.messages ?? [])
+    const messages = replacement?.messages ?? (existing?.messages ?? [])
     const userMessage: PlaygroundMessage = {
       id: createId('message'), attemptId, role: 'user', status: 'complete', content: input.prompt, reasoning: '', requestId: null, error: null, createdAt,
       inputTokens: null, outputTokens: null, cost: null, latency: null,
@@ -341,8 +416,8 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       id: existing?.id ?? createId('session'),
       modelId: input.modelId,
       messages: [...messages, userMessage, assistantMessage],
-      contextBreaks: existing?.contextBreaks ?? [],
-      rounds: (existing?.rounds ?? 0) + 1,
+      contextBreaks: replacement?.contextBreaks ?? existing?.contextBreaks ?? [],
+      rounds: messages.slice(replacement?.contextBreaks.at(-1) ?? (existing?.contextBreaks?.at(-1) ?? 0)).filter((message) => message.role === 'assistant' && message.status === 'complete').length + 1,
       prompt: input.prompt,
       response: assistantMessage.content,
       requestId,
@@ -359,21 +434,17 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
   const recordPlaygroundFailure = useCallback((input: PlaygroundFailureInput) => {
     const existing = input.sessionId ? playgroundSessions.find((item) => item.id === input.sessionId) : undefined
-    if (existing && !canStartPlaygroundRound(existing.rounds)) {
+    const replacement = input.replaceAttemptId && existing
+      ? preparePlaygroundReplacement(existing, input.replaceAttemptId)
+      : undefined
+    if (input.replaceAttemptId && !replacement) throw new Error('待替换的尝试不存在')
+    if (existing && !replacement && !canStartPlaygroundRound(existing.rounds)) {
       throw new Error(`智能会话最多支持 ${PLAYGROUND_MAX_ROUNDS} 轮对话`)
-    }
-    const replacingFailedAttempt = input.replaceAttemptId
-      ? existing?.messages.some((message) => message.attemptId === input.replaceAttemptId && message.status === 'failed')
-      : false
-    if (input.replaceAttemptId && !replacingFailedAttempt) {
-      throw new Error('待替换的失败尝试不存在')
     }
     const createdAt = new Date().toLocaleString('zh-CN', { hour12: false }).slice(0, 19)
     const requestId = input.requestId?.trim() || createId('req')
     const attemptId = createId('attempt')
-    const messages = input.replaceAttemptId
-      ? (existing?.messages ?? []).filter((message) => message.attemptId !== input.replaceAttemptId)
-      : (existing?.messages ?? [])
+    const messages = replacement?.messages ?? (existing?.messages ?? [])
     const userMessage: PlaygroundMessage = {
       id: createId('message'), attemptId, role: 'user', status: 'failed', content: input.prompt, reasoning: '', requestId: null, error: null, createdAt,
       inputTokens: null, outputTokens: null, cost: null, latency: null,
@@ -386,8 +457,8 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       id: existing?.id ?? createId('session'),
       modelId: input.modelId,
       messages: [...messages, userMessage, assistantMessage],
-      contextBreaks: existing?.contextBreaks ?? [],
-      rounds: existing?.rounds ?? 0,
+      contextBreaks: replacement?.contextBreaks ?? existing?.contextBreaks ?? [],
+      rounds: messages.slice(replacement?.contextBreaks.at(-1) ?? (existing?.contextBreaks?.at(-1) ?? 0)).filter((message) => message.role === 'assistant' && message.status === 'complete').length,
       prompt: input.prompt,
       response: assistantMessage.content,
       requestId,
@@ -400,7 +471,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     }
     setPlaygroundSessions((previous) => [session, ...previous.filter((item) => item.id !== session.id)])
     return session
-  }, [playgroundSessions])
+  }, [playgroundSessions, userId])
 
   const clearPlaygroundContext = useCallback((sessionId: string) => {
     const existing = playgroundSessions.find((item) => item.id === sessionId)
@@ -417,7 +488,35 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     }
     setPlaygroundSessions((previous) => [session, ...previous.filter((item) => item.id !== session.id)])
     return session
-  }, [playgroundSessions])
+  }, [playgroundSessions, userId])
+
+  const deletePlaygroundAttempt = useCallback((sessionId: string, attemptId: string) => {
+    const existing = playgroundSessions.find((item) => item.id === sessionId)
+    if (!existing) return
+    const messages = existing.messages.filter((message) => message.attemptId !== attemptId)
+    if (messages.length === 0) {
+      setPlaygroundSessions((previous) => previous.filter((item) => item.id !== sessionId))
+      return
+    }
+    const lastAssistant = [...messages].reverse().find((message) => message.role === 'assistant')
+    const lastUser = [...messages].reverse().find((message) => message.role === 'user')
+    const lastBreak = existing.contextBreaks?.at(-1) ?? 0
+    const rounds = messages.slice(lastBreak).filter((message) => message.role === 'assistant' && message.status === 'complete').length
+    const session: PlaygroundSession = {
+      ...existing,
+      messages,
+      rounds,
+      prompt: lastUser?.content ?? '',
+      response: lastAssistant?.content ?? '',
+      requestId: lastAssistant?.requestId ?? existing.requestId,
+      updatedAt: new Date().toLocaleString('zh-CN', { hour12: false }).slice(0, 19),
+      inputTokens: lastAssistant?.inputTokens ?? null,
+      outputTokens: lastAssistant?.outputTokens ?? null,
+      cost: lastAssistant?.cost ?? null,
+      latency: lastAssistant?.latency ?? null,
+    }
+    setPlaygroundSessions((previous) => [session, ...previous.filter((item) => item.id !== session.id)])
+  }, [playgroundSessions, userId])
 
   const updateProfile = useCallback((input: Pick<AppSnapshot, 'nickname' | 'phone' | 'avatar'>) => {
     updateSnapshot((previous) => ({ ...previous, ...input }))
@@ -437,9 +536,10 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     deleteApiKey,
     runPlayground,
     recordPlaygroundFailure,
+    deletePlaygroundAttempt,
     clearPlaygroundContext,
     updateProfile,
-  }), [snapshot, playgroundSessions, activeWorkspace, selectedModelId, switchWorkspace, replaceEnterpriseWorkspaces, createApiKey, disableApiKey, deleteApiKey, runPlayground, recordPlaygroundFailure, clearPlaygroundContext, updateProfile])
+  }), [snapshot, playgroundSessions, activeWorkspace, selectedModelId, switchWorkspace, replaceEnterpriseWorkspaces, createApiKey, disableApiKey, deleteApiKey, runPlayground, recordPlaygroundFailure, deletePlaygroundAttempt, clearPlaygroundContext, updateProfile])
 
   return <AppStoreContext.Provider value={value}>{children}</AppStoreContext.Provider>
 }

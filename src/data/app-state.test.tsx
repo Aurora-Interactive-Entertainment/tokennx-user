@@ -10,7 +10,10 @@ function StoreProbe({ onReady }: { onReady: (store: ReturnType<typeof useAppStor
 }
 
 describe('工作空间本地状态', () => {
-  beforeEach(() => window.localStorage.clear())
+  beforeEach(() => {
+    window.localStorage.clear()
+    window.sessionStorage.clear()
+  })
 
   it('同步真实企业空间并创建演示密钥', () => {
     let store: ReturnType<typeof useAppStore> | undefined
@@ -116,6 +119,21 @@ describe('工作空间本地状态', () => {
     render(<AppStoreProvider><StoreProbe onReady={(value) => { remountedStore = value }} /></AppStoreProvider>)
     expect(remountedStore?.playgroundSessions).toHaveLength(1)
     expect(remountedStore?.playgroundSessions[0]?.messages[0]?.content).toBe('刷新前的私密问题')
+  })
+
+  it('智能对话按用户隔离并写入本地存储', () => {
+    let userAStore: ReturnType<typeof useAppStore> | undefined
+    const firstRender = render(<AppStoreProvider userId="user-a"><StoreProbe onReady={(value) => { userAStore = value }} /></AppStoreProvider>)
+    act(() => { userAStore?.runPlayground({ modelId: 'deepseek-chat', prompt: '仅用户 A 可见', response: '私密回复' }) })
+    expect(window.localStorage.getItem('token-nx:session-history:playground:v1')).toContain('user-a')
+    expect(window.localStorage.getItem('token-nx:playground:v1')).toBeNull()
+    firstRender.unmount()
+
+    let userBStore: ReturnType<typeof useAppStore> | undefined
+    render(<AppStoreProvider userId="user-b"><StoreProbe onReady={(value) => { userBStore = value }} /></AppStoreProvider>)
+    expect(screen.getByTestId('sessions')).toHaveTextContent('0')
+    expect(JSON.parse(String(window.localStorage.getItem('token-nx:session-history:playground:v1')))).toMatchObject({ userId: 'user-b', entries: [] })
+    expect(userBStore?.playgroundSessions).toHaveLength(0)
   })
 
   it('清除上下文保留同一条历史会话并重置轮次', () => {

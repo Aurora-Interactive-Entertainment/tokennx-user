@@ -134,7 +134,7 @@ html[data-theme="dark"] .trae-date-picker-dropdown [class*="semi-datepicker-day-
 .trae-tree-item.is-selected { font-weight: 600; }
 .trae-tree-indent { width: 15px; border-left: 1px solid var(--color-border-neutral-l2); }
 .trae-tree-new { width: 100%; margin-top: 14px; }
-.trae-table-scroll { min-width: 0; overflow-x: auto; border: 1px solid var(--color-border-neutral-l1); border-radius: 6px; }
+.trae-table-scroll { min-width: 0; overflow-x: auto; border: 1px solid var(--color-border-neutral-l1); border-radius: 6px; background: var(--color-bg-base-secondary); }
 .trae-table { width: 100%; min-width: 840px; border-collapse: collapse; }
 .trae-table th, .trae-table td { height: 48px; padding: 0 12px; border-bottom: 1px solid var(--color-border-neutral-l1); color: var(--color-text-secondary); font-size: 11px; text-align: left; white-space: nowrap; }
 .trae-table th { height: 42px; color: var(--color-text-tertiary); background: var(--color-bg-base-tertiary); font-size: 11px; font-weight: 600; }
@@ -407,7 +407,7 @@ html[data-theme="dark"] .trae-date-picker-dropdown [class*="semi-datepicker-day-
 .trae-select-dropdown.trae-members-filter-dropdown .semi-select-option-icon { display: none; }
 .trae-select-dropdown.trae-members-filter-dropdown .semi-select-option-selected, .trae-select-dropdown.trae-members-filter-dropdown .semi-select-option-focused, .trae-select-dropdown.trae-members-filter-dropdown .semi-select-option:hover { background: var(--color-bg-overlay-l3); color: var(--color-text-default-hover); }
 /* 人员表格自身承载边框，保留 Semi 内部横向滚动并统一裁切圆角。 */
-.trae-members-page .trae-semi-member-table { box-sizing: border-box; min-width: 840px; overflow: hidden; border: 1px solid var(--color-border-neutral-l1); border-radius: 6px; background: transparent; }
+.trae-members-page .trae-semi-member-table { box-sizing: border-box; min-width: 840px; overflow: hidden; border: 1px solid var(--color-border-neutral-l1); border-radius: 6px; background: var(--color-bg-base-secondary); }
 .trae-members-page .trae-semi-member-table .semi-table-thead > .semi-table-row > .semi-table-row-head { height: 42px; color: var(--color-text-secondary); background: var(--color-bg-base-tertiary); font-size: 13px; font-weight: 600; white-space: nowrap; }
 /* A fixed row rhythm requires non-person columns to stay on one line. */
 .trae-members-page .trae-semi-member-table .semi-table-tbody > .semi-table-row { height: 48px; }
@@ -444,7 +444,7 @@ html[data-theme="dark"] .trae-date-picker-dropdown [class*="semi-datepicker-day-
 .trae-departments-toolbar .trae-inline-search input { font-size: 12px; }
 .trae-departments-add-button { width: 92px; min-height: 28px; height: 28px; padding-inline: 8px; font-size: 13px; }
 .trae-departments-add-button svg { width: 14px; height: 14px; }
-.trae-departments-table { min-width: 760px; overflow: visible; border: 1px solid var(--color-border-neutral-l1); border-radius: 5px; background: transparent; }
+.trae-departments-table { min-width: 760px; overflow: visible; border: 1px solid var(--color-border-neutral-l1); border-radius: 5px; background: var(--color-bg-base-secondary); }
 .trae-departments-table .semi-table-container,
 .trae-departments-table .semi-table-body,
 .trae-departments-table .semi-table-tbody,

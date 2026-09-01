@@ -1,0 +1,234 @@
+.real-name-required-dialog .semi-modal-wrap {
+  padding: 16px;
+}
+
+.real-name-required-dialog .semi-modal {
+  width: min(500px, calc(100vw - 32px)) !important;
+  max-width: none;
+}
+
+.real-name-required-dialog .semi-modal-content {
+  overflow: hidden;
+  border: 1px solid var(--color-border-neutral-l1);
+  border-radius: 16px;
+  background: var(--color-bg-overlay-l1) !important;
+  box-shadow: 0 24px 72px rgba(19, 28, 56, 0.24);
+}
+
+.real-name-required-dialog .semi-modal-header {
+  padding: 0;
+  border: 0;
+  background: transparent !important;
+}
+
+.real-name-required-dialog .semi-modal-body-wrapper {
+  padding: 0 0 32px;
+  background: transparent !important;
+}
+
+/* 中文：关闭按钮沿用其他业务弹窗的尺寸、圆角与交互反馈。 */
+.real-name-required-dialog .semi-button.semi-modal-close {
+  top: 12px;
+  right: 12px;
+  display: grid;
+  width: 34px;
+  min-width: 34px;
+  height: 34px;
+  min-height: 34px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-6);
+  color: var(--color-text-secondary);
+  background: var(--color-bg-overlay-l2);
+}
+
+.real-name-required-dialog .semi-button.semi-modal-close:hover,
+.real-name-required-dialog .semi-button.semi-modal-close:focus-visible {
+  color: var(--color-text-default-hover);
+  background: var(--color-bg-overlay-l3);
+}
+
+.real-name-required-dialog .semi-button.semi-modal-close:focus-visible {
+  outline: 2px solid var(--color-text-default-hover);
+  outline-offset: 2px;
+}
+
+.real-name-required-content {
+  display: grid;
+  justify-items: center;
+  padding: 0 0 15px;
+  text-align: center;
+}
+
+.real-name-required-icon {
+  display: grid;
+  position: relative;
+  width: 88px;
+  height: 88px;
+  place-items: center;
+  margin: 2px 0 18px;
+  background: var(--color-bg-base-secondary);
+  clip-path: polygon(50% 0, 91% 24%, 91% 76%, 50% 100%, 9% 76%, 9% 24%);
+}
+
+/* 中文：补充设计稿中的角标星光，使用纯 CSS 避免引入额外图片资源。 */
+.real-name-required-icon::before {
+  position: absolute;
+  top: 13px;
+  left: 14px;
+  width: 11px;
+  height: 11px;
+  content: "";
+  background: var(--color-text-default-hover);
+  clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%);
+}
+
+.real-name-required-icon span {
+  display: grid;
+  width: 58px;
+  height: 58px;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--color-text-default-hover);
+  background: var(--color-bg-overlay-l1);
+  box-shadow: inset 0 0 0 1px rgba(66, 83, 160, 0.08);
+}
+
+.real-name-required-icon svg {
+  width: 30px;
+  height: 30px;
+}
+
+.real-name-required-content h2 {
+  margin: 0;
+  color: var(--color-text-default-hover);
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 34px;
+  letter-spacing: 0;
+}
+
+.real-name-required-content p {
+  max-width: 580px;
+  margin: 12px 0 0;
+  color: var(--color-text-secondary);
+  font-size: 16px;
+  line-height: 24px;
+}
+
+.real-name-required-actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.real-name-required-actions .semi-button {
+  min-width: 156px;
+  height: 46px;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.real-name-required-actions .real-name-required-primary.semi-button,
+.real-name-required-actions .real-name-required-primary.semi-button:hover:not(:disabled),
+.real-name-required-actions .real-name-required-primary.semi-button:active:not(:disabled) {
+  border-color: #3c32ed !important;
+  color: #fff !important;
+  background: #3c32ed !important;
+  box-shadow: 0 5px 12px rgba(60, 50, 237, 0.24);
+  transform: none;
+}
+
+/* 中文：次要按钮固定白底，和参考图中的“我已完成认证”保持一致。 */
+.real-name-required-actions .semi-button:not(.real-name-required-primary),
+.real-name-required-actions .semi-button:not(.real-name-required-primary):hover,
+.real-name-required-actions .semi-button:not(.real-name-required-primary):active {
+  border-color: #d9dce5 !important;
+  color: #252a36 !important;
+  background: #fff !important;
+  box-shadow: none;
+  transform: none;
+}
+
+html[data-theme="light"] .real-name-required-dialog .semi-modal-content {
+  background: #fff !important;
+}
+
+html[data-theme="light"] .real-name-required-icon {
+  background: #f0f2ff;
+}
+
+html[data-theme="light"] .real-name-required-icon span {
+  color: #111827;
+  background: #fff;
+}
+
+html[data-theme="light"] .real-name-required-icon::before {
+  background: #111827;
+}
+
+@media (max-width: 700px) {
+  .real-name-required-dialog .semi-modal-wrap {
+    align-items: flex-start;
+    padding: 12px;
+  }
+
+  .real-name-required-dialog .semi-modal {
+    width: calc(100vw - 24px) !important;
+  }
+
+  .real-name-required-dialog .semi-modal-body-wrapper {
+    padding: 0 0 32px;
+  }
+
+  .real-name-required-icon {
+    width: 78px;
+    height: 78px;
+    margin-bottom: 14px;
+  }
+
+  .real-name-required-icon::before {
+    top: 11px;
+    left: 12px;
+    width: 10px;
+    height: 10px;
+  }
+
+  .real-name-required-icon span {
+    width: 52px;
+    height: 52px;
+  }
+
+  .real-name-required-icon svg {
+    width: 27px;
+    height: 27px;
+  }
+
+  .real-name-required-content h2 {
+    font-size: 24px;
+    line-height: 34px;
+  }
+
+  .real-name-required-content p {
+    margin-top: 12px;
+    font-size: 15px;
+    line-height: 24px;
+  }
+
+  .real-name-required-actions {
+    width: 100%;
+    gap: 10px;
+    margin-top: 24px;
+  }
+
+  .real-name-required-actions .semi-button {
+    min-width: 0;
+    width: 50%;
+    height: 44px;
+    padding-inline: 8px;
+    font-size: 14px;
+  }
+}
