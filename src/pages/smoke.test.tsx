@@ -163,7 +163,6 @@ describe('页面主链冒烟场景', () => {
     await user.click(screen.getByRole('button', { name: '获取验证码' }))
     expect(await screen.findByText('验证码已发送至 138****8000')).toBeInTheDocument()
     await user.type(screen.getByLabelText('验证码'), '482915')
-    await user.click(screen.getByRole('checkbox', { name: /我已阅读并同意/ }))
     await user.click(screen.getByRole('button', { name: '登录 / 注册' }))
 
     expect(await screen.findByText('关于页面')).toBeInTheDocument()
@@ -359,15 +358,18 @@ describe('页面主链冒烟场景', () => {
     expect(document.documentElement).toHaveAttribute('data-theme', 'dark')
   })
 
-  it('手机号登录未同意协议时保持可交互并阻止提交', async () => {
+  it('手机号登录默认同意协议并在登录按钮上方展示提示', async () => {
     const user = userEvent.setup()
     renderLogin('/about')
     const loginButton = screen.getByRole('button', { name: '登录 / 注册' })
+    const consentNotice = document.querySelector<HTMLElement>('.login-consent-notice')!
+
+    expect(consentNotice).toHaveTextContent('登录视为您已阅读并同意 Token NX《用户协议》和《隐私政策》')
+    expect(screen.queryByRole('checkbox', { name: /我已阅读并同意/ })).not.toBeInTheDocument()
+    expect(consentNotice?.compareDocumentPosition(loginButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(loginButton).toBeEnabled()
     await user.click(loginButton)
-    expect(screen.getByRole('status')).toHaveTextContent('请先勾选并同意用户协议和隐私政策')
-    await user.click(screen.getByRole('checkbox', { name: /我已阅读并同意/ }))
-    expect(loginButton).toBeEnabled()
+    expect(screen.getByRole('status')).toHaveTextContent('请输入正确的手机号')
   })
 
   it('模型目录展示五张轮播和三组三张模型卡片', async () => {
@@ -386,11 +388,11 @@ describe('页面主链冒烟场景', () => {
 
   it('登录页默认只显示手机号登录并校验号码格式', async () => {
     const user = userEvent.setup()
-    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(apiResponse({ destination_masked: '+1 415****2671', expires_at: '2099-01-01T00:05:00Z', retry_after_seconds: 5 }))
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(apiResponse({ destination_masked: '+86 138****8000', expires_at: '2099-01-01T00:05:00Z', retry_after_seconds: 5 }))
 
     renderLogin('/about')
     expect(screen.getByRole('heading', { name: '手机号登录' })).toBeInTheDocument()
-    expect(screen.getByRole('combobox', { name: '国家或地区区号' })).toHaveValue('+86')
+    expect(screen.queryByRole('combobox', { name: '国家或地区区号' })).not.toBeInTheDocument()
     expect(document.querySelector('.phone-prefix-value')).toHaveTextContent('+86')
     expect(document.querySelector('.phone-prefix-value')).not.toHaveTextContent('中国')
     expect(document.querySelector('.code-input-wrapper')).toContainElement(screen.getByLabelText('验证码'))
@@ -403,11 +405,10 @@ describe('页面主链冒烟场景', () => {
     await user.click(screen.getByRole('button', { name: '获取验证码' }))
     expect(fetchMock).not.toHaveBeenCalled()
     await user.clear(screen.getByLabelText('手机号'))
-    await user.selectOptions(screen.getByRole('combobox', { name: '国家或地区区号' }), '+1')
-    await user.type(screen.getByLabelText('手机号'), '4155552671')
+    await user.type(screen.getByLabelText('手机号'), '13800138000')
     await user.click(screen.getByRole('button', { name: '获取验证码' }))
-    expect(await screen.findByText('验证码已发送至 +1 415****2671')).toBeInTheDocument()
-    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toMatchObject({ destination: '4155552671', country_code: '+1' })
+    expect(await screen.findByText('验证码已发送至 +86 138****8000')).toBeInTheDocument()
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toMatchObject({ destination: '13800138000', country_code: '+86' })
   })
 
   it('登录页手机号登录仍会调用短信验证码和登录接口', async () => {
@@ -424,7 +425,6 @@ describe('页面主链冒烟场景', () => {
     await user.click(screen.getByRole('button', { name: '获取验证码' }))
     expect(await screen.findByText('验证码已发送至 138****8000')).toBeInTheDocument()
     await user.type(screen.getByLabelText('验证码'), '482915')
-    await user.click(screen.getByRole('checkbox', { name: /我已阅读并同意/ }))
     await user.click(screen.getByRole('button', { name: '登录 / 注册' }))
     expect(await screen.findByText('关于页面')).toBeInTheDocument()
     expect(fetchMock).toHaveBeenCalledTimes(2)
@@ -443,7 +443,6 @@ describe('页面主链冒烟场景', () => {
     renderLogin('/about')
     await user.type(screen.getByLabelText('手机号'), '13800138000')
     await user.type(screen.getByLabelText('验证码'), '482915')
-    await user.click(screen.getByRole('checkbox', { name: /我已阅读并同意/ }))
     await user.click(screen.getByRole('button', { name: '登录 / 注册' }))
 
     expect(await screen.findByText('首页')).toBeInTheDocument()
@@ -462,7 +461,6 @@ describe('页面主链冒烟场景', () => {
     render(<MemoryRouter initialEntries={['/']}><Provider store={createAppStore()}><AppStoreProvider><LoginDialogHarness /></AppStoreProvider></Provider></MemoryRouter>)
     await user.type(screen.getByLabelText('手机号'), '13800138000')
     await user.type(screen.getByLabelText('验证码'), '482915')
-    await user.click(screen.getByRole('checkbox', { name: /我已阅读并同意/ }))
     await user.click(screen.getByRole('button', { name: '登录 / 注册' }))
 
     expect(await screen.findByText('登录弹窗已关闭')).toBeInTheDocument()
@@ -519,7 +517,6 @@ describe('页面主链冒烟场景', () => {
     await user.click(screen.getByRole('button', { name: '获取验证码' }))
     expect(await screen.findByText('验证码已发送至 139****0000')).toBeInTheDocument()
     await user.type(screen.getByLabelText('验证码'), '731204')
-    await user.click(screen.getByRole('checkbox', { name: /我已阅读并同意/ }))
     await user.click(screen.getByRole('button', { name: '绑定并登录' }))
     expect(await screen.findByText('控制台首页')).toBeInTheDocument()
   })

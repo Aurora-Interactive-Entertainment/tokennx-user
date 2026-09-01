@@ -104,17 +104,37 @@ describe('工作空间本地状态', () => {
     expect(store?.playgroundSessions[0]?.prompt).toBe('修正请求')
   })
 
-  it('智能会话只存在当前页面内，重新挂载后不恢复正文', () => {
+  it('智能会话保存在浏览器中，重新挂载后恢复正文', () => {
     let store: ReturnType<typeof useAppStore> | undefined
     const firstRender = render(<AppStoreProvider><StoreProbe onReady={(value) => { store = value }} /></AppStoreProvider>)
     act(() => { store?.runPlayground({ modelId: 'deepseek-chat', prompt: '刷新前的私密问题', response: '刷新前的回复' }) })
     expect(store?.playgroundSessions).toHaveLength(1)
-    expect(window.localStorage.getItem('token-nx:user-front:v1')).toBeNull()
+    expect(window.localStorage.getItem('token-nx:playground:v1')).toContain('刷新前的私密问题')
     firstRender.unmount()
 
     let remountedStore: ReturnType<typeof useAppStore> | undefined
     render(<AppStoreProvider><StoreProbe onReady={(value) => { remountedStore = value }} /></AppStoreProvider>)
-    expect(remountedStore?.playgroundSessions).toHaveLength(0)
+    expect(remountedStore?.playgroundSessions).toHaveLength(1)
+    expect(remountedStore?.playgroundSessions[0]?.messages[0]?.content).toBe('刷新前的私密问题')
+  })
+
+  it('清除上下文保留同一条历史会话并重置轮次', () => {
+    let store: ReturnType<typeof useAppStore> | undefined
+    render(<AppStoreProvider><StoreProbe onReady={(value) => { store = value }} /></AppStoreProvider>)
+
+    let sessionId = ''
+    act(() => {
+      sessionId = store!.runPlayground({ modelId: 'deepseek-chat', prompt: '旧上下文问题', response: '旧上下文回复' }).id
+    })
+    act(() => { store?.clearPlaygroundContext(sessionId) })
+
+    expect(store?.playgroundSessions).toHaveLength(1)
+    expect(store?.playgroundSessions[0]).toMatchObject({ id: sessionId, rounds: 0, contextBreaks: [2] })
+    expect(store?.playgroundSessions[0]?.messages).toHaveLength(2)
+
+    // 中文：没有新增消息时重复清除，不应生成连续的空分割线。
+    act(() => { store?.clearPlaygroundContext(sessionId) })
+    expect(store?.playgroundSessions[0]?.contextBreaks).toEqual([2])
   })
 
   it('默认不创建演示会话，并忽略历史持久化会话内容', () => {

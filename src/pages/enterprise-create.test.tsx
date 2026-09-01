@@ -9,7 +9,6 @@ import type { AuthResult } from '@/api/auth'
 import { ApiError } from '@/api/http'
 import {
   confirmEnterpriseFaceVerification,
-  getEnterpriseFaceVerificationStatus,
   getEnterpriseCertification,
   NEW_ENTERPRISE_CREATE_PATH,
   startEnterpriseFaceVerification,
@@ -26,7 +25,7 @@ import { EnterpriseCreatePage } from './console-account'
 vi.mock('qrcode', () => ({ default: { toCanvas: vi.fn().mockResolvedValue(undefined) } }))
 vi.mock('@/api/enterprise-certification', async () => {
   const actual = await vi.importActual<typeof import('@/api/enterprise-certification')>('@/api/enterprise-certification')
-  return { ...actual, getEnterpriseCertification: vi.fn(), getEnterpriseFaceVerificationStatus: vi.fn(), uploadEnterpriseCertificationMaterial: vi.fn(), submitEnterpriseCertification: vi.fn(), startEnterpriseFaceVerification: vi.fn(), confirmEnterpriseFaceVerification: vi.fn() }
+  return { ...actual, getEnterpriseCertification: vi.fn(), uploadEnterpriseCertificationMaterial: vi.fn(), submitEnterpriseCertification: vi.fn(), startEnterpriseFaceVerification: vi.fn(), confirmEnterpriseFaceVerification: vi.fn() }
 })
 vi.mock('@/api/profile', async () => {
   const actual = await vi.importActual<typeof import('@/api/profile')>('@/api/profile')
@@ -38,7 +37,6 @@ const uploadMaterialMock = vi.mocked(uploadEnterpriseCertificationMaterial)
 const submitCertificationMock = vi.mocked(submitEnterpriseCertification)
 const startFaceMock = vi.mocked(startEnterpriseFaceVerification)
 const confirmFaceMock = vi.mocked(confirmEnterpriseFaceVerification)
-const faceStatusMock = vi.mocked(getEnterpriseFaceVerificationStatus)
 const getProfileEnterprisesMock = vi.mocked(getProfileEnterprises)
 
 const AUTH_RESULT: AuthResult = {
@@ -128,12 +126,27 @@ describe('enterprise verification page', () => {
     expect(confirmFaceMock).toHaveBeenCalledWith('enterprise-token')
   })
 
+  it('shows a pending hint when manual confirmation has no face result yet', async () => {
+    const user = userEvent.setup()
+    getCertificationMock.mockResolvedValue(FACE_REQUIRED)
+    startFaceMock.mockResolvedValue({ ...FACE_REQUIRED, current_stage: 'face_verification', face_url: 'https://example.com/face' })
+    confirmFaceMock.mockResolvedValue({ ...FACE_REQUIRED, current_stage: 'face_verification', face_url: 'https://example.com/face' })
+    renderPage()
+
+    await user.click(await screen.findByRole('checkbox', { name: new RegExp(i18n.t('console.enterpriseCreate.faceConsent').slice(0, 8)) }))
+    await user.click(screen.getByRole('button', { name: i18n.t('console.enterpriseCreate.getFaceQr') }))
+    await user.click(await screen.findByRole('button', { name: i18n.t('console.enterpriseCreate.faceCompleted') }))
+
+    expect(await screen.findByText(i18n.t('console.enterpriseCreate.faceConfirmPendingTitle'))).toBeInTheDocument()
+    expect(screen.getByText(i18n.t('console.enterpriseCreate.faceConfirmPendingMessage'))).toBeInTheDocument()
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+  })
+
   it('keeps the face dialog open and shows the API message when confirmation fails', async () => {
     const user = userEvent.setup()
     getCertificationMock.mockResolvedValue(FACE_REQUIRED)
     startFaceMock.mockResolvedValue({ ...FACE_REQUIRED, current_stage: 'face_verification', face_url: 'https://example.com/face' })
     confirmFaceMock.mockRejectedValue(new ApiError('请求参数无效', 400, 100001, 'request-face-confirm'))
-    faceStatusMock.mockResolvedValue({ ...FACE_REQUIRED, current_stage: 'face_verification' })
     renderPage()
 
     await user.click(await screen.findByRole('checkbox', { name: new RegExp(i18n.t('console.enterpriseCreate.faceConsent').slice(0, 8)) }))
@@ -144,8 +157,25 @@ describe('enterprise verification page', () => {
     expect(await screen.findByText(i18n.t('console.enterpriseCreate.faceConfirmFailedTitle'))).toBeInTheDocument()
     expect(screen.getByText('请求参数无效')).toBeInTheDocument()
     expect(dialog).toBeInTheDocument()
-    await waitFor(() => expect(faceStatusMock).toHaveBeenCalledWith('enterprise-token'), { timeout: 4_500 })
+    await waitFor(() => expect(confirmFaceMock.mock.calls.length).toBeGreaterThan(1), { timeout: 4_500 })
+    expect(screen.getByText('请求参数无效')).toBeInTheDocument()
   })
+
+  it('keeps background confirmation errors silent and continues polling', async () => {
+    const user = userEvent.setup()
+    getCertificationMock.mockResolvedValue(FACE_REQUIRED)
+    startFaceMock.mockResolvedValue({ ...FACE_REQUIRED, current_stage: 'face_verification', face_url: 'https://example.com/face' })
+    confirmFaceMock.mockRejectedValue(new ApiError('尚未完成认证', 409, 100001, 'request-face-poll'))
+    renderPage()
+
+    await user.click(await screen.findByRole('checkbox', { name: new RegExp(i18n.t('console.enterpriseCreate.faceConsent').slice(0, 8)) }))
+    await user.click(screen.getByRole('button', { name: i18n.t('console.enterpriseCreate.getFaceQr') }))
+    expect(await screen.findByRole('dialog')).toBeInTheDocument()
+
+    await waitFor(() => expect(confirmFaceMock.mock.calls.length).toBeGreaterThan(1), { timeout: 7_500 })
+    expect(screen.queryByText(i18n.t('console.enterpriseCreate.faceConfirmFailedTitle'))).not.toBeInTheDocument()
+    expect(screen.queryByText('尚未完成认证')).not.toBeInTheDocument()
+  }, 9_000)
 
   it('invalidates an expired session and returns to the home page', async () => {
     getCertificationMock.mockRejectedValue(new ApiError('expired', 401, 110001, 'request-2'))

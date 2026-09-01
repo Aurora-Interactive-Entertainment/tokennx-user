@@ -1,34 +1,40 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
 import { Link, useSearchParams, useNavigate } from 'react-router'
 import Button from '@douyinfe/semi-ui/lib/es/button'
+import Popover from '@douyinfe/semi-ui/lib/es/popover'
+import Tooltip from '@douyinfe/semi-ui/lib/es/tooltip'
 import Modal from '@/components/app-modal'
 import Toast from '@douyinfe/semi-ui/lib/es/toast'
-import { IconAlertTriangle, IconArrowRight, IconChevronDown, IconCode, IconCopy, IconEdit, IconSearch, IconSend, IconSetting, IconStop } from '@douyinfe/semi-icons'
+import { IconAlertTriangle, IconArrowLeft, IconArrowRight, IconChevronDown, IconClose, IconCommentStroked, IconCopy, IconEdit, IconExpand, IconPlus, IconRedo, IconSearch, IconSend, IconSetting, IconShrink, IconStop } from '@douyinfe/semi-icons'
 import { EmptyPanel, ModelCard, ModelLogo, PageTitle } from '@/components/common'
+import { appToast } from '@/components/app-toast'
 import { ModelDetailDrawer } from '@/components/model-detail-drawer'
 import { MarkdownContent } from '@/components/markdown-content'
 import { BackofficeMoneyText as MoneyText } from '@/components/money'
 import { TraePagination } from '@/components/trae-pagination'
 import { CompatCard as Card, CompatInput as Input, CompatSelect as Select } from '@/components/semi-compat'
-import { useAppStore, type PlaygroundMessage } from '@/data/app-state'
+import { useAppStore, type PlaygroundMessage, type PlaygroundSession } from '@/data/app-state'
 import { findModelInList, mapUserModels, modelAlias, type ModelRecord } from '@/data/models'
 import type { UserModelModality } from '@/api/user-models'
 import { useUserModelDetail, useUserModels } from '@/data/user-models'
 import { ModelRuntimeError, streamChatCompletion, type ChatCompletionMessage } from '@/api/model-runtime'
 import { formatNumber } from '@/utils/format'
-import { canStartPlaygroundRound, limitPlaygroundPrompt, playgroundCharacterCount, PLAYGROUND_MAX_INPUT_CHARACTERS } from '@/utils/playground'
+import { canStartPlaygroundRound, limitPlaygroundPrompt, PLAYGROUND_MAX_INPUT_CHARACTERS } from '@/utils/playground'
 import { clearAuthTokens, getAccessToken } from '@/auth/token-storage'
 import { invalidateAuth } from '@/store/auth-slice'
 import { useAppDispatch } from '@/store/hooks'
 import { DEFAULT_MODEL_PAGE_SIZE, MODEL_CATEGORIES, MODEL_PAGE_SIZES, MODEL_PRICE_FILTERS, MODEL_SORTS, filterAndSortModels, modelCategoryCounts, paginateModels, type ModelCategory, type ModelPriceFilter, type ModelSort } from '@/utils/model-filters'
 import { QuickstartGuide } from '@/components/quickstart-guide'
+import './playground.css'
+import './console-models.css'
 
 const FIRST_MODEL_PAGE = 1
 
 export function ConsoleModelsPage() {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const [category, setCategory] = useState<ModelCategory>('all')
   const [activityId, setActivityId] = useState('')
   const [page, setPage] = useState(FIRST_MODEL_PAGE)
@@ -165,7 +171,7 @@ export function ConsoleModelsPage() {
       <div className="modality-tabs" role="group" aria-label={t('console.common.modelType')}>{MODEL_CATEGORIES.map((tab) => <button className={`modality-tab${category === tab.value ? ' active' : ''}`} type="button" aria-pressed={category === tab.value} key={tab.value} disabled={categoryCounts[tab.value] === 0} onClick={() => updateFilter(() => setCategory(tab.value))}>{t(tab.labelKey)} <span className="tab-count">{categoryCounts[tab.value]}</span></button>)}</div><span className="models-result-count">{t('console.common.modelCount', { count: pageResult.total })}</span>
     </div>
     {filteredModels.length ? <>
-      <div className={modelGridClassName}>{pageResult.items.map((model) => <ModelCard key={model.id} model={model} onSelect={setDetailModel} />)}</div>
+      <div className={modelGridClassName}>{pageResult.items.map((model) => <ModelCard key={model.id} model={model} onSelect={setDetailModel} onApi={(selectedModel) => navigate(`/console/api-keys?model=${encodeURIComponent(modelAlias(selectedModel))}`)} onChat={(selectedModel) => navigate(`/console/playground?model=${encodeURIComponent(modelAlias(selectedModel))}`)} />)}</div>
       <TraePagination ariaLabel={t('console.models.modelPage')} currentPage={pageResult.page} pageSize={pageSize} total={pageResult.total} pageSizeOpts={[...MODEL_PAGE_SIZES]} summary={t('console.common.showRange', { start: pageResult.start, end: pageResult.end, total: pageResult.total })} onChange={(nextPage, nextPageSize) => { setPageSize(nextPageSize); setPage(nextPageSize === pageSize ? nextPage : FIRST_MODEL_PAGE) }} />
     </> : <EmptyPanel title={t('console.models.modelNotFound')} description={t('console.common.adjustFilters')} action={<Button theme="outline" onClick={clearFilters}>{t('console.common.clearFilters')}</Button>} />}
     </> : null}
@@ -182,6 +188,7 @@ const MAX_MAX_TOKENS = 128_000
 
 function modelErrorMessage(error: unknown, t: TFunction): string {
   if (error instanceof DOMException && error.name === 'AbortError') return t('console.playground.stopped')
+  if (error instanceof ModelRuntimeError && error.message.trim()) return error.message
   return t('console.playground.modelCallFailed')
 }
 
@@ -197,12 +204,29 @@ function lastUserMessage(session: { messages: PlaygroundMessage[]; prompt: strin
   return [...session.messages].reverse().find((message) => message.role === 'user')?.content ?? session.prompt
 }
 
-function sessionMessages(session: { messages: PlaygroundMessage[] }): PlaygroundMessage[] {
-  return session.messages
+// 中文：分段之前的消息只用于展示，不再进入后续模型请求。
+function sessionContextStart(session: PlaygroundSession): number {
+  return session.contextBreaks?.at(-1) ?? 0
 }
 
-function PlaygroundWorkspaceNotice({ message, description, action }: { message: string; description?: string; action?: ReactNode }) {
-  return <div className="workspace-notice-state playground-workspace-notice" role="alert">
+function sessionContextMessages(session: PlaygroundSession): PlaygroundMessage[] {
+  return session.messages.slice(sessionContextStart(session))
+}
+
+// 中文：分割线属于当前会话时间线，不创建新的左侧历史记录。
+function PlaygroundMessageTimeline({ session, hiddenAttemptId, dividerLabel, renderMessage }: { session: PlaygroundSession; hiddenAttemptId: string; dividerLabel: string; renderMessage: (message: PlaygroundMessage) => ReactNode }) {
+  const contextBreaks = new Set(session.contextBreaks ?? [])
+  return <>
+    {session.messages.map((message, index) => <Fragment key={`timeline-${message.id}`}>
+      {contextBreaks.has(index) ? <div className="context-divider" role="separator"><span>{dividerLabel}</span></div> : null}
+      {message.attemptId !== hiddenAttemptId ? renderMessage(message) : null}
+    </Fragment>)}
+    {contextBreaks.has(session.messages.length) ? <div className="context-divider" role="separator"><span>{dividerLabel}</span></div> : null}
+  </>
+}
+
+function PlaygroundWorkspaceNotice({ message, description, action, tone = 'error' }: { message: string; description?: string; action?: ReactNode; tone?: 'error' | 'neutral' }) {
+  return <div className={`workspace-notice-state playground-workspace-notice${tone === 'neutral' ? ' is-neutral' : ''}`} role="alert">
     <span className="workspace-notice-icon"><IconAlertTriangle aria-hidden="true" /></span>
     <strong>{message}</strong>
     {description ? <p>{description}</p> : null}
@@ -224,13 +248,15 @@ export function PlaygroundPage() {
   const [prompt, setPrompt] = useState('')
   const [running, setRunning] = useState(false)
   const [selectedSessionId, setSelectedSessionId] = useState('')
+  const [historyCollapsed, setHistoryCollapsed] = useState(false)
+  const [composerExpanded, setComposerExpanded] = useState(false)
   const [paramsVisible, setParamsVisible] = useState(false)
+  const [contextMenuVisible, setContextMenuVisible] = useState(false)
   const [temperature, setTemperature] = useState(DEFAULT_TEMPERATURE)
   const [maxTokens, setMaxTokens] = useState(DEFAULT_MAX_TOKENS)
   const [activePrompt, setActivePrompt] = useState('')
   const [streamingResponse, setStreamingResponse] = useState('')
   const [streamingReasoning, setStreamingReasoning] = useState('')
-  const [requestError, setRequestError] = useState('')
   const [editingAttemptId, setEditingAttemptId] = useState('')
   const [retryingAttemptId, setRetryingAttemptId] = useState('')
   const requestControllerRef = useRef<AbortController | null>(null)
@@ -241,6 +267,8 @@ export function PlaygroundPage() {
   const abortReasonRef = useRef<'user' | 'navigation' | null>(null)
   const workspaceKey = `${store.activeWorkspace.type}:${store.activeWorkspace.id}`
   const selectedSession = store.playgroundSessions.find((session) => session.id === selectedSessionId)
+  const currentContextMessages = selectedSession ? sessionContextMessages(selectedSession) : []
+  const hasCurrentContextMessages = currentContextMessages.length > 0
   const currentRounds = selectedSession?.rounds ?? 0
   const canContinueConversation = canStartPlaygroundRound(currentRounds)
   const selectableModels = useMemo(
@@ -258,7 +286,7 @@ export function PlaygroundPage() {
     const element = messageListRef.current
     if (!element || !followMessageBottomRef.current) return
     element.scrollTop = element.scrollHeight
-  }, [activePrompt, requestError, selectedSessionId, streamingReasoning, streamingResponse])
+  }, [activePrompt, selectedSessionId, streamingReasoning, streamingResponse])
 
   useEffect(() => {
     requestControllerRef.current?.abort()
@@ -270,7 +298,7 @@ export function PlaygroundPage() {
     setActivePrompt('')
     setStreamingResponse('')
     setStreamingReasoning('')
-    setRequestError('')
+    setComposerExpanded(false)
   }, [workspaceKey])
 
   useEffect(() => {
@@ -296,8 +324,8 @@ export function PlaygroundPage() {
     abortGeneration('user')
   }
 
-  async function runTest(): Promise<void> {
-    const trimmedPrompt = prompt.trim()
+  async function runTest(promptValue = prompt, replaceAttemptValue = editingAttemptId): Promise<void> {
+    const trimmedPrompt = promptValue.trim()
     if (running) return
     if (!trimmedPrompt) { Toast.warning(t('console.playground.promptRequired')); return }
     if (!selectedModel || !modelAlias(selectedModel)) { Toast.warning(t('console.playground.noTextModelAlias')); return }
@@ -324,9 +352,8 @@ export function PlaygroundPage() {
     const controller = new AbortController()
     requestControllerRef.current = controller
     abortReasonRef.current = null
-    const replacingAttemptId = editingAttemptId || undefined
+    const replacingAttemptId = replaceAttemptValue || undefined
     setRunning(true)
-    setRequestError('')
     setRetryingAttemptId(replacingAttemptId ?? '')
     setActivePrompt(trimmedPrompt)
     followMessageBottomRef.current = true
@@ -336,7 +363,7 @@ export function PlaygroundPage() {
     streamingReasoningRef.current = ''
     try {
       const messages: ChatCompletionMessage[] = [
-        ...(selectedSession?.messages ?? [])
+        ...currentContextMessages
           .filter((message) => message.status !== 'failed')
           .map((message) => ({ role: message.role, content: message.content })),
         { role: 'user', content: trimmedPrompt },
@@ -418,7 +445,8 @@ export function PlaygroundPage() {
       streamingReasoningRef.current = ''
       setEditingAttemptId('')
       setRetryingAttemptId('')
-      setRequestError(message)
+      if (controller.signal.aborted && abortReasonRef.current === 'user') appToast.info(message)
+      else appToast.error(message)
     } finally {
       if (requestControllerRef.current === controller) {
         requestControllerRef.current = null
@@ -438,8 +466,16 @@ export function PlaygroundPage() {
     setStreamingReasoning('')
     streamingResponseRef.current = ''
     streamingReasoningRef.current = ''
-    setRequestError('')
     setPrompt('')
+    followMessageBottomRef.current = true
+  }
+
+  function clearCurrentContext(): void {
+    if (!selectedSession || !hasCurrentContextMessages || running) return
+    store.clearPlaygroundContext(selectedSession.id)
+    setEditingAttemptId('')
+    setRetryingAttemptId('')
+    setContextMenuVisible(false)
     followMessageBottomRef.current = true
   }
 
@@ -457,7 +493,6 @@ export function PlaygroundPage() {
     setStreamingReasoning('')
     streamingResponseRef.current = ''
     streamingReasoningRef.current = ''
-    setRequestError('')
     setPrompt('')
     followMessageBottomRef.current = true
   }
@@ -467,12 +502,27 @@ export function PlaygroundPage() {
     void navigator.clipboard.writeText(value).then(() => Toast.success(successMessage)).catch(() => Toast.error(t('console.common.copyFailed')))
   }
 
+  // 中文：透明操作项仍支持键盘回车和空格，避免仅依赖鼠标悬浮交互。
+  function activateAction(event: React.KeyboardEvent<HTMLElement>, action: () => void): void {
+    if (event.key !== 'Enter' && event.key !== ' ') return
+    event.preventDefault()
+    action()
+  }
+
   function editFailedAttempt(attemptId: string): void {
     const failedUserMessage = selectedSession?.messages.find((message) => message.attemptId === attemptId && message.role === 'user' && message.status === 'failed')
     if (!failedUserMessage) return
     setEditingAttemptId(attemptId)
-    setRequestError('')
     setPrompt(failedUserMessage.content)
+  }
+
+  // 中文：重试沿用当前会话上下文；失败尝试可被同一条消息替换，成功尝试则追加一轮新响应。
+  function retryAttempt(attemptId: string): void {
+    const userMessage = selectedSession?.messages.find((message) => message.attemptId === attemptId && message.role === 'user')
+    if (!userMessage || running) return
+    const failed = userMessage.status === 'failed'
+    setEditingAttemptId(failed ? attemptId : '')
+    void runTest(userMessage.content, failed ? attemptId : '')
   }
 
   function renderMessage(message: PlaygroundMessage, streaming = false) {
@@ -481,49 +531,55 @@ export function PlaygroundPage() {
     const reasoning = streaming ? streamingReasoning : message.reasoning
     const isAssistant = message.role === 'assistant'
     const isFailed = !streaming && message.status === 'failed'
-    return <div className={`message ${isAssistant ? 'ai' : 'user'}`} key={message.id}>
-      <span className="message-avatar">{isAssistant ? 'NX' : 'H'}</span>
+    return <div className={`message ${isAssistant ? 'ai' : 'user'}${isFailed ? ' is-failed' : ''}`} key={message.id}>
+      {isAssistant ? <div className="message-avatar message-avatar--assistant">{selectedModel?.company?.slice(0, 1) ?? 'N'}</div> : null}
       <div className="message-body">
-        {isAssistant && reasoning ? <details className="message-reasoning" open><summary>{streaming && running ? t('console.playground.thinkingNow') : t('console.playground.thinking')}</summary><MarkdownContent content={reasoning} className="message-reasoning-content" /></details> : null}
-        <div className="message-bubble">
+        {isAssistant ? <div className="message-author"><span>{selectedModel?.name ?? t('console.playground.unnamedModel')}</span><small>{selectedModel?.company ?? 'Token NX'}</small></div> : null}
+        {isAssistant && reasoning ? <details className="message-reasoning" open={streaming && running}><summary>{streaming && running ? t('console.playground.thinkingNow') : t('console.playground.thinking')}</summary><MarkdownContent content={reasoning} className="message-reasoning-content" /></details> : null}
+        {!isFailed || content ? <div className="message-bubble">
           {streaming && !hasStreamingResponse ? <span className="message-loading" role="status" aria-label={t('console.playground.messageLoading')} /> : isAssistant ? <MarkdownContent content={content || t('console.playground.responseEmpty')} /> : content}
           {streaming && running ? <span className="message-cursor" aria-hidden="true" /> : null}
-        </div>
-        {isFailed && message.error ? <div className="message-failure">{message.error}</div> : null}
-        {isAssistant && !streaming && !isFailed ? <div className="message-meta"><span>{t('console.playground.elapsed')} <strong>{message.latency === null ? '--' : `${message.latency}ms`}</strong></span><span>{t('console.common.input')} <strong>{formatTokenMetric(message.inputTokens, t)}</strong></span><span>{t('console.common.output')} <strong>{formatTokenMetric(message.outputTokens, t)}</strong></span><span>{t('console.playground.cost')} <strong>{formatSessionCost(message.cost, t)}</strong></span></div> : null}
-        {!streaming && (message.content || !isAssistant) ? <div className="message-actions"><Button className="message-icon-action" theme="borderless" size="small" icon={<IconCopy />} aria-label={isAssistant ? t('console.playground.copyReply') : t('console.playground.copyUserMessage')} title={isAssistant ? t('console.playground.copyReply') : t('console.playground.copyUserMessage')} onClick={() => copyMessage(message.content, isAssistant ? t('console.playground.copiedReply') : t('console.playground.copiedUserMessage'))} /></div> : null}
-        {isFailed && isAssistant ? <div className="message-actions"><Button className="message-icon-action" theme="borderless" size="small" icon={<IconEdit />} aria-label={t('console.playground.editFailed')} title={t('console.playground.editFailed')} onClick={() => editFailedAttempt(message.attemptId)} /></div> : null}
+        </div> : null}
+        {isAssistant && !streaming && !isFailed ? <div className="message-footer"><div className="message-meta"><span>{t('console.playground.elapsed')} <strong>{message.latency === null ? '--' : `${message.latency}ms`}</strong></span><span>{t('console.common.input')} <strong>{formatTokenMetric(message.inputTokens, t)}</strong></span><span>{t('console.common.output')} <strong>{formatTokenMetric(message.outputTokens, t)}</strong></span><span>{t('console.playground.cost')} <strong>{formatSessionCost(message.cost, t)}</strong></span></div><div className="message-actions"><span className="message-icon-action" role="button" tabIndex={0} aria-label={t('console.playground.copyReply')} title={t('console.playground.copyReply')} onClick={() => copyMessage(message.content, t('console.playground.copiedReply'))} onKeyDown={(event) => activateAction(event, () => copyMessage(message.content, t('console.playground.copiedReply')))}><IconCopy aria-hidden="true" /></span><span className={`message-icon-action${running ? ' is-disabled' : ''}`} role="button" tabIndex={running ? -1 : 0} aria-disabled={running} aria-label={t('console.playground.retry')} title={t('console.playground.retry')} onClick={() => retryAttempt(message.attemptId)} onKeyDown={(event) => activateAction(event, () => retryAttempt(message.attemptId))}><IconRedo aria-hidden="true" /></span></div></div> : null}
+        {!streaming && !isAssistant && message.content ? <div className="message-actions"><span className="message-icon-action" role="button" tabIndex={0} aria-label={t('console.playground.copyUserMessage')} title={t('console.playground.copyUserMessage')} onClick={() => copyMessage(message.content, t('console.playground.copiedUserMessage'))} onKeyDown={(event) => activateAction(event, () => copyMessage(message.content, t('console.playground.copiedUserMessage')))}><IconCopy aria-hidden="true" /></span></div> : null}
+        {isFailed && isAssistant ? <div className="message-actions"><span className="message-icon-action" role="button" tabIndex={0} aria-label={t('console.playground.editFailed')} title={t('console.playground.editFailed')} onClick={() => editFailedAttempt(message.attemptId)} onKeyDown={(event) => activateAction(event, () => editFailedAttempt(message.attemptId))}><IconEdit aria-hidden="true" /></span><span className={`message-icon-action${running ? ' is-disabled' : ''}`} role="button" tabIndex={running ? -1 : 0} aria-disabled={running} aria-label={t('console.playground.retry')} title={t('console.playground.retry')} onClick={() => retryAttempt(message.attemptId)} onKeyDown={(event) => activateAction(event, () => retryAttempt(message.attemptId))}><IconRedo aria-hidden="true" /></span></div> : null}
       </div>
     </div>
   }
 
-  if (modelsLoading) return <div className="page-stack playground-console-page"><PageTitle title={t('console.playground.title')} description={t('console.playground.description')} /><EmptyPanel title={t('console.common.loadingModels')} description={t('console.common.readingModels')} /></div>
-  if (modelsError) return <div className="page-stack playground-console-page"><PageTitle title={t('console.playground.title')} description={t('console.playground.description')} /><EmptyPanel title={t('console.common.modelCatalogFailed')} description={modelsError} action={<Button theme="outline" onClick={refreshModels}>{t('console.common.reload')}</Button>} /></div>
+  const centerMessageState = !selectedSession && !activePrompt
 
-  const centerMessageState = Boolean(requestError) || (!selectedSession && !activePrompt)
-
-  return <div className="page-stack playground-console-page">
-    <PageTitle title={t('console.playground.title')} description={t('console.playground.detailedDescription')} />
+  return <div className={`page-stack playground-console-page${historyCollapsed ? ' is-history-collapsed' : ''}`}>
     <section className="playground-shell" aria-label={t('console.playground.title')}>
-      <aside className="history-panel" aria-labelledby="history-title"><div className="history-heading"><h2 id="history-title">{t('console.playground.history')}</h2><Button theme="outline" size="small" onClick={startNewSession}>{t('console.playground.newSession')}</Button></div><div className="history-list">{store.playgroundSessions.slice(0, 7).map((session) => { const model = findModelInList(models, session.modelId); const modelName = model?.name ?? t('console.playground.unnamedModel'); const displayModelAlias = model ? modelAlias(model) || t('console.common.modelAliasUnset') : t('console.common.modelAliasUnset'); return <button type="button" className={`history-item${selectedSessionId === session.id ? ' is-active' : ''}`} key={session.id} onClick={() => selectSession(session)}><strong>{modelName}</strong><span>{displayModelAlias} · {session.createdAt}</span><small>{lastUserMessage(session)}</small></button> })}</div></aside>
+      <aside className="history-panel" aria-labelledby="history-title">
+        <div className="history-heading">
+          <h2 id="history-title" className="sr-only">{t('console.playground.history')}</h2>
+          <Tooltip content={t('console.playground.createNewSession')} position="top"><div className="new-session-button" role="button" tabIndex={0} aria-label={t('console.playground.createNewSession')} onClick={startNewSession} onKeyDown={(event) => activateAction(event, startNewSession)}><IconPlus aria-hidden="true" /><span>{t('console.playground.newSession')}</span></div></Tooltip>
+          <div className="history-collapse-button" role="button" tabIndex={0} aria-label={historyCollapsed ? t('console.playground.expandHistory') : t('console.playground.collapseHistory')} title={historyCollapsed ? t('console.playground.expandHistory') : t('console.playground.collapseHistory')} onClick={() => setHistoryCollapsed((value) => !value)} onKeyDown={(event) => activateAction(event, () => setHistoryCollapsed((value) => !value))}>{historyCollapsed ? <IconArrowRight aria-hidden="true" /> : <IconArrowLeft aria-hidden="true" />}</div>
+        </div>
+        <div className="history-list">{store.playgroundSessions.slice(0, 7).map((session) => { const model = findModelInList(models, session.modelId); const modelName = model?.name ?? t('console.playground.unnamedModel'); const displayModelAlias = model ? modelAlias(model) || t('console.common.modelAliasUnset') : t('console.common.modelAliasUnset'); return <div role="button" tabIndex={0} className={`history-item${selectedSessionId === session.id ? ' is-active' : ''}`} key={session.id} onClick={() => selectSession(session)} onKeyDown={(event) => activateAction(event, () => selectSession(session))}><strong>{lastUserMessage(session)}</strong><span>{modelName} · {session.updatedAt}</span><small>{displayModelAlias}</small></div> })}</div>
+      </aside>
       <div className="workspace">
         <div className="playground-header">
           <div className="playground-actions">
             <label className="sr-only" htmlFor="playground-model">{t('console.playground.chooseModel')}</label>
-            <Select className="playground-model-select" dropdownClassName="playground-select-dropdown" id="playground-model" aria-label={t('console.playground.chooseModel')} value={selectedModel ? modelAlias(selectedModel) : ''} onChange={(value) => { const nextModelAlias = String(value); setModelId(nextModelAlias); store.setSelectedModelId(nextModelAlias); setSelectedSessionId(''); setEditingAttemptId(''); setRetryingAttemptId(''); setRequestError('') }} disabled={selectableModels.length === 0}>{selectableModels.map((model) => <Select.Option key={model.id} value={modelAlias(model)}>{t('console.playground.modelWithProvider', { name: model.name, company: model.company, alias: modelAlias(model) })}</Select.Option>)}</Select>
+            <div className="model-picker">
+              <span className="model-picker-avatar" aria-hidden="true">{selectedModel?.company?.slice(0, 1) ?? 'N'}</span>
+              <Select className="playground-model-select" dropdownClassName="playground-select-dropdown" id="playground-model" aria-label={t('console.playground.chooseModel')} value={selectedModel ? modelAlias(selectedModel) : ''} onChange={(value) => { const nextModelAlias = String(value); setModelId(nextModelAlias); store.setSelectedModelId(nextModelAlias); setSelectedSessionId(''); setEditingAttemptId(''); setRetryingAttemptId('') }} disabled={selectableModels.length === 0}>{selectableModels.map((model) => <Select.Option key={model.id} value={modelAlias(model)}>{model.name} | {model.company}</Select.Option>)}</Select>
+            </div>
             <Button className="icon-button" theme="borderless" icon={<IconSetting />} aria-label={t('console.playground.modelParams')} title={t('console.playground.modelParams')} onClick={() => setParamsVisible(true)} disabled={!selectedModel} />
           </div>
         </div>
         <div className={`message-list${centerMessageState ? ' is-centered' : ''}`} ref={messageListRef} onScroll={handleMessageScroll}>
-          {requestError ? <PlaygroundWorkspaceNotice message={requestError} action={<Button theme="outline" size="small" onClick={() => setRequestError('')}>{t('console.playground.closeError')}</Button>} /> : <>
-            {selectedSession ? sessionMessages(selectedSession).filter((message) => message.attemptId !== retryingAttemptId).map((message) => renderMessage(message)) : null}
-            {activePrompt ? <><div className="message user"><span className="message-avatar">H</span><div className="message-body"><div className="message-bubble">{activePrompt}</div><div className="message-actions"><Button className="message-icon-action" theme="borderless" size="small" icon={<IconCopy />} aria-label={t('console.playground.copyUserMessage')} title={t('console.playground.copyUserMessage')} onClick={() => copyMessage(activePrompt, t('console.playground.copiedUserMessage'))} /></div></div></div>{renderMessage({ id: 'streaming-response', attemptId: 'streaming-attempt', role: 'assistant', status: 'complete', content: '', reasoning: '', requestId: null, error: null, createdAt: '', inputTokens: null, outputTokens: null, cost: null, latency: null }, true)}</> : null}
-            {!selectedSession && !activePrompt ? selectableModels.length > 0 ? <div className="empty-state"><h3>{t('console.playground.startConversation')}</h3><p>{t('console.playground.startConversationHint')}</p></div> : <PlaygroundWorkspaceNotice message={t('console.playground.noTextModels')} description={t('console.playground.noTextModelsHint')} /> : null}
+            {modelsLoading && !selectedSession && !activePrompt ? <PlaygroundWorkspaceNotice tone="neutral" message={t('console.common.loadingModels')} description={t('console.common.readingModels')} /> : modelsError && !selectedSession && !activePrompt ? <PlaygroundWorkspaceNotice message={t('console.common.modelCatalogFailed')} description={modelsError} action={<Button theme="outline" size="small" onClick={refreshModels}>{t('console.common.reload')}</Button>} /> : <>
+            {selectedSession ? <PlaygroundMessageTimeline session={selectedSession} hiddenAttemptId={retryingAttemptId} dividerLabel={t('console.playground.newContextDivider')} renderMessage={renderMessage} /> : null}
+            {activePrompt ? <><div className="message user"><span className="message-avatar">H</span><div className="message-body"><div className="message-bubble">{activePrompt}</div><div className="message-actions"><span className="message-icon-action" role="button" tabIndex={0} aria-label={t('console.playground.copyUserMessage')} title={t('console.playground.copyUserMessage')} onClick={() => copyMessage(activePrompt, t('console.playground.copiedUserMessage'))} onKeyDown={(event) => activateAction(event, () => copyMessage(activePrompt, t('console.playground.copiedUserMessage')))}><IconCopy aria-hidden="true" /></span></div></div></div>{renderMessage({ id: 'streaming-response', attemptId: 'streaming-attempt', role: 'assistant', status: 'complete', content: '', reasoning: '', requestId: null, error: null, createdAt: '', inputTokens: null, outputTokens: null, cost: null, latency: null }, true)}</> : null}
+            {!selectedSession && !activePrompt ? selectableModels.length > 0 ? <div className="empty-state"><h3>{t('console.playground.startConversation')}</h3><p>{t('console.playground.startConversationHint')}</p></div> : <PlaygroundWorkspaceNotice tone="neutral" message={t('console.playground.noTextModels')} description={t('console.playground.noTextModelsHint')} /> : null}
           </>}
         </div>
-        <div className="composer">
+        <div className={`composer${composerExpanded ? ' is-expanded' : ''}`}>
           <p className="playground-ephemeral-notice" role="note">{t('console.playground.ephemeralNotice')}</p>
-          <div className="composer-box"><Input.TextArea className="composer-input" value={prompt} onChange={(value) => setPrompt(limitPlaygroundPrompt(value))} maxLength={PLAYGROUND_MAX_INPUT_CHARACTERS} rows={1} disabled={running || !canContinueConversation} placeholder={canContinueConversation ? t('console.playground.promptPlaceholder') : t('console.playground.newSessionLimit')} aria-label={t('console.playground.testPrompt')} onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); if (!running) void runTest() } }} /><span className="composer-character-count" aria-live="polite">{playgroundCharacterCount(prompt)}/{PLAYGROUND_MAX_INPUT_CHARACTERS}</span><div className="composer-actions"><Button className="send-btn" theme="solid" type="primary" icon={running ? <IconStop /> : <IconSend />} aria-label={running ? t('console.playground.stop') : t('console.playground.send')} title={running ? t('console.playground.stop') : t('console.playground.send')} disabled={running ? false : !prompt.trim() || !selectedModel || !canContinueConversation} onClick={() => { if (running) stopGeneration(); else void runTest() }} /></div></div>
+          <div className="composer-box"><Tooltip content={composerExpanded ? t('console.playground.collapseComposer') : t('console.playground.expandComposer')} position="left"><div className="composer-expand-action" role="button" tabIndex={0} aria-label={composerExpanded ? t('console.playground.collapseComposer') : t('console.playground.expandComposer')} onClick={() => setComposerExpanded((value) => !value)} onKeyDown={(event) => activateAction(event, () => setComposerExpanded((value) => !value))}>{composerExpanded ? <IconShrink aria-hidden="true" /> : <IconExpand aria-hidden="true" />}</div></Tooltip><Input.TextArea className="composer-input" value={prompt} onChange={(value) => setPrompt(limitPlaygroundPrompt(value))} maxLength={PLAYGROUND_MAX_INPUT_CHARACTERS} rows={1} disabled={running || !canContinueConversation} placeholder={canContinueConversation ? t('console.playground.promptPlaceholder') : t('console.playground.newSessionLimit')} aria-label={t('console.playground.testPrompt')} onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); if (!running) void runTest() } }} /><div className="composer-actions"><Popover trigger="click" position="topRight" showArrow visible={contextMenuVisible} onVisibleChange={setContextMenuVisible} content={<div className="context-settings-popover"><div className="context-settings-row context-settings-action" role="button" tabIndex={0} onClick={() => { setContextMenuVisible(false); setParamsVisible(true) }} onKeyDown={(event) => activateAction(event, () => { setContextMenuVisible(false); setParamsVisible(true) })}><strong>{t('console.playground.maxContextSettings')}</strong><IconSetting aria-hidden="true" /></div><div className={`context-settings-row context-settings-clear${!hasCurrentContextMessages || running ? ' is-disabled' : ''}`} role="button" tabIndex={!hasCurrentContextMessages || running ? -1 : 0} aria-disabled={!hasCurrentContextMessages || running} onClick={clearCurrentContext} onKeyDown={(event) => activateAction(event, clearCurrentContext)}><span>{t('console.playground.clearContext')}</span><IconClose aria-hidden="true" /></div></div>}><div className="composer-context-trigger" role="button" tabIndex={0} aria-label={t('console.playground.contextUsage', { count: currentRounds })}><IconCommentStroked aria-hidden="true" /><span>{currentRounds}/∞</span><IconChevronDown aria-hidden="true" /></div></Popover><Button className={`send-btn${running ? ' is-running' : ''}`} theme="solid" type="primary" icon={running ? <IconStop /> : <IconSend />} aria-label={running ? t('console.playground.stop') : t('console.playground.send')} title={running ? t('console.playground.stop') : t('console.playground.send')} disabled={running ? false : !prompt.trim() || !selectedModel || !canContinueConversation} onClick={() => { if (running) stopGeneration(); else void runTest() }} /></div></div>
           <div className="composer-hint"><span>{t('console.playground.enterHint')}</span><span>{selectedModel ? `${selectedModel.name} · ${modelAlias(selectedModel) || t('console.common.modelAliasUnset')} · ${t('console.playground.temperature')} ${temperature} · ${t('console.playground.maxTokens')} ${maxTokens}` : t('console.playground.noAvailableModels')}</span></div>
         </div>
       </div>

@@ -4,7 +4,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router'
 import Button from '@douyinfe/semi-ui/lib/es/button'
 import Modal from '@/components/app-modal'
 import Toast from '@douyinfe/semi-ui/lib/es/toast'
-import { IconAlertTriangle, IconArrowUp, IconCheckCircleStroked, IconClose, IconDeleteStroked, IconDownload, IconHistory, IconImage, IconLoading, IconRefresh, IconSetting, IconStop, IconVideo } from '@douyinfe/semi-icons'
+import { IconAlertTriangle, IconArrowUp, IconCheckCircleStroked, IconClose, IconDeleteStroked, IconDownload, IconHistory, IconImage, IconLoading, IconMuteStroked, IconPlus, IconRefresh, IconStop, IconVideo, IconVolume2 } from '@douyinfe/semi-icons'
 import { EmptyPanel, PageTitle } from '@/components/common'
 import { CompatInput as Input, CompatSelect as Select } from '@/components/semi-compat'
 import { getUserApiKeys, type UserApiKey, type UserApiKeyContext } from '@/api/user-api-keys'
@@ -17,6 +17,7 @@ import { findModelInList, modelAlias, type ModelRecord } from '@/data/models'
 import { useUserModels } from '@/data/user-models'
 import { apiKeySupportsModel } from '@/utils/model-access'
 import { workspaceContextFor, workspaceContextKey } from '@/utils/workspace'
+import './video-generation.css'
 
 const VIDEO_HISTORY_STORAGE_KEY = 'token-nx:video-history:v1'
 const VIDEO_HISTORY_LIMIT = 20
@@ -29,7 +30,14 @@ const VIDEO_POLL_MAX_ATTEMPTS = 120
 const DEFAULT_VIDEO_DURATION = 5
 const DEFAULT_VIDEO_SIZE = '1280x720'
 
-const VIDEO_DURATION_OPTIONS = [5, 10] as const
+const VIDEO_DURATION_SLIDER_OPTIONS = [2, 5, 10, 15, 20, 25, 30] as const
+const VIDEO_ASPECT_OPTIONS = ['adaptive', '16:9', '4:3', '1:1', '3:4', '9:16'] as const
+
+function sizeForVideoAspect(aspect: string, resolution: string): string {
+  if (aspect === '1:1') return '1024x1024'
+  if (aspect === '9:16' || aspect === '3:4') return '720x1280'
+  return resolution === '1080P' ? '1920x1080' : '1280x720'
+}
 const VIDEO_SIZE_OPTIONS = [
   { value: '1280x720', labelKey: 'console.video.sizeLandscape' },
   { value: '1920x1080', labelKey: 'console.video.sizeLandscapeHd' },
@@ -180,6 +188,10 @@ function taskFromHistory(task: VideoTask, entry: VideoHistoryEntry): VideoHistor
   return { ...entry, status: task.status, progress: task.progress, resultUrl: task.resultUrl, thumbnailUrl: task.thumbnailUrl, errorMessage: task.errorMessage, requestId: task.requestId }
 }
 
+function VideoModelLogo({ model }: { model: ModelRecord }): ReactNode {
+  return <span className="video-model-logo">{model.iconUrl ? <img src={model.iconUrl} alt="" /> : model.company.slice(0, 1)}</span>
+}
+
 function readVideoFailure(error: unknown, fallback: string): VideoRequestFailure {
   if (error instanceof VideoRuntimeError) return { message: error.message || fallback, requestId: error.requestId }
   if (error instanceof Error) return { message: error.message || fallback, requestId: null }
@@ -198,9 +210,9 @@ function waitForVideoPoll(delay: number, signal: AbortSignal): Promise<void> {
   })
 }
 
-function VideoHistoryPanel({ entries, selectedID, onSelect, onClear, onNew, disabled }: { entries: VideoHistoryEntry[]; selectedID: string; onSelect: (entry: VideoHistoryEntry) => void; onClear: () => void; onNew: () => void; disabled: boolean }) {
+function VideoHistoryPanel({ entries, selectedID, onSelect, onClear, onNew, disabled, open = false }: { entries: VideoHistoryEntry[]; selectedID: string; onSelect: (entry: VideoHistoryEntry) => void; onClear: () => void; onNew: () => void; disabled: boolean; open?: boolean }) {
   const { t } = useTranslation()
-  return <aside className="video-history-panel experience-history" aria-labelledby="video-history-heading">
+  return <aside className={`video-history-panel experience-history${open ? ' is-open' : ''}`} aria-labelledby="video-history-heading">
     <div className="video-history-heading experience-history-heading"><h2 id="video-history-heading">{t('console.video.historyTitle')}</h2><div className="video-history-actions"><Button className="video-new-button" theme="outline" size="small" onClick={onNew} disabled={disabled}>{t('console.video.newGeneration')}</Button><Button theme="borderless" size="small" icon={<IconDeleteStroked />} aria-label={t('console.video.clearHistory')} title={t('console.video.clearHistory')} onClick={onClear} disabled={entries.length === 0 || disabled} /></div></div>
     {entries.length ? <div className="video-history-list">{entries.map((entry) => <button className={`video-history-item${entry.id === selectedID ? ' is-active' : ''}`} type="button" key={entry.id} onClick={() => onSelect(entry)}>
       <span className="video-history-item-top"><strong>{entry.modelName}</strong><span className={`video-history-status is-${entry.status}`}>{t(videoStatusLabelKey(entry.status))}</span></span>
@@ -264,7 +276,18 @@ export function VideoPage() {
   const [inputReference, setInputReference] = useState('')
   const [referenceUrl, setReferenceUrl] = useState('')
   const [referenceName, setReferenceName] = useState('')
-  const [settingsVisible, setSettingsVisible] = useState(false)
+  const [firstFrameUrl, setFirstFrameUrl] = useState('')
+  const [lastFrameUrl, setLastFrameUrl] = useState('')
+  const [historyOpen, setHistoryOpen] = useState(false)
+  const [referenceModeOpen, setReferenceModeOpen] = useState(false)
+  const [referenceMode, setReferenceMode] = useState<'reference' | 'first-last'>('reference')
+  const [modelOpen, setModelOpen] = useState(false)
+  const [modelQuery, setModelQuery] = useState('')
+  const [aspectOpen, setAspectOpen] = useState(false)
+  const [durationOpen, setDurationOpen] = useState(false)
+  const [aspectRatio, setAspectRatio] = useState('adaptive')
+  const [resolution, setResolution] = useState('480P')
+  const [soundEnabled, setSoundEnabled] = useState(true)
   const [referenceVisible, setReferenceVisible] = useState(false)
   const [history, setHistory] = useState<VideoHistoryEntry[]>(() => readVideoHistory().filter((entry) => entry.workspaceKey === workspaceKey))
   const [selectedHistoryID, setSelectedHistoryID] = useState('')
@@ -274,16 +297,39 @@ export function VideoPage() {
   const [cancelling, setCancelling] = useState(false)
   const [requestFailure, setRequestFailure] = useState<VideoRequestFailure | null>(null)
   const referenceInputRef = useRef<HTMLInputElement>(null)
+  const firstFrameInputRef = useRef<HTMLInputElement>(null)
+  const lastFrameInputRef = useRef<HTMLInputElement>(null)
   const submitControllerRef = useRef<AbortController | null>(null)
   const submitAbortReasonRef = useRef<'user' | 'navigation' | null>(null)
   const pollControllerRef = useRef<AbortController | null>(null)
   const lastSubmissionRef = useRef<VideoSubmissionSnapshot | null>(null)
 
+  useEffect(() => {
+    // 中文：所有弹层都支持点击外部区域收起，避免遮挡工作区内容。
+    const handlePointerDown = (event: PointerEvent): void => {
+      const target = event.target as HTMLElement | null
+      if (!target?.closest('.video-history-panel, .video-history-toggle')) setHistoryOpen(false)
+      if (!target?.closest('.video-reference-picker, .video-reference-trigger, .video-reference-upload-card')) setReferenceModeOpen(false)
+      if (!target?.closest('.video-model-picker, .video-model-trigger')) setModelOpen(false)
+      if (!target?.closest('.video-aspect-picker, .video-aspect-trigger')) setAspectOpen(false)
+      if (!target?.closest('.video-duration-picker, .video-duration-trigger')) setDurationOpen(false)
+    }
+    document.addEventListener('pointerdown', handlePointerDown)
+    return () => document.removeEventListener('pointerdown', handlePointerDown)
+  }, [])
+
   const usableApiKeys = useMemo(() => apiKeys.filter((key) => key.status === 'active' && key.secret.trim()), [apiKeys])
   const selectedApiKey = usableApiKeys.find((key) => key.id === selectedApiKeyID)
   const videoModels = useMemo(() => models.filter((model) => model.modality === 'video' && Boolean(modelAlias(model))), [models])
   const selectableVideoModels = useMemo(() => selectedApiKey ? videoModels.filter((model) => apiKeySupportsModel(selectedApiKey, model)) : [], [selectedApiKey, videoModels])
-  const selectedModel = findModelInList(selectableVideoModels, modelID) ?? selectableVideoModels[0]
+  // 中文：没有 API Key 时仍展示模型目录，便于预览和调试配置控件；提交时仍会校验密钥和模型权限。
+  const displayVideoModels = selectedApiKey ? selectableVideoModels : videoModels
+  const filteredVideoModels = useMemo(() => {
+    const query = modelQuery.trim().toLowerCase()
+    if (!query) return displayVideoModels
+    return displayVideoModels.filter((model) => `${model.name} ${model.company} ${modelAlias(model)}`.toLowerCase().includes(query))
+  }, [displayVideoModels, modelQuery])
+  const selectedModel = findModelInList(displayVideoModels, modelID) ?? displayVideoModels[0]
   const selectedHistory = history.find((entry) => entry.id === selectedHistoryID)
   const operationBusy = submitting || polling || cancelling
   const canSubmit = Boolean(selectedApiKey && selectedModel && prompt.trim() && !operationBusy)
@@ -517,8 +563,18 @@ export function VideoPage() {
     setInputReference('')
     setReferenceUrl('')
     setReferenceName('')
+    setFirstFrameUrl('')
+    setLastFrameUrl('')
     setDuration(DEFAULT_VIDEO_DURATION)
     setSize(DEFAULT_VIDEO_SIZE)
+    setAspectRatio('adaptive')
+    setResolution('480P')
+    setAspectOpen(false)
+    setDurationOpen(false)
+    setModelOpen(false)
+    setReferenceModeOpen(false)
+    setReferenceMode('reference')
+    setHistoryOpen(false)
     setReferenceVisible(false)
     lastSubmissionRef.current = null
   }
@@ -533,6 +589,8 @@ export function VideoPage() {
     setPrompt(entry.prompt)
     setDuration(entry.duration)
     setSize(entry.size)
+    setResolution(entry.size === '1920x1080' ? '1080P' : '480P')
+    setAspectRatio(entry.size === '1024x1024' ? '1:1' : entry.size === '720x1280' ? '9:16' : '16:9')
     setInputReference(entry.inputReference ?? '')
     setReferenceUrl(entry.inputReference && isPersistableReference(entry.inputReference) ? entry.inputReference : '')
     setReferenceName(entry.inputReference ? t('console.video.referenceImage') : '')
@@ -550,6 +608,47 @@ export function VideoPage() {
       return
     }
     void submitVideo(snapshot)
+  }
+
+  function swapFrameUrls(): void {
+    setFirstFrameUrl(lastFrameUrl)
+    setLastFrameUrl(firstFrameUrl)
+  }
+
+  function handleApiKeyChange(value: unknown): void {
+    // 中文：Semi Select 在单选/多选和不同版本的回调中可能返回数组或 undefined，统一收窄为密钥 ID。
+    const nextValue = Array.isArray(value) ? value[0] : value
+    setSelectedApiKeyID(typeof nextValue === 'string' || typeof nextValue === 'number' ? String(nextValue) : '')
+    setModelID('')
+    setCurrentTask(null)
+    setSelectedHistoryID('')
+    setRequestFailure(null)
+  }
+
+  function handleFrameFile(event: ChangeEvent<HTMLInputElement>, frame: 'first' | 'last'): void {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      Toast.warning(t('console.video.referenceImageTypeInvalid'))
+      return
+    }
+    if (file.size > VIDEO_REFERENCE_MAX_BYTES) {
+      Toast.warning(t('console.video.referenceImageTooLarge'))
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = () => {
+      if (typeof reader.result !== 'string') return
+      if (frame === 'first') {
+        setFirstFrameUrl(reader.result)
+        setInputReference(reader.result)
+      } else {
+        setLastFrameUrl(reader.result)
+      }
+    }
+    reader.onerror = () => Toast.error(t('console.video.referenceImageReadFailed'))
+    reader.readAsDataURL(file)
   }
 
   function handleReferenceFile(event: ChangeEvent<HTMLInputElement>): void {
@@ -589,37 +688,74 @@ export function VideoPage() {
   return <div className="page-stack video-console-page">
     <PageTitle title={t('console.video.title')} description={t('console.video.pageDescription')} />
     <section className="video-workspace experience-workbench" aria-label={t('console.video.workspace')}>
-      <VideoHistoryPanel entries={history} selectedID={selectedHistoryID} onSelect={selectHistory} onClear={clearHistory} onNew={startNewGeneration} disabled={operationBusy} />
+      <VideoHistoryPanel entries={history} selectedID={selectedHistoryID} onSelect={selectHistory} onClear={clearHistory} onNew={startNewGeneration} disabled={operationBusy} open={historyOpen} />
       <div className="video-workspace-main experience-main">
         <header className="video-toolbar experience-toolbar" aria-label={t('console.video.connection')}>
           <div className="video-toolbar-actions experience-toolbar-actions">
             <span className="video-toolbar-workspace" title={store.activeWorkspace.name}>{store.activeWorkspace.name}</span>
+            <button className="video-history-toggle" type="button" aria-label={t('console.video.historyTitle')} title={t('console.video.historyTitle')} onClick={() => setHistoryOpen((open) => !open)}><IconHistory /></button>
             <label htmlFor="video-api-key">{t('console.video.apiKey')}</label>
-            <Select id="video-api-key" className="video-api-key-select" dropdownClassName="video-select-dropdown" value={selectedApiKey?.id ?? ''} onChange={(value) => { setSelectedApiKeyID(String(value)); setModelID(''); setCurrentTask(null); setSelectedHistoryID(''); setRequestFailure(null) }} disabled={apiKeysLoading || usableApiKeys.length === 0} aria-label={t('console.video.apiKey')}><Select.Option value="">{apiKeysLoading ? t('console.video.apiKeyLoading') : t('console.video.selectApiKey')}</Select.Option>{usableApiKeys.map((key) => <Select.Option key={key.id} value={key.id}>{key.name} · {key.masked_key}</Select.Option>)}</Select>
+            <Select id="video-api-key" className="billing-filter video-api-key-select" dropdownClassName="video-api-key-dropdown" value={selectedApiKey?.id ?? ''} onChange={handleApiKeyChange} onSelect={handleApiKeyChange} disabled={apiKeysLoading || usableApiKeys.length === 0} aria-label={t('console.video.apiKey')}><Select.Option value="">{apiKeysLoading ? t('console.video.apiKeyLoading') : t('console.video.selectApiKey')}</Select.Option>{usableApiKeys.map((key) => <Select.Option key={key.id} value={key.id}>{key.name} · {key.masked_key}</Select.Option>)}</Select>
             <Link className="video-key-link" to="/console/api-keys">{t('console.video.manageApiKey')}</Link>
           </div>
         </header>
         <main className="video-stage experience-content">{showWorkspaceNotices ? <VideoWorkspaceNotice items={workspaceNotices} /> : <VideoStage task={currentTask} modelName={selectedHistory?.modelName ?? selectedModel?.name ?? t('console.video.unnamedModel')} submitting={submitting} onCancel={currentTask && taskIsActive(currentTask) ? () => { void cancelCurrentTask() } : cancelSubmission} onRetry={retryCurrent} />}</main>
         <footer className="video-composer experience-composer">
           <div className="video-composer-box">
-            {inputReference ? <div className="video-reference-row">
-              {referenceUrl ? <span className="video-reference-chip video-reference-chip--url"><IconImage aria-hidden="true" /><span>{referenceUrl}</span><Button theme="borderless" size="small" icon={<IconClose />} aria-label={t('console.video.removeReference')} title={t('console.video.removeReference')} onClick={() => { setInputReference(''); setReferenceUrl(''); setReferenceName('') }} /></span> : <span className="video-reference-chip"><img src={inputReference} alt="" /><span>{referenceName || t('console.video.referenceImage')}</span><Button theme="borderless" size="small" icon={<IconClose />} aria-label={t('console.video.removeReference')} title={t('console.video.removeReference')} onClick={() => { setInputReference(''); setReferenceUrl(''); setReferenceName('') }} /></span>}
-            </div> : null}
-            <Input.TextArea value={prompt} onChange={(value) => setPrompt(value.slice(0, VIDEO_PROMPT_MAX_LENGTH))} maxLength={VIDEO_PROMPT_MAX_LENGTH} rows={3} disabled={!selectedApiKey || !selectedModel || operationBusy} placeholder={selectedApiKey && selectedModel ? t('console.video.promptPlaceholder') : t('console.video.promptDisabledPlaceholder')} aria-label={t('console.video.promptLabel')} onKeyDown={(event) => { if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') { event.preventDefault(); if (canSubmit) void submitVideo() } }} />
+            <div className={`video-composer-input-row${referenceMode === 'first-last' ? ' is-first-last' : ''}`}>
+              {referenceMode === 'first-last' ? <div className="video-frame-upload-group">
+                <button className="video-reference-upload-card video-frame-upload-card video-frame-upload-card--first" type="button" aria-label={t('console.video.firstFrameUrlLabel')} onClick={() => firstFrameInputRef.current?.click()} disabled={operationBusy}>
+                  <span className="video-reference-upload-plus" aria-hidden="true"><IconPlus /></span>
+                  <span>{t('console.video.firstFrameUrlLabel').replace(/ URL$/, '')}</span>
+                </button>
+                <button className="video-frame-upload-separator" type="button" aria-label={t('console.video.swapFrames')} onClick={swapFrameUrls} disabled={operationBusy}>⇄</button>
+                <button className="video-reference-upload-card video-frame-upload-card video-frame-upload-card--last" type="button" aria-label={t('console.video.lastFrameUrlLabel')} onClick={() => lastFrameInputRef.current?.click()} disabled={operationBusy}>
+                  <span className="video-reference-upload-plus" aria-hidden="true"><IconPlus /></span>
+                  <span>{t('console.video.lastFrameUrlLabel').replace(/ URL$/, '')}</span>
+                </button>
+                <input ref={firstFrameInputRef} className="video-reference-file-input video-frame-file-input" type="file" accept={VIDEO_REFERENCE_ACCEPT} onChange={(event) => handleFrameFile(event, 'first')} aria-label={t('console.video.firstFrameUrlLabel')} />
+                <input ref={lastFrameInputRef} className="video-reference-file-input video-frame-file-input" type="file" accept={VIDEO_REFERENCE_ACCEPT} onChange={(event) => handleFrameFile(event, 'last')} aria-label={t('console.video.lastFrameUrlLabel')} />
+              </div> : <button className="video-reference-upload-card" type="button" aria-label={`${t('console.video.referenceImage')} · ${t('console.video.uploadReference')}`} onClick={() => setReferenceVisible(true)} disabled={operationBusy}>
+                <span className="video-reference-upload-plus" aria-hidden="true"><IconPlus /></span>
+                <span>{t('console.video.referenceImage')}</span>
+              </button>}
+              {inputReference ? <div className="video-reference-row">
+                {referenceUrl ? <span className="video-reference-chip video-reference-chip--url"><IconImage aria-hidden="true" /><span>{referenceUrl}</span><Button theme="borderless" size="small" icon={<IconClose />} aria-label={t('console.video.removeReference')} title={t('console.video.removeReference')} onClick={() => { setInputReference(''); setReferenceUrl(''); setReferenceName('') }} /></span> : <span className="video-reference-chip"><img src={inputReference} alt="" /><span>{referenceName || t('console.video.referenceImage')}</span><Button theme="borderless" size="small" icon={<IconClose />} aria-label={t('console.video.removeReference')} title={t('console.video.removeReference')} onClick={() => { setInputReference(''); setReferenceUrl(''); setReferenceName('') }} /></span>}
+              </div> : null}
+              <Input.TextArea value={prompt} onChange={(value) => setPrompt(value.slice(0, VIDEO_PROMPT_MAX_LENGTH))} maxLength={VIDEO_PROMPT_MAX_LENGTH} rows={3} disabled={!selectedModel || operationBusy} placeholder={selectedModel ? t('console.video.promptPlaceholder') : t('console.video.promptDisabledPlaceholder')} aria-label={t('console.video.promptLabel')} onKeyDown={(event) => { if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') { event.preventDefault(); if (canSubmit) void submitVideo() } }} />
+            </div>
             <div className="video-composer-controls">
               <div className="video-control-group">
-                <Button className="video-control-button" theme="borderless" icon={<IconImage />} onClick={() => setReferenceVisible(true)} disabled={!selectedApiKey || operationBusy}>{t('console.video.referenceImage')}</Button>
-                <Select id="video-model" className="video-model-select" dropdownClassName="video-select-dropdown" value={selectedModel ? modelAlias(selectedModel) : ''} onChange={(value) => { setModelID(String(value)); setRequestFailure(null) }} disabled={selectableVideoModels.length === 0 || operationBusy} aria-label={t('console.video.model')}><Select.Option value="">{t('console.video.chooseModel')}</Select.Option>{selectableVideoModels.map((model) => <Select.Option key={model.id} value={modelAlias(model)}>{t('console.video.modelOption', { name: model.name, company: model.company, alias: modelAlias(model) })}</Select.Option>)}</Select>
-                <Button className="video-control-button" theme="borderless" icon={<IconSetting />} onClick={() => setSettingsVisible(true)} disabled={!selectedModel || operationBusy}>{t('console.video.settings')}</Button>
+                <div className="video-reference-picker">
+                  <Button className={`video-control-button video-reference-trigger${referenceMode === 'first-last' ? ' video-reference-trigger--first-last' : ''}`} theme="borderless" icon={<IconImage />} aria-label={t('console.video.referenceImage')} onClick={() => { setReferenceModeOpen((open) => !open); setModelOpen(false); setAspectOpen(false); setDurationOpen(false) }} disabled={operationBusy}><span>{referenceMode === 'reference' ? t('console.video.referenceMode') : t('console.video.firstLastFrame')}</span><span className={`video-picker-chevron${referenceModeOpen ? ' is-open' : ''}`} aria-hidden="true" /></Button>
+                  {referenceModeOpen ? <div className="video-reference-popover" role="menu"><div className="video-popover-title">{t('console.video.generationMode')}</div><button type="button" className={`video-reference-option${referenceMode === 'reference' ? ' is-selected' : ''}`} onClick={() => { setReferenceMode('reference'); setReferenceModeOpen(false); setReferenceVisible(false) }}><span className="video-reference-option-icon"><IconImage /></span><span>{t('console.video.referenceMode')}</span>{referenceMode === 'reference' ? <strong aria-hidden="true">✓</strong> : null}</button><button type="button" className={`video-reference-option${referenceMode === 'first-last' ? ' is-selected' : ''}`} onClick={() => { setReferenceMode('first-last'); setReferenceModeOpen(false); setReferenceVisible(false) }}><span className="video-reference-option-icon"><IconVideo /></span><span>{t('console.video.firstLastFrame')}</span>{referenceMode === 'first-last' ? <strong aria-hidden="true">✓</strong> : null}</button></div> : null}
+                </div>
+                <div className="video-model-picker">
+                  <button className="video-control-button video-model-trigger" type="button" aria-haspopup="listbox" aria-expanded={modelOpen} onClick={() => { setModelOpen((open) => !open); setReferenceModeOpen(false); setAspectOpen(false); setDurationOpen(false) }} disabled={operationBusy}>
+                    {selectedModel ? <VideoModelLogo model={selectedModel} /> : null}<span className="video-model-trigger-label">{selectedModel ? `${selectedModel.company}: ${selectedModel.name}` : t('console.video.chooseModel')}</span><span className={`video-picker-chevron${modelOpen ? ' is-open' : ''}`} aria-hidden="true" />
+                  </button>
+                  <Select id="video-model" className="video-model-native-select" dropdownClassName="video-select-dropdown" value={selectedModel ? modelAlias(selectedModel) : ''} onChange={(value) => { setModelID(String(value)); setRequestFailure(null) }} disabled={displayVideoModels.length === 0 || operationBusy} aria-label={t('console.video.model')}><Select.Option value="">{t('console.video.chooseModel')}</Select.Option>{displayVideoModels.map((model) => <Select.Option key={model.id} value={modelAlias(model)}>{t('console.video.modelOption', { name: model.name, company: model.company, alias: modelAlias(model) })}</Select.Option>)}</Select>
+                  {modelOpen ? <div className="video-model-popover" role="listbox" aria-label={t('console.video.model')}><div className="video-model-popover-head"><label className="video-model-search"><span className="video-model-search-icon" aria-hidden="true" /><input value={modelQuery} onChange={(event) => setModelQuery(event.target.value)} placeholder={t('console.video.modelSearch')} aria-label={t('console.video.modelSearch')} /></label><button type="button" className="video-model-sort" onClick={() => setModelQuery('')}><span className="video-model-sort-icon" aria-hidden="true" /> <span>{t('console.video.latest')}</span></button></div><div className="video-model-options">{filteredVideoModels.map((model) => { const alias = modelAlias(model); return <button type="button" role="option" aria-selected={selectedModel?.id === model.id} className={`video-model-option${selectedModel?.id === model.id ? ' is-selected' : ''}`} key={model.id} onClick={() => { setModelID(alias); setRequestFailure(null); setModelOpen(false) }}><VideoModelLogo model={model} /><span className="video-model-option-name">{model.company}: {model.name}</span><span className="video-model-advanced"><span className="video-model-premium-icon" aria-hidden="true">P</span><em>{t('console.video.advanced')}</em></span></button> })}</div></div> : null}
+                </div>
+                <div className="video-aspect-picker">
+                  <button className="video-control-button video-aspect-trigger" type="button" onClick={() => { setAspectOpen((open) => !open); setDurationOpen(false); setModelOpen(false); setReferenceModeOpen(false) }} disabled={operationBusy}><span className="video-aspect-icon" aria-hidden="true" /><span>{aspectRatio} · {resolution}</span><span className={`video-picker-chevron${aspectOpen ? ' is-open' : ''}`} aria-hidden="true" /></button>
+                  {aspectOpen ? <div className="video-aspect-popover" role="dialog" aria-label={t('console.video.aspectRatio')}><div className="video-aspect-section"><strong>{t('console.video.aspectRatio')}</strong><div className="video-aspect-options">{VIDEO_ASPECT_OPTIONS.map((ratio) => <button type="button" className={aspectRatio === ratio ? 'is-selected' : ''} key={ratio} onClick={() => { setAspectRatio(ratio); setSize(sizeForVideoAspect(ratio, resolution)) }}><span className={`video-ratio-icon ratio-${ratio.replace(':', '-')}`} />{ratio}</button>)}</div></div><div className="video-aspect-section"><strong>{t('console.video.resolution')}</strong><div className="video-resolution-options">{['480P', '720P', '1080P'].map((nextResolution) => <button type="button" className={resolution === nextResolution ? 'is-selected' : ''} key={nextResolution} onClick={() => { setResolution(nextResolution); setSize(sizeForVideoAspect(aspectRatio, nextResolution)) }}>{nextResolution}</button>)}</div></div></div> : null}
+                </div>
+                <div className="video-duration-picker">
+                  <button className="video-control-button video-duration-trigger" type="button" onClick={() => { setDurationOpen((open) => !open); setAspectOpen(false); setModelOpen(false); setReferenceModeOpen(false) }} disabled={operationBusy}><span className="video-duration-clock" aria-hidden="true" /><span>{duration}{t('console.video.secondsShort')}</span><span className={`video-picker-chevron${durationOpen ? ' is-open' : ''}`} aria-hidden="true" /></button>
+                  {durationOpen ? <div className="video-duration-popover" role="dialog" aria-label={t('console.video.duration')}><strong>{t('console.video.durationSelect')}</strong><div className="video-duration-control"><input type="range" min="2" max="30" step="1" value={duration} onChange={(event) => setDuration(Number(event.target.value))} aria-label={t('console.video.duration')} /><div className="video-duration-ticks">{VIDEO_DURATION_SLIDER_OPTIONS.map((value) => <span key={value} style={{ left: `${((value - 2) / 28) * 100}%` }}>{value}</span>)}</div></div><label className="video-duration-number"><input type="number" min="2" max="30" value={duration} onChange={(event) => setDuration(Math.max(2, Math.min(30, Number(event.target.value) || 2)))} aria-label={t('console.video.duration')} /><span>{t('console.video.secondsShort')}</span></label></div> : null}
+                </div>
+                <button className={`video-control-button video-sound-trigger${soundEnabled ? ' is-active' : ''}`} type="button" onClick={() => setSoundEnabled((enabled) => !enabled)} disabled={operationBusy}>{soundEnabled ? <IconVolume2 aria-hidden="true" /> : <IconMuteStroked aria-hidden="true" />}<span>{t('console.video.sound')}</span></button>
               </div>
               <Button className="video-send-button" theme="solid" type="primary" icon={operationBusy ? <IconStop /> : <IconArrowUp />} aria-label={operationBusy ? (submitting ? t('console.video.cancelRequest') : t('console.video.cancelGeneration')) : t('console.video.generate')} title={operationBusy ? (submitting ? t('console.video.cancelRequest') : t('console.video.cancelGeneration')) : t('console.video.generate')} disabled={operationBusy ? false : !canSubmit} loading={submitting} onClick={() => { if (submitting) cancelSubmission(); else if (currentTask && taskIsActive(currentTask)) void cancelCurrentTask(); else void submitVideo() }} />
             </div>
           </div>
-          <div className="video-composer-hint"><span>{t('console.video.shortcut')}</span><span>{t('console.video.parametersSummary', { duration, size })} · {selectedModel ? t('console.video.resultHint') : t('console.video.chooseModelHint')}</span></div>
+          <div className="video-composer-hint"><span>{t('console.video.shortcut')}</span><span>{selectedModel ? t('console.video.resultHint') : t('console.video.chooseModelHint')}</span></div>
         </footer>
       </div>
     </section>
-    <Modal title={t('console.video.referenceImage')} visible={referenceVisible} onCancel={() => setReferenceVisible(false)} onOk={() => setReferenceVisible(false)} okText={t('console.common.finish')} cancelText={t('console.common.cancel')}><div className="video-reference-dialog"><Input id="video-reference-url" value={referenceUrl} onChange={(value) => { setReferenceUrl(value); setInputReference(value.trim()); setReferenceName('') }} placeholder={t('console.video.referenceUrlPlaceholder')} aria-label={t('console.video.referenceUrlLabel')} disabled={!selectedApiKey || operationBusy} /><input ref={referenceInputRef} className="video-reference-file-input" type="file" accept={VIDEO_REFERENCE_ACCEPT} onChange={handleReferenceFile} aria-label={t('console.video.referenceImage')} /><Button className="video-control-button" theme="borderless" icon={<IconImage />} onClick={() => referenceInputRef.current?.click()} disabled={!selectedApiKey || operationBusy}>{t('console.video.referenceImage')}</Button></div></Modal>
-    <Modal title={t('console.video.settingsTitle')} visible={settingsVisible} onCancel={() => setSettingsVisible(false)} onOk={() => setSettingsVisible(false)} okText={t('console.common.finish')} cancelText={t('console.common.cancel')}><div className="video-settings-form"><label className="field-label" htmlFor="video-duration">{t('console.video.duration')}</label><Select id="video-duration" value={duration} onChange={(value) => setDuration(Number(value))} block>{VIDEO_DURATION_OPTIONS.map((value) => <Select.Option value={value} key={value}>{t('console.video.durationOption', { value })}</Select.Option>)}</Select><label className="field-label" htmlFor="video-size">{t('console.video.resolution')}</label><Select id="video-size" value={size} onChange={(value) => setSize(String(value))} block>{VIDEO_SIZE_OPTIONS.map((option) => <Select.Option value={option.value} key={option.value}>{t(option.labelKey)} · {option.value}</Select.Option>)}</Select><p className="video-settings-hint">{t('console.video.settingsHint')}</p></div></Modal>
+    <Modal title={referenceMode === 'reference' ? t('console.video.referenceMode') : t('console.video.firstLastFrame')} visible={referenceVisible} onCancel={() => setReferenceVisible(false)} onOk={() => setReferenceVisible(false)} okText={t('console.common.finish')} cancelText={t('console.common.cancel')}>
+      {referenceMode === 'reference' ? <div className="video-reference-dialog"><Input id="video-reference-url" value={referenceUrl} onChange={(value) => { setReferenceUrl(value); setInputReference(value.trim()); setReferenceName('') }} placeholder={t('console.video.referenceUrlPlaceholder')} aria-label={t('console.video.referenceUrlLabel')} disabled={operationBusy} /><input ref={referenceInputRef} className="video-reference-file-input" type="file" accept={VIDEO_REFERENCE_ACCEPT} onChange={handleReferenceFile} aria-label={t('console.video.referenceImage')} /><Button className="video-control-button" theme="borderless" icon={<IconImage />} onClick={() => referenceInputRef.current?.click()} disabled={operationBusy}>{t('console.video.referenceImage')}</Button></div> : <div className="video-reference-dialog"><Input id="video-first-frame-url" value={firstFrameUrl} onChange={(value) => { setFirstFrameUrl(value); setInputReference(value.trim()) }} placeholder={t('console.video.firstFrameUrlPlaceholder')} aria-label={t('console.video.firstFrameUrlLabel')} disabled={operationBusy} /><Input id="video-last-frame-url" value={lastFrameUrl} onChange={setLastFrameUrl} placeholder={t('console.video.lastFrameUrlPlaceholder')} aria-label={t('console.video.lastFrameUrlLabel')} disabled={operationBusy} /></div>}
+    </Modal>
   </div>
 }

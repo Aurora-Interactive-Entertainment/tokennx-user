@@ -803,6 +803,259 @@ html[data-theme="light"]
   }
 }
 
+/* 视频生成体验页：对齐 ZenMux 的无边框工作区与底部悬浮输入框。 */
+.video-console-page {
+  gap: 0;
+  padding-top: 0;
+  padding-bottom: 12px;
+}
+.video-console-page > .page-title-row {
+  display: none;
+}
+.video-console-page .video-workspace {
+  position: relative;
+  min-height: 0;
+  height: calc(100dvh - 112px);
+  border: 0;
+  border-radius: 0;
+  background: var(--color-bg-base-default);
+  grid-template-columns: minmax(0, 1fr);
+}
+.video-console-page .video-workspace-main {
+  min-height: 0;
+}
+.video-console-page .video-toolbar {
+  min-height: 48px;
+  padding: 8px 18px;
+  border-bottom: 0;
+  background: transparent;
+}
+.video-console-page .video-toolbar-actions {
+  gap: 8px;
+}
+.video-console-page .video-toolbar-workspace,
+.video-console-page .video-toolbar-actions > label,
+.video-console-page .video-key-link {
+  display: none;
+}
+.video-console-page .video-api-key-select {
+  width: min(260px, 42vw);
+  margin-left: auto;
+}
+.video-console-page .video-api-key-select .semi-select-selection {
+  height: 34px;
+  border: 1px solid var(--color-border-neutral-l1);
+  border-radius: 8px;
+  background: var(--color-bg-base-secondary);
+}
+.video-history-toggle {
+  display: inline-grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  color: var(--color-text-tertiary);
+  background: transparent;
+  cursor: pointer;
+}
+.video-history-toggle:hover {
+  color: var(--color-text-default);
+  background: var(--color-bg-overlay-l2);
+}
+.video-console-page .video-history-panel {
+  display: none;
+  position: absolute;
+  top: 54px;
+  left: 16px;
+  z-index: 10;
+  width: 280px;
+  max-height: min(520px, calc(100% - 110px));
+  border: 1px solid var(--color-border-neutral-l1);
+  border-radius: 10px;
+  box-shadow: 0 14px 36px rgb(0 0 0 / 12%);
+}
+.video-console-page .video-history-panel.is-open {
+  display: block;
+}
+.video-console-page .video-stage {
+  min-height: 0;
+  padding: 24px;
+  background: var(--color-bg-base-default);
+}
+.video-console-page .video-stage-state--empty {
+  gap: 8px;
+}
+.video-console-page .video-stage-state--empty .video-stage-icon {
+  display: none;
+}
+.video-console-page .video-stage-state--empty strong {
+  color: var(--color-text-tertiary);
+  font-size: 14px;
+  font-weight: 400;
+}
+.video-console-page .video-stage-state--empty p {
+  display: none;
+}
+.video-console-page .video-composer {
+  position: relative;
+  width: min(930px, calc(100% - 48px));
+  margin: 0 auto 12px;
+}
+.video-console-page .video-composer-box {
+  position: relative;
+  padding: 14px 14px 10px;
+  border: 1px solid var(--color-border-neutral-l1);
+  border-radius: 14px;
+  background: var(--color-bg-base-default);
+  box-shadow: 0 4px 18px rgb(0 0 0 / 5%);
+}
+.video-console-page .video-composer-box:focus-within {
+  border-color: var(--color-border-neutral-l2);
+  box-shadow: 0 4px 18px rgb(0 0 0 / 9%);
+}
+.video-console-page .video-composer-box .semi-input-textarea-wrapper,
+.video-console-page .video-composer-box .semi-input-textarea {
+  min-height: 54px;
+  height: 54px;
+}
+.video-console-page .video-composer-box .semi-input-textarea {
+  padding: 0 4px 8px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.video-console-page .video-composer-controls {
+  margin-top: 4px;
+  gap: 8px;
+}
+.video-console-page .video-control-group {
+  gap: 6px;
+}
+.video-console-page .video-control-button.semi-button,
+.video-console-page .video-control-button {
+  min-height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--color-border-neutral-l1);
+  border-radius: 8px;
+  color: var(--color-text-secondary);
+  background: var(--color-bg-base-secondary);
+  font-size: 12px;
+}
+.video-console-page .video-control-button:hover {
+  color: var(--color-text-default);
+  background: var(--color-bg-overlay-l2);
+}
+.video-console-page .video-model-select {
+  width: min(250px, 32vw);
+  min-width: 190px;
+}
+.video-console-page .video-model-select .semi-select-selection {
+  height: 34px;
+  border: 1px solid var(--color-border-neutral-l1);
+  border-radius: 8px;
+  background: var(--color-bg-base-secondary);
+}
+.video-console-page .video-settings-trigger,
+.video-console-page .video-sound-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+.video-console-page .video-sound-trigger.is-active {
+  color: var(--color-action-primary);
+  border-color: color-mix(in srgb, var(--color-action-primary) 28%, transparent);
+  background: color-mix(in srgb, var(--color-action-primary) 10%, transparent);
+}
+.video-console-page .video-send-button.semi-button {
+  width: 34px;
+  height: 34px;
+  flex-basis: 34px;
+  border-radius: 50%;
+  background: var(--color-text-default);
+}
+.video-console-page .video-send-button.semi-button:hover {
+  background: var(--color-text-default-hover);
+}
+.video-console-page .video-composer-hint {
+  display: none;
+}
+.video-settings-popover {
+  position: absolute;
+  right: 100px;
+  bottom: 58px;
+  z-index: 20;
+  display: grid;
+  width: 300px;
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid var(--color-border-neutral-l1);
+  border-radius: 10px;
+  background: var(--color-bg-base-default);
+  box-shadow: 0 14px 34px rgb(0 0 0 / 14%);
+}
+.video-settings-popover-section {
+  display: grid;
+  gap: 8px;
+}
+.video-settings-popover-section strong {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+}
+.video-segmented-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.video-segmented-row button {
+  min-height: 30px;
+  padding: 0 9px;
+  border: 1px solid var(--color-border-neutral-l1);
+  border-radius: 6px;
+  color: var(--color-text-secondary);
+  background: var(--color-bg-base-secondary);
+  cursor: pointer;
+  font-size: 11px;
+}
+.video-segmented-row button.is-selected {
+  border-color: var(--color-action-primary);
+  color: var(--color-action-primary);
+  background: color-mix(in srgb, var(--color-action-primary) 10%, transparent);
+}
+@media (max-width: 720px) {
+  .video-console-page .video-workspace {
+    height: calc(100dvh - 92px);
+  }
+  .video-console-page .video-composer {
+    width: calc(100% - 24px);
+  }
+  .video-console-page .video-composer-controls {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .video-console-page .video-control-group {
+    align-items: stretch;
+    flex-wrap: wrap;
+  }
+  .video-console-page .video-model-select {
+    flex: 1 1 180px;
+    width: auto;
+  }
+  .video-console-page .video-send-button.semi-button {
+    width: 100%;
+    height: 40px;
+    flex-basis: 40px;
+    border-radius: 8px;
+  }
+  .video-settings-popover {
+    right: 8px;
+    bottom: 106px;
+    width: min(300px, calc(100% - 16px));
+  }
+}
+
 .directory-toolbar,
 .usage-toolbar {
   display: flex;
@@ -3413,10 +3666,13 @@ html {
   -webkit-font-smoothing: antialiased;
 }
 
-/* 中文：只美化页面根滚动条，组件内部滚动区域继续使用各自的局部规则。 */
+/* 中文：全项目可见滚动条统一为 6px；局部 scrollbar-width: none 仍可保持隐藏。 */
+* {
+  scrollbar-width: thin;
+}
+
 html {
   scrollbar-color: var(--scrollbar-thumb) transparent;
-  scrollbar-width: thin;
 }
 
 /* 中文：阻止 Firefox 的继承色进入组件内部滚动容器。 */
@@ -3424,48 +3680,36 @@ body {
   scrollbar-color: auto;
 }
 
-html::-webkit-scrollbar {
+/* 中文：Chromium 新版的 thin 会启用带方向按钮的系统滚动条，改回 auto 后交给 WebKit 伪元素统一绘制。 */
+@supports selector(::-webkit-scrollbar) {
+  * {
+    scrollbar-color: auto !important;
+    scrollbar-width: auto !important;
+  }
+}
+
+*::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
-html::-webkit-scrollbar-track,
-html::-webkit-scrollbar-corner {
+*::-webkit-scrollbar-track,
+*::-webkit-scrollbar-corner {
   background: transparent;
 }
 
-html::-webkit-scrollbar-thumb {
+*::-webkit-scrollbar-thumb {
   border-radius: 999px;
   background: var(--scrollbar-thumb);
   transition: background-color 0.18s ease;
 }
 
-html::-webkit-scrollbar-thumb:hover {
+*::-webkit-scrollbar-thumb:hover {
   background: var(--scrollbar-thumb-hover);
 }
 
-/* 中文：使用无前缀伪元素覆盖页面和组件滚动条，统一隐藏 Chromium 的方向按钮。 */
-::-webkit-scrollbar-button,
-::-webkit-scrollbar-button:single-button,
-::-webkit-scrollbar-button:double-button,
-::-webkit-scrollbar-button:start,
-::-webkit-scrollbar-button:end,
-::-webkit-scrollbar-button:decrement,
-::-webkit-scrollbar-button:increment,
-::-webkit-scrollbar-button:vertical,
-::-webkit-scrollbar-button:horizontal,
-::-webkit-scrollbar-button:vertical:decrement,
-::-webkit-scrollbar-button:vertical:increment,
-::-webkit-scrollbar-button:horizontal:decrement,
-::-webkit-scrollbar-button:horizontal:increment,
-::-webkit-scrollbar-button:single-button:vertical:decrement,
-::-webkit-scrollbar-button:single-button:vertical:increment,
-::-webkit-scrollbar-button:single-button:horizontal:decrement,
-::-webkit-scrollbar-button:single-button:horizontal:increment,
-::-webkit-scrollbar-button:vertical:start:decrement,
-::-webkit-scrollbar-button:vertical:end:increment,
-::-webkit-scrollbar-button:horizontal:start:decrement,
-::-webkit-scrollbar-button:horizontal:end:increment {
+/* 中文：显式匹配所有元素的滚动条按钮，隐藏 Chromium/Windows 的上下左右箭头。 */
+*::-webkit-scrollbar-button {
   display: none !important;
   width: 0 !important;
   height: 0 !important;
@@ -4646,25 +4890,6 @@ body[theme-mode] {
   border-top-color: transparent;
   border-radius: 50%;
   animation: get-code-spinner-rotate 0.72s linear infinite;
-}
-.terms-checkbox {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  color: var(--color-text-secondary);
-  font-size: 13px;
-}
-.terms-checkbox.hidden {
-  display: none;
-}
-.terms-checkbox input[type="checkbox"] {
-  width: 16px;
-  height: 16px;
-  margin-top: 3px;
-}
-.terms-checkbox a {
-  color: var(--color-action-primary);
-  text-decoration: underline;
 }
 .login-feedback {
   margin: 0;
@@ -6209,7 +6434,7 @@ body[theme-mode] {
   background: transparent;
   color: var(--color-text-default);
   font-size: 13px;
-  font-weight: 600;
+  /* font-weight: 600; */
   line-height: 1;
   text-align: left;
   transition:
@@ -6266,139 +6491,6 @@ body[theme-mode] {
   opacity: 1;
 }
 
-.real-name-console-page {
-  align-items: stretch;
-}
-.real-name-card {
-  width: min(100%, 730px);
-  padding: var(--spacing-24);
-  border: 1px solid var(--color-border-neutral-l1);
-  border-radius: var(--radius-8);
-  background: var(--color-bg-overlay-l1);
-}
-.real-name-card > .banner-notice {
-  margin-bottom: var(--spacing-24);
-}
-.real-name-form {
-  display: grid;
-  gap: var(--spacing-20);
-  max-width: 680px;
-}
-.real-name-field {
-  display: grid;
-  gap: var(--spacing-8);
-  color: var(--color-text-default);
-  font-size: 14px;
-  font-weight: 600;
-}
-.real-name-field > .semi-input-wrapper,
-.real-name-field > .semi-select {
-  width: 100%;
-  font-weight: 400;
-}
-.real-name-field > .semi-input-wrapper-error,
-.real-name-field > .semi-input-wrapper-error:hover,
-.real-name-field > .semi-input-wrapper-error.semi-input-wrapper-focus {
-  border-color: var(--color-error, #d52b2b);
-}
-.real-name-form .field-error {
-  display: block;
-  margin: 0;
-  color: var(--color-error, #d52b2b);
-  font-size: 12px;
-  font-weight: 500;
-  line-height: 1.5;
-}
-.real-name-consent {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--spacing-8);
-  color: var(--color-text-tertiary);
-  font-size: 12px;
-  line-height: 1.6;
-}
-.real-name-consent input {
-  flex: 0 0 auto;
-  margin-top: 4px;
-  accent-color: var(--color-action-primary);
-}
-.real-name-form .real-name-submit.semi-button {
-  width: 100%;
-  border-color: var(--color-action-primary) !important;
-  background: var(--color-action-primary) !important;
-  color: var(--color-action-on-primary) !important;
-  font-weight: 600;
-  box-shadow: none;
-}
-.real-name-form .real-name-submit.semi-button .semi-button-content {
-  color: inherit !important;
-}
-.real-name-form .real-name-submit.semi-button:hover:not(:disabled) {
-  border-color: var(--color-action-primary-hover) !important;
-  background: var(--color-action-primary-hover) !important;
-  color: var(--color-action-on-primary) !important;
-  box-shadow: none;
-  transform: none;
-}
-.real-name-form .real-name-submit.semi-button:active:not(:disabled) {
-  border-color: var(--color-action-primary) !important;
-  background: var(--color-action-primary) !important;
-  color: var(--color-action-on-primary) !important;
-  box-shadow: none;
-  transform: translateY(0);
-}
-.real-name-form .real-name-submit.semi-button:focus-visible {
-  outline: 0;
-  box-shadow: 0 0 0 3px var(--color-border-neutral-l2);
-}
-.real-name-form .real-name-submit.semi-button:disabled,
-.real-name-form .real-name-submit.semi-button:disabled:hover,
-.real-name-form .real-name-submit.semi-button.semi-button-disabled,
-.real-name-form .real-name-submit.semi-button.semi-button-disabled:hover {
-  border-color: var(--color-action-primary) !important;
-  background: var(--color-action-primary) !important;
-  color: var(--color-action-on-primary) !important;
-  box-shadow: none;
-  opacity: 0.62;
-  transform: none;
-}
-.real-name-demo-note {
-  margin: var(--spacing-12) 0 0;
-  color: var(--color-text-tertiary);
-  font-size: 12px;
-}
-.real-name-status {
-  display: grid;
-  gap: var(--spacing-8);
-  margin: 0 0 var(--spacing-24);
-  padding: var(--spacing-16);
-  border: 1px solid var(--color-border-neutral-l1);
-  border-radius: var(--radius-6);
-  background: var(--color-bg-base-secondary);
-}
-.real-name-card--verified .real-name-status {
-  margin-bottom: 0;
-}
-.real-name-status-row {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--spacing-16);
-  color: var(--color-text-secondary);
-  font-size: 13px;
-}
-.real-name-status-row strong {
-  color: var(--color-text-default);
-  font-weight: 600;
-  text-align: right;
-}
-.real-name-console-page .profile-error-content {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--spacing-12);
-  width: 100%;
-}
 .real-name-verification-dialog {
   display: grid;
   justify-items: center;
@@ -6604,7 +6696,7 @@ html[data-theme="light"] .real-name-qr-expired-overlay span {
   width: calc(100% + (var(--console-page-gutter) * 2));
   margin-left: calc(var(--console-page-gutter) * -1);
   /* 中文：后台页面标题与正文保持紧凑统一的垂直节奏。 */
-  gap: var(--spacing-24);
+  /* gap: var(--spacing-24); */
   padding-top: 0;
 }
 
@@ -9562,7 +9654,7 @@ html[data-theme="light"] .real-name-qr-expired-overlay span {
 }
 .analysis-header h2 {
   color: var(--color-text-default);
-  font-size: 18px;
+  font-size: 20px;
 }
 .analysis-header > div {
   display: flex;
@@ -9904,7 +9996,7 @@ html[data-theme="light"] .real-name-qr-expired-overlay span {
   gap: var(--spacing-16);
 }
 .billing-console-page .analysis-header {
-  margin-bottom: var(--spacing-16);
+  margin-bottom: var(--spacing-24);
 }
 .analysis-heading,
 .section-heading h2 {
@@ -9924,7 +10016,7 @@ html[data-theme="light"] .real-name-qr-expired-overlay span {
 .balance-inline strong {
   margin-left: var(--spacing-4);
   color: var(--color-text-default);
-  font-size: 16px;
+  font-size: 20px;
 }
 .billing-filter-grid {
   display: flex;
@@ -10174,8 +10266,8 @@ body:has(.billing-console-page) .semi-select-option-icon {
 }
 .recharge-amount {
   color: var(--color-text-default);
-  font-size: 20px;
-  font-weight: 600;
+  font-size: 16px;
+  font-weight: 400;
 }
 .billing-custom-amount {
   display: flex;
@@ -10280,6 +10372,18 @@ body:has(.billing-console-page) .semi-select-option-icon {
 .recharge-form-label::after {
   content: ":";
 }
+/* 中文：控件高度缩短后，桌面端标签按对应控件高度保持垂直居中。 */
+@media (min-width: 761px) {
+  .recharge-amount-row .recharge-form-label {
+    padding-top: 9px;
+  }
+  .recharge-custom-row .recharge-form-label {
+    padding-top: 13px;
+  }
+  .recharge-method-row .recharge-form-label {
+    padding-top: 17px;
+  }
+}
 .recharge-amount-content,
 .recharge-custom-input-wrap,
 .recharge-method-controls {
@@ -10287,33 +10391,39 @@ body:has(.billing-console-page) .semi-select-option-icon {
 }
 .recharge-options {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(4, max-content);
   gap: var(--spacing-12);
   margin: 0;
 }
-.recharge-option {
+.recharge-options .recharge-option {
   display: inline-flex;
-  min-width: 0;
-  height: 96px;
+  min-width: 130px;
+  min-height: 50px;
+  height: 40px;
+  flex: 0 0 auto;
   align-items: center;
   justify-content: center;
-  padding: var(--spacing-12);
-  border: 2px solid var(--color-border-neutral-l1);
+  padding: 0 var(--spacing-16);
+  border: 1px solid var(--color-border-neutral-l1);
   border-radius: var(--radius-8);
   color: var(--color-text-default);
   background: var(--color-bg-base-secondary);
   cursor: pointer;
   transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease;
 }
-.recharge-option:hover,
-.recharge-option.active {
+.recharge-options .recharge-option:hover:not(.active) {
+  border-color: var(--color-border-neutral-l1);
+  background: var(--color-bg-base-secondary);
+  color: var(--color-text-default);
+}
+.recharge-options .recharge-option.active {
   border-color: var(--color-brand-purple);
 }
 .recharge-option:focus-visible {
   outline: 2px solid var(--color-brand-purple);
   outline-offset: 2px;
 }
-.recharge-option.active {
+.recharge-options .recharge-option.active {
   color: var(--color-brand-purple);
   background: color-mix(in srgb, var(--color-brand-purple) 5%, var(--color-bg-base-secondary));
 }
@@ -10322,8 +10432,8 @@ body:has(.billing-console-page) .semi-select-option-icon {
 }
 .recharge-amount {
   color: inherit;
-  font-size: 20px;
-  font-weight: 600;
+  font-size: 16px;
+  font-weight: 400;
   line-height: 1;
   white-space: nowrap;
 }
@@ -10336,7 +10446,9 @@ body:has(.billing-console-page) .semi-select-option-icon {
   gap: var(--spacing-8);
 }
 .recharge-custom-input-wrap .input {
-  width: 100%;
+  width: 530px;
+  max-width: 100%;
+  flex: 0 1 530px;
   height: 48px;
   min-height: 48px;
   padding-inline: var(--spacing-16);
@@ -10359,8 +10471,8 @@ body:has(.billing-console-page) .semi-select-option-icon {
 .recharge-method-option,
 .recharge-method-select {
   box-sizing: border-box;
-  width: 260px;
-  height: 56px;
+  width: 220px;
+  height: 66px;
   min-height: 56px;
   border: 1px solid var(--color-border-neutral-l1);
   border-radius: var(--radius-6);
@@ -10399,13 +10511,19 @@ body:has(.billing-console-page) .semi-select-option-icon {
   font-size: 16px;
 }
 .recharge-confirm-button.semi-button-primary:not(.semi-button-disabled) {
-  border-color: var(--color-brand-purple);
-  background: var(--color-brand-purple);
-  color: #fff;
+  border-color: #fff;
+  background: #fff;
+  color: #17181b;
 }
 .recharge-confirm-button.semi-button-primary:not(.semi-button-disabled):hover {
-  border-color: #5427c8;
-  background: #5427c8;
+  border-color: #fff;
+  background: #fff;
+  color: #17181b;
+}
+html[data-theme="light"] .recharge-confirm-button.semi-button-primary:not(.semi-button-disabled),
+html[data-theme="light"] .recharge-confirm-button.semi-button-primary:not(.semi-button-disabled):hover {
+  border-color: #17181b;
+  background: #17181b;
   color: #fff;
 }
 .recharge-agreement {
@@ -10437,6 +10555,7 @@ body:has(.billing-console-page) .semi-select-option-icon {
   display: flex;
   align-items: center;
   gap: var(--spacing-12);
+  width: min(100%, 760px);
   margin-top: var(--spacing-20);
 }
 .payment-order-summary .banner-notice {
@@ -10461,10 +10580,11 @@ body:has(.billing-console-page) .semi-select-option-icon {
   overflow-y: auto;
 }
 .payment-qr-dialog .semi-modal-header {
-  padding: var(--spacing-20) var(--spacing-24) var(--spacing-8);
+  /* padding: var(--spacing-20) var(--spacing-24) var(--spacing-8); */
 }
 .payment-qr-dialog .semi-modal-body {
   padding: 0 var(--spacing-24) var(--spacing-24);
+  overflow: hidden;
 }
 .payment-qr-dialog-content {
   display: grid;
@@ -10487,8 +10607,13 @@ body:has(.billing-console-page) .semi-select-option-icon {
 }
 .payment-qr-dialog .payment-qr-frame-shell {
   width: 300px;
-  max-height: min(600px, 58dvh);
-  overflow: auto;
+  height: 300px;
+  max-height: none;
+  overflow: hidden;
+}
+.payment-qr-dialog .payment-qr-frame {
+  width: 300px;
+  height: 300px;
 }
 .payment-qr-refresh-button.semi-button {
   width: 100%;
@@ -10505,7 +10630,7 @@ body:has(.billing-console-page) .semi-select-option-icon {
     padding-top: 0;
   }
   .recharge-options {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(2, max-content);
   }
   .recharge-method-option,
   .recharge-method-select {
@@ -10817,10 +10942,6 @@ body:has(.billing-console-page) .semi-select-option-icon {
   .billing-filter-field:first-child {
     flex-basis: 100%;
     width: 100%;
-  }
-  /* 中文：充值快捷金额在手机端改为两列，避免金额按钮被横向裁切。 */
-  .recharge-options {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .billing-tabs {
     gap: var(--spacing-4);
@@ -15320,13 +15441,6 @@ html[data-theme="light"] .app-loading-screen__logo-shell .brand-logo-image {
   transform: rotate(-10deg) scale(1.08);
 }
 
-.terms-checkbox input[type="checkbox"] {
-  accent-color: var(--color-action-primary);
-  cursor: pointer;
-}
-.terms-checkbox label {
-  cursor: pointer;
-}
 .submit-btn:disabled {
   cursor: not-allowed;
   opacity: 0.46;
@@ -15508,13 +15622,6 @@ html[data-theme="light"] .app-loading-screen__logo-shell .brand-logo-image {
   border-color: rgba(255, 255, 255, 0.3);
   color: #fff;
   background: rgba(255, 255, 255, 0.18);
-}
-.login-popover .terms-checkbox {
-  color: rgba(255, 255, 255, 0.55);
-  font-size: 12px;
-}
-.login-popover .terms-checkbox a {
-  color: rgba(255, 255, 255, 0.9);
 }
 .login-popover .login-feedback {
   color: #ff9f9f;
@@ -22169,12 +22276,6 @@ html[data-theme="light"] .login-popover .btn.btn-secondary:hover {
   color: #17181b;
   background: rgba(23, 24, 27, 0.1);
 }
-html[data-theme="light"] .login-popover .terms-checkbox {
-  color: #747983;
-}
-html[data-theme="light"] .login-popover .terms-checkbox a {
-  color: #30343b;
-}
 html[data-theme="light"] .login-popover .wechat-status,
 html[data-theme="light"] .login-popover .wechat-agreement {
   color: #626975;
@@ -22308,45 +22409,6 @@ html[data-theme="light"] .manuscript-support-notification-copy > span {
 }
 html[data-theme="light"] .manuscript-support-notification-copy time {
   color: #8a9099;
-}
-
-@media (max-width: 720px) {
-  .real-name-card {
-    width: auto;
-    padding: var(--spacing-16);
-  }
-  .real-name-card > .banner-notice {
-    display: grid;
-    grid-template-columns: 6px minmax(0, 1fr);
-    align-items: start;
-    margin-bottom: var(--spacing-20);
-    padding: var(--spacing-12);
-  }
-  .real-name-card > .banner-notice .banner-notice-dot {
-    grid-row: 1 / span 2;
-  }
-  .real-name-card > .banner-notice strong {
-    min-width: 0;
-    line-height: 1.5;
-  }
-  .real-name-card > .banner-notice span {
-    min-width: 0;
-    overflow-wrap: anywhere;
-    line-height: 1.55;
-  }
-  .real-name-form {
-    gap: var(--spacing-16);
-  }
-  .real-name-field {
-    font-size: 15px;
-  }
-  .real-name-consent {
-    font-size: 13px;
-  }
-  .real-name-demo-note {
-    font-size: 13px;
-    line-height: 1.55;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -23333,7 +23395,6 @@ html[data-theme="light"] .manuscript-support-notification-copy time {
   display: flex;
   align-items: center;
   overflow: hidden;
-  padding-left: 11px;
 }
 :is(.login-popover, .login-card) .phone-prefix-control {
   position: relative;
@@ -23342,6 +23403,7 @@ html[data-theme="light"] .manuscript-support-notification-copy time {
   height: 52px;
   flex: 0 0 60px;
   align-items: center;
+  justify-content: center;
   border-right: 0;
   color: #8b8b8b;
   background: transparent;
@@ -23350,23 +23412,11 @@ html[data-theme="light"] .manuscript-support-notification-copy time {
   display: flex;
   width: 100%;
   align-items: center;
-  padding: 0 21px 0 0;
+  justify-content: center;
+  padding: 0;
   font-size: 16px;
   line-height: 52px;
   pointer-events: none;
-}
-:is(.login-popover, .login-card) .phone-prefix-control::after {
-  position: absolute;
-  top: 50%;
-  right: 10px;
-  width: 7px;
-  height: 7px;
-  border: solid #8b8b8b;
-  border-width: 0 2px 2px 0;
-  content: "";
-  pointer-events: none;
-  transform: translateY(-70%) rotate(45deg);
-  transition: transform 0.18s ease;
 }
 
 /* 中文：微信 WebView 和低性能触控设备优先保证滚动稳定，保留内容与交互，仅降级装饰动画。 */
@@ -23429,18 +23479,6 @@ html[data-performance="lite"]
     content-visibility: visible;
     contain-intrinsic-size: none;
   }
-}
-:is(.login-popover, .login-card) .phone-prefix-control.is-open::after {
-  transform: translateY(-25%) rotate(-135deg);
-}
-:is(.login-popover, .login-card) .phone-prefix-select {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  border: 0;
-  opacity: 0;
-  cursor: pointer;
 }
 :is(.login-popover, .login-card) .phone-input {
   min-width: 0;
@@ -23513,25 +23551,14 @@ html[data-performance="lite"]
   box-sizing: border-box;
   align-items: flex-start;
   gap: 4px;
-  margin: 0 0 35px;
+  margin: 0 0 12px;
   padding-left: 5px;
   color: #8b8b8b;
   font-size: 14px;
   line-height: 21px;
 }
-:is(.login-popover, .login-card) .terms-checkbox {
-  display: flex;
-  min-height: 36px;
-  box-sizing: border-box;
-  align-items: flex-start;
-  gap: 4px;
-  padding: 0 1px;
-  color: #fff;
-  font-size: 14px;
-  line-height: 20px;
-}
 :is(.login-popover, .login-card)
-  :is(.remember-checkbox, .terms-checkbox)
+  .remember-checkbox
   input {
   position: relative;
   appearance: none;
@@ -23545,13 +23572,13 @@ html[data-performance="lite"]
   cursor: pointer;
 }
 :is(.login-popover, .login-card)
-  :is(.remember-checkbox, .terms-checkbox)
+  .remember-checkbox
   input:checked {
   border-color: #5c2fdc;
   background: #5c2fdc;
 }
 :is(.login-popover, .login-card)
-  :is(.remember-checkbox, .terms-checkbox)
+  .remember-checkbox
   input:checked::after {
   position: absolute;
   top: 50%;
@@ -23566,19 +23593,25 @@ html[data-performance="lite"]
   transform-origin: center;
 }
 :is(.login-popover, .login-card)
-  :is(.remember-checkbox, .terms-checkbox)
+  .remember-checkbox
   label {
   cursor: pointer;
 }
-:is(.login-popover, .login-card) .terms-checkbox a {
+:is(.login-popover, .login-card) .login-consent-notice {
+  margin: 0 0 16px;
+  color: #fff;
+  font-size: 14px;
+  line-height: 20px;
+}
+:is(.login-popover, .login-card) .login-consent-notice a {
   color: #5c2fdc;
   text-decoration: none;
 }
-:is(.login-popover, .login-card) .terms-checkbox a:hover {
+:is(.login-popover, .login-card) .login-consent-notice a:hover {
   color: #7f52ff;
 }
 :is(.login-popover, .login-card) .login-feedback {
-  margin: -25px 0 14px;
+  margin: 0 0 10px;
   color: #ff4d58;
   font-size: 12px;
   line-height: 20px;
@@ -24980,29 +25013,34 @@ html[data-theme="light"]
 html[data-theme="light"] :is(.login-popover, .login-card) .remember-checkbox {
   color: #8b8b8b;
 }
-html[data-theme="light"] :is(.login-popover, .login-card) .terms-checkbox {
+html[data-theme="light"]
+  :is(.login-popover, .login-card)
+  .login-consent-notice {
   color: #4f4f4f;
 }
-html[data-theme="light"] :is(.login-popover, .login-card) .terms-checkbox a {
+html[data-theme="light"]
+  :is(.login-popover, .login-card)
+  .login-consent-notice
+  a {
   color: #5c2fdc;
   text-decoration: none;
 }
 html[data-theme="light"]
   :is(.login-popover, .login-card)
-  .terms-checkbox
+  .login-consent-notice
   a:hover {
   color: #4c0dfb;
 }
 html[data-theme="light"]
   :is(.login-popover, .login-card)
-  :is(.remember-checkbox, .terms-checkbox)
+  .remember-checkbox
   input {
   border-color: #dedede;
   background: #fff;
 }
 html[data-theme="light"]
   :is(.login-popover, .login-card)
-  :is(.remember-checkbox, .terms-checkbox)
+  .remember-checkbox
   input:checked {
   border-color: #5c2fdc;
   background: #5c2fdc;

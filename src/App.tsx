@@ -173,6 +173,11 @@ const SubscriptionPage = lazy(() =>
     default: SubscriptionPage,
   })),
 );
+const ImagePage = lazy(() =>
+  import("@/pages/image-generation").then(({ ImagePage }) => ({
+    default: ImagePage,
+  })),
+);
 const TraeEnterpriseUsagePage = lazy(() =>
   import("@/pages/trae-enterprise").then(({ TraeEnterpriseUsagePage }) => ({
     default: TraeEnterpriseUsagePage,
@@ -366,6 +371,7 @@ export default function App({ onBootReady }: { onBootReady: () => void }) {
                   element={<ConsoleModelDetailPage />}
                 />
                 <Route path="playground" element={<PlaygroundPage />} />
+                <Route path="image" element={<ImagePage />} />
                 <Route path="video" element={<VideoPage />} />
                 <Route path="quickstart" element={<QuickstartPage />} />
                 <Route path="api-keys" element={<ApiKeysPage />} />

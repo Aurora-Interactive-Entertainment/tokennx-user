@@ -17,7 +17,6 @@ import {
   ENTERPRISE_LICENSE_MAX_BYTES,
   ENTERPRISE_NAME_MAX_LENGTH,
   confirmEnterpriseFaceVerification,
-  getEnterpriseFaceVerificationStatus,
   getEnterpriseCertification,
   getEnterpriseCertificationErrorMessage,
   normalizeEnterpriseCreditCode,
@@ -38,7 +37,7 @@ import { useAppDispatch } from '@/store/hooks'
 import './enterprise-create.css'
 
 type EnterpriseStep = 1 | 2 | 3 | 4
-const FACE_STATUS_POLL_INTERVAL_MS = 3_000
+const FACE_CONFIRM_POLL_INTERVAL_MS = 3_000
 
 interface CertificationFormState {
   enterpriseName: string
@@ -47,6 +46,11 @@ interface CertificationFormState {
   legalRepresentativeId: string
   contactName: string
   contactPhone: string
+}
+
+interface FaceConfirmationNotice {
+  title: string
+  message: string
 }
 
 const EMPTY_FORM: CertificationFormState = {
@@ -220,14 +224,14 @@ function ResultStep({ certification, loading, workspaceError, onRefresh }: { cer
   </section>
 }
 
-function EnterpriseFaceModal({ visible, faceUrl, confirming, error, onConfirm, onCancel }: { visible: boolean; faceUrl: string; confirming: boolean; error: string; onConfirm: () => void; onCancel: () => void }) {
+function EnterpriseFaceModal({ visible, faceUrl, confirming, notice, onConfirm, onCancel }: { visible: boolean; faceUrl: string; confirming: boolean; notice: FaceConfirmationNotice | null; onConfirm: () => void; onCancel: () => void }) {
   const { t } = useTranslation()
   const qrCanvas = useRef<HTMLCanvasElement>(null)
   useEffect(() => {
     if (!visible || !faceUrl || !qrCanvas.current || isMobileDevice()) return
     void QRCode.toCanvas(qrCanvas.current, faceUrl, { width: 240, margin: 2 }).catch(() => Toast.error(t('console.enterpriseCreate.qrFailed')))
   }, [faceUrl, t, visible])
-  return <Modal className="real-name-verification-modal" title={t('console.enterpriseCreate.faceModalTitle')} visible={visible} onCancel={onCancel} footer={null} width="420px"><div className="real-name-verification-dialog" aria-busy={confirming}>{faceUrl && !isMobileDevice() ? <><div className="real-name-qr-frame"><canvas ref={qrCanvas} aria-label={t('console.enterpriseCreate.scanAlipay')} /></div><strong>{t('console.enterpriseCreate.scanAlipay')}</strong></> : faceUrl ? <Button theme="solid" type="primary" onClick={() => { try { window.location.assign(faceUrl) } catch { Toast.error(t('console.enterpriseCreate.openFailed')) } }}>{t('console.enterpriseCreate.openAlipay')}</Button> : null}<div className="real-name-waiting"><span className="console-loading-spinner" />{t('console.enterpriseCreate.awaitingFace')}</div>{error ? <div className="enterprise-face-confirm-error" role="alert"><strong>{t('console.enterpriseCreate.faceConfirmFailedTitle')}</strong><span>{error}</span></div> : null}<Button theme="outline" loading={confirming} disabled={confirming} onClick={onConfirm}>{t('console.enterpriseCreate.faceCompleted')}</Button><Button className="real-name-dialog-primary-action" theme="borderless" disabled={confirming} onClick={onCancel}>{t('console.enterpriseCreate.closeFace')}</Button></div></Modal>
+  return <Modal className="real-name-verification-modal" title={t('console.enterpriseCreate.faceModalTitle')} visible={visible} onCancel={onCancel} footer={null} width="420px"><div className="real-name-verification-dialog" aria-busy={confirming}>{faceUrl && !isMobileDevice() ? <><div className="real-name-qr-frame"><canvas ref={qrCanvas} aria-label={t('console.enterpriseCreate.scanAlipay')} /></div><strong>{t('console.enterpriseCreate.scanAlipay')}</strong></> : faceUrl ? <Button theme="solid" type="primary" onClick={() => { try { window.location.assign(faceUrl) } catch { Toast.error(t('console.enterpriseCreate.openFailed')) } }}>{t('console.enterpriseCreate.openAlipay')}</Button> : null}<div className="real-name-waiting"><span className="console-loading-spinner" />{t('console.enterpriseCreate.awaitingFace')}</div>{notice ? <div className="enterprise-face-confirm-error" role="alert"><strong>{notice.title}</strong><span>{notice.message}</span></div> : null}<Button theme="outline" loading={confirming} disabled={confirming} onClick={onConfirm}>{t('console.enterpriseCreate.faceCompleted')}</Button><Button className="real-name-dialog-primary-action" theme="borderless" disabled={confirming} onClick={onCancel}>{t('console.enterpriseCreate.closeFace')}</Button></div></Modal>
 }
 
 export function EnterpriseCreatePage() {
@@ -253,12 +257,11 @@ export function EnterpriseCreatePage() {
   const [confirmingFace, setConfirmingFace] = useState(false)
   const [faceModalVisible, setFaceModalVisible] = useState(false)
   const [faceUrl, setFaceUrl] = useState('')
-  const [faceConfirmError, setFaceConfirmError] = useState('')
-  const [facePollRestartKey, setFacePollRestartKey] = useState(0)
+  const [faceConfirmNotice, setFaceConfirmNotice] = useState<FaceConfirmationNotice | null>(null)
   const [errorMessage, setErrorMessage] = useState('')
   const [workspaceRefreshError, setWorkspaceRefreshError] = useState('')
   const refreshedEnterpriseId = useRef<string | null>(null)
-  const faceConfirmationTriggered = useRef(false)
+  const faceConfirmRequest = useRef<Promise<EnterpriseCertification> | null>(null)
   const firstStatusLoaded = useRef(false)
   const [completedOnEntry, setCompletedOnEntry] = useState(false)
 
@@ -391,7 +394,7 @@ export function EnterpriseCreatePage() {
   async function startFace(): Promise<void> {
     if (!faceConsent) { setFaceConsentError(t('console.enterpriseCreate.faceConsentRequired')); return }
     if (!certification) return
-    setFaceConfirmError('')
+    setFaceConfirmNotice(null)
     if (certification.current_stage === 'face_verification' && (certification.face_url || faceUrl)) { setFaceModalVisible(true); return }
     const accessToken = getAccessToken()
     if (!accessToken) { invalidateSession(); return }
@@ -411,40 +414,50 @@ export function EnterpriseCreatePage() {
     }
   }
 
+  const requestFaceConfirmation = useCallback((accessToken: string): Promise<EnterpriseCertification> => {
+    if (faceConfirmRequest.current) return faceConfirmRequest.current
+    const request = confirmEnterpriseFaceVerification(accessToken).finally(() => {
+      if (faceConfirmRequest.current === request) faceConfirmRequest.current = null
+    })
+    faceConfirmRequest.current = request
+    return request
+  }, [])
+
+  const applyFaceConfirmation = useCallback((result: EnterpriseCertification): boolean => {
+    setCertification(result)
+    if (result.status !== 'approved' && result.current_stage !== 'completed') return false
+    setFaceConfirmNotice(null)
+    setFaceModalVisible(false)
+    return true
+  }, [])
+
   const confirmFace = useCallback(async (): Promise<void> => {
     const accessToken = getAccessToken()
     if (!accessToken) { invalidateSession(); return }
     setConfirmingFace(true)
-    setFaceConfirmError('')
+    setFaceConfirmNotice(null)
     setErrorMessage('')
     try {
-      const result = await confirmEnterpriseFaceVerification(accessToken)
-      setCertification(result)
-      setFaceConfirmError('')
-      setFaceModalVisible(false)
+      const result = await requestFaceConfirmation(accessToken)
+      if (!applyFaceConfirmation(result)) {
+        // 中文：手动确认时告知用户尚未扫脸，后台轮询仍保持静默。
+        setFaceConfirmNotice({ title: t('console.enterpriseCreate.faceConfirmPendingTitle'), message: t('console.enterpriseCreate.faceConfirmPendingMessage') })
+      }
     } catch (error: unknown) {
       if (isAuthenticationFailure(error)) invalidateSession()
-      else {
-        // 中文：确认失败后用户可能重新扫码，清除防重标记并恢复状态轮询。
-        faceConfirmationTriggered.current = false
-        setFacePollRestartKey((previous) => previous + 1)
-        setFaceConfirmError(isApiError(error) && error.message.trim() ? error.message : getEnterpriseCertificationErrorMessage(error))
-      }
+      else setFaceConfirmNotice({ title: t('console.enterpriseCreate.faceConfirmFailedTitle'), message: isApiError(error) && error.message.trim() ? error.message : getEnterpriseCertificationErrorMessage(error) })
     } finally {
       setConfirmingFace(false)
     }
-  }, [invalidateSession])
+  }, [applyFaceConfirmation, invalidateSession, requestFaceConfirmation, t])
 
   useEffect(() => {
-    if (!faceModalVisible) {
-      faceConfirmationTriggered.current = false
-      return
-    }
+    if (!faceModalVisible) return
 
     let cancelled = false
     let timer: number | undefined
 
-    const pollFaceStatus = async (): Promise<void> => {
+    const pollFaceConfirmation = async (): Promise<void> => {
       const accessToken = getAccessToken()
       if (!accessToken) {
         if (!cancelled) invalidateSession()
@@ -452,38 +465,28 @@ export function EnterpriseCreatePage() {
       }
 
       try {
-        const result = await getEnterpriseFaceVerificationStatus(accessToken)
+        const result = await requestFaceConfirmation(accessToken)
         if (cancelled) return
-        setCertification(result)
-        if (result.face_url) setFaceUrl(result.face_url)
-
-        // 中文：状态接口确认刷脸通过后自动提交确认，用户无需再点击“我已认证完成”。
-        if (result.status === 'approved' && !faceConfirmationTriggered.current) {
-          faceConfirmationTriggered.current = true
-          void confirmFace()
-          return
-        }
-
-        // 中文：弹窗打开期间持续轮询，中间状态变化不应阻止用户再次扫码认证。
-        timer = window.setTimeout(() => { void pollFaceStatus() }, FACE_STATUS_POLL_INTERVAL_MS)
+        if (applyFaceConfirmation(result)) return
       } catch (error: unknown) {
         if (cancelled) return
         if (isAuthenticationFailure(error)) {
           invalidateSession()
           return
         }
-        // 中文：单次轮询失败不结束核身流程，下一次轮询继续获取服务端状态。
-        timer = window.setTimeout(() => { void pollFaceStatus() }, FACE_STATUS_POLL_INTERVAL_MS)
+        // 中文：后台确认失败通常表示用户尚未刷脸，静默等待下一轮，避免持续展示错误。
       }
+
+      timer = window.setTimeout(() => { void pollFaceConfirmation() }, FACE_CONFIRM_POLL_INTERVAL_MS)
     }
 
-    // 中文：首次查询延迟一个轮询周期，避免弹窗打开时与发起核身请求并发。
-    timer = window.setTimeout(() => { void pollFaceStatus() }, FACE_STATUS_POLL_INTERVAL_MS)
+    // 中文：首次确认延迟一个轮询周期，避免弹窗打开时与发起核身请求并发。
+    timer = window.setTimeout(() => { void pollFaceConfirmation() }, FACE_CONFIRM_POLL_INTERVAL_MS)
     return () => {
       cancelled = true
       if (timer !== undefined) window.clearTimeout(timer)
     }
-  }, [confirmFace, faceModalVisible, facePollRestartKey, invalidateSession])
+  }, [applyFaceConfirmation, faceModalVisible, invalidateSession, requestFaceConfirmation])
 
   if (loading && !certification) return <div className="page-stack enterprise-create-page"><PageTitle title={t('console.enterpriseCreate.title')} description={t('console.enterpriseCreate.description')} /><div className="profile-state-panel" role="status">{t('console.enterpriseCreate.loading')}</div></div>
 
@@ -498,6 +501,6 @@ export function EnterpriseCreatePage() {
       {step === 3 && certification ? <FaceStep certification={certification} consent={faceConsent} consentError={faceConsentError} loading={startingFace} onConsentChange={(checked) => { setFaceConsent(checked); if (checked) setFaceConsentError('') }} onStart={() => { void startFace() }} /> : null}
       {step === 4 && certification ? <ResultStep certification={certification} loading={loading} workspaceError={workspaceRefreshError} onRefresh={() => { void loadCertification() }} /> : null}
     </div>
-    <EnterpriseFaceModal visible={faceModalVisible} faceUrl={faceUrl} confirming={confirmingFace} error={faceConfirmError} onConfirm={() => { void confirmFace() }} onCancel={() => { setFaceModalVisible(false); setFaceConfirmError('') }} />
+    <EnterpriseFaceModal visible={faceModalVisible} faceUrl={faceUrl} confirming={confirmingFace} notice={faceConfirmNotice} onConfirm={() => { void confirmFace() }} onCancel={() => { setFaceModalVisible(false); setFaceConfirmNotice(null) }} />
   </div>
 }

@@ -30,8 +30,13 @@
 
 .subscription-overview-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.65fr) repeat(2, minmax(0, 1fr));
+  /* 中文：当前计划占满剩余空间，每张模型卡保持固定宽度，接口返回多项时尺寸不跳变。 */
+  grid-template-columns: minmax(480px, 1fr);
+  grid-auto-columns: 420px;
+  grid-auto-flow: column;
   gap: 14px;
+  overflow-x: auto;
+  scrollbar-width: thin;
 }
 
 .subscription-current-card,
@@ -137,9 +142,18 @@
 .subscription-plan-grid {
   display: grid;
   align-items: stretch;
-  /* 中文：卡片按可用内容区自适应收缩，避免右侧套餐被视口裁切。 */
+  /* 中文：默认最多四列，实际列数由套餐数量覆盖，避免右侧出现空白列。 */
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 14px;
+}
+
+.subscription-plan-grid:where([data-plan-count="2"]) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.subscription-plan-grid:where([data-plan-count="3"]) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+/* 中文：只有一个套餐时保持易读卡片宽度，不把单卡拉伸到整行。 */
+.subscription-plan-grid:where([data-plan-count="1"]) {
+  grid-template-columns: minmax(280px, 440px);
+  justify-content: start;
 }
 
 .subscription-plan-card {
@@ -435,13 +449,23 @@
 }
 
 @media (max-width: 900px) {
-  .subscription-overview-grid { grid-template-columns: 1fr 1fr; }
+  .subscription-overview-grid {
+    grid-template-columns: 1fr 1fr;
+    grid-auto-columns: auto;
+    grid-auto-flow: row;
+    overflow-x: visible;
+  }
   .subscription-current-card { grid-column: 1 / -1; }
 }
 
 /* 中文：四列需要较宽的内容区，空间不足时固定降为两列，避免卡片压缩到不可读。 */
 @media (max-width: 1540px) {
   .subscription-plan-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* 中文：三张套餐卡在常见桌面宽度下仍保持三等分，完整利用横向空间。 */
+@media (min-width: 1201px) {
+  .subscription-plan-grid:where([data-plan-count="3"]) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
 @media (max-width: 680px) {

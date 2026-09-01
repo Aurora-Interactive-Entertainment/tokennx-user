@@ -1,0 +1,462 @@
+/* 中文：模型广场卡片对齐源站的白底网格、紧凑信息面板和底部操作区。 */
+@property --model-card-glow-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+.models-console-page .model-card-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 400px), 1fr));
+  justify-content: center;
+  gap: 16px;
+}
+
+.models-console-page .model-card-grid.model-card-grid--single {
+  grid-template-columns: minmax(min(100%, 400px), 1fr);
+}
+
+.models-console-page .model-card {
+  --model-card-glow-angle: 0deg;
+  display: flex;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 545px;
+  min-width: min(400px, 100%);
+  justify-self: center;
+  height: 340px;
+  min-height: 340px;
+  flex-direction: column;
+  isolation: isolate;
+  overflow: hidden;
+  border: 1px solid var(--color-border-neutral-l1);
+  border-radius: 22px;
+  background-color: var(--color-bg-base-secondary);
+  background-image:
+    linear-gradient(var(--color-border-neutral-l1) 1px, transparent 1px),
+    linear-gradient(90deg, var(--color-border-neutral-l1) 1px, transparent 1px);
+  background-position: -1px -1px;
+  background-size: 40px 40px;
+  box-shadow: 0 2px 10px color-mix(in srgb, var(--color-text-default) 3%, transparent);
+  transition:
+    border-color 0.22s ease,
+    box-shadow 0.22s ease,
+    transform 0.22s ease;
+}
+
+/* 中文：仅保留渐变的边框区域，让亮色光带沿卡片边缘顺时针循环。 */
+.models-console-page .model-card::before {
+  content: "";
+  position: absolute;
+  z-index: 3;
+  inset: 0;
+  padding: 2px;
+  border-radius: inherit;
+  opacity: 0;
+  pointer-events: none;
+  background: conic-gradient(
+    from var(--model-card-glow-angle),
+    transparent 0deg,
+    transparent 270deg,
+    color-mix(in srgb, var(--color-action-primary) 28%, transparent) 294deg,
+    #d7e8ff 320deg,
+    #76abff 342deg,
+    transparent 360deg
+  );
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  transition: opacity 0.18s ease;
+}
+
+.models-console-page .model-card:hover,
+.models-console-page .model-card:focus-within {
+  border-color: color-mix(in srgb, var(--color-action-primary) 48%, #8bb6ff);
+  background-color: var(--color-bg-base-secondary);
+  background-image:
+    linear-gradient(var(--color-border-neutral-l1) 1px, transparent 1px),
+    linear-gradient(90deg, var(--color-border-neutral-l1) 1px, transparent 1px);
+  box-shadow: 0 10px 26px color-mix(in srgb, #6d9ff5 22%, transparent);
+  transform: translateY(-3px);
+}
+
+.models-console-page .model-card:hover::before,
+.models-console-page .model-card:focus-within::before {
+  opacity: 1;
+  animation: model-card-border-spin 2.2s linear infinite;
+}
+
+.models-console-page .model-card-link {
+  display: block;
+  width: 100%;
+  min-height: 0;
+  flex: 1 1 auto;
+  box-sizing: border-box;
+  padding: 16px 20px 0;
+  border: 0;
+  border-radius: 21px 21px 0 0;
+  color: inherit;
+  background: transparent;
+  text-align: left;
+}
+
+.models-console-page .model-card-link:hover,
+.models-console-page .model-card-link:focus-visible {
+  color: inherit;
+  background: transparent;
+}
+
+.models-console-page .model-card-link:focus-visible {
+  outline: 2px solid var(--color-action-primary);
+  outline-offset: -3px;
+}
+
+.models-console-page .model-card-topline {
+  min-height: 40px;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  padding-right: 136px;
+}
+
+.models-console-page .model-card:has(.model-card-tag:nth-child(2)) .model-card-topline {
+  padding-right: 250px;
+}
+
+.models-console-page .model-logo {
+  width: 40px;
+  height: 40px;
+  flex-basis: 40px;
+  border-color: var(--color-border-neutral-l1);
+  border-radius: 10px;
+  background: var(--color-bg-base-default);
+}
+
+.models-console-page .model-card-name {
+  display: block;
+  overflow: hidden;
+  margin: 0;
+  color: var(--color-text-default);
+  font-size: 18px;
+  font-weight: 650;
+  line-height: 24px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.models-console-page .model-card-company {
+  display: none;
+}
+
+.models-console-page .model-id-row {
+  min-width: 0;
+  margin: 0 0 8px;
+  padding-right: 38px;
+}
+
+.models-console-page .model-id-row code {
+  overflow: hidden;
+  color: var(--color-text-tertiary);
+  font-family: var(--font-mono, monospace);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.models-console-page .model-card-copy.semi-button {
+  z-index: 4;
+  top: 62px;
+  right: 20px;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  color: var(--color-text-tertiary);
+  background: transparent;
+}
+
+.models-console-page .model-card-copy.semi-button:hover,
+.models-console-page .model-card-copy.semi-button:focus-visible {
+  color: var(--color-text-default);
+  background: var(--color-bg-overlay-l2);
+}
+
+.models-console-page .model-card-highlight-row {
+  position: absolute;
+  top: 18px;
+  right: 20px;
+  z-index: 1;
+  display: block;
+  min-height: 0;
+  margin: 0;
+  pointer-events: none;
+}
+
+.models-console-page .model-card-throughput {
+  display: none;
+}
+
+.models-console-page .model-card-tags {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 5px;
+  max-width: 250px;
+  margin: 0;
+}
+
+.models-console-page .model-card-tag {
+  max-width: 120px;
+  overflow: hidden;
+  min-height: 25px;
+  padding: 2px 9px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 18px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.models-console-page .model-card-description {
+  display: -webkit-box;
+  min-height: 36px;
+  margin: 0 0 10px;
+  overflow: hidden;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  line-height: 18px;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+/* 中文：源站将输入输出、价格、上下文和可用率收纳在同一块浅色面板中。 */
+.models-console-page .model-card-metrics {
+  display: none;
+}
+
+.models-console-page .model-card-info-panel {
+  margin: 0;
+  padding: 10px 16px 6px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--color-bg-base-default) 76%, var(--color-bg-overlay-l2));
+}
+
+.models-console-page .model-card-io {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  padding: 0 0 8px;
+  border: 0;
+}
+
+.models-console-page .model-card-io > div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.models-console-page .model-card-io-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex: 0 0 auto;
+  margin: 0;
+  color: var(--color-text-tertiary);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.models-console-page .model-card-type-mark {
+  width: 16px;
+  height: 16px;
+  border-color: var(--color-text-secondary);
+  border-radius: 3px;
+  color: var(--color-text-default);
+  font-size: 10px;
+}
+
+.models-console-page .model-card-io strong {
+  display: block;
+  overflow: hidden;
+  min-width: 0;
+  margin-left: auto;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.models-console-page .model-card-pricing {
+  padding: 6px 0;
+  border-top: 1px solid var(--color-border-neutral-l1);
+}
+
+.models-console-page .model-card-price-grid,
+.models-console-page .model-card-spec-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.models-console-page .model-card-price-cell,
+.models-console-page .model-card-spec-cell {
+  min-width: 0;
+  color: var(--color-text-tertiary);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.models-console-page .model-card-price-cell strong {
+  color: #315cf4;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.models-console-page .model-card-price-cell strong del,
+.models-console-page .model-card-price-cell small {
+  color: var(--color-text-tertiary);
+  font-size: 11px;
+  font-weight: 400;
+}
+
+.models-console-page .model-card-price-cell small {
+  margin-left: 3px;
+}
+
+.models-console-page .model-card-spec-grid {
+  padding: 0 0 7px;
+}
+
+.models-console-page .model-card-spec-cell {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.models-console-page .model-card-spec-cell strong {
+  overflow: hidden;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.models-console-page .model-card-availability {
+  margin: 0;
+  padding-top: 7px;
+  border-top: 1px solid var(--color-border-neutral-l1);
+}
+
+.models-console-page .model-card-availability .model-availability-heading {
+  color: var(--color-text-tertiary);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.models-console-page .model-card-availability .model-availability-heading > strong {
+  color: var(--color-text-tertiary);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.models-console-page .model-card-availability .model-availability-bars {
+  gap: 3px;
+  margin-top: 5px;
+}
+
+.models-console-page .model-card-availability .model-availability-bar {
+  height: 12px;
+  border-radius: 1px;
+}
+
+.models-console-page .model-card-actions {
+  position: relative;
+  z-index: 4;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 12px 20px 16px;
+}
+
+.models-console-page .model-card-action.semi-button {
+  min-width: 0;
+  height: 36px;
+  padding: 0 13px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.models-console-page .model-card-action--api.semi-button {
+  border-color: var(--color-border-neutral-l2);
+  color: var(--color-text-default);
+  background: var(--color-bg-base-default);
+}
+
+.models-console-page .model-card-action--api.semi-button:hover,
+.models-console-page .model-card-action--api.semi-button:focus-visible {
+  border-color: var(--color-border-neutral-l3);
+  background: var(--color-bg-overlay-l2);
+}
+
+.models-console-page .model-card-action--chat.semi-button {
+  border-color: var(--color-text-default);
+  color: var(--color-bg-base-default);
+  background: var(--color-text-default);
+}
+
+.models-console-page .model-card-action--chat.semi-button:hover,
+.models-console-page .model-card-action--chat.semi-button:focus-visible {
+  border-color: var(--color-text-default-hover);
+  color: var(--color-bg-base-default);
+  background: var(--color-text-default-hover);
+}
+
+html[data-theme="light"] .models-console-page .model-card-info-panel {
+  background: #f7f7f7;
+}
+
+@keyframes model-card-border-spin {
+  to {
+    --model-card-glow-angle: 360deg;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .models-console-page .model-card:hover::before,
+  .models-console-page .model-card:focus-within::before {
+    animation: none;
+  }
+}
+
+@media (max-width: 720px) {
+  .models-console-page .model-card-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .models-console-page .model-card-grid.model-card-grid--single {
+    grid-template-columns: minmax(0, 100%);
+  }
+
+  .models-console-page .model-card {
+    width: min(545px, 100%);
+    height: auto;
+    min-height: 0;
+  }
+
+  .models-console-page .model-card-link {
+    padding-inline: 16px;
+  }
+
+  .models-console-page .model-card-actions {
+    padding-inline: 16px;
+  }
+}

@@ -1,39 +1,6 @@
 /* 中文：客服通知面板使用独立层级，通知列表不复用聊天消息的气泡样式。 */
 .manuscript-support-panel:has(.manuscript-support-notifications) {
   border-color: rgba(255, 255, 255, 0.18);
-  border-radius: 24px;
-  padding: 16px;
-}
-
-.manuscript-support-panel:has(.manuscript-support-notifications)
-  .manuscript-support-tabs {
-  flex-basis: 48px;
-  height: 48px;
-  border-radius: 24px;
-}
-
-.manuscript-support-panel:has(.manuscript-support-notifications)
-  .manuscript-support-tab-thumb {
-  top: 3px;
-  left: 3px;
-  height: calc(100% - 6px);
-  border-radius: 21px;
-}
-
-.manuscript-support-panel:has(.manuscript-support-notifications)
-  .manuscript-support-tab {
-  gap: 8px;
-  border-radius: 21px;
-  font-size: 15px;
-  font-weight: 650;
-}
-
-.manuscript-support-panel:has(.manuscript-support-notifications)
-  .manuscript-support-tab
-  .semi-icon {
-  width: 18px;
-  height: 18px;
-  flex-basis: 18px;
 }
 
 .manuscript-support-notifications:has(

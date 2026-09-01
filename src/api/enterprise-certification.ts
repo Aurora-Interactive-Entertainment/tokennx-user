@@ -6,7 +6,6 @@ import type { ApiTimestamp } from '@/utils/format'
 const ENTERPRISE_CERTIFICATION_PATH = '/api/user/enterprise/certification'
 const ENTERPRISE_CERTIFICATION_MATERIALS_PATH = `${ENTERPRISE_CERTIFICATION_PATH}/materials`
 const ENTERPRISE_CERTIFICATION_FACE_PATH = `${ENTERPRISE_CERTIFICATION_PATH}/face`
-const ENTERPRISE_CERTIFICATION_FACE_STATUS_PATH = `${ENTERPRISE_CERTIFICATION_FACE_PATH}/status`
 const ENTERPRISE_CERTIFICATION_FACE_CONFIRM_PATH = `${ENTERPRISE_CERTIFICATION_FACE_PATH}/confirm`
 
 // 中文：所有创建企业入口统一使用新建模式，避免历史认证记录覆盖新的企业申请表单。
@@ -164,11 +163,6 @@ export function startEnterpriseFaceVerification(accessToken: string, returnUrl: 
     body: { return_url: returnUrl },
     accessToken,
   })
-}
-
-// 中文：二维码展示期间查询独立法人核身单据，不复用普通认证状态接口。
-export function getEnterpriseFaceVerificationStatus(accessToken: string): Promise<EnterpriseCertification> {
-  return fetchAuthenticatedJson<EnterpriseCertification>(ENTERPRISE_CERTIFICATION_FACE_STATUS_PATH, { accessToken })
 }
 
 export function confirmEnterpriseFaceVerification(accessToken: string): Promise<EnterpriseCertification> {

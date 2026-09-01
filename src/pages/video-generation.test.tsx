@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
 import { Provider } from 'react-redux'
@@ -55,16 +55,19 @@ vi.mock('@douyinfe/semi-ui', () => {
     IconHistory: MockIcon,
     IconImage: MockIcon,
     IconLoading: MockIcon,
+    IconMuteStroked: MockIcon,
+    IconPlus: MockIcon,
     IconRefresh: MockIcon,
     IconSetting: MockIcon,
     IconStop: MockIcon,
     IconVideo: MockIcon,
+    IconVolume2: MockIcon,
   }
 })
 
 vi.mock('@douyinfe/semi-icons', () => {
   const MockIcon = () => null
-  return { IconAlertTriangle: MockIcon, IconArrowUp: MockIcon, IconCheckCircleStroked: MockIcon, IconClose: MockIcon, IconDeleteStroked: MockIcon, IconDownload: MockIcon, IconHistory: MockIcon, IconImage: MockIcon, IconLoading: MockIcon, IconRefresh: MockIcon, IconSetting: MockIcon, IconStop: MockIcon, IconVideo: MockIcon }
+  return { IconAlertTriangle: MockIcon, IconArrowUp: MockIcon, IconCheckCircleStroked: MockIcon, IconClose: MockIcon, IconDeleteStroked: MockIcon, IconDownload: MockIcon, IconHistory: MockIcon, IconImage: MockIcon, IconLoading: MockIcon, IconMuteStroked: MockIcon, IconPlus: MockIcon, IconRefresh: MockIcon, IconSetting: MockIcon, IconStop: MockIcon, IconVideo: MockIcon, IconVolume2: MockIcon }
 })
 
 vi.mock('@/components/semi-compat', () => {
@@ -136,7 +139,7 @@ describe('视频生成页面', () => {
 
     await screen.findByRole('option', { name: /CogVideo/ })
     await user.type(screen.getByLabelText('视频提示词'), '海边日落，镜头缓慢推进')
-    await user.click(screen.getByRole('button', { name: '参考图' }))
+    await user.click(screen.getByRole('button', { name: '参考图 · 上传参考图' }))
     await user.type(screen.getByLabelText('参考图 URL'), 'https://cdn.example.com/reference.png')
     await user.click(screen.getByRole('button', { name: '生成视频' }))
 
@@ -176,6 +179,49 @@ describe('视频生成页面', () => {
     expect(screen.getByLabelText('视频提示词')).toHaveValue('')
     expect(screen.getByText('准备开始生成')).toBeInTheDocument()
     expect(document.querySelector('.video-history-panel')).toBeInTheDocument()
+  })
+
+  it('生成模式弹层只负责模式切换，并支持点击外部收起', async () => {
+    const user = userEvent.setup()
+    renderVideoPage()
+
+    await screen.findByRole('option', { name: /CogVideo/ })
+    await user.click(screen.getByRole('button', { name: '参考图' }))
+
+    expect(screen.getByRole('menu')).toHaveTextContent('生成模式')
+    expect(screen.getByRole('menu')).toHaveTextContent('首尾帧')
+    expect(screen.queryByLabelText('参考图 URL')).toBeNull()
+
+    await user.click(screen.getByRole('button', { name: '首尾帧' }))
+    expect(screen.getByRole('button', { name: '首帧 URL' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '末帧 URL' })).toBeInTheDocument()
+
+    await user.click(screen.getByText('准备开始生成'))
+    expect(screen.queryByRole('menu')).toBeNull()
+  })
+
+  it('模型、比例和时长弹层按参考页交互并保持互斥', async () => {
+    const user = userEvent.setup()
+    renderVideoPage()
+
+    await screen.findByRole('option', { name: /CogVideo/ })
+    const modelTrigger = screen.getByRole('button', { name: /智谱AI: CogVideo/ })
+    await user.click(modelTrigger)
+    expect(screen.getByRole('listbox', { name: '视频模型' })).toHaveTextContent('智谱AI: CogVideo')
+
+    await user.click(within(screen.getByRole('listbox', { name: '视频模型' })).getByRole('option', { name: /Other Video/ }))
+    expect(screen.getByRole('button', { name: /Other Video/ })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /adaptive · 480P/ }))
+    expect(screen.getByRole('dialog', { name: '比例' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '1:1' }))
+    expect(screen.getByRole('button', { name: /1:1 · 480P/ })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /5秒/ }))
+    expect(screen.getByRole('dialog', { name: '时长' })).toBeInTheDocument()
+    const durationSlider = screen.getByRole('slider', { name: '时长' })
+    fireEvent.change(durationSlider, { target: { value: '10' } })
+    expect(screen.getByRole('spinbutton', { name: '时长' })).toHaveValue(10)
   })
 
   it('工作区缺少可用密钥时在结果区内显示提示', async () => {

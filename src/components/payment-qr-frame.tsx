@@ -32,7 +32,7 @@ export function PaymentQRCodeFrame({ formHTML, title, errorMessage, onError }: P
 
   return (
     <div className="payment-qr-frame-shell">
-      {submissionFailed ? <div className="payment-qr-frame-error" role="alert">{errorMessage}</div> : <iframe className="payment-qr-frame" name={frameName} title={title} referrerPolicy="strict-origin-when-cross-origin" />}
+      {submissionFailed ? <div className="payment-qr-frame-error" role="alert">{errorMessage}</div> : <iframe className="payment-qr-frame" name={frameName} title={title} scrolling="no" referrerPolicy="strict-origin-when-cross-origin" />}
     </div>
   )
 }

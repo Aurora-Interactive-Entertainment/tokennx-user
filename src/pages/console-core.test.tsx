@@ -153,6 +153,7 @@ function manyModelsResponse(): { items: Array<Record<string, unknown>> } {
 describe('控制台模型接入页面', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    window.localStorage.removeItem('token-nx:playground:v1')
     clearAuthTokens()
     saveAuthTokens(authResult())
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ code: 0, msg: 'success', data: visibleModelsResponse() }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
@@ -334,7 +335,7 @@ describe('控制台模型接入页面', () => {
     })
     expect(modelSelect).toHaveAttribute('aria-disabled', 'false')
     expect(document.getElementById('playground-api-key')).toBeNull()
-    expect(screen.getByText('本页面仅作为测试用，对话内容不会被保存刷新页面后将会消失')).toBeInTheDocument()
+    expect(screen.getByText('对话记录仅保存在当前浏览器中，刷新页面不会丢失；清理浏览器缓存后将被清除。')).toBeInTheDocument()
     expect(document.querySelector('.message-list')).toHaveClass('is-centered')
     expect(screen.queryByRole('link', { name: '管理 API Key' })).toBeNull()
     await user.click(modelSelect)
@@ -384,17 +385,22 @@ describe('控制台模型接入页面', () => {
     expect(clipboardWriteText).toHaveBeenNthCalledWith(2, '请返回真实结果')
   })
 
-  it('限制输入为 1000 个字符并显示实时字符计数', async () => {
+  it('限制输入为 1000 个字符，并以上下文入口替代字符计数', async () => {
     const user = userEvent.setup()
-
     renderConsolePage(<PlaygroundPage />, ['/console/playground?model=deepseek-chat'])
 
     const input = await screen.findByLabelText('测试提示词')
-    expect(screen.getByText('0/1000')).toBeInTheDocument()
+    expect(screen.queryByText('0/1000')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '当前上下文 0 轮' })).toHaveTextContent('0/∞')
     fireEvent.change(input, { target: { value: `${'a'.repeat(1000)}b` } })
 
     expect(input).toHaveValue('a'.repeat(1000))
-    expect(screen.getByText('1000/1000')).toBeInTheDocument()
+    expect(screen.queryByText('1000/1000')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '展开输入框' }))
+    expect(document.querySelector('.composer')).toHaveClass('is-expanded')
+    await user.click(screen.getByRole('button', { name: '收起输入框' }))
+    expect(document.querySelector('.composer')).not.toHaveClass('is-expanded')
   })
 
   it('连续会话请求携带当前会话历史消息', async () => {
@@ -418,6 +424,47 @@ describe('控制台模型接入页面', () => {
     ])
   })
 
+  it('上下文菜单复用参数弹窗，并在同一历史会话中清除请求上下文', async () => {
+    const user = userEvent.setup()
+    vi.mocked(streamChatCompletion)
+      .mockResolvedValueOnce({ content: '旧上下文回复', reasoning: '', requestId: 'req-context-old', inputTokens: 2, outputTokens: 3, finishReason: 'stop', latencyMs: 12 })
+      .mockResolvedValueOnce({ content: '新上下文回复', reasoning: '', requestId: 'req-context-new', inputTokens: 2, outputTokens: 3, finishReason: 'stop', latencyMs: 12 })
+
+    renderConsolePage(<PlaygroundPage />, ['/console/playground?model=deepseek-chat'])
+
+    await user.click(await screen.findByRole('button', { name: '当前上下文 0 轮' }))
+    expect(screen.getByRole('button', { name: '清除上下文' })).toHaveAttribute('aria-disabled', 'true')
+    await user.click(screen.getByRole('button', { name: '最大上下文设置' }))
+    const parametersDialog = await screen.findByRole('dialog', { name: '模型参数' })
+    expect(parametersDialog).toBeInTheDocument()
+    await user.click(within(parametersDialog).getByRole('button', { name: 'cancel' }))
+
+    await user.type(screen.getByLabelText('测试提示词'), '旧上下文问题')
+    await user.click(screen.getByRole('button', { name: '发送' }))
+    expect(await screen.findByText('旧上下文回复')).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByLabelText('测试提示词')).toBeEnabled())
+    expect(document.querySelectorAll('.history-item')).toHaveLength(1)
+    expect(document.querySelector('.message-footer .message-meta')).toBeInTheDocument()
+    expect(document.querySelector('.message-footer .message-actions')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '当前上下文 1 轮' }))
+    const clearContext = screen.getByRole('button', { name: '清除上下文' })
+    expect(clearContext).toHaveAttribute('aria-disabled', 'false')
+    await user.click(clearContext)
+
+    expect(await screen.findByRole('separator')).toHaveTextContent('新会话')
+    expect(screen.getByRole('button', { name: '当前上下文 0 轮' })).toHaveTextContent('0/∞')
+    expect(document.querySelectorAll('.history-item')).toHaveLength(1)
+
+    await user.type(screen.getByLabelText('测试提示词'), '新上下文问题')
+    await user.click(screen.getByRole('button', { name: '发送' }))
+    expect(await screen.findByText('新上下文回复')).toBeInTheDocument()
+    expect(vi.mocked(streamChatCompletion).mock.calls[1]?.[0].messages).toEqual([
+      { role: 'user', content: '新上下文问题' },
+    ])
+    expect(document.querySelectorAll('.history-item')).toHaveLength(1)
+  })
+
   it('模型响应等待时显示加载动画，并用停止图标中止请求', async () => {
     const user = userEvent.setup()
     let aborted = false
@@ -434,12 +481,12 @@ describe('控制台模型接入页面', () => {
 
     expect(await screen.findByRole('status', { name: '正在生成响应' })).toBeInTheDocument()
     expect(screen.queryByText('正在连接模型服务')).toBeNull()
-    expect(screen.getByRole('button', { name: '停止生成' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '停止生成' })).toHaveClass('is-running')
     expect(screen.getAllByRole('button', { name: '停止生成' })).toHaveLength(1)
 
     await user.click(screen.getByRole('button', { name: '停止生成' }))
     await waitFor(() => expect(aborted).toBe(true))
-    await user.click(await screen.findByRole('button', { name: '关闭' }))
+    expect(await screen.findByText('已停止生成')).toBeInTheDocument()
     expect(await screen.findByRole('button', { name: '编辑失败消息' })).toBeInTheDocument()
   })
 
@@ -456,6 +503,7 @@ describe('控制台模型接入页面', () => {
       await user.type(promptInput, `第${round}次请求`)
       await user.click(screen.getByRole('button', { name: '发送' }))
       await waitFor(() => expect(streamChatCompletion).toHaveBeenCalledTimes(round))
+      if (round < 10) await waitFor(() => expect(screen.getByLabelText('测试提示词')).toBeEnabled())
     }
 
     const input = screen.getByLabelText('测试提示词')
@@ -475,12 +523,11 @@ describe('控制台模型接入页面', () => {
     await user.type(await screen.findByLabelText('测试提示词'), '失败问题')
     await user.click(screen.getByRole('button', { name: '发送' }))
 
-    expect(await screen.findByText('调用失败，请稍后重试')).toBeInTheDocument()
-    expect(document.querySelector('.playground-workspace-notice')).toBeInTheDocument()
-    expect(document.querySelector('.message-list')).toHaveClass('is-centered')
-    expect(screen.queryByText('请求内容包含不允许的文本')).toBeNull()
+    expect(await screen.findByText('请求内容包含不允许的文本')).toBeInTheDocument()
+    expect(document.querySelector('.semi-toast.app-toast')).toBeInTheDocument()
+    expect(document.querySelector('.playground-workspace-notice')).toBeNull()
+    expect(document.querySelector('.message-list')).not.toHaveClass('is-centered')
     expect(screen.queryByText(/req-failed/)).toBeNull()
-    await user.click(screen.getByRole('button', { name: '关闭' }))
     await user.click(screen.getByRole('button', { name: '编辑失败消息' }))
     expect(screen.getByLabelText('测试提示词')).toHaveValue('失败问题')
     await user.clear(screen.getByLabelText('测试提示词'))
@@ -494,7 +541,7 @@ describe('控制台模型接入页面', () => {
     expect(screen.queryByRole('button', { name: '编辑失败消息' })).toBeNull()
   })
 
-  it('不同运行时错误统一显示调用失败提示', async () => {
+  it('运行时错误使用接口返回文案并显示顶部提示', async () => {
     const user = userEvent.setup()
     vi.mocked(streamChatCompletion).mockRejectedValueOnce(new ModelRuntimeError('余额不足', 402, 'insufficient_balance', 'req-balance'))
 
@@ -502,10 +549,9 @@ describe('控制台模型接入页面', () => {
     await user.type(await screen.findByLabelText('测试提示词'), '测试统一错误')
     await user.click(screen.getByRole('button', { name: '发送' }))
 
-    expect(await screen.findByText('调用失败，请稍后重试')).toBeInTheDocument()
-    expect(document.querySelector('.playground-workspace-notice')).toBeInTheDocument()
-    expect(document.querySelector('.playground-console-page > .banner-notice')).toBeNull()
-    expect(screen.queryByText('余额不足')).toBeNull()
+    expect(await screen.findByText('余额不足')).toBeInTheDocument()
+    expect(document.querySelector('.semi-toast.app-toast')).toBeInTheDocument()
+    expect(document.querySelector('.playground-workspace-notice')).toBeNull()
     expect(screen.queryByText(/req-balance/)).toBeNull()
   })
 

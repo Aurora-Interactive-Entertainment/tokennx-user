@@ -419,7 +419,7 @@ html[data-theme="dark"] .trae-date-picker-dropdown [class*="semi-datepicker-day-
 /* Semi owns the table scroll area; hiding the outer wrapper removes the duplicate bar. */
 .trae-members-page .trae-table-scroll:has(.trae-semi-member-table) { overflow: visible; border: 0; }
 .trae-members-page .trae-semi-member-table .semi-table-body { overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; scrollbar-color: var(--color-border-neutral-l2) transparent; }
-.trae-members-page .trae-semi-member-table .semi-table-body::-webkit-scrollbar { width: 5px; height: 5px; }
+.trae-members-page .trae-semi-member-table .semi-table-body::-webkit-scrollbar { width: 6px; height: 6px; }
 .trae-members-page .trae-semi-member-table .semi-table-body::-webkit-scrollbar-track { background: transparent; }
 .trae-members-page .trae-semi-member-table .semi-table-body::-webkit-scrollbar-thumb { border-radius: 3px; background: var(--color-border-neutral-l2); }
 .trae-status-rules-popover.semi-tooltip-wrapper { box-sizing: border-box; width: min(280px, calc(100vw - 16px)); max-width: calc(100vw - 16px); padding: 0; border: 1px solid var(--color-border-neutral-l2); border-radius: 6px; color: var(--color-text-default-hover); background: var(--color-bg-menu); box-shadow: 0 8px 24px rgba(0, 0, 0, .18); }

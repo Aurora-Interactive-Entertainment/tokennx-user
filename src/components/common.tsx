@@ -547,6 +547,7 @@ const CONSOLE_LABEL_KEYS: Record<string, string> = {
   后端未提供: "console.common.unavailable",
   暂无数据: "console.common.unavailable",
   上下文: "console.common.context",
+  厂商: "console.common.provider",
   最大输出: "console.common.maxOutput",
   图像尺寸: "console.common.imageSize",
   视频时长: "console.common.videoDuration",
@@ -598,8 +599,8 @@ function modelCardSpecs(model: ModelRecord): {
     return {
       contextLabel: "上下文",
       contextValue: model.context ?? MODEL_UNAVAILABLE_LABEL,
-      outputLabel: "最大输出",
-      outputValue: model.maxOutput ?? MODEL_UNAVAILABLE_LABEL,
+      outputLabel: "厂商",
+      outputValue: model.company,
     };
   }
   if (model.modality === "image") {
@@ -666,10 +667,14 @@ export function ModelCard({
   model,
   compact = false,
   onSelect,
+  onChat,
+  onApi,
 }: {
   model: ModelRecord;
   compact?: boolean;
   onSelect?: (model: ModelRecord) => void;
+  onChat?: (model: ModelRecord) => void;
+  onApi?: (model: ModelRecord) => void;
 }) {
   const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
@@ -710,6 +715,11 @@ export function ModelCard({
   const outputMark =
     MODEL_TYPE_MARKS[outputTypeValue] ??
     (model.modality === "multimodal" ? "M" : "?");
+  // 中文：恢复模型原有标签，并限制数量，避免右上角标签挤压模型名称。
+  const cardTags = (model.tags?.length
+    ? model.tags
+    : model.labels.map((label) => ({ label })))
+    .slice(0, 4);
   const cardBody = (
     <>
       <div className="model-card-topline">
@@ -734,18 +744,13 @@ export function ModelCard({
           </strong>
         </span>
         <div className="model-card-tags">
-          {(model.tags?.length
-            ? model.tags
-            : model.labels.slice(0, 4).map((label) => ({ label }))
-          )
-            .slice(0, 4)
-            .map((tag) => (
-              <ModelColorTag
-                key={tag.label}
-                tag={tag}
-                className="model-card-tag"
-              />
-            ))}
+          {cardTags.map((tag) => (
+            <ModelColorTag
+              key={tag.label}
+              tag={tag}
+              className="model-card-tag"
+            />
+          ))}
         </div>
       </div>
       <p className="model-card-description">{model.description}</p>
@@ -776,6 +781,7 @@ export function ModelCard({
           </strong>
         </div>
       </div>
+      <div className="model-card-info-panel">
       <div className="model-card-io">
         <div>
           <span className="model-card-io-label">
@@ -872,6 +878,7 @@ export function ModelCard({
         summaryRate={model.availability.rate}
         label={t("home.rebuild.availability")}
       />
+      </div>
     </>
   );
 
@@ -912,6 +919,31 @@ export function ModelCard({
           {cardBody}
         </Link>
       )}
+      {onApi || onChat ? (
+        <div className="model-card-actions">
+          {onApi ? (
+            <Button
+              className="model-card-action model-card-action--api"
+              theme="outline"
+              disabled={!publicAlias}
+              onClick={() => onApi(model)}
+            >
+              {t("console.models.apiCall")}
+            </Button>
+          ) : null}
+          {onChat ? (
+            <Button
+              className="model-card-action model-card-action--chat"
+              theme="solid"
+              type="primary"
+              disabled={!publicAlias}
+              onClick={() => onChat(model)}
+            >
+              {t("console.models.chat")}
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
     </article>
   );
 }
@@ -1000,7 +1032,6 @@ type VerificationCodeButtonProps = {
 
 type LoginDialCode = {
   code: string;
-  labelKey: string;
   minLength: number;
   maxLength: number;
   pattern?: RegExp;
@@ -1008,79 +1039,13 @@ type LoginDialCode = {
 
 const LOGIN_CODE_RETRY_SECONDS = 60;
 const PHONE_CODE_COOLDOWN_KEY = "token-nx:auth:phone-code-cooldown:v1";
-const LOGIN_DIAL_CODES: readonly LoginDialCode[] = [
-  {
-    code: "+86",
-    labelKey: "login.countryMainland",
-    minLength: 11,
-    maxLength: 11,
-    pattern: /^1[3-9]\d{9}$/,
-  },
-  {
-    code: "+852",
-    labelKey: "login.countryHongKong",
-    minLength: 8,
-    maxLength: 8,
-  },
-  { code: "+853", labelKey: "login.countryMacau", minLength: 8, maxLength: 8 },
-  {
-    code: "+886",
-    labelKey: "login.countryTaiwan",
-    minLength: 9,
-    maxLength: 10,
-  },
-  {
-    code: "+1",
-    labelKey: "login.countryUsCanada",
-    minLength: 10,
-    maxLength: 10,
-  },
-  {
-    code: "+44",
-    labelKey: "login.countryUnitedKingdom",
-    minLength: 10,
-    maxLength: 10,
-  },
-  { code: "+81", labelKey: "login.countryJapan", minLength: 10, maxLength: 11 },
-  {
-    code: "+82",
-    labelKey: "login.countrySouthKorea",
-    minLength: 9,
-    maxLength: 11,
-  },
-  {
-    code: "+65",
-    labelKey: "login.countrySingapore",
-    minLength: 8,
-    maxLength: 8,
-  },
-  {
-    code: "+60",
-    labelKey: "login.countryMalaysia",
-    minLength: 9,
-    maxLength: 10,
-  },
-  {
-    code: "+61",
-    labelKey: "login.countryAustralia",
-    minLength: 9,
-    maxLength: 9,
-  },
-  {
-    code: "+49",
-    labelKey: "login.countryGermany",
-    minLength: 10,
-    maxLength: 11,
-  },
-  { code: "+33", labelKey: "login.countryFrance", minLength: 9, maxLength: 9 },
-] as const;
-
-function loginDialCode(value: string): LoginDialCode {
-  return (
-    LOGIN_DIAL_CODES.find((entry) => entry.code === value) ??
-    LOGIN_DIAL_CODES[0]
-  );
-}
+// 中文：当前登录仅支持中国大陆手机号，区号固定为 +86。
+const LOGIN_DIAL_CODE: LoginDialCode = {
+  code: "+86",
+  minLength: 11,
+  maxLength: 11,
+  pattern: /^1[3-9]\d{9}$/,
+};
 
 function normalizeLoginPhone(value: string): string {
   return value.replace(/\D/g, "");
@@ -1181,21 +1146,37 @@ function VerificationCodeButton(props: VerificationCodeButtonProps) {
   );
 }
 
+function LoginConsentNotice() {
+  const { t, i18n } = useTranslation();
+  const wordSpacing = i18n.language.startsWith("zh") ? "" : " ";
+  return (
+    <p className="login-consent-notice">
+      {t("login.loginConsentPrefix")}
+      {wordSpacing}
+      <a href="/terms" target="_blank" rel="noopener noreferrer">
+        {t("login.userAgreement")}
+      </a>
+      {wordSpacing}
+      {t("login.agreementAnd")}
+      {wordSpacing}
+      <a href="/privacy" target="_blank" rel="noopener noreferrer">
+        {t("login.privacyPolicy")}
+      </a>
+    </p>
+  );
+}
+
 type LoginPhoneFieldProps = {
   id: string;
   label?: string;
-  dialCode: string;
   phone: string;
   invalid?: boolean;
-  onDialCodeChange: (value: string) => void;
   onPhoneChange: (value: string) => void;
   inputRef?: RefObject<HTMLInputElement | null>;
 };
 
 function LoginPhoneField(props: LoginPhoneFieldProps) {
   const { t } = useTranslation();
-  const dial = loginDialCode(props.dialCode);
-  const [dialCodeOpen, setDialCodeOpen] = useState(false);
   return (
     <div className="form-field phone-field">
       {props.label ? (
@@ -1204,30 +1185,10 @@ function LoginPhoneField(props: LoginPhoneFieldProps) {
         </label>
       ) : null}
       <div className="phone-input-wrapper">
-        <div
-          className={`phone-prefix-control${dialCodeOpen ? " is-open" : ""}`}
-        >
+        <div className="phone-prefix-control">
           <span className="phone-prefix-value" aria-hidden="true">
-            {dial.code}
+            {LOGIN_DIAL_CODE.code}
           </span>
-          <select
-            className="phone-prefix-select"
-            value={props.dialCode}
-            onChange={(event) => {
-              props.onDialCodeChange(event.target.value);
-              setDialCodeOpen(false);
-            }}
-            onMouseDown={() => setDialCodeOpen((open) => !open)}
-            onFocus={() => setDialCodeOpen(true)}
-            onBlur={() => setDialCodeOpen(false)}
-            aria-label={t("login.countryCode")}
-          >
-            {LOGIN_DIAL_CODES.map((entry) => (
-              <option key={entry.code} value={entry.code}>
-                {entry.code} {t(entry.labelKey)}
-              </option>
-            ))}
-          </select>
         </div>
         <input
           ref={props.inputRef}
@@ -1238,11 +1199,14 @@ function LoginPhoneField(props: LoginPhoneFieldProps) {
           value={props.phone}
           onChange={(event) =>
             props.onPhoneChange(
-              normalizeLoginPhone(event.target.value).slice(0, dial.maxLength),
+              normalizeLoginPhone(event.target.value).slice(
+                0,
+                LOGIN_DIAL_CODE.maxLength,
+              ),
             )
           }
           placeholder={t("login.phonePlaceholder")}
-          maxLength={dial.maxLength}
+          maxLength={LOGIN_DIAL_CODE.maxLength}
           autoComplete="tel-national"
           inputMode="numeric"
           aria-invalid={props.invalid}
@@ -1264,10 +1228,8 @@ export function LoginPanel({
 }) {
   const { t } = useTranslation();
   const [tab, setTab] = useState<"phone" | "wechat">("phone");
-  const [dialCode, setDialCode] = useState("+86");
   const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
-  const [termsAccepted, setTermsAccepted] = useState(false);
   const [rememberLogin, setRememberLogin] = useState(false);
   const [phoneCodeSent, setPhoneCodeSent] = useState(false);
   const [phoneRetryAfter, setPhoneRetryAfter] = useState(0);
@@ -1282,7 +1244,6 @@ export function LoginPanel({
     authorize_url: string;
   } | null>(null);
   const [bindingTicket, setBindingTicket] = useState("");
-  const [bindingDialCode, setBindingDialCode] = useState("+86");
   const [bindingPhone, setBindingPhone] = useState("");
   const [bindingCode, setBindingCode] = useState("");
   const [bindingCodeSent, setBindingCodeSent] = useState(false);
@@ -1305,11 +1266,11 @@ export function LoginPanel({
   useEffect(() => {
     const destination = normalizeLoginPhone(phone);
     const retryAfter = destination
-      ? remainingPhoneCodeCooldown(destination, dialCode)
+      ? remainingPhoneCodeCooldown(destination, LOGIN_DIAL_CODE.code)
       : 0;
     setPhoneRetryAfter(retryAfter);
     setPhoneCodeSent(retryAfter > 0);
-  }, [dialCode, phone]);
+  }, [phone]);
 
   useEffect(() => {
     if (bindingRetryAfter <= 0) return undefined;
@@ -1387,13 +1348,15 @@ export function LoginPanel({
     setFeedback(readLoginError(error));
   }
 
-  function validatePhone(value: string, selectedDialCode: string): boolean {
+  function validatePhone(value: string): boolean {
     const normalized = normalizeLoginPhone(value);
-    const dial = loginDialCode(selectedDialCode);
     const validLength =
-      normalized.length >= dial.minLength &&
-      normalized.length <= dial.maxLength;
-    if (!validLength || (dial.pattern && !dial.pattern.test(normalized))) {
+      normalized.length >= LOGIN_DIAL_CODE.minLength &&
+      normalized.length <= LOGIN_DIAL_CODE.maxLength;
+    if (
+      !validLength ||
+      (LOGIN_DIAL_CODE.pattern && !LOGIN_DIAL_CODE.pattern.test(normalized))
+    ) {
       setFeedback(t("login.validationPhone"));
       return false;
     }
@@ -1408,7 +1371,7 @@ export function LoginPanel({
     if (
       phoneRetryAfter > 0 ||
       phoneCodeLoading ||
-      !validatePhone(currentPhone, dialCode)
+      !validatePhone(currentPhone)
     )
       return;
     setPhoneCodeLoading(true);
@@ -1416,11 +1379,14 @@ export function LoginPanel({
     try {
       const destination = currentPhone;
       const result = await dispatch(
-        requestPhoneCode({ destination, countryCode: dialCode }),
+        requestPhoneCode({
+          destination,
+          countryCode: LOGIN_DIAL_CODE.code,
+        }),
       ).unwrap();
       setPhoneCodeSent(true);
       setPhoneRetryAfter(LOGIN_CODE_RETRY_SECONDS);
-      savePhoneCodeCooldown(destination, dialCode);
+      savePhoneCodeCooldown(destination, LOGIN_DIAL_CODE.code);
       setFeedback(
         t("login.sentTo", {
           destination: result.destination_masked || maskLoginPhone(destination),
@@ -1437,15 +1403,11 @@ export function LoginPanel({
     event: React.FormEvent<HTMLFormElement>,
   ): Promise<void> {
     event.preventDefault();
-    if (!termsAccepted) {
-      setFeedback(t("login.acceptTermsRequired"));
-      return;
-    }
     const destination = normalizeLoginPhone(
       phoneInputRef.current?.value ?? phone,
     );
     if (destination !== phone) setPhone(destination);
-    if (!validatePhone(destination, dialCode)) return;
+    if (!validatePhone(destination)) return;
     if (!/^\d{6}$/.test(code)) {
       setFeedback(t("login.validationCode"));
       return;
@@ -1484,7 +1446,7 @@ export function LoginPanel({
       !bindingTicket ||
       bindingRetryAfter > 0 ||
       bindingCodeLoading ||
-      !validatePhone(bindingPhone, bindingDialCode)
+      !validatePhone(bindingPhone)
     )
       return;
     setBindingCodeLoading(true);
@@ -1493,7 +1455,7 @@ export function LoginPanel({
       const result = await dispatch(
         requestBindingCode({
           bindingTicket,
-          phone: internationalLoginPhone(bindingDialCode, bindingPhone),
+          phone: internationalLoginPhone(LOGIN_DIAL_CODE.code, bindingPhone),
         }),
       ).unwrap();
       setBindingCodeSent(true);
@@ -1512,11 +1474,7 @@ export function LoginPanel({
     event: React.FormEvent<HTMLFormElement>,
   ): Promise<void> {
     event.preventDefault();
-    if (!termsAccepted) {
-      setFeedback(t("login.acceptTermsRequired"));
-      return;
-    }
-    if (!validatePhone(bindingPhone, bindingDialCode)) return;
+    if (!validatePhone(bindingPhone)) return;
     if (!/^\d{6}$/.test(bindingCode)) {
       setFeedback(t("login.validationCode"));
       return;
@@ -1527,7 +1485,7 @@ export function LoginPanel({
       const user = await dispatch(
         completeBinding({
           bindingTicket,
-          phone: internationalLoginPhone(bindingDialCode, bindingPhone),
+          phone: internationalLoginPhone(LOGIN_DIAL_CODE.code, bindingPhone),
           code: bindingCode,
         }),
       ).unwrap();
@@ -1555,10 +1513,8 @@ export function LoginPanel({
             </h2>
             <LoginPhoneField
               id="login-phone"
-              dialCode={dialCode}
               phone={phone}
               invalid={feedback === t("login.validationPhone")}
-              onDialCodeChange={setDialCode}
               onPhoneChange={setPhone}
               inputRef={phoneInputRef}
             />
@@ -1605,6 +1561,7 @@ export function LoginPanel({
                 {feedback}
               </p>
             ) : null}
+            <LoginConsentNotice />
             <button
               className="btn btn-primary submit-btn"
               type="submit"
@@ -1616,25 +1573,6 @@ export function LoginPanel({
                   : t("login.loginRegister")}
               </span>
             </button>
-            <div className="terms-checkbox">
-              <input
-                type="checkbox"
-                id="login-terms"
-                checked={termsAccepted}
-                onChange={(event) => setTermsAccepted(event.target.checked)}
-              />
-              <label htmlFor="login-terms">
-                {t("login.agreementPrefix")}{" "}
-                <a href="/terms" target="_blank" rel="noopener noreferrer">
-                  {t("login.userAgreement")}
-                </a>{" "}
-                {t("login.agreementAnd")}{" "}
-                <a href="/privacy" target="_blank" rel="noopener noreferrer">
-                  {t("login.privacyPolicy")}
-                </a>
-                {t("login.accountCreationHint")}
-              </label>
-            </div>
           </form>
           <div className="login-separator">
             <span>{t("login.separatorOr")}</span>
@@ -1671,10 +1609,8 @@ export function LoginPanel({
               </h2>
               <LoginPhoneField
                 id="binding-phone"
-                dialCode={bindingDialCode}
                 phone={bindingPhone}
                 invalid={feedback === t("login.validationPhone")}
-                onDialCodeChange={setBindingDialCode}
                 onPhoneChange={setBindingPhone}
               />
               <div className="form-field code-field">
@@ -1724,6 +1660,7 @@ export function LoginPanel({
                   {feedback}
                 </p>
               ) : null}
+              <LoginConsentNotice />
               <button
                 className="btn btn-primary submit-btn"
                 type="submit"
@@ -1735,25 +1672,6 @@ export function LoginPanel({
                     : t("login.bindAndLogin")}
                 </span>
               </button>
-              <div className="terms-checkbox">
-                <input
-                  type="checkbox"
-                  id="binding-terms"
-                  checked={termsAccepted}
-                  onChange={(event) => setTermsAccepted(event.target.checked)}
-                />
-                <label htmlFor="binding-terms">
-                  {t("login.agreementPrefix")}{" "}
-                  <a href="/terms" target="_blank" rel="noopener noreferrer">
-                    {t("login.userAgreement")}
-                  </a>{" "}
-                  {t("login.agreementAnd")}{" "}
-                  <a href="/privacy" target="_blank" rel="noopener noreferrer">
-                    {t("login.privacyPolicy")}
-                  </a>
-                  {t("login.accountCreationHint")}
-                </label>
-              </div>
               <div className="login-separator">
                 <span>{t("login.separatorOr")}</span>
               </div>
@@ -2604,6 +2522,7 @@ type ConsoleNavIconName =
   | "quickstart"
   | "models"
   | "model-test"
+  | "image"
   | "video"
   | "api-keys"
   | "usage"
@@ -2644,6 +2563,7 @@ const CONSOLE_NAV_ICONS: Record<
   quickstart: (props) => <IconLightningStroked {...props} />,
   models: (props) => <IconApps {...props} />,
   "model-test": (props) => <IconCommentStroked {...props} />,
+  image: (props) => <IconImage {...props} />,
   video: (props) => <IconVideo {...props} />,
   "api-keys": (props) => <IconKeyStroked {...props} />,
   usage: (props) => <IconBarChartVStroked {...props} />,
@@ -2691,6 +2611,7 @@ const personalNavGroups: ConsoleNavGroup[] = [
     label: "体验中心",
     items: [
       { key: "/console/playground", label: "智能对话", icon: "model-test" },
+      { key: "/console/image", label: "图片生成", icon: "image" },
       { key: "/console/video", label: "视频生成", icon: "video" },
     ],
   },
@@ -2757,6 +2678,7 @@ const enterpriseNavGroups: ConsoleNavGroup[] = [
     label: "体验中心",
     items: [
       { key: "/console/playground", label: "智能对话", icon: "model-test" },
+      { key: "/console/image", label: "图片生成", icon: "image" },
       { key: "/console/video", label: "视频生成", icon: "video" },
     ],
   },
@@ -2854,6 +2776,7 @@ const CONSOLE_NAV_LABEL_KEYS: Record<string, string> = {
   模型广场: "console.nav.models",
   体验中心: "console.nav.experience",
   智能对话: "console.nav.playground",
+  图片生成: "console.nav.image",
   视频生成: "console.nav.video",
   数据分析: "console.nav.analytics",
   账户管理: "console.nav.account",
@@ -2925,7 +2848,7 @@ function userMenuGroupsFor(
     {
       key: "profile-experience",
       label: "体验中心",
-      paths: ["/console/playground", "/console/video"],
+      paths: ["/console/playground", "/console/image", "/console/video"],
     },
     {
       key: "profile-activity",

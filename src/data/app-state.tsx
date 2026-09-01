@@ -1,6 +1,7 @@
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { canStartPlaygroundRound, PLAYGROUND_MAX_ROUNDS } from '@/utils/playground'
 const STORAGE_KEY = 'token-nx:user-front:v1'
+const PLAYGROUND_STORAGE_KEY = 'token-nx:playground:v1'
 
 export type WorkspaceType = 'personal' | 'enterprise'
 export type WorkspaceRole = string
@@ -85,6 +86,7 @@ export interface PlaygroundSession {
   id: string
   modelId: string
   messages: PlaygroundMessage[]
+  contextBreaks?: number[]
   rounds: number
   prompt: string
   response: string
@@ -194,7 +196,6 @@ function loadSnapshot(): AppSnapshot {
       workspaces: normalizeStoredWorkspaces(parsed.workspaces),
       apiKeys: parsed.apiKeys ?? DEFAULT_API_KEYS,
       usageRecords: parsed.usageRecords ?? DEFAULT_USAGE,
-      // 中文：智能会话只存在当前页面内，刷新后必须从空会话开始。
       playgroundSessions: EMPTY_PLAYGROUND_SESSIONS,
     }
   } catch {
@@ -202,9 +203,20 @@ function loadSnapshot(): AppSnapshot {
   }
 }
 
+function loadPlaygroundSessions(): PlaygroundSession[] {
+  try {
+    const raw = localStorage.getItem(PLAYGROUND_STORAGE_KEY)
+    if (!raw) return EMPTY_PLAYGROUND_SESSIONS
+    const parsed = JSON.parse(raw)
+    if (!Array.isArray(parsed)) return EMPTY_PLAYGROUND_SESSIONS
+    return parsed.filter((item): item is PlaygroundSession => Boolean(item && typeof item === 'object' && typeof item.id === 'string' && typeof item.modelId === 'string' && Array.isArray(item.messages)))
+  } catch {
+    return EMPTY_PLAYGROUND_SESSIONS
+  }
+}
+
 function saveSnapshot(snapshot: AppSnapshot): void {
   try {
-    // 中文：持久化快照只保存账号配置，绝不把智能会话正文或请求元数据写入浏览器存储。
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...snapshot, playgroundSessions: undefined }))
   } catch {
     // 本地演示环境可能关闭存储，内存状态仍可继续使用。
@@ -226,6 +238,7 @@ export interface AppStoreValue extends AppSnapshot {
   deleteApiKey: (keyId: string) => void
   runPlayground: (input: PlaygroundRunInput) => PlaygroundSession
   recordPlaygroundFailure: (input: PlaygroundFailureInput) => PlaygroundSession
+  clearPlaygroundContext: (sessionId: string) => PlaygroundSession | undefined
   updateProfile: (input: Pick<AppSnapshot, 'nickname' | 'phone' | 'avatar'>) => void
 }
 
@@ -233,7 +246,16 @@ const AppStoreContext = createContext<AppStoreValue | null>(null)
 
 export function AppStoreProvider({ children }: { children: ReactNode }) {
   const [snapshot, setSnapshot] = useState<AppSnapshot>(loadSnapshot)
-  const [playgroundSessions, setPlaygroundSessions] = useState<PlaygroundSession[]>([])
+  const [playgroundSessions, setPlaygroundSessions] = useState<PlaygroundSession[]>(loadPlaygroundSessions)
+
+  // 中文：会话单独存储，刷新页面可恢复；清理浏览器存储时随之清除。
+  useEffect(() => {
+    try {
+      localStorage.setItem(PLAYGROUND_STORAGE_KEY, JSON.stringify(playgroundSessions))
+    } catch {
+      // 存储不可用时继续保留内存会话。
+    }
+  }, [playgroundSessions])
   const [selectedModelId, setSelectedModelId] = useState('deepseek-public')
 
   const updateSnapshot = useCallback((updater: (previous: AppSnapshot) => AppSnapshot) => {
@@ -319,6 +341,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       id: existing?.id ?? createId('session'),
       modelId: input.modelId,
       messages: [...messages, userMessage, assistantMessage],
+      contextBreaks: existing?.contextBreaks ?? [],
       rounds: (existing?.rounds ?? 0) + 1,
       prompt: input.prompt,
       response: assistantMessage.content,
@@ -330,7 +353,6 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       cost,
       latency,
     }
-    // 中文：会话正文只进入 React 内存状态，避免刷新后残留，也避免写入持久化快照。
     setPlaygroundSessions((previous) => [session, ...previous.filter((item) => item.id !== session.id)])
     return session
   }, [playgroundSessions])
@@ -364,6 +386,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       id: existing?.id ?? createId('session'),
       modelId: input.modelId,
       messages: [...messages, userMessage, assistantMessage],
+      contextBreaks: existing?.contextBreaks ?? [],
       rounds: existing?.rounds ?? 0,
       prompt: input.prompt,
       response: assistantMessage.content,
@@ -375,7 +398,23 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       cost: null,
       latency: null,
     }
-    // 中文：失败尝试保留在会话中供编辑，但轮次和下一次模型上下文都不包含它。
+    setPlaygroundSessions((previous) => [session, ...previous.filter((item) => item.id !== session.id)])
+    return session
+  }, [playgroundSessions])
+
+  const clearPlaygroundContext = useCallback((sessionId: string) => {
+    const existing = playgroundSessions.find((item) => item.id === sessionId)
+    if (!existing) return undefined
+    const lastBreak = existing.contextBreaks?.at(-1) ?? 0
+    if (existing.messages.length <= lastBreak) return existing
+    const updatedAt = new Date().toLocaleString('zh-CN', { hour12: false }).slice(0, 19)
+    // 中文：只切断后续请求上下文，历史消息和左侧会话条目继续保留。
+    const session: PlaygroundSession = {
+      ...existing,
+      contextBreaks: [...(existing.contextBreaks ?? []), existing.messages.length],
+      rounds: 0,
+      updatedAt,
+    }
     setPlaygroundSessions((previous) => [session, ...previous.filter((item) => item.id !== session.id)])
     return session
   }, [playgroundSessions])
@@ -398,8 +437,9 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     deleteApiKey,
     runPlayground,
     recordPlaygroundFailure,
+    clearPlaygroundContext,
     updateProfile,
-  }), [snapshot, playgroundSessions, activeWorkspace, selectedModelId, switchWorkspace, replaceEnterpriseWorkspaces, createApiKey, disableApiKey, deleteApiKey, runPlayground, recordPlaygroundFailure, updateProfile])
+  }), [snapshot, playgroundSessions, activeWorkspace, selectedModelId, switchWorkspace, replaceEnterpriseWorkspaces, createApiKey, disableApiKey, deleteApiKey, runPlayground, recordPlaygroundFailure, clearPlaygroundContext, updateProfile])
 
   return <AppStoreContext.Provider value={value}>{children}</AppStoreContext.Provider>
 }

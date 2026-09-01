@@ -382,7 +382,7 @@ export function SubscriptionPage() {
       </section>
       <section className="subscription-plans-section" aria-label={t("console.subscriptionPage.plansHeading")}>
         <SectionHeading title={t("console.subscriptionPage.plansHeading")} />
-        <div className="subscription-plan-grid" aria-busy={plansLoading}>{plans.map((plan) => <PlanCard key={plan.id ?? plan.code ?? plan.name} plan={plan} onSelect={selectPlan} />)}</div>
+        <div className="subscription-plan-grid" data-plan-count={Math.min(plans.length, 4)} aria-busy={plansLoading}>{plans.map((plan) => <PlanCard key={plan.id ?? plan.code ?? plan.name} plan={plan} onSelect={selectPlan} />)}</div>
       </section>
       <UpgradePlanModal plans={plans} open={upgradeOpen} selectedPlan={selectedUpgradePlan} onSelect={setSelectedUpgradePlan} onClose={() => setUpgradeOpen(false)} onConfirm={confirmUpgrade} />
     </div>
