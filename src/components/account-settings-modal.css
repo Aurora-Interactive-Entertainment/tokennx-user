@@ -29,6 +29,55 @@
   outline: none;
 }
 
+/* 中文：关闭时保留节点到动画结束，避免条件卸载直接截断退出过渡。 */
+.account-settings-overlay.is-closing {
+  animation: account-settings-overlay-exit 0.2s ease-in both;
+}
+
+.account-settings-modal.is-closing {
+  animation: account-settings-modal-exit 0.3s cubic-bezier(0.4, 0, 1, 1) both;
+}
+
+@keyframes account-settings-overlay-exit {
+  from {
+    background: rgba(0, 0, 0, 0.62);
+  }
+  to {
+    background: rgba(0, 0, 0, 0);
+  }
+}
+
+@keyframes account-settings-modal-exit {
+  from {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translate(28px, -20px) scale(0.92);
+  }
+}
+
+html[data-theme="light"] .account-settings-overlay.is-closing {
+  animation-name: account-settings-overlay-exit-light;
+}
+
+@keyframes account-settings-overlay-exit-light {
+  from {
+    background: rgba(23, 24, 27, 0.32);
+  }
+  to {
+    background: rgba(23, 24, 27, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .account-settings-overlay,
+  .account-settings-modal {
+    animation-duration: 0.01ms !important;
+  }
+}
+
 @media (max-width: 760px) {
   .account-settings-contact-trigger {
     max-width: 62vw;

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Button from "@douyinfe/semi-ui/lib/es/button";
 import DatePicker from "@douyinfe/semi-ui/lib/es/datePicker";
@@ -203,6 +203,7 @@ export function TraeEnterpriseAudit({ context }: { context: EnterpriseContext })
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
+  const exportLockRef = useRef(false);
   const [error, setError] = useState<{ message: string; requestId: string | null } | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
   const [detail, setDetail] = useState<EnterpriseAuditLog | null>(null);
@@ -249,7 +250,9 @@ export function TraeEnterpriseAudit({ context }: { context: EnterpriseContext })
   }, [action, context.id, dateRange, handleError, operator, page, pageSize, reloadToken]);
 
   async function exportData(): Promise<void> {
-    if (exporting || rows.length === 0) return;
+    // 中文：ref 锁在状态更新前生效，避免操作日志导出重复提交。
+    if (exportLockRef.current || exporting || rows.length === 0) return;
+    exportLockRef.current = true;
     setExporting(true);
     try {
       // 中文：审计导出提交当前动作、操作人和完整日期区间，服务端生成全部匹配事件而不是当前分页。
@@ -265,13 +268,13 @@ export function TraeEnterpriseAudit({ context }: { context: EnterpriseContext })
           format: "csv",
           context: { enterprise_id: context.id },
           filters,
-          file_name: "trae-enterprise-audit-logs",
+          file_name: "操作日志",
         },
         { idempotencyKey: createExportIdempotencyKey("enterprise-audit") },
       );
       const completed = await waitForExportTask(task.id);
       const response = await downloadExportTask(completed.id);
-      await saveExportResponse(response, completed.file_name);
+      await saveExportResponse(response, completed.file_name, "操作日志");
       Toast.success(t("traeEnterprise.audit.exportSuccess"));
     } catch (error) {
       if (isAuthenticationFailure(error)) {
@@ -280,6 +283,7 @@ export function TraeEnterpriseAudit({ context }: { context: EnterpriseContext })
         Toast.error(getExportErrorMessage(error));
       }
     } finally {
+      exportLockRef.current = false;
       setExporting(false);
     }
   }
@@ -328,9 +332,11 @@ export function TraeEnterpriseAudit({ context }: { context: EnterpriseContext })
                 </tr>
               </thead>
               <tbody>
-                {rows.map((log) => (
+                {rows.map((log, index) => (
                   <tr
                     key={log.id}
+                    // 中文：分页或首次进入时按行错峰入场，形成从左到右依次展开的阅读节奏。
+                    style={{ animationDelay: `${Math.min(index, 20) * 45}ms` }}
                     tabIndex={0}
                     onClick={() => setDetail(log)}
                     onKeyDown={(event) => {

@@ -133,6 +133,8 @@
 }
 .image-history-list {
   display: grid;
+  align-content: start;
+  grid-auto-rows: max-content;
   min-height: 0;
   flex: 1;
   gap: 3px;
@@ -172,6 +174,11 @@
   font-size: 11px;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* 中文：历史记录按设计稿保留标题和时间两行，提示词作为辅助信息隐藏。 */
+.image-history-item small {
+  display: none;
 }
 .image-workspace {
   grid-column: 2;
@@ -434,10 +441,14 @@
   background: linear-gradient(145deg, #7c31cb, #311b91);
 }
 .image-composer {
-  margin: 0 20px 20px;
-  padding: 12px 16px 10px;
+  width: min(920px, calc(100% - 48px));
+  box-sizing: border-box;
+  height: 142px;
+  min-height: 142px;
+  margin: 0 auto 20px;
+  padding: 14px 14px 10px;
   border: 1px solid var(--color-border-neutral-l1);
-  border-radius: var(--radius-8);
+  border-radius: 12px;
   background: transparent;
   box-shadow: none;
 }
@@ -492,13 +503,13 @@
 .image-composer-main .semi-input-textarea-wrapper {
   flex: 1;
   border: 0;
-  background: transparent;
+  background: transparent !important;
 }
 .image-composer-main .semi-input-textarea {
   min-height: 62px;
   padding: 9px 0;
   border: 0;
-  background: transparent;
+  background: transparent !important;
   box-shadow: none;
 }
 .image-composer-controls {
@@ -1263,6 +1274,9 @@ html[data-theme="dark"]
     pointer-events: auto;
   }
   .image-composer {
+    width: calc(100% - 20px);
+    height: 142px;
+    min-height: 142px;
     margin: 0 10px 10px;
     padding: 10px;
   }

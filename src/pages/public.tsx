@@ -1468,7 +1468,7 @@ function DocsSidebarNodes({ childrenByParent, parentId, selectedId, expandedDire
     const depthStyle = { '--docs-sidebar-indent': `${depth * 18}px` } as CSSProperties
     if (node.type === 'document') {
       const prefetch = () => onPrefetch?.(node)
-      return <Link className={`docs-sidebar-node docs-sidebar-document${selectedId === node.id ? ' is-active' : ''}`} style={depthStyle} to={publicDocumentHref(node)} key={node.id} onMouseEnter={prefetch} onFocus={prefetch}><IconFile aria-hidden="true" /><span>{node.title}</span></Link>
+      return <Link className={`docs-sidebar-node docs-sidebar-document${selectedId === node.id ? ' is-active' : ''}`} style={depthStyle} to={publicDocumentHref(node)} key={node.id} onMouseEnter={prefetch} onFocus={prefetch}><span>{node.title}</span></Link>
     }
     const expanded = expandedDirectories.has(node.id)
     const actionLabel = `${expanded ? labels.collapse : labels.expand} ${node.title}`

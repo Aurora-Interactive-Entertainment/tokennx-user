@@ -4,6 +4,7 @@ import type {
   EnterpriseDepartment,
   EnterpriseMember,
 } from "@/api/enterprise-console";
+import { formatPersonOptionLabel } from "@/utils/format";
 import "./enterprise-api-key-filters.css";
 
 type EnterpriseApiKeyFiltersProps = {
@@ -81,8 +82,7 @@ export function EnterpriseApiKeyFilters({
         </Select.Option>
         {members.map((member) => (
           <Select.Option key={member.id} value={member.id}>
-            {member.display_name || member.user_id}
-            {member.masked_contact ? ` (${member.masked_contact})` : ""}
+            {formatPersonOptionLabel(member.display_name || member.user_id, member.masked_contact)}
           </Select.Option>
         ))}
       </Select>

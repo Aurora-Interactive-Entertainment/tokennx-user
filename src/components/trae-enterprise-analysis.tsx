@@ -46,7 +46,7 @@ import {
   waitForExportTask,
 } from "@/api/exports";
 import { useResolvedTheme } from "@/theme";
-import { formatCount } from "@/utils/format";
+import { formatCount, formatPersonOptionLabel } from "@/utils/format";
 import { getChartRenderer } from "@/components/chart-renderer";
 import { addLocalDays as addDays, startOfLocalToday as startOfToday } from "@/utils/date-range";
 import "./trae-date-picker.css";
@@ -618,6 +618,7 @@ export function TraeEnterpriseAnalysis({ context, onExportChange }: AnalysisProp
   const [departmentUsage, setDepartmentUsage] = useState<EnterpriseUsageDepartment[]>([]);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
+  const exportLockRef = useRef(false);
   const [error, setError] = useState<EnterpriseRequestError | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
 
@@ -669,7 +670,9 @@ export function TraeEnterpriseAnalysis({ context, onExportChange }: AnalysisProp
   }, [context.id, dateRange]);
 
   const exportData = useCallback(async () => {
-    if (!data || exporting) return;
+    // 中文：ref 锁确保导出按钮快速连点时只提交一个异步导出任务。
+    if (!data || exportLockRef.current || exporting) return;
+    exportLockRef.current = true;
     setExporting(true);
     try {
       // 中文：企业分析导出仅发送后端定义支持的时间范围和成员筛选，文件内容由服务端统一生成。
@@ -686,13 +689,13 @@ export function TraeEnterpriseAnalysis({ context, onExportChange }: AnalysisProp
           format: "csv",
           context: { enterprise_id: context.id },
           filters,
-          file_name: "trae-data-analysis",
+          file_name: "数据分析",
         },
         { idempotencyKey: createExportIdempotencyKey("enterprise-analytics") },
       );
       const completed = await waitForExportTask(task.id);
       const response = await downloadExportTask(completed.id);
-      await saveExportResponse(response, completed.file_name);
+      await saveExportResponse(response, completed.file_name, "数据分析");
       Toast.success(t("traeEnterprise.analysis.exportSuccess"));
     } catch (error) {
       if (isAuthenticationFailure(error)) {
@@ -701,6 +704,7 @@ export function TraeEnterpriseAnalysis({ context, onExportChange }: AnalysisProp
         Toast.error(getExportErrorMessage(error));
       }
     } finally {
+      exportLockRef.current = false;
       setExporting(false);
     }
   }, [context.id, data, dateRange, exporting, handleError, scope, t]);
@@ -759,7 +763,7 @@ export function TraeEnterpriseAnalysis({ context, onExportChange }: AnalysisProp
           <Select.Option value="all">{t("traeEnterprise.analysis.picker.allPeople")}</Select.Option>
           {members.map((member) => (
             <Select.Option key={member.id} value={member.id}>
-              {member.display_name || member.masked_contact || member.id}
+              {formatPersonOptionLabel(member.display_name || member.user_id, member.masked_contact, member.id)}
             </Select.Option>
           ))}
         </Select>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Tooltip from "@douyinfe/semi-ui/lib/es/tooltip";
 import Select from "@douyinfe/semi-ui/lib/es/select";
@@ -166,6 +166,7 @@ function PersonalUsageRecords({ context, apiKeyID }: { context: PersonalUsageCon
   const [data, setData] = useState<UsageRecordsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
+  const exportLockRef = useRef(false);
   const [error, setError] = useState("");
   const [reloadKey, setReloadKey] = useState(0);
   const selectedRange = useMemo(
@@ -227,7 +228,9 @@ function PersonalUsageRecords({ context, apiKeyID }: { context: PersonalUsageCon
   const rows = data?.items ?? [];
 
   async function exportRows(): Promise<void> {
-    if (exporting) return;
+    // 中文：使用 ref 立即锁定导出，避免连续点击在 React 重渲染前创建多个任务。
+    if (exportLockRef.current || exporting) return;
+    exportLockRef.current = true;
     setExporting(true);
     try {
       // 中文：个人调用记录导出使用当前账务主体、API Key 和完整时间边界，服务端生成全部匹配记录。
@@ -244,17 +247,18 @@ function PersonalUsageRecords({ context, apiKeyID }: { context: PersonalUsageCon
             start_at: new Date(bounds.startAt).toISOString(),
             end_at: new Date(bounds.endAt).toISOString(),
           },
-          file_name: "personal-usage-records",
+          file_name: "用量明细",
         },
         { idempotencyKey: createExportIdempotencyKey("personal-usage") },
       );
       const completed = await waitForExportTask(task.id);
       const response = await downloadExportTask(completed.id);
-      await saveExportResponse(response, completed.file_name);
+      await saveExportResponse(response, completed.file_name, "用量明细");
       Toast.success(t("console.personalUsage.cue.downloadSuccess"));
     } catch (error) {
       Toast.error(getExportErrorMessage(error));
     } finally {
+      exportLockRef.current = false;
       setExporting(false);
     }
   }

@@ -106,11 +106,20 @@ function InvitationPrompt({
   const { t } = useTranslation();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<InvitationPageError | null>(null);
+  const [submitAfterLogin, setSubmitAfterLogin] = useState(false);
   const enterpriseName =
     preview.enterprise_name || t("console.join.unnamedEnterprise");
 
+  useEffect(() => {
+    if (!authenticated || !submitAfterLogin || submitting) return;
+    // 中文：登录成功后自动继续提交刚才发起的加入申请，避免用户再次点击。
+    setSubmitAfterLogin(false);
+    void applyToJoin();
+  }, [authenticated, submitAfterLogin, submitting]);
+
   async function applyToJoin(): Promise<void> {
     if (!authenticated) {
+      setSubmitAfterLogin(true);
       onLoginRequired();
       return;
     }
@@ -209,7 +218,14 @@ export function JoinPage() {
       signal: controller.signal,
     })
       .then((result) => {
-        if (active) setPreview(result);
+        if (active) {
+          // 中文：登录后预览接口可能仍返回旧的 pending 状态，保留本页刚提交的乐观结果。
+          setPreview((current) =>
+            current?.pending_request && !result.pending_request
+              ? { ...result, pending_request: true }
+              : result,
+          );
+        }
       })
       .catch((reason: unknown) => {
         if (!active || controller.signal.aborted) return;

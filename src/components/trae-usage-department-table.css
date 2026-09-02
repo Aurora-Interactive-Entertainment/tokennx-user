@@ -7,7 +7,7 @@
 }
 
 .trae-usage-department-table.semi-table-wrapper {
-  min-width: 760px;
+  min-width: 0;
   border: 0;
   background: var(--color-bg-base-secondary);
 }
@@ -69,10 +69,4 @@
 .trae-usage-department-table .trae-usage-department-amount {
   text-align: right;
   font-variant-numeric: tabular-nums;
-}
-
-@media (max-width: 760px) {
-  .trae-usage-department-table.semi-table-wrapper {
-    min-width: 680px;
-  }
 }

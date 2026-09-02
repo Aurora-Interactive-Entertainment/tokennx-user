@@ -7,6 +7,17 @@ export const MONEY_DISPLAY_DECIMAL_PLACES = 3
 export const BACKOFFICE_MONEY_DISPLAY_DECIMAL_PLACES = 4
 export type MoneyValue = string | number | null | undefined
 
+// 中文：人员选择器统一展示“姓名 (电话号码)”，后端缺少任一字段时自动回退。
+export function formatPersonOptionLabel(
+  name: string | null | undefined,
+  phone: string | null | undefined,
+  fallback = "--",
+): string {
+  const displayName = name?.trim() || fallback;
+  const displayPhone = phone?.trim();
+  return displayPhone ? `${displayName} (${displayPhone})` : displayName;
+}
+
 export function formatCurrency(value: number, digits = MONEY_DISPLAY_DECIMAL_PLACES): string {
   return new Intl.NumberFormat(getActiveLocale(), {
     style: 'currency',

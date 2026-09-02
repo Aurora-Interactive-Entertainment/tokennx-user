@@ -57,7 +57,7 @@ function renderJoin(authenticated = false, token = 'join-token/abc') {
   } else {
     appStore.dispatch({ type: 'auth/hydrate/fulfilled', payload: null })
   }
-  return render(<MemoryRouter initialEntries={[`/join?token=${encodeURIComponent(token)}`]}><Provider store={appStore}><AppStoreProvider><JoinPage /></AppStoreProvider></Provider></MemoryRouter>)
+  return { appStore, ...render(<MemoryRouter initialEntries={[`/join?token=${encodeURIComponent(token)}`]}><Provider store={appStore}><AppStoreProvider><JoinPage /></AppStoreProvider></Provider></MemoryRouter>) }
 }
 
 beforeEach(() => {
@@ -80,6 +80,21 @@ describe('企业邀请页面', () => {
     expect(screen.getByRole('heading', { name: '手机号登录' })).toBeInTheDocument()
     expect(getInvitationPreviewMock).toHaveBeenCalledWith('join-token/abc', expect.objectContaining({ accessToken: undefined, signal: expect.any(AbortSignal) }))
     expect(submitInvitationJoinMock).not.toHaveBeenCalled()
+  })
+
+  it('未登录点击申请后登录成功会自动提交加入申请', async () => {
+    const user = userEvent.setup()
+    const { appStore } = renderJoin()
+
+    await screen.findByRole('heading', { name: '加入 研发空间' })
+    await user.click(screen.getByRole('button', { name: '申请加入' }))
+    expect(await screen.findByRole('dialog', { name: '登录 Token NX' })).toBeInTheDocument()
+
+    saveAuthTokens(AUTH_RESULT)
+    appStore.dispatch({ type: 'auth/loginWithEmail/fulfilled', payload: AUTH_RESULT.user })
+
+    await waitFor(() => expect(submitInvitationJoinMock).toHaveBeenCalledWith({ token: 'join-token/abc', request_message: '' }, { accessToken: 'join-access-token' }))
+    expect(await screen.findByRole('heading', { name: '已申请' })).toBeInTheDocument()
   })
 
   it('登录后点击申请加入会直接提交当前邀请 Token', async () => {

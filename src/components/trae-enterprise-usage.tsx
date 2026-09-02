@@ -48,7 +48,7 @@ import {
 } from '@/api/exports'
 import { isAuthenticationFailure } from '@/api/http'
 import { useResolvedTheme } from '@/theme'
-import { BACKOFFICE_MONEY_DISPLAY_DECIMAL_PLACES, formatApiTime, formatCount, formatYuan } from '@/utils/format'
+import { BACKOFFICE_MONEY_DISPLAY_DECIMAL_PLACES, formatApiTime, formatCount, formatPersonOptionLabel, formatYuan } from '@/utils/format'
 import { addLocalDays as addDays, endOfLocalDay, startOfLocalDay, startOfLocalToday as startOfToday } from '@/utils/date-range'
 import './trae-date-picker.css'
 import './trae-enterprise-usage.css'
@@ -421,6 +421,7 @@ export function TraeUsageDetail({ context, memberID, onMemberChange }: UsageDeta
   const [data, setData] = useState(EMPTY_DETAIL)
   const [loading, setLoading] = useState(true)
   const [exporting, setExporting] = useState(false)
+  const exportLockRef = useRef(false)
   const [error, setError] = useState<EnterpriseRequestError | null>(null)
   const [reload, setReload] = useState(0)
   const today = useMemo(() => startOfToday(), [])
@@ -471,7 +472,9 @@ export function TraeUsageDetail({ context, memberID, onMemberChange }: UsageDeta
   }
 
   async function exportDetail(): Promise<void> {
-    if (exporting || data.items.length === 0) return
+    // 中文：ref 锁避免用量明细导出按钮快速连点创建重复任务。
+    if (exportLockRef.current || exporting || data.items.length === 0) return
+    exportLockRef.current = true
     setExporting(true)
     try {
       // 中文：企业用量导出使用后端的成员聚合定义；模型和状态筛选仅属于明细查询接口，不能发送给导出接口。
@@ -489,13 +492,13 @@ export function TraeUsageDetail({ context, memberID, onMemberChange }: UsageDeta
           format: 'csv',
           context: { enterprise_id: context.id },
           filters,
-          file_name: 'trae-enterprise-usage',
+          file_name: '用量明细',
         },
         { idempotencyKey: createExportIdempotencyKey('enterprise-usage') },
       )
       const completed = await waitForExportTask(task.id)
       const response = await downloadExportTask(completed.id)
-      await saveExportResponse(response, completed.file_name)
+      await saveExportResponse(response, completed.file_name, '用量明细')
       Toast.success(t('traeEnterprise.usage.downloadSuccess'))
     } catch (error) {
       if (isAuthenticationFailure(error)) {
@@ -504,11 +507,12 @@ export function TraeUsageDetail({ context, memberID, onMemberChange }: UsageDeta
         Toast.error(getExportErrorMessage(error))
       }
     } finally {
+      exportLockRef.current = false
       setExporting(false)
     }
   }
 
-  const memberOptions = [{ value: 'all', label: t('traeEnterprise.usage.allMembers') }, ...data.filters.members.map((member) => ({ value: member.id, label: member.name }))]
+  const memberOptions = [{ value: 'all', label: t('traeEnterprise.usage.allMembers') }, ...data.filters.members.map((member) => ({ value: member.id, label: formatPersonOptionLabel(member.name, member.masked_contact || member.phone || member.email) }))]
   const modelOptions = [{ value: 'all', label: t('traeEnterprise.usage.allModels') }, ...data.filters.models.map((item) => ({ value: item.code, label: item.alias || item.name || item.code }))]
   const statusOptions = [
     { value: 'all', label: t('traeEnterprise.usage.allStatuses') },

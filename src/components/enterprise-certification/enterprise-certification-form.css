@@ -121,6 +121,11 @@ html[data-theme="light"] .enterprise-form-control > .app-input .semi-input {
   gap: 18px;
 }
 
+.enterprise-material-layout.has-example {
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
 .enterprise-material-tile {
   position: relative;
   width: 112px;
@@ -196,6 +201,144 @@ html[data-theme="light"] .enterprise-form-control > .app-input .semi-input {
   color: var(--color-text-tertiary);
   font-size: 12px;
   line-height: 1.5;
+}
+
+.enterprise-material-layout.has-example .enterprise-material-copy {
+  width: 100%;
+  flex-basis: 100%;
+}
+
+.enterprise-material-example-button {
+  display: block;
+  width: min(160px, 100%);
+  padding: 0;
+  margin-top: 6px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  cursor: zoom-in;
+}
+
+.enterprise-material-example-button:focus-visible {
+  outline: 2px solid var(--color-action-primary);
+  outline-offset: 3px;
+}
+
+.enterprise-material-example {
+  display: block;
+  width: 100%;
+  margin-top: 0;
+  border: 1px solid var(--color-border-neutral-l1);
+  border-radius: 4px;
+  object-fit: contain;
+  background: #fff;
+}
+
+.enterprise-material-example-full {
+  display: block;
+  max-width: min(92vw, 1800px);
+  max-height: min(82vh, 900px);
+  object-fit: contain;
+  transform-origin: center;
+  transition: transform 160ms ease;
+  user-select: none;
+}
+
+.enterprise-material-example-viewer {
+  position: relative;
+  display: flex;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  padding: 24px 24px 88px;
+  overflow: hidden;
+  background: #1a1a1a;
+}
+
+.enterprise-material-example-modal.app-modal .semi-modal-content.app-modal-content > .semi-modal-header {
+  position: absolute;
+  z-index: 2;
+  inset: 0 0 auto;
+  min-height: 0 !important;
+  height: 0;
+  padding: 0 !important;
+  pointer-events: none;
+}
+
+.enterprise-material-example-modal.app-modal .semi-modal-content.app-modal-content > .semi-modal-header .semi-modal-title {
+  display: none;
+}
+
+.enterprise-material-example-modal.app-modal .semi-modal-content.app-modal-content > .semi-modal-header .semi-modal-close {
+  top: 16px;
+  right: 16px;
+  color: rgb(255 255 255 / 86%);
+  background: rgb(0 0 0 / 58%);
+  pointer-events: auto;
+}
+
+.enterprise-material-example-modal.app-modal .semi-modal-content.app-modal-content > .semi-modal-header .semi-modal-close:hover,
+.enterprise-material-example-modal.app-modal .semi-modal-content.app-modal-content > .semi-modal-header .semi-modal-close:focus-visible {
+  color: #fff;
+  background: rgb(0 0 0 / 78%);
+}
+
+.enterprise-material-example-modal.app-modal .semi-modal-content.app-modal-content > .semi-modal-body-wrapper {
+  flex: 1 1 auto;
+  height: 100%;
+  padding: 0 !important;
+}
+
+.enterprise-material-example-canvas {
+  display: flex;
+  max-width: 100%;
+  max-height: 100%;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.enterprise-material-example-toolbar {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border: 1px solid rgb(255 255 255 / 12%);
+  border-radius: 22px;
+  color: rgb(255 255 255 / 86%);
+  background: rgb(45 45 45 / 94%);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 35%);
+  transform: translateX(-50%);
+}
+
+.enterprise-material-example-toolbar > span {
+  min-width: 44px;
+  color: rgb(255 255 255 / 72%);
+  font-size: 12px;
+  text-align: center;
+}
+
+.enterprise-material-example-toolbar .semi-button {
+  width: 32px;
+  min-width: 32px;
+  height: 32px;
+  min-height: 32px;
+  padding: 0;
+  border-radius: 16px;
+  color: rgb(255 255 255 / 86%);
+}
+
+.enterprise-material-example-toolbar .semi-button:hover,
+.enterprise-material-example-toolbar .semi-button:focus-visible {
+  color: #fff;
+  background: rgb(255 255 255 / 14%);
 }
 
 .enterprise-material-file-name {
@@ -353,10 +496,18 @@ html[data-theme="light"] .enterprise-form-control > .app-input .semi-input {
     align-items: flex-start;
   }
 
+  .enterprise-material-layout.has-example {
+    gap: 12px;
+  }
+
   .enterprise-material-tile {
     width: 96px;
     height: 96px;
     flex-basis: 96px;
+  }
+
+  .enterprise-material-layout.has-example .enterprise-material-example-button {
+    width: min(180px, calc(100% - 108px));
   }
 
   .enterprise-recognition-status {
@@ -372,6 +523,10 @@ html[data-theme="light"] .enterprise-form-control > .app-input .semi-input {
 @media (max-width: 480px) {
   .enterprise-material-layout {
     flex-direction: column;
+  }
+
+  .enterprise-material-layout.has-example .enterprise-material-example-button {
+    width: min(200px, 100%);
   }
 
   .enterprise-material-tile {

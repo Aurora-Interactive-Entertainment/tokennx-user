@@ -74,6 +74,10 @@ export interface EnterpriseUsageModelFilter {
 export interface EnterpriseUsageMemberFilter {
   id: string
   name: string
+  // 中文：兼容后端在人员筛选目录中返回的脱敏联系方式。
+  masked_contact?: string
+  phone?: string
+  email?: string
 }
 
 export interface EnterpriseUsageAggregateItem {

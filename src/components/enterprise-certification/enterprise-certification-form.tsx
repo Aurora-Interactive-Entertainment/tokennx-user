@@ -1,7 +1,16 @@
-import { useRef, type ChangeEvent, type FormEvent } from "react";
+import { useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { Link } from "react-router";
-import { IconDeleteStroked, IconFile, IconUpload } from "@douyinfe/semi-icons";
+import {
+  IconDeleteStroked,
+  IconExpand,
+  IconFile,
+  IconMinus,
+  IconPlus,
+  IconRotate,
+  IconUpload,
+} from "@douyinfe/semi-icons";
 import Button from "@douyinfe/semi-ui/lib/es/button";
+import Modal from "@/components/app-modal";
 import { useTranslation } from "react-i18next";
 import {
   ENTERPRISE_AUTHORIZED_AGENT_NAME_MAX_LENGTH,
@@ -15,6 +24,7 @@ import {
   type EnterpriseCertificationValidationErrors,
 } from "@/api/enterprise-certification";
 import { CompatInput as Input } from "@/components/semi-compat";
+import licenseExampleImage from "@/assets/figma-home/zhizhao.jpg";
 import "./enterprise-certification-form.css";
 
 export interface EnterpriseCertificationFormState {
@@ -39,6 +49,8 @@ interface MaterialControlProps {
   error?: string;
   uploadText: string;
   rules: string[];
+  exampleImageSrc?: string;
+  exampleImageAlt?: string;
   onChoose: (event: ChangeEvent<HTMLInputElement>) => void;
   onRemove: () => void;
 }
@@ -46,6 +58,9 @@ interface MaterialControlProps {
 function MaterialControl(props: MaterialControlProps) {
   const { t } = useTranslation();
   const inputRef = useRef<HTMLInputElement>(null);
+  const [exampleVisible, setExampleVisible] = useState(false);
+  const [exampleScale, setExampleScale] = useState(1);
+  const [exampleRotation, setExampleRotation] = useState(0);
   const isImage = Boolean(
     props.file?.type.startsWith("image/") && props.previewUrl,
   );
@@ -68,7 +83,7 @@ function MaterialControl(props: MaterialControlProps) {
           aria-describedby={props.error ? errorId : undefined}
           onChange={props.onChoose}
         />
-        <div className="enterprise-material-layout">
+        <div className={`enterprise-material-layout${props.exampleImageSrc ? " has-example" : ""}`}>
           <button
             className={`enterprise-material-tile${props.error ? " is-error" : ""}${props.uploading ? " is-uploading" : ""}`}
             type="button"
@@ -90,6 +105,25 @@ function MaterialControl(props: MaterialControlProps) {
                   : props.uploadText}
             </span>
           </button>
+          {props.exampleImageSrc ? (
+            <button
+              className="enterprise-material-example-button"
+              type="button"
+              aria-label={props.exampleImageAlt ?? props.label}
+              title={props.exampleImageAlt ?? props.label}
+              onClick={() => {
+                setExampleScale(1);
+                setExampleRotation(0);
+                setExampleVisible(true);
+              }}
+            >
+              <img
+                className="enterprise-material-example"
+                src={props.exampleImageSrc}
+                alt={props.exampleImageAlt ?? props.label}
+              />
+            </button>
+          ) : null}
           <div className="enterprise-material-copy">
             {props.file ? (
               <div className="enterprise-material-file-name">
@@ -118,6 +152,63 @@ function MaterialControl(props: MaterialControlProps) {
           </span>
         ) : null}
       </div>
+      {props.exampleImageSrc ? (
+        <Modal
+          className="enterprise-material-example-modal"
+          title={props.exampleImageAlt ?? props.label}
+          visible={exampleVisible}
+          fullScreen
+          footer={null}
+          onCancel={() => setExampleVisible(false)}
+        >
+          <div className="enterprise-material-example-viewer">
+            <div className="enterprise-material-example-canvas">
+              <img
+                className="enterprise-material-example-full"
+                src={props.exampleImageSrc}
+                alt={props.exampleImageAlt ?? props.label}
+                style={{
+                  transform: `scale(${exampleScale}) rotate(${exampleRotation}deg)`,
+                }}
+              />
+            </div>
+            <div className="enterprise-material-example-toolbar" role="toolbar" aria-label={props.exampleImageAlt ?? props.label}>
+              <Button
+                theme="borderless"
+                icon={<IconMinus />}
+                aria-label={t("console.enterpriseCreate.zoomOut")}
+                title={t("console.enterpriseCreate.zoomOut")}
+                onClick={() => setExampleScale((value) => Math.max(0.5, value - 0.25))}
+              />
+              <span aria-live="polite">{Math.round(exampleScale * 100)}%</span>
+              <Button
+                theme="borderless"
+                icon={<IconPlus />}
+                aria-label={t("console.enterpriseCreate.zoomIn")}
+                title={t("console.enterpriseCreate.zoomIn")}
+                onClick={() => setExampleScale((value) => Math.min(3, value + 0.25))}
+              />
+              <Button
+                theme="borderless"
+                icon={<IconRotate />}
+                aria-label={t("console.enterpriseCreate.rotate")}
+                title={t("console.enterpriseCreate.rotate")}
+                onClick={() => setExampleRotation((value) => (value + 90) % 360)}
+              />
+              <Button
+                theme="borderless"
+                icon={<IconExpand />}
+                aria-label={t("console.enterpriseCreate.resetView")}
+                title={t("console.enterpriseCreate.resetView")}
+                onClick={() => {
+                  setExampleScale(1);
+                  setExampleRotation(0);
+                }}
+              />
+            </div>
+          </div>
+        </Modal>
+      ) : null}
     </div>
   );
 }
@@ -256,6 +347,8 @@ export function EnterpriseCertificationForm(
             t("console.enterpriseCreate.licenseRuleLatest"),
             t("console.enterpriseCreate.licenseRules"),
           ]}
+          exampleImageSrc={licenseExampleImage}
+          exampleImageAlt={t("console.enterpriseCreate.licenseExample")}
           onChoose={props.onChooseLicense}
           onRemove={props.onRemoveLicense}
         />

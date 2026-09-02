@@ -71,7 +71,7 @@ import {
 import { isAuthenticationFailure } from "@/api/http";
 import { invalidateAuth } from "@/store/auth-slice";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { formatApiTime, type ApiTimeValue } from "@/utils/format";
+import { formatApiTime, formatPersonOptionLabel, type ApiTimeValue } from "@/utils/format";
 import {
   getInvitationOverview,
   type InvitationOverview,
@@ -1076,6 +1076,7 @@ export function ApiKeysPage({
             ))}
           </div>
           <Button
+            className="api-key-create-button"
             theme="solid"
             type="primary"
             icon={<IconPlus />}
@@ -1109,6 +1110,7 @@ export function ApiKeysPage({
           description={t("console.account.noKeysHint")}
           action={
             <Button
+              className="api-key-create-button"
               theme="solid"
               type="primary"
               icon={<IconPlus />}
@@ -1697,10 +1699,7 @@ export function ApiKeysPage({
               >
                 {enterpriseMembers.map((member) => (
                   <Select.Option key={member.id} value={member.id}>
-                    {member.display_name || member.user_id}{" "}
-                    {member.masked_contact
-                      ? "(" + member.masked_contact + ")"
-                      : ""}
+                    {formatPersonOptionLabel(member.display_name || member.user_id, member.masked_contact)}
                   </Select.Option>
                 ))}
               </Select>

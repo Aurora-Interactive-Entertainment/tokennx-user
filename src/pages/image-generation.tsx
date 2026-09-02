@@ -890,7 +890,7 @@ export function ImagePage() {
                 onOpen={() => setPickerVisible(true)}
               />
               <Button
-                className="image-generate-button"
+                className="generation-send-button image-generate-button"
                 theme="solid"
                 type="primary"
                 icon={generating ? <IconStop /> : <IconSend />}

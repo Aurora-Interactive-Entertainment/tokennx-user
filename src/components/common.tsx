@@ -2489,7 +2489,9 @@ export function PublicHeader({
                 inviteCode={inviteCode}
                 onSuccess={() => {
                   setMobileOpen(false);
+                  // 中文：登录成功后统一进入快速接入页；邀请链接仍回到首页继续处理邀请。
                   if (inviteCode) navigate("/", { replace: true });
+                  else navigate(DEFAULT_CONSOLE_PATH, { replace: true });
                 }}
               />
             )}
@@ -2526,9 +2528,10 @@ export function PublicHeader({
           </div>
         </nav>
       </header>
-      {accountSettingsOpen ? (
-        <AccountSettingsModal onClose={() => setAccountSettingsOpen(false)} />
-      ) : null}
+      <AccountSettingsModal
+        visible={accountSettingsOpen}
+        onClose={() => setAccountSettingsOpen(false)}
+      />
     </>
   );
 }
@@ -3398,7 +3401,15 @@ function UserMenu({
   );
 }
 
-export function AccountSettingsModal({ onClose }: { onClose: () => void }) {
+const ACCOUNT_SETTINGS_EXIT_DURATION_MS = 300;
+
+export function AccountSettingsModal({
+  onClose,
+  visible = true,
+}: {
+  onClose: () => void;
+  visible?: boolean;
+}) {
   const { t } = useTranslation();
   const store = useAppStore();
   const dispatch = useAppDispatch();
@@ -3416,6 +3427,8 @@ export function AccountSettingsModal({ onClose }: { onClose: () => void }) {
   const [savingName, setSavingName] = useState(false);
   const [contactProvider, setContactProvider] =
     useState<ContactProvider | null>(null);
+  const [rendered, setRendered] = useState(visible);
+  const closeTimerRef = useRef<number | undefined>(undefined);
   const nicknameRequestPending = useRef(false);
   const initial = displayName.slice(0, 1).toUpperCase();
   const accountLabel = t("console.nav.account").replace(/管理$/, "");
@@ -3467,6 +3480,38 @@ export function AccountSettingsModal({ onClose }: { onClose: () => void }) {
   }
 
   useEffect(() => {
+    if (visible) {
+      if (closeTimerRef.current !== undefined) {
+        window.clearTimeout(closeTimerRef.current);
+        closeTimerRef.current = undefined;
+      }
+      setRendered(true);
+      return undefined;
+    }
+    if (!rendered) return undefined;
+    closeTimerRef.current = window.setTimeout(() => {
+      closeTimerRef.current = undefined;
+      setRendered(false);
+    }, ACCOUNT_SETTINGS_EXIT_DURATION_MS);
+    return () => {
+      if (closeTimerRef.current !== undefined) {
+        window.clearTimeout(closeTimerRef.current);
+        closeTimerRef.current = undefined;
+      }
+    };
+  }, [rendered, visible]);
+
+  useEffect(
+    () => () => {
+      if (closeTimerRef.current !== undefined) {
+        window.clearTimeout(closeTimerRef.current);
+      }
+    },
+    [],
+  );
+
+  useEffect(() => {
+    if (!visible) return undefined;
     let active = true;
     const accessToken = getAccessToken();
     if (!accessToken) {
@@ -3490,25 +3535,29 @@ export function AccountSettingsModal({ onClose }: { onClose: () => void }) {
     return () => {
       active = false;
     };
-  }, []);
+  }, [visible]);
 
   useEffect(
-    () =>
-      subscribeProfileUpdates((nextProfile) =>
+    () => {
+      if (!visible) return undefined;
+      return subscribeProfileUpdates((nextProfile) =>
         applyProfile(nextProfile, false),
-      ),
-    [],
+      );
+    },
+    [visible],
   );
 
   useEffect(() => {
+    if (!visible) return undefined;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = previousOverflow;
     };
-  }, [onClose]);
+  }, [visible]);
 
   useEffect(() => {
+    if (!visible) return undefined;
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape" && !contactProvider && !editingName) onClose();
     };
@@ -3516,7 +3565,7 @@ export function AccountSettingsModal({ onClose }: { onClose: () => void }) {
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [contactProvider, editingName, onClose]);
+  }, [contactProvider, editingName, onClose, visible]);
 
   async function copyUserId(): Promise<void> {
     if (!userId || userId === t("profile.overview.notSet")) return;
@@ -3638,10 +3687,12 @@ export function AccountSettingsModal({ onClose }: { onClose: () => void }) {
     );
   }
 
+  if (!rendered) return null;
+
   return createPortal(
     <>
       <div
-        className="account-settings-overlay"
+        className={`account-settings-overlay${visible ? "" : " is-closing"}`}
         role="presentation"
         onMouseDown={(event) => {
           if (event.target === event.currentTarget && !contactProvider)
@@ -3649,10 +3700,11 @@ export function AccountSettingsModal({ onClose }: { onClose: () => void }) {
         }}
       >
         <section
-          className="account-settings-modal"
+          className={`account-settings-modal${visible ? "" : " is-closing"}`}
           role="dialog"
           aria-modal="true"
           aria-label={t("profile.title")}
+          aria-hidden={!visible}
         >
           <aside className="account-settings-sidebar">
             <h2>{t("profile.personal.title")}</h2>

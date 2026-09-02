@@ -28,7 +28,6 @@ import {
   IconSearch,
   IconTick,
   IconUserGroup,
-  IconUserAdd,
   IconUserListStroked,
 } from "@douyinfe/semi-icons";
 import { TraeDialog } from "@/components/trae-dialog";
@@ -1473,9 +1472,7 @@ function TraeEnterpriseMembersContent({ context }: { context: EnterpriseContext 
   } | null>(null);
   const memberMenuRef = useRef<HTMLDivElement>(null);
   const memberMenuPortalRef = useRef<HTMLDivElement>(null);
-  const [memberAddMenuOpen, setMemberAddMenuOpen] = useState(false);
   const [invitationCreateOpen, setInvitationCreateOpen] = useState(false);
-  const memberAddMenuRef = useRef<HTMLDivElement>(null);
   const [selectedMemberIDs, setSelectedMemberIDs] = useState<
     Array<string | number>
   >([]);
@@ -1556,16 +1553,6 @@ function TraeEnterpriseMembersContent({ context }: { context: EnterpriseContext 
     return () =>
       document.removeEventListener("pointerdown", handleOutsidePointer);
   }, [memberMenu]);
-  useEffect(() => {
-    if (!memberAddMenuOpen) return undefined;
-    const handleOutsidePointer = (event: PointerEvent) => {
-      if (!memberAddMenuRef.current?.contains(event.target as Node))
-        setMemberAddMenuOpen(false);
-    };
-    document.addEventListener("pointerdown", handleOutsidePointer);
-    return () =>
-      document.removeEventListener("pointerdown", handleOutsidePointer);
-  }, [memberAddMenuOpen]);
   const filtered = useMemo(
     () =>
       members.filter(
@@ -1691,33 +1678,17 @@ function TraeEnterpriseMembersContent({ context }: { context: EnterpriseContext 
           </div>
         </div>
         <div className="trae-page-heading-action">
-          <div ref={memberAddMenuRef} className="trae-member-add-action">
-            <button
-              className="trae-primary-button"
-              type="button"
-              aria-expanded={memberAddMenuOpen}
-              onClick={() => setMemberAddMenuOpen((open) => !open)}
-            >
-              <IconUserAdd aria-hidden="true" />
-              {t("traeEnterprise.members.add")}
-              <IconChevronDown aria-hidden="true" />
-            </button>
-            {memberAddMenuOpen ? (
-              <div className="trae-member-add-menu" role="menu">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMemberAddMenuOpen(false);
-                    setTab("invitations");
-                    setInvitationCreateOpen(true);
-                  }}
-                >
-                  <IconLink aria-hidden="true" />
-                  {t("traeEnterprise.members.linkInvite")}
-                </button>
-              </div>
-            ) : null}
-          </div>
+          <button
+            className="trae-primary-button"
+            type="button"
+            onClick={() => {
+              setTab("invitations");
+              setInvitationCreateOpen(true);
+            }}
+          >
+            <IconLink aria-hidden="true" />
+            {t("traeEnterprise.members.linkInvite")}
+          </button>
         </div>
       </header>
       <ConsoleTabs

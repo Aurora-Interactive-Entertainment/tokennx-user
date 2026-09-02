@@ -292,7 +292,10 @@ export function SettingsPage() {
         </SettingsAnchorLayout>
       </div>
 
-      {accountSettingsOpen ? <AccountSettingsModal onClose={() => setAccountSettingsOpen(false)} /> : null}
+      <AccountSettingsModal
+        visible={accountSettingsOpen}
+        onClose={() => setAccountSettingsOpen(false)}
+      />
       <Modal
         className="profile-security-modal"
         centered

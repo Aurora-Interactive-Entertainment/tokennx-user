@@ -2,7 +2,20 @@
 .trae-invitation-toolbar { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-bottom: 18px; }
 .trae-invitation-status-select { width: 136px; height: 32px; font-size: 13px; }
 .trae-invitation-toolbar .trae-secondary-button { min-height: 32px; padding-inline: 10px; font-size: 13px; }
-.trae-invitation-table { min-width: 1050px; }
+.trae-invitation-table {
+  /* 中文：邀请列表可压缩展示，避免固定最小宽度制造不必要的横向滚动。 */
+  width: 100%;
+  min-width: 0;
+  table-layout: fixed;
+}
+.trae-invitation-table th,
+.trae-invitation-table td { min-width: 0; }
+.trae-invitation-table th:nth-child(1), .trae-invitation-table td:nth-child(1) { width: 15%; }
+.trae-invitation-table th:nth-child(2), .trae-invitation-table td:nth-child(2) { width: 22%; }
+.trae-invitation-table th:nth-child(3), .trae-invitation-table td:nth-child(3) { width: 12%; }
+.trae-invitation-table th:nth-child(4), .trae-invitation-table td:nth-child(4) { width: 19%; }
+.trae-invitation-table th:nth-child(5), .trae-invitation-table td:nth-child(5) { width: 14%; }
+.trae-invitation-table th:nth-child(6), .trae-invitation-table td:nth-child(6) { width: 18%; }
 .trae-table.trae-invitation-table th, .trae-table.trae-invitation-table td { height: 45px; font-size: 13px; }
 .trae-table.trae-invitation-table th { color: var(--color-text-tertiary); }
 .trae-invitation-table tbody tr:nth-child(even):not(:has(.trae-table-empty)) td { background: var(--color-bg-overlay-l1); }
@@ -11,7 +24,7 @@
 .trae-invitation-method svg { width: 15px; height: 15px; color: var(--color-text-tertiary); }
 .trae-invitation-url { display: block; max-width: 300px; overflow: hidden; color: var(--color-text-secondary); font-family: var(--font-mono); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
 .trae-invitation-role { display: inline-flex; min-height: 24px; align-items: center; padding: 0 8px; border-radius: 4px; color: var(--color-text-secondary); background: var(--color-bg-overlay-l2); font-size: 11px; }
-.trae-invitation-actions { display: flex; align-items: center; gap: 12px; }
+.trae-invitation-actions { display: flex; min-width: 0; align-items: center; flex-wrap: wrap; gap: 6px 12px; }
 .trae-invitation-actions button { display: inline-flex; align-items: center; gap: 4px; padding: 0; border: 0; color: var(--color-text-default); background: transparent; font: inherit; font-size: 13px; cursor: pointer; }
 .trae-invitation-actions button:hover { color: var(--color-brand); }
 .trae-invitation-actions svg { width: 14px; height: 14px; }

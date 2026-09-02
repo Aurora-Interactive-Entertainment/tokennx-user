@@ -11,6 +11,7 @@ import './styles.css'
 import './components/console-form-controls.css'
 import './console-custom-typography.css'
 import './theme/semi-theme-tokens.css'
+import './components/dropdown-options.css'
 
 function applyInitialPerformanceMode(): void {
   if (typeof navigator === 'undefined' || typeof document === 'undefined') return

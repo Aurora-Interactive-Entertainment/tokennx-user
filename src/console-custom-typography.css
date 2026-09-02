@@ -1,6 +1,4 @@
-/* 中文：仅为登录后的自研控制台文字提供接近 Trae 的系统字体观感。
- * Trae 实测使用 ui-sans-serif/system-ui；表格数据使用 SF Pro Text 系统回退。
- * 不引入 Trae 私有字体，也不设置后台父节点字体，避免影响 Semi UI 组件。 */
+/* 中文：登录后的自研控制台文字统一使用项目基础字体，不引入私有字体文件。 */
 :where(
   .console-page .page-title,
   .console-page .page-description,
@@ -56,7 +54,7 @@
   .console-page .enterprise-trend-data strong,
   .console-page .enterprise-trend-data span
 ) {
-  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+  font-family: var(--font-family-base);
 }
 
 /* 中文：新版企业页的自研标题、正文、表格文字单独指定叶子节点，不向 Semi 容器传递字体。 */
@@ -101,10 +99,10 @@
   .console-page .trae-detail-list dd,
   .console-page .trae-rule-list li
 ) {
-  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+  font-family: var(--font-family-base);
 }
 
-/* 中文：Trae 的 AG Grid 使用 SF Pro Text；本项目采用合法系统回退，保持数字与表格的紧凑观感。 */
+/* 中文：表格文字也复用项目基础字体，保持数字与表格的紧凑观感。 */
 :where(
   .console-page .trae-table th,
   .console-page .trae-table td,
@@ -121,7 +119,7 @@
   .console-page .api-keys-table th,
   .console-page .api-keys-table td
 ) {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", "Microsoft YaHei", Helvetica, Arial, sans-serif;
+  font-family: var(--font-family-base);
 }
 
 /* Semi UI 自带字体保持原样：本文件不声明任何 .semi-* 的 font-family 规则。 */

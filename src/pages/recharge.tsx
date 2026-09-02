@@ -33,7 +33,8 @@ export function RechargePage() {
     }
     const controller = new AbortController()
     setPaymentReturnState((previous) => ({ status: 'loading', data: previous.data, error: '', requestId: null }))
-    void getBillingPaymentOrder(paymentReturnOrderID, { signal: controller.signal }).then((order) => {
+    // 中文：支付回跳查单沿用当前账务主体，企业订单不能落到个人接口。
+    void getBillingPaymentOrder(paymentReturnOrderID, { signal: controller.signal }, context).then((order) => {
       if (!controller.signal.aborted) setPaymentReturnState({ status: 'success', data: order, error: '', requestId: null })
     }).catch((error: unknown) => {
       if (controller.signal.aborted) return
@@ -44,7 +45,7 @@ export function RechargePage() {
       setPaymentReturnState({ status: 'error', data: null, error: getBillingErrorMessage(error), requestId: getBillingRequestId(error) })
     })
     return () => controller.abort()
-  }, [handleAuthFailure, paymentReturnOrderID, paymentReturnRetryToken])
+  }, [context.account_type, context.enterprise_id, handleAuthFailure, paymentReturnOrderID, paymentReturnRetryToken])
 
   return (
     <div className="page-stack billing-console-page recharge-console-page">

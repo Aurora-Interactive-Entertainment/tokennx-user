@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useLocation, useNavigate } from 'react-router'
 import Button from '@douyinfe/semi-ui/lib/es/button'
@@ -44,7 +44,7 @@ import { useAppStore, type Workspace } from '@/data/app-state'
 import { invalidateAuth } from '@/store/auth-slice'
 import { useAppDispatch } from '@/store/hooks'
 import i18n from '@/i18n'
-import { BACKOFFICE_MONEY_DISPLAY_DECIMAL_PLACES, formatApiTime, formatCount, formatYuan, isZeroYuan } from '@/utils/format'
+import { BACKOFFICE_MONEY_DISPLAY_DECIMAL_PLACES, formatApiTime, formatCount, formatPersonOptionLabel, formatYuan, isZeroYuan } from '@/utils/format'
 import { addLocalDays, endOfLocalDay, startOfLocalDay } from '@/utils/date-range'
 import { createExportTask, downloadExportTask, getExportErrorMessage, saveExportResponse, waitForExportTask } from '@/api/exports'
 import { BillingCostCharts } from '@/components/billing-cost-charts'
@@ -415,7 +415,7 @@ function AnalysisTab({ state, ledger, dateRange, apiKeyID, model, billingType, d
           <span id="billing-member-filter-label" className="billing-filter-label billing-filter-label-hidden">{i18n.t('console.billing.member')}</span>
           <Select id="billing-member-filter" className="billing-filter" aria-labelledby="billing-member-filter-label" value={memberID} loading={directoryLoading} filter searchPosition="dropdown" searchPlaceholder={i18n.t('console.billing.searchMember')} onChange={(value) => onFilterChange('member', String(value))} onSelect={(value) => onFilterChange('member', String(value))} block>
             <Select.Option value="">{i18n.t('console.billing.allMembers')}</Select.Option>
-            {members.map((member) => <Select.Option key={member.id} value={member.id}>{member.display_name || member.user_id}</Select.Option>)}
+            {members.map((member) => <Select.Option key={member.id} value={member.id}>{formatPersonOptionLabel(member.display_name || member.user_id, member.masked_contact)}</Select.Option>)}
           </Select>
         </label> : null}
       </div>
@@ -477,7 +477,7 @@ export function RechargeTab({ context, onOrderUpdated, onAuthFailure }: { contex
       if (disposed) return
       setPaymentQuerying(true)
       try {
-        const latestOrder = await getBillingPaymentOrder(paymentOrder.id, { signal: controller.signal })
+        const latestOrder = await getBillingPaymentOrder(paymentOrder.id, { signal: controller.signal }, context)
         if (disposed) return
         setPaymentQueryError('')
         setPaymentOrder(latestOrder)
@@ -501,7 +501,7 @@ export function RechargeTab({ context, onOrderUpdated, onAuthFailure }: { contex
       controller.abort()
       if (timer !== undefined) window.clearTimeout(timer)
     }
-  }, [onOrderUpdated, paymentDialogOpen, paymentOrder?.id, paymentOrder?.status, paymentRefreshToken])
+  }, [context.account_type, context.enterprise_id, onOrderUpdated, paymentDialogOpen, paymentOrder?.id, paymentOrder?.status, paymentRefreshToken])
 
   function choose(value: number): void {
     setSelected(value)
@@ -528,7 +528,8 @@ export function RechargeTab({ context, onOrderUpdated, onAuthFailure }: { contex
     setPaymentQueryError('')
     try {
       const order = await createBillingPaymentOrder(context, { amount_yuan: amount.trim() }, createIdempotencyKey('payment-order'))
-      const payment = await startBillingPayment(order.id, createIdempotencyKey('payment-start'))
+      // 中文：支付、查单接口同样需要携带当前账务主体，否则企业订单会被路由到个人接口。
+      const payment = await startBillingPayment(order.id, createIdempotencyKey('payment-start'), {}, context)
       setPaymentOrder(payment.order)
       const qrCodeValue = extractPaymentQRCodeValue(payment)
       const formHTML = payment.form_html?.trim() ?? ''
@@ -662,7 +663,9 @@ export function BillingPage() {
   const [invoiceFormErrors, setInvoiceFormErrors] = useState<InvoiceFormErrors>({})
   const [submittingInvoice, setSubmittingInvoice] = useState(false)
   const [downloadingInvoiceID, setDownloadingInvoiceID] = useState<string | null>(null)
+  const invoiceDownloadLockRef = useRef(false)
   const [exportingLedger, setExportingLedger] = useState(false)
+  const ledgerExportLockRef = useRef(false)
   const [paymentReturnState, setPaymentReturnState] = useState<ResourceState<BillingPaymentOrder>>(resourceState())
   const [paymentReturnRetryToken, setPaymentReturnRetryToken] = useState(0)
 
@@ -732,7 +735,8 @@ export function BillingPage() {
     const controller = new AbortController()
     setActiveTab('overview')
     setPaymentReturnState((previous) => ({ ...resourceState('loading'), data: previous.data }))
-    void getBillingPaymentOrder(paymentReturnOrderID, { signal: controller.signal }).then((order) => {
+    // 中文：支付回跳查单沿用当前账务主体，企业订单不能落到个人接口。
+    void getBillingPaymentOrder(paymentReturnOrderID, { signal: controller.signal }, context).then((order) => {
       if (controller.signal.aborted) return
       setPaymentReturnState({ status: 'success', data: order, error: '', requestId: null })
       setReloadToken((value) => value + 1)
@@ -745,7 +749,7 @@ export function BillingPage() {
       setPaymentReturnState(loadError(error))
     })
     return () => controller.abort()
-  }, [handleAuthFailure, loadError, paymentReturnOrderID, paymentReturnRetryToken])
+  }, [context.account_type, context.enterprise_id, handleAuthFailure, loadError, paymentReturnOrderID, paymentReturnRetryToken])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -820,7 +824,9 @@ export function BillingPage() {
   }
 
   async function exportCSV(): Promise<void> {
-    if (exportingLedger) return
+    // 中文：ref 锁在状态更新前生效，防止账本导出按钮被连续点击创建重复任务。
+    if (ledgerExportLockRef.current || exportingLedger) return
+    ledgerExportLockRef.current = true
     setExportingLedger(true)
     try {
       // 中文：账本导出提交完整账务主体和当前类型筛选，服务端负责生成全部匹配流水。
@@ -831,13 +837,13 @@ export function BillingPage() {
           format: 'csv',
           context: context.account_type === 'enterprise' ? { account_type: 'enterprise', enterprise_id: context.enterprise_id ?? '' } : { account_type: 'personal' },
           filters: sourceType ? { source_type: sourceType } : undefined,
-          file_name: `token-nx-billing-${period}`,
+          file_name: '账本明细',
         },
         { idempotencyKey: createIdempotencyKey('billing-export') },
       )
       const completed = await waitForExportTask(task.id)
       const response = await downloadExportTask(completed.id)
-      await saveExportResponse(response, completed.file_name)
+      await saveExportResponse(response, completed.file_name, '账本明细')
       Toast.success(t('console.billing.ledgerExported'))
     } catch (error) {
       if (isAuthenticationFailure(error)) {
@@ -846,6 +852,7 @@ export function BillingPage() {
       }
       Toast.error(getExportErrorMessage(error))
     } finally {
+      ledgerExportLockRef.current = false
       setExportingLedger(false)
     }
   }
@@ -913,7 +920,9 @@ export function BillingPage() {
   }
 
   async function downloadInvoice(item: BillingInvoiceItem): Promise<void> {
-    if (downloadingInvoiceID) return
+    // 中文：ref 锁在状态更新前生效，避免发票下载链接被连续点击触发重复请求。
+    if (invoiceDownloadLockRef.current || downloadingInvoiceID) return
+    invoiceDownloadLockRef.current = true
     setDownloadingInvoiceID(item.id)
     try {
       const response = await downloadBillingInvoice(item.download_url)
@@ -921,7 +930,7 @@ export function BillingPage() {
       const anchor = document.createElement('a')
       const extension = item.file_type.trim() || DEFAULT_INVOICE_FILE_EXTENSION
       anchor.href = url
-      anchor.download = `${item.request_no || 'invoice'}.${extension}`
+      anchor.download = `发票${item.request_no ? `-${item.request_no}` : ''}.${extension}`
       document.body.append(anchor)
       anchor.click()
       anchor.remove()
@@ -934,6 +943,7 @@ export function BillingPage() {
       }
       Toast.error(getBillingErrorMessage(error))
     } finally {
+      invoiceDownloadLockRef.current = false
       setDownloadingInvoiceID(null)
     }
   }

@@ -71,20 +71,27 @@
 }
 
 .trae-audit-table {
-  min-width: 1040px;
+  /* 中文：日志列数较少，优先在当前内容区完整展示，空间不足时由文本省略兜底。 */
+  width: 100%;
+  min-width: 0;
   table-layout: fixed;
 }
 
 .trae-audit-table th:nth-child(1),
-.trae-audit-table td:nth-child(1) { width: 230px; }
+.trae-audit-table td:nth-child(1) { width: 20%; }
 .trae-audit-table th:nth-child(2),
-.trae-audit-table td:nth-child(2) { width: auto; }
+.trae-audit-table td:nth-child(2) { width: 34%; }
 .trae-audit-table th:nth-child(3),
-.trae-audit-table td:nth-child(3) { width: 120px; }
+.trae-audit-table td:nth-child(3) { width: 12%; }
 .trae-audit-table th:nth-child(4),
-.trae-audit-table td:nth-child(4) { width: 240px; }
+.trae-audit-table td:nth-child(4) { width: 20%; }
 .trae-audit-table th:nth-child(5),
-.trae-audit-table td:nth-child(5) { width: 180px; }
+.trae-audit-table td:nth-child(5) { width: 14%; }
+
+.trae-audit-table th,
+.trae-audit-table td {
+  min-width: 0;
+}
 
 .trae-audit-table tbody tr:nth-child(even) td {
   background: var(--color-bg-overlay-l1);
@@ -97,6 +104,28 @@
 
 .trae-audit-table tbody tr {
   cursor: pointer;
+  animation: trae-audit-row-enter 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  transform-origin: left center;
+  will-change: opacity, transform;
+}
+
+/* 中文：日志行从左侧轻量滑入并渐显，避免表格内容瞬间生硬出现。 */
+@keyframes trae-audit-row-enter {
+  from {
+    opacity: 0;
+    transform: translateX(-18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .trae-audit-table tbody tr {
+    animation: none;
+    transform: none;
+  }
 }
 
 .trae-audit-table tbody tr:focus-visible {

@@ -277,7 +277,7 @@ function VideoStage({ task, entry, modelName, submitting, onCancel, onRetry, onE
   return <article className={`video-task-card${isFailure ? ' is-failed' : ''}${task.status === 'succeeded' ? ' is-succeeded' : ''}`} data-task-id={task.taskId} aria-label={prompt}>
     <header className="video-task-card-heading"><div><h2>{prompt}</h2><p>{metaLabel} <IconInfoCircle aria-hidden="true" /></p></div><span className={`video-task-status is-${task.status}${task.status === 'succeeded' ? ' video-status-success' : ''}`}>{task.status === 'succeeded' ? <IconCheckCircleStroked aria-hidden="true" /> : null}{statusLabel}</span></header>
     <div className="video-task-card-body">{taskContent}</div>
-    <footer className="video-task-card-actions"><Button theme="outline" size="small" icon={<IconEditStroked />} onClick={onEdit}>{t('console.video.edit')}</Button><Button theme="outline" size="small" icon={<IconRefresh />} onClick={onRetry}>{t('console.video.retry')}</Button><Dropdown trigger="click" position="bottomLeft" showTick contentClassName="video-task-more-dropdown" menu={[{ node: 'item', name: t('console.video.delete'), type: 'danger', icon: <IconDeleteStroked />, onClick: onDelete }]}><Button theme="outline" size="small" icon={<IconMoreStroked />} aria-label={t('console.video.moreActions')} title={t('console.video.moreActions')} /></Dropdown>{!isTerminal ? <Button theme="borderless" size="small" icon={<IconStop />} onClick={onCancel}>{task.status === 'cancelling' ? t('console.video.statusCancelling') : t('console.video.cancelGeneration')}</Button> : null}</footer>
+    <footer className="video-task-card-actions"><Button theme="outline" size="small" icon={<IconEditStroked />} onClick={onEdit}>{t('console.video.edit')}</Button><Button theme="outline" size="small" icon={<IconRefresh />} onClick={onRetry}>{t('console.video.retry')}</Button><Dropdown trigger="click" position="bottomLeft" showTick={false} contentClassName="video-task-more-dropdown" menu={[{ node: 'item', name: t('console.video.delete'), type: 'danger', icon: <IconDeleteStroked />, onClick: onDelete }]}><Button theme="outline" size="small" icon={<IconMoreStroked />} aria-label={t('console.video.moreActions')} title={t('console.video.moreActions')} /></Dropdown>{!isTerminal ? <Button theme="borderless" size="small" icon={<IconStop />} onClick={onCancel}>{task.status === 'cancelling' ? t('console.video.statusCancelling') : t('console.video.cancelGeneration')}</Button> : null}</footer>
   </article>
 }
 
@@ -362,6 +362,9 @@ export function VideoPage() {
   const selectedHistory = history.find((entry) => entry.id === selectedHistoryID)
   const operationBusy = submitting || polling || cancelling
   const canSubmit = Boolean(selectedApiKey && selectedModel && prompt.trim() && !operationBusy)
+  // 中文：生成中允许点击发送按钮取消任务；取消请求处理期间锁定按钮，空输入时禁止提交。
+  const canCancel = submitting || Boolean(currentTask && taskIsActive(currentTask))
+  const sendDisabled = cancelling || (!canCancel && !canSubmit)
 
   useEffect(() => {
     submitAbortReasonRef.current = 'navigation'
@@ -828,7 +831,7 @@ export function VideoPage() {
                 </div>
                 <button className={`video-control-button video-sound-trigger${soundEnabled ? ' is-active' : ''}`} type="button" onClick={() => setSoundEnabled((enabled) => !enabled)} disabled={operationBusy}>{soundEnabled ? <IconVolume2 aria-hidden="true" /> : <IconMuteStroked aria-hidden="true" />}<span>{t('console.video.sound')}</span></button>
               </div>
-              <Button className="video-send-button" theme="solid" type="primary" icon={operationBusy ? <IconStop /> : <IconArrowUp />} aria-label={operationBusy ? (submitting ? t('console.video.cancelRequest') : t('console.video.cancelGeneration')) : t('console.video.generate')} title={operationBusy ? (submitting ? t('console.video.cancelRequest') : t('console.video.cancelGeneration')) : t('console.video.generate')} disabled={false} loading={submitting} onClick={() => { if (submitting) cancelSubmission(); else if (currentTask && taskIsActive(currentTask)) void cancelCurrentTask(); else void submitVideo() }} />
+              <Button className="generation-send-button video-send-button" theme="solid" type="primary" icon={operationBusy ? <IconStop /> : <IconArrowUp />} aria-label={operationBusy ? (submitting ? t('console.video.cancelRequest') : t('console.video.cancelGeneration')) : t('console.video.generate')} title={operationBusy ? (submitting ? t('console.video.cancelRequest') : t('console.video.cancelGeneration')) : t('console.video.generate')} disabled={sendDisabled} loading={submitting} onClick={() => { if (submitting) cancelSubmission(); else if (currentTask && taskIsActive(currentTask)) void cancelCurrentTask(); else void submitVideo() }} />
             </div>
           </div>
           <div className="video-composer-hint"><span>{t('console.video.shortcut')}</span><span>{selectedModel ? t('console.video.resultHint') : t('console.video.chooseModelHint')}</span></div>

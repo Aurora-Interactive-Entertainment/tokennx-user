@@ -1,6 +1,17 @@
 .trae-request-table {
-  min-width: 820px;
+  /* 中文：申请列表列数较少，优先完整利用容器宽度，长内容由单元格省略。 */
+  width: 100%;
+  min-width: 0;
+  table-layout: fixed;
 }
+
+.trae-request-table th,
+.trae-request-table td { min-width: 0; }
+.trae-request-table th:nth-child(1), .trae-request-table td:nth-child(1) { width: 24%; }
+.trae-request-table th:nth-child(2), .trae-request-table td:nth-child(2) { width: 28%; }
+.trae-request-table th:nth-child(3), .trae-request-table td:nth-child(3) { width: 16%; }
+.trae-request-table th:nth-child(4), .trae-request-table td:nth-child(4) { width: 14%; }
+.trae-request-table th:nth-child(5), .trae-request-table td:nth-child(5) { width: 18%; }
 
 .trae-table.trae-request-table th,
 .trae-table.trae-request-table td {
@@ -54,7 +65,9 @@
 
 .trae-request-actions {
   display: flex;
+  min-width: 0;
   align-items: center;
+  flex-wrap: wrap;
   gap: 12px;
 }
 

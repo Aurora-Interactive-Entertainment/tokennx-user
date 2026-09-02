@@ -498,10 +498,11 @@ function paymentIdempotencyOptions(idempotencyKey: string, options: Pick<Billing
   return { ...options, method: 'POST', headers: { 'Idempotency-Key': normalizedKey } }
 }
 
-function paymentOrderPath(orderID: string, suffix = ''): string {
+function paymentOrderPath(orderID: string, suffix = '', context?: BillingContext): string {
   const normalizedID = orderID.trim()
   if (!normalizedID) throw new ApiError(i18n.t('api.billing.paymentOrderRequired'), 400, 140001, null)
-  return `${PAYMENT_ORDER_PATH}/${encodeURIComponent(normalizedID)}${suffix}`
+  const path = `${PAYMENT_ORDER_PATH}/${encodeURIComponent(normalizedID)}${suffix}`
+  return context ? `${path}?${createBillingQuery(context)}` : path
 }
 
 export function createBillingPaymentOrder(context: BillingContext, input: BillingPaymentCreateInput, idempotencyKey: string, options: Pick<BillingRequestOptions, 'accessToken' | 'signal'> = {}): Promise<BillingPaymentOrder> {
@@ -513,19 +514,19 @@ export function createBillingPaymentOrder(context: BillingContext, input: Billin
   })
 }
 
-export function startBillingPayment(orderID: string, idempotencyKey: string, options: Pick<BillingRequestOptions, 'accessToken' | 'signal'> = {}): Promise<BillingPaymentStartResult> {
-  return fetchAuthenticatedJson<BillingPaymentStartResult>(paymentOrderPath(orderID, '/pay'), {
+export function startBillingPayment(orderID: string, idempotencyKey: string, options: Pick<BillingRequestOptions, 'accessToken' | 'signal'> = {}, context?: BillingContext): Promise<BillingPaymentStartResult> {
+  return fetchAuthenticatedJson<BillingPaymentStartResult>(paymentOrderPath(orderID, '/pay', context), {
     ...paymentIdempotencyOptions(idempotencyKey, options),
     body: { scene: BILLING_PAYMENT_SCENE_PC },
   })
 }
 
-export function getBillingPaymentOrder(orderID: string, options: Pick<BillingRequestOptions, 'accessToken' | 'signal'> = {}): Promise<BillingPaymentOrder> {
-  return fetchAuthenticatedJson<BillingPaymentOrder>(paymentOrderPath(orderID), options)
+export function getBillingPaymentOrder(orderID: string, options: Pick<BillingRequestOptions, 'accessToken' | 'signal'> = {}, context?: BillingContext): Promise<BillingPaymentOrder> {
+  return fetchAuthenticatedJson<BillingPaymentOrder>(paymentOrderPath(orderID, '', context), options)
 }
 
-export function closeBillingPaymentOrder(orderID: string, options: Pick<BillingRequestOptions, 'accessToken' | 'signal'> = {}): Promise<BillingPaymentOrder> {
-  return fetchAuthenticatedJson<BillingPaymentOrder>(paymentOrderPath(orderID, '/close'), paymentIdempotencyOptions(`close-${orderID}`, options))
+export function closeBillingPaymentOrder(orderID: string, options: Pick<BillingRequestOptions, 'accessToken' | 'signal'> = {}, context?: BillingContext): Promise<BillingPaymentOrder> {
+  return fetchAuthenticatedJson<BillingPaymentOrder>(paymentOrderPath(orderID, '/close', context), paymentIdempotencyOptions(`close-${orderID}`, options))
 }
 
 export function downloadBillingInvoice(url: string, options: Pick<BillingRequestOptions, 'accessToken' | 'signal'> = {}): Promise<Response> {

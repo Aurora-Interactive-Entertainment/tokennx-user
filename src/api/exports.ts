@@ -227,12 +227,16 @@ export class ExportTaskError extends Error {
 export async function saveExportResponse(
   response: Response,
   fileName: string,
+  preferredBaseName?: string,
 ): Promise<void> {
   const blob = await response.blob();
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = fileName || "export";
+  const extension = fileName.match(/\.[^./\\]+$/)?.[0] ?? "";
+  link.download = preferredBaseName?.trim()
+    ? `${preferredBaseName.trim()}${extension}`
+    : fileName || "export";
   document.body.append(link);
   link.click();
   link.remove();

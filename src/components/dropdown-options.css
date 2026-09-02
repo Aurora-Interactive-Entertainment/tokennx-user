@@ -1,0 +1,37 @@
+/* 中文：所有下拉选项使用统一的字号和常规字重，选中状态也不额外加粗。 */
+.semi-select-option,
+.semi-select-option *:not(.semi-icon),
+.semi-select-option-custom,
+.semi-select-option-custom *:not(.semi-icon),
+.semi-dropdown-menu .semi-dropdown-item,
+.semi-dropdown-menu .semi-dropdown-item *:not(.semi-icon) {
+  font-size: 13px !important;
+  font-weight: 400 !important;
+}
+
+/* 中文：Select 的该图标仅表示选中勾选，不影响选项中的业务图标。 */
+.semi-select-option-icon {
+  display: none !important;
+}
+
+/* 中文：Dropdown 的勾选图标是直接子元素，隐藏后恢复默认左侧内边距。 */
+.semi-dropdown-menu .semi-dropdown-item-withTick {
+  padding-inline-start: 16px !important;
+}
+
+.semi-dropdown-menu .semi-dropdown-item-withTick > .semi-icon-tick {
+  display: none !important;
+}
+
+/* 中文：视频生成的自定义下拉面板也属于选项列表，保持相同文字规格。 */
+.video-aspect-select-dropdown .video-aspect-options button,
+.video-aspect-select-dropdown .video-resolution-options button {
+  font-size: 13px !important;
+  font-weight: 400 !important;
+}
+
+.video-model-select-dropdown .video-model-option,
+.video-model-select-dropdown .video-model-option *:not(.semi-icon) {
+  font-size: 13px !important;
+  font-weight: 400 !important;
+}

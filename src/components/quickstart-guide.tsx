@@ -118,7 +118,14 @@ function ModelStep({ models, selected, onSelect, onNext, t }: { models: ModelRec
     <p className="quickstart-pdf-description">{t('console.quickstart.stepModelHint')}</p>
     <div className="quickstart-pdf-model-grid">{models.map((item, index) => { const isSelected = modelAlias(item) === modelAlias(selected); return <button className={`quickstart-pdf-model-card${isSelected ? ' is-selected' : ''}`} type="button" key={item.id} onClick={() => onSelect(modelAlias(item))}><span className="quickstart-pdf-model-copy"><span className="quickstart-pdf-model-heading"><span className={`quickstart-pdf-model-icon tone-${index % 4}`}>{item.name.slice(0, 1).toUpperCase()}</span><strong>{item.name}</strong></span><small>{item.description || `${item.company} · ${modelAlias(item)}`}</small><span>{item.context ? `${t('console.quickstart.modelContext', { value: item.context })} · ` : ''}{modelPrice(item, t)}</span></span><b>{modelBadge(item)}</b></button> })}</div>
     <div className="quickstart-pdf-selected-model"><span className="quickstart-pdf-selected-model-label">{t('console.quickstart.selectedModel')}</span><span className="quickstart-pdf-selected-model-value"><span className="quickstart-pdf-selected-model-icon">{selected.name.slice(0, 1).toUpperCase()}</span><strong>{selected.name}</strong><span>{modelAlias(selected)}</span></span></div>
-    <button className="quickstart-pdf-primary-button" type="button" onClick={onNext}>{t('console.quickstart.nextStep')}</button>
+    <Button
+      className="quickstart-pdf-cancel-button"
+      theme="outline"
+      type="tertiary"
+      onClick={onNext}
+    >
+      {t('console.quickstart.nextStep')}
+    </Button>
   </>
 }
 
@@ -181,7 +188,7 @@ export function QuickstartGuide() {
   const completed = keys.some((key) => key.status === 'active')
   const toggle = (step: QuickstartStep) => setOpenStep(openStep === step ? 0 : step)
   return <div className="quickstart-page quickstart-pdf-page">
-    <div className="quickstart-pdf-intro"><div><strong>{t('console.quickstart.heroTitle')}</strong><p>{t('console.quickstart.heroHint')} <Link to="/console/billing">{t('console.quickstart.subscription')}</Link></p></div></div>
+    <div className="quickstart-pdf-intro"><div><strong>{t('console.quickstart.heroTitle')}</strong><p>{t('console.quickstart.heroHint')} <Link to="/console/trae-enterprise/subscription">{t('console.quickstart.subscription')}</Link></p></div></div>
     <div className="quickstart-pdf-steps">
       <section className={`quickstart-pdf-step${openStep === 1 ? ' is-open' : ''}`}><StepHeader label={t('console.quickstart.stepOne')} title={t('console.quickstart.stepApiKey')} open={openStep === 1} onToggle={() => toggle(1)} help={<Link to="/docs">{t('console.quickstart.viewHelp')}</Link>} status={<span className="quickstart-pdf-status"><i className={completed ? 'is-complete' : ''} />{t('console.quickstart.completedCount', { count: completed ? 1 : 0 })}</span>} /><StepPanel open={openStep === 1}><ApiKeyStep keys={keys} loading={keysLoading} contextQuery={contextQuery} onCopy={copy} onApply={(key) => { setAppliedApiKey(key.secret || ''); setAppliedKeyID(key.id); Toast.success(t('console.quickstart.applySuccess')) }} appliedKeyID={appliedKeyID} t={t} /></StepPanel></section>
       <section className={`quickstart-pdf-step${openStep === 2 ? ' is-open' : ''}`}><StepHeader label={t('console.quickstart.stepTwo')} title={t('console.quickstart.stepModel')} open={openStep === 2} onToggle={() => toggle(2)} status={<span className="quickstart-pdf-status"><i />{model.name}</span>} /><StepPanel open={openStep === 2}><ModelStep models={textModels} selected={model} onSelect={(alias) => { setSearchParams({ model: alias, language }); setOpenStep(2) }} onNext={() => { setOpenStep(3); window.requestAnimationFrame(() => document.getElementById('quickstart-agent')?.scrollIntoView({ behavior: 'smooth', block: 'start' })) }} t={t} /></StepPanel></section>

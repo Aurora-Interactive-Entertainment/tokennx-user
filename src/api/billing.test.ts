@@ -127,13 +127,27 @@ describe('用户账务 API 客户端', () => {
   })
 
   it('企业充值订单发送企业账务主体，并拒绝缺失支付幂等标识', async () => {
-    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => apiResponse({ id: 'order-enterprise' }))
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = new URL(String(input), window.location.origin)
+      if (url.pathname.endsWith('/pay')) {
+        return apiResponse({ order: { id: 'order-enterprise' }, transaction: { id: 'transaction-enterprise' }, form_html: '<form></form>' })
+      }
+      return apiResponse({ id: 'order-enterprise' })
+    })
 
     await createBillingPaymentOrder(ENTERPRISE_CONTEXT, { amount_yuan: '20.00' }, 'payment-order-enterprise', { accessToken: 'billing-token' })
+    await startBillingPayment('order-enterprise', 'payment-start-enterprise', { accessToken: 'billing-token' }, ENTERPRISE_CONTEXT)
+    await getBillingPaymentOrder('order-enterprise', { accessToken: 'billing-token' }, ENTERPRISE_CONTEXT)
 
     const orderURL = new URL(String(fetchMock.mock.calls[0]?.[0]), window.location.origin)
     expect(orderURL.searchParams.get('account_type')).toBe('enterprise')
     expect(orderURL.searchParams.get('enterprise_id')).toBe(ENTERPRISE_CONTEXT.enterprise_id)
+    const paymentURL = new URL(String(fetchMock.mock.calls[1]?.[0]), window.location.origin)
+    const queryURL = new URL(String(fetchMock.mock.calls[2]?.[0]), window.location.origin)
+    expect(paymentURL.searchParams.get('account_type')).toBe('enterprise')
+    expect(paymentURL.searchParams.get('enterprise_id')).toBe(ENTERPRISE_CONTEXT.enterprise_id)
+    expect(queryURL.searchParams.get('account_type')).toBe('enterprise')
+    expect(queryURL.searchParams.get('enterprise_id')).toBe(ENTERPRISE_CONTEXT.enterprise_id)
     expect(() => startBillingPayment('order-1', '  ')).toThrowError('支付请求缺少幂等标识，请重试')
     expect(() => closeBillingPaymentOrder('  ')).toThrowError('支付订单编号不能为空')
   })
