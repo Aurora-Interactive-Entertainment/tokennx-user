@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router'
 import Button from '@douyinfe/semi-ui/lib/es/button'
 import { IconDownload, IconRefresh } from '@douyinfe/semi-icons'
 import { BannerNotice, EmptyPanel, PageTitle } from '@/components/common'
+import { appToast } from '@/components/app-toast'
 import { BackofficeMoneyText as MoneyText } from '@/components/money'
 import { getAccessToken } from '@/auth/token-storage'
 import { getEnterpriseContext, getEnterpriseErrorMessage, getEnterpriseRequestId, type EnterpriseContext, type EnterpriseRequestContext, type EnterpriseRoleOption, type EnterpriseUsageMetrics, type EnterpriseUsageTrendPoint } from '@/api/enterprise-console'
@@ -124,7 +125,10 @@ export function EnterpriseLoading({ label }: { label?: string }) {
 
 export function EnterpriseError({ message, requestId, onRetry }: { message: string; requestId: string | null; onRetry: () => void }) {
   const { t } = useTranslation()
-  return <section className="enterprise-error-panel" role="alert"><strong>{message}</strong>{requestId ? <small>{t('console.common.requestIdValue', { requestId })}</small> : null}<Button theme="outline" icon={<IconRefresh aria-hidden="true" />} onClick={onRetry}>{t('console.enterprise.reload')}</Button></section>
+  useEffect(() => {
+    appToast.error(message)
+  }, [message])
+  return null
 }
 
 export function EnterpriseEmpty({ title, description, action }: { title: string; description: string; action?: ReactNode }) {

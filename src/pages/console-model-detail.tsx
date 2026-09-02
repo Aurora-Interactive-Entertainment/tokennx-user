@@ -6,6 +6,7 @@ import Card from '@douyinfe/semi-ui/lib/es/card'
 import Tag from '@douyinfe/semi-ui/lib/es/tag'
 import { IconArrowRight, IconCheckCircleStroked, IconCode, IconHistory } from '@douyinfe/semi-icons'
 import { BannerNotice, EmptyPanel, ModelLogo, ModelTags, PageTitle, localizeConsoleLabel } from '@/components/common'
+import { appToast } from '@/components/app-toast'
 import { ModelPriceSummary } from '@/components/money'
 import { useAppStore } from '@/data/app-state'
 import { findModelInList, modelAlias, modelRouteKey } from '@/data/models'
@@ -17,9 +18,13 @@ export function ConsoleModelDetailPage() {
   const { modelId } = useParams()
   const navigate = useNavigate()
   const store = useAppStore()
-  const { models, loading, error, refresh } = useUserModels()
+  const { models, loading, error } = useUserModels()
   const model = findModelInList(models, modelId)
   const routeKey = model ? modelRouteKey(model) : undefined
+
+  useEffect(() => {
+    if (error) appToast.error(error)
+  }, [error])
 
   useEffect(() => {
     if (!model || !routeKey || modelId === routeKey) return
@@ -27,7 +32,7 @@ export function ConsoleModelDetailPage() {
   }, [model, modelId, navigate, routeKey])
 
   if (loading) return <div className="page-stack"><PageTitle title={t('console.modelDetail.title')} description={t('console.modelDetail.description')} /><EmptyPanel title={t('console.modelDetail.loadingTitle')} description={t('console.modelDetail.loadingDescription')} /></div>
-  if (error) return <div className="page-stack"><PageTitle title={t('console.modelDetail.title')} description={t('console.modelDetail.description')} /><EmptyPanel title={t('console.modelDetail.errorTitle')} description={error} action={<Button theme="outline" onClick={refresh}>{t('console.common.reload')}</Button>} /></div>
+  if (error) return <div className="page-stack"><PageTitle title={t('console.modelDetail.title')} description={t('console.modelDetail.description')} /></div>
   if (!model) return <div className="page-stack"><PageTitle title={t('console.modelDetail.notFoundTitle')} description={t('console.modelDetail.notFoundDescription')} /><EmptyPanel title={t('console.modelDetail.unavailableTitle')} description={t('console.modelDetail.unavailableDescription')} action={<Button theme="outline" onClick={() => navigate('/console/models')}>{t('console.modelDetail.backCatalog')}</Button>} /></div>
 
   const displayAlias = modelAlias(model) || t('console.common.modelAliasUnset')

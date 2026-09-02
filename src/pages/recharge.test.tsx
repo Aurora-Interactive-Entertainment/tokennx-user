@@ -1,5 +1,5 @@
 import "@/i18n";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { Provider } from "react-redux";
@@ -27,8 +27,8 @@ const AUTH_RESULT: AuthResult = {
   },
 };
 
-function apiResponse(data: unknown): Response {
-  return new Response(JSON.stringify({ code: 0, msg: "success", data }), {
+function apiResponse(data: unknown, code = 0, msg = "success"): Response {
+  return new Response(JSON.stringify({ code, msg, data }), {
     status: 200,
     headers: { "Content-Type": "application/json" },
   });
@@ -133,6 +133,39 @@ describe("充值管理页面", () => {
       new URL(String(input), window.location.origin).pathname.endsWith("/pay"),
     );
     expect(JSON.parse(String(paymentCall?.[1]?.body))).toEqual({ scene: "pc" });
+  });
+
+  it("实名认证拦截仅展示引导弹窗，不显示重复的顶部提示", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input, options) => {
+      const url = new URL(String(input), window.location.origin);
+      if (
+        url.pathname === "/api/user/payment/orders" &&
+        options?.method === "POST"
+      ) {
+        return apiResponse({}, 140008, "完成实名认证后才能充值");
+      }
+      throw new Error(`unexpected request: ${url.pathname}`);
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/console/recharge"]}>
+        <Provider store={createAppStore()}>
+          <AppStoreProvider>
+            <RechargePage />
+          </AppStoreProvider>
+        </Provider>
+      </MemoryRouter>,
+    );
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: "¥50" }));
+    await user.click(screen.getByRole("button", { name: "确认支付" }));
+
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog.querySelector("h2")).toHaveTextContent("实名认证");
+    // 中文：后端错误文案不应再以 Toast 与实名引导弹窗重复展示。
+    expect(screen.queryByText("完成实名认证后才能充值")).toBeNull();
+    expect(document.querySelector(".semi-toast")).toBeNull();
   });
 
   it.each([

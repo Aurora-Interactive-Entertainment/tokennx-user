@@ -832,6 +832,8 @@ html[data-theme="light"]
 }
 .video-console-page .video-toolbar-actions {
   gap: 8px;
+  /* 中文：历史生成入口固定在工作区工具栏左侧，便于快速打开记录。 */
+  justify-content: flex-start;
 }
 .video-console-page .video-toolbar-workspace,
 .video-console-page .video-toolbar-actions > label,
@@ -8408,6 +8410,10 @@ html[data-theme="light"] .real-name-qr-expired-overlay span {
 .model-detail-sheet .semi-sidesheet-body {
   padding: 0;
 }
+/* 中文：模型详情抽屉使用独立深色底，避免跟随页面背景产生层级混淆。 */
+.model-detail-sheet .semi-sidesheet-inner {
+  background: #1A1B1D;
+}
 .model-detail-panel {
   padding: var(--spacing-20) var(--spacing-24) var(--spacing-32);
 }
@@ -8432,7 +8438,10 @@ html[data-theme="light"] .real-name-qr-expired-overlay span {
   overflow: hidden;
   border: 1px solid var(--color-border-neutral-l1);
   border-radius: var(--radius-8);
-  background: var(--color-bg-base-tertiary);
+  background: #fff;
+}
+.model-detail-sheet .model-detail-logo .model-logo {
+  background: #fff;
 }
 .model-detail-heading-copy {
   min-width: 0;
@@ -10443,9 +10452,9 @@ body:has(.billing-console-page) .semi-select-option-icon {
   color: var(--color-text-default);
 }
 .recharge-options .recharge-option.active {
-  border-color: var(--color-text-default-hover);
-  color: var(--color-bg-base-secondary);
-  background: var(--color-text-default-hover);
+  border-color: var(--color-action-primary);
+  color: var(--color-text-default-hover);
+  background: var(--color-bg-base-secondary);
 }
 .recharge-option:focus-visible {
   outline: 2px solid var(--color-text-default-hover);
@@ -10462,14 +10471,15 @@ body:has(.billing-console-page) .semi-select-option-icon {
   white-space: nowrap;
 }
 .recharge-custom-row {
+  align-items: center;
   margin-top: 0;
   padding: 28px 0 30px;
-  border-top: 1px solid var(--color-border-neutral-l1);
 }
 .recharge-custom-row .recharge-form-label {
   color: var(--color-text-default);
   font-size: 16px;
   font-weight: 650;
+  gap: 0;
 }
 .recharge-custom-input-wrap {
   display: flex;
@@ -10477,15 +10487,29 @@ body:has(.billing-console-page) .semi-select-option-icon {
   align-items: center;
   gap: var(--spacing-8);
 }
-.recharge-custom-input-wrap .input {
+.billing-recharge-page .recharge-custom-input-wrap .input {
   width: auto;
   max-width: 100%;
   flex: 1 1 auto;
-  height: 44px;
-  min-height: 44px;
+  height: 40px;
+  min-height: 40px;
   padding-inline: var(--spacing-16);
   border-radius: 8px;
   font-size: 15px;
+}
+.billing-recharge-page .recharge-custom-input-wrap .input[type="number"] {
+  /* 中文：金额输入保留数字键盘能力，但隐藏浏览器默认上下箭头。 */
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+.billing-recharge-page
+  .recharge-custom-input-wrap
+  .input[type="number"]::-webkit-outer-spin-button,
+.billing-recharge-page
+  .recharge-custom-input-wrap
+  .input[type="number"]::-webkit-inner-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
 }
 .recharge-custom-input-wrap > span {
   flex: 0 0 auto;
@@ -10496,7 +10520,6 @@ body:has(.billing-console-page) .semi-select-option-icon {
   grid-template-columns: 1fr;
   margin-top: 0;
   padding-top: 28px;
-  border-top: 1px solid var(--color-border-neutral-l1);
 }
 .recharge-method-controls {
   display: flex;
@@ -10523,7 +10546,7 @@ body:has(.billing-console-page) .semi-select-option-icon {
   justify-content: center;
   gap: var(--spacing-8);
   padding: 0 var(--spacing-12);
-  cursor: default;
+  cursor: pointer;
 }
 .recharge-method-option.is-selected {
   border-color: var(--color-brand-purple);
@@ -10578,9 +10601,11 @@ html[data-theme="light"] .recharge-confirm-button.semi-button-primary:not(.semi-
   width: 16px;
   height: 16px;
   margin: 3px 0 0;
-  accent-color: var(--color-brand-purple);
+  accent-color: var(--color-action-primary);
 }
-.recharge-agreement a {
+.recharge-agreement a,
+.recharge-agreement a:hover,
+.recharge-agreement a:focus-visible {
   color: var(--color-action-primary);
 }
 .recharge-console-page .billing-demo-note {
@@ -10591,6 +10616,11 @@ html[data-theme="light"] .recharge-confirm-button.semi-button-primary:not(.semi-
   color: var(--color-text-secondary);
   background: #F8FAFC;
   font-size: 13px;
+}
+/* 中文：深色模式使用深色提示底，避免浅色块与页面反差过强导致文字难以辨识。 */
+html[data-theme="dark"] .recharge-console-page .billing-demo-note {
+  color: var(--color-text-default);
+  background: var(--color-bg-base-tertiary);
 }
 .recharge-console-page .payment-qr-panel {
   margin-top: var(--spacing-24);
@@ -10780,7 +10810,7 @@ html[data-theme="light"] .recharge-confirm-button.semi-button-primary:not(.semi-
   min-width: 0;
 }
 .invoice-history h2 {
-  margin: 0 0 var(--spacing-12);
+  margin:var(--spacing-12)  0;
   color: var(--color-text-default);
   font-size: 18px;
   font-weight: 650;
@@ -25762,14 +25792,15 @@ html .quickstart-pdf-tool-detail a:active {
   width: 100px;
   min-height: 38px;
   margin-top: 30px;
-  border: 0;
+  border: 1px solid #ffffff;
   border-radius: 0;
-  background: #2f5bd3;
+  /* 中文：下一步按钮使用黑白配色，避免使用主题蓝色。 */
+  background: #1f2024;
   color: #fff;
   font-size: 16px;
 }
 .quickstart-pdf-primary-button:hover {
-  background: #244dbf;
+  background: #000;
   color: #fff;
   transform: translateY(-1px);
 }
@@ -26052,7 +26083,8 @@ html .quickstart-pdf-tool-detail a:active {
   border-radius: 5px;
   color: var(--text-secondary);
   background: transparent;
-  font-size: 15px;
+  /* 中文：复制按钮文字与代码工具栏保持紧凑一致。 */
+  font-size: 13px;
 }
 .quickstart-pdf-code-toolbar .semi-button:hover {
   color: var(--text-secondary);

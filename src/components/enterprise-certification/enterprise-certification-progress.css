@@ -1,17 +1,10 @@
 .enterprise-certification-progress {
-  width: min(100%, 960px);
-  display: grid;
-  grid-template-columns: repeat(
-    var(--enterprise-step-count, 3),
-    minmax(0, 1fr)
-  );
-  margin: 0 auto;
+  /* 中文：步进器沿用实名认证页的自适应左右留白，让步骤组在工作区内保持视觉居中。 */
+  width: auto;
+  display: flex;
+  margin: 0 clamp(0px, 8vw, 128px);
   padding: 12px 0 32px;
   list-style: none;
-}
-
-.enterprise-certification-progress.is-agent {
-  --enterprise-step-count: 2;
 }
 
 .enterprise-certification-progress li {
@@ -21,6 +14,15 @@
   align-items: center;
   gap: 12px;
   color: var(--color-text-tertiary);
+}
+
+/* 中文：只有带连接线的步骤扩展占位，末步按内容宽度收缩，消除右侧多余空白。 */
+.enterprise-certification-progress li:not(:last-child) {
+  flex: 1;
+}
+
+.enterprise-certification-progress li:last-child {
+  flex: 0 0 auto;
 }
 
 .enterprise-certification-progress li:not(:last-child)::after {
@@ -67,13 +69,14 @@
 }
 
 .enterprise-certification-progress li.is-current .enterprise-progress-marker {
-  background: #2f5bff;
-  color: #fff;
+  background: var(--color-action-primary);
+  color: var(--color-action-on-primary);
 }
 
 .enterprise-certification-progress li.is-completed .enterprise-progress-marker {
-  background: var(--success);
-  color: #fff;
+  border: 1px solid var(--color-action-primary);
+  background: var(--color-bg-base-tertiary);
+  color: var(--color-action-primary);
 }
 
 @media (max-width: 700px) {
@@ -101,5 +104,12 @@
     padding-right: 8px;
     font-size: 11px;
     white-space: normal;
+  }
+}
+
+@media (max-width: 900px) {
+  /* 中文：中小屏取消大幅侧边留白，避免步骤标签和连接线被压缩。 */
+  .enterprise-certification-progress {
+    margin-inline: 0;
   }
 }

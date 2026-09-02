@@ -415,22 +415,26 @@ describe('用户费用管理页面', () => {
 		expect(fetchMock.mock.calls.some(([, options]) => options?.method === 'POST')).toBe(false)
 	})
 
-	it('企业账务服务失败时展示服务错误和请求 ID', async () => {
+	it('企业账务服务失败时通过顶部提示展示服务错误', async () => {
 		const user = userEvent.setup()
 		const { fetchMock } = renderBilling({ invoiceError: true })
     await user.click(screen.getByRole('button', { name: '切换到企业空间' }))
     await waitFor(() => expect(fetchMock.mock.calls.filter(([input]) => new URL(String(input), window.location.origin).pathname.endsWith('/analysis')).length).toBeGreaterThan(1))
     await user.click(screen.getByRole('tab', { name: '发票' }))
-    expect(await screen.findByText(/账务服务暂时不可用/)).toBeInTheDocument()
-    expect(screen.getByText('请求 ID：invoice-unavailable')).toBeInTheDocument()
+    const toast = await screen.findByRole('alert')
+    expect(toast).toHaveTextContent('账务服务暂时不可用')
+    expect(toast).not.toHaveTextContent('请求 ID：invoice-unavailable')
+    expect(document.querySelector('.billing-request-error-copy')).toBeNull()
   })
 
-  it('费用分析权限失败时显示可重试提示', async () => {
+	it('费用分析权限失败时通过顶部提示展示错误', async () => {
     const user = userEvent.setup()
     const { fetchMock } = renderBilling({ analysisError: true })
-    expect(await screen.findByText('当前工作空间没有账务查看权限')).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: /重新加载/ }))
-    await waitFor(() => expect(fetchMock.mock.calls.filter(([input]) => new URL(String(input), window.location.origin).pathname.endsWith('/analysis')).length).toBeGreaterThan(1))
+    const toast = await screen.findByRole('alert')
+    expect(toast).toHaveTextContent('当前工作空间没有账务查看权限')
+    expect(toast).not.toHaveTextContent('请求 ID：analysis-denied')
+    expect(screen.queryByRole('button', { name: /重新加载/ })).toBeNull()
+    expect(fetchMock.mock.calls.filter(([input]) => new URL(String(input), window.location.origin).pathname.endsWith('/analysis')).length).toBeGreaterThan(0)
   })
 
   it('英文账单使用英文状态、数量单位和发票项目名', async () => {

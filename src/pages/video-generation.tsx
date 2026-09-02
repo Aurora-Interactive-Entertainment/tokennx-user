@@ -6,8 +6,9 @@ import Dropdown from '@douyinfe/semi-ui/lib/es/dropdown'
 import type { RenderSingleSelectedItemFn } from '@douyinfe/semi-ui/lib/es/select'
 import Modal from '@/components/app-modal'
 import Toast from '@douyinfe/semi-ui/lib/es/toast'
-import { IconAlertTriangle, IconArrowUp, IconCheckCircleStroked, IconChevronDownStroked, IconChevronUpDown, IconClockStroked, IconClose, IconDeleteStroked, IconDownload, IconEditStroked, IconFilterStroked, IconHistory, IconImage, IconInfoCircle, IconLoading, IconMuteStroked, IconMoreStroked, IconPlus, IconRefresh, IconSearch, IconSortStroked, IconStop, IconVideo, IconVolume2 } from '@douyinfe/semi-icons'
+import { IconAlertTriangle, IconArrowUp, IconCheckCircleStroked, IconChevronDownStroked, IconChevronUpDown, IconClockStroked, IconClose, IconDeleteStroked, IconDownload, IconEditStroked, IconFilterStroked, IconHistory, IconImage, IconInfoCircle, IconLoading, IconMuteStroked, IconMoreStroked, IconPlus, IconRefresh, IconStop, IconVideo, IconVolume2 } from '@douyinfe/semi-icons'
 import { EmptyPanel, PageTitle } from '@/components/common'
+import { appToast } from '@/components/app-toast'
 import { CompatInput as Input, CompatSelect as Select } from '@/components/semi-compat'
 import { getUserApiKeys, type UserApiKey, type UserApiKeyContext } from '@/api/user-api-keys'
 import { cancelVideoTask, getVideoTask, submitVideoGeneration, videoTaskIsTerminal, VideoRuntimeError, type VideoTask, type VideoTaskStatus } from '@/api/video-runtime'
@@ -296,12 +297,15 @@ export function VideoPage() {
   const navigate = useNavigate()
   const store = useAppStore()
   const [searchParams] = useSearchParams()
-  const { models, loading: modelsLoading, error: modelsError, refresh: refreshModels } = useUserModels()
+  const { models, loading: modelsLoading, error: modelsError } = useUserModels()
+
+  useEffect(() => {
+    if (modelsError) appToast.error(modelsError)
+  }, [modelsError])
   const workspaceContext = useMemo<UserApiKeyContext>(() => workspaceContextFor(store.activeWorkspace), [store.activeWorkspace.id, store.activeWorkspace.type])
   const workspaceKey = workspaceKeyFor(workspaceContext)
   const requestedModel = searchParams.get('model') ?? ''
   const [apiKeys, setApiKeys] = useState<UserApiKey[]>([])
-  const [selectedApiKeyID, setSelectedApiKeyID] = useState('')
   const [apiKeysLoading, setApiKeysLoading] = useState(true)
   const [apiKeyError, setApiKeyError] = useState('')
   const [modelID, setModelID] = useState(requestedModel)
@@ -315,7 +319,6 @@ export function VideoPage() {
   const [lastFrameUrl, setLastFrameUrl] = useState('')
   const [historyOpen, setHistoryOpen] = useState(false)
   const [referenceMode, setReferenceMode] = useState<'reference' | 'first-last'>('reference')
-  const [modelQuery, setModelQuery] = useState('')
   const [aspectRatio, setAspectRatio] = useState('adaptive')
   const [resolution, setResolution] = useState('480P')
   const [soundEnabled, setSoundEnabled] = useState(true)
@@ -348,16 +351,12 @@ export function VideoPage() {
   }, [])
 
   const usableApiKeys = useMemo(() => apiKeys.filter((key) => key.status === 'active' && key.secret.trim()), [apiKeys])
-  const selectedApiKey = usableApiKeys.find((key) => key.id === selectedApiKeyID)
+  // 中文：后端为每个用户返回默认密钥，页面直接使用首个可用密钥，不再让用户重复选择。
+  const selectedApiKey = usableApiKeys[0]
   const videoModels = useMemo(() => models.filter((model) => model.modality === 'video' && Boolean(modelAlias(model))), [models])
   const selectableVideoModels = useMemo(() => selectedApiKey ? videoModels.filter((model) => apiKeySupportsModel(selectedApiKey, model)) : [], [selectedApiKey, videoModels])
   // 中文：没有 API Key 时仍展示模型目录，便于预览和调试配置控件；提交时仍会校验密钥和模型权限。
   const displayVideoModels = selectedApiKey ? selectableVideoModels : videoModels
-  const filteredVideoModels = useMemo(() => {
-    const query = modelQuery.trim().toLowerCase()
-    if (!query) return displayVideoModels
-    return displayVideoModels.filter((model) => `${model.name} ${model.company} ${modelAlias(model)}`.toLowerCase().includes(query))
-  }, [displayVideoModels, modelQuery])
   const selectedModel = findModelInList(displayVideoModels, modelID) ?? displayVideoModels[0]
   const selectedHistory = history.find((entry) => entry.id === selectedHistoryID)
   const operationBusy = submitting || polling || cancelling
@@ -370,7 +369,6 @@ export function VideoPage() {
     submitControllerRef.current = null
     pollControllerRef.current = null
     setApiKeys([])
-    setSelectedApiKeyID('')
     setApiKeysLoading(true)
     setApiKeyError('')
     setModelID(requestedModel)
@@ -409,8 +407,6 @@ export function VideoPage() {
       if (!active) return
       const keys = result.items
       setApiKeys(keys)
-      const firstUsable = keys.find((key) => key.status === 'active' && key.secret.trim())
-      setSelectedApiKeyID((current) => current && keys.some((key) => key.id === current) ? current : firstUsable?.id ?? '')
     }).catch((error: unknown) => {
       if (!active) return
       if (isAuthenticationFailure(error)) {
@@ -710,16 +706,6 @@ export function VideoPage() {
     setLastFrameUrl(firstFrameUrl)
   }
 
-  function handleApiKeyChange(value: unknown): void {
-    // 中文：Semi Select 在单选/多选和不同版本的回调中可能返回数组或 undefined，统一收窄为密钥 ID。
-    const nextValue = Array.isArray(value) ? value[0] : value
-    setSelectedApiKeyID(typeof nextValue === 'string' || typeof nextValue === 'number' ? String(nextValue) : '')
-    setModelID('')
-    setCurrentTask(null)
-    setSelectedHistoryID('')
-    setRequestFailure(null)
-  }
-
   function handleFrameFile(event: ChangeEvent<HTMLInputElement>, frame: 'first' | 'last'): void {
     const file = event.target.files?.[0]
     event.target.value = ''
@@ -770,7 +756,7 @@ export function VideoPage() {
   }
 
   if (modelsLoading) return <div className="page-stack video-console-page"><PageTitle title={t('console.video.title')} description={t('console.video.description')} /><EmptyPanel title={t('console.common.loadingModels')} description={t('console.common.readingModels')} /></div>
-  if (modelsError) return <div className="page-stack video-console-page"><PageTitle title={t('console.video.title')} description={t('console.video.description')} /><EmptyPanel title={t('console.common.modelCatalogFailed')} description={modelsError} action={<Button theme="outline" icon={<IconRefresh />} onClick={refreshModels}>{t('console.common.reload')}</Button>} /></div>
+  if (modelsError) return <div className="page-stack video-console-page"><PageTitle title={t('console.video.title')} description={t('console.video.description')} /></div>
 
   const workspaceNotices: VideoWorkspaceNoticeItem[] = []
   if (requestFailure) workspaceNotices.push({ id: 'request-failure', message: requestFailure.message, requestId: requestFailure.requestId, action: <Button theme="outline" size="small" onClick={() => setRequestFailure(null)}>{t('console.common.close')}</Button> })
@@ -790,9 +776,6 @@ export function VideoPage() {
           <div className="video-toolbar-actions experience-toolbar-actions">
             <span className="video-toolbar-workspace" title={store.activeWorkspace.name}>{store.activeWorkspace.name}</span>
             <button className="video-history-toggle" type="button" aria-label={t('console.video.historyTitle')} title={t('console.video.historyTitle')} onClick={() => setHistoryOpen((open) => !open)}><IconHistory /></button>
-            <label htmlFor="video-api-key">{t('console.video.apiKey')}</label>
-            <Select id="video-api-key" className="billing-filter video-api-key-select" dropdownClassName="video-api-key-dropdown" value={selectedApiKey?.id ?? ''} onChange={handleApiKeyChange} onSelect={handleApiKeyChange} disabled={apiKeysLoading || usableApiKeys.length === 0} aria-label={t('console.video.apiKey')}><Select.Option value="">{apiKeysLoading ? t('console.video.apiKeyLoading') : t('console.video.selectApiKey')}</Select.Option>{usableApiKeys.map((key) => <Select.Option key={key.id} value={key.id}>{key.name} · {key.masked_key}</Select.Option>)}</Select>
-            <Link className="video-key-link" to="/console/api-keys">{t('console.video.manageApiKey')}</Link>
           </div>
         </header>
         <main className="video-stage experience-content">{showWorkspaceNotices ? <VideoWorkspaceNotice items={workspaceNotices} /> : <VideoStage task={currentTask} entry={selectedHistory} modelName={selectedHistory?.modelName ?? selectedModel?.name ?? t('console.video.unnamedModel')} submitting={submitting} onCancel={currentTask && taskIsActive(currentTask) ? () => { void cancelCurrentTask() } : cancelSubmission} onRetry={retryCurrent} onEdit={editCurrent} onDelete={deleteCurrent} />}</main>
@@ -824,12 +807,13 @@ export function VideoPage() {
               <div className="video-control-group">
                 <div className="video-reference-picker">
                   <Select className={`video-control-button video-reference-trigger${referenceMode === 'first-last' ? ' video-reference-trigger--first-last' : ''}`} value={referenceMode} aria-label={t('console.video.referenceImage')} arrowIcon={<IconChevronDownStroked />} dropdownClassName="video-reference-select-dropdown" innerTopSlot={<div className="video-popover-title">{t('console.video.generationMode')}</div>} renderSelectedItem={renderReferenceSelectedItem} onChange={(value) => { const nextMode = String(value) as 'reference' | 'first-last'; setReferenceMode(nextMode); setReferenceVisible(false) }} disabled={operationBusy}>
-                    <Select.Option value="reference"><span className="video-reference-option-icon"><IconImage aria-hidden="true" /></span><span>{t('console.video.referenceMode')}</span></Select.Option>
-                    <Select.Option value="first-last"><span className="video-reference-option-icon"><IconVideo aria-hidden="true" /></span><span>{t('console.video.firstLastFrame')}</span></Select.Option>
+                    {/* 中文：生成模式选项不显示默认选中勾选，避免图标、勾选和文字错位。 */}
+                    <Select.Option value="reference" showTick={false}><span className="video-reference-option-icon"><IconImage aria-hidden="true" /></span><span>{t('console.video.referenceMode')}</span></Select.Option>
+                    <Select.Option value="first-last" showTick={false}><span className="video-reference-option-icon"><IconVideo aria-hidden="true" /></span><span>{t('console.video.firstLastFrame')}</span></Select.Option>
                   </Select>
                 </div>
                 <div className="video-model-picker">
-                  <Select id="video-model" className="video-control-button video-model-trigger" dropdownClassName="video-model-select-dropdown" value={selectedModel ? modelAlias(selectedModel) : ''} placeholder={t('console.video.chooseModel')} arrowIcon={<IconChevronDownStroked />} dropdownMatchSelectWidth={false} filter={false} aria-label={t('console.video.model')} onChange={(value) => { setModelID(String(value)); setRequestFailure(null) }} innerTopSlot={<div className="video-model-popover-head"><label className="video-model-search"><IconSearch aria-hidden="true" /><input value={modelQuery} onChange={(event) => setModelQuery(event.target.value)} placeholder={t('console.video.modelSearch')} aria-label={t('console.video.modelSearch')} /></label><button type="button" className="video-model-sort" onClick={() => setModelQuery('')}><IconSortStroked aria-hidden="true" /><span>{t('console.video.latest')}</span></button></div>} renderSelectedItem={() => selectedModel ? <><VideoModelLogo model={selectedModel} /><span className="video-model-trigger-label">{selectedModel.company}: {selectedModel.name}</span></> : null} renderOptionItem={({ value, selected }) => { const model = displayVideoModels.find((item) => modelAlias(item) === String(value)); if (!model) return null; return <div className={`video-model-option${selected ? ' is-selected' : ''}`}><VideoModelLogo model={model} /><span className="video-model-option-name">{model.company}: {model.name}</span><span className="video-model-advanced"><span className="video-model-premium-icon" aria-hidden="true">P</span><em>{t('console.video.advanced')}</em></span></div> }} disabled={operationBusy}><Select.Option value="">{t('console.video.chooseModel')}</Select.Option>{filteredVideoModels.map((model) => <Select.Option key={model.id} value={modelAlias(model)}>{model.company}: {model.name}</Select.Option>)}</Select>
+                  <Select id="video-model" className="video-control-button video-model-trigger" dropdownClassName="video-model-select-dropdown" value={selectedModel ? modelAlias(selectedModel) : ''} placeholder={t('console.video.chooseModel')} arrowIcon={<IconChevronDownStroked />} dropdownMatchSelectWidth={false} filter={false} aria-label={t('console.video.model')} onChange={(value) => { setModelID(String(value)); setRequestFailure(null) }} renderSelectedItem={() => selectedModel ? <><VideoModelLogo model={selectedModel} /><span className="video-model-trigger-label">{selectedModel.company}: {selectedModel.name}</span></> : null} renderOptionItem={({ value, selected }) => { const model = displayVideoModels.find((item) => modelAlias(item) === String(value)); if (!model) return null; return <div className={`video-model-option${selected ? ' is-selected' : ''}`}><VideoModelLogo model={model} /><span className="video-model-option-name">{model.company}: {model.name}</span><span className="video-model-advanced"><span className="video-model-premium-icon" aria-hidden="true">P</span><em>{t('console.video.advanced')}</em></span></div> }} disabled={operationBusy}><Select.Option value="">{t('console.video.chooseModel')}</Select.Option>{displayVideoModels.map((model) => <Select.Option key={model.id} value={modelAlias(model)}>{model.company}: {model.name}</Select.Option>)}</Select>
                 </div>
                 <div className="video-aspect-picker">
                   <Select className="video-control-button video-aspect-trigger video-panel-select" value="settings" arrowIcon={<IconChevronDownStroked />} dropdownClassName="video-aspect-select-dropdown" aria-label={t('console.video.aspectRatio')} renderSelectedItem={() => <><IconFilterStroked aria-hidden="true" /><span>{aspectRatio} · {resolution}</span></>} innerTopSlot={<div className="video-aspect-popover video-select-panel"><div className="video-aspect-section"><strong>{t('console.video.aspectRatio')}</strong><div className="video-aspect-options">{VIDEO_ASPECT_OPTIONS.map((ratio) => <button type="button" className={aspectRatio === ratio ? 'is-selected' : ''} key={ratio} onClick={() => { setAspectRatio(ratio); setSize(sizeForVideoAspect(ratio, resolution)) }}><span className={`video-ratio-icon ratio-${ratio.replace(':', '-')}`} />{ratio}</button>)}</div></div><div className="video-aspect-section"><strong>{t('console.video.resolution')}</strong><div className="video-resolution-options">{['480P', '720P', '1080P'].map((nextResolution) => <button type="button" className={resolution === nextResolution ? 'is-selected' : ''} key={nextResolution} onClick={() => { setResolution(nextResolution); setSize(sizeForVideoAspect(aspectRatio, nextResolution)) }}>{nextResolution}</button>)}</div></div></div>}>

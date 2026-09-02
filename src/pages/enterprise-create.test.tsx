@@ -227,6 +227,21 @@ describe("enterprise verification page", () => {
     expect(screen.getByText("法定代表人必填")).toBeInTheDocument();
   });
 
+  it("starts with an empty form in new mode even when an old face session exists", async () => {
+    getCertificationMock.mockResolvedValue(FACE_ACTIVE);
+    renderPage(NEW_ENTERPRISE_CREATE_PATH);
+
+    expect(
+      await screen.findByRole("heading", { name: "基本信息" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: /企业名称/ })).toHaveValue("");
+    expect(screen.getByRole("textbox", { name: /统一社会信用代码/ })).toHaveValue(
+      "",
+    );
+    expect(startFaceMock).not.toHaveBeenCalled();
+  });
+
   it("shows the completed result and refreshes enterprise workspaces", async () => {
     getCertificationMock.mockResolvedValue(COMPLETED);
     getProfileEnterprisesMock.mockResolvedValue([MEMBERSHIP]);

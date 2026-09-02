@@ -19,7 +19,7 @@
   left: 0;
   width: 3px;
   border-radius: 2px;
-  background: #2f5bff;
+  background: var(--color-action-primary);
   content: "";
 }
 
@@ -134,8 +134,8 @@
 }
 
 .enterprise-result-content.is-review .enterprise-result-icon {
-  background: color-mix(in srgb, #2f5bff 12%, transparent);
-  color: #5478ff;
+  background: color-mix(in srgb, var(--color-action-primary) 12%, transparent);
+  color: var(--color-action-primary);
 }
 
 .enterprise-result-content h2,
@@ -183,7 +183,7 @@
 }
 
 .enterprise-review-status {
-  color: #5478ff !important;
+  color: var(--color-action-primary) !important;
 }
 
 .enterprise-face-modal .semi-modal-content {

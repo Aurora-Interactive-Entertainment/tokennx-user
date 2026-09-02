@@ -32,6 +32,7 @@ import {
 } from '@/api/billing'
 import { getAllEnterpriseMembers, getEnterpriseDepartments, type EnterpriseDepartment, type EnterpriseMember } from '@/api/enterprise-console'
 import { BannerNotice, EmptyPanel, PageTitle } from '@/components/common'
+import { appToast } from '@/components/app-toast'
 import { TraePagination } from '@/components/trae-pagination'
 import { BackofficeMoneyText as MoneyText } from '@/components/money'
 import { PaymentQRCodeFrame } from '@/components/payment-qr-frame'
@@ -250,7 +251,11 @@ function BillingLoading({ label }: { label: string }) {
 }
 
 function BillingError({ state, onRetry }: { state: ResourceState<unknown>; onRetry: () => void }) {
-  return <BannerNotice tone="warning"><span className="billing-request-error-copy"><strong>{state.error}</strong>{state.requestId ? <small>{i18n.t('console.common.requestIdValue', { requestId: state.requestId })}</small> : null}</span><Button theme="borderless" size="small" icon={<IconRefresh />} onClick={onRetry}>{i18n.t('console.common.reload')}</Button></BannerNotice>
+  useEffect(() => {
+    if (!state.error) return
+    appToast.error(state.error)
+  }, [state.error])
+  return null
 }
 
 const EMPTY_ANALYSIS_WALLET: BillingAnalysisResponse['wallet'] = {
@@ -307,9 +312,13 @@ function extractPaymentQRCodeValue(payment: BillingPaymentStartResult): string {
 }
 
 export function PaymentReturnNotice({ state, onRetry }: { state: ResourceState<BillingPaymentOrder>; onRetry: () => void }) {
+  useEffect(() => {
+    if (state.status !== 'error' || !state.error) return
+    appToast.error(state.error)
+  }, [state.error, state.status])
   if (state.status === 'idle') return null
   if (state.status === 'loading') return <BannerNotice><span>{i18n.t('console.billing.paymentQuerying')}</span></BannerNotice>
-  if (state.status === 'error') return <BannerNotice tone="warning"><span className="billing-request-error-copy"><strong>{state.error}</strong>{state.requestId ? <small>{i18n.t('console.common.requestIdValue', { requestId: state.requestId })}</small> : null}</span><Button theme="borderless" size="small" icon={<IconRefresh />} onClick={onRetry}>{i18n.t('console.common.reload')}</Button></BannerNotice>
+  if (state.status === 'error') return null
   if (!state.data) return null
   const copy = paymentStatusCopy(state.data.status)
   return <BannerNotice tone={copy.tone}><span className="billing-request-error-copy"><strong>{copy.label}</strong><small>{i18n.t('console.billing.paymentReturnOrder', { orderNo: state.data.order_no })}</small></span></BannerNotice>
@@ -585,8 +594,7 @@ export function RechargeTab({ context, onOrderUpdated, onAuthFailure }: { contex
         return
       }
       if (isApiError(error) && error.code === 140008) {
-        // 中文：后端业务码是实名认证拦截时，同时保留真实 msg 并展示引导弹窗。
-        Toast.error(getBillingErrorMessage(error))
+        // 中文：实名认证拦截仅展示引导弹窗，避免顶部提示与弹窗重复。
         setRealNameDialogOpen(true)
         return
       }

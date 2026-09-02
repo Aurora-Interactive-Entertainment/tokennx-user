@@ -803,13 +803,6 @@ export function RealNamePage() {
 
             <div className="real-name-form-actions">
               <Button
-                theme="outline"
-                type="tertiary"
-                onClick={() => navigate(-1)}
-              >
-                {t("console.realName.backToList")}
-              </Button>
-              <Button
                 className="real-name-submit"
                 htmlType="submit"
                 theme="solid"

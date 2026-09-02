@@ -30,7 +30,7 @@
   left: 0;
   width: 3px;
   border-radius: 2px;
-  background: #2f5bff;
+  background: var(--color-action-primary);
   content: "";
 }
 
@@ -64,16 +64,31 @@
 
 .enterprise-form-control > .app-input.semi-input-wrapper {
   width: 100%;
-  height: 40px;
-  min-height: 40px;
+  height: 32px;
+  min-height: 32px;
   border-radius: 4px;
-  background: var(--color-bg-base-default);
+  /* 中文：输入框使用主题底色，避免深色模式出现突兀的白色区域。 */
+  background: var(--color-bg-base-secondary);
 }
 
 .enterprise-form-control > .app-input .semi-input {
-  height: 38px;
+  height: 30px;
   padding-inline: 14px;
   font-size: 13px;
+  color: var(--color-text-default);
+  background: transparent;
+}
+
+.enterprise-form-control > .app-input .semi-input::placeholder {
+  color: var(--color-text-tertiary);
+}
+
+html[data-theme="light"] .enterprise-form-control > .app-input.semi-input-wrapper {
+  background: #fff;
+}
+
+html[data-theme="light"] .enterprise-form-control > .app-input .semi-input {
+  color: #17181b;
 }
 
 .enterprise-field-hint {
@@ -129,11 +144,12 @@
 .enterprise-material-tile:hover,
 .enterprise-material-tile:focus-visible,
 .enterprise-material-tile.is-uploading {
-  border-color: #2f5bff;
+  border-color: var(--color-action-primary);
 }
 
 .enterprise-material-tile:focus-visible {
-  box-shadow: 0 0 0 2px color-mix(in srgb, #2f5bff 22%, transparent);
+  box-shadow: 0 0 0 2px
+    color-mix(in srgb, var(--color-action-primary) 22%, transparent);
 }
 
 .enterprise-material-tile.is-error {
@@ -248,7 +264,7 @@
   width: 16px;
   height: 16px;
   margin: 0;
-  accent-color: #2f5bff;
+  accent-color: var(--color-action-primary);
 }
 
 .enterprise-applicant-radios {
@@ -276,11 +292,13 @@
   height: 16px;
   flex: 0 0 16px;
   margin: 2px 0 0;
-  accent-color: #2f5bff;
+  accent-color: var(--color-action-primary);
 }
 
-.enterprise-certification-consent a {
-  color: #4169e1;
+.enterprise-certification-consent a,
+.enterprise-certification-consent a:hover,
+.enterprise-certification-consent a:focus-visible {
+  color: var(--color-action-primary);
 }
 
 .enterprise-consent-error {

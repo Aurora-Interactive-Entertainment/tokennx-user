@@ -29,7 +29,7 @@
   height: 20px;
   flex: 0 0 3px;
   border-radius: 2px;
-  background: #2450ff;
+  background: var(--color-action-primary);
 }
 
 .real-name-workspace-heading h1 {
@@ -98,8 +98,8 @@
 }
 
 .real-name-stepper li.is-current .real-name-step-marker {
-  color: #fff;
-  background: #2450ff;
+  color: var(--color-action-on-primary);
+  background: var(--color-action-primary);
 }
 
 .real-name-stepper li.is-current strong {
@@ -111,17 +111,18 @@
 }
 
 .real-name-stepper li.is-complete .real-name-step-marker {
-  color: #2450ff;
-  background: rgba(36, 80, 255, 0.12);
+  border: 1px solid var(--color-action-primary);
+  color: var(--color-action-primary);
+  background: var(--color-bg-base-tertiary);
 }
 
 .real-name-stepper li.is-complete .real-name-step-line {
-  background: #2450ff;
+  background: var(--color-action-primary);
 }
 
 .real-name-step-marker svg {
-  width: 15px;
-  height: 15px;
+  width: 13px;
+  height: 13px;
 }
 
 .real-name-form {
@@ -220,7 +221,7 @@
   height: 16px;
   flex: 0 0 16px;
   margin: 2px 0 0;
-  accent-color: #2450ff;
+  accent-color: var(--color-action-primary);
   cursor: pointer;
 }
 
@@ -228,8 +229,10 @@
   cursor: pointer;
 }
 
-.real-name-consent a {
-  color: #2450ff;
+.real-name-consent a,
+.real-name-consent a:hover,
+.real-name-consent a:focus-visible {
+  color: var(--color-action-primary);
   text-decoration: none;
 }
 
@@ -256,10 +259,11 @@
 .real-name-form-actions .real-name-submit.semi-button:hover:not(:disabled),
 .real-name-form-actions .real-name-submit.semi-button:active:not(:disabled) {
   width: auto;
-  border-color: #2450ff !important;
-  color: #fff !important;
-  background: #2450ff !important;
-  box-shadow: 0 2px 6px rgba(36, 80, 255, 0.24);
+  border-color: var(--color-action-primary) !important;
+  color: var(--color-action-on-primary) !important;
+  background: var(--color-action-primary) !important;
+  box-shadow: 0 2px 6px
+    color-mix(in srgb, var(--color-action-primary) 22%, transparent);
   transform: none;
 }
 
@@ -281,8 +285,8 @@
   height: 56px;
   place-items: center;
   border-radius: 50%;
-  color: #fff;
-  background: #2450ff;
+  color: var(--color-action-on-primary);
+  background: var(--color-action-primary);
 }
 
 .real-name-complete-icon svg {
@@ -399,7 +403,7 @@
 
 .personal-real-name-verification-modal
   .semi-button.semi-modal-close:focus-visible {
-  outline: 2px solid #2450ff;
+  outline: 2px solid var(--color-action-primary);
   outline-offset: 2px;
 }
 
@@ -492,24 +496,26 @@
   .personal-real-name-dialog-primary-action.semi-button:hover:not(:disabled),
 .personal-real-name-dialog-actions
   .personal-real-name-dialog-primary-action.semi-button:active:not(:disabled) {
-  border-color: #2450ff;
-  color: #fff;
-  background: #2450ff;
-  box-shadow: 0 2px 7px rgba(36, 80, 255, 0.28);
+  border-color: var(--color-action-primary);
+  color: var(--color-action-on-primary);
+  background: var(--color-action-primary);
+  box-shadow: 0 2px 7px
+    color-mix(in srgb, var(--color-action-primary) 24%, transparent);
   transform: none;
 }
 
 .personal-real-name-refresh-qr-action.semi-button,
 .personal-real-name-refresh-qr-action.semi-button:hover:not(:disabled) {
-  color: #fff !important;
-  background: #2450ff !important;
+  color: var(--color-action-on-primary) !important;
+  background: var(--color-action-primary) !important;
 }
 
 .personal-real-name-open-mobile-action.semi-button {
   min-width: 180px;
   height: 44px;
-  border-color: #2450ff;
-  background: #2450ff;
+  border-color: var(--color-action-primary);
+  color: var(--color-action-on-primary);
+  background: var(--color-action-primary);
 }
 
 html[data-theme="light"] .real-name-workspace,

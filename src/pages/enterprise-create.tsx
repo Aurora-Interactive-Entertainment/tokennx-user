@@ -7,9 +7,7 @@ import {
   type FormEvent,
 } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router";
-import { IconRefresh } from "@douyinfe/semi-icons";
-import Button from "@douyinfe/semi-ui/lib/es/button";
+import { useLocation, useNavigate } from "react-router";
 import { getAccessToken } from "@/auth/token-storage";
 import {
   ENTERPRISE_AUTHORIZATION_MAX_BYTES,
@@ -41,10 +39,10 @@ import {
   type FaceConfirmationNotice,
 } from "@/components/enterprise-certification/enterprise-certification-status";
 import {
-  BannerNotice,
   PageTitle,
   workspacesFromMemberships,
 } from "@/components/common";
+import { appToast } from "@/components/app-toast";
 import { getProfileEnterprises } from "@/api/profile";
 import { isApiError, isAuthenticationFailure } from "@/api/http";
 import { useAppStore } from "@/data/app-state";
@@ -112,6 +110,7 @@ function stepFromCertification(
 
 export function EnterpriseCreatePage() {
   const { t } = useTranslation();
+  const { search } = useLocation();
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { replaceEnterpriseWorkspaces } = useAppStore();
@@ -133,6 +132,8 @@ export function EnterpriseCreatePage() {
   const [faceModalVisible, setFaceModalVisible] = useState(false);
   // 中文：关闭法人刷脸弹窗后允许回到资料页修改，直到再次提交前都不自动弹窗。
   const [editingInformation, setEditingInformation] = useState(false);
+  // 中文：新建模式首次进入时忽略服务端历史认证，成功提交后再接管本次流程。
+  const [newApplicationStarted, setNewApplicationStarted] = useState(false);
   const [faceUrl, setFaceUrl] = useState("");
   const [faceConfirmNotice, setFaceConfirmNotice] =
     useState<FaceConfirmationNotice | null>(null);
@@ -143,6 +144,9 @@ export function EnterpriseCreatePage() {
     null,
   );
   const autoPresentedFaceStage = useRef("");
+  const newModeSubmitted = useRef(false);
+  const isNewMode = new URLSearchParams(search).get("mode") === "new";
+  const isFreshNewMode = isNewMode && !newApplicationStarted;
 
   const invalidateSession = useCallback(() => {
     dispatch(invalidateAuth());
@@ -160,6 +164,12 @@ export function EnterpriseCreatePage() {
     setErrorMessage("");
     try {
       const result = await getEnterpriseCertification(accessToken);
+      // 中文：新建模式只用于创建新的认证申请，不能把旧记录恢复到当前页面。
+      if (isNewMode && !newModeSubmitted.current) {
+        setCertification(null);
+        setFaceUrl("");
+        return;
+      }
       setCertification(result);
       if (
         result.applicant_type === "authorized_agent" ||
@@ -177,7 +187,7 @@ export function EnterpriseCreatePage() {
     } finally {
       setLoading(false);
     }
-  }, [invalidateSession]);
+  }, [invalidateSession, isNewMode]);
 
   const refreshEnterpriseWorkspaces = useCallback(
     async (accessToken: string) => {
@@ -199,6 +209,31 @@ export function EnterpriseCreatePage() {
   useEffect(() => {
     void loadCertification();
   }, [loadCertification]);
+
+  useEffect(() => {
+    if (errorMessage) appToast.error(errorMessage);
+  }, [errorMessage]);
+
+  useEffect(() => {
+    if (workspaceRefreshError) appToast.error(workspaceRefreshError);
+  }, [workspaceRefreshError]);
+  useEffect(() => {
+    // 中文：切换到新建地址时清空上一次页面状态，避免旧弹窗或已填资料残留。
+    newModeSubmitted.current = false;
+    setNewApplicationStarted(false);
+    if (!isNewMode) return;
+    setCertification(null);
+    setForm(EMPTY_FORM);
+    setConsent(false);
+    setErrors({});
+    setLicense(EMPTY_MATERIAL);
+    setAuthorization(EMPTY_MATERIAL);
+    setFaceUrl("");
+    setFaceModalVisible(false);
+    setFaceConfirmNotice(null);
+    setEditingInformation(false);
+    autoPresentedFaceStage.current = "";
+  }, [isNewMode]);
   useEffect(
     () => () => {
       if (license.previewUrl) URL.revokeObjectURL(license.previewUrl);
@@ -388,6 +423,8 @@ export function EnterpriseCreatePage() {
         : { ...baseRequest, applicant_type: "legal_representative" };
     try {
       const result = await submitEnterpriseCertification(accessToken, request);
+      newModeSubmitted.current = true;
+      setNewApplicationStarted(true);
       setCertification(result);
       // 中文：重新提交后恢复服务端流程步骤；法人提交会由下方 effect 自动打开刷脸弹窗。
       setEditingInformation(false);
@@ -448,7 +485,7 @@ export function EnterpriseCreatePage() {
   );
 
   useEffect(() => {
-    if (editingInformation) return;
+    if (editingInformation || isFreshNewMode) return;
     if (
       !certification ||
       applicantTypeFromCertification(certification, form.applicantType) !==
@@ -470,6 +507,7 @@ export function EnterpriseCreatePage() {
     editingInformation,
     faceUrl,
     form.applicantType,
+    isFreshNewMode,
     startFace,
   ]);
 
@@ -534,7 +572,7 @@ export function EnterpriseCreatePage() {
   }, [applyFaceConfirmation, invalidateSession, requestFaceConfirmation, t]);
 
   useEffect(() => {
-    if (!faceModalVisible) return;
+    if (!faceModalVisible || isFreshNewMode) return;
     let cancelled = false;
     let timer: number | undefined;
     const pollFaceConfirmation = async (): Promise<void> => {
@@ -568,6 +606,7 @@ export function EnterpriseCreatePage() {
   }, [
     applyFaceConfirmation,
     faceModalVisible,
+    isFreshNewMode,
     invalidateSession,
     requestFaceConfirmation,
   ]);
@@ -586,10 +625,10 @@ export function EnterpriseCreatePage() {
     );
 
   // 中文：修改资料时以表单当前选择为准，避免服务端旧身份把页面推回刷脸步骤。
-  const applicantType = editingInformation
+  const applicantType = isFreshNewMode || editingInformation
     ? form.applicantType
     : applicantTypeFromCertification(certification, form.applicantType);
-  const step = editingInformation
+  const step = isFreshNewMode || editingInformation
     ? 1
     : stepFromCertification(certification, applicantType);
   // 中文：法人第二步由弹窗承载扫码流程，弹窗下方继续展示第一步资料表单。
@@ -602,25 +641,6 @@ export function EnterpriseCreatePage() {
         title={t("console.enterpriseCreate.title")}
         description={t("console.enterpriseCreate.description")}
       />
-      {errorMessage ? (
-        <BannerNotice tone="warning">
-          <div className="enterprise-request-error">
-            <span>{errorMessage}</span>
-            <Button
-              theme="borderless"
-              size="small"
-              icon={<IconRefresh />}
-              loading={loading}
-              disabled={loading}
-              onClick={() => {
-                void loadCertification();
-              }}
-            >
-              {t("console.enterpriseCreate.reload")}
-            </Button>
-          </div>
-        </BannerNotice>
-      ) : null}
       <div className="enterprise-certification-shell">
         <EnterpriseCertificationProgress
           applicantType={applicantType}
@@ -654,7 +674,6 @@ export function EnterpriseCreatePage() {
               setConsent(checked);
               if (checked) clearError("consent");
             }}
-            onBack={() => navigate(-1)}
             onSubmit={(event) => {
               void submit(event);
             }}
@@ -677,7 +696,6 @@ export function EnterpriseCreatePage() {
           <EnterpriseResultStep
             certification={certification}
             loading={loading}
-            workspaceError={workspaceRefreshError}
             onRefresh={() => {
               void loadCertification();
             }}
@@ -685,7 +703,7 @@ export function EnterpriseCreatePage() {
         ) : null}
       </div>
       <EnterpriseFaceModal
-        visible={faceModalVisible}
+        visible={faceModalVisible && !isFreshNewMode}
         faceUrl={faceUrl}
         confirming={confirmingFace}
         notice={faceConfirmNotice}

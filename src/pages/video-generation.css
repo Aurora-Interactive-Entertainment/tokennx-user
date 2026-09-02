@@ -96,34 +96,6 @@ html[data-theme="dark"] .video-console-page .video-composer-box {
 .video-console-page .video-toolbar-actions {
   position: relative;
 }
-.video-console-page .video-api-key-select {
-  width: min(540px, 50vw);
-  min-width: 280px;
-  margin-left: auto;
-  height: 32px;
-  min-height: 32px;
-  overflow: visible;
-}
-.video-console-page .video-api-key-select .semi-select-selection {
-  min-height: 30px;
-  height: 30px;
-  border: 0 !important;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-}
-.video-console-page .video-api-key-select .semi-select-selection-text,
-.video-console-page .video-api-key-select .semi-select-selection-placeholder {
-  color: var(--color-text-default) !important;
-  font-size: 13px;
-  line-height: 30px;
-}
-.video-console-page .video-api-key-select .semi-select-arrow {
-  color: var(--color-text-tertiary);
-}
-body:has(.video-console-page) .video-api-key-dropdown .semi-select-option-icon {
-  display: none !important;
-}
 .video-console-page .video-history-panel {
   display: none;
   position: absolute;
@@ -1068,10 +1040,6 @@ html[data-theme='dark'] .video-console-page .video-composer-box {
 }
 
 @media (max-width: 760px) {
-  .video-console-page .video-api-key-select {
-    width: min(280px, 75vw);
-    min-width: 0;
-  }
   .video-model-trigger {
     width: min(300px, 68vw);
     min-width: 180px;
@@ -1294,7 +1262,6 @@ html[data-theme='dark'] .video-console-page .video-composer-box {
 }
 .video-console-page .video-model-search > .semi-icon,
 .video-console-page .video-model-sort > .semi-icon { color: var(--color-text-tertiary); }
-.video-console-page .video-api-key-select { width: 240px !important; min-width: 240px !important; max-width: 240px; }
 .video-console-page .video-send-button.semi-button { background: var(--color-action-primary); }
 
 /* 中文：Semi Select 的下拉层通过 Portal 挂载到 body，使用独立类名覆盖 Portal 尺寸，确保面板与触发器稳定对齐。 */
@@ -1323,9 +1290,35 @@ html[data-theme='dark'] .video-console-page .video-composer-box {
   overflow: visible;
 }
 .video-reference-select-dropdown .semi-select-option-list-inner-top-slot { height: 31px; padding: 0; }
-.video-reference-select-dropdown .semi-select-option { min-height: 32px; border-radius: 8px; }
+.video-reference-select-dropdown .semi-select-option {
+  display: flex;
+  min-height: 32px;
+  align-items: center;
+  gap: 8px;
+  border-radius: 8px;
+}
+/* 中文：选项内容由 Semi 包裹成 flex，明确垂直居中，避免图标按文字基线对齐。 */
+.video-reference-select-dropdown .semi-select-option-text {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  line-height: 20px;
+}
+/* 中文：生成模式下拉框使用自定义图标，隐藏 Semi 默认的选中勾选。 */
+.video-reference-select-dropdown .semi-select-option > .semi-select-option-icon {
+  display: none;
+}
 .video-reference-select-dropdown .video-popover-title { padding: 8px 8px 5px; line-height: 18px; }
-.video-reference-select-dropdown .video-reference-option-icon { width: 16px; }
+.video-reference-select-dropdown .video-reference-option-icon {
+  display: inline-flex;
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
 
 .video-model-select-dropdown {
   width: 380px !important;
@@ -1441,6 +1434,22 @@ html[data-theme='dark'] .video-console-page .video-composer-box {
   align-items: center;
   gap: 6px;
 }
+.video-console-page .video-reference-trigger.semi-select .video-reference-option-icon {
+  display: inline-flex;
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+.video-console-page .video-reference-trigger.semi-select .semi-select-selection-text {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+  line-height: 20px;
+}
 .video-console-page .video-aspect-trigger.semi-select .semi-select-selection-text > .semi-icon,
 .video-console-page .video-duration-trigger.semi-select .semi-select-selection-text > .semi-icon {
   flex: 0 0 16px;
@@ -1486,7 +1495,6 @@ html[data-theme='dark'] .video-console-page .video-task-status.is-unknown { colo
 html[data-theme='dark'] .video-console-page .video-task-status.is-succeeded { color: #b7eb8f; background: rgb(82 196 26 / 14%); }
 
 @media (max-width: 760px) {
-  .video-console-page .video-api-key-select { width: min(240px, 70vw) !important; min-width: 0 !important; max-width: 70vw; }
   .video-console-page .video-task-card-heading h2 { white-space: normal; }
   .video-console-page .video-task-card-actions { flex-wrap: wrap; }
   .video-console-page .video-task-progress { grid-template-columns: auto minmax(0, 1fr); }

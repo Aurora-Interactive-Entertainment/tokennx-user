@@ -11,7 +11,6 @@ import { useTranslation } from "react-i18next";
 import QRCode from "qrcode";
 import type { EnterpriseCertification } from "@/api/enterprise-certification";
 import Modal from "@/components/app-modal";
-import { BannerNotice } from "@/components/common";
 import "./enterprise-certification-status.css";
 
 export interface FaceConfirmationNotice {
@@ -87,14 +86,12 @@ export function EnterpriseFaceStep({
 interface EnterpriseResultStepProps {
   certification: EnterpriseCertification;
   loading: boolean;
-  workspaceError: string;
   onRefresh: () => void;
 }
 
 export function EnterpriseResultStep({
   certification,
   loading,
-  workspaceError,
   onRefresh,
 }: EnterpriseResultStepProps) {
   const { t } = useTranslation();
@@ -145,9 +142,6 @@ export function EnterpriseResultStep({
       </span>
       <h2>{title}</h2>
       <p>{hint}</p>
-      {workspaceError ? (
-        <BannerNotice tone="warning">{workspaceError}</BannerNotice>
-      ) : null}
       <dl
         className="enterprise-result-details"
         aria-label={t("console.enterpriseCreate.resultLabel")}

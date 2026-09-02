@@ -60,7 +60,7 @@ export function ConsoleModelsPage() {
   // 关键词搜索由后端完成，此时不能启用服务端分页参数（结果集已被检索过滤）。
   const canUseServerPagination = !debouncedKeyword && company === 'all' && priceFilter === 'all' && sort === 'default'
   const serverModelType: UserModelModality | undefined = category === 'all' || category === 'speech' || category === 'transcription' ? undefined : category
-  const { models: userModels, activities, total: apiTotal, page: apiPage, pageSize: apiPageSize, loading, error, refresh } = useUserModels({ activityId: activityId || undefined, modelType: serverModelType, ...(debouncedKeyword ? { keyword: debouncedKeyword } : {}), ...(canUseServerPagination ? { page, pageSize } : {}) })
+  const { models: userModels, activities, total: apiTotal, page: apiPage, pageSize: apiPageSize, loading, error } = useUserModels({ activityId: activityId || undefined, modelType: serverModelType, ...(debouncedKeyword ? { keyword: debouncedKeyword } : {}), ...(canUseServerPagination ? { page, pageSize } : {}) })
   const [detailModel, setDetailModel] = useState<ModelRecord | null>(null)
   const requestedDetailState = useUserModelDetail(requestedModelAlias)
   const detailState = useUserModelDetail(requestedModelAlias ?? (detailModel ? modelAlias(detailModel) : null))
@@ -78,6 +78,10 @@ export function ConsoleModelsPage() {
   }, [apiPage, apiPageSize, apiTotal, filteredModels, page, pageSize])
   // 中文：单卡页面限制卡片宽度，多卡页面继续由网格平均分配可用空间。
   const modelGridClassName = pageResult.items.length === 1 ? 'model-card-grid model-card-grid--single' : 'model-card-grid'
+
+  useEffect(() => {
+    if (error) appToast.error(error)
+  }, [error])
 
   useEffect(() => {
     if (!requestedModelAlias) return
@@ -152,7 +156,7 @@ export function ConsoleModelsPage() {
 
   return <div className="page-stack models-console-page">
     <PageTitle title={t('console.models.title')} description={t('console.models.description')} />
-    {loading ? <EmptyPanel title={t('console.common.loadingModels')} description={t('console.common.readingModels')} /> : error ? <EmptyPanel title={t('console.common.modelCatalogFailed')} description={error} action={<Button theme="outline" onClick={refresh}>{t('console.common.reload')}</Button>} /> : null}
+    {loading ? <EmptyPanel title={t('console.common.loadingModels')} description={t('console.common.readingModels')} /> : null}
     {!loading && !error ? <>
     <div className="models-toolbar">
       <Input className="app-standard-input models-search-input" size="large" prefix={<IconSearch aria-hidden="true" />} value={query} onChange={(value) => updateFilter(() => setQuery(value))} placeholder={t('console.models.searchPlaceholder')} aria-label={t('console.models.searchPlaceholder').replace('...', '')} showClear />
@@ -252,7 +256,7 @@ export function PlaygroundPage() {
   const dispatch = useAppDispatch()
   const navigate = useNavigate()
   const store = useAppStore()
-  const { models, loading: modelsLoading, error: modelsError, refresh: refreshModels } = useUserModels()
+  const { models, loading: modelsLoading, error: modelsError } = useUserModels()
   const [searchParams] = useSearchParams()
   const requestedModelAlias = searchParams.get('model')?.trim() ?? ''
   const initialModelId = requestedModelAlias || store.selectedModelId
@@ -290,6 +294,10 @@ export function PlaygroundPage() {
     [models],
   )
   const selectedModel = findModelInList(selectableModels, modelId) ?? selectableModels[0]
+
+  useEffect(() => {
+    if (modelsError) appToast.error(modelsError)
+  }, [modelsError])
 
   function deleteAttempt(attemptId: string): void {
     if (!selectedSession) return
@@ -653,7 +661,7 @@ export function PlaygroundPage() {
           </div>
         </div>
         <div className={`message-list${centerMessageState ? ' is-centered' : ''}`} ref={messageListRef} onScroll={handleMessageScroll}>
-            {modelsLoading && !selectedSession && !activePrompt ? <PlaygroundWorkspaceNotice tone="neutral" message={t('console.common.loadingModels')} description={t('console.common.readingModels')} /> : modelsError && !selectedSession && !activePrompt ? <PlaygroundWorkspaceNotice message={t('console.common.modelCatalogFailed')} description={modelsError} action={<Button theme="outline" size="small" onClick={refreshModels}>{t('console.common.reload')}</Button>} /> : <>
+            {modelsLoading && !selectedSession && !activePrompt ? <PlaygroundWorkspaceNotice tone="neutral" message={t('console.common.loadingModels')} description={t('console.common.readingModels')} /> : modelsError && !selectedSession && !activePrompt ? null : <>
             {selectedSession ? <PlaygroundMessageTimeline session={selectedSession} hiddenAttemptId={retryingAttemptId} dividerLabel={t('console.playground.newContextDivider')} renderMessage={renderMessage} /> : null}
             {activePrompt ? <><div className="message user"><span className="message-avatar">H</span><div className="message-body"><div className="message-bubble">{activePrompt}</div><div className="message-actions"><span className="message-icon-action" role="button" tabIndex={0} aria-label={t('console.playground.copyUserMessage')} title={t('console.playground.copyUserMessage')} onClick={() => copyMessage(activePrompt, t('console.playground.copiedUserMessage'))} onKeyDown={(event) => activateAction(event, () => copyMessage(activePrompt, t('console.playground.copiedUserMessage')))}><IconCopy aria-hidden="true" /></span></div></div></div>{renderMessage({ id: 'streaming-response', attemptId: 'streaming-attempt', role: 'assistant', status: 'complete', content: '', reasoning: '', requestId: null, error: null, createdAt: '', inputTokens: null, outputTokens: null, cost: null, latency: null }, true)}</> : null}
             {!selectedSession && !activePrompt ? selectableModels.length > 0 ? <div className="empty-state"><h3>{t('console.playground.startConversation')}</h3><p>{t('console.playground.startConversationHint')}</p></div> : <PlaygroundWorkspaceNotice tone="neutral" message={t('console.playground.noTextModels')} description={t('console.playground.noTextModelsHint')} /> : null}

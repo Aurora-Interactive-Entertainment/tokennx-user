@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import Button from '@douyinfe/semi-ui/lib/es/button'
 import Toast from '@douyinfe/semi-ui/lib/es/toast'
+import { appToast } from '@/components/app-toast'
 import { IconCopy, IconFile, IconSearch } from '@douyinfe/semi-icons'
 import { CompatInput as Input } from '@/components/semi-compat'
 import { useAppStore } from '@/data/app-state'
@@ -138,7 +139,7 @@ export function QuickstartGuide() {
   const { t } = useTranslation()
   const store = useAppStore()
   const [searchParams, setSearchParams] = useSearchParams()
-  const { models, loading: modelsLoading, error: modelsError, refresh: refreshModels } = useUserModels()
+  const { models, loading: modelsLoading, error: modelsError } = useUserModels()
   const textModels = models.filter((item) => item.modality === 'text' && modelAlias(item))
   const requestedModelAlias = searchParams.get('model')
   const requestedModel = findModelInList(models, requestedModelAlias)
@@ -150,6 +151,10 @@ export function QuickstartGuide() {
   const [appliedApiKey, setAppliedApiKey] = useState('')
   const [appliedKeyID, setAppliedKeyID] = useState('')
   const workspaceContext = useMemo<UserApiKeyContext>(() => workspaceContextFor(store.activeWorkspace), [store.activeWorkspace.id, store.activeWorkspace.type])
+
+  useEffect(() => {
+    if (modelsError) appToast.error(modelsError)
+  }, [modelsError])
 
   useEffect(() => {
     const alias = model ? modelAlias(model) : ''
@@ -169,7 +174,9 @@ export function QuickstartGuide() {
     void navigator.clipboard.writeText(value).then(() => Toast.success(t('console.quickstart.copySuccess'))).catch(() => Toast.error(t('console.common.copyFailed')))
   }
 
-  if (modelsLoading || modelsError || !model) return <div className="quickstart-page quickstart-pdf-page">{modelsLoading ? <p>{t('console.common.readingModels')}</p> : <p>{modelsError || t('console.quickstart.noModelsHint')}</p>}{modelsError ? <Button theme="outline" onClick={refreshModels}>{t('console.common.reload')}</Button> : null}</div>
+  if (modelsLoading) return <div className="quickstart-page quickstart-pdf-page"><p>{t('console.common.readingModels')}</p></div>
+  if (modelsError) return <div className="quickstart-page quickstart-pdf-page" />
+  if (!model) return <div className="quickstart-page quickstart-pdf-page"><p>{t('console.quickstart.noModelsHint')}</p></div>
   const contextQuery = `model=${encodeURIComponent(modelAlias(model))}&language=${language}`
   const completed = keys.some((key) => key.status === 'active')
   const toggle = (step: QuickstartStep) => setOpenStep(openStep === step ? 0 : step)

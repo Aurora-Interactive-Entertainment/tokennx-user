@@ -1085,7 +1085,7 @@ export const consoleResources = {
         },
         retry: "重新加载",
         loading: "正在加载个人用量...",
-        models: "TRAE 内置模型",
+        models: "TOKEN NX 内置模型",
         total: "总用量",
         balanceHint: "当前账户可用余额",
         noModels: "暂无模型用量记录",
@@ -1168,7 +1168,6 @@ export const consoleResources = {
         serviceAgreement: "《服务协议》",
         privacyPolicy: "《隐私政策》",
         agreementSeparator: "、",
-        backToList: "返回认证列表",
         update: "更新认证资料",
         demoNote:
           "认证申请将跳转支付宝完成人脸核验，认证结果以服务端查询为准。",
@@ -3228,7 +3227,7 @@ export const consoleResources = {
         },
         retry: "Reload",
         loading: "Loading personal usage...",
-        models: "TRAE built-in models",
+        models: "TOKEN NX built-in models",
         total: "Total usage",
         balanceHint: "Current available account balance",
         noModels: "No model usage records",
@@ -3313,7 +3312,6 @@ export const consoleResources = {
         serviceAgreement: "Service Agreement",
         privacyPolicy: "Privacy Policy",
         agreementSeparator: " and ",
-        backToList: "Back to verification list",
         update: "Update verification",
         demoNote:
           "You will be redirected to Alipay for face verification. The server status is authoritative.",

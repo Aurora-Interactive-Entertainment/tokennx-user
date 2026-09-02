@@ -13,6 +13,7 @@ import {
 import { getProductPlans, type ProductPlanSummary } from "@/api/product-plans";
 import { isAuthenticationFailure } from "@/api/http";
 import { PageTitle, SectionHeading } from "@/components/common";
+import { appToast } from "@/components/app-toast";
 import { useAppStore } from "@/data/app-state";
 import { invalidateAuth } from "@/store/auth-slice";
 import { useAppDispatch } from "@/store/hooks";
@@ -305,6 +306,11 @@ export function SubscriptionPage() {
 
   useEffect(() => loadSummary(), [loadSummary]);
 
+  useEffect(() => {
+    if (!error) return;
+    appToast.error(error);
+  }, [error]);
+
   const loadPlans = useCallback(() => {
     if (!context) return;
     const controller = new AbortController();
@@ -361,7 +367,6 @@ export function SubscriptionPage() {
       <PageTitle
         title={t("console.subscriptionPage.title")}
       />
-      {error ? <div className="subscription-error" role="alert"><span>{error}</span>{requestId ? <small>{t("console.common.requestIdValue", { requestId })}</small> : null}</div> : null}
       <section className="subscription-overview" aria-label={t("console.subscriptionPage.currentSection")}>
         <SectionHeading title={t("console.subscriptionPage.currentSection")} />
         <div className="subscription-overview-grid">

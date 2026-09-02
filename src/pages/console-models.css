@@ -175,7 +175,7 @@
   flex-basis: 40px;
   border-color: var(--color-border-neutral-l1);
   border-radius: 10px;
-  background: var(--color-bg-base-default);
+  background: #fff;
 }
 
 .models-console-page .model-card-name {

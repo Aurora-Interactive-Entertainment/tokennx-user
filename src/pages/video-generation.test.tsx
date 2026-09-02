@@ -131,6 +131,14 @@ describe('视频生成页面', () => {
     expect(document.querySelector('.video-workspace.experience-workbench')).toBeInTheDocument()
   })
 
+  it('直接使用默认 API Key 且不显示密钥选择框', async () => {
+    renderVideoPage()
+
+    await screen.findByRole('option', { name: /CogVideo/ })
+    expect(document.querySelector('.video-api-key-select')).toBeNull()
+    expect(screen.queryByText(/默认 API Key/)).toBeNull()
+  })
+
   it('提交真实参数并轮询到结果视频', async () => {
     const user = userEvent.setup()
     vi.mocked(submitVideoGeneration).mockResolvedValue(pendingTask)

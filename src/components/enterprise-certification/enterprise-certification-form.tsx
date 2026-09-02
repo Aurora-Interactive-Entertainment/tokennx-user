@@ -203,7 +203,6 @@ interface EnterpriseCertificationFormProps {
   onChooseAuthorization: (event: ChangeEvent<HTMLInputElement>) => void;
   onRemoveAuthorization: () => void;
   onConsentChange: (checked: boolean) => void;
-  onBack: () => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 }
 
@@ -475,14 +474,6 @@ export function EnterpriseCertificationForm(
         </span>
       ) : null}
       <div className="enterprise-certification-actions">
-        <Button
-          htmlType="button"
-          theme="outline"
-          type="tertiary"
-          onClick={props.onBack}
-        >
-          {t("console.enterpriseCreate.returnList")}
-        </Button>
         <Button
           htmlType="submit"
           theme="solid"
