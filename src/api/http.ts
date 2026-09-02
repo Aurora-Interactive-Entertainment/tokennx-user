@@ -107,7 +107,8 @@ export async function fetchResponse(path: string, options: FetchJsonOptions = {}
   const headers = new Headers(options.headers)
   const isFormDataBody = typeof FormData !== 'undefined' && options.body instanceof FormData
   const requestId = createRequestId()
-  headers.set('Accept', 'application/json')
+  // 中文：允许文件流请求覆盖默认 JSON 协商头，普通接口仍默认接受 JSON。
+  if (!headers.has('Accept')) headers.set('Accept', 'application/json')
   headers.set('X-Request-ID', requestId)
   headers.set('X-App-Lang', getActiveLanguage())
   if (isFormDataBody) headers.delete('Content-Type')

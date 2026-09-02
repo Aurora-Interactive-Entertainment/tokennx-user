@@ -23,6 +23,7 @@ import { startOfLocalDay } from "@/utils/date-range";
 import { TraeDialog } from "./trae-dialog";
 import { TraePagination } from "./trae-pagination";
 import { TraeTableEmpty } from "./trae-table-empty";
+import "./trae-date-picker.css";
 import "./trae-enterprise-invitations.css";
 
 const INVITATION_PAGE_SIZE = 10;

@@ -18,14 +18,15 @@
 }
 .image-shell {
   display: grid;
-  grid-template-columns: 240px minmax(0, 1fr);
+  /* 中文：展开态历史栏与智能对话页保持同宽，折叠态仍统一为 56px。 */
+  grid-template-columns: 252px minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr);
   height: 100%;
   min-height: 0;
   overflow: hidden;
   border: 1px solid var(--color-border-neutral-l1);
   border-radius: var(--radius-8);
-  background: var(--color-bg-base-secondary);
+  background: #fefefe;
   transition: grid-template-columns 180ms ease;
 }
 .image-modebar {
@@ -37,9 +38,11 @@
   border-bottom: 1px solid var(--color-border-neutral-l1);
 }
 .image-history {
+  display: flex;
   grid-row: 1;
   min-width: 0;
-  overflow: auto;
+  flex-direction: column;
+  overflow: hidden;
   padding: 10px 12px;
   border-right: 1px solid var(--color-border-neutral-l1);
   background: var(--color-bg-base-secondary);
@@ -65,6 +68,7 @@
   justify-content: flex-start;
   padding-inline: 8px;
   gap: 8px;
+  border: 0;
   border-radius: 6px;
   color: var(--color-text-default);
   background: transparent;
@@ -84,6 +88,8 @@
   height: 32px;
   flex: 0 0 32px;
   place-items: center;
+  padding: 0;
+  border: 0;
   border-radius: 6px;
   color: var(--color-text-tertiary);
   cursor: pointer;
@@ -127,28 +133,37 @@
 }
 .image-history-list {
   display: grid;
-  gap: 4px;
+  min-height: 0;
+  flex: 1;
+  gap: 3px;
   margin-top: 12px;
+  overflow-y: auto;
 }
+/* 中文：图片生成历史条目的尺寸、交互态和文本截断与智能对话页保持一致。 */
 .image-history-item {
   display: grid;
   gap: 4px;
   width: 100%;
-  padding: 10px 12px;
-  border: 1px solid transparent;
-  border-radius: var(--radius-6);
+  padding: 9px 10px;
+  border: 0;
+  border-radius: 7px;
   color: inherit;
+  background: transparent;
   text-align: left;
   cursor: pointer;
+  transition: background-color 120ms ease;
 }
-.image-history-item:hover {
-  border-color: var(--color-border-neutral-l2);
-  background: var(--color-bg-overlay-l1);
+.image-history-item:hover,
+.image-history-item:focus-visible {
+  background: rgb(0 0 0 / 4%);
 }
 .image-history-item strong {
+  overflow: hidden;
   color: var(--color-text-default);
   font-size: 13px;
   font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .image-history-item span,
 .image-history-item small {
@@ -165,7 +180,7 @@
   min-width: 0;
   min-height: 0;
   flex-direction: column;
-  background: var(--color-bg-base-secondary);
+  background: #fefefe;
 }
 .image-generate-stage {
   display: flex;
@@ -749,17 +764,6 @@
     visibility 0ms linear 180ms;
 }
 
-/* 中文：图片工作台保持静态 hover 外观，避免鼠标移动造成标题和按钮跳色。 */
-.image-console-page .image-history-item:hover {
-  border-color: transparent;
-  color: inherit;
-  background: transparent;
-}
-.image-console-page .image-new-session-button:hover,
-.image-console-page .image-new-session-button:focus-visible {
-  color: var(--color-text-default);
-  background: transparent;
-}
 .image-console-page .image-model-trigger:hover {
   color: var(--color-text-default);
   background: var(--color-bg-overlay-l1) !important;
@@ -1160,7 +1164,8 @@
 
 html[data-theme="dark"] .image-shell,
 html[data-theme="dark"] .image-workspace {
-  background: var(--color-bg-base-secondary);
+  /* 中文：右侧内容区与智能对话页使用同一层深色背景。 */
+  background: var(--color-bg-base-default);
 }
 
 html[data-theme="dark"] .image-result-actions .semi-button {

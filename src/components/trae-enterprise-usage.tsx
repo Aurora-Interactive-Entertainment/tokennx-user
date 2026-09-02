@@ -18,7 +18,6 @@ import {
   getEnterpriseUsageDetail,
   getEnterpriseUsageMembers,
   getEnterpriseUsageSummary,
-  type EnterpriseUsageAggregateItem,
   type EnterpriseUsageDepartment,
   type EnterpriseUsageDetailResponse,
   type EnterpriseUsageMember,
@@ -36,13 +35,22 @@ import {
 import {
   EnterpriseError,
   EnterpriseLoading,
-  exportEnterpriseCsv,
   useEnterpriseErrorHandler,
   type EnterpriseRequestError,
 } from '@/pages/enterprise-console-shared'
+import {
+  createExportIdempotencyKey,
+  createExportTask,
+  downloadExportTask,
+  getExportErrorMessage,
+  saveExportResponse,
+  waitForExportTask,
+} from '@/api/exports'
+import { isAuthenticationFailure } from '@/api/http'
 import { useResolvedTheme } from '@/theme'
 import { BACKOFFICE_MONEY_DISPLAY_DECIMAL_PLACES, formatApiTime, formatCount, formatYuan } from '@/utils/format'
-import { addLocalDays as addDays, startOfLocalToday as startOfToday } from '@/utils/date-range'
+import { addLocalDays as addDays, endOfLocalDay, startOfLocalDay, startOfLocalToday as startOfToday } from '@/utils/date-range'
+import './trae-date-picker.css'
 import './trae-enterprise-usage.css'
 
 echarts.use([PieChart, TooltipComponent, SVGRenderer])
@@ -401,10 +409,6 @@ function customRangeOptions(range: string, dates: Date[]) {
   }
 }
 
-function detailCsvRow(row: EnterpriseUsageAggregateItem): Array<string | number> {
-  return [row.bucket_start, row.model_name, row.vendor, row.requests, row.success_count, row.error_count, row.cancelled_count, row.input_tokens, row.output_tokens, row.cached_tokens, row.cost_yuan, row.average_latency_ms ?? '']
-}
-
 export function TraeUsageDetail({ context, memberID, onMemberChange }: UsageDetailProps) {
   const { t } = useTranslation()
   const handleError = useEnterpriseErrorHandler()
@@ -416,6 +420,7 @@ export function TraeUsageDetail({ context, memberID, onMemberChange }: UsageDeta
   const [pageSize, setPageSize] = useState(20)
   const [data, setData] = useState(EMPTY_DETAIL)
   const [loading, setLoading] = useState(true)
+  const [exporting, setExporting] = useState(false)
   const [error, setError] = useState<EnterpriseRequestError | null>(null)
   const [reload, setReload] = useState(0)
   const today = useMemo(() => startOfToday(), [])
@@ -465,13 +470,42 @@ export function TraeUsageDetail({ context, memberID, onMemberChange }: UsageDeta
     }
   }
 
-  function exportDetail() {
-    exportEnterpriseCsv(
-      'trae-usage-detail.csv',
-      [t('traeEnterprise.usage.detailDate'), t('traeEnterprise.usage.model'), t('traeEnterprise.usage.vendor'), t('traeEnterprise.usage.requestCount'), t('traeEnterprise.usage.successCount'), t('traeEnterprise.usage.errorCount'), t('traeEnterprise.usage.cancelledCount'), t('traeEnterprise.usage.inputTokens'), t('traeEnterprise.usage.outputTokens'), t('traeEnterprise.usage.cachedTokens'), t('traeEnterprise.usage.totalCost'), t('traeEnterprise.usage.averageLatency')],
-      data.items.map(detailCsvRow),
-    )
-    Toast.success(t('traeEnterprise.usage.downloadSuccess'))
+  async function exportDetail(): Promise<void> {
+    if (exporting || data.items.length === 0) return
+    setExporting(true)
+    try {
+      // 中文：企业用量导出使用后端的成员聚合定义；模型和状态筛选仅属于明细查询接口，不能发送给导出接口。
+      const filters: Record<string, string> = { range }
+      if (range === 'custom' && customRange.length === 2) {
+        const start = startOfLocalDay(customRange[0])
+        const end = new Date(Math.min(Date.now(), endOfLocalDay(customRange[1]).getTime() + 1))
+        filters.start_at = start.toISOString()
+        filters.end_at = end.toISOString()
+      }
+      if (memberID !== 'all') filters.member_id = memberID
+      const task = await createExportTask(
+        {
+          export_code: 'enterprise.usage',
+          format: 'csv',
+          context: { enterprise_id: context.id },
+          filters,
+          file_name: 'trae-enterprise-usage',
+        },
+        { idempotencyKey: createExportIdempotencyKey('enterprise-usage') },
+      )
+      const completed = await waitForExportTask(task.id)
+      const response = await downloadExportTask(completed.id)
+      await saveExportResponse(response, completed.file_name)
+      Toast.success(t('traeEnterprise.usage.downloadSuccess'))
+    } catch (error) {
+      if (isAuthenticationFailure(error)) {
+        handleError(error)
+      } else {
+        Toast.error(getExportErrorMessage(error))
+      }
+    } finally {
+      setExporting(false)
+    }
   }
 
   const memberOptions = [{ value: 'all', label: t('traeEnterprise.usage.allMembers') }, ...data.filters.members.map((member) => ({ value: member.id, label: member.name }))]
@@ -490,7 +524,7 @@ export function TraeUsageDetail({ context, memberID, onMemberChange }: UsageDeta
       <UsageSelect label={t('traeEnterprise.usage.allStatuses')} value={status} onChange={(value) => { setStatus(value as EnterpriseUsageStatus); setPage(1) }} options={statusOptions} />
       <div className="trae-usage-range-buttons">{([['today', t('traeEnterprise.usage.today')], ['7d', t('traeEnterprise.usage.last7')], ['30d', t('traeEnterprise.usage.last30')], ['custom', t('traeEnterprise.usage.custom')]] as const).map(([value, label]) => <button key={value} className={range === value ? 'is-active' : ''} type="button" onClick={() => setPreset(value)}>{label}</button>)}</div>
       {range === 'custom' ? <DatePicker className="trae-date-picker trae-usage-detail-date-picker" dropdownClassName="trae-date-picker-dropdown trae-usage-detail-date-dropdown" type="dateRange" value={customRange} format="yyyy-MM-dd" rangeSeparator=" ~ " showClear={false} disabledDate={(date) => !date || date < minDate || date > today} onChange={handleCustomRange} /> : null}
-      <button className="trae-icon-button trae-usage-detail-download" type="button" disabled={data.items.length === 0} aria-label={t('traeEnterprise.usage.download')} title={t('traeEnterprise.usage.download')} onClick={exportDetail}><IconDownload aria-hidden="true" /></button>
+      <button className="trae-icon-button trae-usage-detail-download" type="button" disabled={data.items.length === 0 || loading || exporting} aria-busy={exporting} aria-label={t('traeEnterprise.usage.download')} title={t('traeEnterprise.usage.download')} onClick={() => void exportDetail()}><IconDownload aria-hidden="true" /></button>
     </div>
     {error ? (
       <EnterpriseError message={error.message} requestId={error.requestId} onRetry={() => setReload((value) => value + 1)} />

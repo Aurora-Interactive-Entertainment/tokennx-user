@@ -269,7 +269,8 @@ export function ProfileContactDialog(props: ProfileContactDialogProps) {
       closable={!saving}
       footer={
         <div className="profile-dialog-footer">
-          <Button className="profile-secondary-button" theme="outline" disabled={saving} onClick={props.onCancel}>{t('profile.contact.cancel')}</Button>
+          {/* 中文：显式声明底部按钮主次类型，确保自定义 footer 也复用标准弹窗配色。 */}
+          <Button className="profile-secondary-button" theme="outline" type="tertiary" disabled={saving} onClick={props.onCancel}>{t('profile.contact.cancel')}</Button>
           <Button className="profile-primary-button" theme="solid" type="primary" loading={saving} disabled={saving} onClick={() => { void saveContact() }}>{t('profile.contact.save')}</Button>
         </div>
       }

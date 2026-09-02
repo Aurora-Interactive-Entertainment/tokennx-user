@@ -1,67 +1,12 @@
-.enterprise-status-content {
-  display: grid;
-  gap: 18px;
-}
-
-.enterprise-status-section-title {
-  position: relative;
-  margin: 0;
-  padding-left: 14px;
-  color: var(--color-text-default-hover);
-  font-size: 18px;
-  line-height: 1.5;
-}
-
-.enterprise-status-section-title::before {
-  position: absolute;
-  top: 3px;
-  bottom: 3px;
-  left: 0;
-  width: 3px;
-  border-radius: 2px;
-  background: var(--color-action-primary);
-  content: "";
-}
-
-.enterprise-status-lead {
-  margin: -10px 0 0 14px;
-  color: var(--color-text-secondary);
-  font-size: 13px;
-  line-height: 1.6;
-}
-
-.enterprise-status-summary,
 .enterprise-result-details {
   margin: 0;
 }
 
-.enterprise-status-summary {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  border-top: 1px solid var(--color-border-neutral-l1);
-  border-bottom: 1px solid var(--color-border-neutral-l1);
-}
-
-.enterprise-status-summary > div {
-  min-width: 0;
-  display: grid;
-  gap: 5px;
-  padding: 16px;
-  border-left: 1px solid var(--color-border-neutral-l1);
-}
-
-.enterprise-status-summary > div:first-child {
-  border-left: 0;
-  padding-left: 0;
-}
-
-.enterprise-status-summary dt,
 .enterprise-result-details dt {
   color: var(--color-text-tertiary);
   font-size: 12px;
 }
 
-.enterprise-status-summary dd,
 .enterprise-result-details dd {
   overflow-wrap: anywhere;
   margin: 0;
@@ -70,38 +15,12 @@
   font-weight: 600;
 }
 
-.enterprise-face-guidance {
-  display: grid;
-  justify-items: start;
-  gap: 10px;
-  padding: 22px 0 4px;
-}
-
-.enterprise-face-guidance h3,
-.enterprise-face-guidance p {
-  margin: 0;
-}
-
-.enterprise-face-guidance h3 {
-  color: var(--color-text-default-hover);
-  font-size: 16px;
-}
-
-.enterprise-face-guidance p {
-  max-width: 680px;
-  color: var(--color-text-secondary);
-  font-size: 13px;
-  line-height: 1.7;
-}
-
-.enterprise-face-guidance .semi-button,
 .enterprise-face-dialog-actions .semi-button-solid {
   border-color: var(--color-action-primary);
   background: var(--color-action-primary);
   color: var(--color-action-on-primary);
 }
 
-.enterprise-face-guidance .semi-button:hover,
 .enterprise-face-dialog-actions .semi-button-solid:hover {
   border-color: var(--color-action-primary-hover);
   background: var(--color-action-primary-hover);
@@ -231,6 +150,10 @@
   height: 210px;
 }
 
+.enterprise-face-qr-loading {
+  background: var(--color-bg-overlay-l1);
+}
+
 .enterprise-face-dialog h2,
 .enterprise-face-dialog p {
   margin: 0;
@@ -330,21 +253,6 @@ html[data-theme="light"]
 }
 
 @media (max-width: 700px) {
-  .enterprise-status-summary {
-    grid-template-columns: 1fr;
-  }
-
-  .enterprise-status-summary > div,
-  .enterprise-status-summary > div:first-child {
-    padding: 12px 0;
-    border-top: 1px solid var(--color-border-neutral-l1);
-    border-left: 0;
-  }
-
-  .enterprise-status-summary > div:first-child {
-    border-top: 0;
-  }
-
   .enterprise-result-content {
     min-height: 380px;
   }

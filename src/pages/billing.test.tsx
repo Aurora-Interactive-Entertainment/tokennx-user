@@ -140,15 +140,30 @@ function makeInvoice(overrides: Partial<BillingInvoiceItem> = {}): BillingInvoic
   }
 }
 
-function makeInvoices(item: BillingInvoiceItem = makeInvoice()): BillingInvoiceResponse {
+function makeInvoices(item: BillingInvoiceItem = makeInvoice(), enterprise = false): BillingInvoiceResponse {
+  const accountName = enterprise ? '真实关联企业' : '本地演示工作区'
+  const invoiceTitle = enterprise ? '真实关联企业开票抬头' : '接口返回的个人抬头'
   return {
-    account: { id: 'personal-account', type: 'personal', name: '本地演示工作区' },
+    account: { id: enterprise ? 'enterprise-account' : 'personal-account', type: enterprise ? 'enterprise' : 'personal', name: accountName },
     available_amount_yuan: '50.00',
     issued_amount_yuan: '100.00',
     pending_amount_yuan: '20.00',
     issued_count: 1,
     pending_count: 1,
     history: { items: [item], page: 1, page_size: 20, total: 1 },
+    application_form: {
+      title: invoiceTitle,
+      tax_identifier: enterprise ? '91310000TEST123456' : '',
+      amount_yuan: '40.00',
+      invoice_types: [
+        { value: 'normal', label: i18n.t('console.billing.invoiceTypeNormal') },
+        { value: 'special', label: i18n.t('console.billing.invoiceTypeSpecial') },
+      ],
+      project_names: [
+        { value: i18n.t('console.billing.defaultProjectName'), label: i18n.t('console.billing.defaultProjectName') },
+        { value: '*信息技术服务*软件服务费', label: '*信息技术服务*软件服务费' },
+      ],
+    },
   }
 }
 
@@ -177,7 +192,6 @@ function renderBilling(config: { analysisError?: boolean; invoiceError?: boolean
   const appStore = createAppStore()
   appStore.dispatch({ type: 'auth/loginWithEmail/fulfilled', payload: AUTH_RESULT.user })
     const analysis = makeAnalysis(false, config.analysisWallet)
-  const invoices = makeInvoices(config.invoice)
   let postInput: { body: string; headers: Headers } | null = null
   let paymentOrderInput: { body: string; headers: Headers } | null = null
   let paymentStartInput: { body: string; headers: Headers } | null = null
@@ -189,6 +203,15 @@ function renderBilling(config: { analysisError?: boolean; invoiceError?: boolean
       return apiResponse(url.searchParams.get('account_type') === 'enterprise' ? makeAnalysis(true) : analysis)
     }
     if (url.pathname === '/api/user/billing/statements') return apiResponse(makeStatements())
+    if (url.pathname === '/api/user/exports' && requestOptions?.method === 'POST') {
+      return apiResponse({ id: 'billing-export-1', export_no: 'UEXP-billing-export-1', export_code: 'billing.statements', format: 'csv', status: 'queued', progress: 0, file_name: 'billing.csv', row_count: 0, size_bytes: 0, requested_at: Date.now(), downloadable: false })
+    }
+    if (url.pathname === '/api/user/exports/billing-export-1') {
+      return apiResponse({ id: 'billing-export-1', export_no: 'UEXP-billing-export-1', export_code: 'billing.statements', format: 'csv', status: 'succeeded', progress: 100, file_name: 'billing.csv', row_count: 3, size_bytes: 128, requested_at: Date.now(), downloadable: true })
+    }
+    if (url.pathname === '/api/user/exports/billing-export-1/download') {
+      return new Response('\ufeff"-¥4.120000000"\r\n"¥105.880000000"', { status: 200, headers: { 'Content-Type': 'text/csv;charset=utf-8' } })
+    }
     if (url.pathname === '/api/user/payment/orders' && requestOptions?.method === 'POST') {
       paymentOrderInput = { body: String(requestOptions.body), headers: new Headers(requestOptions.headers) }
       return apiResponse({ id: 'payment-order-1', order_no: 'PAY-202608040001', status: 'pending', amount_yuan: '500.00' })
@@ -207,7 +230,7 @@ function renderBilling(config: { analysisError?: boolean; invoiceError?: boolean
     if (url.pathname.endsWith('/download')) return new Response('invoice-bytes', { status: 200, headers: { 'Content-Type': 'application/pdf' } })
     if (url.pathname === '/api/user/billing/invoices') {
       if (config.invoiceError) return apiResponse({}, 503, 100002, '费用管理服务暂时不可用', 'invoice-unavailable')
-      return apiResponse(invoices)
+      return apiResponse(makeInvoices(config.invoice, url.searchParams.get('account_type') === 'enterprise'))
     }
     throw new Error(`unexpected request: ${url.pathname}`)
   })
@@ -337,9 +360,11 @@ describe('用户费用管理页面', () => {
     expect(within(requestFocus as HTMLElement).getByTitle('¥4.120000000')).toHaveTextContent('¥4.120')
     expect(screen.getAllByRole('row')).toHaveLength(4)
     await user.click(screen.getByRole('button', { name: /导出 CSV/ }))
-    expect(createObjectURL).toHaveBeenCalledOnce()
-    expect(click).toHaveBeenCalledOnce()
-    expect(revokeObjectURL).toHaveBeenCalledWith('blob:billing')
+    await waitFor(() => {
+      expect(createObjectURL).toHaveBeenCalledOnce()
+      expect(click).toHaveBeenCalledOnce()
+      expect(revokeObjectURL).toHaveBeenCalledWith('blob:billing')
+    })
     const csvBlob = createObjectURL.mock.calls[0]?.[0] as Blob
     const csv = await csvBlob.text()
     expect(csv).toContain('"-¥4.120000000"')
@@ -361,21 +386,54 @@ describe('用户费用管理页面', () => {
     expect(screen.getAllByText('开票中').length).toBeGreaterThan(0)
     expect(screen.getAllByText('1').length).toBeGreaterThanOrEqual(2)
     await user.click(screen.getByRole('button', { name: /常见开票问题/ }))
-    expect(screen.getByText('数电发票将在申请提交后 24 小时内处理，并发送到接收邮箱。发票抬头和税号提交后如需修改，需要重新申请。')).not.toBeVisible()
+    expect(screen.getByText('数电发票将在申请提交后 24 小时内处理，填写接收邮箱后会同步发送邮件。发票抬头和税号提交后如需修改，需要重新申请。')).not.toBeVisible()
     await user.click(screen.getByRole('button', { name: '立即开票' }))
     const dialog = screen.getByRole('dialog')
-    expect(within(dialog).getByDisplayValue('50.00')).toBeInTheDocument()
-	await user.clear(within(dialog).getByLabelText(/发票抬头/))
-	await user.type(within(dialog).getByLabelText(/发票抬头/), '本地演示工作区')
-	await user.type(within(dialog).getByLabelText(/接收邮箱/), 'billing@example.com')
+    expect(within(dialog).getByLabelText('开票步骤')).toBeInTheDocument()
+    expect(within(dialog).getByText('填写', { exact: true })).toBeInTheDocument()
+    expect(within(dialog).getByText('确认', { exact: true })).toBeInTheDocument()
+    expect(within(dialog).getByText('完成', { exact: true })).toBeInTheDocument()
+    expect(within(dialog).queryByText('选填')).not.toBeInTheDocument()
+    expect(within(dialog).queryByText('选填；填写后数电发票将发送到这个邮箱。')).not.toBeInTheDocument()
+    expect(within(dialog).queryByText('发票申请为本地演示，不会真实开具或发送邮件。')).not.toBeInTheDocument()
+    expect(within(dialog).getByDisplayValue('40.00')).toBeInTheDocument()
+    expect(within(dialog).getByLabelText('发票抬头')).toHaveValue('接口返回的个人抬头')
+    expect(within(dialog).getByLabelText('发票抬头')).toHaveAttribute('readonly')
+    expect(within(dialog).getByLabelText('开票金额（元）')).toHaveAttribute('readonly')
+    expect(within(dialog).queryByLabelText('纳税人识别号')).not.toBeInTheDocument()
+    expect(within(dialog).queryByText('抬头类型')).not.toBeInTheDocument()
+    const invoiceTypeSelect = within(dialog).getByLabelText(/发票类型/)
+    await user.click(invoiceTypeSelect)
+    const invoiceTypeOptions = Array.from(document.querySelectorAll('.semi-select-option'))
+    const specialOption = invoiceTypeOptions.find((option) =>
+      option.textContent?.includes('专票（增值税专用发票）'),
+    )
+    expect(specialOption).toBeDefined()
+    fireEvent.mouseDown(specialOption as HTMLElement)
+    fireEvent.mouseUp(specialOption as HTMLElement)
+    fireEvent.click(specialOption as HTMLElement)
+    const projectNameSelect = within(dialog).getByLabelText(/项目名称/)
+    await user.click(projectNameSelect)
+    const projectNameOptions = Array.from(document.querySelectorAll('.semi-select-option'))
+    const projectOption = projectNameOptions.find((option) =>
+      option.textContent?.includes('*信息技术服务*软件服务费'),
+    )
+    expect(projectOption).toBeDefined()
+    fireEvent.mouseDown(projectOption as HTMLElement)
+    fireEvent.mouseUp(projectOption as HTMLElement)
+    fireEvent.click(projectOption as HTMLElement)
     await user.click(within(dialog).getByRole('button', { name: '确认开票' }))
     expect(within(dialog).getByText('请核对发票信息，提交后如需修改需要重新申请。')).toBeInTheDocument()
+    expect(within(dialog).getByText('未填写')).toBeInTheDocument()
+    expect(within(dialog).getByText('*信息技术服务*软件服务费')).toBeInTheDocument()
     await user.click(within(dialog).getByRole('button', { name: '再核对一下' }))
     await user.click(within(dialog).getByRole('button', { name: '确认开票' }))
     await user.click(within(dialog).getByRole('button', { name: '确认提交' }))
     expect(await within(dialog).findByText('开票申请提交成功')).toBeInTheDocument()
     expect(getPostInput()).not.toBeNull()
-	expect(JSON.parse(getPostInput()?.body ?? '{}')).toMatchObject({ amount_yuan: '50.00', title: '本地演示工作区', taxpayer_type: 'personal', email: 'billing@example.com', project_name: '*生产生活服务*云服务费' })
+    const invoiceInput = JSON.parse(getPostInput()?.body ?? '{}')
+    expect(invoiceInput).toMatchObject({ amount_yuan: '40.00', title: '接口返回的个人抬头', taxpayer_type: 'personal', invoice_type: 'special', project_name: '*信息技术服务*软件服务费' })
+    expect(invoiceInput).not.toHaveProperty('email')
     expect(getPostInput()?.headers.get('Idempotency-Key')).toBeTruthy()
     expect(fetchMock.mock.calls.some(([input, options]) => new URL(String(input), window.location.origin).pathname.endsWith('/invoices') && options?.method === 'POST')).toBe(true)
     await user.click(within(dialog).getByRole('button', { name: '确定' }))
@@ -401,17 +459,22 @@ describe('用户费用管理页面', () => {
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:invoice')
   })
 
-	it('企业抬头缺少税号时阻止进入确认页', async () => {
+	it('企业空间展示接口返回的只读税号', async () => {
 		const user = userEvent.setup()
 		const { fetchMock } = renderBilling()
 		await screen.findByRole('heading', { name: '费用分析' })
+		await user.click(screen.getByRole('button', { name: '切换到企业空间' }))
+		await waitFor(() => expect(fetchMock.mock.calls.some(([input]) => new URL(String(input), window.location.origin).searchParams.get('account_type') === 'enterprise')).toBe(true))
 		await user.click(screen.getByRole('tab', { name: '发票' }))
 		await user.click(await screen.findByRole('button', { name: '立即开票' }))
 		const dialog = screen.getByRole('dialog')
-		await user.selectOptions(within(dialog).getByLabelText('抬头类型'), 'enterprise')
+		const taxpayerID = within(dialog).getByLabelText('纳税人识别号')
+		expect(taxpayerID).toHaveValue('91310000TEST123456')
+		expect(taxpayerID).toHaveAttribute('readonly')
+		expect(within(dialog).queryByText('抬头类型')).not.toBeInTheDocument()
 		await user.click(within(dialog).getByRole('button', { name: '确认开票' }))
-		expect(within(dialog).getByText('企业抬头必须填写纳税人识别号')).toBeInTheDocument()
-		expect(within(dialog).queryByText('请核对发票信息，提交后如需修改需要重新申请。')).not.toBeInTheDocument()
+		expect(within(dialog).getByText('91310000TEST123456')).toBeInTheDocument()
+		expect(within(dialog).getByText('请核对发票信息，提交后如需修改需要重新申请。')).toBeInTheDocument()
 		expect(fetchMock.mock.calls.some(([, options]) => options?.method === 'POST')).toBe(false)
 	})
 
@@ -448,14 +511,15 @@ describe('用户费用管理页面', () => {
     await user.click(screen.getByRole('tab', { name: 'Invoices' }))
     expect(await screen.findByText('Submitted')).toBeInTheDocument()
     await user.click(await screen.findByRole('button', { name: 'Invoice now' }))
-    expect(within(screen.getByRole('dialog')).getByDisplayValue('*Production and daily services* cloud service fee')).toBeInTheDocument()
+    expect(within(screen.getByRole('dialog')).getByRole('combobox', { name: 'Project name *' })).toHaveTextContent('*Production and daily services* cloud service fee')
   })
 })
 
 describe('费用页纯函数', () => {
-	it('校验发票金额、邮箱和企业抬头必填字段', () => {
+	it('校验接口字段和选填邮箱格式', () => {
 		expect(validateInvoiceForm({ amount_yuan: '50.001', title: '', tax_identifier: '', taxpayer_type: 'enterprise', email: 'bad', project_name: '', invoice_type: 'normal' }, '50.00')).toMatchObject({ amount_yuan: '请输入大于 0 且最多保留两位小数的金额', title: '请输入发票抬头', tax_identifier: '企业抬头必须填写纳税人识别号', email: '请输入有效的接收邮箱' })
-		expect(validateInvoiceForm({ amount_yuan: '50.00', title: '个人抬头', tax_identifier: '', taxpayer_type: 'personal', email: 'billing@example.com', project_name: '*生产生活服务*云服务费', invoice_type: 'normal' }, '50.00')).toEqual({})
+		expect(validateInvoiceForm({ amount_yuan: '50.00', title: '个人抬头', tax_identifier: '', taxpayer_type: 'personal', email: '', project_name: '*生产生活服务*云服务费', invoice_type: 'normal' }, '50.00')).toEqual({})
+		expect(validateInvoiceForm({ amount_yuan: '50.00', title: '个人抬头', tax_identifier: '', taxpayer_type: 'personal', email: '', project_name: '', invoice_type: '' }, '50.00')).toMatchObject({ invoice_type: '请选择发票类型', project_name: '请选择项目名称' })
 	})
 
 	it('正确生成个人和企业账务上下文', () => {

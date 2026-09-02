@@ -1,0 +1,237 @@
+/* 中文：统一标准弹窗的外观基线；业务弹窗只负责宽高和正文内部布局。 */
+.app-modal {
+  --app-modal-inline-padding: 24px;
+  --app-modal-radius: var(--radius-8, 8px);
+  --app-modal-button-radius: var(--radius-6, 6px);
+}
+
+/* 中文：className 实际挂载在 portal 外层，尺寸约束必须作用到内部的 Semi 弹窗节点。 */
+.app-modal .semi-modal {
+  max-width: calc(100vw - 32px);
+  max-height: calc(100dvh - 32px);
+  margin-block: auto;
+}
+
+.app-modal .semi-modal-content.app-modal-content {
+  position: relative;
+  display: flex;
+  max-height: inherit;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0;
+  border: 1px solid var(--color-border-neutral-l2);
+  border-radius: var(--app-modal-radius);
+  color: var(--color-text-default);
+  background: var(--color-bg-base-secondary);
+  box-shadow: 0 20px 56px rgb(0 0 0 / 28%);
+}
+
+/* 中文：标题、正文和底部操作使用同一组内边距，避免不同弹窗出现跳变。 */
+.app-modal .semi-modal-content.app-modal-content .semi-modal-header {
+  position: relative;
+  box-sizing: border-box;
+  min-height: 56px;
+  align-items: center;
+  margin: 0;
+  padding: 18px 56px 14px var(--app-modal-inline-padding);
+  border-bottom: 0;
+  background: transparent;
+}
+
+.app-modal .semi-modal-content.app-modal-content .semi-modal-title {
+  min-width: 0;
+  color: var(--color-text-default-hover);
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 24px;
+  letter-spacing: 0;
+}
+
+.app-modal .semi-modal-content.app-modal-content .semi-modal-close {
+  position: absolute;
+  top: 12px;
+  right: 16px;
+  display: inline-flex;
+  width: 32px;
+  min-width: 32px;
+  height: 32px;
+  min-height: 32px;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--app-modal-button-radius);
+  color: var(--color-text-secondary);
+  background: transparent;
+}
+
+.app-modal .semi-modal-content.app-modal-content .semi-modal-close .semi-icon {
+  font-size: 16px;
+}
+
+.app-modal .semi-modal-content.app-modal-content .semi-modal-close:hover,
+.app-modal .semi-modal-content.app-modal-content .semi-modal-close:focus-visible {
+  color: var(--color-text-default-hover);
+  background: var(--color-bg-overlay-l2);
+}
+
+.app-modal .semi-modal-content.app-modal-content > .semi-modal-body {
+  min-height: 0;
+  margin: 0;
+  padding: 0 var(--app-modal-inline-padding) 24px;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.app-modal .semi-modal-content.app-modal-content > .semi-modal-body-wrapper {
+  min-height: 0;
+  align-items: stretch;
+  margin: 0;
+  padding: 20px var(--app-modal-inline-padding) 24px;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.app-modal .semi-modal-content.app-modal-content > .semi-modal-body-wrapper > .semi-modal-body {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.app-modal .semi-modal-content.app-modal-content > .semi-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--spacing-8, 8px);
+  margin: 0;
+  padding: 16px var(--app-modal-inline-padding) 20px;
+  border-top: 0;
+  background: transparent;
+}
+
+.app-modal .semi-modal-content.app-modal-content > .semi-modal-footer > div {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--spacing-8, 8px);
+  min-width: 0;
+}
+
+/* 中文：统一右下角按钮的高度、圆角、文字规格和主题颜色。 */
+.app-modal .semi-modal-content.app-modal-content .semi-modal-footer .semi-button {
+  box-sizing: border-box;
+  width: auto;
+  min-width: 76px;
+  max-width: 100%;
+  height: 34px;
+  min-height: 34px;
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 0 14px;
+  border-radius: var(--app-modal-button-radius);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 20px;
+}
+
+.app-modal .semi-modal-content.app-modal-content .semi-modal-footer .semi-button-primary {
+  border-color: var(--color-action-primary);
+  color: var(--color-action-on-primary);
+  background: var(--color-action-primary);
+}
+
+.app-modal .semi-modal-content.app-modal-content .semi-modal-footer .semi-button-primary:hover:not(:disabled),
+.app-modal .semi-modal-content.app-modal-content .semi-modal-footer .semi-button-primary:focus-visible:not(:disabled) {
+  border-color: var(--color-action-primary-hover);
+  color: var(--color-action-on-primary);
+  background: var(--color-action-primary-hover);
+}
+
+.app-modal .semi-modal-content.app-modal-content .semi-modal-footer .semi-button-tertiary,
+.app-modal .semi-modal-content.app-modal-content .semi-modal-footer .semi-button-secondary {
+  border-color: var(--color-border-neutral-l2);
+  color: var(--color-text-default);
+  background: var(--color-bg-base-tertiary);
+}
+
+.app-modal .semi-modal-content.app-modal-content .semi-modal-footer .semi-button-tertiary:hover:not(:disabled),
+.app-modal .semi-modal-content.app-modal-content .semi-modal-footer .semi-button-tertiary:focus-visible:not(:disabled),
+.app-modal .semi-modal-content.app-modal-content .semi-modal-footer .semi-button-secondary:hover:not(:disabled),
+.app-modal .semi-modal-content.app-modal-content .semi-modal-footer .semi-button-secondary:focus-visible:not(:disabled) {
+  border-color: var(--color-border-neutral-l3);
+  color: var(--color-text-default-hover);
+  background: var(--color-bg-overlay-l3);
+}
+
+.app-modal .semi-modal-content.app-modal-content .semi-modal-footer .semi-button:disabled,
+.app-modal .semi-modal-content.app-modal-content .semi-modal-footer .semi-button.semi-button-disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+  transform: none;
+}
+
+/* 中文：无标题弹窗的关闭按钮仍相对内容层定位；全屏弹窗保留 Semi 的无圆角表现。 */
+.app-modal .semi-modal-content.app-modal-content > .semi-modal-body-wrapper .semi-modal-close {
+  position: absolute;
+}
+
+.app-modal .semi-modal-content.app-modal-content.semi-modal-content-fullScreen {
+  border: 0;
+  border-radius: 0;
+}
+
+.app-modal .semi-modal:has(> .app-modal-content.semi-modal-content-fullScreen) {
+  max-width: none;
+  max-height: none;
+  margin: unset;
+}
+
+@media (max-width: 560px) {
+  .app-modal {
+    --app-modal-inline-padding: 16px;
+  }
+
+  .app-modal .semi-modal {
+    max-width: calc(100vw - 24px);
+    max-height: calc(100dvh - 24px);
+  }
+
+  .app-modal .semi-modal-content.app-modal-content .semi-modal-header {
+    min-height: 52px;
+    padding: 16px 52px 12px var(--app-modal-inline-padding);
+  }
+
+  .app-modal .semi-modal-content.app-modal-content .semi-modal-title {
+    font-size: 17px;
+    line-height: 24px;
+  }
+
+  .app-modal .semi-modal-content.app-modal-content .semi-modal-close {
+    top: 10px;
+    right: 12px;
+  }
+
+  .app-modal .semi-modal-content.app-modal-content > .semi-modal-body {
+    padding-bottom: 20px;
+  }
+
+  .app-modal .semi-modal-content.app-modal-content > .semi-modal-body-wrapper {
+    padding-top: 16px;
+    padding-bottom: 20px;
+  }
+
+  .app-modal .semi-modal-content.app-modal-content > .semi-modal-footer {
+    padding: 12px var(--app-modal-inline-padding) 16px;
+  }
+
+  .app-modal .semi-modal-content.app-modal-content .semi-modal-footer .semi-button {
+    min-width: 72px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-modal .semi-modal-content.app-modal-content .semi-modal-footer .semi-button {
+    transition: none;
+  }
+}

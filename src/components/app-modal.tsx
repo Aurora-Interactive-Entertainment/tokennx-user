@@ -1,12 +1,11 @@
 import { useLayoutEffect, useRef } from 'react'
 import SemiModal, { type ModalReactProps } from '@douyinfe/semi-ui/lib/es/modal'
+import './app-modal.css'
 
 const defaultModalContainer = () => document.getElementById('app-mount') ?? document.body
 
 /**
- * Shared modal defaults for the application shell. Preventing focus-driven
- * scrolling keeps the underlying console at its current position when a
- * dialog opens after the user has scrolled the page.
+ * 中文：提供应用标准弹窗的公共行为，并在弹窗开关时保持页面原有滚动位置。
  */
 export default function AppModal(props: ModalReactProps) {
   const openingScrollPosition = useRef<{ left: number; top: number } | null>(null)
@@ -40,10 +39,9 @@ export default function AppModal(props: ModalReactProps) {
       })
     }
 
-    // Semi toggles body overflow during its mount/update lifecycle. Waiting a
-    // pair of frames lets that change settle before restoring the page anchor.
+    // 中文：等待 Semi 完成 body 滚动锁更新后再恢复页面锚点，避免弹窗出现时页面跳动。
     if (props.visible) schedule()
-    // Semi releases body scroll after its close transition (120ms).
+    // 中文：Semi 在关闭动画结束后释放滚动锁，因此延迟到动画完成后再恢复。
     else timer = window.setTimeout(schedule, 180)
 
     return () => {
@@ -63,9 +61,19 @@ export default function AppModal(props: ModalReactProps) {
   }, [props.visible])
 
   const getPopupContainer = props.getPopupContainer ?? defaultModalContainer
+  // 中文：标准类负责公共外观，业务类仅用于弹窗宽高和正文内部布局差异。
+  const className = ['app-modal', props.className].filter(Boolean).join(' ')
+  const modalContentClass = ['app-modal-content', props.modalContentClass].filter(Boolean).join(' ')
 
-  // Every application dialog uses the same viewport-centred layout. Keeping
-  // this default here prevents individual pages from drifting back to Semi's
-  // top-aligned modal behavior.
-  return <SemiModal {...props} getPopupContainer={getPopupContainer} centered preventScroll />
+  // 中文：所有应用弹窗默认在视口居中，并统一阻止背景页面滚动。
+  return (
+    <SemiModal
+      {...props}
+      className={className}
+      modalContentClass={modalContentClass}
+      getPopupContainer={getPopupContainer}
+      centered
+      preventScroll
+    />
+  )
 }

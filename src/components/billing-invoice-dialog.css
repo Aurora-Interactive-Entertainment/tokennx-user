@@ -1,0 +1,273 @@
+/* 中文：开票弹窗样式独立维护，弹窗外壳、正文滚动和按钮区统一复用 AppModal 规范。 */
+
+.invoice-steps {
+  display: flex;
+  width: 100%;
+  margin-bottom: var(--spacing-20);
+  overflow: hidden;
+}
+
+.invoice-dialog .invoice-steps .semi-steps-item {
+  min-width: 0;
+  height: 40px;
+  margin-right: 0;
+  padding: 8px 12px 8px 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  transform: none;
+}
+
+.invoice-dialog .invoice-steps .semi-steps-item:not(:first-child) {
+  padding-left: 12px;
+}
+
+.invoice-dialog .invoice-steps .semi-steps-item .semi-steps-item-container {
+  min-width: 0;
+  align-items: center;
+}
+
+.invoice-dialog .invoice-steps .semi-steps-item .semi-steps-item-left {
+  flex: 0 0 28px;
+  width: 28px;
+  height: 28px;
+  margin-right: 8px;
+}
+
+.invoice-dialog .invoice-steps .semi-steps-item .semi-steps-item-left .semi-steps-item-icon,
+.invoice-dialog .invoice-steps .semi-steps-item .semi-steps-item-left .semi-steps-item-number-icon {
+  width: 28px;
+  height: 28px;
+}
+
+.invoice-dialog .invoice-steps .semi-steps-item .semi-steps-item-left .semi-steps-item-number-icon {
+  border: 1px solid var(--color-border-neutral-l1);
+  background: var(--color-bg-base-tertiary);
+  color: var(--color-text-tertiary);
+  font-size: 12px;
+  line-height: 26px;
+}
+
+.invoice-dialog .invoice-steps .semi-steps-item-process .semi-steps-item-left .semi-steps-item-number-icon {
+  border-color: var(--color-action-primary);
+  background: var(--color-action-primary);
+  color: var(--color-action-on-primary);
+}
+
+.invoice-dialog .invoice-steps .semi-steps-item-finish .semi-steps-item-left .semi-steps-item-icon {
+  color: var(--color-action-primary);
+}
+
+.invoice-dialog .invoice-steps .semi-steps-item-finish .semi-steps-item-title,
+.invoice-dialog .invoice-steps .semi-steps-item-process .semi-steps-item-title {
+  color: var(--color-text-default);
+}
+
+.invoice-dialog .invoice-steps .semi-steps-item-wait .semi-steps-item-title {
+  color: var(--color-text-tertiary);
+}
+
+.invoice-dialog .invoice-steps .semi-steps-item .semi-steps-item-title {
+  min-width: 0;
+  max-width: none;
+  margin: 0;
+  padding-right: 12px;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 28px;
+}
+
+.invoice-dialog .invoice-steps .semi-steps-item .semi-steps-item-title-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.invoice-dialog .invoice-steps.semi-steps-hasline .semi-steps-item-title::after {
+  top: 50%;
+  left: calc(100% - 4px);
+  background: var(--color-border-neutral-l1);
+}
+
+.invoice-dialog .invoice-steps.semi-steps-hasline .semi-steps-item-done .semi-steps-item-title::after {
+  background: var(--color-action-primary);
+}
+
+.invoice-dialog-body,
+.invoice-field {
+  display: grid;
+}
+
+.invoice-dialog-body {
+  gap: var(--spacing-16);
+}
+
+.invoice-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--spacing-16);
+}
+
+.invoice-field {
+  min-width: 0;
+  gap: var(--spacing-6);
+}
+
+.invoice-field-label {
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.invoice-field .input {
+  width: 100%;
+  min-width: 0;
+}
+
+/* 中文：开票选项直接复用费用 Tab 的下拉控件，并保持表单栅格内可安全收缩。 */
+.invoice-field .billing-filter {
+  width: 100%;
+  min-width: 0;
+}
+
+.invoice-field-wide {
+  grid-column: 1 / -1;
+}
+
+.invoice-field-error {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.invoice-field-error {
+  min-height: 18px;
+  color: var(--color-error, #df7b83);
+}
+
+.invoice-field-label em {
+  margin-left: 2px;
+  color: var(--color-error, #df7b83);
+  font-style: normal;
+}
+
+.invoice-field.has-error .input {
+  border-color: var(--color-error, #df7b83);
+}
+
+.invoice-field.has-error .app-select {
+  border-color: var(--color-error, #df7b83);
+}
+
+.invoice-dialog .invoice-readonly-input,
+.invoice-dialog .invoice-readonly-input:hover,
+.invoice-dialog .invoice-readonly-input:focus {
+  color: var(--color-text-secondary);
+  background: var(--color-bg-base-default);
+  cursor: default;
+}
+
+.invoice-enterprise-link {
+  margin-right: auto;
+  color: var(--color-action-primary);
+  font-size: 13px;
+}
+
+.invoice-enterprise-link:hover {
+  color: var(--color-text-default-hover);
+  text-decoration: underline;
+}
+
+.invoice-confirm-grid {
+  display: grid;
+  grid-template-columns: 140px minmax(0, 1fr);
+  gap: var(--spacing-12) var(--spacing-16);
+  margin: 0;
+}
+
+.invoice-confirm-grid dt {
+  color: var(--color-text-secondary);
+}
+
+.invoice-confirm-grid dd {
+  margin: 0;
+  color: var(--color-text-default);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.invoice-dialog-footer {
+  width: 100%;
+}
+
+.invoice-success-mark {
+  color: var(--color-success);
+  font-size: 42px;
+  line-height: 1;
+}
+
+.invoice-dialog-note {
+  margin: 0;
+  color: var(--color-text-secondary);
+  line-height: 1.6;
+}
+
+@media (max-width: 680px) {
+  .invoice-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .invoice-dialog .invoice-steps .semi-steps-item {
+    padding-right: 6px;
+  }
+
+  .invoice-dialog .invoice-steps .semi-steps-item:not(:first-child) {
+    padding-left: 6px;
+  }
+
+  .invoice-dialog .invoice-steps .semi-steps-item .semi-steps-item-left {
+    flex-basis: 24px;
+    width: 24px;
+    height: 24px;
+    margin-right: 5px;
+  }
+
+  .invoice-dialog .invoice-steps .semi-steps-item .semi-steps-item-left .semi-steps-item-icon,
+  .invoice-dialog .invoice-steps .semi-steps-item .semi-steps-item-left .semi-steps-item-number-icon {
+    width: 24px;
+    height: 24px;
+  }
+
+  .invoice-dialog .invoice-steps .semi-steps-item .semi-steps-item-left .semi-steps-item-number-icon {
+    line-height: 22px;
+  }
+
+  .invoice-dialog .invoice-steps .semi-steps-item .semi-steps-item-title {
+    padding-right: 6px;
+    font-size: 12px;
+  }
+
+  .invoice-field-wide {
+    grid-column: auto;
+  }
+
+  .invoice-confirm-grid {
+    grid-template-columns: 1fr;
+    gap: var(--spacing-4);
+  }
+
+  .invoice-confirm-grid dt {
+    margin-top: var(--spacing-8);
+  }
+
+  .invoice-dialog-footer {
+    flex-wrap: wrap;
+  }
+
+  /* 中文：窄屏时链接独占一行，避免中英文长文案挤压底部操作按钮。 */
+  .invoice-dialog-footer .invoice-enterprise-link {
+    min-width: 100%;
+    margin-bottom: var(--spacing-4);
+    text-align: left;
+  }
+}

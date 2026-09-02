@@ -260,6 +260,22 @@ export interface BillingInvoiceItem {
   rejection_reason?: string
 }
 
+export type BillingInvoiceType = 'normal' | 'special'
+
+export interface BillingInvoiceOption<T extends string = string> {
+  value: T
+  label: string
+}
+
+// 中文：开票弹窗的只读信息与可选项统一由发票查询接口下发。
+export interface BillingInvoiceApplicationForm {
+  title: string
+  tax_identifier?: string
+  amount_yuan: string
+  invoice_types: BillingInvoiceOption<BillingInvoiceType>[]
+  project_names: BillingInvoiceOption[]
+}
+
 export interface BillingInvoiceResponse {
   account: BillingAccount
   available_amount_yuan: string
@@ -268,6 +284,7 @@ export interface BillingInvoiceResponse {
   issued_count?: number | string
   pending_count?: number | string
   history: BillingPageResult<BillingInvoiceItem>
+  application_form?: BillingInvoiceApplicationForm
 }
 
 export interface BillingInvoiceInput {
@@ -275,9 +292,9 @@ export interface BillingInvoiceInput {
   title: string
   tax_identifier: string
   taxpayer_type: 'enterprise' | 'personal'
-  email: string
+  email?: string
   project_name: string
-  invoice_type: 'normal' | 'special'
+  invoice_type: BillingInvoiceType
 }
 
 export type BillingPaymentScene = 'pc'

@@ -8410,10 +8410,6 @@ html[data-theme="light"] .real-name-qr-expired-overlay span {
 .model-detail-sheet .semi-sidesheet-body {
   padding: 0;
 }
-/* 中文：模型详情抽屉使用独立深色底，避免跟随页面背景产生层级混淆。 */
-.model-detail-sheet .semi-sidesheet-inner {
-  background: #1A1B1D;
-}
 .model-detail-panel {
   padding: var(--spacing-20) var(--spacing-24) var(--spacing-32);
 }
@@ -8438,9 +8434,6 @@ html[data-theme="light"] .real-name-qr-expired-overlay span {
   overflow: hidden;
   border: 1px solid var(--color-border-neutral-l1);
   border-radius: var(--radius-8);
-  background: #fff;
-}
-.model-detail-sheet .model-detail-logo .model-logo {
   background: #fff;
 }
 .model-detail-heading-copy {
@@ -10037,8 +10030,7 @@ html[data-theme="light"] .real-name-qr-expired-overlay span {
   align-items: flex-end;
   gap: var(--spacing-12);
 }
-.billing-filter-field,
-.invoice-field {
+.billing-filter-field {
   display: grid;
   gap: var(--spacing-6);
   min-width: 0;
@@ -10051,8 +10043,7 @@ html[data-theme="light"] .real-name-qr-expired-overlay span {
   flex-basis: 255px;
   width: 255px;
 }
-.billing-filter-label,
-.invoice-field-label {
+.billing-filter-label {
   color: var(--color-text-secondary);
   font-size: 13px;
   font-weight: 600;
@@ -10072,8 +10063,7 @@ html[data-theme="light"] .real-name-qr-expired-overlay span {
   transform-origin: top left;
 }
 .billing-filter-field .input,
-.billing-filter-field .semi-select,
-.invoice-field .input {
+.billing-filter-field .semi-select {
   width: 100%;
   min-width: 0;
 }
@@ -10866,113 +10856,6 @@ html[data-theme="dark"] .recharge-console-page .billing-demo-note {
 .invoice-status-failed {
   color: var(--color-error, #df7b83);
 }
-.invoice-dialog {
-  width: min(760px, calc(100vw - 32px));
-}
-.invoice-dialog .semi-modal-content {
-  max-height: calc(100dvh - 64px);
-  overflow-y: auto;
-}
-.invoice-dialog .semi-modal-body {
-  padding-top: var(--spacing-8);
-}
-.invoice-steps {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-8);
-  margin-bottom: var(--spacing-20);
-  color: var(--color-text-tertiary);
-  font-size: 12px;
-}
-.invoice-steps span {
-  display: inline-flex;
-  min-height: 28px;
-  align-items: center;
-  padding: 0 var(--spacing-8);
-  border: 1px solid var(--color-border-neutral-l1);
-  border-radius: var(--radius-4);
-}
-.invoice-steps span.active {
-  border-color: var(--color-action-primary);
-  color: var(--color-text-default);
-}
-.invoice-steps i {
-  width: 24px;
-  height: 1px;
-  background: var(--color-border-neutral-l1);
-}
-.dialog-body {
-  display: grid;
-  gap: var(--spacing-16);
-}
-.invoice-form-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--spacing-16);
-}
-.invoice-field-wide {
-  grid-column: 1 / -1;
-}
-.invoice-field-note {
-  margin: 0;
-  color: var(--color-text-tertiary);
-  font-size: 12px;
-  line-height: 1.5;
-}
-.invoice-field-error {
-  min-height: 18px;
-  margin: 0;
-  color: var(--color-error, #df7b83);
-  font-size: 12px;
-}
-.invoice-field-label em {
-  margin-left: 2px;
-  color: var(--color-error, #df7b83);
-  font-style: normal;
-}
-.invoice-field.has-error .input {
-  border-color: var(--color-error, #df7b83);
-}
-.invoice-enterprise-link {
-  margin-right: auto;
-  color: var(--color-action-primary);
-  font-size: 13px;
-}
-.invoice-enterprise-link:hover {
-  color: var(--color-text-default-hover);
-  text-decoration: underline;
-}
-.invoice-confirm-grid {
-  display: grid;
-  grid-template-columns: 140px minmax(0, 1fr);
-  gap: var(--spacing-12) var(--spacing-16);
-  margin: 0;
-}
-.invoice-confirm-grid dt {
-  color: var(--color-text-secondary);
-}
-.invoice-confirm-grid dd {
-  margin: 0;
-  color: var(--color-text-default);
-  font-weight: 600;
-  overflow-wrap: anywhere;
-}
-.dialog-foot {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--spacing-8);
-}
-.invoice-success-mark {
-  color: var(--color-success);
-  font-size: 42px;
-  line-height: 1;
-}
-.invoice-dialog-note {
-  margin: 0;
-  color: var(--color-text-secondary);
-  line-height: 1.6;
-}
-
 @media (max-width: 900px) {
   .billing-filter-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -11001,8 +10884,7 @@ html[data-theme="dark"] .recharge-console-page .billing-demo-note {
   }
   .billing-filter-grid,
   .billing-metrics-grid,
-  .invoice-metrics,
-  .invoice-form-grid {
+  .invoice-metrics {
     grid-template-columns: 1fr;
   }
   .billing-filter-field,
@@ -11045,25 +10927,6 @@ html[data-theme="dark"] .recharge-console-page .billing-demo-note {
   }
   .billing-custom-amount > .semi-button {
     width: 100%;
-  }
-  .invoice-field-wide {
-    grid-column: auto;
-  }
-  .invoice-confirm-grid {
-    grid-template-columns: 1fr;
-    gap: var(--spacing-4);
-  }
-  .invoice-confirm-grid dt {
-    margin-top: var(--spacing-8);
-  }
-  .invoice-dialog .semi-modal-content {
-    max-height: calc(100dvh - 24px);
-  }
-  .dialog-foot {
-    flex-wrap: wrap;
-  }
-  .dialog-foot .semi-button {
-    flex: 1;
   }
 }
 

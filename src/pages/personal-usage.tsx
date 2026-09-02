@@ -11,7 +11,7 @@ import {
 } from "@/components/personal-usage-date-picker";
 import { PersonalUsageManagement } from "@/components/personal-usage-management";
 import { PersonalUsageTrendChart } from "@/components/personal-usage-trend-chart";
-import { PersonalUsagePlaceholderPies } from "@/components/personal-usage-placeholder-pies";
+import { PersonalUsageDistributionPies } from "@/components/personal-usage-distribution-pies";
 import { ConsoleTabs } from "@/components/console-tabs";
 import { useAppStore } from "@/data/app-state";
 import type { PersonalUsageContext } from "@/api/personal-usage";
@@ -65,10 +65,7 @@ export function PersonalUsagePage() {
   return (
     <div className="trae-page personal-usage-page">
       <header className="trae-page-heading">
-        <h1>
-          {t("console.personalUsage.title")}{" "}
-          <small>{t("console.personalUsage.resetHint")}</small>
-        </h1>
+        <h1>{t("console.personalUsage.title")}</h1>
       </header>
       <ConsoleTabs
         className="personal-usage-tabs"
@@ -104,7 +101,10 @@ export function PersonalUsagePage() {
           <div className="personal-usage-chart-panel">
             <PersonalUsageTrendChart context={context} dateRange={dateRange} />
           </div>
-          <PersonalUsagePlaceholderPies />
+          <PersonalUsageDistributionPies
+            context={context}
+            dateRange={dateRange}
+          />
         </section>
       ) : (
         <PersonalUsageManagement context={context} apiKeyID={requestedApiKeyID || undefined} apiKeys={apiKeys} apiKeysLoading={apiKeysLoading} onApiKeyChange={selectApiKey} />

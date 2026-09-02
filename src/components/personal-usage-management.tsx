@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Tooltip from "@douyinfe/semi-ui/lib/es/tooltip";
 import Select from "@douyinfe/semi-ui/lib/es/select";
+import Toast from "@douyinfe/semi-ui/lib/es/toast";
 import {
   IconDownload,
   IconInfoCircle,
@@ -23,7 +24,15 @@ import {
   PersonalUsageDatePicker,
   startOfLocalToday,
 } from "./personal-usage-date-picker";
-import { exportEnterpriseCsv } from "@/pages/enterprise-console-shared";
+import {
+  createExportIdempotencyKey,
+  createExportTask,
+  downloadExportTask,
+  type ExportContext,
+  getExportErrorMessage,
+  saveExportResponse,
+  waitForExportTask,
+} from "@/api/exports";
 import { BACKOFFICE_MONEY_DISPLAY_DECIMAL_PLACES, formatYuan as formatMoneyYuan } from "@/utils/format";
 
 type CueRange = "today" | "7d" | "30d" | "custom";
@@ -88,9 +97,9 @@ function PersonalUsageOverview({ apiKeyID }: { apiKeyID?: string }) {
 
   return (
     <>
-      <h2 id="personal-usage-model-title">
+      {/* <h2 id="personal-usage-model-title">
         {t("console.personalUsage.models")}
-      </h2>
+      </h2> */}
       <div className="personal-usage-model-card">
         <div className="personal-usage-model-total">
           <span>{t("console.personalUsage.total")}</span>
@@ -156,6 +165,7 @@ function PersonalUsageRecords({ context, apiKeyID }: { context: PersonalUsageCon
   const [pageSize, setPageSize] = useState(10);
   const [data, setData] = useState<UsageRecordsResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
   const [error, setError] = useState("");
   const [reloadKey, setReloadKey] = useState(0);
   const selectedRange = useMemo(
@@ -216,28 +226,37 @@ function PersonalUsageRecords({ context, apiKeyID }: { context: PersonalUsageCon
     new Intl.NumberFormat(i18n.language).format(value);
   const rows = data?.items ?? [];
 
-  function exportRows() {
-    exportEnterpriseCsv(
-      "personal-usage-records.csv",
-      [
-        t("console.personalUsage.cue.table.date"),
-        t("console.personalUsage.cue.table.client"),
-        t("console.personalUsage.cue.table.model"),
-        t("console.personalUsage.cue.table.session"),
-        t("console.personalUsage.cue.table.source"),
-        t("console.personalUsage.cue.table.tokens"),
-        t("console.personalUsage.cue.table.calls"),
-      ],
-      rows.map((row) => [
-        formatDateTime(row.occurred_at),
-        row.client_tool_name || "-",
-        row.model_alias || row.model_name || row.model_code,
-        row.request_id,
-        row.api_key_name || row.channel || row.event_type,
-        row.input_tokens + row.output_tokens + row.cached_tokens,
-        1,
-      ]),
-    );
+  async function exportRows(): Promise<void> {
+    if (exporting) return;
+    setExporting(true);
+    try {
+      // 中文：个人调用记录导出使用当前账务主体、API Key 和完整时间边界，服务端生成全部匹配记录。
+      const contextPayload: ExportContext = context.account_type === "enterprise"
+        ? { account_type: "enterprise", enterprise_id: context.enterprise_id }
+        : { account_type: "personal" };
+      const task = await createExportTask(
+        {
+          export_code: "user.usage.records",
+          format: "csv",
+          context: contextPayload,
+          filters: {
+            ...(apiKeyID ? { api_key_id: apiKeyID } : {}),
+            start_at: new Date(bounds.startAt).toISOString(),
+            end_at: new Date(bounds.endAt).toISOString(),
+          },
+          file_name: "personal-usage-records",
+        },
+        { idempotencyKey: createExportIdempotencyKey("personal-usage") },
+      );
+      const completed = await waitForExportTask(task.id);
+      const response = await downloadExportTask(completed.id);
+      await saveExportResponse(response, completed.file_name);
+      Toast.success(t("console.personalUsage.cue.downloadSuccess"));
+    } catch (error) {
+      Toast.error(getExportErrorMessage(error));
+    } finally {
+      setExporting(false);
+    }
   }
 
   return (
@@ -279,10 +298,10 @@ function PersonalUsageRecords({ context, apiKeyID }: { context: PersonalUsageCon
         <button
           className="personal-usage-cue-download"
           type="button"
-          disabled={loading || rows.length === 0}
+          disabled={loading || rows.length === 0 || exporting}
           aria-label={t("console.personalUsage.cue.download")}
           title={t("console.personalUsage.cue.download")}
-          onClick={exportRows}
+          onClick={() => void exportRows()}
         >
           <IconDownload aria-hidden="true" />
         </button>

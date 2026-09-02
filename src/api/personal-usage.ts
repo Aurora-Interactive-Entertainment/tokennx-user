@@ -21,10 +21,15 @@ export interface UsageOverviewModel {
   cached_tokens: number;
 }
 
+export type UsageDistribution =
+  Array<Record<string, unknown>> | Record<string, number | string> | null;
+
 export interface UsageOverviewResponse {
   total_cost_yuan: string;
   account_balance_yuan: string;
   models: UsageOverviewModel[];
+  model_distribution?: UsageDistribution;
+  tool_distribution?: UsageDistribution;
 }
 
 export type UsageTrendSeriesName = "requests" | "tokens" | "cost";
@@ -42,6 +47,8 @@ export type UsageTrendQuery =
 export interface UsageTrendResponse {
   period: { range: string; start_at: number; end_at: number; label: string };
   granularity: string;
+  model_distribution?: UsageDistribution;
+  tool_distribution?: UsageDistribution;
   xAxis: { type: "category"; boundaryGap: boolean; data: number[] };
   yAxis: { type: "value" };
   series: Array<{
@@ -161,6 +168,25 @@ function isUsageOverviewModel(value: unknown): value is UsageOverviewModel {
   );
 }
 
+function isUsageDistribution(value: unknown): value is UsageDistribution {
+  if (value === null) return true;
+  if (Array.isArray(value)) {
+    return value.every(
+      (item) =>
+        item !== null && typeof item === "object" && !Array.isArray(item),
+    );
+  }
+  if (!value || typeof value !== "object") return false;
+  // 中文：兼容聚合接口把对象映射中的计数返回为数字字符串。
+  return Object.values(value).every(
+    (item) =>
+      isFiniteNumber(item) ||
+      (typeof item === "string" &&
+        item.trim() !== "" &&
+        Number.isFinite(Number(item))),
+  );
+}
+
 function isUsageOverviewResponse(
   value: unknown,
 ): value is UsageOverviewResponse {
@@ -170,7 +196,11 @@ function isUsageOverviewResponse(
     isMoney(response.total_cost_yuan) &&
     isMoney(response.account_balance_yuan) &&
     Array.isArray(response.models) &&
-    response.models.every(isUsageOverviewModel)
+    response.models.every(isUsageOverviewModel) &&
+    (response.model_distribution === undefined ||
+      isUsageDistribution(response.model_distribution)) &&
+    (response.tool_distribution === undefined ||
+      isUsageDistribution(response.tool_distribution))
   );
 }
 
@@ -180,7 +210,9 @@ export function getUsageOverview(
 ): Promise<UsageOverviewResponse> {
   const params = new URLSearchParams();
   if (apiKeyID?.trim()) params.set("api_key_id", apiKeyID.trim());
-  const path = params.toString() ? `${USER_USAGE_OVERVIEW_PATH}?${params.toString()}` : USER_USAGE_OVERVIEW_PATH;
+  const path = params.toString()
+    ? `${USER_USAGE_OVERVIEW_PATH}?${params.toString()}`
+    : USER_USAGE_OVERVIEW_PATH;
   return fetchAuthenticatedJson<unknown>(path, { signal }).then((value) => {
     if (!isUsageOverviewResponse(value)) throw invalidResponse();
     return value;
@@ -213,6 +245,10 @@ function isUsageTrendResponse(value: unknown): value is UsageTrendResponse {
     typeof response.xAxis.boundaryGap === "boolean" &&
     response.yAxis.type === "value" &&
     response.series.length === 3 &&
+    (response.model_distribution === undefined ||
+      isUsageDistribution(response.model_distribution)) &&
+    (response.tool_distribution === undefined ||
+      isUsageDistribution(response.tool_distribution)) &&
     receivedNames.size === expectedNames.size &&
     [...expectedNames].every((name) => receivedNames.has(name)) &&
     response.series.every(
@@ -295,7 +331,8 @@ export function getUsageRecords(
   if (query.start_at !== undefined)
     params.set("start_at", String(query.start_at));
   if (query.end_at !== undefined) params.set("end_at", String(query.end_at));
-  if (query.api_key_id?.trim()) params.set("api_key_id", query.api_key_id.trim());
+  if (query.api_key_id?.trim())
+    params.set("api_key_id", query.api_key_id.trim());
   return fetchAuthenticatedJson<unknown>(
     `${USER_USAGE_RECORDS_PATH}?${params.toString()}`,
     { signal },

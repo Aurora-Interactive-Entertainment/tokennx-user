@@ -131,6 +131,16 @@ describe('视频生成页面', () => {
     expect(document.querySelector('.video-workspace.experience-workbench')).toBeInTheDocument()
   })
 
+  it('模型接口没有数据时不展示伪造模型，并在选择器中显示空状态', async () => {
+    vi.mocked(useUserModels).mockReturnValue({ models: [], activities: [], total: null, page: null, pageSize: null, loading: false, error: '', refresh: vi.fn() })
+    vi.mocked(getUserApiKeys).mockResolvedValue({ items: [activeApiKey({ scope: 'selected', model_ids: ['unavailable-model'] })], available_models: [] })
+    renderVideoPage()
+
+    // 中文：空模型列表只能显示本地化空态，不能回退为不可实际调用的内置模型。
+    expect(screen.queryByRole('option', { name: /CogVideo/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('option', { name: '当前空间暂无可用视频模型' })).toBeInTheDocument()
+  })
+
   it('直接使用默认 API Key 且不显示密钥选择框', async () => {
     renderVideoPage()
 

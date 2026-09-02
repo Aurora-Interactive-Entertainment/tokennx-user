@@ -5,7 +5,7 @@ import Button from '@douyinfe/semi-ui/lib/es/button'
 import DatePicker from '@douyinfe/semi-ui/lib/es/datePicker'
 import Modal from '@/components/app-modal'
 import Toast from '@douyinfe/semi-ui/lib/es/toast'
-import { IconDownload, IconRefresh, IconTickCircle } from '@douyinfe/semi-icons'
+import { IconDownload, IconRefresh } from '@douyinfe/semi-icons'
 import { isApiError, isAuthenticationFailure } from '@/api/http'
 import {
   BILLING_FIRST_PAGE,
@@ -44,16 +44,27 @@ import { useAppStore, type Workspace } from '@/data/app-state'
 import { invalidateAuth } from '@/store/auth-slice'
 import { useAppDispatch } from '@/store/hooks'
 import i18n from '@/i18n'
-import { BACKOFFICE_MONEY_DISPLAY_DECIMAL_PLACES, formatApiTime, formatCount, formatSignedYuanExact, formatYuan, formatYuanExact, isZeroYuan } from '@/utils/format'
+import { BACKOFFICE_MONEY_DISPLAY_DECIMAL_PLACES, formatApiTime, formatCount, formatYuan, isZeroYuan } from '@/utils/format'
 import { addLocalDays, endOfLocalDay, startOfLocalDay } from '@/utils/date-range'
+import { createExportTask, downloadExportTask, getExportErrorMessage, saveExportResponse, waitForExportTask } from '@/api/exports'
 import { BillingCostCharts } from '@/components/billing-cost-charts'
 import { ConsoleTabs } from '@/components/console-tabs'
+import { BillingInvoiceDialog } from '@/components/billing-invoice-dialog'
+import {
+  createInvoiceForm,
+  getInvoiceDialogOptions,
+  validateInvoiceForm,
+  type InvoiceForm,
+  type InvoiceFormErrors,
+} from '@/components/billing-invoice-form'
 import RealNameRequiredDialog from '@/components/real-name-required-dialog'
+import '@/components/trae-date-picker.css'
+
+export { validateInvoiceForm } from '@/components/billing-invoice-form'
 
 export type BillingTab = 'overview' | 'invoice'
 type ResourceStatus = 'idle' | 'loading' | 'success' | 'error'
 type BillingStatementTypeFilter = 'all' | 'model_consume' | 'recharge' | 'reward'
-type InvoiceTaxpayerType = 'enterprise' | 'personal'
 
 export interface ResourceState<T> {
   status: ResourceStatus
@@ -61,18 +72,6 @@ export interface ResourceState<T> {
   error: string
   requestId: string | null
 }
-
-interface InvoiceForm {
-  amount_yuan: string
-  title: string
-  tax_identifier: string
-  taxpayer_type: InvoiceTaxpayerType
-  email: string
-  project_name: string
-  invoice_type: 'normal' | 'special'
-}
-
-export type InvoiceFormErrors = Partial<Record<keyof InvoiceForm, string>>
 
 const BILLING_TABS: readonly [BillingTab, string][] = [
   ['overview', 'console.billing.costTab'],
@@ -91,23 +90,6 @@ const MIN_RECHARGE_AMOUNT = 10
 const PAYMENT_STATUS_POLL_INTERVAL_MS = 2000
 const PAYMENT_ACTIVE_STATUSES = new Set(['pending', 'paying'])
 const DEFAULT_INVOICE_FILE_EXTENSION = 'pdf'
-const MAX_INVOICE_TITLE_LENGTH = 255
-const MAX_TAX_IDENTIFIER_LENGTH = 128
-const MAX_EMAIL_LENGTH = 320
-const MAX_PROJECT_NAME_LENGTH = 255
-
-function defaultInvoiceForm(accountName = '', workspaceType: Workspace['type'] = 'personal', projectName = i18n.t('console.billing.defaultProjectName')): InvoiceForm {
-  return {
-    amount_yuan: '',
-    title: accountName,
-    tax_identifier: '',
-    taxpayer_type: workspaceType === 'enterprise' ? 'enterprise' : 'personal',
-    email: '',
-    project_name: projectName,
-    invoice_type: workspaceType === 'enterprise' ? 'special' : 'normal',
-  }
-}
-
 export function billingContextForWorkspace(workspace: Pick<Workspace, 'id' | 'type'>): BillingContext {
   return workspace.type === 'enterprise' ? { account_type: 'enterprise', enterprise_id: workspace.id } : { account_type: 'personal' }
 }
@@ -208,10 +190,6 @@ function statementDescription(line: BillingStatementLine): string {
   return [...new Set(values)].join(' · ') || '--'
 }
 
-function escapeCSV(value: string): string {
-  return `"${value.replaceAll('"', '""')}"`
-}
-
 function createIdempotencyKey(prefix = 'request'): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID()
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
@@ -221,29 +199,6 @@ function parseAmount(value: string): number | null {
   if (!/^\d+(?:\.\d{1,2})?$/.test(value.trim())) return null
   const amount = Number(value)
   return Number.isFinite(amount) && amount > 0 ? amount : null
-}
-
-export function validateInvoiceForm(form: InvoiceForm, available: string): InvoiceFormErrors {
-  const errors: InvoiceFormErrors = {}
-  const amount = parseAmount(form.amount_yuan)
-  const availableAmount = Number(available)
-  if (amount === null) errors.amount_yuan = i18n.t('console.billing.invoiceFormAmount')
-  else if (!Number.isFinite(availableAmount) || amount > availableAmount) errors.amount_yuan = i18n.t('console.billing.invoiceAmountExceeded', { amount: formatYuan(available, BACKOFFICE_MONEY_DISPLAY_DECIMAL_PLACES) })
-
-  const title = form.title.trim()
-  if (!title) errors.title = i18n.t('console.billing.invoiceTitleRequired')
-  else if (Array.from(title).length > MAX_INVOICE_TITLE_LENGTH) errors.title = i18n.t('console.billing.invoiceTitleTooLong', { count: MAX_INVOICE_TITLE_LENGTH })
-
-  const taxIdentifier = form.tax_identifier.trim()
-  if (form.taxpayer_type === 'enterprise' && !taxIdentifier) errors.tax_identifier = i18n.t('console.billing.taxpayerRequired')
-  else if (Array.from(taxIdentifier).length > MAX_TAX_IDENTIFIER_LENGTH) errors.tax_identifier = i18n.t('console.billing.taxpayerTooLong', { count: MAX_TAX_IDENTIFIER_LENGTH })
-
-  const email = form.email.trim()
-  if (!email) errors.email = i18n.t('console.billing.emailRequired')
-  else if (email.length > MAX_EMAIL_LENGTH || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.email = i18n.t('console.billing.emailInvalid')
-
-  if (Array.from(form.project_name.trim()).length > MAX_PROJECT_NAME_LENGTH) errors.project_name = i18n.t('console.billing.projectNameTooLong', { count: MAX_PROJECT_NAME_LENGTH })
-  return errors
 }
 
 function BillingLoading({ label }: { label: string }) {
@@ -336,7 +291,7 @@ function LedgerTable({ items }: { items: BillingStatementLine[] }) {
   return <div className="source-table-scroll billing-ledger-scroll" role="region" aria-label={i18n.t('console.billing.ledgerTable')} tabIndex={0}><table className="ledger-table"><thead><tr><th>{i18n.t('console.billing.time')}</th><th>{i18n.t('console.billing.type')}</th><th>{i18n.t('console.billing.relatedDescription')}</th><th>{i18n.t('console.billing.amountChange')}</th><th>{i18n.t('console.billing.balance')}</th></tr></thead><tbody>{items.map((item) => <tr key={item.id}><td>{formatApiTime(item.occurred_at)}</td><td>{statementKindLabel(item)}</td><td><strong>{statementDescription(item)}</strong>{item.request_id ? <small>{item.request_id}</small> : null}</td><td className={item.direction === 'income' ? 'amount-positive' : item.direction === 'expense' ? 'amount-negative' : ''}><MoneyText value={item.amount_yuan} direction={item.direction} /></td><td>{item.balance_after_yuan ? <MoneyText value={item.balance_after_yuan} /> : '--'}</td></tr>)}</tbody></table></div>
 }
 
-function BillingLedgerSection({ state, lineType, page, pageSize, onLineTypeChange, onPageChange, onPageSizeChange, onRetry, onExport }: { state: ResourceState<BillingPageResult<BillingStatementLine>>; lineType: BillingStatementTypeFilter; page: number; pageSize: number; onLineTypeChange: (value: BillingStatementTypeFilter) => void; onPageChange: (value: number) => void; onPageSizeChange: (value: number) => void; onRetry: () => void; onExport: () => void }) {
+function BillingLedgerSection({ state, lineType, page, pageSize, onLineTypeChange, onPageChange, onPageSizeChange, onRetry, onExport, exporting }: { state: ResourceState<BillingPageResult<BillingStatementLine>>; lineType: BillingStatementTypeFilter; page: number; pageSize: number; onLineTypeChange: (value: BillingStatementTypeFilter) => void; onPageChange: (value: number) => void; onPageSizeChange: (value: number) => void; onRetry: () => void; onExport: () => void; exporting: boolean }) {
   const data = state.data
   const loading = state.status === 'loading' || state.status === 'idle'
   return <section className="analysis-section billing-ledger-section" aria-labelledby="billingLedgerHeading">
@@ -353,7 +308,7 @@ function BillingLedgerSection({ state, lineType, page, pageSize, onLineTypeChang
             <Select.Option value="reward">{i18n.t('console.billing.gift')}</Select.Option>
           </Select>
         </label>
-        <Button theme="outline" size="small" icon={<IconDownload />} disabled={!data?.items.length || loading} onClick={onExport}>{i18n.t('console.billing.exportCsv')}</Button>
+        <Button theme="outline" size="small" icon={<IconDownload />} loading={exporting} disabled={!data?.items.length || loading || exporting} onClick={onExport}>{i18n.t('console.billing.exportCsv')}</Button>
       </div>
     </div>
     {loading && !data ? <BillingLoading label={i18n.t('console.billing.loadingLedger')} /> : state.status === 'error' ? <BillingError state={state} onRetry={onRetry} /> : !data?.items.length ? <EmptyPanel surface="table" title={i18n.t('console.billing.noLedger')} description={i18n.t('console.billing.adjustLedger')} /> : <div className="table-scroll"><LedgerTable items={data.items} /></div>}
@@ -660,31 +615,6 @@ function InvoiceHistory({ response, downloadingInvoiceID, onDownload }: { respon
   return <section className="invoice-history" aria-labelledby="invoiceHistoryHeading"><h2 id="invoiceHistoryHeading">{i18n.t('console.billing.invoiceHistory')}</h2>{history.items.length === 0 ? <EmptyPanel surface="table" title={i18n.t('console.billing.noInvoice')} description={i18n.t('console.billing.invoiceHint')} /> : <div className="invoice-table-scroll" role="region" aria-label={i18n.t('console.billing.invoiceHistoryTable')} tabIndex={0}><table className="invoice-history-table"><thead><tr><th>{i18n.t('console.billing.submittedAt')}</th><th>{i18n.t('console.billing.invoiceAmount')}</th><th>{i18n.t('console.billing.invoiceEntity')}</th><th>{i18n.t('console.billing.invoiceMethod')}</th><th>{i18n.t('console.billing.invoiceTitle')}</th><th>{i18n.t('console.billing.invoiceType')}</th><th>{i18n.t('console.billing.status')}</th><th>{i18n.t('console.billing.operation')}</th></tr></thead><tbody>{history.items.map((item) => { const downloading = downloadingInvoiceID === item.id; return <tr key={item.id}><td>{formatApiTime(item.submitted_at)}</td><td><MoneyText value={item.amount_yuan} /></td><td>{response.account.name}</td><td>{i18n.t('console.billing.manualApply')}</td><td>{item.title_masked || '--'}</td><td>{invoiceTypeLabel(item.invoice_type)}</td><td><span className={invoiceStatusClass(item.status)}>{invoiceStatusLabel(item)}</span></td><td>{item.download_url ? <a href={item.download_url} download aria-busy={downloading} aria-disabled={downloading} onClick={(event) => { event.preventDefault(); if (!downloading) onDownload(item) }}>{downloading ? i18n.t('console.billing.downloading') : i18n.t('console.billing.view')}</a> : <span className="invoice-status-pending">{i18n.t('console.billing.invoiceProcessing')}</span>}</td></tr> })}</tbody></table></div>}</section>
 }
 
-function InvoiceDialog({ open, available, form, errors, step, submitting, onClose, onChange, onNext, onBack, onSubmit }: { open: boolean; available: string; form: InvoiceForm; errors: InvoiceFormErrors; step: 1 | 2 | 3; submitting: boolean; onClose: () => void; onChange: (key: keyof InvoiceForm, value: string) => void; onNext: () => void; onBack: () => void; onSubmit: () => void }) {
-  const fieldError = (key: keyof InvoiceForm): ReactNode => errors[key] ? <small className="invoice-field-error" id={`invoice-${key}-error`} role="alert">{errors[key]}</small> : null
-  const fieldClass = (key: keyof InvoiceForm): string => `invoice-field${errors[key] ? ' has-error' : ''}`
-  return <Modal visible={open} title={step === 1 ? i18n.t('console.billing.applyInvoice') : step === 2 ? i18n.t('console.billing.confirmInvoice') : i18n.t('console.billing.invoiceSuccess')} onCancel={onClose} footer={null} className="invoice-dialog">
-    <div className="invoice-steps"><span className={step >= 1 ? 'active' : ''}>1 {i18n.t('console.billing.fillStep')}</span><i /><span className={step >= 2 ? 'active' : ''}>2 {i18n.t('console.billing.confirmStep')}</span><i /><span className={step >= 3 ? 'active' : ''}>3 {i18n.t('console.billing.doneStep')}</span></div>
-    {step === 1 ? <div className="dialog-body">
-      <div className="invoice-form-grid">
-        <label className={fieldClass('title')}><span className="invoice-field-label">{i18n.t('console.billing.invoiceTitle')} <em>*</em></span><input id="invoice-title" className="input" value={form.title} onChange={(event) => onChange('title', event.target.value)} required placeholder={i18n.t('console.billing.invoiceTitleRequired')} aria-invalid={Boolean(errors.title)} aria-describedby="invoice-title-error" />{fieldError('title')}</label>
-        <label className={fieldClass('tax_identifier')}><span className="invoice-field-label">{i18n.t('console.billing.taxpayerId')}{form.taxpayer_type === 'enterprise' ? <em>*</em> : null}</span><input id="invoice-tax-identifier" className="input" value={form.tax_identifier} onChange={(event) => onChange('tax_identifier', event.target.value)} placeholder={i18n.t('console.billing.taxpayerIdPlaceholder')} aria-invalid={Boolean(errors.tax_identifier)} aria-describedby="invoice-tax_identifier-error" />{fieldError('tax_identifier')}</label>
-        <label className={fieldClass('taxpayer_type')}><span className="invoice-field-label">{i18n.t('console.billing.taxpayerType')}</span><select id="invoice-taxpayer-type" className="input" value={form.taxpayer_type} onChange={(event) => onChange('taxpayer_type', event.target.value)} aria-invalid={Boolean(errors.taxpayer_type)} aria-describedby="invoice-taxpayer_type-error"><option value="enterprise">{i18n.t('console.billing.enterprise')}</option><option value="personal">{i18n.t('console.billing.personal')}</option></select>{fieldError('taxpayer_type')}</label>
-        <label className={fieldClass('invoice_type')}><span className="invoice-field-label">{i18n.t('console.billing.invoiceType')}</span><select id="invoice-type" className="input" value={form.invoice_type} onChange={(event) => onChange('invoice_type', event.target.value)} aria-invalid={Boolean(errors.invoice_type)} aria-describedby="invoice-invoice_type-error"><option value="special">{invoiceTypeLabel('special')}</option><option value="normal">{invoiceTypeLabel('normal')}</option></select>{fieldError('invoice_type')}</label>
-        <label className={fieldClass('project_name')}><span className="invoice-field-label">{i18n.t('console.billing.projectName')}</span><input id="invoice-project-name" className="input" value={form.project_name} readOnly aria-invalid={Boolean(errors.project_name)} aria-describedby="invoice-project_name-error" />{fieldError('project_name')}<small className="invoice-field-note">{i18n.t('console.billing.projectNameHint')}</small></label>
-        <label className={fieldClass('amount_yuan')}><span className="invoice-field-label">{i18n.t('console.billing.invoiceAmountYuan')} <em>*</em></span><input id="invoice-amount" className="input" inputMode="decimal" type="number" min="0.01" max={available} step="0.01" value={form.amount_yuan} onChange={(event) => onChange('amount_yuan', event.target.value)} placeholder={i18n.t('console.billing.amountMax', { amount: formatYuan(available, BACKOFFICE_MONEY_DISPLAY_DECIMAL_PLACES) })} required aria-invalid={Boolean(errors.amount_yuan)} aria-describedby="invoice-amount_yuan-error" />{fieldError('amount_yuan')}</label>
-        <div className={fieldClass('email') + ' invoice-field-wide'}><label className="invoice-field-label" htmlFor="invoice-email">{i18n.t('console.billing.receivingEmail')} <em>*</em></label><input id="invoice-email" className="input" type="email" value={form.email} onChange={(event) => onChange('email', event.target.value)} placeholder={i18n.t('console.billing.accountEmail')} required aria-invalid={Boolean(errors.email)} aria-describedby="invoice-email-error" />{fieldError('email')}<small className="invoice-field-note">{i18n.t('console.billing.emailHint')}</small></div>
-      </div>
-      <p className="invoice-demo-note">{i18n.t('console.billing.invoiceSubmitDemo')}</p>
-      <div className="dialog-foot"><Link className="invoice-enterprise-link" to="/console/enterprise-create">{i18n.t('console.billing.enterpriseVerification')}</Link><Button theme="borderless" onClick={onClose}>{i18n.t('console.common.cancel')}</Button><Button theme="solid" type="primary" onClick={onNext}>{i18n.t('console.billing.confirmInvoice')}</Button></div>
-    </div> : step === 2 ? <div className="dialog-body">
-      <p className="invoice-dialog-note">{i18n.t('console.billing.confirmInvoiceInfo')}</p>
-      <dl className="invoice-confirm-grid"><dt>{i18n.t('console.billing.invoiceTitle')}</dt><dd>{form.title}</dd><dt>{i18n.t('console.billing.taxpayerType')}</dt><dd>{form.taxpayer_type === 'enterprise' ? i18n.t('console.billing.enterprise') : i18n.t('console.billing.personal')}</dd><dt>{i18n.t('console.billing.invoiceType')}</dt><dd>{invoiceTypeLabel(form.invoice_type)}</dd><dt>{i18n.t('console.billing.invoiceAmount')}</dt><dd><MoneyText value={form.amount_yuan} /></dd><dt>{i18n.t('console.billing.receivingEmail')}</dt><dd>{form.email}</dd></dl>
-      <div className="dialog-foot"><Button theme="borderless" onClick={onBack} disabled={submitting}>{i18n.t('console.billing.checkAgain')}</Button><Button theme="solid" type="primary" loading={submitting} onClick={onSubmit}>{i18n.t('console.billing.confirmSubmit')}</Button></div>
-    </div> : <div className="dialog-body invoice-success"><div className="invoice-success-mark" aria-hidden="true"><IconTickCircle /></div><p className="invoice-dialog-note">{i18n.t('console.billing.invoiceSuccessHint')}</p><p className="invoice-demo-note">{i18n.t('console.billing.invoiceSuccessDemo')}</p><div className="dialog-foot"><Button theme="solid" type="primary" onClick={onClose}>{i18n.t('console.common.confirm')}</Button></div></div>}
-  </Modal>
-}
-
 function InvoiceTab({ state, faqOpen, downloadingInvoiceID, onToggleFaq, onRetry, onOpenDialog, onDownload, onPageChange, onPageSizeChange, page, pageSize }: { state: ResourceState<BillingInvoiceResponse>; faqOpen: boolean; downloadingInvoiceID: string | null; onToggleFaq: () => void; onRetry: () => void; onOpenDialog: () => void; onDownload: (item: BillingInvoiceItem) => void; onPageChange: (page: number) => void; onPageSizeChange: (pageSize: number) => void; page: number; pageSize: number }) {
   if (state.status === 'loading' || state.status === 'idle') return <BillingLoading label={i18n.t('console.billing.invoiceLoading')} />
   if (state.status === 'error') return <BillingError state={state} onRetry={onRetry} />
@@ -694,7 +624,7 @@ function InvoiceTab({ state, faqOpen, downloadingInvoiceID, onToggleFaq, onRetry
 }
 
 export function BillingPage() {
-  const { t, i18n: translation } = useTranslation()
+  const { t } = useTranslation()
   const store = useAppStore()
   const dispatch = useAppDispatch()
   const navigate = useNavigate()
@@ -728,10 +658,11 @@ export function BillingPage() {
   const [invoiceFaqOpen, setInvoiceFaqOpen] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [dialogStep, setDialogStep] = useState<1 | 2 | 3>(1)
-  const [invoiceForm, setInvoiceForm] = useState<InvoiceForm>(() => defaultInvoiceForm())
+  const [invoiceForm, setInvoiceForm] = useState<InvoiceForm>(() => createInvoiceForm(null, 'personal'))
   const [invoiceFormErrors, setInvoiceFormErrors] = useState<InvoiceFormErrors>({})
   const [submittingInvoice, setSubmittingInvoice] = useState(false)
   const [downloadingInvoiceID, setDownloadingInvoiceID] = useState<string | null>(null)
+  const [exportingLedger, setExportingLedger] = useState(false)
   const [paymentReturnState, setPaymentReturnState] = useState<ResourceState<BillingPaymentOrder>>(resourceState())
   const [paymentReturnRetryToken, setPaymentReturnRetryToken] = useState(0)
 
@@ -742,11 +673,6 @@ export function BillingPage() {
     const orderID = params.get('order_id')?.trim()
     navigate(`/console/recharge${orderID ? `?order_id=${encodeURIComponent(orderID)}` : ''}`, { replace: true })
   }, [location.search, navigate])
-
-  // 中文：项目名称由当前语言资源决定且字段只读，语言切换时同步已有表单，避免提交旧语言的演示值。
-  useEffect(() => {
-    setInvoiceForm((previous) => ({ ...previous, project_name: t('console.billing.defaultProjectName') }))
-  }, [t, translation.language])
 
   const handleAuthFailure = useCallback(() => {
     dispatch(invalidateAuth())
@@ -893,21 +819,39 @@ export function BillingPage() {
     if (value[0]) setPeriod(`${value[0].getFullYear()}-${String(value[0].getMonth() + 1).padStart(2, '0')}`)
   }
 
-  function exportCSV(): void {
-    const ledger = ledgerState.data?.items ?? []
-    const rows = [[t('console.billing.time'), t('console.billing.type'), t('console.billing.relatedDescription'), t('console.billing.amountChange'), t('console.billing.balance')], ...ledger.map((item) => [formatApiTime(item.occurred_at), statementKindLabel(item), statementDescription(item), formatSignedYuanExact(item.amount_yuan, item.direction), item.balance_after_yuan ? formatYuanExact(item.balance_after_yuan) : '--'])]
-    const csv = `\uFEFF${rows.map((row) => row.map(escapeCSV).join(',')).join('\n')}`
-    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
-    const anchor = document.createElement('a')
-    anchor.href = url
-    anchor.download = `token-nx-billing-${period}.csv`
-    anchor.click()
-    URL.revokeObjectURL(url)
-    Toast.success(t('console.billing.ledgerExported'))
+  async function exportCSV(): Promise<void> {
+    if (exportingLedger) return
+    setExportingLedger(true)
+    try {
+      // 中文：账本导出提交完整账务主体和当前类型筛选，服务端负责生成全部匹配流水。
+      const sourceType = ledgerLineType === 'model_consume' ? 'usage' : ledgerLineType === 'recharge' ? 'paid' : ledgerLineType === 'reward' ? 'reward' : undefined
+      const task = await createExportTask(
+        {
+          export_code: 'billing.statements',
+          format: 'csv',
+          context: context.account_type === 'enterprise' ? { account_type: 'enterprise', enterprise_id: context.enterprise_id ?? '' } : { account_type: 'personal' },
+          filters: sourceType ? { source_type: sourceType } : undefined,
+          file_name: `token-nx-billing-${period}`,
+        },
+        { idempotencyKey: createIdempotencyKey('billing-export') },
+      )
+      const completed = await waitForExportTask(task.id)
+      const response = await downloadExportTask(completed.id)
+      await saveExportResponse(response, completed.file_name)
+      Toast.success(t('console.billing.ledgerExported'))
+    } catch (error) {
+      if (isAuthenticationFailure(error)) {
+        handleAuthFailure()
+        return
+      }
+      Toast.error(getExportErrorMessage(error))
+    } finally {
+      setExportingLedger(false)
+    }
   }
 
   function openInvoiceDialog(): void {
-    setInvoiceForm({ ...defaultInvoiceForm(invoiceState.data?.account.name, activeWorkspace.type, t('console.billing.defaultProjectName')), amount_yuan: invoiceState.data?.available_amount_yuan ?? '' })
+    setInvoiceForm(createInvoiceForm(invoiceState.data, activeWorkspace.type))
     setInvoiceFormErrors({})
     setDialogStep(1)
     setDialogOpen(true)
@@ -939,15 +883,18 @@ export function BillingPage() {
 
   async function submitInvoice(): Promise<void> {
     if (submittingInvoice) return
+    const invoiceType = invoiceForm.invoice_type
+    if (!invoiceType) return
     setSubmittingInvoice(true)
+    const email = invoiceForm.email.trim()
     const input: BillingInvoiceInput = {
       amount_yuan: invoiceForm.amount_yuan,
       title: invoiceForm.title,
       tax_identifier: invoiceForm.tax_identifier,
       taxpayer_type: invoiceForm.taxpayer_type,
-      email: invoiceForm.email,
+      ...(email ? { email } : {}),
       project_name: invoiceForm.project_name,
-      invoice_type: invoiceForm.invoice_type,
+      invoice_type: invoiceType,
     }
     try {
       await submitBillingInvoice(context, input, createIdempotencyKey())
@@ -996,11 +943,11 @@ export function BillingPage() {
     if (tab === 'invoice' && invoiceState.status === 'idle') setInvoicePage(BILLING_FIRST_PAGE)
   }
 
-  const ledgerSection = <BillingLedgerSection state={ledgerState} lineType={ledgerLineType} page={ledgerPage} pageSize={ledgerPageSize} onLineTypeChange={(value) => { setLedgerLineType(value); setLedgerPage(BILLING_FIRST_PAGE) }} onPageChange={setLedgerPage} onPageSizeChange={(value) => { setLedgerPageSize(value); setLedgerPage(BILLING_FIRST_PAGE) }} onRetry={() => setReloadToken((value) => value + 1)} onExport={exportCSV} />
+  const ledgerSection = <BillingLedgerSection state={ledgerState} lineType={ledgerLineType} page={ledgerPage} pageSize={ledgerPageSize} onLineTypeChange={(value) => { setLedgerLineType(value); setLedgerPage(BILLING_FIRST_PAGE) }} onPageChange={setLedgerPage} onPageSizeChange={(value) => { setLedgerPageSize(value); setLedgerPage(BILLING_FIRST_PAGE) }} onRetry={() => setReloadToken((value) => value + 1)} onExport={() => void exportCSV()} exporting={exportingLedger} />
 
   let content: ReactNode
   if (activeTab === 'overview') content = <AnalysisTab state={analysisState} ledger={ledgerSection} dateRange={dateRange} apiKeyID={apiKeyID} model={model} billingType={billingType} departmentID={departmentID} memberID={memberID} departments={departments} members={members} directoryLoading={directoryLoading} directoryEnabled={context.account_type === 'enterprise'} onRecharge={() => navigate('/console/recharge')} onSubscription={() => navigate('/console/trae-enterprise/subscription')} onFilterChange={changeAnalysisFilter} onDateRangeChange={changeAnalysisDateRange} onRetry={() => setReloadToken((value) => value + 1)} />
   else content = <InvoiceTab state={invoiceState} faqOpen={invoiceFaqOpen} downloadingInvoiceID={downloadingInvoiceID} onToggleFaq={() => setInvoiceFaqOpen((value) => !value)} onRetry={() => setReloadToken((value) => value + 1)} onOpenDialog={openInvoiceDialog} onDownload={(item) => void downloadInvoice(item)} onPageChange={setInvoicePage} onPageSizeChange={(nextPageSize) => { setInvoicePageSize(nextPageSize); setInvoicePage(BILLING_FIRST_PAGE) }} page={invoicePage} pageSize={invoicePageSize} />
 
-  return <div className="page-stack billing-console-page"><PageTitle title={t('console.billing.title')} description={t('console.billing.description')} /><RequestFocus data={analysisState.data} requestId={requestedRecordId} /><PaymentReturnNotice state={paymentReturnState} onRetry={() => setPaymentReturnRetryToken((value) => value + 1)} /><ConsoleTabs items={BILLING_TABS.map(([itemKey, label]) => ({ itemKey, tab: t(label) }))} activeKey={activeTab} onChange={(value) => onTabChange(value as BillingTab)} ariaLabel={t('console.billing.title')} /><div className="billing-tab-panel" role="tabpanel" id={`panel-${activeTab}`} aria-labelledby={`tab-${activeTab}`}>{content}</div><InvoiceDialog open={dialogOpen} available={invoiceState.data?.available_amount_yuan ?? '0.00'} form={invoiceForm} errors={invoiceFormErrors} step={dialogStep} submitting={submittingInvoice} onClose={closeInvoiceDialog} onChange={updateInvoiceForm} onNext={nextInvoiceStep} onBack={() => { setDialogStep(1); setInvoiceFormErrors({}) }} onSubmit={() => void submitInvoice()} /></div>
+  return <div className="page-stack billing-console-page"><PageTitle title={t('console.billing.title')} description={t('console.billing.description')} /><RequestFocus data={analysisState.data} requestId={requestedRecordId} /><PaymentReturnNotice state={paymentReturnState} onRetry={() => setPaymentReturnRetryToken((value) => value + 1)} /><ConsoleTabs items={BILLING_TABS.map(([itemKey, label]) => ({ itemKey, tab: t(label) }))} activeKey={activeTab} onChange={(value) => onTabChange(value as BillingTab)} ariaLabel={t('console.billing.title')} /><div className="billing-tab-panel" role="tabpanel" id={`panel-${activeTab}`} aria-labelledby={`tab-${activeTab}`}>{content}</div><BillingInvoiceDialog open={dialogOpen} form={invoiceForm} options={getInvoiceDialogOptions(invoiceState.data)} errors={invoiceFormErrors} step={dialogStep} submitting={submittingInvoice} onClose={closeInvoiceDialog} onChange={updateInvoiceForm} onNext={nextInvoiceStep} onBack={() => { setDialogStep(1); setInvoiceFormErrors({}) }} onSubmit={() => void submitInvoice()} /></div>
 }

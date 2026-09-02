@@ -873,13 +873,8 @@ function ModelsContent({ context }: { context: EnterpriseContext }) {
   return (
     <section
       className="enterprise-models-directory"
-      aria-labelledby="enterpriseModelsDirectoryTitle"
+      aria-label={t('console.enterprise.model.systemModels')}
     >
-      <div className="enterprise-models-directory-head">
-        <h2 id="enterpriseModelsDirectoryTitle">
-          {t('console.enterprise.model.systemModels')}
-        </h2>
-      </div>
       {actionError ? (
         <div className="enterprise-models-action-error" role="alert">
           <span>{actionError.message}</span>

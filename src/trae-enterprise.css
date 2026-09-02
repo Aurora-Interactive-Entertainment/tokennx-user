@@ -40,48 +40,6 @@
 .trae-picker-option-check { margin-left: auto; color: var(--color-text-default-hover); font-size: 16px; }
 .trae-inline-search, .trae-date-field { display: inline-flex; align-items: center; min-width: 0; height: 38px; border: 1px solid var(--color-border-neutral-l2); border-radius: 6px; color: var(--color-text-secondary); background: var(--color-bg-base-secondary); }
 .trae-inline-search input, .trae-date-field input { height: 100%; min-width: 0; border: 0; outline: 0; color: inherit; background: transparent; font: inherit; }
-.trae-date-picker.semi-datepicker { width: 255px; min-width: 0; height: 32px; }
-.trae-date-picker .semi-datepicker-range-input { height: 30px; }
-.trae-date-picker .semi-datepicker-range-input-wrapper { padding-inline: 8px; }
-.trae-date-picker .semi-datepicker-range-input-wrapper input { width: 100%; min-width: 0; padding-inline: 4px; font-size: 13px; }
-.trae-date-picker .semi-datepicker-range-input-separator { align-items: center; justify-content: center; text-align: center; font-size: 13px; }
-.trae-date-picker-dropdown { box-sizing: border-box; width: 610px; max-width: calc(100vw - 16px); overflow: hidden; padding: 0; border: 1px solid var(--color-border-neutral-l2); border-radius: 8px; background: var(--color-bg-base-secondary); box-shadow: 0 12px 30px rgba(0, 0, 0, .3); }
-.semi-popover-wrapper:has(.trae-date-picker-dropdown), .semi-popover-wrapper:has(.trae-date-picker-dropdown) .semi-tooltip-content, .semi-popover-wrapper:has(.trae-date-picker-dropdown) .semi-popover { background: var(--color-bg-base-secondary) !important; line-height: 0; }
-.semi-popover-wrapper:has(.trae-date-picker-dropdown) { overflow: hidden; border-radius: 8px; }
-.trae-date-picker-dropdown .semi-datepicker-quick-control { width: 104px; background: transparent; }
-.trae-date-picker-dropdown .semi-datepicker-quick-control-header { display: none; }
-.trae-date-picker-dropdown .semi-datepicker-quick-control-left-content { grid-template-columns: 1fr; gap: 2px; padding: 8px; }
-.trae-date-picker-dropdown .semi-datepicker-quick-control-left-content > button { display: flex; width: 100%; height: 28px; align-items: center; justify-content: center; margin: 4px 0 0; padding: 0 8px; box-sizing: border-box; border: 0; border-radius: 4px; color: var(--color-text-secondary); background: transparent; font-size: 13px; font-weight: 400 !important; transition: none !important; }
-html[data-theme="dark"] .trae-date-picker-dropdown .semi-datepicker-quick-control-left-content > button:hover { color: #ffffff !important; background: rgba(224, 226, 242, .05) !important; }
-html[data-theme="light"] .trae-date-picker-dropdown .semi-datepicker-quick-control-left-content > button:hover { color: #17181b !important; background: rgba(23, 24, 27, .045) !important; }
-.trae-date-picker-dropdown .semi-datepicker-quick-control-left-content-item, .trae-date-picker-dropdown .semi-datepicker-quick-control-left-content-item-ellipsis, .trae-date-picker-dropdown .semi-datepicker-quick-control-left-content-item-ellipsis > span { display: flex; height: 28px; min-height: 28px; align-items: center; justify-content: center; padding: 0; color: inherit; font-size: 13px; font-weight: 400 !important; line-height: 28px; pointer-events: none; }
-.trae-date-picker-dropdown .semi-datepicker-quick-control-left-content-item:hover { background: transparent; }
-.trae-date-picker-dropdown .semi-datepicker-quick-control-left-content-item, .trae-date-picker-dropdown .semi-datepicker-quick-control-left-content-item-ellipsis { transition: none !important; }
-.trae-date-picker-dropdown .semi-datepicker-quick-control-left { border-right-color: var(--color-border-neutral-l2); }
-.trae-date-picker-dropdown .semi-datepicker-container { display: flex; box-sizing: border-box; overflow: hidden; border-radius: inherit; }
-.trae-date-picker-dropdown .semi-datepicker-container > div { width: 100%; }
-.trae-date-picker-dropdown .semi-datepicker-container > div > div { display: flex; width: 100%; min-width: 0; }
-.trae-date-picker-dropdown .semi-datepicker-container > div > div > div:last-child { min-width: 0; flex: 1 1 auto; box-sizing: border-box; padding-inline: 8px; }
-.trae-date-picker-dropdown .semi-datepicker-container > div > div > div:last-child > .semi-datepicker-month-grid { width: 100%; }
-.trae-date-picker-dropdown .semi-datepicker-month-grid { min-height: 276px; justify-content: space-between; gap: 8px; }
-.trae-date-picker-dropdown .semi-datepicker-month-grid-left, .trae-date-picker-dropdown .semi-datepicker-month-grid-right { flex: 0 0 240px; min-width: 0; min-height: 276px; }
-.trae-date-picker-dropdown .semi-datepicker-month-grid[x-preset-position='left'] .semi-datepicker-month, .trae-date-picker-dropdown .semi-datepicker-month-grid[x-preset-position='right'] .semi-datepicker-month, .trae-date-picker-dropdown .semi-datepicker-month { width: 240px; height: 234px !important; box-sizing: border-box; padding: 0 0 8px; }
-.trae-date-picker-dropdown .semi-datepicker-navigation { height: 42px; padding: 0 8px; }
-.trae-date-picker-dropdown .semi-datepicker-navigation > button { margin: 0 !important; }
-.trae-date-picker-dropdown .semi-datepicker-navigation > button[aria-label='Previous year'], .trae-date-picker-dropdown .semi-datepicker-navigation > button[aria-label='Next year'] { display: none; }
-.trae-date-picker-dropdown .semi-datepicker-navigation .semi-button, .trae-date-picker-dropdown .semi-datepicker-navigation .semi-button:hover { border-color: transparent !important; color: var(--color-text-secondary) !important; background: transparent !important; box-shadow: none !important; }
-.trae-date-picker-dropdown .semi-datepicker-navigation-month .semi-button, .trae-date-picker-dropdown .semi-datepicker-navigation-month .semi-button-content { pointer-events: none; color: var(--color-text-default-hover) !important; font-weight: 400 !important; }
-.trae-date-picker-dropdown .semi-datepicker-navigation-month .semi-button * { font-weight: 400 !important; }
-.trae-date-picker-dropdown .semi-datepicker-navigation > button .semi-icon { width: 15px; height: 15px; font-size: 15px; }
-.trae-date-picker-dropdown .semi-datepicker-weekday-item, .trae-date-picker-dropdown .semi-datepicker-day { width: 32px; height: 32px; font-size: 12px; font-weight: 400 !important; }
-.trae-date-picker-dropdown .semi-datepicker-weekday-item { line-height: 32px; }
-.trae-date-picker-dropdown .semi-datepicker-day-main { color: var(--color-text-default); }
-.trae-date-picker-dropdown .semi-datepicker-day-main { display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 400 !important; }
-.trae-date-picker-dropdown .semi-datepicker-day-inrange .semi-datepicker-day-main, .trae-date-picker-dropdown .semi-datepicker-day-inoffsetrange .semi-datepicker-day-main, .trae-date-picker-dropdown .semi-datepicker-day-inhover .semi-datepicker-day-main, .trae-date-picker-dropdown .semi-datepicker-day-hoverday .semi-datepicker-day-main, .trae-date-picker-dropdown .semi-datepicker-day-hoverday-offset .semi-datepicker-day-main, .trae-date-picker-dropdown .semi-datepicker-day-hoverday-inrange .semi-datepicker-day-main, .trae-date-picker-dropdown .semi-datepicker-day-selectedrange-hover .semi-datepicker-day-main { width: 100%; border-radius: 0; background: var(--color-bg-overlay-l2); color: var(--color-text-default); }
-.trae-date-picker-dropdown .semi-datepicker-day-selected .semi-datepicker-day-main, .trae-date-picker-dropdown .semi-datepicker-day-selected-start .semi-datepicker-day-main, .trae-date-picker-dropdown .semi-datepicker-day-selected-end .semi-datepicker-day-main { background: var(--color-text-default-hover); color: var(--color-bg-base-primary); }
-html[data-theme="light"] .trae-date-picker-dropdown [class*="semi-datepicker-day-selected"] .semi-datepicker-day-main { background: #17181b; color: #ffffff; }
-html[data-theme="dark"] .trae-date-picker-dropdown [class*="semi-datepicker-day-selected"] .semi-datepicker-day-main { background: #e7e9ef; color: #17181b; }
-.trae-date-picker-dropdown .semi-datepicker-day-disabled .semi-datepicker-day-main { color: var(--color-text-tertiary); }
 .trae-usage-detail-date-dropdown { width: 508px; }
 .trae-date-field { gap: 8px; padding: 0 10px; }
 .trae-date-field svg { flex: 0 0 auto; color: var(--color-text-tertiary); }
@@ -315,7 +273,7 @@ html[data-theme="dark"] .trae-date-picker-dropdown [class*="semi-datepicker-day-
 .trae-members-page > .trae-tabs button::after { right: 0; left: 0; }
 .trae-members-page > .trae-members-workspace, .trae-members-page > .trae-department-editor { margin: 0 var(--trae-members-page-gutter) 36px; border: 0; border-radius: 0; background: transparent; grid-template-columns: 240px minmax(0, 1fr); min-height: 0; align-items: stretch; }
 /* Leave height to the grid stretch so the tree and member list end on the same baseline. */
-.trae-members-page > .trae-members-workspace { column-gap: 48px; }
+.trae-members-page > .trae-members-workspace { column-gap: 48px; transition: grid-template-columns .28s cubic-bezier(.22, 1, .36, 1), column-gap .28s cubic-bezier(.22, 1, .36, 1); }
 .trae-members-page > .trae-members-workspace.is-department-tree-collapsed { grid-template-columns: 0 minmax(0, 1fr); column-gap: 0; }
 .trae-members-page .trae-department-tree { position: relative; min-width: 0; min-height: 0; padding: 16px 0 0; overflow: visible; background: transparent; }
 .trae-members-page .trae-department-tree.is-collapsed { padding: 0; overflow: hidden; }
@@ -350,9 +308,9 @@ html[data-theme="dark"] .trae-date-picker-dropdown [class*="semi-datepicker-day-
 .trae-department-menu button { display: flex; align-items: center; gap: 8px; min-height: 28px; padding: 0 6px; border: 0; border-radius: 4px; color: var(--color-text-default); background: transparent; font: inherit; font-size: 13px; text-align: left; cursor: pointer; }
 .trae-department-menu button:hover { color: var(--color-text-default-hover); background: var(--color-bg-overlay-l3); }
 .trae-department-menu button.is-danger { color: #F65A5A; }
-.trae-department-expanded-content { display: flex; width: 100%; min-width: 0; min-height: 0; flex-direction: column; overflow: visible; }
-/* 收起时左侧组织树直接移除，避免出现淡出或横向移动的过渡效果。 */
-.trae-department-tree.is-collapsed .trae-department-expanded-content { display: none; }
+.trae-department-expanded-content { display: flex; width: 100%; min-width: 0; min-height: 0; flex-direction: column; overflow: visible; transition: opacity .16s ease, visibility 0s linear .28s; }
+/* 中文：收起时保留组织树的布局轨道，让内容先淡出，再随表格一起完成横向收缩。 */
+.trae-department-tree.is-collapsed .trae-department-expanded-content { visibility: hidden; opacity: 0; pointer-events: none; }
 
 /* 桌面端由右侧列表决定整行高度，组织树只跟随宽度变化，不参与撑高页面。 */
 @media (min-width: 821px) {
@@ -415,9 +373,15 @@ html[data-theme="dark"] .trae-date-picker-dropdown [class*="semi-datepicker-day-
 .trae-members-page .trae-semi-member-table .semi-table-tbody > .semi-table-row:nth-child(even) > .semi-table-row-cell { background: var(--color-bg-overlay-l1); }
 .trae-members-page .trae-semi-member-table .semi-table-tbody > .semi-table-row:hover > .semi-table-row-cell { background: var(--color-bg-overlay-l2); }
 .trae-members-page .trae-semi-member-table .semi-table-row-head button { display: inline-flex; border: 0; color: inherit; background: transparent; cursor: pointer; }
+/* 中文：状态列的信息按钮按文字基线对齐，并固定按钮盒尺寸，避免图标向上或向下偏移。 */
+.trae-members-page .trae-semi-member-table .semi-table-row-head .app-info-icon-trigger { display: inline-flex; width: 18px; height: 18px; align-items: center; justify-content: center; padding: 0; vertical-align: middle; line-height: 1; }
+.trae-members-page .trae-semi-member-table .semi-table-row-head .app-info-icon-trigger .app-info-icon { display: block; width: 14px; height: 18px; margin: 0; }
 .trae-members-page .trae-semi-member-table .semi-table-row-head .semi-table-column-sorter { color: var(--color-text-tertiary); }
-/* Semi owns the table scroll area; hiding the outer wrapper removes the duplicate bar. */
-.trae-members-page .trae-table-scroll:has(.trae-semi-member-table) { overflow: visible; border: 0; }
+/* 中文：表格宽度不足时由外层承载横向滚动，避免固定列宽把右侧内容推出页面。 */
+.trae-members-page .trae-table-scroll:has(.trae-semi-member-table) { overflow-x: auto; overflow-y: hidden; border: 0; scrollbar-color: var(--color-border-neutral-l2) transparent; scrollbar-width: thin; }
+.trae-members-page .trae-table-scroll:has(.trae-semi-member-table)::-webkit-scrollbar { width: 6px; height: 6px; }
+.trae-members-page .trae-table-scroll:has(.trae-semi-member-table)::-webkit-scrollbar-track { background: transparent; }
+.trae-members-page .trae-table-scroll:has(.trae-semi-member-table)::-webkit-scrollbar-thumb { border-radius: 3px; background: var(--color-border-neutral-l2); }
 .trae-members-page .trae-semi-member-table .semi-table-body { overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; scrollbar-color: var(--color-border-neutral-l2) transparent; }
 .trae-members-page .trae-semi-member-table .semi-table-body::-webkit-scrollbar { width: 6px; height: 6px; }
 .trae-members-page .trae-semi-member-table .semi-table-body::-webkit-scrollbar-track { background: transparent; }
@@ -429,8 +393,8 @@ html[data-theme="dark"] .trae-date-picker-dropdown [class*="semi-datepicker-day-
 .trae-status-rules-tooltip p { margin: 0 0 10px; }
 .trae-status-rules-tooltip p:last-of-type { margin-bottom: 0; }
 .trae-status-rules-tooltip > button { margin-top: 10px; padding: 0; border: 0; color: var(--color-text-default-hover); background: transparent; text-decoration: underline; cursor: pointer; }
-.trae-members-selection-heading { display: flex; align-items: baseline; gap: 18px; margin-bottom: 12px; }
-.trae-members-selection-heading h2 { margin: 0 0 8px; color: var(--color-text-default-hover); font-size: 18px; font-weight: 650; line-height: 1.25; }
+.trae-members-selection-heading { display: flex; box-sizing: border-box; height: 36px; min-height: 36px; align-items: center; gap: 18px; margin-bottom: 12px; }
+.trae-members-selection-heading h2 { margin: 0; color: var(--color-text-default-hover); font-size: 18px; font-weight: 650; line-height: 1.25; }
 .trae-members-selection-heading > div { display: flex; gap: 18px; color: var(--color-text-tertiary); font-size: 13px; }
 .trae-members-selection-heading b { margin-left: 4px; color: var(--color-text-default-hover); font-weight: 550; }
 .trae-department-expand-button { display: inline-grid; width: 28px; height: 28px; flex: 0 0 28px; place-items: center; padding: 0; border: 0; border-radius: 4px; color: var(--color-text-secondary); background: transparent; cursor: pointer; }
@@ -549,6 +513,8 @@ html[data-theme="dark"] .trae-date-picker-dropdown [class*="semi-datepicker-day-
   .trae-members-page > .trae-members-workspace { column-gap: 0; }
   .trae-members-page .trae-department-tree { padding-top: 20px; border-right: 0; border-bottom: 1px solid var(--color-border-neutral-l1); }
   .trae-members-page .trae-department-tree.is-collapsed { width: auto; }
+  /* 中文：移动端组织树是独立的栅格行，收起后移除内容，避免留下空白高度。 */
+  .trae-members-page .trae-department-tree.is-collapsed .trae-department-expanded-content { display: none; }
   .trae-members-page .trae-members-table-panel { padding: 20px 0; }
   .trae-members-page .trae-members-table-panel::before { display: none; }
   .trae-members-page .trae-members-table-panel .trae-toolbar { flex-wrap: wrap; }
@@ -558,18 +524,11 @@ html[data-theme="dark"] .trae-date-picker-dropdown [class*="semi-datepicker-day-
 @media (max-width: 560px) {
   .trae-page { width: 100%; }
   .trae-toolbar { align-items: stretch; flex-direction: column; }
-  .trae-select.semi-select, .trae-inline-search, .trae-inline-search--wide, .trae-date-field, .trae-date-picker.semi-datepicker { width: 100%; }
+  .trae-select.semi-select, .trae-inline-search, .trae-inline-search--wide, .trae-date-field { width: 100%; }
   .trae-date-field input { flex: 1; width: auto; }
   .trae-member-select-dropdown { width: calc(100vw - 40px); max-width: calc(100vw - 40px); }
   .trae-members-summary, .trae-usage-summary, .trae-usage-person-grid { grid-template-columns: 1fr; }
-  .trae-date-picker-dropdown { max-height: calc(100vh - 24px); overflow: auto; }
   .trae-usage-detail-date-dropdown { width: min(640px, calc(100vw - 16px)); }
-  .trae-date-picker-dropdown .semi-datepicker-quick-control { width: 104px; }
-  .trae-date-picker-dropdown .semi-datepicker-month-grid { min-height: 320px; }
-  .trae-date-picker-dropdown .semi-datepicker-month-grid-left, .trae-date-picker-dropdown .semi-datepicker-month-grid-right { flex-basis: 224px; min-height: 320px; }
-  .trae-date-picker-dropdown .semi-datepicker-month { padding-inline: 8px; }
-  .trae-date-picker-dropdown .semi-datepicker-weekday-item, .trae-date-picker-dropdown .semi-datepicker-day { width: 28px; height: 38px; }
-  .trae-date-picker-dropdown .semi-datepicker-weekday-item { line-height: 38px; }
   .trae-members-table-panel { padding: 14px 12px 18px; }
   .trae-payg-row { align-items: flex-start; flex-direction: column; }
   .trae-page-heading-action .trae-primary-button, .trae-page-heading-action .trae-secondary-button { flex: 1; }

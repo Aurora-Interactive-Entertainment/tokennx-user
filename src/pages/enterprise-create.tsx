@@ -34,14 +34,10 @@ import {
 import { EnterpriseCertificationProgress } from "@/components/enterprise-certification/enterprise-certification-progress";
 import {
   EnterpriseFaceModal,
-  EnterpriseFaceStep,
   EnterpriseResultStep,
   type FaceConfirmationNotice,
 } from "@/components/enterprise-certification/enterprise-certification-status";
-import {
-  PageTitle,
-  workspacesFromMemberships,
-} from "@/components/common";
+import { PageTitle, workspacesFromMemberships } from "@/components/common";
 import { appToast } from "@/components/app-toast";
 import { getProfileEnterprises } from "@/api/profile";
 import { isApiError, isAuthenticationFailure } from "@/api/http";
@@ -99,13 +95,18 @@ function stepFromCertification(
 ): number {
   if (!certification || certification.current_stage === "not_started") return 1;
   if (applicantType === "authorized_agent") return 2;
-  if (
-    certification.current_stage === "face_verification_required" ||
-    certification.current_stage === "face_verification" ||
-    certification.current_stage === "face_retry_required"
-  )
-    return 2;
+  if (isFaceVerificationStage(certification)) return 2;
   return 3;
+}
+
+function isFaceVerificationStage(
+  certification: EnterpriseCertification | null,
+): boolean {
+  return (
+    certification?.current_stage === "face_verification_required" ||
+    certification?.current_stage === "face_verification" ||
+    certification?.current_stage === "face_retry_required"
+  );
 }
 
 export function EnterpriseCreatePage() {
@@ -426,10 +427,16 @@ export function EnterpriseCreatePage() {
       newModeSubmitted.current = true;
       setNewApplicationStarted(true);
       setCertification(result);
-      // 中文：重新提交后恢复服务端流程步骤；法人提交会由下方 effect 自动打开刷脸弹窗。
+      // 中文：法人提交成功后立即打开弹窗，避免二维码接口返回前闪现旧步骤页面。
       setEditingInformation(false);
       autoPresentedFaceStage.current = "";
-      if (result.face_url) setFaceUrl(result.face_url);
+      setFaceUrl(result.face_url ?? "");
+      if (
+        applicantTypeFromCertification(result, form.applicantType) ===
+          "legal_representative" &&
+        isFaceVerificationStage(result)
+      )
+        setFaceModalVisible(true);
     } catch (error: unknown) {
       if (isAuthenticationFailure(error)) invalidateSession();
       else setErrorMessage(getEnterpriseCertificationErrorMessage(error));
@@ -473,10 +480,25 @@ export function EnterpriseCreatePage() {
         setCertification(result);
         setFaceUrl(result.face_url ?? "");
         if (result.face_url) setFaceModalVisible(true);
-        else setErrorMessage(t("console.enterpriseCreate.faceUrlMissing"));
+        else {
+          const message = t("console.enterpriseCreate.faceUrlMissing");
+          // 中文：旧步骤页删除后，二维码异常和重试都由当前弹窗承载。
+          setFaceConfirmNotice({
+            title: t("console.enterpriseCreate.faceQrFailedTitle"),
+            message,
+          });
+          setErrorMessage(message);
+        }
       } catch (error: unknown) {
         if (isAuthenticationFailure(error)) invalidateSession();
-        else setErrorMessage(getEnterpriseCertificationErrorMessage(error));
+        else {
+          const message = getEnterpriseCertificationErrorMessage(error);
+          setFaceConfirmNotice({
+            title: t("console.enterpriseCreate.faceQrFailedTitle"),
+            message,
+          });
+          setErrorMessage(message);
+        }
       } finally {
         setStartingFace(false);
       }
@@ -492,15 +514,12 @@ export function EnterpriseCreatePage() {
         "legal_representative"
     )
       return;
-    const isFaceStage =
-      certification.current_stage === "face_verification_required" ||
-      certification.current_stage === "face_verification" ||
-      certification.current_stage === "face_retry_required";
-    if (!isFaceStage) return;
+    if (!isFaceVerificationStage(certification)) return;
     const presentationKey = `${certification.id ?? "current"}:${certification.current_stage}:${certification.face_url ?? faceUrl}:${certification.version ?? ""}`;
     if (autoPresentedFaceStage.current === presentationKey) return;
     autoPresentedFaceStage.current = presentationKey;
-    // 中文：法人进入第二步后自动展示扫码弹窗；代办路径在上方已明确拦截。
+    // 中文：法人进入核验阶段后只展示扫码弹窗，资料表单继续作为底层页面。
+    setFaceModalVisible(true);
     void startFace(certification);
   }, [
     certification,
@@ -572,7 +591,7 @@ export function EnterpriseCreatePage() {
   }, [applyFaceConfirmation, invalidateSession, requestFaceConfirmation, t]);
 
   useEffect(() => {
-    if (!faceModalVisible || isFreshNewMode) return;
+    if (!faceModalVisible || !faceUrl || isFreshNewMode) return;
     let cancelled = false;
     let timer: number | undefined;
     const pollFaceConfirmation = async (): Promise<void> => {
@@ -605,6 +624,7 @@ export function EnterpriseCreatePage() {
     };
   }, [
     applyFaceConfirmation,
+    faceUrl,
     faceModalVisible,
     isFreshNewMode,
     invalidateSession,
@@ -625,16 +645,19 @@ export function EnterpriseCreatePage() {
     );
 
   // 中文：修改资料时以表单当前选择为准，避免服务端旧身份把页面推回刷脸步骤。
-  const applicantType = isFreshNewMode || editingInformation
-    ? form.applicantType
-    : applicantTypeFromCertification(certification, form.applicantType);
-  const step = isFreshNewMode || editingInformation
-    ? 1
-    : stepFromCertification(certification, applicantType);
-  // 中文：法人第二步由弹窗承载扫码流程，弹窗下方继续展示第一步资料表单。
-  const showInformationForm =
-    step === 1 ||
-    (faceModalVisible && applicantType === "legal_representative");
+  const applicantType =
+    isFreshNewMode || editingInformation
+      ? form.applicantType
+      : applicantTypeFromCertification(certification, form.applicantType);
+  const step =
+    isFreshNewMode || editingInformation
+      ? 1
+      : stepFromCertification(certification, applicantType);
+  const isLegalFaceStage =
+    applicantType === "legal_representative" &&
+    isFaceVerificationStage(certification);
+  // 中文：法人核验阶段只用弹窗承载，底层始终保留资料表单，不再切换旧第二步页面。
+  const showInformationForm = step === 1 || isLegalFaceStage;
   return (
     <div className="page-stack enterprise-create-page">
       <PageTitle
@@ -679,18 +702,6 @@ export function EnterpriseCreatePage() {
             }}
           />
         ) : null}
-        {!faceModalVisible &&
-        step === 2 &&
-        applicantType === "legal_representative" &&
-        certification ? (
-          <EnterpriseFaceStep
-            certification={certification}
-            loading={startingFace}
-            onStart={() => {
-              void startFace(certification);
-            }}
-          />
-        ) : null}
         {((step === 2 && applicantType === "authorized_agent") || step === 3) &&
         certification ? (
           <EnterpriseResultStep
@@ -705,8 +716,12 @@ export function EnterpriseCreatePage() {
       <EnterpriseFaceModal
         visible={faceModalVisible && !isFreshNewMode}
         faceUrl={faceUrl}
+        preparing={startingFace || (!faceUrl && !faceConfirmNotice)}
         confirming={confirmingFace}
         notice={faceConfirmNotice}
+        onRetry={() => {
+          if (certification) void startFace(certification);
+        }}
         onConfirm={() => {
           void confirmFace();
         }}

@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import Button from "@douyinfe/semi-ui/lib/es/button";
 import DatePicker from "@douyinfe/semi-ui/lib/es/datePicker";
-import Modal from "@douyinfe/semi-ui/lib/es/modal";
+import Modal from "@/components/app-modal";
 import Select from "@douyinfe/semi-ui/lib/es/select";
 import Toast from "@douyinfe/semi-ui/lib/es/toast";
 import { IconDownload } from "@douyinfe/semi-icons";
@@ -16,12 +17,21 @@ import {
   EnterpriseError,
   EnterpriseLoading,
   auditResultLabel,
-  exportEnterpriseCsv,
   formatEnterpriseTime,
   useEnterpriseErrorHandler,
 } from "@/pages/enterprise-console-shared";
+import {
+  createExportIdempotencyKey,
+  createExportTask,
+  downloadExportTask,
+  getExportErrorMessage,
+  saveExportResponse,
+  waitForExportTask,
+} from "@/api/exports";
+import { isAuthenticationFailure } from "@/api/http";
 import { addLocalDays as shiftDays, endOfLocalDay as endOfDay, startOfLocalDay as startOfDay } from "@/utils/date-range";
 import "./trae-enterprise-audit.css";
+import "./trae-date-picker.css";
 
 type AuditSelectOption = { value: string; label: string };
 
@@ -135,9 +145,9 @@ function AuditDetail({ log, onClose }: { log: EnterpriseAuditLog; onClose: () =>
       visible
       onCancel={onClose}
       footer={(
-        <button className="trae-primary-button" type="button" onClick={onClose}>
+        <Button theme="solid" type="primary" onClick={onClose}>
           {t("traeEnterprise.audit.close")}
-        </button>
+        </Button>
       )}
     >
       <dl className="trae-audit-detail-list">
@@ -192,6 +202,7 @@ export function TraeEnterpriseAudit({ context }: { context: EnterpriseContext })
   const [rows, setRows] = useState<EnterpriseAuditLog[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
   const [error, setError] = useState<{ message: string; requestId: string | null } | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
   const [detail, setDetail] = useState<EnterpriseAuditLog | null>(null);
@@ -237,27 +248,40 @@ export function TraeEnterpriseAudit({ context }: { context: EnterpriseContext })
     };
   }, [action, context.id, dateRange, handleError, operator, page, pageSize, reloadToken]);
 
-  function exportData() {
-    exportEnterpriseCsv(
-      "trae-operation-log.csv",
-      [
-        t("traeEnterprise.audit.time"),
-        t("traeEnterprise.audit.detailOperator"),
-        t("traeEnterprise.audit.action"),
-        t("traeEnterprise.audit.detailTarget"),
-        t("traeEnterprise.audit.result"),
-        t("traeEnterprise.audit.detailRequest"),
-      ],
-      rows.map((log) => [
-        formatEnterpriseTime(log.occurred_at),
-        operatorLabel(log),
-        `${actionLabel(log)} (${log.action})`,
-        resourceLabel(log),
-        auditResultLabel(log.result),
-        log.request_id,
-      ]),
-    );
-    Toast.success(t("traeEnterprise.audit.exportSuccess"));
+  async function exportData(): Promise<void> {
+    if (exporting || rows.length === 0) return;
+    setExporting(true);
+    try {
+      // 中文：审计导出提交当前动作、操作人和完整日期区间，服务端生成全部匹配事件而不是当前分页。
+      const filters: Record<string, string> = {
+        start_at: startOfDay(dateRange[0]).toISOString(),
+        end_at: new Date(endOfDay(dateRange[1]).getTime() + 1).toISOString(),
+      };
+      if (action !== "all") filters.action = action;
+      if (operator !== "all") filters.actor_id = operator;
+      const task = await createExportTask(
+        {
+          export_code: "enterprise.audit_logs",
+          format: "csv",
+          context: { enterprise_id: context.id },
+          filters,
+          file_name: "trae-enterprise-audit-logs",
+        },
+        { idempotencyKey: createExportIdempotencyKey("enterprise-audit") },
+      );
+      const completed = await waitForExportTask(task.id);
+      const response = await downloadExportTask(completed.id);
+      await saveExportResponse(response, completed.file_name);
+      Toast.success(t("traeEnterprise.audit.exportSuccess"));
+    } catch (error) {
+      if (isAuthenticationFailure(error)) {
+        handleError(error);
+      } else {
+        Toast.error(getExportErrorMessage(error));
+      }
+    } finally {
+      setExporting(false);
+    }
   }
 
   return (
@@ -265,7 +289,7 @@ export function TraeEnterpriseAudit({ context }: { context: EnterpriseContext })
       <header className="trae-page-heading">
         <h1>{t("traeEnterprise.audit.title")}</h1>
         <div className="trae-page-heading-action">
-          <button className="trae-primary-button" type="button" disabled={loading || rows.length === 0} onClick={exportData}>
+          <button className="trae-primary-button" type="button" disabled={loading || rows.length === 0 || exporting} aria-busy={exporting} onClick={() => void exportData()}>
             <IconDownload aria-hidden="true" />
             {t("traeEnterprise.audit.export")}
           </button>

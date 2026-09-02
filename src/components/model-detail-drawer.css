@@ -1,3 +1,47 @@
+/* 中文：详情抽屉跟随全局主题变量，避免浅色模式仍使用硬编码深色背景。 */
+.model-detail-sheet .semi-sidesheet-inner {
+  color: var(--color-text-default);
+  background: var(--color-bg-base-default);
+}
+
+/* 中文：外层容器负责唯一边框，内部通用 Logo 铺满容器，避免出现双层圆角方框。 */
+.model-detail-sheet .model-detail-logo .model-logo {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  border-radius: inherit;
+  background: #fff;
+}
+
+/* 中文：详情关闭按钮对齐 AppModal 的尺寸、圆角、颜色和交互反馈。 */
+.model-detail-sheet .model-detail-close.semi-button {
+  display: inline-flex;
+  width: 32px;
+  min-width: 32px;
+  height: 32px;
+  min-height: 32px;
+  flex: 0 0 32px;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-6, 6px);
+  color: var(--color-text-secondary);
+  background: transparent;
+  box-shadow: none;
+}
+
+.model-detail-sheet .model-detail-close.semi-button .semi-icon {
+  font-size: 16px;
+}
+
+.model-detail-sheet .model-detail-close.semi-button:hover,
+.model-detail-sheet .model-detail-close.semi-button:focus-visible {
+  color: var(--color-text-default-hover);
+  background: var(--color-bg-overlay-l2);
+}
+
 .model-detail-chart-bars {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));

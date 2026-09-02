@@ -295,7 +295,7 @@ export const consoleResources = {
         deleteAttempt: "删除此轮对话",
         deletedAttempt: "已删除此轮对话",
         ephemeralNotice:
-          "对话记录会按账号保存在本地，关闭浏览器后仍可继续查看；清理浏览器缓存后将被清除。",
+          "对话记录会按账号保存在本地，关闭浏览器后记录将被清除",
         maxContextSettings: "最大上下文设置",
         clearContext: "清除上下文",
         newContextDivider: "新会话",
@@ -858,7 +858,7 @@ export const consoleResources = {
           "当前演示环境未接入订阅或资源包服务，因此这里不会创建、变更或取消订阅。",
         invoiceFaq: "常见开票问题",
         invoiceFaqHint:
-          "数电发票将在申请提交后 24 小时内处理，并发送到接收邮箱。发票抬头和税号提交后如需修改，需要重新申请。",
+          "数电发票将在申请提交后 24 小时内处理，填写接收邮箱后会同步发送邮件。发票抬头和税号提交后如需修改，需要重新申请。",
         availableAmount: "可开票金额",
         issued: "已开票",
         issuing: "开票中",
@@ -958,20 +958,17 @@ export const consoleResources = {
         localInvoiceDemo: "发票申请为本地演示，不会真实开具或发送邮件。",
         invoiceTitle: "发票抬头",
         taxpayerId: "纳税人识别号",
-        taxpayerIdPlaceholder: "请输入统一社会信用代码",
-        taxpayerType: "抬头类型",
-        enterprise: "企业",
-        personal: "个人",
         projectName: "项目名称",
         defaultProjectName: "*生产生活服务*云服务费",
-        projectNameHint: "项目名称由费用类型决定，不支持修改。",
         pagination: "第 {{page}} 页 · 共 {{total}} 条",
         invoiceAmountYuan: "开票金额（元）",
-        amountMax: "最多 {{amount}}",
         receivingEmail: "接收邮箱",
+        optional: "选填",
+        notProvided: "未填写",
         accountEmail: "账号联系邮箱",
-        emailHint: "数电发票将发送到这个邮箱，请确认地址准确。",
+        emailHint: "选填；填写后数电发票将发送到这个邮箱。",
         invoiceSubmitDemo: "发票申请为本地演示，不会真实开具或发送邮件。",
+        invoiceStepsLabel: "开票步骤",
         enterpriseVerification: "企业认证",
         confirmInvoice: "确认开票",
         confirmInvoiceInfo: "请核对发票信息，提交后如需修改需要重新申请。",
@@ -982,7 +979,7 @@ export const consoleResources = {
         confirmStep: "确认",
         doneStep: "完成",
         invoiceSuccessHint:
-          "数电发票预计在 24 小时内处理，并发送到您的接收邮箱。",
+          "数电发票预计在 24 小时内处理；如果填写了接收邮箱，将同步发送邮件。",
         invoiceSuccessDemo: "当前为本地演示，未真实开具发票或发送邮件。",
         invoiceDownloaded: "发票下载已开始",
         invoiceFormAmount: "请输入大于 0 且最多保留两位小数的金额",
@@ -991,8 +988,9 @@ export const consoleResources = {
         invoiceTitleTooLong: "发票抬头不能超过 {{count}} 个字符",
         taxpayerRequired: "企业抬头必须填写纳税人识别号",
         taxpayerTooLong: "纳税人识别号不能超过 {{count}} 个字符",
-        emailRequired: "请输入接收邮箱",
         emailInvalid: "请输入有效的接收邮箱",
+        invoiceTypeRequired: "请选择发票类型",
+        projectNameRequired: "请选择项目名称",
         projectNameTooLong: "项目名称不能超过 {{count}} 个字符",
       },
       subscriptionPage: {
@@ -1072,7 +1070,6 @@ export const consoleResources = {
       personalUsage: {
         breadcrumb: "账户中心",
         title: "个人用量",
-        resetHint: "2026/09/22 重置",
         tabs: { board: "数据看板", management: "用量管理" },
         trend: "对话生成代码趋势",
         legend: "趋势图例",
@@ -1089,6 +1086,11 @@ export const consoleResources = {
         total: "总用量",
         balanceHint: "当前账户可用余额",
         noModels: "暂无模型用量记录",
+        pie: {
+          models: "模型使用分布",
+          sources: "调用来源分布",
+        },
+        noDistribution: "暂无分布数据",
         tokenHeatmap: {
           title: "Token 消耗",
           total: "最近一年共消耗 {{total}} Token",
@@ -1102,12 +1104,6 @@ export const consoleResources = {
           dayLabel:
             "{{date}}：共 {{total}} Token，输入 {{input}}，输出 {{output}}",
         },
-        piePlaceholder: {
-          models: "模型使用分布",
-          sources: "调用来源分布",
-          pending: "数据待接入",
-          item: "占位项 {{index}}",
-        },
         cue: {
           keyFilter: "筛选 API 密钥",
           allKeys: "全部密钥",
@@ -1120,6 +1116,7 @@ export const consoleResources = {
           last30: "近 30 天",
           custom: "自定义",
           download: "下载当前页用量明细",
+          downloadSuccess: "用量明细导出任务已完成",
           empty: "暂无用量记录",
           pagination: "用量明细分页",
           summary: "共 {{total}} 条",
@@ -2389,7 +2386,7 @@ export const consoleResources = {
         deleteAttempt: "Delete this turn",
         deletedAttempt: "Turn deleted",
         ephemeralNotice:
-          "Conversation history is saved locally per account, so it remains after closing the browser; clearing browser data will remove it.",
+          "Conversation history is saved locally per account and will be cleared when the browser closes.",
         maxContextSettings: "Maximum context settings",
         clearContext: "Clear context",
         newContextDivider: "New conversation",
@@ -2987,7 +2984,7 @@ export const consoleResources = {
           "The demo is not connected to subscription or resource-pack services, so it will not create, change, or cancel a subscription.",
         invoiceFaq: "Common invoice questions",
         invoiceFaqHint:
-          "Electronic invoices are processed within 24 hours and sent to the receiving email. Changes require a new application.",
+          "Electronic invoices are processed within 24 hours. When a receiving email is provided, a copy is also sent by email. Changes require a new application.",
         availableAmount: "Available to invoice",
         issued: "Issued",
         issuing: "Processing",
@@ -3091,23 +3088,19 @@ export const consoleResources = {
           "Invoice applications are local demos and do not issue or email a real invoice.",
         invoiceTitle: "Invoice title",
         taxpayerId: "Taxpayer ID",
-        taxpayerIdPlaceholder: "Enter the unified social credit code",
-        taxpayerType: "Title type",
-        enterprise: "Enterprise",
-        personal: "Personal",
         projectName: "Project name",
         defaultProjectName: "*Production and daily services* cloud service fee",
-        projectNameHint:
-          "The project name is determined by the cost type and cannot be changed.",
         pagination: "Page {{page}} · {{total}} entries",
         invoiceAmountYuan: "Invoice amount (CNY)",
-        amountMax: "Up to {{amount}}",
         receivingEmail: "Receiving email",
+        optional: "Optional",
+        notProvided: "Not provided",
         accountEmail: "Account email",
         emailHint:
-          "The electronic invoice will be sent to this address. Check it carefully.",
+          "Optional. When provided, the electronic invoice will be sent to this address.",
         invoiceSubmitDemo:
           "Invoice application is a local demo and will not issue or send an email.",
+        invoiceStepsLabel: "Invoice steps",
         enterpriseVerification: "Enterprise verification",
         confirmInvoice: "Confirm invoice",
         confirmInvoiceInfo:
@@ -3119,7 +3112,7 @@ export const consoleResources = {
         confirmStep: "Confirm",
         doneStep: "Done",
         invoiceSuccessHint:
-          "The electronic invoice is expected to be processed within 24 hours and sent to your receiving email.",
+          "The electronic invoice is expected to be processed within 24 hours. When a receiving email was provided, a copy will also be sent by email.",
         invoiceSuccessDemo:
           "This is a local demo; no real invoice or email was sent.",
         invoiceDownloaded: "Invoice download started",
@@ -3132,8 +3125,9 @@ export const consoleResources = {
           "Invoice titles can be at most {{count}} characters",
         taxpayerRequired: "An enterprise title requires a taxpayer ID",
         taxpayerTooLong: "The taxpayer ID can be at most {{count}} characters",
-        emailRequired: "Enter a receiving email",
         emailInvalid: "Enter a valid receiving email",
+        invoiceTypeRequired: "Select an invoice type",
+        projectNameRequired: "Select a project name",
         projectNameTooLong: "Project names can be at most {{count}} characters",
       },
       subscriptionPage: {
@@ -3213,7 +3207,6 @@ export const consoleResources = {
       personalUsage: {
         breadcrumb: "Account center",
         title: "Personal usage",
-        resetHint: "Resets on 2026/09/22",
         tabs: { board: "Dashboard", management: "Usage management" },
         trend: "Chat-generated code trend",
         legend: "Trend legend",
@@ -3231,6 +3224,11 @@ export const consoleResources = {
         total: "Total usage",
         balanceHint: "Current available account balance",
         noModels: "No model usage records",
+        pie: {
+          models: "Model usage distribution",
+          sources: "Call source distribution",
+        },
+        noDistribution: "No distribution data",
         tokenHeatmap: {
           title: "Token usage",
           total: "{{total}} Tokens used in the last year",
@@ -3244,12 +3242,6 @@ export const consoleResources = {
           dayLabel:
             "{{date}}: {{total}} Tokens total, {{input}} input, {{output}} output",
         },
-        piePlaceholder: {
-          models: "Model usage distribution",
-          sources: "Request source distribution",
-          pending: "Data pending",
-          item: "Placeholder {{index}}",
-        },
         cue: {
           keyFilter: "Filter API key",
           allKeys: "All keys",
@@ -3262,6 +3254,7 @@ export const consoleResources = {
           last30: "Last 30 days",
           custom: "Custom",
           download: "Download current page usage details",
+          downloadSuccess: "The usage detail export is ready",
           empty: "No usage records",
           pagination: "Usage detail pagination",
           summary: "{{total}} records",

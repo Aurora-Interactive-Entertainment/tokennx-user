@@ -236,9 +236,9 @@ describe("enterprise verification page", () => {
     ).toBeInTheDocument();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: /企业名称/ })).toHaveValue("");
-    expect(screen.getByRole("textbox", { name: /统一社会信用代码/ })).toHaveValue(
-      "",
-    );
+    expect(
+      screen.getByRole("textbox", { name: /统一社会信用代码/ }),
+    ).toHaveValue("");
     expect(startFaceMock).not.toHaveBeenCalled();
   });
 
@@ -271,10 +271,21 @@ describe("enterprise verification page", () => {
           >,
         ) => void)
       | undefined;
+    let resolveFaceStart:
+      | ((
+          result: Awaited<ReturnType<typeof startEnterpriseFaceVerification>>,
+        ) => void)
+      | undefined;
     uploadMaterialMock.mockImplementation(
       () =>
         new Promise((resolve) => {
           resolveUpload = resolve;
+        }),
+    );
+    startFaceMock.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveFaceStart = resolve;
         }),
     );
     submitCertificationMock.mockResolvedValue(FACE_REQUIRED);
@@ -313,12 +324,25 @@ describe("enterprise verification page", () => {
     );
     expect(await screen.findByRole("dialog")).toBeInTheDocument();
     expect(
+      screen.getByRole("heading", {
+        name: i18n.t("console.enterpriseCreate.faceQrLoading"),
+      }),
+    ).toBeInTheDocument();
+    expect(
       screen.getByRole("heading", { name: "基本信息" }),
     ).toBeInTheDocument();
     expect(
       screen.queryByRole("heading", { name: "法人扫码核验" }),
     ).not.toBeInTheDocument();
     expect(startFaceMock).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      resolveFaceStart?.(FACE_ACTIVE);
+    });
+    expect(
+      await screen.findByRole("heading", {
+        name: i18n.t("console.enterpriseCreate.scanQr"),
+      }),
+    ).toBeInTheDocument();
   });
 
   it("submits agent materials and goes directly to the two-step manual review page", async () => {
@@ -424,6 +448,29 @@ describe("enterprise verification page", () => {
       ),
     ).toBeInTheDocument();
     expect(screen.getByRole("dialog")).toBeInTheDocument();
+  });
+
+  it("keeps QR retry inside the dialog when face verification cannot start", async () => {
+    const user = userEvent.setup();
+    getCertificationMock.mockResolvedValue(FACE_REQUIRED);
+    startFaceMock.mockRejectedValue(new Error("face service unavailable"));
+    renderPage();
+
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    const retryButton = await screen.findByRole("button", {
+      name: i18n.t("console.enterpriseCreate.retryFaceQr"),
+    });
+    expect(
+      screen.queryByRole("heading", { name: "法人扫码核验" }),
+    ).not.toBeInTheDocument();
+
+    startFaceMock.mockResolvedValue(FACE_ACTIVE);
+    await user.click(retryButton);
+    expect(
+      await screen.findByRole("heading", {
+        name: i18n.t("console.enterpriseCreate.scanQr"),
+      }),
+    ).toBeInTheDocument();
   });
 
   it("returns to the information step when the face dialog is closed", async () => {

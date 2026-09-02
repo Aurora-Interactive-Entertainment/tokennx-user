@@ -897,12 +897,6 @@
   border-radius: 50%;
 }
 
-.composer-hint {
-  margin-top: 7px;
-  padding-inline: 2px;
-  font-size: 11px;
-}
-
 .send-btn.is-running.semi-button,
 .send-btn.is-running.semi-button:hover,
 .send-btn.is-running.semi-button:focus-visible {
@@ -927,8 +921,7 @@
   background: var(--color-bg-base-default);
 }
 
-.composer.is-expanded .playground-ephemeral-notice,
-.composer.is-expanded .composer-hint {
+.composer.is-expanded .playground-ephemeral-notice {
   display: none;
 }
 
@@ -1044,7 +1037,4 @@ html[data-theme="dark"] .history-collapse-button:focus-visible .semi-icon {
     padding: 12px 14px 14px;
   }
 
-  .composer-hint span:last-child {
-    display: none;
-  }
 }

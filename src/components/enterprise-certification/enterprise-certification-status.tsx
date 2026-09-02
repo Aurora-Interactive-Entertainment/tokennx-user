@@ -25,64 +25,6 @@ function isMobileDevice(): boolean {
   );
 }
 
-export function EnterpriseFaceStep({
-  certification,
-  loading,
-  onStart,
-}: {
-  certification: EnterpriseCertification;
-  loading: boolean;
-  onStart: () => void;
-}) {
-  const { t } = useTranslation();
-  const noData = t("console.enterpriseCreate.noData");
-  return (
-    <section
-      className="enterprise-status-content"
-      aria-labelledby="enterprise-face-title"
-    >
-      <h2
-        id="enterprise-face-title"
-        className="enterprise-status-section-title"
-      >
-        {t("console.enterpriseCreate.faceTitle")}
-      </h2>
-      <p className="enterprise-status-lead">
-        {t("console.enterpriseCreate.faceHint")}
-      </p>
-      <dl className="enterprise-status-summary">
-        <div>
-          <dt>{t("console.enterpriseCreate.enterpriseName")}</dt>
-          <dd>{certification.enterprise_name || noData}</dd>
-        </div>
-        <div>
-          <dt>{t("console.enterpriseCreate.creditCode")}</dt>
-          <dd>{certification.credit_code_masked || noData}</dd>
-        </div>
-        <div>
-          <dt>{t("console.enterpriseCreate.applicantType")}</dt>
-          <dd>{t("console.enterpriseCreate.legalRepresentativeApplicant")}</dd>
-        </div>
-      </dl>
-      <div className="enterprise-face-guidance">
-        <h3>{t("console.enterpriseCreate.faceCardTitle")}</h3>
-        <p>{t("console.enterpriseCreate.faceCardHint")}</p>
-        <Button
-          theme="solid"
-          type="primary"
-          loading={loading}
-          disabled={loading}
-          onClick={onStart}
-        >
-          {certification.current_stage === "face_retry_required"
-            ? t("console.enterpriseCreate.restartFace")
-            : t("console.enterpriseCreate.getFaceQr")}
-        </Button>
-      </div>
-    </section>
-  );
-}
-
 interface EnterpriseResultStepProps {
   certification: EnterpriseCertification;
   loading: boolean;
@@ -194,8 +136,10 @@ export function EnterpriseResultStep({
 interface EnterpriseFaceModalProps {
   visible: boolean;
   faceUrl: string;
+  preparing: boolean;
   confirming: boolean;
   notice: FaceConfirmationNotice | null;
+  onRetry: () => void;
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -203,8 +147,10 @@ interface EnterpriseFaceModalProps {
 export function EnterpriseFaceModal({
   visible,
   faceUrl,
+  preparing,
   confirming,
   notice,
+  onRetry,
   onConfirm,
   onCancel,
 }: EnterpriseFaceModalProps) {
@@ -227,7 +173,10 @@ export function EnterpriseFaceModal({
       footer={null}
       width="560px"
     >
-      <div className="enterprise-face-dialog" aria-busy={confirming}>
+      <div
+        className="enterprise-face-dialog"
+        aria-busy={preparing || confirming}
+      >
         {faceUrl && !isMobileDevice() ? (
           <div className="enterprise-face-qr">
             <canvas
@@ -250,13 +199,31 @@ export function EnterpriseFaceModal({
           >
             {t("console.enterpriseCreate.openAlipay")}
           </Button>
+        ) : (
+          <div className="enterprise-face-qr enterprise-face-qr-loading">
+            <span className="console-loading-spinner" aria-hidden="true" />
+          </div>
+        )}
+        <h2>
+          {faceUrl
+            ? t("console.enterpriseCreate.scanQr")
+            : preparing
+              ? t("console.enterpriseCreate.faceQrLoading")
+              : t("console.enterpriseCreate.faceQrFailedTitle")}
+        </h2>
+        <p>
+          {faceUrl
+            ? t("console.enterpriseCreate.scanQrHint")
+            : preparing
+              ? t("console.enterpriseCreate.faceQrLoadingHint")
+              : t("console.enterpriseCreate.faceQrFailedHint")}
+        </p>
+        {faceUrl ? (
+          <div className="enterprise-face-waiting">
+            <span className="console-loading-spinner" aria-hidden="true" />
+            {t("console.enterpriseCreate.awaitingFace")}
+          </div>
         ) : null}
-        <h2>{t("console.enterpriseCreate.scanQr")}</h2>
-        <p>{t("console.enterpriseCreate.scanQrHint")}</p>
-        <div className="enterprise-face-waiting">
-          <span className="console-loading-spinner" aria-hidden="true" />
-          {t("console.enterpriseCreate.awaitingFace")}
-        </div>
         {notice ? (
           <div className="enterprise-face-confirm-error" role="alert">
             <strong>{notice.title}</strong>
@@ -267,15 +234,27 @@ export function EnterpriseFaceModal({
           <Button theme="outline" disabled={confirming} onClick={onCancel}>
             {t("console.enterpriseCreate.closeFace")}
           </Button>
-          <Button
-            theme="solid"
-            type="primary"
-            loading={confirming}
-            disabled={confirming}
-            onClick={onConfirm}
-          >
-            {t("console.enterpriseCreate.faceCompleted")}
-          </Button>
+          {faceUrl ? (
+            <Button
+              theme="solid"
+              type="primary"
+              loading={confirming}
+              disabled={preparing || confirming}
+              onClick={onConfirm}
+            >
+              {t("console.enterpriseCreate.faceCompleted")}
+            </Button>
+          ) : (
+            <Button
+              theme="solid"
+              type="primary"
+              loading={preparing}
+              disabled={preparing}
+              onClick={onRetry}
+            >
+              {t("console.enterpriseCreate.retryFaceQr")}
+            </Button>
+          )}
         </div>
       </div>
     </Modal>

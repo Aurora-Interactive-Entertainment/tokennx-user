@@ -33,14 +33,23 @@ import {
 import {
   EnterpriseError,
   EnterpriseLoading,
-  exportEnterpriseCsv,
   useEnterpriseErrorHandler,
   type EnterpriseRequestError,
 } from "@/pages/enterprise-console-shared";
+import { isAuthenticationFailure } from "@/api/http";
+import {
+  createExportIdempotencyKey,
+  createExportTask,
+  downloadExportTask,
+  getExportErrorMessage,
+  saveExportResponse,
+  waitForExportTask,
+} from "@/api/exports";
 import { useResolvedTheme } from "@/theme";
 import { formatCount } from "@/utils/format";
 import { getChartRenderer } from "@/components/chart-renderer";
 import { addLocalDays as addDays, startOfLocalToday as startOfToday } from "@/utils/date-range";
+import "./trae-date-picker.css";
 import "./trae-enterprise-analysis.css";
 
 echarts.use([LineChart, PieChart, GridComponent, TooltipComponent, AxisPointerComponent, CanvasRenderer, SVGRenderer]);
@@ -57,7 +66,7 @@ const CHART_COLORS = [
 
 export type AnalysisExportState = {
   disabled: boolean;
-  run: () => void;
+  run: () => void | Promise<void>;
 };
 
 type AnalysisProps = {
@@ -608,6 +617,7 @@ export function TraeEnterpriseAnalysis({ context, onExportChange }: AnalysisProp
   const [data, setData] = useState<EnterpriseAnalyticsResponse | null>(null);
   const [departmentUsage, setDepartmentUsage] = useState<EnterpriseUsageDepartment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
   const [error, setError] = useState<EnterpriseRequestError | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
 
@@ -658,24 +668,46 @@ export function TraeEnterpriseAnalysis({ context, onExportChange }: AnalysisProp
     return () => controller.abort();
   }, [context.id, dateRange]);
 
-  const exportData = useCallback(() => {
-    if (!data) return;
-    exportEnterpriseCsv(
-      "trae-data-analysis.csv",
-      [
-        t("traeEnterprise.analysis.csvSection"),
-        t("traeEnterprise.analysis.csvName"),
-        t("traeEnterprise.analysis.csvDimension"),
-        t("traeEnterprise.analysis.csvValue"),
-      ],
-      analysisCsvRows(data, t),
-    );
-    Toast.success(t("traeEnterprise.analysis.exportSuccess"));
-  }, [data, t]);
+  const exportData = useCallback(async () => {
+    if (!data || exporting) return;
+    setExporting(true);
+    try {
+      // 中文：企业分析导出仅发送后端定义支持的时间范围和成员筛选，文件内容由服务端统一生成。
+      const request = getRequestOptions(dateRange, scope);
+      const filters = {
+        ...(request.member_id ? { member_id: request.member_id } : {}),
+        ...(request.range ? { range: request.range } : {}),
+        ...(request.start_at !== undefined ? { start_at: new Date(request.start_at).toISOString() } : {}),
+        ...(request.end_at !== undefined ? { end_at: new Date(request.end_at).toISOString() } : {}),
+      };
+      const task = await createExportTask(
+        {
+          export_code: "enterprise.analytics",
+          format: "csv",
+          context: { enterprise_id: context.id },
+          filters,
+          file_name: "trae-data-analysis",
+        },
+        { idempotencyKey: createExportIdempotencyKey("enterprise-analytics") },
+      );
+      const completed = await waitForExportTask(task.id);
+      const response = await downloadExportTask(completed.id);
+      await saveExportResponse(response, completed.file_name);
+      Toast.success(t("traeEnterprise.analysis.exportSuccess"));
+    } catch (error) {
+      if (isAuthenticationFailure(error)) {
+        handleError(error);
+      } else {
+        Toast.error(getExportErrorMessage(error));
+      }
+    } finally {
+      setExporting(false);
+    }
+  }, [context.id, data, dateRange, exporting, handleError, scope, t]);
 
   useEffect(() => {
-    onExportChange?.({ disabled: !data || loading, run: exportData });
-  }, [data, exportData, loading, onExportChange]);
+    onExportChange?.({ disabled: !data || loading || exporting, run: exportData });
+  }, [data, exportData, exporting, loading, onExportChange]);
 
   const metrics = data?.metrics;
   const cumulativeTokens = (metrics?.cumulative_input_tokens ?? 0) + (metrics?.cumulative_output_tokens ?? 0);

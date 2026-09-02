@@ -501,12 +501,26 @@ html[data-theme='dark'] .video-model-advanced {
   font-size: 8px;
   line-height: 10px;
   transform: rotate(-4deg);
-  transition: border-color .15s ease, color .15s ease, background .15s ease;
+  transform-origin: center;
+  transition:
+    border-color 160ms ease,
+    color 160ms ease,
+    background-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
 }
-.video-console-page .video-reference-upload-card:hover {
+/* 中文：参考图上传入口与图片生成页保持相同的悬浮、聚焦和按下反馈。 */
+.video-console-page .video-reference-upload-card:hover,
+.video-console-page .video-reference-upload-card:focus-visible {
   border-color: var(--color-border-neutral-l2);
   color: var(--color-text-default);
-  background: var(--color-bg-overlay-l1);
+  background: var(--color-bg-overlay-l2);
+  box-shadow: 0 6px 16px rgb(0 0 0 / 10%);
+  transform: rotate(-2deg) scale(1.06);
+}
+.video-console-page .video-reference-upload-card:active {
+  transform: rotate(-2deg) scale(1.02);
 }
 .video-console-page .video-reference-upload-card:disabled {
   cursor: not-allowed;
@@ -519,6 +533,9 @@ html[data-theme='dark'] .video-model-advanced {
   align-items: center;
   justify-content: center;
   color: currentcolor;
+}
+.video-console-page .video-reference-upload-card > span {
+  text-align: center;
 }
 .video-console-page .video-reference-upload-plus .semi-icon {
   font-size: 18px;
@@ -535,6 +552,9 @@ html[data-theme='dark'] .video-model-advanced {
 }
 .video-console-page .video-frame-upload-card--first { transform: rotate(-4deg); }
 .video-console-page .video-frame-upload-card--last { transform: rotate(4deg); }
+.video-console-page .video-frame-upload-card--last:hover,
+.video-console-page .video-frame-upload-card--last:focus-visible { transform: rotate(2deg) scale(1.06); }
+.video-console-page .video-frame-upload-card--last:active { transform: rotate(2deg) scale(1.02); }
 .video-console-page .video-frame-upload-separator {
   display: inline-flex;
   width: 24px;
@@ -1019,6 +1039,10 @@ html[data-theme='dark'] .video-console-page .video-resolution-options,
 html[data-theme='dark'] .video-console-page .video-reference-upload-card {
   background: var(--color-bg-base-tertiary);
 }
+html[data-theme='dark'] .video-console-page .video-reference-upload-card:hover,
+html[data-theme='dark'] .video-console-page .video-reference-upload-card:focus-visible {
+  background: var(--color-bg-overlay-l2);
+}
 .video-console-page .video-reference-popover::after,
 .video-console-page .video-aspect-popover::after,
 .video-console-page .video-duration-popover::after {
@@ -1031,7 +1055,25 @@ html[data-theme='dark'] .video-console-page .video-reference-upload-card {
   .video-console-page .video-composer-input-row { height: 68px; }
   .video-console-page .video-composer-controls { height: auto; min-height: 32px; align-items: stretch; flex-direction: column; }
   .video-console-page .video-control-group { width: 100%; height: auto; flex-wrap: wrap; }
-  .video-console-page .video-model-trigger { flex: 1 1 180px; width: auto; min-width: 180px; }
+  .video-console-page .video-model-trigger,
+  .video-console-page .video-model-trigger.semi-select {
+    flex: 1 1 180px;
+    width: min(100%, 360px);
+    min-width: 180px;
+    max-width: 100%;
+  }
+  .video-console-page .video-aspect-trigger.semi-select {
+    width: min(100%, 220px);
+    min-width: 157px;
+    max-width: 100%;
+  }
+  .video-console-page .video-model-trigger.semi-select .semi-select-selection-text,
+  .video-console-page .video-aspect-trigger.semi-select .semi-select-selection-text {
+    min-width: 0;
+    overflow: hidden;
+    flex: 1 1 auto;
+    text-overflow: ellipsis;
+  }
   .video-console-page .video-send-button.semi-button { width: 100%; height: 36px; flex-basis: 36px; border-radius: 8px; }
 }
 
@@ -1226,13 +1268,13 @@ html[data-theme='dark'] .video-console-page .video-composer-box {
   color: var(--color-text-tertiary);
 }
 .video-console-page .video-control-button.semi-select .semi-select-arrow .semi-icon { font-size: 14px; }
-.video-console-page .video-reference-trigger.semi-select { width: 134px; min-width: 134px; }
+.video-console-page .video-reference-trigger.semi-select { width: 160px; min-width: 160px; }
 .video-console-page .video-model-trigger.semi-select { width: 220px; min-width: 220px; }
 .video-console-page .video-aspect-trigger.semi-select { width: 157px; min-width: 157px; }
 .video-console-page .video-duration-trigger.semi-select { width: 89px; min-width: 89px; }
 .video-console-page .video-model-trigger.semi-select .semi-select-selection,
-.video-console-page .video-model-trigger.semi-select .semi-select-selection-text { display: flex; align-items: center; gap: 8px; }
-.video-console-page .video-model-trigger.semi-select .video-model-logo { flex: 0 0 20px; }
+.video-console-page .video-model-trigger.semi-select .semi-select-selection-text { display: flex; height: 100%; align-items: center; gap: 8px; }
+.video-console-page .video-model-trigger.semi-select .video-model-logo { align-self: center; flex: 0 0 20px; }
 
 /* 中文：自定义比例/时长面板由 Semi Select 承载，隐藏占位选项避免出现第二行空内容。 */
 .video-console-page .video-aspect-select-dropdown,
@@ -1341,6 +1383,8 @@ html[data-theme='dark'] .video-console-page .video-composer-box {
 .video-model-select-dropdown .video-model-advanced { display: inline-flex; height: 16px; align-items: center; gap: 0; padding: 0; border-radius: 0; color: #009fbf; font-size: 12px; line-height: 16px; }
 .video-model-select-dropdown .video-model-premium-icon { display: inline-flex; width: 16px; height: 16px; align-items: center; justify-content: center; border-radius: 5px 8px 5px 8px; color: #fff; background: #14b8d4; font-size: 10px; font-weight: 700; }
 .video-model-select-dropdown .video-model-advanced em { height: 16px; padding: 0 8px 0 4px; border-radius: 0 8px 8px 0; background: #eafcff; font-style: normal; font-weight: 500; line-height: 16px; }
+/* 中文：模型列表为空时在下拉层内提供明确占位，不展示任何内置模型。 */
+.video-model-select-dropdown .video-model-empty-option { display: flex; min-height: 72px; align-items: center; justify-content: center; color: var(--color-text-tertiary); font-size: 13px; }
 
 .video-aspect-select-dropdown {
   width: 366px !important;
@@ -1348,7 +1392,8 @@ html[data-theme='dark'] .video-console-page .video-composer-box {
   padding: 0 !important;
   border-radius: 12px !important;
   background: #fff !important;
-  box-shadow: 0 6px 16px rgb(0 0 0 / 8%), 0 3px 6px -4px rgb(0 0 0 / 12%), 0 9px 28px 8px rgb(0 0 0 / 5%) !important;
+  /* 中文：增强比例弹层的柔和外阴影，使上拉层与生成面板形成清晰层级。 */
+  box-shadow: 0 12px 32px rgb(0 0 0 / 16%), 0 4px 12px rgb(0 0 0 / 10%) !important;
 }
 .video-aspect-select-dropdown .semi-select-option-list,
 .video-aspect-select-dropdown .semi-select-option-list-inner-top-slot {
@@ -1374,8 +1419,9 @@ html[data-theme='dark'] .video-console-page .video-composer-box {
   box-shadow: none;
 }
 .video-aspect-select-dropdown .video-aspect-section > strong { display: block; margin-bottom: 8px; font-size: 12px; font-weight: 400; line-height: 18px; }
-.video-aspect-select-dropdown .video-aspect-options { width: 350px; height: 60px; padding: 4px; gap: 6px; border-radius: 12px; }
-.video-aspect-select-dropdown .video-aspect-options button { width: 52px; min-width: 52px; height: 52px; min-height: 52px; flex: 0 0 52px; padding: 8px 0; border-radius: 8px; gap: 4px; font-size: 13px; line-height: 16px; }
+/* 中文：首个 adaptive 选项略宽，其余比例均分空间，避免英文标签超出按钮。 */
+.video-aspect-select-dropdown .video-aspect-options { display: grid; width: 350px; height: 60px; grid-template-columns: minmax(60px, 1.2fr) repeat(5, minmax(0, 1fr)); padding: 4px; gap: 4px; border-radius: 12px; }
+.video-aspect-select-dropdown .video-aspect-options button { width: 100%; min-width: 0; height: 52px; min-height: 52px; flex: none; padding: 8px 0; border-radius: 8px; gap: 4px; font-size: 13px; line-height: 16px; }
 .video-aspect-select-dropdown .video-resolution-options { width: fit-content; height: 32px; padding: 2px; gap: 0; border-radius: 8px; }
 .video-aspect-select-dropdown .video-resolution-options button { min-width: 0; height: 28px; min-height: 28px; padding: 0 11px; border-radius: 6px; font-size: 14px; line-height: 28px; }
 .video-aspect-select-dropdown .video-resolution-options button.is-selected { font-weight: 700; }
@@ -1447,6 +1493,7 @@ html[data-theme='dark'] .video-console-page .video-composer-box {
   display: inline-flex;
   min-width: 0;
   align-items: center;
+  justify-content: center;
   gap: 6px;
   line-height: 20px;
 }
@@ -1459,12 +1506,32 @@ html[data-theme='dark'] .video-console-page .video-composer-box {
 .video-console-page .video-aspect-trigger.semi-select .semi-select-selection-text { font-size: 12px; }
 .video-console-page .video-duration-trigger.semi-select .semi-select-selection-text { font-size: 13px; }
 
+/* 中文：模型和比例触发器按当前文本撑开，避免模型名或分辨率被固定宽度截断。 */
+.video-console-page .video-model-trigger.semi-select {
+  width: max-content;
+  min-width: 236px;
+  max-width: min(360px, calc(100vw - 32px));
+}
+.video-console-page .video-aspect-trigger.semi-select {
+  width: max-content;
+  min-width: 174px;
+  max-width: min(220px, calc(100vw - 32px));
+}
+.video-console-page .video-model-trigger.semi-select .semi-select-selection-text,
+.video-console-page .video-aspect-trigger.semi-select .semi-select-selection-text {
+  flex: 0 1 auto;
+  overflow: visible;
+  text-overflow: clip;
+}
+
 html[data-theme='dark'] .video-reference-select-dropdown,
 html[data-theme='dark'] .video-model-select-dropdown,
 html[data-theme='dark'] .video-aspect-select-dropdown,
 html[data-theme='dark'] .video-duration-select-dropdown,
 html[data-theme='dark'] .video-aspect-select-dropdown .video-select-panel,
 html[data-theme='dark'] .video-duration-select-dropdown .video-select-panel { background: var(--color-bg-base-secondary) !important; }
+/* 中文：深色背景需要更高的不透明度，避免弹层阴影与页面背景融为一体。 */
+html[data-theme='dark'] .video-aspect-select-dropdown { box-shadow: 0 14px 36px rgb(0 0 0 / 45%), 0 4px 14px rgb(0 0 0 / 28%) !important; }
 html[data-theme='dark'] .video-aspect-select-dropdown .video-aspect-options,
 html[data-theme='dark'] .video-aspect-select-dropdown .video-resolution-options,
 html[data-theme='dark'] .video-model-select-dropdown .video-model-search,

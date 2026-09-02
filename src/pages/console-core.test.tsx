@@ -345,7 +345,8 @@ describe('控制台模型接入页面', () => {
     })
     expect(modelSelect).toHaveAttribute('aria-disabled', 'false')
     expect(document.getElementById('playground-api-key')).toBeNull()
-    expect(screen.getByText('对话记录会按账号保存在本地，关闭浏览器后仍可继续查看；清理浏览器缓存后将被清除。')).toBeInTheDocument()
+    expect(screen.getByText('对话记录会按账号保存在本地，关闭浏览器后记录将被清除')).toBeInTheDocument()
+    expect(document.querySelector('.composer-hint')).toBeNull()
     expect(document.querySelector('.message-list')).toHaveClass('is-centered')
     expect(screen.queryByRole('link', { name: '管理 API Key' })).toBeNull()
     await user.click(modelSelect)
@@ -365,7 +366,8 @@ describe('控制台模型接入页面', () => {
     })
 
     expect(modelSelect).toHaveTextContent('后端 Qwen')
-    expect(screen.getByText(/后端 Qwen · qwen-public · Temperature 0\.7 · Max Tokens 2000/)).toBeInTheDocument()
+    // 中文：模型参数提示已从输入框下方移除。
+    expect(document.querySelector('.composer-hint')).toBeNull()
   })
 
   it('把登录令牌、所选模型和用户输入交给模型请求并展示真实回复', async () => {
@@ -399,7 +401,8 @@ describe('控制台模型接入页面', () => {
     expect(screen.getByText('先分析')).toBeInTheDocument()
     expect(screen.getByText('Markdown 已渲染')).toBeInTheDocument()
     expect(document.querySelector('.message.ai script')).toBeNull()
-    expect(screen.getByText(/后端 DeepSeek · deepseek-public · Temperature 0.7 · Max Tokens 2000/)).toBeInTheDocument()
+    // 中文：对话完成后也不再展示底部快捷键和模型参数提示。
+    expect(document.querySelector('.composer-hint')).toBeNull()
     expect(screen.queryByText(/deepseek-chat · 第/)).toBeNull()
     expect(screen.queryByText(/第 .*轮/)).toBeNull()
 

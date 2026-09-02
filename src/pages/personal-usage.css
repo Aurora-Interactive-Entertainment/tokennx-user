@@ -1,8 +1,6 @@
 .personal-usage-page { --personal-usage-date-picker-width: 255px; --personal-usage-date-input-padding: 8px; --personal-usage-date-text-padding: 4px; min-height: 100%; }
 /* 中文：个人用量页沿用企业页标题基线，统一标题与内容的 32px 间距。 */
 .personal-usage-page .trae-page-heading { margin-bottom: 32px; }
-.personal-usage-page .trae-page-heading h1 { display: flex; align-items: baseline; gap: 12px; }
-.personal-usage-page .trae-page-heading h1 small { color: var(--color-text-secondary); font-size: 13px; font-weight: 400; }
 .personal-usage-tabs { margin-bottom: 30px; }
 .personal-usage-board { min-width: 0; }
 .personal-usage-board-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin: 18px 0; }

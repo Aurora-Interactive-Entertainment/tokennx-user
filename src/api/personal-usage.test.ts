@@ -24,6 +24,13 @@ const payload = {
 const overviewPayload = {
   total_cost_yuan: "12.500000000",
   account_balance_yuan: "87.500000000",
+  tool_distribution: [
+    {
+      id: "00000000000000000000001421",
+      name: "Claude Code",
+      request_count: 319,
+    },
+  ],
   models: [
     {
       name: "gpt-public",
@@ -51,6 +58,16 @@ const trendPayload = {
     data: [Date.UTC(2026, 7, 1), Date.UTC(2026, 7, 2)],
   },
   yAxis: { type: "value" as const },
+  model_distribution: [
+    { code: "gpt-public", name: "GPT Public", request_count: 8 },
+  ],
+  tool_distribution: [
+    {
+      id: "00000000000000000000001421",
+      name: "Claude Code",
+      request_count: 319,
+    },
+  ],
   series: [
     { name: "requests", type: "line", stack: "Total", data: [2, 3] },
     { name: "tokens", type: "line", stack: "Total", data: [200, 300] },
@@ -193,13 +210,36 @@ describe("personal usage API", () => {
       new Headers(fetchMock.mock.calls[0]?.[1]?.headers).get("Authorization"),
     ).toBe("Bearer usage-token");
   });
+
+  it("保留工具用量分布数据供个人用量饼图使用", async () => {
+    mockApiResponse(overviewPayload);
+    await expect(getUsageOverview()).resolves.toMatchObject({
+      tool_distribution: [
+        {
+          id: "00000000000000000000001421",
+          name: "Claude Code",
+          request_count: 319,
+        },
+      ],
+    });
+  });
   it("passes a selected API key to overview and records queries", async () => {
     const overviewFetch = mockApiResponse(overviewPayload);
     await getUsageOverview(undefined, " key-1 ");
-    expect(String(overviewFetch.mock.calls[0]?.[0])).toBe("/api/user/usage/overview?api_key_id=key-1");
+    expect(String(overviewFetch.mock.calls[0]?.[0])).toBe(
+      "/api/user/usage/overview?api_key_id=key-1",
+    );
     const recordsFetch = mockApiResponse(recordsPayload);
-    await getUsageRecords({ account_type: "personal" }, { page: 1, page_size: 10, api_key_id: " key-1 " });
-    expect(new URL(String(recordsFetch.mock.calls[0]?.[0]), "http://local").searchParams.get("api_key_id")).toBe("key-1");
+    await getUsageRecords(
+      { account_type: "personal" },
+      { page: 1, page_size: 10, api_key_id: " key-1 " },
+    );
+    expect(
+      new URL(
+        String(recordsFetch.mock.calls[0]?.[0]),
+        "http://local",
+      ).searchParams.get("api_key_id"),
+    ).toBe("key-1");
   });
 
   it("queries personal trend data with the exact custom UTC bounds", async () => {
@@ -221,6 +261,21 @@ describe("personal usage API", () => {
       granularity: "day",
       start_at: String(startAt),
       end_at: String(endAt),
+    });
+  });
+
+  it("从趋势接口保留工具分布供调用来源环形图使用", async () => {
+    mockApiResponse(trendPayload);
+    await expect(
+      getUsageTrend({ account_type: "personal" }, { range: "30d" }),
+    ).resolves.toMatchObject({
+      tool_distribution: [
+        {
+          id: "00000000000000000000001421",
+          name: "Claude Code",
+          request_count: 319,
+        },
+      ],
     });
   });
 

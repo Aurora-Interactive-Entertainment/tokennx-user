@@ -438,11 +438,10 @@
 
 .models-console-page .model-card-action.semi-button {
   min-width: 0;
-  height: 36px;
-  padding: 0 13px;
+  height: 32px;
   border-radius: 10px;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .models-console-page .model-card-action--api.semi-button {
