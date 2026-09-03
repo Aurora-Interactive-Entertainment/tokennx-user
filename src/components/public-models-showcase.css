@@ -67,8 +67,8 @@
 .models-showcase-card-actions { position: absolute; z-index: 2; right: 18px; bottom: 14px; left: 22px; display: grid; grid-template-columns: repeat(2, minmax(0, 124px)); justify-content: center; gap: clamp(16px, 4.7vw, 56px); height: 34px; margin: 0; opacity: 0; transform: translateY(8px); transition: opacity .2s ease, transform .2s ease; }
 .models-showcase-card:hover .models-showcase-card-actions, .models-showcase-card:focus-within .models-showcase-card-actions { opacity: 1; transform: translateY(0); }
 .models-showcase-card-primary, .models-showcase-card-docs { display: inline-flex; align-items: center; justify-content: center; width: 100%; height: 34px; min-width: 0; padding: 0 10px; border-radius: 999px; font-size: 14px; font-weight: 500; line-height: 1; white-space: nowrap; }
-.models-showcase-card-primary { border: 0; color: #fff; background: #6840dd; }
-.models-showcase-card-primary:hover, .models-showcase-card-primary:focus-visible { color: #fff; background: #7751e4; }
+.models-showcase-card-primary { border: 1px solid #17181b; color: #fff; background: #17181b; }
+.models-showcase-card-primary:hover, .models-showcase-card-primary:focus-visible { color: #fff; background: #353941; }
 .models-showcase-card-docs { border: 1px solid rgba(255,255,255,.14); color: #211a38 !important; background: rgba(255,255,255,.94); }
 .models-showcase-card-docs:hover, .models-showcase-card-docs:focus-visible { color: #211a38 !important; background: #fff; }
 

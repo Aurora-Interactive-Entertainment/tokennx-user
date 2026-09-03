@@ -3,8 +3,8 @@ import type { TFunction } from 'i18next'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
 import Toast from '@douyinfe/semi-ui/lib/es/toast'
 import Skeleton from '@douyinfe/semi-ui/lib/es/skeleton'
-import { IconBookOpenStroked, IconChevronDown, IconCopyStroked, IconFile } from '@douyinfe/semi-icons'
-import { LoginPanel, LoginRequiredAction, ManuscriptSupportWidget, PublicLayout, ModelLogo, normalizeLoginReturnPath, requestSupportWidget } from '@/components/common'
+import { IconBookOpenStroked, IconChevronDown, IconCodeStroked, IconCopyStroked, IconCustomerSupportStroked, IconFile, IconShieldStroked } from '@douyinfe/semi-icons'
+import { LoginPanel, LoginRequiredAction, ManuscriptSupportWidget, PublicLayout, ModelLogo, normalizeLoginReturnPath, requestSupportWidget, DEFAULT_CONSOLE_PATH, authUserNeedsEmailBinding } from '@/components/common'
 import modelCardArt from '@/assets/figma-home/model-card-art.png'
 import promoModelLogo from '@/assets/figma-home/promo-model-logo.svg'
 import promoBannerArt from '@/assets/figma-home/promo-banner.png'
@@ -31,9 +31,19 @@ import { formatToolUsageTokens, ToolUsageClientsChart } from '@/components/tool-
 import { apiTimeToDate } from '@/utils/format'
 import { ModelsShowcase, type ModelsShowcaseGroup } from '@/components/public-models-showcase'
 import { HomeRewardStat } from '@/components/home-reward-stat'
+import { HomeLiquidMetalQuickstartAction } from '@/components/home-liquid-metal-quickstart-action'
 
 function formatPublicPrice(price: ModelPrice): ReactNode {
   return <ModelPriceSummary price={price} />
+}
+
+// 中文：文档产品导航根据目录标题匹配语义化图标，接口、隐私和支持入口各自使用专属图标。
+function docsProductIcon(node: Pick<PublicDocsNode, 'title' | 'slug'>): ReactNode {
+  const label = `${node.title} ${node.slug}`.toLowerCase()
+  if (label.includes('api') || label.includes('接口') || label.includes('sdk')) return <IconCodeStroked aria-hidden="true" />
+  if (label.includes('privacy') || label.includes('隐私') || label.includes('安全')) return <IconShieldStroked aria-hidden="true" />
+  if (label.includes('support') || label.includes('帮助') || label.includes('支持') || label.includes('客服')) return <IconCustomerSupportStroked aria-hidden="true" />
+  return <IconBookOpenStroked aria-hidden="true" />
 }
 
 // 中文：公开页面的模型链接只使用面向用户的别名，旧模型 code 仅由查找逻辑兼容。
@@ -915,7 +925,7 @@ export function HomePage({ onInitialScoreboardReady }: { onInitialScoreboardRead
           <div className="manuscript-hero-copy">
             <h1 id="homeTitle"><SplitTextReveal text={heroTitle} /><SplitTextReveal as="strong" text={heroSubtitle} delayOffset={Array.from(heroTitle).length} /></h1>
             <div className="manuscript-hero-actions">
-              <LoginRequiredAction className="btn btn-primary" returnPath="/console/quickstart"><span>{t('home.rebuild.primaryCta')}</span></LoginRequiredAction>
+              <HomeLiquidMetalQuickstartAction returnPath="/console/quickstart">{t('home.rebuild.primaryCta')}</HomeLiquidMetalQuickstartAction>
               <Link className="btn btn-secondary manuscript-model-button" to="/models" aria-label={t('home.rebuild.secondaryCta')}><span>{t('home.rebuild.secondaryCta')}</span></Link>
             </div>
             <div className="manuscript-digital-stats" role="list" aria-label={t('home.overview')}>
@@ -1730,7 +1740,7 @@ export function DocsPage() {
         <div className="docs-product-nav-inner">
           {rootNodes.map((root) => {
             const firstDocument = documentDescendants(root.id, tree)[0]
-            return firstDocument ? <Link className={activeRoot?.id === root.id ? 'is-active' : ''} to={publicDocumentHref(firstDocument)} key={root.id}><IconBookOpenStroked aria-hidden="true" />{root.title}</Link> : null
+            return firstDocument ? <Link className={activeRoot?.id === root.id ? 'is-active' : ''} to={publicDocumentHref(firstDocument)} key={root.id}>{docsProductIcon(root)}{root.title}</Link> : null
           })}
         </div>
       </nav>
@@ -1824,7 +1834,8 @@ export { LegalPage } from './legal'
 export function LoginPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
+  const authUser = useAppSelector((state) => state.auth.user)
   const returnPath = normalizeLoginReturnPath(searchParams.get('return'))
   // 中文：登录页没有公共页脚，仍然需要保留全局客服入口。
-  return <div className="login-page"><div className="login-card"><LoginPanel onSuccess={() => navigate(returnPath)} /></div><ManuscriptSupportWidget /></div>
+  return <div className="login-page"><div className="login-card"><LoginPanel onSuccess={(user) => navigate(user && authUserNeedsEmailBinding(user) ? DEFAULT_CONSOLE_PATH : returnPath)} /></div><ManuscriptSupportWidget /></div>
 }

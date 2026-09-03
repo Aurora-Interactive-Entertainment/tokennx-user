@@ -332,11 +332,9 @@ export function TraeEnterpriseAudit({ context }: { context: EnterpriseContext })
                 </tr>
               </thead>
               <tbody>
-                {rows.map((log, index) => (
+                {rows.map((log) => (
                   <tr
                     key={log.id}
-                    // 中文：分页或首次进入时按行错峰入场，形成从左到右依次展开的阅读节奏。
-                    style={{ animationDelay: `${Math.min(index, 20) * 45}ms` }}
                     tabIndex={0}
                     onClick={() => setDetail(log)}
                     onKeyDown={(event) => {

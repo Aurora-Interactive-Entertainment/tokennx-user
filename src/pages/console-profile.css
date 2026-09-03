@@ -349,8 +349,10 @@
 }
 
 .settings-redesign-page .settings-card--security {
+  --settings-danger-color: #c95a66;
+  --settings-danger-hover: #b64a57;
   padding-block: 18px;
-  border-color: color-mix(in srgb, var(--color-error, #df7b83) 32%, var(--settings-row-line));
+  border-color: color-mix(in srgb, var(--settings-danger-color) 32%, var(--settings-row-line));
 }
 
 .settings-redesign-page .settings-card--security .settings-actions {
@@ -359,15 +361,15 @@
 }
 
 .settings-redesign-page .settings-card--security .settings-danger-button {
-  border-color: color-mix(in srgb, var(--color-error, #df7b83) 70%, transparent);
-  color: var(--color-error, #df7b83);
+  border-color: color-mix(in srgb, var(--settings-danger-color) 70%, transparent);
+  color: var(--settings-danger-color);
   background: transparent;
 }
 
 .settings-redesign-page .settings-card--security .settings-danger-button:hover:not(:disabled) {
-  border-color: var(--color-error, #df7b83);
-  color: var(--color-error, #df7b83);
-  background: color-mix(in srgb, var(--color-error, #df7b83) 10%, transparent);
+  border-color: var(--settings-danger-hover);
+  color: var(--settings-danger-hover);
+  background: color-mix(in srgb, var(--settings-danger-hover) 10%, transparent);
 }
 
 @media (max-width: 900px) {

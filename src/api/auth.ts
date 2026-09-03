@@ -18,6 +18,14 @@ export interface AuthUser {
   status: 'active' | string
   phone_masked?: string
   email_masked?: string
+  /** 登录后的引导字段，后端上线后可直接控制首次绑定邮箱流程。 */
+  first_login?: boolean
+  needs_email_binding?: boolean
+  bind_email_required?: boolean
+  email_binding_required?: boolean
+  is_new_user?: boolean
+  /** 认证响应中的首次登录引导标记（服务端历史拼写 promt_required 会被归一化）。 */
+  prompt_required?: boolean
 }
 
 export interface VerificationCodeResult {
@@ -32,6 +40,9 @@ export type PhoneCodeResult = VerificationCodeResult
 export interface AuthResult {
   status: 'succeeded' | 'pending_binding'
   binding_required: boolean
+  /** 接口现有字段名，promt_required 少了一个 p。 */
+  promt_required?: boolean
+  prompt_required?: boolean
   binding_ticket?: string
   access_token?: string
   refresh_token?: string
@@ -100,10 +111,12 @@ export function sendBindingPhoneCode(bindingTicket: string, phone: string, local
   })
 }
 
-export function bindWechatPhone(bindingTicket: string, phone: string, code: string, device: DeviceInfo, locale = 'zh-CN'): Promise<AuthResult> {
-  return fetchJson<AuthResult>('/api/auth/bind-phone', {
+export function bindWechatPhone(bindingTicket: string, phone: string, code: string, _device?: DeviceInfo, _locale = 'zh-CN', inviteCode?: string): Promise<AuthResult> {
+  const query = inviteCode?.trim() ? `?invite_code=${encodeURIComponent(inviteCode.trim())}` : ''
+  return fetchJson<AuthResult>(`/api/auth/bind-phone${query}`, {
     method: 'POST',
-    body: { binding_ticket: bindingTicket, phone, code, locale, ...device },
+    // 中文：设备信息和语言通过请求头由服务端推断，绑定接口请求体只保留业务字段。
+    body: { binding_ticket: bindingTicket, phone, code },
   })
 }
 

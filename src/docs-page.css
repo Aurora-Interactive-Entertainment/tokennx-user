@@ -1,4 +1,4 @@
-.docs-product-nav .semi-icon { width: 16px; height: 16px; flex: 0 0 16px; }
+.docs-product-nav .semi-icon { width: 16px; height: 16px; flex: 0 0 16px; margin-top: 4px; }
 .docs-page--manuscript .docs-shell { grid-template-columns: 240px minmax(0, 720px) minmax(210px, 1fr); gap: 28px; }
 .docs-page--manuscript .docs-sidebar { padding-top: 54px; padding-bottom: 56px; }
 .docs-page--manuscript .docs-sidebar nav { gap: 6px; }

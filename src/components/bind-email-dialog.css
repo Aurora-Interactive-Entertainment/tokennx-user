@@ -1,0 +1,10 @@
+.bind-email-modal .semi-modal-content { max-width: min(560px, calc(100vw - 24px)); }
+.bind-email-content { display: grid; gap: 12px; padding-top: 4px; }
+.bind-email-content > p { margin: 0 0 8px; color: var(--color-text-secondary); font-size: 15px; line-height: 1.6; }
+.bind-email-content > label { color: var(--color-text-default-hover); font-size: 14px; font-weight: 600; }
+.bind-email-content .app-input, .bind-email-content .semi-input-wrapper { width: 100%; }
+.bind-email-code-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: start; }
+.bind-email-code-row .semi-button { min-width: 128px; height: 36px; }
+.bind-email-error { margin: 0; color: var(--color-danger, #df4545); font-size: 13px; }
+.bind-email-footer { display: flex; gap: 8px; }
+@media (max-width: 560px) { .bind-email-code-row { grid-template-columns: 1fr; } .bind-email-code-row .semi-button { width: 100%; } }

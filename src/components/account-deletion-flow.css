@@ -1,0 +1,178 @@
+.account-deletion-enterprise-dialog .semi-modal,
+.account-deletion-contact-dialog .semi-modal {
+  width: min(650px, calc(100vw - 32px));
+}
+
+.account-deletion-enterprise-body,
+.account-deletion-contact-body {
+  display: grid;
+  gap: 18px;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.account-deletion-enterprise-body p,
+.account-deletion-contact-body p,
+.account-deletion-enterprise-body h3 {
+  margin: 0;
+}
+
+.account-deletion-enterprise-warning {
+  display: flex;
+  gap: 10px;
+  padding: 14px 16px;
+  border: 1px solid rgba(245, 166, 35, .35);
+  border-radius: 8px;
+  color: #b56b00;
+  background: rgba(245, 166, 35, .1);
+}
+
+.account-deletion-enterprise-warning > span {
+  display: inline-grid;
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  color: #fff;
+  background: #f5a623;
+  font-weight: 700;
+}
+
+.account-deletion-enterprise-body h3 {
+  color: var(--color-text-default-hover);
+  font-size: 16px;
+  font-weight: 650;
+}
+
+.account-deletion-enterprise-list {
+  overflow: hidden;
+  border: 1px solid var(--color-border-neutral-l1);
+  border-radius: 12px;
+}
+
+.account-deletion-enterprise-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 80px;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--color-border-neutral-l1);
+}
+
+.account-deletion-enterprise-item:last-child {
+  border-bottom: 0;
+}
+
+.account-deletion-enterprise-avatar {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 12px;
+  color: var(--color-brand);
+  background: color-mix(in srgb, var(--color-brand) 12%, transparent);
+  font-size: 20px;
+  font-weight: 650;
+}
+
+.account-deletion-enterprise-item > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.account-deletion-enterprise-item strong {
+  color: var(--color-text-default-hover);
+  font-size: 15px;
+}
+
+.account-deletion-enterprise-item small {
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+
+.account-deletion-enterprise-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.account-deletion-provider-switch {
+  display: inline-flex;
+  width: fit-content;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 8px;
+  background: var(--color-bg-base-tertiary);
+}
+
+.account-deletion-provider-switch button {
+  min-height: 32px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 6px;
+  color: var(--color-text-secondary);
+  background: transparent;
+  cursor: pointer;
+}
+
+.account-deletion-provider-switch button.is-active {
+  color: var(--color-text-default-hover);
+  background: var(--color-bg-base-secondary);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .12);
+}
+
+.account-deletion-contact-body label {
+  display: grid;
+  gap: 7px;
+  color: var(--color-text-default-hover);
+  font-weight: 600;
+}
+
+.account-deletion-contact-body input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 11px;
+  border: 1px solid var(--color-border-neutral-l2);
+  border-radius: 6px;
+  color: var(--color-text-default);
+  background: var(--color-bg-base-default);
+  font: inherit;
+  font-weight: 400;
+}
+
+.account-deletion-code-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 10px;
+}
+
+.account-deletion-code-row .semi-button {
+  min-height: 40px;
+  white-space: nowrap;
+}
+
+.account-deletion-contact-sent {
+  color: var(--color-text-tertiary);
+  font-size: 13px;
+}
+
+@media (max-width: 560px) {
+  .account-deletion-enterprise-dialog .semi-modal,
+  .account-deletion-contact-dialog .semi-modal {
+    width: min(100%, calc(100vw - 24px));
+  }
+
+  .account-deletion-code-row {
+    grid-template-columns: 1fr;
+  }
+
+  .account-deletion-code-row .semi-button {
+    width: 100%;
+  }
+}

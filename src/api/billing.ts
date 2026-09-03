@@ -213,6 +213,17 @@ export interface BillingAnalysisMetrics {
   video_count: string
 }
 
+/** 中文：额度明细是可选扩展字段，兼容不同账务服务版本返回的明细口径。 */
+export interface BillingQuotaDetails {
+  recharge_yuan?: string
+  reward_yuan?: string
+  gift_yuan?: string
+  invitation_yuan?: string
+  expired_yuan?: string
+  usage_yuan?: string
+  total_yuan?: string
+}
+
 export type BillingLedgerKind = 'model_consume' | 'recharge' | 'reward' | string
 
 export interface BillingLedgerItem {
@@ -236,6 +247,7 @@ export interface BillingAnalysisResponse {
   period?: { value: string; label: string; start: ApiTimestamp; end: ApiTimestamp }
   filters?: BillingAnalysisFilters
   metrics: BillingAnalysisMetrics
+  quota_details?: BillingQuotaDetails
   // 中文：兼容新版 ECharts 结构和旧版数组/分页结构，便于灰度期间平滑切换。
   model_daily_costs?: BillingCostChart | BillingDailyModelCost[] | BillingPageResult<BillingDailyModelCost>
   billing_type_daily_costs?: BillingCostChart | BillingDailyBillingTypeCost[] | BillingPageResult<BillingDailyBillingTypeCost>

@@ -155,6 +155,8 @@ import "./login-panel.css";
 import "./account-settings-modal.css";
 import "./support-widget.css";
 import { appToast } from "./app-toast";
+import { AccountDeletionFlow } from "./account-deletion-flow";
+import { BindEmailDialog } from "./bind-email-dialog";
 import { workspaceContextFor } from "@/utils/workspace";
 import { formatApiTime } from "@/utils/format";
 import {
@@ -1237,7 +1239,7 @@ export function LoginPanel({
   onAuthFailure,
   inviteCode,
 }: {
-  onSuccess: () => void;
+  onSuccess: (user?: { id?: string; email_masked?: string; prompt_required?: boolean; promt_required?: boolean }) => void;
   onAuthFailure?: () => void;
   inviteCode?: string;
 }) {
@@ -1330,8 +1332,8 @@ export function LoginPanel({
           setFeedback(t("login.bindingHint"));
           return;
         }
-        await dispatch(completeWechatLogin(result.result)).unwrap();
-        onSuccess();
+        const user = await dispatch(completeWechatLogin(result.result)).unwrap();
+        onSuccess(user);
       } catch (error) {
         if (active) {
           setWechatView("error");
@@ -1434,7 +1436,7 @@ export function LoginPanel({
         loginWithPhone({ destination, code, inviteCode }),
       ).unwrap();
       saveVerifiedPhone(user.id, destination);
-      onSuccess();
+      onSuccess(user);
     } catch (error) {
       handleLoginError(error);
     } finally {
@@ -1502,10 +1504,11 @@ export function LoginPanel({
           bindingTicket,
           phone: internationalLoginPhone(LOGIN_DIAL_CODE.code, bindingPhone),
           code: bindingCode,
+          inviteCode,
         }),
       ).unwrap();
       saveVerifiedPhone(user.id, bindingPhone);
-      onSuccess();
+      onSuccess(user);
     } catch (error) {
       handleLoginError(error);
     } finally {
@@ -1578,7 +1581,7 @@ export function LoginPanel({
             ) : null}
             <LoginConsentNotice />
             <button
-              className="btn btn-primary submit-btn"
+              className="btn btn-primary submit-btn login-capsule-action"
               type="submit"
               disabled={phoneLoginLoading}
             >
@@ -1677,7 +1680,7 @@ export function LoginPanel({
               ) : null}
               <LoginConsentNotice />
               <button
-                className="btn btn-primary submit-btn"
+                className="btn btn-primary submit-btn login-capsule-action"
                 type="submit"
                 disabled={bindingLoading}
               >
@@ -1734,7 +1737,7 @@ export function LoginPanel({
               </p>
               {wechatView === "error" ? (
                 <button
-                  className="btn btn-primary submit-btn"
+                  className="btn btn-primary submit-btn login-capsule-action"
                   type="button"
                   onClick={() => void startWechatLogin()}
                 >
@@ -1772,7 +1775,7 @@ export function normalizeLoginReturnPath(
 type LoginDialogProps = {
   open: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (user?: { id?: string; email_masked?: string; prompt_required?: boolean; promt_required?: boolean }) => void;
   dialogId?: string;
   inviteCode?: string;
 };
@@ -1827,8 +1830,8 @@ export function LoginDialog({
     };
   }, [mounted, onClose]);
 
-  function handleSuccess(): void {
-    onSuccess();
+  function handleSuccess(user?: { id?: string; email_masked?: string; prompt_required?: boolean; promt_required?: boolean }): void {
+    onSuccess(user);
     onClose();
   }
 
@@ -1872,7 +1875,7 @@ export function LoginPopover({
   onSuccess,
   inviteCode,
 }: {
-  onSuccess: () => void;
+  onSuccess: (user?: { id?: string; email_masked?: string; prompt_required?: boolean; promt_required?: boolean }) => void;
   inviteCode?: string;
 }) {
   const { t } = useTranslation();
@@ -1881,7 +1884,7 @@ export function LoginPopover({
   return (
     <div className="login-trigger-wrap">
       <button
-        className="btn btn-primary"
+        className="btn btn-primary header-login-capsule"
         type="button"
         aria-label={t("login.trigger")}
         aria-haspopup="dialog"
@@ -1948,7 +1951,7 @@ export function LoginRequiredAction({
         <LoginDialog
           open={open}
           onClose={() => setOpen(false)}
-          onSuccess={() => navigate(safeReturnPath)}
+          onSuccess={(user) => navigate(user && authUserNeedsEmailBinding(user) ? DEFAULT_CONSOLE_PATH : safeReturnPath)}
         />
       ) : null}
     </>
@@ -2015,6 +2018,12 @@ function LanguageToggleButton({ mobile = false }: { mobile?: boolean }) {
   );
 }
 
+export function authUserNeedsEmailBinding(user: { prompt_required?: boolean; promt_required?: boolean }): boolean {
+  return user.prompt_required === true || user.promt_required === true
+}
+
+const EMAIL_ONBOARDING_SEEN_PREFIX = 'token-nx:email-onboarding-seen:'
+
 type PublicHeaderProps = {
   enterpriseAccess?: EnterpriseMenuAccess;
   unreadNotificationCount?: number;
@@ -2043,6 +2052,7 @@ export function PublicHeader({
   const [billingOverview, setBillingOverview] =
     useState<AccountOverviewResponse | null>(null);
   const [accountSettingsOpen, setAccountSettingsOpen] = useState(false);
+  const [bindEmailOpen, setBindEmailOpen] = useState(false);
   const headerRef = useRef<HTMLElement | null>(null);
   const billingOverviewCacheRef = useRef(
     new Map<string, BillingOverviewCacheEntry>(),
@@ -2094,6 +2104,18 @@ export function PublicHeader({
     typeof setTimeout
   > | null>(null);
   const currentPath = location.pathname;
+  useEffect(() => {
+    const user = auth.user
+    if (auth.status !== 'authenticated' || !user?.id || !authUserNeedsEmailBinding(user)) return
+    const marker = `${EMAIL_ONBOARDING_SEEN_PREFIX}${user.id}`
+    try {
+      if (window.localStorage.getItem(marker) === '1') return
+      window.localStorage.setItem(marker, '1')
+    } catch {
+      // 中文：隐私模式禁用存储时仍允许本次引导显示，避免阻塞登录流程。
+    }
+    setBindEmailOpen(true)
+  }, [auth.status, auth.user])
   const publicLinks =
     auth.status === "authenticated"
       ? [...PUBLIC_LINKS, AUTHENTICATED_PUBLIC_LINK]
@@ -2461,6 +2483,9 @@ export function PublicHeader({
             </div>
             {auth.status === "authenticated" ? (
               <>
+                <Link className="header-tool console-entry" to={DEFAULT_CONSOLE_PATH} aria-label={t("nav.console")} title={t("nav.console")} onClick={() => setMobileOpen(false)}>
+                  <span>{t("nav.console")}</span>
+                </Link>
                 <UserMenu
                   store={store}
                   userId={auth.user?.id || ""}
@@ -2487,10 +2512,10 @@ export function PublicHeader({
             ) : (
               <LoginPopover
                 inviteCode={inviteCode}
-                onSuccess={() => {
+                onSuccess={(user) => {
                   setMobileOpen(false);
                   // 中文：登录成功后统一进入快速接入页；邀请链接仍回到首页继续处理邀请。
-                  if (inviteCode) navigate("/", { replace: true });
+                  if (inviteCode && !authUserNeedsEmailBinding(user ?? {})) navigate("/", { replace: true });
                   else navigate(DEFAULT_CONSOLE_PATH, { replace: true });
                 }}
               />
@@ -2531,6 +2556,12 @@ export function PublicHeader({
       <AccountSettingsModal
         visible={accountSettingsOpen}
         onClose={() => setAccountSettingsOpen(false)}
+      />
+      <BindEmailDialog
+        visible={bindEmailOpen}
+        onClose={() => setBindEmailOpen(false)}
+        onAuthFailure={() => { setBindEmailOpen(false); dispatch(invalidateAuth()); navigate('/', { replace: true }) }}
+        onBound={() => setBindEmailOpen(false)}
       />
     </>
   );
@@ -3427,6 +3458,7 @@ export function AccountSettingsModal({
   const [savingName, setSavingName] = useState(false);
   const [contactProvider, setContactProvider] =
     useState<ContactProvider | null>(null);
+  const [deleteAccountVisible, setDeleteAccountVisible] = useState(false);
   const [rendered, setRendered] = useState(visible);
   const closeTimerRef = useRef<number | undefined>(undefined);
   const nicknameRequestPending = useRef(false);
@@ -3559,13 +3591,13 @@ export function AccountSettingsModal({
   useEffect(() => {
     if (!visible) return undefined;
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !contactProvider && !editingName) onClose();
+      if (event.key === "Escape" && !contactProvider && !editingName && !deleteAccountVisible) onClose();
     };
     document.addEventListener("keydown", handleKeyDown);
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [contactProvider, editingName, onClose, visible]);
+  }, [contactProvider, deleteAccountVisible, editingName, onClose, visible]);
 
   async function copyUserId(): Promise<void> {
     if (!userId || userId === t("profile.overview.notSet")) return;
@@ -3803,7 +3835,7 @@ export function AccountSettingsModal({
                 <span className="account-settings-label">
                   {t("profile.deleteAccount")}
                 </span>
-                <button type="button" className="account-settings-delete">
+                <button type="button" className="account-settings-delete" onClick={() => setDeleteAccountVisible(true)}>
                   {t("profile.deleteAccount")}
                 </button>
               </div>
@@ -3837,6 +3869,23 @@ export function AccountSettingsModal({
           />
         </Suspense>
       ) : null}
+      <AccountDeletionFlow
+        visible={deleteAccountVisible}
+        profile={profile}
+        enterprises={store.workspaces.filter((workspace) => workspace.type === 'enterprise').map((workspace) => ({ id: workspace.id, enterprise_id: workspace.id, enterprise_name: workspace.name, enterprise_code: '', member_status: 'active', join_source: '', roles: [workspace.role], owner: workspace.role === 'owner', joined_at: 0, version: 0 }))}
+        onClose={() => setDeleteAccountVisible(false)}
+        onAuthFailure={invalidateProfileSession}
+        onHandleEnterprise={(enterpriseID) => {
+          if (enterpriseID) store.switchWorkspace(enterpriseID)
+          setDeleteAccountVisible(false)
+          navigate('/console/enterprise-settings')
+        }}
+        onSuccess={() => {
+          setDeleteAccountVisible(false)
+          invalidateProfileSession()
+        }}
+        t={t}
+      />
     </>,
     document.body,
   );

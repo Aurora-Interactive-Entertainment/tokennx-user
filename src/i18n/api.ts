@@ -39,6 +39,9 @@ export const apiResources = {
         contactUnbound: '当前联系方式尚未绑定',
         contactVerificationFailed: '当前联系方式核验失败，请检查输入',
         contactUnchanged: '新联系方式没有变化',
+        accountDeletionConflict: '已有注销申请正在处理中，请稍后再试',
+        accountDeletionEnterpriseBlocked: '请先处理名下企业后再注销账号',
+        accountDeletionUnavailable: '当前暂时无法注销账号，请稍后再试',
       },
       realName: {
         requestFailed: '实名认证请求失败，请稍后重试',
@@ -197,6 +200,9 @@ export const apiResources = {
         contactUnbound: 'The current contact method is not bound.',
         contactVerificationFailed: 'The current contact verification failed. Check your input.',
         contactUnchanged: 'The new contact value is the same as the current value.',
+        accountDeletionConflict: 'An account deletion request is already being processed. Try again later.',
+        accountDeletionEnterpriseBlocked: 'Handle the enterprises you own before deleting your account.',
+        accountDeletionUnavailable: 'The account cannot be deleted right now. Try again later.',
       },
       realName: {
         requestFailed: 'Real-name verification failed. Try again later.',

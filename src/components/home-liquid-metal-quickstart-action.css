@@ -1,0 +1,171 @@
+.home-liquid-metal-quickstart {
+  position: relative;
+  display: block;
+  width: 212.3px;
+  height: 47.01px;
+  flex: 0 0 212.3px;
+  isolation: isolate;
+  touch-action: manipulation;
+  overflow: visible;
+  border-radius: 999px;
+  background: #17191b;
+  box-shadow:
+    0 9px 18px rgba(0, 0, 0, .32),
+    0 19px 36px rgba(0, 0, 0, .2);
+}
+
+/* 中文：只让描边渐变角度变化，避免旋转整个胶囊轮廓后形成巨大的斜向环线。 */
+@property --home-liquid-metal-rim-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+/* 中文：即使设备禁用 WebGL，也保留 Sylva 的彩色流动描边作为视觉降级。 */
+.home-liquid-metal-quickstart::before {
+  position: absolute;
+  inset: -1px;
+  z-index: 2;
+  border-radius: inherit;
+  background: conic-gradient(
+    from var(--home-liquid-metal-rim-angle),
+    rgba(255, 164, 77, .9),
+    rgba(111, 189, 255, .95) 28%,
+    rgba(255, 255, 255, .85) 48%,
+    rgba(144, 106, 255, .95) 70%,
+    rgba(255, 164, 77, .9)
+  );
+  content: "";
+  opacity: .76;
+  pointer-events: none;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  padding: 1px;
+  animation: home-liquid-metal-rim 5.6s linear infinite;
+}
+
+.home-liquid-metal-quickstart:hover::before,
+.home-liquid-metal-quickstart:focus-within::before,
+.home-liquid-metal-quickstart:active::before {
+  opacity: 1;
+  filter: blur(.15px) brightness(1.22);
+}
+
+@keyframes home-liquid-metal-rim {
+  to { --home-liquid-metal-rim-angle: 360deg; }
+}
+
+.home-liquid-metal-quickstart__fx {
+  position: absolute;
+  z-index: 0;
+  top: 50%;
+  left: 50%;
+  width: 376.3px;
+  height: 211px;
+  border: 0;
+  pointer-events: none;
+  opacity: .98;
+  /* 中文：使用 !important 覆盖首页性能模式对 iframe 的全局 transform 重置。 */
+  transform: translate(-50%, -50%) scale(var(--liquid-metal-scale, 1)) !important;
+  transform-origin: center;
+  /* 中文：sandbox iframe 的文档画布在深色页面中会被浏览器合成为白底，
+     只保留内部按钮胶囊区域，避免白色矩形遮挡标题和背景。该区域与
+     liquid-metal-quickstart.html 中的按钮尺寸一致，并会随 iframe 缩放同步。 */
+  clip-path: inset(82px 82px 82px 82px round 999px);
+}
+
+.manuscript-hero-actions .home-liquid-metal-quickstart__link {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  min-height: 0;
+  overflow: visible;
+  border: 0;
+  border-radius: 999px;
+  color: #fff;
+  background: transparent;
+  box-shadow: none;
+  font-size: 18.1px;
+  font-weight: 400;
+  line-height: 1;
+  text-decoration: none;
+  transition: none;
+}
+
+.manuscript-hero-actions .home-liquid-metal-quickstart__link:hover,
+.manuscript-hero-actions .home-liquid-metal-quickstart__link:focus-visible,
+.manuscript-hero-actions .home-liquid-metal-quickstart__link:active {
+  border: 0;
+  color: #fff;
+  background: transparent;
+  box-shadow: none;
+  filter: none;
+  transform: none;
+}
+
+/* 中文：新按钮不继承全局 btn-primary，任何主题下都保持透明视觉层。 */
+html[data-theme="light"] .public-layout--manuscript-home .home-liquid-metal-quickstart__link,
+html[data-theme="light"] .public-layout--manuscript-home .home-liquid-metal-quickstart__link:hover,
+html[data-theme="light"] .public-layout--manuscript-home .home-liquid-metal-quickstart__link:focus-visible,
+html[data-theme="light"] .public-layout--manuscript-home .home-liquid-metal-quickstart__link:active {
+  border-color: transparent;
+  color: #fff;
+  background: transparent;
+  box-shadow: none;
+}
+
+@media (max-width: 770px) {
+  .manuscript-hero-actions .home-liquid-metal-quickstart__link {
+    font-size: clamp(13.11px, 3.496vw, 26.22px);
+  }
+}
+
+.manuscript-hero-actions .home-liquid-metal-quickstart__label {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+html[data-theme="light"] .public-layout--manuscript-home .home-liquid-metal-quickstart {
+  background: #17191b;
+}
+
+@media (max-width: 560px) {
+  .home-liquid-metal-quickstart {
+    width: clamp(126.51px, 33.736vw, 253.02px);
+    height: clamp(28.01px, 7.469vw, 56.03px);
+    flex-basis: clamp(126.51px, 33.736vw, 253.02px);
+    --liquid-metal-scale: clamp(.596, calc(33.736vw / 212.3px), 1.192);
+  }
+}
+
+@media (min-width: 561px) and (max-width: 770px) {
+  .home-liquid-metal-quickstart {
+    width: clamp(126.51px, 33.736vw, 253.02px);
+    height: clamp(28.01px, 7.469vw, 56.03px);
+    flex-basis: clamp(126.51px, 33.736vw, 253.02px);
+    --liquid-metal-scale: clamp(.596, calc(33.736vw / 212.3px), 1.192);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-liquid-metal-quickstart::before {
+    animation: none;
+  }
+
+  .home-liquid-metal-quickstart__fx {
+    opacity: .9;
+  }
+}

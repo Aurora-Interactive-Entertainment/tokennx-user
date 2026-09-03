@@ -91,7 +91,7 @@ function authResult(): AuthResult {
   }
 }
 
-function mockProfileApi(config: { expireAccess?: boolean; refreshFails?: boolean; nicknameFailures?: number; phoneFailures?: number; emailFailures?: number; emailBound?: boolean } = {}) {
+function mockProfileApi(config: { expireAccess?: boolean; refreshFails?: boolean; nicknameFailures?: number; phoneFailures?: number; emailFailures?: number; emailBound?: boolean; ownerEnterprises?: string[]; deletionPrecheck404?: boolean } = {}) {
   let profile = structuredClone(PROFILE)
   if (config.emailBound) profile = { ...profile, email: { bound: true, masked_identifier: 'o***@example.com' } }
   let preferences = structuredClone(PREFERENCES)
@@ -110,6 +110,10 @@ function mockProfileApi(config: { expireAccess?: boolean; refreshFails?: boolean
     if (accessExpired && url.includes('/api/user/profile')) return apiResponse(null, 401, 110001, '认证信息无效')
     if (url.endsWith('/api/user/profile') && method === 'GET') return apiResponse(profile)
     if (url.endsWith('/api/user/profile/enterprises')) return apiResponse(ENTERPRISES)
+    if (url.endsWith('/api/user/account-deletion/precheck')) {
+      if (config.deletionPrecheck404) return apiResponse(null, 404, 0, 'Not Found')
+      return apiResponse({ can_request: true, owner_enterprises: config.ownerEnterprises ?? [], member_count: ENTERPRISES.length, balance_policy: 'paid_balance_non_refundable' })
+    }
     if (url.endsWith('/api/user/enterprise/01K0ENTERPRISEPUBLICIDEX01/context')) return apiResponse(ENTERPRISE_CONTEXT)
     if (url.endsWith('/api/user/profile/notification-preferences') && method === 'GET') return apiResponse(preferences)
     if (url.endsWith('/api/user/profile/nickname') && method === 'PUT') {
@@ -579,7 +583,7 @@ describe('个人设置页面', () => {
     const writeText = vi.fn().mockResolvedValue(undefined)
     const originalClipboard = navigator.clipboard
     Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } })
-    mockProfileApi()
+    const { fetchMock } = mockProfileApi()
     renderPage()
 
     await screen.findByRole('heading', { name: '工作空间' })
@@ -589,15 +593,35 @@ describe('个人设置页面', () => {
     await user.click(within(accountDialog).getByRole('button', { name: /关闭/ }))
 
     await user.click(screen.getByRole('button', { name: '进入注销流程' }))
-    const securityDialog = screen.getByRole('dialog')
-    expect(securityDialog).toHaveTextContent('确认注销账号')
-    expect(securityDialog).toHaveTextContent('不会立即删除当前账号或数据')
-    const securityModal = document.querySelector('.profile-security-modal')
+    await waitFor(() => expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith('/api/user/account-deletion/precheck'))).toBe(true))
+    const securityDescription = await screen.findByText(/删除账户是永久操作/)
+    const securityDialog = securityDescription.closest('[role="dialog"]') as HTMLElement
+    expect(securityDialog).not.toBeNull()
+    expect(securityDialog).toHaveTextContent('删除账户是永久操作')
+    expect(securityDialog).toHaveTextContent('请在下方输入“DELETE”以继续')
+    const securityModal = document.querySelector('.account-deletion-dialog')
     expect(securityModal?.querySelector('.semi-modal')).toHaveClass('semi-modal-centered')
     expect(securityModal).toContainElement(securityDialog)
-    await user.click(screen.getByRole('button', { name: '取消' }))
-    await waitFor(() => expect(screen.getByRole('dialog')).toHaveClass('semi-modal-content-animate-hide'))
+    const confirmationInput = within(securityDialog).getByRole('textbox')
+    const deleteButton = within(securityDialog).getByRole('button', { name: /^删除账户$/ })
+    expect(deleteButton).toBeDisabled()
+    await user.type(confirmationInput, 'delete')
+    expect(deleteButton).toBeDisabled()
+    await user.clear(confirmationInput)
+    await user.type(confirmationInput, 'DELETE')
+    expect(deleteButton).toBeEnabled()
+    await user.click(within(securityDialog).getByRole('button', { name: '取消' }))
+    await waitFor(() => expect(document.querySelector('.account-deletion-dialog')).not.toBeInTheDocument())
     Object.defineProperty(navigator, 'clipboard', { configurable: true, value: originalClipboard })
+  })
+
+  it('前置检查接口暂未部署时使用企业关系兼容判断并正常打开确认弹窗', async () => {
+    const user = userEvent.setup()
+    mockProfileApi({ deletionPrecheck404: true })
+    renderPage()
+
+    await user.click(await screen.findByRole('button', { name: '进入注销流程' }))
+    expect(await screen.findByText(/检测到您的账号下存在企业/)).toBeInTheDocument()
   })
 
   it('创建企业空间入口跳转到企业创建页', async () => {

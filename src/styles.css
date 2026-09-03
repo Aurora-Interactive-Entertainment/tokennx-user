@@ -145,6 +145,64 @@ pre {
   overflow-wrap: anywhere;
 }
 
+/* 中文：所有原生表格统一使用行级入场动效，新表格无需额外 class 即可继承。 */
+table:not(.no-row-enter-animation) tbody > tr {
+  --table-row-enter-delay: 0ms;
+  animation: table-row-enter 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: var(--table-row-enter-delay);
+  transform-origin: left center;
+  will-change: opacity, transform;
+}
+
+table:not(.no-row-enter-animation) tbody > tr:nth-child(2) { --table-row-enter-delay: 45ms; }
+table:not(.no-row-enter-animation) tbody > tr:nth-child(3) { --table-row-enter-delay: 90ms; }
+table:not(.no-row-enter-animation) tbody > tr:nth-child(4) { --table-row-enter-delay: 135ms; }
+table:not(.no-row-enter-animation) tbody > tr:nth-child(5) { --table-row-enter-delay: 180ms; }
+table:not(.no-row-enter-animation) tbody > tr:nth-child(6) { --table-row-enter-delay: 225ms; }
+table:not(.no-row-enter-animation) tbody > tr:nth-child(7) { --table-row-enter-delay: 270ms; }
+table:not(.no-row-enter-animation) tbody > tr:nth-child(8) { --table-row-enter-delay: 315ms; }
+table:not(.no-row-enter-animation) tbody > tr:nth-child(9) { --table-row-enter-delay: 360ms; }
+table:not(.no-row-enter-animation) tbody > tr:nth-child(10) { --table-row-enter-delay: 405ms; }
+table:not(.no-row-enter-animation) tbody > tr:nth-child(11) { --table-row-enter-delay: 450ms; }
+table:not(.no-row-enter-animation) tbody > tr:nth-child(12) { --table-row-enter-delay: 495ms; }
+table:not(.no-row-enter-animation) tbody > tr:nth-child(13) { --table-row-enter-delay: 540ms; }
+table:not(.no-row-enter-animation) tbody > tr:nth-child(14) { --table-row-enter-delay: 585ms; }
+table:not(.no-row-enter-animation) tbody > tr:nth-child(15) { --table-row-enter-delay: 630ms; }
+table:not(.no-row-enter-animation) tbody > tr:nth-child(16) { --table-row-enter-delay: 675ms; }
+table:not(.no-row-enter-animation) tbody > tr:nth-child(17) { --table-row-enter-delay: 720ms; }
+table:not(.no-row-enter-animation) tbody > tr:nth-child(18) { --table-row-enter-delay: 765ms; }
+table:not(.no-row-enter-animation) tbody > tr:nth-child(19) { --table-row-enter-delay: 810ms; }
+table:not(.no-row-enter-animation) tbody > tr:nth-child(20) { --table-row-enter-delay: 855ms; }
+/* 中文：超过 20 行时沿用末行节奏，避免后续行突然无延迟出现。 */
+table:not(.no-row-enter-animation) tbody > tr:nth-child(n + 21) { --table-row-enter-delay: 855ms; }
+/* 中文：加载中、错误和空状态通常使用 colspan 占位，不参与数据行入场动效。 */
+table:not(.no-row-enter-animation) tbody > tr:has(td[colspan]) {
+  animation: none;
+  transform: none;
+}
+table.no-row-enter-animation tbody > tr {
+  animation: none;
+  transform: none;
+}
+
+@keyframes table-row-enter {
+  from {
+    opacity: 0;
+    transform: translateX(-18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  table:not(.no-row-enter-animation) tbody > tr {
+    animation: none;
+    transform: none;
+  }
+}
+
 .semi-theme {
   background: transparent;
 }
@@ -3630,7 +3688,7 @@ html[data-theme="light"]
 :root {
   --color-brand-purple: #6536df;
   --color-bg-base-default: #1a1b1d;
-  --color-bg-base-secondary: #222427;
+  --color-bg-base-secondary: #202123;
   --color-bg-base-tertiary: #2a2d31;
   --color-bg-menu: #202123;
   --color-bg-overlay-l1: rgba(224, 226, 242, 0.03);
@@ -10054,6 +10112,205 @@ html[data-theme="dark"] .generation-send-button.send-btn.is-running.semi-button:
   display: grid;
   gap: var(--spacing-12);
 }
+.billing-balance-and-quota {
+  display: grid;
+  gap: var(--spacing-20);
+}
+.billing-balance-section,
+.billing-quota-section {
+  display: grid;
+  gap: var(--spacing-12);
+  min-width: 0;
+}
+.billing-subsection-heading {
+  margin: 0;
+  color: var(--color-text-default);
+  font-size: 16px;
+  font-weight: 650;
+}
+.billing-balance-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--spacing-12);
+}
+.billing-balance-card {
+  display: flex;
+  min-height: 132px;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: var(--spacing-16);
+  padding: var(--spacing-20);
+  border: 1px solid var(--color-border-neutral-l1);
+  border-radius: var(--radius-8);
+  background: var(--color-bg-base-secondary);
+}
+.billing-balance-card-total {
+  position: relative;
+}
+
+.billing-balance-card-footer {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--spacing-12);
+  margin-top: auto;
+}
+.billing-balance-card-heading {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-6);
+  min-width: 0;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+}
+.billing-balance-card-heading > span {
+  min-width: 0;
+}
+.billing-balance-card-heading .semi-button {
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+.billing-balance-alert-link {
+  margin-left: auto;
+  padding: 0;
+  border: 0;
+  color: var(--color-text-secondary);
+  background: transparent;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.billing-balance-alert-link:hover,
+.billing-balance-alert-link:focus-visible {
+  color: var(--color-text-default);
+  text-decoration: underline;
+}
+.billing-info-tooltip {
+  height: 16px !important;
+  min-height: 16px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  color: var(--color-text-tertiary) !important;
+  background: transparent !important;
+  line-height: 16px !important;
+}
+.billing-info-icon {
+  width: 14px;
+  height: 14px;
+}
+.billing-balance-card > strong {
+  color: var(--color-text-default);
+  font-size: 24px;
+  font-weight: 650;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.billing-balance-card-total .billing-balance-card-footer > strong,
+.billing-balance-card-total > strong {
+  color: var(--color-action-primary);
+}
+.billing-balance-recharge-button.semi-button {
+  min-width: 80px;
+  border-color: #17181b;
+  color: #fff;
+  background: #17181b;
+  font-size: 13px;
+  font-weight: 400;
+}
+.billing-balance-recharge-button.semi-button:hover:not(:disabled),
+.billing-balance-recharge-button.semi-button:focus-visible:not(:disabled),
+.billing-balance-recharge-button.semi-button:active:not(:disabled) {
+  border-color: #303238;
+  color: #fff;
+  background: #303238;
+}
+html[data-theme="dark"] .billing-balance-recharge-button.semi-button {
+  border-color: #fff;
+  color: #17181b;
+  background: #fff;
+}
+html[data-theme="dark"] .billing-balance-recharge-button.semi-button:hover:not(:disabled),
+html[data-theme="dark"] .billing-balance-recharge-button.semi-button:focus-visible:not(:disabled),
+html[data-theme="dark"] .billing-balance-recharge-button.semi-button:active:not(:disabled) {
+  border-color: #e4e7ed;
+  color: #17181b;
+  background: #e4e7ed;
+}
+.billing-quota-list {
+  overflow: hidden;
+  border: 1px solid var(--color-border-neutral-l1);
+  border-radius: var(--radius-8);
+  background: var(--color-bg-base-secondary);
+  margin-bottom: 20px;
+}
+.billing-quota-row {
+  display: grid;
+  grid-template-columns: 128px minmax(80px, 1fr) minmax(90px, auto);
+  align-items: center;
+  gap: var(--spacing-12);
+  min-height: 44px;
+  padding: 0 var(--spacing-16);
+}
+.billing-quota-row:last-child {
+  border-bottom: 0;
+}
+.billing-quota-label {
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 550;
+}
+.billing-quota-track {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--color-bg-base-tertiary, var(--color-border-neutral-l1));
+}
+.billing-quota-track > span {
+  display: block;
+  height: 100%;
+  min-width: 0;
+  border-radius: inherit;
+  background: var(--color-action-primary);
+  transition: width 180ms ease;
+}
+.billing-quota-row.is-recharge .billing-quota-track > span {
+  background: #4d7cff;
+}
+.billing-quota-row.is-reward .billing-quota-track > span {
+  background: #9c6ade;
+}
+.billing-quota-row.is-gift .billing-quota-track > span {
+  background: #d6a348;
+}
+.billing-quota-row.is-invitation .billing-quota-track > span {
+  background: #4aaa7b;
+}
+.billing-quota-row.is-expired .billing-quota-track > span {
+  background: #8a93a3;
+}
+.billing-quota-row.is-negative .billing-quota-track > span {
+  background: var(--color-error, #df7b83);
+}
+.billing-quota-value {
+  color: var(--color-text-default);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+.billing-quota-row.is-negative .billing-quota-value {
+  color: var(--color-error, #df7b83);
+}
+.billing-quota-row.is-total {
+  min-height: 50px;
+  background: color-mix(in srgb, var(--color-action-primary) 10%, var(--color-bg-base-secondary));
+}
+.billing-quota-row.is-total .billing-quota-label,
+.billing-quota-row.is-total .billing-quota-value {
+  color: var(--color-text-default);
+  font-weight: 650;
+}
 .analysis-header,
 .section-heading,
 .analysis-actions {
@@ -10075,6 +10332,10 @@ html[data-theme="dark"] .generation-send-button.send-btn.is-running.semi-button:
 .analysis-actions {
   justify-content: flex-end;
   flex-wrap: wrap;
+}
+.billing-console-page .analysis-actions > .semi-button {
+  font-size: 13px;
+  font-weight: 400;
 }
 .balance-inline {
   color: var(--color-text-secondary);
@@ -10942,6 +11203,12 @@ html[data-theme="dark"] .recharge-console-page .billing-demo-note {
   color: var(--color-error, #df7b83);
 }
 @media (max-width: 900px) {
+  .billing-balance-grid {
+    grid-template-columns: 1fr;
+  }
+  .billing-balance-card {
+    min-height: 112px;
+  }
   .billing-filter-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -10971,6 +11238,15 @@ html[data-theme="dark"] .recharge-console-page .billing-demo-note {
   .billing-metrics-grid,
   .invoice-metrics {
     grid-template-columns: 1fr;
+  }
+  .billing-quota-row {
+    grid-template-columns: minmax(96px, 0.45fr) minmax(70px, 1fr) minmax(78px, auto);
+    gap: var(--spacing-8);
+    padding-inline: var(--spacing-12);
+  }
+  .billing-quota-label,
+  .billing-quota-value {
+    font-size: 12px;
   }
   .billing-filter-field,
   .billing-filter-field:first-child {
@@ -15452,6 +15728,11 @@ html[data-theme="light"] .app-loading-screen {
 html[data-theme="light"] .app-loading-screen__logo-shell .brand-logo-image {
   filter: invert(1);
 }
+.submit-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.46;
+  transform: none;
+}
 
 .theme-switcher .tool-icon,
 .language-switcher .tool-icon {
@@ -15466,11 +15747,6 @@ html[data-theme="light"] .app-loading-screen__logo-shell .brand-logo-image {
   transform: rotate(-10deg) scale(1.08);
 }
 
-.submit-btn:disabled {
-  cursor: not-allowed;
-  opacity: 0.46;
-  transform: none;
-}
 .wechat-agreement {
   margin: -4px auto 12px;
   color: var(--color-text-tertiary);
@@ -15633,6 +15909,10 @@ html[data-theme="light"] .app-loading-screen__logo-shell .brand-logo-image {
   flex-basis: 132px;
   width: 132px;
 }
+.login-popover .login-feedback {
+  color: #ff9f9f;
+  font-size: 12px;
+}
 .login-popover .btn {
   height: 44px;
   border-radius: 25.5px;
@@ -15648,13 +15928,10 @@ html[data-theme="light"] .app-loading-screen__logo-shell .brand-logo-image {
   color: #fff;
   background: rgba(255, 255, 255, 0.18);
 }
-.login-popover .login-feedback {
-  color: #ff9f9f;
-  font-size: 12px;
-}
 .login-popover .submit-btn {
   height: 44px;
   margin-top: 8px;
+  margin-bottom: 20px;
   border: 0;
   color: #fff;
   background: linear-gradient(94deg, #a262c6 0.76%, #575dad 99.24%);
@@ -15831,6 +16108,36 @@ html[data-theme="light"] .app-loading-screen__logo-shell .brand-logo-image {
   width: 112px;
   height: 28px;
 }
+
+/* 中文：宽屏首页按设计稿放大品牌区，移动端尺寸由 public-mobile-nav.css 独立控制。 */
+@media (min-width: 1281px) {
+  .public-header--home .public-header-inner {
+    padding-inline: 80px;
+  }
+
+  .public-header--home .header-logo {
+    width: 188px;
+    flex: 0 0 188px;
+  }
+
+  .public-header--home .header-brand-image {
+    width: 188px;
+    height: 47px;
+  }
+
+  .public-header--home .header-trial-badge {
+    width: 140px;
+    height: 35px;
+    flex-basis: 140px;
+    border-radius: 17.5px;
+  }
+
+  .public-header--home .header-trial-pill {
+    width: 140px;
+    height: 35px;
+  }
+}
+
 .header-trial-glass {
   position: absolute;
   inset: 0;
@@ -15871,8 +16178,8 @@ html[data-theme="light"] .app-loading-screen__logo-shell .brand-logo-image {
   position: relative;
   z-index: 2;
   font-family: "Noto Sans SC", "Source Han Sans CN", sans-serif;
-  font-size: 14px;
-  font-weight: 400;
+  font-size: 18px;
+  font-weight: 600;
   line-height: 1;
   background: linear-gradient(91deg, #fff 5.62%, #e792f6 96.81%);
   background-clip: text;
@@ -15904,7 +16211,7 @@ html[data-theme="light"] .app-loading-screen__logo-shell .brand-logo-image {
   -webkit-backdrop-filter: blur(12px) saturate(125%);
   backdrop-filter: blur(12px) saturate(125%);
   font-family: "Noto Sans SC", "Source Han Sans CN", sans-serif;
-  font-size: 14px;
+  font-size: 18px;
   font-weight: 600;
   line-height: 1;
   opacity: 0;
@@ -16051,11 +16358,11 @@ html[data-theme="light"] .app-loading-screen__logo-shell .brand-logo-image {
   transform: scale(1);
 }
 .public-header .header-actions {
-  gap: 30px;
+  gap: 25px;
   margin-left: 48px;
 }
 .public-header .header-tools {
-  gap: 40px;
+  gap: 25px;
 }
 .public-header .header-tool {
   width: 28px;
@@ -16124,6 +16431,29 @@ html[data-theme="light"] .app-loading-screen__logo-shell .brand-logo-image {
     background-color 0.2s ease,
     box-shadow 0.2s ease;
 }
+.public-header .console-entry {
+  display: inline-flex;
+  width: auto;
+  min-width: 76px;
+  height: 30px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 14px;
+  border: 1px solid #fff;
+  border-radius: 15px;
+  color: #111216;
+  background: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+  text-decoration: none;
+  transition: background-color .2s ease, color .2s ease, border-color .2s ease;
+}
+.public-header .console-entry:hover,
+.public-header .console-entry:focus-visible { color: #111216; background: #f0f0f0; border-color: #f0f0f0; transform: none; }
+html[data-theme="light"] .public-header .console-entry { border-color: #111216; color: #fff; background: #111216; }
+html[data-theme="light"] .public-header .console-entry:hover,
+html[data-theme="light"] .public-header .console-entry:focus-visible { color: #fff; background: #2a2b30; border-color: #2a2b30; }
 .public-header .language-switcher:hover {
   color: #28292d;
   border-color: rgba(255, 255, 255, 0.32);
@@ -16185,23 +16515,6 @@ html[data-theme="light"] .app-loading-screen__logo-shell .brand-logo-image {
 .language-switcher.is-english .language-switcher-option--zh {
   color: #292a2e;
 }
-.public-header .login-trigger-wrap > .btn {
-  width: 96px;
-  min-height: 28px;
-  height: 28px;
-  padding: 0;
-  border-radius: 34px;
-  background: #fff;
-  border-color: #fff;
-  color: #232323;
-  font-family: "Noto Sans SC", "Source Han Sans CN", sans-serif;
-  font-size: 14px;
-  font-weight: 400;
-}
-.public-header .login-trigger-wrap > .btn:hover {
-  background: #fff;
-  border-color: #fff;
-}
 .public-header--home {
   height: 72px;
 }
@@ -16228,6 +16541,7 @@ html[data-theme="light"] .app-loading-screen__logo-shell .brand-logo-image {
 }
 .public-header--home .public-nav {
   margin-left: auto;
+  gap: 5px;
 }
 .public-header--home .public-header-actions {
   margin-left: 20px;
@@ -16331,20 +16645,6 @@ html[data-theme="light"] .public-header--home .header-tool-badge:hover {
 }
 html[data-theme="light"] .public-header--home .header-notification-dot {
   border-color: #fff;
-}
-html[data-theme="light"] .public-header--home .login-trigger-wrap > .btn {
-  border-color: #050505;
-  color: #fff;
-  background: #050505;
-}
-html[data-theme="light"]
-  .public-layout--models
-  .public-header
-  .login-trigger-wrap
-  > .btn {
-  border-color: #5c2fdc;
-  color: #fff;
-  background: #5c2fdc;
 }
 
 @media (max-width: 1280px) {
@@ -16476,34 +16776,78 @@ html[data-theme="light"]
   display: none;
   content: none;
 }
-.manuscript-hero-actions .btn-primary {
-  border-color: #5c2fdc;
-  background: #5c2fdc;
-}
-.manuscript-hero-actions .btn-primary:hover {
-  border-color: #7f52ff;
-  color: #fff;
-  background: #7f52ff;
-  box-shadow: none;
-  filter: none;
-  transform: none;
-}
 .manuscript-hero-actions .manuscript-model-button:hover,
 .manuscript-hero-actions .manuscript-model-button:focus-visible,
 .manuscript-hero-actions .manuscript-model-button:active {
-  border-color: #7f52ff;
+  /* 中文：交互状态保持与默认态完全一致，描边不随 hover 额外变化。 */
+  border-color: transparent;
   color: #fff;
-  background: #7f52ff;
-  box-shadow: none;
+  background: var(--manuscript-model-glass-background);
+  box-shadow: var(--manuscript-model-glass-shadow);
   filter: none;
   transform: none;
 }
-.manuscript-hero-actions:has(.manuscript-model-button:hover) .btn-primary,
-.manuscript-hero-actions:has(.manuscript-model-button:focus-visible)
-  .btn-primary,
-.manuscript-hero-actions:has(.manuscript-model-button:active) .btn-primary {
-  border-color: #484848;
-  background: transparent;
+
+/* 中文：查看模型按钮复用液态金属按钮的彩色流动描边，颜色只绘制在外边框。 */
+@property --manuscript-model-rim-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+.manuscript-hero-actions .manuscript-model-button {
+  /* 中文：右侧按钮同步左侧的半透明玻璃底，背景模糊只作用于按钮内部。 */
+  --manuscript-model-glass-background:
+    linear-gradient(180deg, rgba(255, 255, 255, .085), rgba(255, 255, 255, .014) 44%, rgba(255, 255, 255, 0) 64%),
+    rgba(10, 12, 10, .42);
+  --manuscript-model-glass-shadow:
+    0 4px 10px rgba(0, 0, 0, .28),
+    0 14px 28px rgba(0, 0, 0, .18),
+    inset 0 1px 0 rgba(255, 255, 255, .13),
+    inset 0 -1px 3px rgba(255, 255, 255, .05);
+  overflow: visible;
+  border-color: transparent;
+  background: var(--manuscript-model-glass-background);
+  box-shadow: var(--manuscript-model-glass-shadow);
+  -webkit-backdrop-filter: blur(10px) saturate(120%);
+  backdrop-filter: blur(10px) saturate(120%);
+}
+
+.manuscript-hero-actions .manuscript-model-button::before {
+  position: absolute;
+  /* 中文：使用 2px 描边宽度与左侧液态金属按钮保持一致。 */
+  inset: -2px;
+  z-index: 0;
+  border-radius: inherit;
+  background: conic-gradient(
+    from var(--manuscript-model-rim-angle),
+    rgba(255, 164, 77, .9),
+    rgba(111, 189, 255, .95) 28%,
+    rgba(255, 255, 255, .85) 48%,
+    rgba(144, 106, 255, .95) 70%,
+    rgba(255, 164, 77, .9)
+  );
+  content: "";
+  /* 中文：给描边增加轻微扩散，让边缘呈现与左侧按钮一致的蒙版质感。 */
+  opacity: .78;
+  filter: blur(.42px);
+  pointer-events: none;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  padding: 2px;
+  animation: manuscript-model-rim 5.6s linear infinite;
+}
+
+@keyframes manuscript-model-rim {
+  to { --manuscript-model-rim-angle: 360deg; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .manuscript-hero-actions .manuscript-model-button::before {
+    animation: none;
+  }
 }
 .manuscript-digital-stats {
   display: grid;
@@ -18635,20 +18979,15 @@ html[data-theme="light"]
 }
 html[data-theme="light"]
   .public-layout--manuscript-home
-  .public-header
-  .login-trigger-wrap
-  > .btn {
-  border-color: #5c2fdc;
-  color: #fff;
-  background: #5c2fdc;
-}
-html[data-theme="light"]
-  .public-layout--manuscript-home
   .manuscript-hero-actions
   .manuscript-model-button {
-  border-color: #484848;
+  /* 中文：浅色主题与深色主题复用同一套黑色毛玻璃按钮视觉。 */
+  border-color: transparent;
   color: #fff;
-  background: #121212;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .085), rgba(255, 255, 255, .014) 44%, rgba(255, 255, 255, 0) 64%),
+    rgba(10, 12, 10, .92) !important;
+  box-shadow: var(--manuscript-model-glass-shadow) !important;
 }
 html[data-theme="light"]
   .public-layout--manuscript-home
@@ -18662,25 +19001,13 @@ html[data-theme="light"]
   .public-layout--manuscript-home
   .manuscript-hero-actions
   .manuscript-model-button:active {
-  border-color: #5c2fdc;
+  /* 中文：浅色主题交互状态同样保持固定描边和固定底色。 */
+  border-color: transparent;
   color: #fff;
-  background: #5c2fdc;
-}
-html[data-theme="light"]
-  .public-layout--manuscript-home
-  .manuscript-hero-actions:has(.manuscript-model-button:hover)
-  .btn-primary,
-html[data-theme="light"]
-  .public-layout--manuscript-home
-  .manuscript-hero-actions:has(.manuscript-model-button:focus-visible)
-  .btn-primary,
-html[data-theme="light"]
-  .public-layout--manuscript-home
-  .manuscript-hero-actions:has(.manuscript-model-button:active)
-  .btn-primary {
-  border-color: #121212;
-  color: #fff;
-  background: #121212;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .085), rgba(255, 255, 255, .014) 44%, rgba(255, 255, 255, 0) 64%),
+    rgba(10, 12, 10, .92) !important;
+  box-shadow: var(--manuscript-model-glass-shadow) !important;
 }
 html[data-theme="light"] .public-layout--manuscript-home .manuscript-hero h1,
 html[data-theme="light"]
@@ -20706,9 +21033,6 @@ html[data-theme="light"] .ranking-sidebar a.is-active {
 }
 .public-layout--manuscript-home .header-trial-badge em {
   font-size: var(--ui-header-micro-size);
-}
-.public-layout--manuscript-home .public-header .login-trigger-wrap > .btn {
-  font-size: var(--ui-header-control-size);
 }
 .public-layout--manuscript-home .language-option {
   font-size: var(--ui-header-micro-size);
@@ -23647,61 +23971,6 @@ html[data-performance="lite"]
   font-size: 12px;
   line-height: 20px;
 }
-:is(.login-popover, .login-card) .submit-btn {
-  position: relative;
-  isolation: isolate;
-  width: 100%;
-  height: 44px;
-  margin: 0 0 35px;
-  overflow: hidden;
-  border: 0;
-  border-radius: 22px;
-  color: #fff;
-  background: linear-gradient(90deg, #ffb912 0%, #eb69ff 50%, #4c0dfb 100%);
-  box-shadow: none;
-  font-size: 16px;
-  font-weight: 500;
-  transition: opacity 0.28s ease;
-}
-:is(.login-popover, .login-card) .submit-btn::before {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  border-radius: inherit;
-  content: "";
-  opacity: 0;
-  pointer-events: none;
-  background: linear-gradient(90deg, #ffe312 0%, #f758ff 50%, #700dfb 100%);
-  backface-visibility: hidden;
-  transform: translateZ(0);
-  transition: opacity 0.28s ease;
-  will-change: opacity;
-}
-:is(.login-popover, .login-card) .submit-btn::after {
-  display: none;
-  content: none;
-}
-:is(.login-popover, .login-card) .submit-btn > span {
-  position: relative;
-  z-index: 1;
-  color: #fff;
-}
-:is(.login-popover, .login-card) .submit-btn:hover:not(:disabled) {
-  border-color: transparent;
-  color: #fff;
-  background: linear-gradient(90deg, #ffb912 0%, #eb69ff 50%, #4c0dfb 100%);
-  box-shadow: none;
-  transform: none;
-}
-:is(.login-popover, .login-card) .submit-btn:hover:not(:disabled)::before {
-  opacity: 1;
-}
-:is(.login-popover, .login-card) .submit-btn:active:not(:disabled) {
-  transform: none;
-}
-:is(.login-popover, .login-card) .submit-btn:disabled {
-  opacity: 0.46;
-}
 :is(.login-popover, .login-card) .login-separator {
   display: flex;
   height: 23px;
@@ -23781,9 +24050,6 @@ html[data-performance="lite"]
   font-size: 12px;
   line-height: 20px;
   text-align: center;
-}
-:is(.login-popover, .login-card) .login-pane--wechat .submit-btn {
-  margin: 0 0 16px;
 }
 :is(.login-popover, .login-card) .login-pane--binding .login-separator {
   margin-top: 35px;
@@ -24015,7 +24281,7 @@ html:has(.login-page) {
   height: min(675px, calc(100dvh - 32px));
   overflow: hidden;
   border: 1px solid #292929;
-  border-radius: 4px;
+  border-radius: 8px;
   color: #fff;
   background: #303030;
   box-shadow: 0 18px 48px rgba(0, 0, 0, 0.5);
@@ -24057,7 +24323,7 @@ html:has(.login-page) {
   color: #c8c8c8;
   background: rgba(57, 56, 56, 0.6);
   font-family: "Source Han Sans CN", "Noto Sans SC", sans-serif;
-  font-size: 18px;
+  font-size: 14px;
   font-weight: 400;
   text-align: left;
 }
@@ -24124,7 +24390,7 @@ html:has(.login-page) {
   border-bottom: 1px solid #383838;
   color: #fff;
   font-family: "Source Han Sans CN", "Noto Sans SC", sans-serif;
-  font-size: 16px;
+  font-size: 14px;
   line-height: 23px;
 }
 .account-settings-row--name {
@@ -24234,8 +24500,8 @@ html:has(.login-page) {
 }
 .account-settings-delete {
   display: grid;
-  width: 127px;
-  height: 34px;
+  width: 110px;
+  height: 30px;
   min-height: 0;
   place-items: center;
   margin-top: -1px;
@@ -24245,8 +24511,8 @@ html:has(.login-page) {
   color: #fff;
   background: #c22735;
   font-family: "Source Han Sans CN", "Noto Sans SC", sans-serif;
-  font-size: 16px;
-  font-weight: 700;
+  font-size: 13px;
+  font-weight: 400;
   cursor: pointer;
 }
 .account-settings-delete:hover {
@@ -24485,27 +24751,6 @@ html:has(.login-page) {
   font-weight: 700;
   text-decoration: none;
 }
-.billing-hover-recharge::before {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  display: block;
-  border-radius: inherit;
-  background: linear-gradient(90deg, #ffe312 0%, #f758ff 50%, #700dfb 100%);
-  content: "";
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.24s ease;
-}
-.billing-hover-recharge > span {
-  position: relative;
-  z-index: 1;
-}
-.billing-hover-recharge:hover {
-  color: #fff;
-  background: linear-gradient(90deg, #ffb912 0%, #eb69ff 50%, #4c0dfb 100%);
-  filter: none;
-}
 .billing-hover-facts {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -24605,14 +24850,6 @@ html:has(.login-page) {
   color: #b3b3b3;
   background: transparent;
   box-shadow: none;
-}
-.public-header .header-nav .billing-hover-recharge:hover {
-  color: #fff;
-  background: linear-gradient(90deg, #ffb912 0%, #eb69ff 50%, #4c0dfb 100%);
-  filter: none;
-}
-.public-header .header-nav .billing-hover-recharge:hover::before {
-  opacity: 1;
 }
 .public-header .header-nav .billing-hover-center {
   display: flex;
@@ -25120,7 +25357,6 @@ html[data-theme="light"]
   color: #131212;
   background: #f6f6f6;
 }
-
 /* The partner marquee uses a dark Figma strip by default. In light mode the
    strip and its edge fades must blend into the white page instead. */
 html[data-theme="light"]
@@ -25317,14 +25553,6 @@ html[data-theme="light"]
   .header-nav
   .billing-hover-recharge {
   color: #fff;
-}
-html[data-theme="light"]
-  .public-layout--manuscript-home
-  .public-header--home
-  .header-nav
-  .billing-hover-recharge:hover {
-  color: #fff;
-  background: linear-gradient(90deg, #ffb912 0%, #eb69ff 50%, #4c0dfb 100%);
 }
 html[data-theme="light"] .public-header .header-nav a.billing-hover-recharge,
 html[data-theme="light"]
@@ -26300,4 +26528,86 @@ html[data-theme="light"] .quickstart-code-token.is-number {
     min-height: 180px;
     padding: 14px;
   }
+}
+
+/* 中文：控制台入口沿用语言切换器的胶囊几何，但主题颜色按需求反转。 */
+.public-header.public-header--home .console-entry,
+.public-header.public-header--home .console-entry:hover,
+.public-header.public-header--home .console-entry:focus-visible {
+  border-color: #fff;
+  color: #111216;
+  background: #D8D8D9;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.16);
+}
+html[data-theme="light"] .public-header.public-header--home .console-entry,
+html[data-theme="light"] .public-header.public-header--home .console-entry:hover,
+html[data-theme="light"] .public-header.public-header--home .console-entry:focus-visible {
+  border-color: #111216;
+  color: #fff;
+  background: #34353A;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.24);
+}
+
+/* 中文：指定的登录、二维码重试和充值按钮统一为查看模型的黑白毛玻璃胶囊。 */
+:is(.login-capsule-action, .header-login-capsule, .recharge-capsule-action) {
+  position: relative;
+  isolation: isolate;
+  overflow: visible;
+  border: 2px solid transparent !important;
+  border-radius: 999px !important;
+  color: #fff !important;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .085), rgba(255, 255, 255, .014) 44%, rgba(255, 255, 255, 0) 64%),
+    rgba(10, 12, 10, .42) !important;
+  box-shadow:
+    0 4px 10px rgba(0, 0, 0, .28),
+    0 14px 28px rgba(0, 0, 0, .18),
+    inset 0 1px 0 rgba(255, 255, 255, .13),
+    inset 0 -1px 3px rgba(255, 255, 255, .05) !important;
+  transform: none !important;
+  transition: none !important;
+}
+
+:is(.login-capsule-action, .header-login-capsule, .recharge-capsule-action)::before {
+  position: absolute;
+  inset: -2px;
+  z-index: 0;
+  border-radius: inherit;
+  background: conic-gradient(
+    from var(--manuscript-model-rim-angle),
+    rgba(255, 164, 77, .9),
+    rgba(111, 189, 255, .95) 28%,
+    rgba(255, 255, 255, .85) 48%,
+    rgba(144, 106, 255, .95) 70%,
+    rgba(255, 164, 77, .9)
+  );
+  content: "";
+  opacity: .78;
+  filter: blur(.42px);
+  pointer-events: none;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  padding: 2px;
+  animation: manuscript-model-rim 5.6s linear infinite;
+}
+
+:is(.login-capsule-action, .header-login-capsule, .recharge-capsule-action) > span,
+:is(.login-capsule-action, .header-login-capsule, .recharge-capsule-action) .semi-button-content {
+  position: relative;
+  z-index: 1;
+}
+
+html[data-theme="light"]
+  :is(.login-capsule-action, .header-login-capsule, .recharge-capsule-action) {
+  /* 中文：浅色模式保持与查看模型一致的黑色实体玻璃底。 */
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .085), rgba(255, 255, 255, .014) 44%, rgba(255, 255, 255, 0) 64%),
+    rgba(10, 12, 10, .92) !important;
+}
+
+:is(.login-capsule-action, .header-login-capsule, .recharge-capsule-action):disabled,
+:is(.login-capsule-action, .header-login-capsule, .recharge-capsule-action).semi-button-disabled {
+  opacity: .52;
 }

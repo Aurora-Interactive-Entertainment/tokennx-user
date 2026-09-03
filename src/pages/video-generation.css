@@ -958,9 +958,10 @@ html[data-theme='dark'] .video-model-advanced {
 }
 .video-console-page .video-duration-ticks {
   position: relative;
-  width: 230px;
+  /* 中文：与 8px 滑块头的可移动中心区对齐，避免刻度相对滑块偏移。 */
+  width: calc(100% - 8px);
   height: 16px;
-  margin-top: 3px;
+  margin: 3px 4px 0;
   color: var(--color-text-tertiary);
   font-size: 11px;
   line-height: 16px;
@@ -969,15 +970,33 @@ html[data-theme='dark'] .video-model-advanced {
   position: absolute;
   top: 0;
   white-space: nowrap;
+  transform: translateX(-50%);
 }
 .video-console-page .video-duration-ticks span::before {
   content: '';
   position: absolute;
   top: -17px;
-  left: 0;
-  width: 1px;
+  left: 50%;
+  /* 中文：使用偶数宽度并向左回退半宽，消除百分比定位产生的子像素粗细差异。 */
+  width: 2px;
   height: 5px;
+  margin-left: -1px;
+  border-radius: 999px;
   background: #333333;
+}
+.video-console-page .video-duration-ticks span:first-child {
+  transform: none;
+}
+.video-console-page .video-duration-ticks span:first-child::before {
+  left: 0;
+  margin-left: 0;
+}
+.video-console-page .video-duration-ticks span:last-child {
+  transform: translateX(-100%);
+}
+.video-console-page .video-duration-ticks span:last-child::before {
+  left: 100%;
+  margin-left: -2px;
 }
 .video-console-page .video-duration-ticks span:first-child::before {
   background: rgb(255 255 255 / 90%);
@@ -1464,9 +1483,13 @@ html[data-theme='dark'] .video-console-page .video-composer-box {
 .video-duration-select-dropdown .video-duration-control input[type='range'] { width: 230px; height: 24px; appearance: none; background: transparent; }
 .video-duration-select-dropdown .video-duration-control input[type='range']::-webkit-slider-runnable-track { height: 10px; border-radius: 999px; background: #f0f0f0; }
 .video-duration-select-dropdown .video-duration-control input[type='range']::-webkit-slider-thumb { width: 8px; height: 16px; margin-top: -3px; appearance: none; border-radius: 4px; background: #555; }
-.video-duration-select-dropdown .video-duration-ticks { position: relative; width: 230px; height: 16px; margin-top: 3px; color: var(--color-text-tertiary); font-size: 11px; line-height: 16px; }
-.video-duration-select-dropdown .video-duration-ticks span { position: absolute; top: 0; white-space: nowrap; }
-.video-duration-select-dropdown .video-duration-ticks span::before { content: ''; position: absolute; top: -17px; left: 0; width: 1px; height: 5px; background: #333; }
+.video-duration-select-dropdown .video-duration-ticks { position: relative; width: calc(100% - 8px); height: 16px; margin: 3px 4px 0; color: var(--color-text-tertiary); font-size: 11px; line-height: 16px; }
+.video-duration-select-dropdown .video-duration-ticks span { position: absolute; top: 0; white-space: nowrap; transform: translateX(-50%); }
+.video-duration-select-dropdown .video-duration-ticks span::before { content: ''; position: absolute; top: -17px; left: 50%; width: 2px; height: 5px; margin-left: -1px; border-radius: 999px; background: #333; }
+.video-duration-select-dropdown .video-duration-ticks span:first-child { transform: none; }
+.video-duration-select-dropdown .video-duration-ticks span:first-child::before { left: 0; margin-left: 0; }
+.video-duration-select-dropdown .video-duration-ticks span:last-child { transform: translateX(-100%); }
+.video-duration-select-dropdown .video-duration-ticks span:last-child::before { left: 100%; margin-left: -2px; }
 .video-duration-select-dropdown .video-duration-ticks span:first-child::before { background: rgb(255 255 255 / 90%); }
 .video-duration-select-dropdown .video-duration-number { box-sizing: border-box; padding: 0 12px; border-radius: 8px; }
 .video-duration-select-dropdown .video-duration-number input { font-size: 13px; appearance: textfield; }
@@ -1696,6 +1719,20 @@ html[data-theme='dark'] .video-duration-select-dropdown .video-select-panel {
 
 html[data-theme='dark'] .video-duration-select-dropdown .video-duration-control input[type='range']::-webkit-slider-thumb {
   background: rgba(255, 255, 255, .9);
+}
+
+/* 中文：深色主题下时间滑块的数字和刻度线使用白色，提高刻度可读性。 */
+html[data-theme='dark'] .video-console-page .video-duration-ticks,
+html[data-theme='dark'] .video-duration-select-dropdown .video-duration-ticks {
+  color: rgba(255, 255, 255, .9) !important;
+}
+html[data-theme='dark'] .video-console-page .video-duration-ticks span::before,
+html[data-theme='dark'] .video-duration-select-dropdown .video-duration-ticks span::before {
+  background: rgba(255, 255, 255, .9);
+}
+html[data-theme='dark'] .video-console-page .video-duration-ticks span:first-child::before,
+html[data-theme='dark'] .video-duration-select-dropdown .video-duration-ticks span:first-child::before {
+  background: rgba(255, 255, 255, .95);
 }
 
 html[data-theme='dark'] .video-aspect-select-dropdown,

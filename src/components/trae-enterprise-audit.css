@@ -104,28 +104,6 @@
 
 .trae-audit-table tbody tr {
   cursor: pointer;
-  animation: trae-audit-row-enter 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
-  transform-origin: left center;
-  will-change: opacity, transform;
-}
-
-/* 中文：日志行从左侧轻量滑入并渐显，避免表格内容瞬间生硬出现。 */
-@keyframes trae-audit-row-enter {
-  from {
-    opacity: 0;
-    transform: translateX(-18px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .trae-audit-table tbody tr {
-    animation: none;
-    transform: none;
-  }
 }
 
 .trae-audit-table tbody tr:focus-visible {

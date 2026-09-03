@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router'
 import Button from '@douyinfe/semi-ui/lib/es/button'
-import Modal from '@/components/app-modal'
 import Switch from '@douyinfe/semi-ui/lib/es/switch'
 import {
   getNotificationPreferences,
@@ -28,6 +27,7 @@ import { useAppDispatch } from '@/store/hooks'
 import { useTranslation } from 'react-i18next'
 import { appToast as Toast } from '@/components/app-toast'
 import { publishProfileUpdate, subscribeProfileUpdates } from '@/profile/profile-sync'
+import { AccountDeletionFlow } from '@/components/account-deletion-flow'
 import './console-profile.css'
 
 const PREFERENCE_DEFINITIONS: Record<NotificationPreferenceCode, { labelKey: string; descriptionKey: string }> = {
@@ -296,21 +296,23 @@ export function SettingsPage() {
         visible={accountSettingsOpen}
         onClose={() => setAccountSettingsOpen(false)}
       />
-      <Modal
-        className="profile-security-modal"
-        centered
-        title={t('profile.security.dialogTitle')}
+      <AccountDeletionFlow
         visible={deactivateVisible}
-        zIndex={1400}
-        onCancel={() => setDeactivateVisible(false)}
-        onOk={() => { setDeactivateVisible(false); Toast.warning(t('profile.security.dialogPending')) }}
-        okText={t('profile.security.dialogContinue')}
-        cancelText={t('profile.security.dialogCancel')}
-        okButtonProps={{ className: 'profile-modal-primary-button', 'aria-label': t('profile.security.dialogContinue') }}
-        cancelButtonProps={{ className: 'profile-modal-secondary-button', 'aria-label': t('profile.security.dialogCancel') }}
-      >
-        <p>{t('profile.security.dialogDescription')}</p>
-      </Modal>
+        profile={profile}
+        enterprises={enterprises}
+        onClose={() => setDeactivateVisible(false)}
+        onAuthFailure={invalidateSession}
+        onHandleEnterprise={(enterpriseID) => {
+          if (enterpriseID) store.switchWorkspace(enterpriseID)
+          setDeactivateVisible(false)
+          navigate('/console/enterprise-settings')
+        }}
+        onSuccess={() => {
+          setDeactivateVisible(false)
+          invalidateSession()
+        }}
+        t={t}
+      />
     </div>
   )
 }

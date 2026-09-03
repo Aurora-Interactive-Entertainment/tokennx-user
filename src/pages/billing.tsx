@@ -3,9 +3,10 @@ import { useTranslation } from 'react-i18next'
 import { Link, useLocation, useNavigate } from 'react-router'
 import Button from '@douyinfe/semi-ui/lib/es/button'
 import DatePicker from '@douyinfe/semi-ui/lib/es/datePicker'
+import Tooltip from '@douyinfe/semi-ui/lib/es/tooltip'
 import Modal from '@/components/app-modal'
 import Toast from '@douyinfe/semi-ui/lib/es/toast'
-import { IconDownload, IconRefresh } from '@douyinfe/semi-icons'
+import { IconDownload, IconInfoCircle, IconRefresh } from '@douyinfe/semi-icons'
 import { isApiError, isAuthenticationFailure } from '@/api/http'
 import {
   BILLING_FIRST_PAGE,
@@ -58,6 +59,7 @@ import {
   type InvoiceFormErrors,
 } from '@/components/billing-invoice-form'
 import RealNameRequiredDialog from '@/components/real-name-required-dialog'
+import { BalanceAlertDialog } from '@/components/balance-alert-dialog'
 import '@/components/trae-date-picker.css'
 
 export { validateInvoiceForm } from '@/components/billing-invoice-form'
@@ -84,8 +86,8 @@ function billingTabFromSearch(search: string): BillingTab {
   return BILLING_TABS.some(([key]) => key === tab) ? tab as BillingTab : 'overview'
 }
 
-// 中文：快捷金额与充值管理页设计稿保持一致，金额按钮按四列排列。
-const RECHARGE_OPTIONS = [10, 50, 100, 1000, 2000, 5000, 10000] as const
+// 中文：快捷金额与新的充值管理设计稿保持一致，桌面端优先在一行内完整展示。
+const RECHARGE_OPTIONS = [100, 200, 500, 1000, 2000, 5000, 10000] as const
 const MIN_RECHARGE_AMOUNT = 10
 const PAYMENT_STATUS_POLL_INTERVAL_MS = 2000
 const PAYMENT_ACTIVE_STATUSES = new Set(['pending', 'paying'])
@@ -322,7 +324,84 @@ function RequestFocus({ data, requestId }: { data: BillingAnalysisResponse | nul
   return <div className="callout request-focus" aria-live="polite"><strong>{entry ? i18n.t('console.billing.requestSummary', { requestId }) : i18n.t('console.billing.requestNotFound', { requestId })}</strong><span>{entry ? <>{entry.description} · {entry.direction === 'expense' ? i18n.t('console.common.success') : i18n.t('console.billing.notBilled')} · {entry.direction === 'expense' ? <>{i18n.t('console.billing.cost')} <MoneyText value={entry.amount_yuan} /></> : i18n.t('console.billing.notBilled')}</> : i18n.t('console.billing.cleanedRequest')}</span><div className="request-focus-actions"><Link className="btn btn-secondary btn-sm" to="/console/billing">{i18n.t('console.billing.allLedger')}</Link></div></div>
 }
 
-function AnalysisTab({ state, ledger, dateRange, apiKeyID, model, billingType, departmentID, memberID, departments, members, directoryLoading, directoryEnabled, onRecharge, onSubscription, onFilterChange, onDateRangeChange, onRetry }: { state: ResourceState<BillingAnalysisResponse>; ledger: ReactNode; dateRange: Date[]; apiKeyID: string; model: string; billingType: string; departmentID: string; memberID: string; departments: EnterpriseDepartment[]; members: EnterpriseMember[]; directoryLoading: boolean; directoryEnabled: boolean; onRecharge: () => void; onSubscription: () => void; onFilterChange: (key: 'apiKey' | 'model' | 'billingType' | 'department' | 'member', value: string) => void; onDateRangeChange: (value: Date[]) => void; onRetry: () => void }) {
+type BillingQuotaRow = { key: string; label: string; value: string; tone?: 'recharge' | 'reward' | 'gift' | 'invitation' | 'expired' | 'negative' | 'total' }
+
+function safeAmount(value: string | number | undefined | null): number {
+  const amount = Number(value ?? 0)
+  return Number.isFinite(amount) && amount >= 0 ? amount : 0
+}
+
+function PlainMoney({ value, negative = false }: { value: string; negative?: boolean }) {
+  const display = formatYuan(value, 2)
+  return <span>{negative && display !== '--' ? `-${display}` : display}</span>
+}
+
+function BillingSectionInfo({ content }: { content: string }) {
+  return <Tooltip className="app-info-tooltip billing-info-tooltip" content={content} position="top"><IconInfoCircle className="app-info-icon billing-info-icon" aria-label={content} /></Tooltip>
+}
+
+function AccountBalanceSection({ wallet, onRecharge, onBalanceAlert }: { wallet: BillingAnalysisResponse['wallet']; onRecharge: () => void; onBalanceAlert: () => void }) {
+  return <section className="billing-balance-section" aria-labelledby="billingBalanceHeading">
+    <h2 id="billingBalanceHeading" className="billing-subsection-heading">{i18n.t('console.billing.accountBalance')}</h2>
+    <div className="billing-balance-grid">
+      <article className="billing-balance-card billing-balance-card-total">
+        <div className="billing-balance-card-heading"><span>{i18n.t('console.billing.totalBalance')}</span><BillingSectionInfo content={i18n.t('console.billing.totalBalanceHint')} /><button type="button" className="billing-balance-alert-link" onClick={onBalanceAlert}>{i18n.t('console.billing.balanceReminder')}</button></div>
+        <div className="billing-balance-card-footer">
+          <strong><PlainMoney value={wallet.total_balance_yuan || wallet.total_available_yuan} /></strong>
+          <Button className="billing-balance-recharge-button" theme="solid" size="small" onClick={onRecharge}>{i18n.t('console.billing.rechargeNow')}</Button>
+        </div>
+      </article>
+      <article className="billing-balance-card">
+        <div className="billing-balance-card-heading"><span>{i18n.t('console.billing.rechargeBalance')}</span><BillingSectionInfo content={i18n.t('console.billing.rechargeBalanceHint')} /></div>
+        <strong><PlainMoney value={wallet.paid_available_yuan} /></strong>
+      </article>
+      <article className="billing-balance-card">
+        <div className="billing-balance-card-heading"><span>{i18n.t('console.billing.rewardBalance')}</span><BillingSectionInfo content={i18n.t('console.billing.rewardBalanceHint')} /></div>
+        <strong><PlainMoney value={wallet.bonus_available_yuan} /></strong>
+      </article>
+    </div>
+  </section>
+}
+
+function CreditDetailsSection({ data }: { data: BillingAnalysisResponse }) {
+  const wallet = data.wallet ?? EMPTY_ANALYSIS_WALLET
+  const metrics = data.metrics ?? EMPTY_ANALYSIS_METRICS
+  const quota = data.quota_details
+  const ledgerItems = data.ledger?.items ?? []
+  const sumLedger = (predicate: (item: NonNullable<BillingAnalysisResponse['ledger']>['items'][number]) => boolean): string => ledgerItems.filter(predicate).reduce((sum, item) => sum + safeAmount(item.amount_yuan), 0).toString()
+  const usageFromLedger = sumLedger((item) => item.direction === 'expense')
+  const rechargeFromLedger = sumLedger((item) => item.kind === 'recharge' || /充值|top.?up/i.test(item.description))
+  const rewardFromLedger = sumLedger((item) => item.kind === 'reward' || /奖励|reward|bonus/i.test(item.description))
+  const giftFromLedger = sumLedger((item) => /赠送|gift/i.test(item.description))
+  const invitationFromLedger = sumLedger((item) => /推广|邀请|invitation|promotion|referr/i.test(item.description))
+  const expiredFromLedger = sumLedger((item) => /过期|expire/i.test(item.description))
+  const total = safeAmount(quota?.total_yuan) || safeAmount(wallet.total_balance_yuan || wallet.total_available_yuan)
+  const rows: BillingQuotaRow[] = [
+    { key: 'recharge', label: i18n.t('console.billing.quotaRecharge'), value: quota?.recharge_yuan ?? (rechargeFromLedger !== '0' ? rechargeFromLedger : wallet.paid_available_yuan), tone: 'recharge' },
+    { key: 'reward', label: i18n.t('console.billing.quotaReward'), value: quota?.reward_yuan ?? (rewardFromLedger !== '0' ? rewardFromLedger : wallet.bonus_available_yuan), tone: 'reward' },
+    { key: 'gift', label: i18n.t('console.billing.quotaGift'), value: quota?.gift_yuan ?? giftFromLedger, tone: 'gift' },
+    { key: 'invitation', label: i18n.t('console.billing.quotaInvitation'), value: quota?.invitation_yuan ?? invitationFromLedger, tone: 'invitation' },
+    { key: 'expired', label: i18n.t('console.billing.quotaExpired'), value: quota?.expired_yuan ?? expiredFromLedger, tone: 'expired' },
+    { key: 'usage', label: i18n.t('console.billing.quotaUsage'), value: quota?.usage_yuan ?? (usageFromLedger !== '0' ? usageFromLedger : metrics.total_cost_yuan), tone: 'negative' },
+    { key: 'total', label: i18n.t('console.billing.totalBalance'), value: quota?.total_yuan ?? wallet.total_balance_yuan ?? wallet.total_available_yuan, tone: 'total' },
+  ]
+  return <section className="billing-quota-section" aria-labelledby="billingQuotaHeading">
+    <h2 id="billingQuotaHeading" className="billing-subsection-heading">{i18n.t('console.billing.quotaDetails')}</h2>
+    <div className="billing-quota-list">
+      {rows.map((row) => {
+        const amount = safeAmount(row.value)
+        const percent = total > 0 ? Math.min(100, Math.max(0, amount / total * 100)) : 0
+        return <div className={`billing-quota-row${row.tone ? ` is-${row.tone}` : ''}`} key={row.key}>
+          <span className="billing-quota-label">{row.label}</span>
+          {row.tone === 'total' ? <span className="billing-quota-total-spacer" aria-hidden="true" /> : <div className="billing-quota-track" aria-hidden="true"><span style={{ width: `${percent}%` }} /></div>}
+          <strong className="billing-quota-value"><PlainMoney value={row.value} negative={row.tone === 'negative'} /></strong>
+        </div>
+      })}
+    </div>
+  </section>
+}
+
+function AnalysisTab({ state, ledger, dateRange, apiKeyID, model, billingType, departmentID, memberID, departments, members, directoryLoading, directoryEnabled, onRecharge, onBalanceAlert, onSubscription, onFilterChange, onDateRangeChange, onRetry }: { state: ResourceState<BillingAnalysisResponse>; ledger: ReactNode; dateRange: Date[]; apiKeyID: string; model: string; billingType: string; departmentID: string; memberID: string; departments: EnterpriseDepartment[]; members: EnterpriseMember[]; directoryLoading: boolean; directoryEnabled: boolean; onRecharge: () => void; onBalanceAlert: () => void; onSubscription: () => void; onFilterChange: (key: 'apiKey' | 'model' | 'billingType' | 'department' | 'member', value: string) => void; onDateRangeChange: (value: Date[]) => void; onRetry: () => void }) {
   if (state.status === 'loading' || state.status === 'idle') return <BillingLoading label={i18n.t('console.billing.loadingAnalysis')} />
   if (state.status === 'error') return <BillingError state={state} onRetry={onRetry} />
   const data = state.data
@@ -350,6 +429,10 @@ function AnalysisTab({ state, ledger, dateRange, apiKeyID, model, billingType, d
   const otherCost = (Number(metrics.image_cost_yuan || 0) + Number(metrics.audio_cost_yuan || 0) + Number(metrics.video_cost_yuan || 0)).toFixed(4)
   return (
     <section id="billing-analysis" className="billing-analysis" aria-labelledby="analysisHeading">
+      <div className="billing-balance-and-quota">
+        <AccountBalanceSection wallet={wallet} onRecharge={onRecharge} onBalanceAlert={onBalanceAlert} />
+        <CreditDetailsSection data={data} />
+      </div>
       <div className="analysis-header">
         <h2 className="analysis-heading" id="analysisHeading">
           {i18n.t('console.billing.analysis')}
@@ -436,8 +519,8 @@ function AnalysisTab({ state, ledger, dateRange, apiKeyID, model, billingType, d
 // 中文：充值表单独立复用在充值管理页面，费用页仅保留费用概览和发票页签。
 export function RechargeTab({ context, onOrderUpdated, onAuthFailure }: { context: BillingContext; onOrderUpdated: () => void; onAuthFailure: () => void }) {
   const navigate = useNavigate()
-  const [amount, setAmount] = useState('')
-  const [selected, setSelected] = useState<number | null>(null)
+  const [amount, setAmount] = useState('100')
+  const [selected, setSelected] = useState<number | null>(100)
   const [submitting, setSubmitting] = useState(false)
   const [paymentOrder, setPaymentOrder] = useState<BillingPaymentOrder | null>(null)
   const [paymentFormHTML, setPaymentFormHTML] = useState('')
@@ -447,7 +530,7 @@ export function RechargeTab({ context, onOrderUpdated, onAuthFailure }: { contex
   const [paymentQuerying, setPaymentQuerying] = useState(false)
   const [paymentRefreshToken, setPaymentRefreshToken] = useState(0)
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false)
-  const [agreementAccepted, setAgreementAccepted] = useState(true)
+  const agreementAccepted = true
   const [paymentMethod, setPaymentMethod] = useState<'alipay' | 'wechat'>('alipay')
   const [realNameDialogOpen, setRealNameDialogOpen] = useState(false)
 
@@ -563,33 +646,29 @@ export function RechargeTab({ context, onOrderUpdated, onAuthFailure }: { contex
   const paymentCopy = paymentOrder ? paymentStatusCopy(paymentOrder.status) : null
   const paymentActive = paymentOrder ? isPaymentActive(paymentOrder.status) : false
   const rechargeAmount = parseAmount(amount)
+  const customAmountSelected = selected === null && Boolean(amount.trim())
 
   return (
     <section className="billing-subpage billing-recharge-page">
       <div className="recharge-form-panel">
+        <div className="recharge-form-heading"><h2>{i18n.t('console.billing.chooseRechargeAmount')}</h2><p>{i18n.t('console.billing.rechargeInvoiceHint')}</p></div>
         <div className="recharge-form-row recharge-amount-row">
-          <div className="recharge-form-label"><strong>{i18n.t('console.billing.paymentAmount')}</strong><span className="recharge-required">（{i18n.t('console.billing.required')}）</span></div>
+          <div className="recharge-form-label"><strong>{i18n.t('console.billing.rechargeAmount')}</strong><span className="recharge-required" aria-hidden="true">*</span></div>
           <div className="recharge-amount-content">
             <div className="recharge-options" id="rechargeOptions">
-              {RECHARGE_OPTIONS.map((value) => <button type="button" className={`recharge-option${selected === value ? ' active' : ''}`} aria-pressed={selected === value} key={value} onClick={() => choose(value)}><span className="recharge-amount">¥{value}</span></button>)}
-              <button type="button" className={`recharge-option recharge-option-other${selected === null && amount.trim() ? ' active' : ''}`} aria-pressed={selected === null && Boolean(amount.trim())} onClick={() => { setSelected(null); setAmount('') }}><span className="recharge-amount">{i18n.t('console.billing.otherAmount')}</span></button>
+              {RECHARGE_OPTIONS.map((value) => <button type="button" className={`recharge-option${selected === value ? ' active' : ''}`} aria-pressed={selected === value} key={value} onClick={() => choose(value)}><span className="recharge-amount">{value} {i18n.t('console.billing.amountUnit')}</span><span className="recharge-selected-corner" aria-hidden="true">✓</span></button>)}
+              <label className={`recharge-option recharge-option-other${customAmountSelected ? ' active' : ''}`} htmlFor="rechargeCustomAmount"><input id="rechargeCustomAmount" aria-label={i18n.t('console.billing.otherAmount')} inputMode="decimal" type="number" min={MIN_RECHARGE_AMOUNT} step="0.01" value={selected === null ? amount : ''} onChange={(event) => { setSelected(null); setAmount(event.target.value) }} placeholder={i18n.t('console.billing.otherAmountPlaceholder')} /><span className="recharge-selected-corner" aria-hidden="true">✓</span></label>
             </div>
           </div>
         </div>
-        <div className="recharge-form-row recharge-custom-row">
-          <label className="recharge-form-label" htmlFor="rechargeCustomAmount">{i18n.t('console.billing.otherAmount')}</label>
-          <div className="recharge-custom-input-wrap"><input id="rechargeCustomAmount" className="input" inputMode="decimal" type="number" min={MIN_RECHARGE_AMOUNT} step="0.01" value={amount} onChange={(event) => { setSelected(null); setAmount(event.target.value) }} placeholder={i18n.t('console.billing.rechargeInput')} /><span>{i18n.t('console.billing.amountUnit')}</span></div>
-        </div>
         <div className="recharge-form-row recharge-method-row">
-          <div className="recharge-form-label"><strong>{i18n.t('console.billing.paymentMethod')}</strong><span className="recharge-required">（{i18n.t('console.billing.required')}）</span></div>
+          <div className="recharge-form-label"><strong>{i18n.t('console.billing.paymentPlatform')}</strong><span className="recharge-required" aria-hidden="true">*</span></div>
           <div className="recharge-method-controls">
-            <button type="button" className={`recharge-method-option${paymentMethod === 'alipay' ? ' is-selected' : ''}`} aria-label={i18n.t('console.billing.alipayPay')} aria-pressed={paymentMethod === 'alipay'} onClick={() => setPaymentMethod('alipay')}><img className="recharge-method-icon" src={alipayIcon} alt="" /><span>{i18n.t('console.billing.alipay')}</span></button>
-            <button type="button" className={`recharge-method-option${paymentMethod === 'wechat' ? ' is-selected' : ''}`} aria-pressed={paymentMethod === 'wechat'} onClick={() => setPaymentMethod('wechat')}><img className="recharge-method-icon" src={wechatIcon} alt="" /><span>{i18n.t('console.billing.wechat')}</span></button>
+            <button type="button" className={`recharge-method-option${paymentMethod === 'wechat' ? ' is-selected' : ''}`} aria-pressed={paymentMethod === 'wechat'} onClick={() => setPaymentMethod('wechat')}><img className="recharge-method-icon" src={wechatIcon} alt="" /><span>{i18n.t('console.billing.wechat')}</span><span className="recharge-selected-corner" aria-hidden="true">✓</span></button>
+            <button type="button" className={`recharge-method-option${paymentMethod === 'alipay' ? ' is-selected' : ''}`} aria-label={i18n.t('console.billing.alipayPay')} aria-pressed={paymentMethod === 'alipay'} onClick={() => setPaymentMethod('alipay')}><img className="recharge-method-icon" src={alipayIcon} alt="" /><span>{i18n.t('console.billing.alipay')}</span><span className="recharge-selected-corner" aria-hidden="true">✓</span></button>
           </div>
         </div>
-        <label className="recharge-agreement"><input type="checkbox" checked={agreementAccepted} onChange={(event) => setAgreementAccepted(event.target.checked)} /><span>{i18n.t('console.billing.rechargeAgreementPrefix')} <Link to="/recharge-agreement">{i18n.t('footer.rechargeAgreement')}</Link></span></label>
-        <Button className="recharge-confirm-button" theme="solid" type="primary" aria-label={i18n.t('console.billing.confirmPayment')} loading={submitting} disabled={submitting || !agreementAccepted || rechargeAmount === null || rechargeAmount < MIN_RECHARGE_AMOUNT} onClick={() => void handleRecharge()}><span>{i18n.t('console.billing.confirmPayment')}</span>{rechargeAmount !== null ? <span aria-hidden="true"> {formatYuan(rechargeAmount, 2)}</span> : null}</Button>
-        <p className="billing-demo-note">{i18n.t('console.billing.paymentSecurityNote')}</p>
+        <div className="recharge-form-actions"><Button className="recharge-confirm-button recharge-capsule-action" theme="solid" type="primary" aria-label={i18n.t('console.billing.rechargeNow')} loading={submitting} disabled={submitting || !agreementAccepted || rechargeAmount === null || rechargeAmount < MIN_RECHARGE_AMOUNT} onClick={() => void handleRecharge()}>{i18n.t('console.billing.rechargeNow')}</Button><span>{i18n.t('console.billing.viewRechargeRecordsPrefix')} <Link to="/console/billing">{i18n.t('console.billing.rechargeRecords')}</Link></span></div>
       </div>
       {paymentOrder && paymentCopy && paymentDialogOpen ? <Modal visible title={i18n.t('console.billing.rechargeModalTitle')} onCancel={closePaymentDialog} footer={null} className="payment-qr-dialog">
         <div className="payment-qr-dialog-content">
@@ -668,6 +747,7 @@ export function BillingPage() {
   const ledgerExportLockRef = useRef(false)
   const [paymentReturnState, setPaymentReturnState] = useState<ResourceState<BillingPaymentOrder>>(resourceState())
   const [paymentReturnRetryToken, setPaymentReturnRetryToken] = useState(0)
+  const [balanceAlertOpen, setBalanceAlertOpen] = useState(false)
 
   // 中文：兼容旧版费用页充值链接，保留订单参数后转到新的充值管理页面。
   useEffect(() => {
@@ -956,8 +1036,8 @@ export function BillingPage() {
   const ledgerSection = <BillingLedgerSection state={ledgerState} lineType={ledgerLineType} page={ledgerPage} pageSize={ledgerPageSize} onLineTypeChange={(value) => { setLedgerLineType(value); setLedgerPage(BILLING_FIRST_PAGE) }} onPageChange={setLedgerPage} onPageSizeChange={(value) => { setLedgerPageSize(value); setLedgerPage(BILLING_FIRST_PAGE) }} onRetry={() => setReloadToken((value) => value + 1)} onExport={() => void exportCSV()} exporting={exportingLedger} />
 
   let content: ReactNode
-  if (activeTab === 'overview') content = <AnalysisTab state={analysisState} ledger={ledgerSection} dateRange={dateRange} apiKeyID={apiKeyID} model={model} billingType={billingType} departmentID={departmentID} memberID={memberID} departments={departments} members={members} directoryLoading={directoryLoading} directoryEnabled={context.account_type === 'enterprise'} onRecharge={() => navigate('/console/recharge')} onSubscription={() => navigate('/console/trae-enterprise/subscription')} onFilterChange={changeAnalysisFilter} onDateRangeChange={changeAnalysisDateRange} onRetry={() => setReloadToken((value) => value + 1)} />
+  if (activeTab === 'overview') content = <AnalysisTab state={analysisState} ledger={ledgerSection} dateRange={dateRange} apiKeyID={apiKeyID} model={model} billingType={billingType} departmentID={departmentID} memberID={memberID} departments={departments} members={members} directoryLoading={directoryLoading} directoryEnabled={context.account_type === 'enterprise'} onRecharge={() => navigate('/console/recharge')} onBalanceAlert={() => setBalanceAlertOpen(true)} onSubscription={() => navigate('/console/trae-enterprise/subscription')} onFilterChange={changeAnalysisFilter} onDateRangeChange={changeAnalysisDateRange} onRetry={() => setReloadToken((value) => value + 1)} />
   else content = <InvoiceTab state={invoiceState} faqOpen={invoiceFaqOpen} downloadingInvoiceID={downloadingInvoiceID} onToggleFaq={() => setInvoiceFaqOpen((value) => !value)} onRetry={() => setReloadToken((value) => value + 1)} onOpenDialog={openInvoiceDialog} onDownload={(item) => void downloadInvoice(item)} onPageChange={setInvoicePage} onPageSizeChange={(nextPageSize) => { setInvoicePageSize(nextPageSize); setInvoicePage(BILLING_FIRST_PAGE) }} page={invoicePage} pageSize={invoicePageSize} />
 
-  return <div className="page-stack billing-console-page"><PageTitle title={t('console.billing.title')} description={t('console.billing.description')} /><RequestFocus data={analysisState.data} requestId={requestedRecordId} /><PaymentReturnNotice state={paymentReturnState} onRetry={() => setPaymentReturnRetryToken((value) => value + 1)} /><ConsoleTabs items={BILLING_TABS.map(([itemKey, label]) => ({ itemKey, tab: t(label) }))} activeKey={activeTab} onChange={(value) => onTabChange(value as BillingTab)} ariaLabel={t('console.billing.title')} /><div className="billing-tab-panel" role="tabpanel" id={`panel-${activeTab}`} aria-labelledby={`tab-${activeTab}`}>{content}</div><BillingInvoiceDialog open={dialogOpen} form={invoiceForm} options={getInvoiceDialogOptions(invoiceState.data)} errors={invoiceFormErrors} step={dialogStep} submitting={submittingInvoice} onClose={closeInvoiceDialog} onChange={updateInvoiceForm} onNext={nextInvoiceStep} onBack={() => { setDialogStep(1); setInvoiceFormErrors({}) }} onSubmit={() => void submitInvoice()} /></div>
+  return <div className="page-stack billing-console-page"><PageTitle title={t('console.billing.title')} description={t('console.billing.description')} /><RequestFocus data={analysisState.data} requestId={requestedRecordId} /><PaymentReturnNotice state={paymentReturnState} onRetry={() => setPaymentReturnRetryToken((value) => value + 1)} /><ConsoleTabs items={BILLING_TABS.map(([itemKey, label]) => ({ itemKey, tab: t(label) }))} activeKey={activeTab} onChange={(value) => onTabChange(value as BillingTab)} ariaLabel={t('console.billing.title')} /><div className="billing-tab-panel" role="tabpanel" id={`panel-${activeTab}`} aria-labelledby={`tab-${activeTab}`}>{content}</div><BillingInvoiceDialog open={dialogOpen} form={invoiceForm} options={getInvoiceDialogOptions(invoiceState.data)} errors={invoiceFormErrors} step={dialogStep} submitting={submittingInvoice} onClose={closeInvoiceDialog} onChange={updateInvoiceForm} onNext={nextInvoiceStep} onBack={() => { setDialogStep(1); setInvoiceFormErrors({}) }} onSubmit={() => void submitInvoice()} /><BalanceAlertDialog visible={balanceAlertOpen} onClose={() => setBalanceAlertOpen(false)} onAuthFailure={handleAuthFailure} /></div>
 }

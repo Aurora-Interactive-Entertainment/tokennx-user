@@ -1,0 +1,104 @@
+/* 中文：注销确认弹窗沿用 AppModal 的边框、间距和按钮规范，仅补充正文布局。 */
+.account-deletion-dialog .semi-modal {
+  width: min(600px, calc(100vw - 32px));
+}
+
+/* 中文：账户资料弹窗使用独立遮罩，注销确认层需显式抬高 mask 和内容层级。 */
+.account-deletion-dialog .semi-modal-mask {
+  z-index: 2000 !important;
+}
+
+.account-deletion-dialog .semi-modal-wrap {
+  z-index: 2001 !important;
+}
+
+.account-deletion-dialog-body {
+  display: grid;
+  gap: 14px;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  line-height: 1.65;
+}
+
+.account-deletion-dialog-description,
+.account-deletion-consequences {
+  margin: 0;
+}
+
+.account-deletion-consequences {
+  display: grid;
+  gap: 7px;
+  padding-left: 20px;
+}
+
+.account-deletion-confirmation-label {
+  color: var(--color-text-default-hover);
+  font-weight: 600;
+}
+
+.account-deletion-confirmation-input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 42px;
+  padding: 9px 12px;
+  border: 1px solid var(--color-border-neutral-l2);
+  border-radius: var(--radius-6, 6px);
+  outline: 0;
+  color: var(--color-text-default);
+  background: var(--color-bg-base-default);
+  font: inherit;
+  line-height: 22px;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.account-deletion-confirmation-input::placeholder {
+  color: var(--color-text-tertiary);
+}
+
+.account-deletion-confirmation-input:focus,
+.account-deletion-confirmation-input:focus-visible {
+  /* 中文：选中输入框时不使用深色高亮边框，保留低对比度焦点提示。 */
+  border-color: var(--color-border-neutral-l2);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-border-neutral-l3) 22%, transparent);
+}
+
+/* 中文：注销确认的取消按钮使用轻灰底、无描边样式，与参考稿保持一致。 */
+.account-deletion-dialog .account-deletion-cancel-button {
+  min-width: 88px !important;
+  height: 40px !important;
+  min-height: 40px !important;
+  padding: 0 20px !important;
+  border: 0 !important;
+  border-radius: 8px !important;
+  color: #30343b !important;
+  background: #eef0f3 !important;
+  font-size: 14px !important;
+  font-weight: 400 !important;
+}
+
+.account-deletion-dialog .account-deletion-cancel-button:hover:not(:disabled),
+.account-deletion-dialog .account-deletion-cancel-button:focus-visible:not(:disabled) {
+  color: #17181b !important;
+  background: #e3e6eb !important;
+}
+
+html[data-theme="dark"] .account-deletion-dialog .account-deletion-cancel-button {
+  color: var(--color-text-default) !important;
+  background: var(--color-bg-base-tertiary) !important;
+}
+
+html[data-theme="dark"] .account-deletion-dialog .account-deletion-cancel-button:hover:not(:disabled),
+html[data-theme="dark"] .account-deletion-dialog .account-deletion-cancel-button:focus-visible:not(:disabled) {
+  color: var(--color-text-default-hover) !important;
+  background: var(--color-bg-overlay-l3) !important;
+}
+
+@media (max-width: 560px) {
+  .account-deletion-dialog .semi-modal {
+    width: min(100%, calc(100vw - 24px));
+  }
+
+  .account-deletion-dialog-body {
+    font-size: 13px;
+  }
+}

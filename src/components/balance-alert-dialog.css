@@ -1,0 +1,79 @@
+.balance-alert-modal .semi-modal {
+  width: min(520px, calc(100vw - 32px));
+}
+
+.balance-alert-dialog-body {
+  display: grid;
+  gap: 34px;
+  padding-bottom: 8px;
+}
+
+.balance-alert-section {
+  display: grid;
+  gap: 10px;
+}
+
+.balance-alert-section h3 {
+  margin: 0;
+  color: var(--color-text-default-hover);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.balance-alert-section p {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  line-height: 1.65;
+}
+
+.balance-alert-switch-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 36px;
+  color: var(--color-text-default-hover);
+  font-size: 15px;
+}
+
+.balance-alert-threshold-section {
+  gap: 8px;
+}
+
+.balance-alert-threshold-input.semi-input-wrapper {
+  width: 100%;
+  min-height: 44px;
+  border-color: var(--color-border-neutral-l2);
+  border-radius: 8px;
+  background: var(--color-bg-base-default);
+}
+
+.balance-alert-threshold-input.semi-input-wrapper:hover,
+.balance-alert-threshold-input.semi-input-wrapper-focus,
+.balance-alert-threshold-input.semi-input-wrapper-focus:hover {
+  border-color: var(--color-border-neutral-l3);
+  background: var(--color-bg-base-default);
+  box-shadow: none;
+}
+
+.balance-alert-threshold-input .semi-input,
+.balance-alert-threshold-input.semi-input-wrapper .semi-input {
+  min-height: 42px;
+  color: var(--color-text-default);
+  font-size: 15px;
+}
+
+@media (max-width: 560px) {
+  .balance-alert-modal .semi-modal {
+    width: min(100%, calc(100vw - 24px));
+  }
+
+  .balance-alert-dialog-body {
+    gap: 24px;
+  }
+
+  .balance-alert-section p {
+    font-size: 13px;
+  }
+}

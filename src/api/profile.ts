@@ -91,9 +91,34 @@ export interface NotificationPreference {
   version: number
 }
 
+export interface AccountDeletionPrecheck {
+  can_request: boolean
+  existing_status?: 'cooling' | 'processing' | string
+  cooling_until?: ApiTimestamp
+  owner_enterprises: string[]
+  member_count: number
+  balance_policy: string
+}
+
+export interface AccountDeletionRequest {
+  confirm: true
+  provider_code: ContactProvider
+  destination: string
+  code: string
+}
+
+export interface AccountDeletionResponse {
+  id: string
+  status: 'cooling' | string
+  requested_at: ApiTimestamp
+  cooling_until: ApiTimestamp
+}
+
 export interface NotificationPreferences {
   items: NotificationPreference[]
 }
+
+export type NotificationPreferenceThresholds = Partial<Record<NotificationPreferenceCode, number>>
 
 const PHONE_PATTERN = /^1[3-9][0-9]{9}$/
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -133,6 +158,9 @@ export function getProfileErrorMessage(error: unknown): string {
 		110004: 'api.profile.codeTooFrequent',
 		110005: 'api.profile.contactUnbound',
 		110006: 'api.profile.contactVerificationFailed',
+		110030: 'api.profile.accountDeletionConflict',
+		110031: 'api.profile.accountDeletionEnterpriseBlocked',
+		110032: 'api.profile.accountDeletionUnavailable',
 		100008: 'api.profile.contactUnchanged',
 	}
 	return messageKeys[error.code] ? i18n.t(messageKeys[error.code]) : error.message
@@ -174,14 +202,24 @@ export function getProfileEnterprises(accessToken: string): Promise<EnterpriseMe
   return fetchAuthenticatedJson<EnterpriseMembership[]>(`${PROFILE_PATH}/enterprises`, { accessToken })
 }
 
+// 中文：注销前置检查只读取状态，不会冻结账号或创建注销申请。
+export function getAccountDeletionPrecheck(accessToken: string): Promise<AccountDeletionPrecheck> {
+  return fetchAuthenticatedJson<AccountDeletionPrecheck>('/api/user/account-deletion/precheck', { accessToken })
+}
+
+// 中文：提交注销申请后服务端会冻结账号并撤销会话，成功响应返回后前端再清理本地令牌。
+export function requestAccountDeletion(accessToken: string, request: AccountDeletionRequest): Promise<AccountDeletionResponse> {
+  return fetchAuthenticatedJson<AccountDeletionResponse>('/api/user/account-deletion', { method: 'POST', body: request, accessToken })
+}
+
 export function getNotificationPreferences(accessToken: string): Promise<NotificationPreferences> {
   return fetchAuthenticatedJson<NotificationPreferences>(`${PROFILE_PATH}/notification-preferences`, { accessToken })
 }
 
-export function updateNotificationPreferences(accessToken: string, values: Partial<Record<NotificationPreferenceCode, boolean>>): Promise<NotificationPreferences> {
+export function updateNotificationPreferences(accessToken: string, values: Partial<Record<NotificationPreferenceCode, boolean>>, thresholds?: NotificationPreferenceThresholds): Promise<NotificationPreferences> {
   return fetchAuthenticatedJson<NotificationPreferences>(`${PROFILE_PATH}/notification-preferences`, {
     method: 'PUT',
-    body: { values },
+    body: thresholds ? { values, thresholds } : { values },
     accessToken,
   })
 }

@@ -738,7 +738,7 @@
 .composer {
   width: min(920px, calc(100% - 48px));
   margin: auto;
-  padding: 12px 0 24px;
+  padding: 12px 0 20px;
 }
 
 .playground-ephemeral-notice {
@@ -895,8 +895,10 @@
 }
 
 .send-btn.semi-button {
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
+  min-height: 32px;
+  flex: 0 0 32px;
   border-radius: 50%;
 }
 

@@ -13,6 +13,7 @@ import Tooltip from "@douyinfe/semi-ui/lib/es/tooltip";
 import {
   IconArrowLeft,
   IconArrowRight,
+  IconArrowUp,
   IconChevronDown,
   IconClose,
   IconCopy,
@@ -24,7 +25,6 @@ import {
   IconPlus,
   IconRefresh,
   IconSearch,
-  IconSend,
   IconStop,
 } from "@douyinfe/semi-icons";
 import { CompatInput as Input } from "@/components/semi-compat";
@@ -893,7 +893,7 @@ export function ImagePage() {
                 className="generation-send-button image-generate-button"
                 theme="solid"
                 type="primary"
-                icon={generating ? <IconStop /> : <IconSend />}
+                icon={generating ? <IconStop /> : <IconArrowUp />}
                 aria-label={t("console.image.generate")}
                 disabled={generating ? false : !canGenerate}
                 onClick={generating ? () => stopGeneration() : () => createGeneration()}

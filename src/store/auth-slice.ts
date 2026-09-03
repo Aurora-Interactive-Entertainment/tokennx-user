@@ -46,8 +46,10 @@ export function authError(error: unknown): AuthOperationError {
 
 function completeAuth(result: AuthResult): AuthUser {
   if (result.status !== 'succeeded' || result.binding_required || !result.user) throw new Error(i18n.t('api.auth.incomplete'))
-  saveAuthTokens(result)
-  return result.user
+  const promptRequired = result.prompt_required ?? result.promt_required
+  const user = promptRequired === undefined ? result.user : { ...result.user, prompt_required: promptRequired }
+  saveAuthTokens({ ...result, user })
+  return user
 }
 
 export const hydrateAuth = createAsyncThunk<AuthUser | null>('auth/hydrate', async () => {
@@ -131,9 +133,9 @@ export const requestBindingCode = createAsyncThunk<PhoneCodeResult, { bindingTic
   }
 })
 
-export const completeBinding = createAsyncThunk<AuthUser, { bindingTicket: string; phone: string; code: string }, ThunkConfig>('auth/completeBinding', async ({ bindingTicket, phone, code }, { rejectWithValue }) => {
+export const completeBinding = createAsyncThunk<AuthUser, { bindingTicket: string; phone: string; code: string; inviteCode?: string }, ThunkConfig>('auth/completeBinding', async ({ bindingTicket, phone, code, inviteCode }, { rejectWithValue }) => {
   try {
-    return completeAuth(await bindWechatPhone(bindingTicket, phone, code, deviceInfo()))
+    return completeAuth(await bindWechatPhone(bindingTicket, phone, code, deviceInfo(), 'zh-CN', inviteCode))
   } catch (error) {
     return rejectWithValue(authError(error))
   }
