@@ -269,9 +269,9 @@
 .trae-members-page > .trae-tabs button::after { right: 0; left: 0; }
 .trae-members-page > .trae-members-workspace, .trae-members-page > .trae-department-editor { margin: 0 var(--trae-members-page-gutter) 36px; border: 0; border-radius: 0; background: transparent; grid-template-columns: 240px minmax(0, 1fr); min-height: 0; align-items: stretch; }
 /* Leave height to the grid stretch so the tree and member list end on the same baseline. */
-.trae-members-page > .trae-members-workspace { column-gap: 48px; transition: grid-template-columns .28s cubic-bezier(.22, 1, .36, 1), column-gap .28s cubic-bezier(.22, 1, .36, 1); }
+.trae-members-page > .trae-members-workspace { column-gap: 48px; transition: grid-template-columns .28s cubic-bezier(.22, 1, .36, 1); }
 .trae-members-page > .trae-members-workspace.is-department-tree-collapsed { grid-template-columns: 0 minmax(0, 1fr); column-gap: 0; }
-.trae-members-page .trae-department-tree { position: relative; min-width: 0; min-height: 0; padding: 16px 0 0; overflow: visible; background: transparent; }
+.trae-members-page .trae-department-tree { position: relative; min-width: 0; min-height: 0; padding: 16px 0 0; overflow: visible; isolation: isolate; background: transparent; }
 .trae-members-page .trae-department-tree.is-collapsed { padding: 0; overflow: hidden; }
 .trae-department-toolbar { display: flex; align-items: center; gap: 8px; padding: 0 0px 16px 0px; }
 .trae-department-toolbar > button:first-child { display: inline-grid; width: 28px; height: 28px; flex: 0 0 28px; place-items: center; padding: 0; border: 0; border-radius: 4px; color: var(--color-text-secondary); background: transparent; cursor: pointer; }
@@ -304,8 +304,8 @@
 .trae-department-menu button { display: flex; align-items: center; gap: 8px; min-height: 28px; padding: 0 6px; border: 0; border-radius: 4px; color: var(--color-text-default); background: transparent; font: inherit; font-size: 13px; text-align: left; cursor: pointer; }
 .trae-department-menu button:hover { color: var(--color-text-default-hover); background: var(--color-bg-overlay-l3); }
 .trae-department-menu button.is-danger { color: #F65A5A; }
-.trae-department-expanded-content { display: flex; width: 100%; min-width: 0; min-height: 0; flex-direction: column; overflow: visible; transition: opacity .16s ease, visibility 0s linear .28s; }
-/* 中文：收起时保留组织树的布局轨道，让内容先淡出，再随表格一起完成横向收缩。 */
+.trae-department-expanded-content { display: flex; width: 100%; min-width: 0; min-height: 0; flex-direction: column; overflow: visible; transition: opacity .16s ease; }
+/* 中文：收起时立即隐藏树内容，避免网格收缩期间出现半透明残影或内容透出。 */
 .trae-department-tree.is-collapsed .trae-department-expanded-content { visibility: hidden; opacity: 0; pointer-events: none; }
 
 /* 桌面端由右侧列表决定整行高度，组织树只跟随宽度变化，不参与撑高页面。 */

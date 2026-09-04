@@ -331,19 +331,26 @@
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 8px;
 }
 .image-result-actions .semi-button {
+  box-sizing: border-box;
+  width: 40px;
+  min-width: 40px;
   min-height: 40px;
   height: 40px;
-  padding-inline: 14px;
+  padding: 0;
+  border: 0 !important;
   border-radius: 6px;
-  background: #fff !important;
+  background: transparent !important;
+  box-shadow: none !important;
 }
 .image-result-actions .semi-button:hover,
+.image-result-actions .semi-button:focus,
 .image-result-actions .semi-button:focus-visible,
 .image-result-actions .semi-button:active {
-  background: var(--color-bg-overlay-l1) !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
 }
 .image-result-actions .image-result-more-wrap > .semi-button {
   width: 40px;
@@ -1182,13 +1189,16 @@ html[data-theme="dark"] .image-workspace {
 }
 
 html[data-theme="dark"] .image-result-actions .semi-button {
-  background: var(--color-bg-base-secondary) !important;
+  background: transparent !important;
 }
 
 html[data-theme="dark"] .image-result-actions .semi-button:hover,
+html[data-theme="dark"] .image-result-actions .semi-button:focus,
 html[data-theme="dark"] .image-result-actions .semi-button:focus-visible,
 html[data-theme="dark"] .image-result-actions .semi-button:active {
-  background: var(--color-bg-overlay-l1) !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
 }
 
 html[data-theme="dark"] .image-new-session-button:hover,
@@ -1203,6 +1213,12 @@ html[data-theme="dark"]
   .image-history-collapse-button:focus-visible
   .semi-icon {
   color: var(--color-text-default);
+}
+
+/* 中文：图片生成历史记录与智能对话使用相同的深色悬浮高亮。 */
+html[data-theme="dark"] .image-history-item:hover,
+html[data-theme="dark"] .image-history-item:focus-visible {
+  background: var(--color-bg-base-tertiary);
 }
 
 @media (max-width: 760px) {

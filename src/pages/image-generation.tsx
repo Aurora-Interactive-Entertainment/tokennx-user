@@ -177,21 +177,21 @@ function ImageResultCard({
 
       <footer className="image-result-actions">
         <Button
+          aria-label={t("console.image.editPrompt")}
+          title={t("console.image.editPrompt")}
           theme="outline"
           size="small"
           icon={<IconEditStroked />}
           onClick={() => onEdit(item.prompt)}
-        >
-          {t("console.image.editPrompt")}
-        </Button>
+        />
         <Button
+          aria-label={t("console.image.regenerate")}
+          title={t("console.image.regenerate")}
           theme="outline"
           size="small"
           icon={<IconRefresh />}
           onClick={() => onRegenerate(item.prompt)}
-        >
-          {t("console.image.regenerate")}
-        </Button>
+        />
         <div className="image-result-more-wrap" ref={moreWrapRef}>
           <Button
             theme="outline"

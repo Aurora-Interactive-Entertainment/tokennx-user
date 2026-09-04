@@ -643,6 +643,19 @@
   align-items: center;
   justify-content: center;
   border-radius: 6px;
+  /* 中文：消息操作按钮不使用 Semi 默认填充背景，仅保留图标交互状态。 */
+  border-color: transparent;
+  background: transparent !important;
+  box-shadow: none;
+}
+
+.message-icon-action.semi-button:hover,
+.message-icon-action.semi-button:focus,
+.message-icon-action.semi-button:focus-visible,
+.message-icon-action.semi-button:active {
+  border-color: transparent;
+  background: transparent !important;
+  box-shadow: none;
 }
 
 .message-icon-action .semi-icon {
@@ -970,6 +983,25 @@ html[data-theme="dark"] .composer-expand-action:focus-visible {
 html[data-theme="dark"] .history-collapse-button:hover .semi-icon,
 html[data-theme="dark"] .history-collapse-button:focus-visible .semi-icon {
   color: var(--color-text-default);
+}
+
+/* 中文：深色模式下给历史记录提供明确但克制的悬浮层次。 */
+html[data-theme="dark"] .history-item:hover,
+html[data-theme="dark"] .history-item:focus-visible {
+  background-color: var(--color-bg-base-tertiary);
+}
+
+html[data-theme="dark"] .history-item.is-active {
+  background-color: var(--color-bg-base-tertiary);
+}
+
+/* 中文：深色模式通用 hover 规则之后再次锁定消息按钮透明背景。 */
+html[data-theme="dark"] .message-icon-action,
+html[data-theme="dark"] .message-icon-action:hover,
+html[data-theme="dark"] .message-icon-action:focus,
+html[data-theme="dark"] .message-icon-action:focus-visible,
+html[data-theme="dark"] .message-icon-action:active {
+  background: transparent !important;
 }
 
 @media (max-width: 760px) {

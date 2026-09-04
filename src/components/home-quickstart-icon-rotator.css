@@ -20,25 +20,26 @@
   object-fit: contain;
   opacity: 0;
   transform: scale(.72);
-  animation: home-quickstart-icon-breathe 16s ease-in-out infinite;
-  animation-delay: calc(var(--home-quickstart-icon-index) * 2s);
+  /* 中文：交接间隔 2.7 秒，总周期随图标数量同步放大，保证一次只亮一个。 */
+  animation: home-quickstart-icon-breathe 21.6s ease-in-out infinite;
+  animation-delay: calc(var(--home-quickstart-icon-index) * 2.7s);
   animation-fill-mode: both;
 }
 
-/* 中文：每个模型图标占用两秒，渐显和微弱光晕形成呼吸灯效果。 */
+/* 中文：淡入/淡出各 0.5 秒，亮起保持 2.2 秒；前一个淡出与下一个淡入完全同步反向衔接，无空档。 */
 @keyframes home-quickstart-icon-breathe {
   0% {
     opacity: 0;
     filter: drop-shadow(0 0 0 rgba(255, 255, 255, 0));
     transform: scale(.72);
   }
-  2.5%,
-  9% {
+  2.32%,
+  12.5% {
     opacity: 1;
     filter: drop-shadow(0 0 5px rgba(255, 255, 255, .6));
     transform: scale(1);
   }
-  12.5%,
+  14.82%,
   100% {
     opacity: 0;
     filter: drop-shadow(0 0 0 rgba(255, 255, 255, 0));

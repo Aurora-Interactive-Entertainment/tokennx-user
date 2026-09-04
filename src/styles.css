@@ -16441,7 +16441,7 @@ html[data-theme="light"] .app-loading-screen__logo-shell .brand-logo-image {
   padding: 0 14px;
   border: 1px solid #fff;
   border-radius: 15px;
-  color: #111216;
+  color: #1f2329;
   background: #fff;
   font-size: 13px;
   font-weight: 600;
@@ -16450,10 +16450,10 @@ html[data-theme="light"] .app-loading-screen__logo-shell .brand-logo-image {
   transition: background-color .2s ease, color .2s ease, border-color .2s ease;
 }
 .public-header .console-entry:hover,
-.public-header .console-entry:focus-visible { color: #111216; background: #f0f0f0; border-color: #f0f0f0; transform: none; }
-html[data-theme="light"] .public-header .console-entry { border-color: #111216; color: #fff; background: #111216; }
+.public-header .console-entry:focus-visible { color: #1f2329; background: #f0f0f0; border-color: #f0f0f0; transform: none; }
+html[data-theme="light"] .public-header .console-entry { border-color: #ededf0; color: #1f2329; background: #ededf0; }
 html[data-theme="light"] .public-header .console-entry:hover,
-html[data-theme="light"] .public-header .console-entry:focus-visible { color: #fff; background: #2a2b30; border-color: #2a2b30; }
+html[data-theme="light"] .public-header .console-entry:focus-visible { color: #1f2329; background: #e0e1e4; border-color: #e0e1e4; }
 .public-header .language-switcher:hover {
   color: #28292d;
   border-color: rgba(255, 255, 255, 0.32);
@@ -18981,13 +18981,17 @@ html[data-theme="light"]
   .public-layout--manuscript-home
   .manuscript-hero-actions
   .manuscript-model-button {
-  /* 中文：浅色主题与深色主题复用同一套黑色毛玻璃按钮视觉。 */
+  /* 中文：浅色模式下查看模型按钮同步为浅色玻璃底，文字使用深色。 */
   border-color: transparent;
-  color: #fff;
+  color: #1f2329;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, .085), rgba(255, 255, 255, .014) 44%, rgba(255, 255, 255, 0) 64%),
-    rgba(10, 12, 10, .92) !important;
-  box-shadow: var(--manuscript-model-glass-shadow) !important;
+    linear-gradient(180deg, rgba(255, 255, 255, .72), rgba(255, 255, 255, .42) 46%, rgba(255, 255, 255, .68)),
+    #f2f3ef !important;
+  box-shadow:
+    0 2px 5px rgba(0, 0, 0, .08),
+    0 6px 12px rgba(0, 0, 0, .05),
+    inset 0 1px 0 rgba(255, 255, 255, .62),
+    inset 0 -1px 2px rgba(0, 0, 0, .03) !important;
 }
 html[data-theme="light"]
   .public-layout--manuscript-home
@@ -19003,11 +19007,15 @@ html[data-theme="light"]
   .manuscript-model-button:active {
   /* 中文：浅色主题交互状态同样保持固定描边和固定底色。 */
   border-color: transparent;
-  color: #fff;
+  color: #1f2329;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, .085), rgba(255, 255, 255, .014) 44%, rgba(255, 255, 255, 0) 64%),
-    rgba(10, 12, 10, .92) !important;
-  box-shadow: var(--manuscript-model-glass-shadow) !important;
+    linear-gradient(180deg, rgba(255, 255, 255, .72), rgba(255, 255, 255, .42) 46%, rgba(255, 255, 255, .68)),
+    #f2f3ef !important;
+  box-shadow:
+    0 2px 5px rgba(0, 0, 0, .08),
+    0 6px 12px rgba(0, 0, 0, .05),
+    inset 0 1px 0 rgba(255, 255, 255, .62),
+    inset 0 -1px 2px rgba(0, 0, 0, .03) !important;
 }
 html[data-theme="light"] .public-layout--manuscript-home .manuscript-hero h1,
 html[data-theme="light"]
@@ -26535,21 +26543,21 @@ html[data-theme="light"] .quickstart-code-token.is-number {
 .public-header.public-header--home .console-entry:hover,
 .public-header.public-header--home .console-entry:focus-visible {
   border-color: #fff;
-  color: #111216;
+  color: #1f2329;
   background: #D8D8D9;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.16);
 }
 html[data-theme="light"] .public-header.public-header--home .console-entry,
 html[data-theme="light"] .public-header.public-header--home .console-entry:hover,
 html[data-theme="light"] .public-header.public-header--home .console-entry:focus-visible {
-  border-color: #111216;
-  color: #fff;
-  background: #34353A;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.24);
+  border-color: #ededf0;
+  color: #1f2329;
+  background: #EDEDF0;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
 }
 
 /* 中文：指定的登录、二维码重试和充值按钮统一为查看模型的黑白毛玻璃胶囊。 */
-:is(.login-capsule-action, .header-login-capsule, .recharge-capsule-action) {
+:is(.login-capsule-action, .login-capsule-soft, .header-login-capsule) {
   position: relative;
   isolation: isolate;
   overflow: visible;
@@ -26568,7 +26576,7 @@ html[data-theme="light"] .public-header.public-header--home .console-entry:focus
   transition: none !important;
 }
 
-:is(.login-capsule-action, .header-login-capsule, .recharge-capsule-action)::before {
+:is(.login-capsule-action, .login-capsule-soft, .header-login-capsule)::before {
   position: absolute;
   inset: -2px;
   z-index: 0;
@@ -26593,21 +26601,45 @@ html[data-theme="light"] .public-header.public-header--home .console-entry:focus
   animation: manuscript-model-rim 5.6s linear infinite;
 }
 
-:is(.login-capsule-action, .header-login-capsule, .recharge-capsule-action) > span,
-:is(.login-capsule-action, .header-login-capsule, .recharge-capsule-action) .semi-button-content {
+:is(.login-capsule-action, .login-capsule-soft, .header-login-capsule) > span,
+:is(.login-capsule-action, .login-capsule-soft, .header-login-capsule) .semi-button-content {
   position: relative;
   z-index: 1;
 }
 
 html[data-theme="light"]
-  :is(.login-capsule-action, .header-login-capsule, .recharge-capsule-action) {
+  :is(.login-capsule-action, .login-capsule-soft, .header-login-capsule) {
   /* 中文：浅色模式保持与查看模型一致的黑色实体玻璃底。 */
   background:
     linear-gradient(180deg, rgba(255, 255, 255, .085), rgba(255, 255, 255, .014) 44%, rgba(255, 255, 255, 0) 64%),
     rgba(10, 12, 10, .92) !important;
 }
 
-:is(.login-capsule-action, .header-login-capsule, .recharge-capsule-action):disabled,
-:is(.login-capsule-action, .header-login-capsule, .recharge-capsule-action).semi-button-disabled {
+/* 中文：浅色模式下登录、重新获取二维码使用浅色玻璃底，减少与浅色弹窗的反差。 */
+html[data-theme="light"]
+  :is(.login-capsule-soft, .header-login-capsule) {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .72), rgba(255, 255, 255, .42) 46%, rgba(255, 255, 255, .68)),
+    #f2f3ef !important;
+  color: #1f2329 !important;
+  /* 中文：浅色玻璃底降低外阴影和内侧高光，避免在浅色弹窗中过重。 */
+  box-shadow:
+    0 2px 5px rgba(0, 0, 0, .08),
+    0 6px 12px rgba(0, 0, 0, .05),
+    inset 0 1px 0 rgba(255, 255, 255, .62),
+    inset 0 -1px 2px rgba(0, 0, 0, .03) !important;
+}
+
+/* 中文：费用下拉中的链接规则优先级较高，浅色模式单独同步胶囊按钮的深色文字。 */
+html[data-theme="light"]
+  .public-header .header-nav a.billing-hover-recharge.login-capsule-soft,
+html[data-theme="light"]
+  .public-header .header-nav a.billing-hover-recharge.login-capsule-soft > span {
+  color: #1f2329 !important;
+  -webkit-text-fill-color: #1f2329 !important;
+}
+
+:is(.login-capsule-action, .login-capsule-soft, .header-login-capsule):disabled,
+:is(.login-capsule-action, .login-capsule-soft, .header-login-capsule).semi-button-disabled {
   opacity: .52;
 }

@@ -1581,7 +1581,7 @@ export function LoginPanel({
             ) : null}
             <LoginConsentNotice />
             <button
-              className="btn btn-primary submit-btn login-capsule-action"
+              className="btn btn-primary submit-btn login-capsule-action login-capsule-soft"
               type="submit"
               disabled={phoneLoginLoading}
             >
@@ -1737,7 +1737,7 @@ export function LoginPanel({
               </p>
               {wechatView === "error" ? (
                 <button
-                  className="btn btn-primary submit-btn login-capsule-action"
+                  className="btn btn-primary submit-btn login-capsule-action login-capsule-soft"
                   type="button"
                   onClick={() => void startWechatLogin()}
                 >
@@ -2370,8 +2370,9 @@ export function PublicHeader({
                     : maskedBillingBalance}
                 </strong>
               </div>
+              {/* 中文：顶部费用下拉中的充值入口与“查看模型”统一使用胶囊毛玻璃按钮。 */}
               <Link
-                className="billing-hover-recharge"
+                className="billing-hover-recharge login-capsule-soft"
                 to="/console/recharge"
                 onClick={() => setBillingMenuOpen(false)}
               >
