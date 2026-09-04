@@ -62,35 +62,41 @@
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-border-neutral-l3) 22%, transparent);
 }
 
-/* 中文：注销确认的取消按钮使用轻灰底、无描边样式，与参考稿保持一致。 */
+/* 中文：取消和危险确认按钮统一复用 AppModal footer 的尺寸与交互规范。 */
 .account-deletion-dialog .account-deletion-cancel-button {
-  min-width: 88px !important;
-  height: 40px !important;
-  min-height: 40px !important;
-  padding: 0 20px !important;
-  border: 0 !important;
-  border-radius: 8px !important;
-  color: #30343b !important;
-  background: #eef0f3 !important;
-  font-size: 14px !important;
-  font-weight: 400 !important;
+  min-width: 76px !important;
+  height: 34px !important;
+  min-height: 34px !important;
+  padding: 0 14px !important;
+  border: 1px solid var(--color-border-neutral-l2) !important;
+  border-radius: var(--radius-6, 6px) !important;
+  color: var(--color-text-default) !important;
+  background: var(--color-bg-base-tertiary) !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
 }
 
 .account-deletion-dialog .account-deletion-cancel-button:hover:not(:disabled),
 .account-deletion-dialog .account-deletion-cancel-button:focus-visible:not(:disabled) {
-  color: #17181b !important;
-  background: #e3e6eb !important;
-}
-
-html[data-theme="dark"] .account-deletion-dialog .account-deletion-cancel-button {
-  color: var(--color-text-default) !important;
-  background: var(--color-bg-base-tertiary) !important;
-}
-
-html[data-theme="dark"] .account-deletion-dialog .account-deletion-cancel-button:hover:not(:disabled),
-html[data-theme="dark"] .account-deletion-dialog .account-deletion-cancel-button:focus-visible:not(:disabled) {
+  border-color: var(--color-border-neutral-l3) !important;
   color: var(--color-text-default-hover) !important;
   background: var(--color-bg-overlay-l3) !important;
+}
+
+.account-deletion-dialog .account-deletion-confirm-button {
+  min-width: 76px !important;
+  height: 34px !important;
+  min-height: 34px !important;
+  padding: 0 14px !important;
+  border-radius: var(--radius-6, 6px) !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+}
+
+.account-deletion-dialog .account-deletion-confirm-button:disabled,
+.account-deletion-dialog .account-deletion-confirm-button.semi-button-disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
 }
 
 @media (max-width: 560px) {

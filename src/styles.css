@@ -4332,7 +4332,7 @@ body textarea {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  height: 40px;
+  height: 31px;
   padding: 0 24px;
   border-radius: 6px;
   font-size: 14px;
@@ -16749,6 +16749,9 @@ html[data-theme="light"] .public-header--home .header-notification-dot {
 .manuscript-hero-actions .btn {
   position: relative;
   isolation: isolate;
+  /* 中文：统一按钮本体与外扩彩色描边的圆角基准，避免四角曲率错位。 */
+  --manuscript-model-button-radius: 23.505px;
+  --manuscript-model-rim-width: 2px;
   width: 212.3px;
   min-width: 212.3px;
   height: 47.01px;
@@ -16756,7 +16759,7 @@ html[data-theme="light"] .public-header--home .header-notification-dot {
   overflow: hidden;
   padding: 0;
   border: 1px solid #484848;
-  border-radius: 23.505px;
+  border-radius: var(--manuscript-model-button-radius);
   color: #fff;
   background: transparent;
   box-shadow: none;
@@ -16816,9 +16819,10 @@ html[data-theme="light"] .public-header--home .header-notification-dot {
 .manuscript-hero-actions .manuscript-model-button::before {
   position: absolute;
   /* 中文：使用 2px 描边宽度与左侧液态金属按钮保持一致。 */
-  inset: -2px;
+  inset: calc(-1 * var(--manuscript-model-rim-width));
   z-index: 0;
-  border-radius: inherit;
+  /* 中文：伪元素向外扩展后同步增加圆角半径，使外圈和按钮内圈保持同心。 */
+  border-radius: calc(var(--manuscript-model-button-radius) + var(--manuscript-model-rim-width));
   background: conic-gradient(
     from var(--manuscript-model-rim-angle),
     rgba(255, 164, 77, .9),
@@ -19422,7 +19426,7 @@ html[data-theme="light"] .public-layout--manuscript-home .manuscript-ad-slot {
 .docs-article {
   position: relative;
   min-width: 0;
-  padding: 28px 0 98px;
+  padding: 40px 0 98px;
 }
 .docs-article-toolbar {
   position: absolute;
@@ -23917,7 +23921,7 @@ html[data-performance="lite"]
   margin: 0 0 12px;
   padding-left: 5px;
   color: #8b8b8b;
-  font-size: 14px;
+  font-size: 13px;
   line-height: 21px;
 }
 :is(.login-popover, .login-card)
@@ -23963,7 +23967,7 @@ html[data-performance="lite"]
 :is(.login-popover, .login-card) .login-consent-notice {
   margin: 0 0 16px;
   color: #fff;
-  font-size: 14px;
+  font-size: 13px;
   line-height: 20px;
 }
 :is(.login-popover, .login-card) .login-consent-notice a {
@@ -23999,7 +24003,7 @@ html[data-performance="lite"]
 :is(.login-popover, .login-card) .login-switch-btn {
   display: flex;
   width: 100%;
-  height: 44px;
+  height: 43px;
   align-items: center;
   justify-content: center;
   gap: 7px;
@@ -24007,7 +24011,7 @@ html[data-performance="lite"]
   border-radius: 22px;
   color: #040000;
   background: #fff;
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 500;
   transition: background-color 0.28s ease;
 }
@@ -24021,8 +24025,8 @@ html[data-performance="lite"]
 }
 .wechat-icon {
   display: block;
-  width: 30px;
-  height: 30px;
+  width: 22px;
+  height: 22px;
   flex: 0 0 30px;
   object-fit: contain;
 }
@@ -26560,9 +26564,12 @@ html[data-theme="light"] .public-header.public-header--home .console-entry:focus
 :is(.login-capsule-action, .login-capsule-soft, .header-login-capsule) {
   position: relative;
   isolation: isolate;
+  /* 中文：公共胶囊按钮也使用查看模型的描边参数，确保遮罩不会因变量缺失而裁空。 */
+  --manuscript-model-button-radius: 999px;
+  --manuscript-model-rim-width: 2px;
   overflow: visible;
   border: 2px solid transparent !important;
-  border-radius: 999px !important;
+  border-radius: var(--manuscript-model-button-radius) !important;
   color: #fff !important;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, .085), rgba(255, 255, 255, .014) 44%, rgba(255, 255, 255, 0) 64%),
@@ -26578,9 +26585,10 @@ html[data-theme="light"] .public-header.public-header--home .console-entry:focus
 
 :is(.login-capsule-action, .login-capsule-soft, .header-login-capsule)::before {
   position: absolute;
-  inset: -2px;
+  inset: calc(-1 * var(--manuscript-model-rim-width));
   z-index: 0;
-  border-radius: inherit;
+  /* 中文：外扩描边增加同等圆角半径，使四角与按钮本体保持同心。 */
+  border-radius: calc(var(--manuscript-model-button-radius) + var(--manuscript-model-rim-width));
   background: conic-gradient(
     from var(--manuscript-model-rim-angle),
     rgba(255, 164, 77, .9),
@@ -26597,7 +26605,7 @@ html[data-theme="light"] .public-header.public-header--home .console-entry:focus
   -webkit-mask-composite: xor;
   mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   mask-composite: exclude;
-  padding: 2px;
+  padding: var(--manuscript-model-rim-width);
   animation: manuscript-model-rim 5.6s linear infinite;
 }
 

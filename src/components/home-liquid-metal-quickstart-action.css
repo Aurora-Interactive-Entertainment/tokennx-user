@@ -12,6 +12,7 @@
   box-shadow:
     0 9px 18px rgba(0, 0, 0, .32),
     0 19px 36px rgba(0, 0, 0, .2);
+  transition: box-shadow .38s cubic-bezier(.22, .61, .36, 1);
 }
 
 /* 中文：只让描边渐变角度变化，避免旋转整个胶囊轮廓后形成巨大的斜向环线。 */
@@ -53,6 +54,18 @@
   filter: blur(.15px) brightness(1.22);
 }
 
+/* 中文：iframe 透明画布在部分浏览器中会退化为白色矩形，外围光晕
+   改由宿主按钮绘制，避免为显示 bloom 而暴露 iframe 的白底。 */
+.home-liquid-metal-quickstart:hover,
+.home-liquid-metal-quickstart:focus-within,
+.home-liquid-metal-quickstart:active {
+  box-shadow:
+    0 0 14px rgba(101, 185, 255, .28),
+    0 0 30px rgba(111, 129, 255, .22),
+    0 12px 24px rgba(0, 0, 0, .34),
+    0 24px 44px rgba(0, 0, 0, .22);
+}
+
 @keyframes home-liquid-metal-rim {
   to { --home-liquid-metal-rim-angle: 360deg; }
 }
@@ -70,9 +83,8 @@
   /* 中文：使用 !important 覆盖首页性能模式对 iframe 的全局 transform 重置。 */
   transform: translate(-50%, -50%) scale(var(--liquid-metal-scale, 1)) !important;
   transform-origin: center;
-  /* 中文：sandbox iframe 的文档画布在深色页面中会被浏览器合成为白底，
-     只保留内部按钮胶囊区域，避免白色矩形遮挡标题和背景。该区域与
-     liquid-metal-quickstart.html 中的按钮尺寸一致，并会随 iframe 缩放同步。 */
+  /* 中文：保留按钮本体裁剪，避免 sandbox iframe 的透明画布在浏览器
+     中退化成白色矩形；外围 hover 光晕由宿主按钮的 box-shadow 补回。 */
   clip-path: inset(82px 82px 82px 82px round 999px);
 }
 
@@ -140,6 +152,21 @@ html[data-theme="light"] .public-layout--manuscript-home .home-liquid-metal-quic
 
 html[data-theme="light"] .public-layout--manuscript-home .home-liquid-metal-quickstart {
   background: #17191b;
+  /* 中文：浅色背景下减弱黑色投影，并保持水平偏移为 0，避免左右深浅不一致。 */
+  box-shadow:
+    0 5px 12px rgba(0, 0, 0, .16),
+    0 11px 24px rgba(0, 0, 0, .1);
+}
+
+html[data-theme="light"] .public-layout--manuscript-home .home-liquid-metal-quickstart:hover,
+html[data-theme="light"] .public-layout--manuscript-home .home-liquid-metal-quickstart:focus-within,
+html[data-theme="light"] .public-layout--manuscript-home .home-liquid-metal-quickstart:active {
+  /* 中文：浅色模式 hover 仍保留彩色光晕，但降低黑色阴影的重量。 */
+  box-shadow:
+    0 0 12px rgba(101, 185, 255, .2),
+    0 0 24px rgba(111, 129, 255, .14),
+    0 7px 16px rgba(0, 0, 0, .16),
+    0 14px 28px rgba(0, 0, 0, .1);
 }
 
 @media (max-width: 560px) {

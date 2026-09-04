@@ -326,6 +326,8 @@ export function TraeEnterpriseInvitations({
             <Form.Select
               field="role"
               label={t("traeEnterprise.inviteList.targetRole")}
+              className="trae-select trae-invitation-form-select"
+              dropdownClassName="trae-select-dropdown trae-invitation-form-dropdown"
               rules={[{ required: true, message: t("traeEnterprise.inviteList.targetRoleRequired") }]}
             >
               {roleItems.map((role) => <Form.Select.Option key={role.code} value={role.code}>{role.name}</Form.Select.Option>)}
@@ -333,6 +335,8 @@ export function TraeEnterpriseInvitations({
             <Form.Select
               field="departmentId"
               label={t("traeEnterprise.inviteList.department")}
+              className="trae-select trae-invitation-form-select"
+              dropdownClassName="trae-select-dropdown trae-invitation-form-dropdown"
               rules={[{ required: true, message: t("traeEnterprise.inviteList.departmentRequired") }]}
               placeholder={t("traeEnterprise.inviteList.departmentPlaceholder")}
             >

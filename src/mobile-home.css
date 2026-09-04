@@ -65,12 +65,13 @@
     transform: none;
   }
   .public-layout--manuscript-home .manuscript-hero-actions .btn {
+    --manuscript-model-button-radius: 14px;
     width: 126.51px;
     min-width: 0;
     height: 28.01px;
     min-height: 28.01px;
     flex: 0 0 126.51px;
-    border-radius: 14px;
+    border-radius: var(--manuscript-model-button-radius);
     font-size: 13.11px;
   }
   .public-layout--manuscript-home .manuscript-digital-stats {
@@ -565,11 +566,12 @@
   .public-layout--manuscript-home .manuscript-hero h1 { gap: 0 clamp(15.04px, 4.011vw, 30.08px); }
   .public-layout--manuscript-home .manuscript-hero-actions { gap: clamp(27.83px, 7.421vw, 55.66px); margin-top: clamp(32px, 8.533vw, 64px); }
   .public-layout--manuscript-home .manuscript-hero-actions .btn {
+    --manuscript-model-button-radius: clamp(14px, 3.733vw, 28px);
     width: clamp(126.51px, 33.736vw, 253.02px);
     height: clamp(28.01px, 7.469vw, 56.03px);
     min-height: clamp(28.01px, 7.469vw, 56.03px);
     flex-basis: clamp(126.51px, 33.736vw, 253.02px);
-    border-radius: clamp(14px, 3.733vw, 28px);
+    border-radius: var(--manuscript-model-button-radius);
     font-size: clamp(13.11px, 3.496vw, 26.22px);
   }
   .public-layout--manuscript-home .manuscript-digital-stats {
