@@ -698,19 +698,15 @@ export const consoleResources = {
         days30: "30 天",
         days90: "90 天",
         year1: "1 年",
-        expiryHint: "到期后密钥自动停用，历史调用与账单记录继续保留。",
         currentEnabledModels: "当前空间全部已启用模型",
         selectedModel: "指定模型",
         searchModel: "搜索模型...",
         selectedCount: "已选 {{count}} 个",
         allModelsPlaceholder: "所有模型（不限制）",
         noMatchingModels: "没有匹配的可用模型",
-        modelScopeHint:
-          "平台下线、企业禁用或空间权限限制的模型不会出现在选择列表中。",
         expenseSource: "费用来源",
         balanceExpense: "按余额消耗",
         subscriptionExpense: "按订阅消耗",
-        billingHint: "实际扣费规则以服务端账户和订阅权益状态为准。",
         enableLimits: "启用限制",
         enableLimitsHint: "为此 API 密钥启用费用上限和调用限流。",
         operator: "操作人",
@@ -728,7 +724,6 @@ export const consoleResources = {
         cumulativeLimit: "累计费用上限",
         unsetAccountBalance: "未设置时受账户余额约束",
         costLimitPlaceholder: "留空表示不设单独上限",
-        costLimitHint: "达到后密钥自动停用，未设置时受工作空间余额约束。",
         rateLimit: "调用限流",
         unlimited: "不限",
         rateLimitHint:
@@ -2892,21 +2887,15 @@ export const consoleResources = {
         days30: "30 days",
         days90: "90 days",
         year1: "1 year",
-        expiryHint:
-          "Expired keys are disabled automatically. Historical requests and billing remain available.",
         currentEnabledModels: "All enabled models in this workspace",
         selectedModel: "Selected models",
         searchModel: "Search models...",
         selectedCount: "{{count}} selected",
         allModelsPlaceholder: "All models (unlimited)",
         noMatchingModels: "No matching models available",
-        modelScopeHint:
-          "Platform-offline, enterprise-disabled, or workspace-restricted models are excluded.",
         expenseSource: "Billing source",
         balanceExpense: "Charge balance",
         subscriptionExpense: "Charge subscription",
-        billingHint:
-          "Actual billing follows the account and subscription entitlements returned by the service.",
         enableLimits: "Enable limits",
         enableLimitsHint:
           "Set a cost limit and request rate limits for this API key.",
@@ -2926,8 +2915,6 @@ export const consoleResources = {
         cumulativeLimit: "Cumulative cost limit",
         unsetAccountBalance: "Uses account balance when not set",
         costLimitPlaceholder: "Leave empty for no separate limit",
-        costLimitHint:
-          "The key is disabled after the limit is reached; otherwise the workspace balance applies.",
         rateLimit: "Rate limits",
         unlimited: "Unlimited",
         rateLimitHint:

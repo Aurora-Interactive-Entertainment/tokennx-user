@@ -36,6 +36,8 @@ import {
 } from "@/utils/ephemeral-history";
 import "./image-generation.css";
 
+const IMAGE_PICKER_MOTION_DURATION_MS = 260;
+
 type ImageHistory = {
   id: string;
   prompt: string;
@@ -405,7 +407,8 @@ function ImageModelPicker({
       frame = requestAnimationFrame(() => setIsActive(true));
     } else {
       setIsActive(false);
-      timer = setTimeout(() => setIsMounted(false), 180);
+      // 中文：等待遮罩和面板的退出过渡完成后再卸载，避免收起动画被截断。
+      timer = setTimeout(() => setIsMounted(false), IMAGE_PICKER_MOTION_DURATION_MS);
     }
     return () => {
       if (frame !== undefined) cancelAnimationFrame(frame);

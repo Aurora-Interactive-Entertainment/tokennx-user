@@ -105,6 +105,9 @@ type ApiKeyFormState = {
   concurrency: string;
 };
 
+type ApiKeyRequiredField = "name" | "memberID";
+type ApiKeyRequiredErrors = Partial<Record<ApiKeyRequiredField, string>>;
+
 type ApiKeyAction = {
   type: "enable" | "disable" | "delete";
   key: UserApiKey;
@@ -271,6 +274,7 @@ export function ApiKeysPage({
   const [createdSecret, setCreatedSecret] = useState<string | null>(null);
   const [editingKey, setEditingKey] = useState<UserApiKey | null>(null);
   const [form, setForm] = useState<ApiKeyFormState>(emptyApiKeyForm);
+  const [requiredErrors, setRequiredErrors] = useState<ApiKeyRequiredErrors>({});
   const [expiryPreset, setExpiryPreset] = useState<ApiKeyExpiryPreset>("never");
   const [filter, setFilter] = useState<ApiKeyStatusFilter>("all");
   const [result, setResult] = useState<UserApiKeyList | null>(null);
@@ -470,11 +474,19 @@ export function ApiKeysPage({
 
   function updateForm(patch: Partial<ApiKeyFormState>): void {
     setForm((previous) => ({ ...previous, ...patch }));
+    if (!("name" in patch) && !("memberID" in patch)) return;
+    setRequiredErrors((previous) => {
+      const next = { ...previous };
+      if ("name" in patch && String(patch.name ?? "").trim()) delete next.name;
+      if ("memberID" in patch && String(patch.memberID ?? "").trim()) delete next.memberID;
+      return next;
+    });
   }
 
   function openCreate(): void {
     setEditingKey(null);
     setBulkEditing(false);
+    setRequiredErrors({});
     const requestedModelKey = searchParams.get("model")?.trim();
     const requestedModel = requestedModelKey
       ? (result?.available_models ?? []).find(
@@ -501,6 +513,7 @@ export function ApiKeysPage({
   function openEdit(key: UserApiKey): void {
     setEditingKey(key);
     setBulkEditing(false);
+    setRequiredErrors({});
     setForm({
       name: key.name,
       tagsText: key.tags.join(", "),
@@ -528,6 +541,7 @@ export function ApiKeysPage({
     if (!first) return;
     setEditingKey(null);
     setBulkEditing(true);
+    setRequiredErrors({});
     setForm({
       name: "",
       tagsText: "",
@@ -555,6 +569,7 @@ export function ApiKeysPage({
     setModalVisible(false);
     setEditingKey(null);
     setBulkEditing(false);
+    setRequiredErrors({});
   }
 
   function selectExpiry(value: string): void {
@@ -590,14 +605,17 @@ export function ApiKeysPage({
     const name = form.name.trim();
     const memberID =
       mode === "enterprise" && !editingKey && !bulk ? form.memberID.trim() : "";
-    if (!bulk && !name) {
-      Toast.warning(t("console.account.keyNameRequired"));
-      return null;
-    }
+    const nextRequiredErrors: ApiKeyRequiredErrors = {};
+    if (!bulk && !name) nextRequiredErrors.name = t("console.account.keyNameRequired");
     if (mode === "enterprise" && !editingKey && !bulk && !memberID) {
-      Toast.warning(t("console.account.memberRequired"));
+      nextRequiredErrors.memberID = t("console.account.memberRequired");
+    }
+    if (nextRequiredErrors.name || nextRequiredErrors.memberID) {
+      // 中文：必填项使用字段内错误反馈，和企业人员管理弹窗保持一致。
+      setRequiredErrors(nextRequiredErrors);
       return null;
     }
+    setRequiredErrors({});
     if (!bulk && Array.from(name).length > 32) {
       Toast.warning(t("console.account.keyNameTooLong"));
       return null;
@@ -1562,7 +1580,7 @@ export function ApiKeysPage({
                   {t("console.account.tagsHint")}
                 </span>
               </div>
-              <div className="api-key-form-field api-key-name-field">
+              <div className={`api-key-form-field api-key-name-field${requiredErrors.name ? " is-invalid" : ""}`}>
                 <SemiFormLabel className="field-label" name="key-name" required>
                   {t("console.account.keyName")}
                 </SemiFormLabel>
@@ -1572,13 +1590,20 @@ export function ApiKeysPage({
                   aria-required="true"
                   value={form.name}
                   onChange={(value) => updateForm({ name: value })}
+                  validateStatus={requiredErrors.name ? "error" : "default"}
                   placeholder={t("console.account.keyNamePlaceholder")}
                   maxLength={32}
                   showClear
                 />
-                <span className="api-key-field-hint">
-                  {Array.from(form.name).length}/32
-                </span>
+                {requiredErrors.name ? (
+                  <span className="api-key-field-error" id="key-name-error" role="alert">
+                    {requiredErrors.name}
+                  </span>
+                ) : (
+                  <span className="api-key-field-hint">
+                    {Array.from(form.name).length}/32
+                  </span>
+                )}
               </div>
             </>
           ) : null}
@@ -1612,9 +1637,6 @@ export function ApiKeysPage({
                     {t("console.account.year1")}
                   </Select.Option>
                 </Select>
-                <span className="api-key-field-hint">
-                  {t("console.account.expiryHint")}
-                </span>
               </div>
               <div className="api-key-form-field api-key-model-field api-key-advanced-inline-field">
                 <label className="field-label" htmlFor="key-models">
@@ -1669,13 +1691,9 @@ export function ApiKeysPage({
                     ))}
                   </Select>
                 </div>
-                <span className="api-key-field-hint">
-                  {t("console.account.modelScopeHint")}
-                </span>
               </div>
               <fieldset
                 className="api-key-form-field api-key-fieldset api-key-billing-field api-key-advanced-inline-field"
-                aria-describedby="billing-source-hint"
               >
             <legend className="field-label">
               {t("console.account.expenseSource")}
@@ -1702,9 +1720,6 @@ export function ApiKeysPage({
                 <span>{t("console.account.subscriptionExpense")}</span>
               </label>
             </div>
-            <span className="api-key-field-hint" id="billing-source-hint">
-              {t("console.account.billingHint")}
-            </span>
               </fieldset>
               <div className="api-key-form-field api-key-whitelist-field api-key-advanced-inline-field">
                 <label className="field-label" htmlFor="key-whitelist">
@@ -1738,7 +1753,7 @@ export function ApiKeysPage({
             </label>
           </div>
           {mode === "enterprise" && !editingKey && !bulkEditing ? (
-            <div className="api-key-form-field api-key-member-field">
+            <div className={`api-key-form-field api-key-member-field${requiredErrors.memberID ? " is-invalid" : ""}`}>
               <SemiFormLabel className="field-label" name="key-member" required>
                 {t("console.account.operator")}
               </SemiFormLabel>
@@ -1758,6 +1773,7 @@ export function ApiKeysPage({
                   membersError || t("console.account.operatorEmpty")
                 }
                 block
+                validateStatus={requiredErrors.memberID ? "error" : "default"}
                 aria-required="true"
                 inputProps={{ required: true, "aria-required": true }}
                 dropdownClassName="trae-select-dropdown trae-members-filter-dropdown api-key-member-dropdown"
@@ -1768,9 +1784,15 @@ export function ApiKeysPage({
                   </Select.Option>
                 ))}
               </Select>
-              <span className="api-key-field-hint">
-                {t("console.account.operatorHint")}
-              </span>
+              {requiredErrors.memberID ? (
+                <span className="api-key-field-error" id="key-member-error" role="alert">
+                  {requiredErrors.memberID}
+                </span>
+              ) : (
+                <span className="api-key-field-hint">
+                  {t("console.account.operatorHint")}
+                </span>
+              )}
             </div>
           ) : null}
           {advancedVisible ? (
@@ -1796,9 +1818,6 @@ export function ApiKeysPage({
                         inputMode="decimal"
                       />
                     </div>
-                    <span className="api-key-field-hint">
-                      {t("console.account.costLimitHint")}
-                    </span>
                   </div>
                   <div className="api-key-form-field">
                     <label className="field-label">

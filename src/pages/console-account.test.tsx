@@ -202,6 +202,25 @@ describe('密钥管理页面', () => {
     expect(screen.getByText('接口用户')).toBeInTheDocument()
   })
 
+  // 中文：创建接口发起前，必填项应在字段内显示 Semi 错误状态，而非仅显示全局提示。
+  it('创建企业密钥时在密钥名称和操作人字段显示必填提示', async () => {
+    const user = userEvent.setup()
+    window.localStorage.setItem('token-nx:user-front:v1', JSON.stringify({
+      activeWorkspaceId: 'enterprise-1',
+      workspaces: [{ id: 'enterprise-1', name: '示例企业', type: 'enterprise', role: 'owner' }],
+    }))
+    mockApiKeyApi()
+    renderPage(false, '/console/enterprise-api-keys', false, 'enterprise')
+
+    await user.click(await screen.findByRole('button', { name: /创建 API 密钥/ }))
+    await user.click(screen.getByRole('button', { name: 'confirm' }))
+
+    expect(await screen.findByText('请输入密钥名称')).toBeInTheDocument()
+    expect(screen.getByText('请选择操作人')).toBeInTheDocument()
+    expect(document.querySelector('#key-name')?.closest('.semi-input-wrapper')).toHaveClass('semi-input-wrapper-error')
+    expect(document.querySelector('#key-member')).toHaveClass('semi-select-error')
+  })
+
   // 中文：密钥管理页的部门筛选在前端按成员目录过滤，人员筛选则使用企业密钥接口参数。
   it('企业密钥管理支持按部门和可搜索人员筛选', async () => {
     const user = userEvent.setup()

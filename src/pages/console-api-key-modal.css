@@ -1,7 +1,7 @@
 /* 中文：创建与编辑 API Key 弹窗复用 AppModal 基线，仅约束业务宽高和内部表单。 */
 .api-key-management-modal .semi-modal {
   width: min(600px, calc(100vw - var(--spacing-32))) !important;
-  max-height: calc(100dvh - 64px);
+  max-height: calc(100dvh - 96px);
   margin: auto;
 }
 
@@ -38,6 +38,29 @@
 .api-key-modal-form > .api-key-billing-field { order: 7; }
 .api-key-modal-form > .api-key-whitelist-field { order: 8; }
 .api-key-modal-form > .api-key-advanced-fields { order: 9; }
+
+/* 中文：限制内容在挂载时轻微淡入上移，减少开关展开的突兀感。 */
+.api-key-advanced-inline-field,
+.api-key-advanced-fields {
+  animation: api-key-advanced-enter 180ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+.api-key-model-field { animation-delay: 20ms; }
+.api-key-billing-field { animation-delay: 40ms; }
+.api-key-whitelist-field { animation-delay: 60ms; }
+.api-key-advanced-fields { animation-delay: 80ms; }
+
+@keyframes api-key-advanced-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
 
 .api-key-modal-form > .banner-notice {
   min-height: 44px;
@@ -79,6 +102,12 @@
   line-height: 1.5;
 }
 
+.api-key-field-error {
+  color: #f65a5a;
+  font-size: 11px;
+  line-height: 16px;
+}
+
 .api-key-management-modal .api-key-modal-form .semi-input-wrapper,
 .api-key-management-modal .api-key-modal-form .semi-select {
   min-width: 0;
@@ -99,6 +128,16 @@
   border-color: var(--color-border-neutral-l3);
   background: var(--color-bg-base-secondary);
   box-shadow: none;
+}
+
+/* 中文：必填校验沿用人员管理的 Semi 错误边框和字段内错误文案。 */
+.api-key-management-modal .api-key-modal-form .semi-input-wrapper.semi-input-wrapper-error,
+.api-key-management-modal .api-key-modal-form .semi-input-wrapper.semi-input-wrapper-error:hover,
+.api-key-management-modal .api-key-modal-form .semi-input-wrapper.semi-input-wrapper-error.semi-input-wrapper-focus,
+.api-key-management-modal .api-key-modal-form .semi-select.semi-select-error,
+.api-key-management-modal .api-key-modal-form .semi-select.semi-select-error:hover,
+.api-key-management-modal .api-key-modal-form .semi-select.semi-select-error.semi-select-focus {
+  border-color: #f65a5a;
 }
 
 .api-key-management-modal .api-key-modal-form .semi-input,
@@ -454,11 +493,11 @@
 @media (max-width: 640px) {
   .api-key-management-modal .semi-modal {
     width: calc(100vw - var(--spacing-24)) !important;
-    max-height: calc(100dvh - var(--spacing-24));
+    max-height: calc(100dvh - 48px);
   }
 
   .api-key-management-modal .semi-modal-content {
-    max-height: calc(100dvh - var(--spacing-24));
+    max-height: calc(100dvh - 48px);
   }
 
   .billing-source-options,
@@ -487,6 +526,11 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .api-key-advanced-inline-field,
+  .api-key-advanced-fields {
+    animation: none;
+  }
+
   .billing-source-option {
     transition: none;
   }
