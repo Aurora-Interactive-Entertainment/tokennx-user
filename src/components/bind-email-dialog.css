@@ -1,5 +1,5 @@
 .bind-email-modal .semi-modal-content { max-width: min(560px, calc(100vw - 24px)); }
-.bind-email-content { display: grid; gap: 12px; padding-top: 4px; }
+.bind-email-content { display: grid; gap: 8px; padding-top: 4px; }
 .bind-email-content > p { margin: 0 0 8px; color: var(--color-text-secondary); font-size: 12px; line-height: 1.6; }
 .bind-email-content .semi-form-field { margin-bottom: 0; }
 .bind-email-content .semi-form-field-label { color: var(--color-text-default-hover); font-size: 14px; font-weight: 600; }
@@ -10,6 +10,6 @@
 .bind-email-code-row .semi-form-field { min-width: 0; }
 .bind-email-code-row .semi-button { min-width: 128px; height: 32px; }
 .bind-email-send-code { margin-top: 36px; }
-.bind-email-content > p.bind-email-error { margin: 0; color: var(--color-danger, #df4545); font-size: 13px; }
+.bind-email-error { margin: 0; color: var(--color-danger, #df4545); font-size: 13px; }
 .bind-email-footer { display: flex; gap: 8px; }
 @media (max-width: 560px) { .bind-email-code-row { grid-template-columns: 1fr; } .bind-email-code-row .semi-button { width: 100%; margin-top: 0; } }
