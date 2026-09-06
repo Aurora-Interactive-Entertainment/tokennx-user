@@ -174,9 +174,22 @@ export function downloadExportTask(
 function abortableDelay(delayMs: number, signal?: AbortSignal | null): Promise<void> {
   if (signal?.aborted) return Promise.reject(signal.reason);
   return new Promise((resolve, reject) => {
-    const timer = window.setTimeout(resolve, delayMs);
-    const onAbort = () => {
+    let settled = false;
+    const cleanup = () => {
       window.clearTimeout(timer);
+      signal?.removeEventListener("abort", onAbort);
+    };
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      resolve();
+    };
+    const timer = window.setTimeout(finish, delayMs);
+    const onAbort = () => {
+      if (settled) return;
+      settled = true;
+      cleanup();
       reject(signal?.reason);
     };
     signal?.addEventListener("abort", onAbort, { once: true });

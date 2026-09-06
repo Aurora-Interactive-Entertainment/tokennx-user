@@ -216,19 +216,20 @@ function parseHomepageStats(value: unknown): PublicHomepageStats {
   return { tokenVolume: Math.floor(tokenTotal / 1_000_000), apiCalls: apiCallTotal }
 }
 
-export async function getPublicHomepage(accessToken?: string): Promise<PublicHomepage> {
+export async function getPublicHomepage(accessToken?: string, signal?: AbortSignal): Promise<PublicHomepage> {
   if (!accessToken && !initialHomepageRequestConsumed && typeof window !== 'undefined') {
     const initialRequest = window.__TOKEN_NX_HOMEPAGE_REQUEST__
     if (initialRequest) {
       initialHomepageRequestConsumed = true
       delete window.__TOKEN_NX_HOMEPAGE_REQUEST__
       const preloadedValue = await initialRequest
+      if (signal?.aborted) throw signal.reason ?? new DOMException('请求已取消', 'AbortError')
       if (preloadedValue !== undefined) return parseHomepage(preloadedValue)
     }
   }
-  return parseHomepage(await fetchJson<unknown>(PUBLIC_HOMEPAGE_PATH, accessToken ? { accessToken } : {}))
+  return parseHomepage(await fetchJson<unknown>(PUBLIC_HOMEPAGE_PATH, { ...(accessToken ? { accessToken } : {}), ...(signal ? { signal } : {}) }))
 }
 
-export async function getPublicHomepageStats(): Promise<PublicHomepageStats> {
-  return parseHomepageStats(await fetchJson<unknown>(PUBLIC_HOMEPAGE_STATS_PATH))
+export async function getPublicHomepageStats(signal?: AbortSignal): Promise<PublicHomepageStats> {
+  return parseHomepageStats(await fetchJson<unknown>(PUBLIC_HOMEPAGE_STATS_PATH, signal ? { signal } : {}))
 }

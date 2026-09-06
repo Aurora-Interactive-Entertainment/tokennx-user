@@ -8,7 +8,13 @@ function refreshAccessToken(refreshToken: string): Promise<AuthenticatedSession>
   return refreshAuthSession(refreshToken)
 }
 
+function throwIfAborted(signal?: AbortSignal | null): void {
+  if (!signal?.aborted) return
+  throw signal.reason ?? new DOMException('请求已取消', 'AbortError')
+}
+
 async function fetchAuthenticated<T>(path: string, options: FetchJsonOptions, request: (accessToken: string) => Promise<T>): Promise<T> {
+	throwIfAborted(options.signal)
 	const accessToken = options.accessToken ?? getAccessToken()
   if (!accessToken) {
     clearAuthTokens()
@@ -19,11 +25,13 @@ async function fetchAuthenticated<T>(path: string, options: FetchJsonOptions, re
 		return await request(accessToken)
 	} catch (error) {
 	    if (!isAuthenticationFailure(error)) throw error
+	    throwIfAborted(options.signal)
 
     // 中文：其他标签页可能已经完成刷新，先重试同步到内存中的新访问令牌，避免再次轮换刷新令牌。
     const synchronizedAccessToken = getAccessToken()
     if (synchronizedAccessToken && synchronizedAccessToken !== accessToken) {
       try {
+	        throwIfAborted(options.signal)
         return await request(synchronizedAccessToken)
       } catch (synchronizedError) {
         if (!isAuthenticationFailure(synchronizedError)) throw synchronizedError
@@ -37,7 +45,8 @@ async function fetchAuthenticated<T>(path: string, options: FetchJsonOptions, re
     }
 
     // 中文：认证失败只自动刷新一次，刷新失败或重试仍认证失败才清理会话。
-    let refreshed: AuthenticatedSession
+	    throwIfAborted(options.signal)
+	    let refreshed: AuthenticatedSession
     try {
       refreshed = await refreshAccessToken(refreshToken)
     } catch (refreshError) {
@@ -49,6 +58,7 @@ async function fetchAuthenticated<T>(path: string, options: FetchJsonOptions, re
 	}
 
 	try {
+		throwIfAborted(options.signal)
 		return await request(refreshed.access_token)
 		} catch (retryError) {
 			if (isAuthenticationFailure(retryError)) clearAuthTokens({ expectedRefreshToken: refreshed.refresh_token })

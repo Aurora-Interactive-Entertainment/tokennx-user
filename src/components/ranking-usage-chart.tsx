@@ -71,7 +71,14 @@ export function RankingRecentUsageChart({ data }: { data: RecentModelUsage }) {
       const labelInterval = Math.max(0, Math.ceil(data.weeks.length / (mobile ? 5 : 8)) - 1)
       return {
         grid: mobile
-          ? { left: 8, right: 8, top: 18, bottom: 38, containLabel: true }
+          ? {
+              left: 8,
+              right: 8,
+              top: 18,
+              bottom: 38,
+              outerBoundsMode: 'same',
+              outerBoundsContain: 'axisLabel',
+            }
           : { left: 72, right: 12, top: 18, bottom: 58 },
         xAxis: {
           data: data.weeks.map((week) => weekLabel(week, i18n.language)),

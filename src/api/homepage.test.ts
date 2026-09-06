@@ -130,11 +130,36 @@ describe('公开首页内容 API', () => {
     await expect(getPublicHomepage()).rejects.toMatchObject({ name: 'ApiError', status: 502, code: 100003 })
   })
 
+  it('支持取消首页内容请求', async () => {
+    const controller = new AbortController()
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation((_input, init) => new Promise((_resolve, reject) => {
+      init?.signal?.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')), { once: true })
+    }))
+
+    const request = getPublicHomepage(undefined, controller.signal)
+    controller.abort()
+
+    await expect(request).rejects.toMatchObject({ name: 'AbortError' })
+    expect(fetchMock.mock.calls[0]?.[1]?.signal).toBeInstanceOf(AbortSignal)
+  })
+
   it('读取首页累计统计并兼容数字字符串', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(response({ token_total: '11820495', api_call_total: 800, generated_at: 1786086854834 }))
 
     await expect(getPublicHomepageStats()).resolves.toEqual({ tokenVolume: 11, apiCalls: 800 })
     expect(fetchMock).toHaveBeenCalledWith('/api/homepage/stats', expect.objectContaining({ credentials: 'omit' }))
+  })
+
+  it('支持取消首页累计统计请求', async () => {
+    const controller = new AbortController()
+    vi.spyOn(globalThis, 'fetch').mockImplementation((_input, init) => new Promise((_resolve, reject) => {
+      init?.signal?.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')), { once: true })
+    }))
+
+    const request = getPublicHomepageStats(controller.signal)
+    controller.abort()
+
+    await expect(request).rejects.toMatchObject({ name: 'AbortError' })
   })
 
   it('首页累计统计字段无效时拒绝更新数据', async () => {

@@ -216,9 +216,22 @@ function readVideoFailure(error: unknown, fallback: string): VideoRequestFailure
 
 function waitForVideoPoll(delay: number, signal: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
-    const timer = window.setTimeout(resolve, delay)
-    const abort = (): void => {
+    let settled = false
+    const cleanup = () => {
       window.clearTimeout(timer)
+      signal.removeEventListener('abort', abort)
+    }
+    const finish = () => {
+      if (settled) return
+      settled = true
+      cleanup()
+      resolve()
+    }
+    const timer = window.setTimeout(finish, delay)
+    const abort = (): void => {
+      if (settled) return
+      settled = true
+      cleanup()
       reject(new DOMException('视频任务轮询已取消', 'AbortError'))
     }
     if (signal.aborted) abort()
@@ -405,14 +418,15 @@ export function VideoPage() {
 
   useEffect(() => {
     let active = true
+    const controller = new AbortController()
     setApiKeysLoading(true)
     setApiKeyError('')
-    void getUserApiKeys(workspaceContext, 'active').then((result) => {
-      if (!active) return
+    void getUserApiKeys(workspaceContext, 'active', { signal: controller.signal }).then((result) => {
+      if (!active || controller.signal.aborted) return
       const keys = result.items
       setApiKeys(keys)
     }).catch((error: unknown) => {
-      if (!active) return
+      if (!active || controller.signal.aborted) return
       if (isAuthenticationFailure(error)) {
         dispatch(invalidateAuth())
         navigate('/', { replace: true })
@@ -422,7 +436,7 @@ export function VideoPage() {
     }).finally(() => {
       if (active) setApiKeysLoading(false)
     })
-    return () => { active = false }
+    return () => { active = false; controller.abort() }
   }, [dispatch, navigate, t, workspaceContext])
 
   useEffect(() => {

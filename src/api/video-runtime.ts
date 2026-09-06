@@ -60,8 +60,8 @@ function createRequestId(): string {
 function createRequestController(signal: AbortSignal | undefined): { controller: AbortController; clear: () => void } {
   const controller = new AbortController()
   const timeout = window.setTimeout(() => controller.abort(), VIDEO_REQUEST_TIMEOUT_MS)
-  const abort = (): void => controller.abort()
-  if (signal?.aborted) controller.abort()
+  const abort = (): void => controller.abort(signal?.reason)
+  if (signal?.aborted) controller.abort(signal.reason)
   signal?.addEventListener('abort', abort, { once: true })
   return {
     controller,
@@ -238,7 +238,11 @@ export async function submitVideoGeneration(input: VideoGenerationInput): Promis
     }, requestId)
   } catch (error) {
     if (error instanceof VideoRuntimeError) throw error
-    if (error instanceof DOMException && error.name === 'AbortError') throw new VideoRuntimeError(i18n.t('api.videoRuntime.timeout'), 408, 'request_timeout', requestId)
+    // 中文：调用方主动取消与请求超时使用不同语义，避免停止生成后误报超时。
+    if (input.signal?.aborted) throw error
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      throw new VideoRuntimeError(i18n.t('api.videoRuntime.timeout'), 408, 'request_timeout', requestId)
+    }
     throw new VideoRuntimeError(i18n.t('api.videoRuntime.networkFailure'), 0, 'network_error', requestId)
   } finally {
     requestController.clear()
@@ -266,7 +270,10 @@ export async function getVideoTask(apiKey: string, taskId: string, signal?: Abor
     }, requestId, normalizedTaskId)
   } catch (error) {
     if (error instanceof VideoRuntimeError) throw error
-    if (error instanceof DOMException && error.name === 'AbortError') throw new VideoRuntimeError(i18n.t('api.videoRuntime.timeout'), 408, 'request_timeout', requestId)
+    if (signal?.aborted) throw error
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      throw new VideoRuntimeError(i18n.t('api.videoRuntime.timeout'), 408, 'request_timeout', requestId)
+    }
     throw new VideoRuntimeError(i18n.t('api.videoRuntime.networkFailure'), 0, 'network_error', requestId)
   } finally {
     requestController.clear()
@@ -294,7 +301,10 @@ export async function cancelVideoTask(apiKey: string, taskId: string, signal?: A
     }, requestId, normalizedTaskId)
   } catch (error) {
     if (error instanceof VideoRuntimeError) throw error
-    if (error instanceof DOMException && error.name === 'AbortError') throw new VideoRuntimeError(i18n.t('api.videoRuntime.timeout'), 408, 'request_timeout', requestId)
+    if (signal?.aborted) throw error
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      throw new VideoRuntimeError(i18n.t('api.videoRuntime.timeout'), 408, 'request_timeout', requestId)
+    }
     throw new VideoRuntimeError(i18n.t('api.videoRuntime.networkFailure'), 0, 'network_error', requestId)
   } finally {
     requestController.clear()

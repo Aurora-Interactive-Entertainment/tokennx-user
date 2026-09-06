@@ -131,6 +131,8 @@ export async function fetchResponse(path: string, options: FetchJsonOptions = {}
       signal: controller.signal,
     })
   } catch (error) {
+    // 中文：调用方主动取消不应被误报为网络故障，页面卸载和用户点击停止都依赖该语义。
+    if (options.signal?.aborted) throw error
     if (timedOut && error instanceof DOMException && error.name === 'AbortError') throw new ApiError(i18n.t('api.http.timeout'), 408, 0, requestId)
     throw new ApiError(i18n.t('api.http.networkFailure'), 0, 0, requestId)
   } finally {

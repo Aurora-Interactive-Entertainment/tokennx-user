@@ -15,8 +15,8 @@ function LocationProbe() {
   return <output data-testid="location">{location.pathname}</output>
 }
 
-function renderPage(page: ReactNode, initialEntry: string): void {
-  render(
+function renderPage(page: ReactNode, initialEntry: string) {
+  return render(
     <MemoryRouter initialEntries={[initialEntry]}>
       <Provider store={createAppStore()}>
         <AppStoreProvider>{page}</AppStoreProvider>
@@ -347,6 +347,22 @@ describe('公开模型页面', () => {
     expect(document.querySelector('.manuscript-ad-slot')).toBeNull()
     expect(document.querySelector('.manuscript-partner-row')).toBeNull()
     expect(screen.getAllByText('Claude Opus 4.8')).toHaveLength(3)
+  })
+
+  it('模型页卸载后忽略已取消的目录响应', async () => {
+    let resolveMarket: ((value: Response) => void) | undefined
+    vi.mocked(globalThis.fetch).mockImplementationOnce((_input, init) => new Promise<Response>((resolve) => {
+      resolveMarket = resolve
+      init?.signal?.addEventListener('abort', () => undefined, { once: true })
+    }))
+    const view = renderPage(<ModelsPublicPage />, '/models')
+    view.unmount()
+
+    resolveMarket?.(new Response(JSON.stringify({ code: 0, msg: 'success', data: { carousels: [], topics: [], version: '1' } }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    }))
+    await Promise.resolve()
   })
 
   it('首页优先渲染后台生效的卡片、优惠模型、广告位、置顶新闻和合作伙伴', async () => {

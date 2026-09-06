@@ -204,4 +204,20 @@ describe('已认证请求封装', () => {
     expect(getAccessToken()).toBe('expired-access')
     expect(window.localStorage.getItem(REFRESH_SESSION_KEY)).toContain('refresh-token')
   })
+
+  it('请求已取消时不继续刷新令牌或重试原请求', async () => {
+    saveAuthTokens(authResult('expired-access', 'refresh-token'))
+    const controller = new AbortController()
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = String(input)
+      if (url.endsWith('/api/user/profile')) {
+        controller.abort()
+        return apiResponse(null, 401, 110001, '认证信息无效')
+      }
+      throw new Error(`unexpected request: ${url}`)
+    })
+
+    await expect(fetchAuthenticatedResponse('/api/user/profile', { signal: controller.signal })).rejects.toMatchObject({ name: 'AbortError' })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
 })

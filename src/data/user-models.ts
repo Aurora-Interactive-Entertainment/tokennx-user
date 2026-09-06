@@ -25,6 +25,10 @@ export interface UserModelDetailState {
   error: string
 }
 
+function isAbortError(error: unknown): boolean {
+  return error instanceof DOMException && error.name === 'AbortError'
+}
+
 function workspaceQuery(accountType: UserModelAccountType, workspaceId: string): { account_type: UserModelAccountType; enterprise_id?: string } {
   return accountType === 'enterprise'
     ? { account_type: accountType, enterprise_id: workspaceId }
@@ -57,6 +61,7 @@ export function useUserModels(options: UseUserModelsOptions = {}): UserModelsSta
     let active = true
     const accessToken = getAccessToken()
     if (!accessToken) return () => { active = false }
+    const controller = new AbortController()
 
     const trimmedKeyword = options.keyword?.trim() ?? ''
     // 关键词检索结果不是全量目录，既不能命中缓存，也不能写回缓存。
@@ -78,14 +83,14 @@ export function useUserModels(options: UseUserModelsOptions = {}): UserModelsSta
       error: '',
     }))
     const query: UserModelsQuery = { ...workspaceQuery(workspaceType, workspaceId), ...(options.activityId ? { activity_id: options.activityId } : {}), ...(options.modelType ? { model_type: options.modelType } : {}), ...(trimmedKeyword ? { keyword: trimmedKeyword } : {}), ...(options.page !== undefined ? { page: options.page } : {}), ...(options.pageSize !== undefined ? { page_size: options.pageSize } : {}) }
-    void getUserModels(query).then((result) => {
+    void getUserModels(query, controller.signal).then((result) => {
       const nextState = { models: mapUserModels(result.items), activities: result.activities, total: result.total ?? null, page: result.page ?? null, pageSize: result.page_size ?? null, loading: false, error: '' }
       if (cacheable && result.page === undefined && result.page_size === undefined) {
         fullDirectoryCache.current.set(directoryKey, { models: nextState.models, activities: nextState.activities, total: null, page: null, pageSize: null })
       }
       if (active) setState(nextState)
     }).catch((error: unknown) => {
-      if (!active) return
+      if (!active || controller.signal.aborted || isAbortError(error)) return
       if (isAuthenticationFailure(error)) {
         dispatch(invalidateAuth())
         navigate('/', { replace: true })
@@ -93,7 +98,10 @@ export function useUserModels(options: UseUserModelsOptions = {}): UserModelsSta
       }
       setState({ models: [], activities: [], total: null, page: null, pageSize: null, loading: false, error: getUserModelsErrorMessage(error) })
     })
-    return () => { active = false }
+    return () => {
+      active = false
+      controller.abort()
+    }
   }, [dispatch, navigate, options.activityId, options.keyword, options.modelType, options.page, options.pageSize, reloadToken, workspaceId, workspaceType])
 
   const refresh = useCallback(() => {
@@ -122,11 +130,12 @@ export function useUserModelDetail(modelKey: string | null): UserModelDetailStat
       setState({ detail: null, loading: false, error: '' })
       return () => { active = false }
     }
+    const controller = new AbortController()
     setState({ detail: null, loading: true, error: '' })
-    void getUserModelDetail(modelKey, workspaceQuery(workspaceType, workspaceId)).then((detail) => {
+    void getUserModelDetail(modelKey, workspaceQuery(workspaceType, workspaceId), controller.signal).then((detail) => {
       if (active) setState({ detail, loading: false, error: '' })
     }).catch((error: unknown) => {
-      if (!active) return
+      if (!active || controller.signal.aborted || isAbortError(error)) return
       if (isAuthenticationFailure(error)) {
         dispatch(invalidateAuth())
         navigate('/', { replace: true })
@@ -134,7 +143,10 @@ export function useUserModelDetail(modelKey: string | null): UserModelDetailStat
       }
       setState({ detail: null, loading: false, error: getUserModelsErrorMessage(error) })
     })
-    return () => { active = false }
+    return () => {
+      active = false
+      controller.abort()
+    }
   }, [dispatch, navigate, modelKey, workspaceId, workspaceType])
 
   return state

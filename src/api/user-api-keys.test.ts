@@ -127,4 +127,16 @@ describe('用户 API 密钥接口封装', () => {
     expect(lastRequest(fetchMock).url).toBe('/api/user/enterprise/ent%2F01/api-keys/batch')
     expect(lastRequest(fetchMock).options?.method).toBe('POST')
   })
+
+  it('列表请求透传取消信号', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation((_input, options) => new Promise((_, reject) => {
+      options?.signal?.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')), { once: true })
+    }))
+    const controller = new AbortController()
+    const request = getUserApiKeys(personalContext, 'active', { signal: controller.signal })
+
+    controller.abort()
+
+    await expect(request).rejects.toMatchObject({ name: 'AbortError' })
+  })
 })

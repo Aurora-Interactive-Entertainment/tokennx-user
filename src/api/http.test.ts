@@ -81,7 +81,7 @@ describe('认证 HTTP 客户端', () => {
     await fetchJson('/api/test')
     expect(new Headers(fetchMock.mock.calls[0]?.[1]?.headers).get('X-App-Lang')).toBe('en-US')
   })
-  it('external AbortSignal cancels the wrapped request', async () => {
+  it('external AbortSignal cancels the wrapped request without a network error', async () => {
     const external = new AbortController()
     let rejectFetch: ((reason?: unknown) => void) | undefined
     vi.spyOn(globalThis, 'fetch').mockImplementation(() => new Promise<Response>((_resolve, reject) => {
@@ -90,7 +90,7 @@ describe('认证 HTTP 客户端', () => {
     const request = fetchJson('/api/test', { signal: external.signal })
     external.abort()
     rejectFetch?.(new DOMException('Aborted', 'AbortError'))
-    await expect(request).rejects.toMatchObject({ name: 'ApiError', status: 0 })
+    await expect(request).rejects.toMatchObject({ name: 'AbortError' })
   })
 
   it('only treats HTTP 401 as an expired session', () => {

@@ -1,7 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { canStartPlaygroundRound, PLAYGROUND_MAX_ROUNDS } from '@/utils/playground'
 import { LEGACY_PLAYGROUND_HISTORY_KEY, LEGACY_VIDEO_HISTORY_KEY, PLAYGROUND_SESSION_HISTORY_KEY, readUserSessionHistory, writeUserSessionHistory } from '@/utils/ephemeral-history'
-const STORAGE_KEY = 'token-nx:user-front:v1'
+const LEGACY_STORAGE_KEY = 'token-nx:user-front:v1'
+const USER_STORAGE_KEY_PREFIX = 'token-nx:user-front:v2:'
 
 export type WorkspaceType = 'personal' | 'enterprise'
 export type WorkspaceRole = string
@@ -184,9 +185,18 @@ function normalizeStoredWorkspaces(value: unknown): Workspace[] {
   return [PERSONAL_WORKSPACE, ...enterprises]
 }
 
-function loadSnapshot(): AppSnapshot {
+function snapshotStorageKey(userId: string | null | undefined): string {
+  if (userId === undefined) return LEGACY_STORAGE_KEY
+  if (userId === null) return `${USER_STORAGE_KEY_PREFIX}guest`
+  const normalizedUserId = userId.trim()
+  if (!normalizedUserId) return `${USER_STORAGE_KEY_PREFIX}guest`
+  return `${USER_STORAGE_KEY_PREFIX}${encodeURIComponent(normalizedUserId)}`
+}
+
+function loadSnapshot(userId: string | null | undefined): AppSnapshot {
+  const storageKey = snapshotStorageKey(userId)
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
+    const raw = localStorage.getItem(storageKey)
     if (!raw) return makeDefaultSnapshot()
     const parsed = JSON.parse(raw) as Partial<AppSnapshot>
     return {
@@ -215,9 +225,9 @@ function loadLegacyPlaygroundSessions(): PlaygroundSession[] {
   }
 }
 
-function saveSnapshot(snapshot: AppSnapshot): void {
+function saveSnapshot(snapshot: AppSnapshot, userId: string | null | undefined): void {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...snapshot, playgroundSessions: undefined }))
+    localStorage.setItem(snapshotStorageKey(userId), JSON.stringify({ ...snapshot, playgroundSessions: undefined }))
   } catch {
     // 本地演示环境可能关闭存储，内存状态仍可继续使用。
   }
@@ -298,7 +308,7 @@ export function AppStoreProvider({ children, userId }: AppStoreProviderWithUserP
 }
 
 function AppStoreProviderWithUser({ children, userId }: AppStoreProviderWithUserProps) {
-  const [snapshot, setSnapshot] = useState<AppSnapshot>(loadSnapshot)
+  const [snapshot, setSnapshot] = useState<AppSnapshot>(() => loadSnapshot(userId))
   const [playgroundSessions, setPlaygroundSessions] = useState<PlaygroundSession[]>(() => userId === undefined
     ? loadLegacyPlaygroundSessions()
     : readUserSessionHistory(PLAYGROUND_SESSION_HISTORY_KEY, userId, isPlaygroundSession))
@@ -339,10 +349,10 @@ function AppStoreProviderWithUser({ children, userId }: AppStoreProviderWithUser
   const updateSnapshot = useCallback((updater: (previous: AppSnapshot) => AppSnapshot) => {
     setSnapshot((previous) => {
       const next = updater(previous)
-      saveSnapshot(next)
+      saveSnapshot(next, userId)
       return next
     })
-  }, [])
+  }, [userId])
 
   const switchWorkspace = useCallback((workspaceId: string) => {
     updateSnapshot((previous) => previous.workspaces.some((workspace) => workspace.id === workspaceId)

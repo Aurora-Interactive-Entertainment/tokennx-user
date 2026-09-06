@@ -5,6 +5,40 @@ import { defineConfig, loadEnv } from 'vite'
 
 const CHUNK_SIZE_WARNING_LIMIT_KB = 600
 
+// 中文：按运行时职责拆分共享依赖，避免所有页面共用一个超大 common chunk。
+const CODE_SPLITTING_GROUPS = [
+  {
+    name: 'react-vendor',
+    test: /node_modules[\\/](?:react|react-dom|react-router|react-redux|@reduxjs[\\/]toolkit)[\\/]/,
+    priority: 30,
+  },
+  {
+    // 中文：Semi 组件按目录拆分，避免将全部控件和图标聚合到单个超大文件。
+    name: (moduleId: string) => {
+      const match = moduleId.match(/node_modules[\\/]@douyinfe[\\/]semi-ui[\\/]lib[\\/]es[\\/]([^\\/]+)/)
+      return match ? `semi-${match[1]}` : null
+    },
+    test: /node_modules[\\/]@douyinfe[\\/]semi-ui[\\/]/,
+    priority: 20,
+    minSize: 10 * 1024,
+  },
+  {
+    name: 'semi-icons',
+    test: /node_modules[\\/]@douyinfe[\\/]semi-icons[\\/]/,
+    priority: 20,
+  },
+  {
+    name: 'charts-vendor',
+    test: /node_modules[\\/](?:echarts|zrender)[\\/]/,
+    priority: 20,
+  },
+  {
+    name: 'markdown-vendor',
+    test: /node_modules[\\/](?:react-markdown|react-syntax-highlighter|prism-react-renderer|prismjs|remark-[^\\/]+|rehype-[^\\/]+|hast-util-[^\\/]+)[\\/]/,
+    priority: 20,
+  },
+]
+
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
 
@@ -40,9 +74,15 @@ export default defineConfig(({ mode }) => {
     build: {
       target: 'es2022',
       sourcemap: false,
-      // 中文：页面已通过路由动态导入分块，Semi UI 共享依赖形成的页面包纳入 1MB 构建预算。
+      // 中文：页面通过路由和运行时依赖分块，单个产物控制在 600KB 警戒线以内。
       chunkSizeWarningLimit: CHUNK_SIZE_WARNING_LIMIT_KB,
       rolldownOptions: {
+        output: {
+          codeSplitting: {
+            minSize: 20 * 1024,
+            groups: CODE_SPLITTING_GROUPS,
+          },
+        },
         checks: {
           pluginTimings: false,
         },

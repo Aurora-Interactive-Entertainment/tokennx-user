@@ -7,9 +7,9 @@ const DIST_DIR = fileURLToPath(new URL('../dist/', import.meta.url))
 const KIB = 1024
 const budgets = {
   '.js': { raw: 610 * KIB, gzip: 200 * KIB },
-  // 中文：公共页面样式包含首页、文档和排名的响应式主题，按当前生产包体积保留合理余量。
+  // 中文：公共页面样式包含首页、文档和排名的响应式主题，代码分块后保留少量共享样式余量。
   // 中文：企业管理新版页面引入独立的用量/成员/部门布局样式，生产包增加少量 CSS 体积。
-  '.css': { raw: 565 * KIB, gzip: 85 * KIB },
+  '.css': { raw: 590 * KIB, gzip: 90 * KIB },
 }
 
 async function assetFiles(directory) {

@@ -136,6 +136,20 @@ describe('工作空间本地状态', () => {
     expect(userBStore?.playgroundSessions).toHaveLength(0)
   })
 
+  it('账号快照按用户隔离，不复用其他账号的本地资料', () => {
+    let userAStore: ReturnType<typeof useAppStore> | undefined
+    const firstRender = render(<AppStoreProvider userId="user-a"><StoreProbe onReady={(value) => { userAStore = value }} /></AppStoreProvider>)
+    act(() => { userAStore?.updateProfile({ nickname: '用户 A', phone: '138****0000', avatar: 'A' }) })
+    firstRender.unmount()
+
+    let userBStore: ReturnType<typeof useAppStore> | undefined
+    render(<AppStoreProvider userId="user-b"><StoreProbe onReady={(value) => { userBStore = value }} /></AppStoreProvider>)
+    expect(userBStore?.nickname).toBe('han')
+    expect(userBStore?.phone).toBe('137****7000')
+    expect(window.localStorage.getItem('token-nx:user-front:v2:user-a')).toContain('用户 A')
+    expect(window.localStorage.getItem('token-nx:user-front:v2:user-b')).toBeNull()
+  })
+
   it('清除上下文保留同一条历史会话并重置轮次', () => {
     let store: ReturnType<typeof useAppStore> | undefined
     render(<AppStoreProvider><StoreProbe onReady={(value) => { store = value }} /></AppStoreProvider>)

@@ -341,7 +341,14 @@ function PeopleTrendChart({
     const axisStep = Math.max(1, Math.ceil(dates.length / 7));
     chart.setOption({
       animationDuration: 320,
-      grid: { left: 0, right: 0, top: 20, bottom: 42, containLabel: true },
+      grid: {
+        left: 0,
+        right: 0,
+        top: 20,
+        bottom: 42,
+        outerBoundsMode: "same",
+        outerBoundsContain: "axisLabel",
+      },
       tooltip: {
         trigger: "axis",
         confine: true,

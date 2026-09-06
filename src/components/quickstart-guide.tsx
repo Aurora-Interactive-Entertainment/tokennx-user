@@ -194,9 +194,10 @@ export function QuickstartGuide() {
 
   useEffect(() => {
     let active = true
+    const controller = new AbortController()
     setKeysLoading(true)
-    void getUserApiKeys(workspaceContext, 'all').then((result) => { if (active) setKeys(result.items) }).catch(() => { if (active) setKeys([]) }).finally(() => { if (active) setKeysLoading(false) })
-    return () => { active = false }
+    void getUserApiKeys(workspaceContext, 'all', { signal: controller.signal }).then((result) => { if (active) setKeys(result.items) }).catch(() => { if (active && !controller.signal.aborted) setKeys([]) }).finally(() => { if (active && !controller.signal.aborted) setKeysLoading(false) })
+    return () => { active = false; controller.abort() }
   }, [workspaceContext])
 
   function copy(value: string): void {

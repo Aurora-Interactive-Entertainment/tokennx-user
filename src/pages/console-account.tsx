@@ -433,6 +433,7 @@ export function ApiKeysPage({
 
   useEffect(() => {
     let active = true;
+    const controller = new AbortController();
     setLoading(true);
     setErrorMessage("");
     (mode === "enterprise"
@@ -440,13 +441,14 @@ export function ApiKeysPage({
           workspaceContext,
           filter,
           memberFilter === "all" ? undefined : memberFilter,
+          { signal: controller.signal },
         )
-      : getUserApiKeys(workspaceContext, filter))
+      : getUserApiKeys(workspaceContext, filter, { signal: controller.signal }))
       .then((value) => {
         if (active) setResult(value);
       })
       .catch((error: unknown) => {
-        if (!active) return;
+        if (!active || controller.signal.aborted) return;
         if (isAuthenticationFailure(error)) {
           dispatch(invalidateAuth());
           navigate("/", { replace: true });
@@ -461,6 +463,7 @@ export function ApiKeysPage({
       });
     return () => {
       active = false;
+      controller.abort();
     };
   }, [
     dispatch,

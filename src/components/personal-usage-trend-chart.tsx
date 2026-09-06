@@ -123,9 +123,15 @@ export function PersonalUsageTrendChart({
     );
     chart.setOption({
       animationDuration: 320,
-      // The chart panel owns horizontal padding; containLabel reserves only the
-      // space required by the left and right value-axis labels.
-      grid: { left: 0, right: 0, top: 22, bottom: 42, containLabel: true },
+      // 中文：图表面板负责水平内边距，outerBounds 仅为坐标轴标签预留空间。
+      grid: {
+        left: 0,
+        right: 0,
+        top: 22,
+        bottom: 42,
+        outerBoundsMode: "same",
+        outerBoundsContain: "axisLabel",
+      },
       tooltip: {
         trigger: "axis",
         confine: true,

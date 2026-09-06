@@ -1,5 +1,5 @@
 import { fetchAuthenticatedJson } from "./authenticated";
-import { ApiError, isApiError } from "./http";
+import { ApiError, isApiError, type FetchJsonOptions } from "./http";
 import type { ApiTimestamp } from "@/utils/format";
 import i18n from "@/i18n";
 
@@ -64,6 +64,8 @@ export interface UserApiKeyList {
   items: UserApiKey[];
   available_models: ApiKeyModel[];
 }
+
+export type UserApiKeyRequestOptions = Pick<FetchJsonOptions, "signal">;
 
 export interface UserApiKeyMutation {
   name: string;
@@ -136,9 +138,11 @@ function contextQuery(
 export function getUserApiKeys(
   context: UserApiKeyContext,
   filter: ApiKeyStatusFilter = "all",
+  options: UserApiKeyRequestOptions = {},
 ): Promise<UserApiKeyList> {
   return fetchAuthenticatedJson<UserApiKeyList>(
     `${API_KEY_PATH}?${contextQuery(context, { status: filter })}`,
+    options,
   );
 }
 
@@ -155,10 +159,11 @@ export function getEnterpriseApiKeys(
   context: UserApiKeyContext,
   filter: ApiKeyStatusFilter = "all",
   memberID?: string,
+  options: UserApiKeyRequestOptions = {},
 ): Promise<UserApiKeyList> {
   const params = new URLSearchParams({ status: filter });
   if (memberID?.trim()) params.set("member_id", memberID.trim());
-  return fetchAuthenticatedJson<UserApiKeyList>(`${enterpriseApiKeyPath(context)}?${params.toString()}`);
+  return fetchAuthenticatedJson<UserApiKeyList>(`${enterpriseApiKeyPath(context)}?${params.toString()}`, options);
 }
 
 export function createEnterpriseApiKey(

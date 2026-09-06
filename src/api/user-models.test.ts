@@ -47,6 +47,19 @@ describe('用户模型目录接口封装', () => {
     expect(String(fetchMock.mock.calls[1]?.[0])).toBe('/api/user/models?account_type=enterprise&enterprise_id=enterprise-1')
   })
 
+  it('把取消信号透传给模型目录请求', async () => {
+    const controller = new AbortController()
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation((_input, init) => new Promise<Response>((_resolve, reject) => {
+      init?.signal?.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')), { once: true })
+    }))
+
+    const request = getUserModels({ account_type: 'personal' }, controller.signal)
+    controller.abort()
+
+    await expect(request).rejects.toMatchObject({ name: 'AbortError' })
+    expect(fetchMock.mock.calls[0]?.[1]?.signal).toBeInstanceOf(AbortSignal)
+  })
+
   it('使用编码后的模型别名请求当前工作空间详情', async () => {
     const detail = {
       model: { id: 'model-1', name: '模型一', company: '厂商', modality: 'text', billing_mode: 'token', description: '', capabilities: [], provider_count: 1, prices: [] },

@@ -211,12 +211,13 @@ function useHomeMetrics(): { tokenVolume: number; apiCalls: number; initialReque
   useEffect(() => {
     let mounted = true
     let requestInFlight = false
+    const controller = new AbortController()
 
     const refresh = async (): Promise<void> => {
       if (requestInFlight) return
       requestInFlight = true
       try {
-        const value = await getPublicHomepageStats()
+        const value = await getPublicHomepageStats(controller.signal)
         if (mounted) setMetrics(value)
       } catch {
         // Keep the last successful values. Before the first response the scoreboards remain at zero.
@@ -236,6 +237,7 @@ function useHomeMetrics(): { tokenVolume: number; apiCalls: number; initialReque
     document.addEventListener('visibilitychange', handleVisibilityChange)
     return () => {
       mounted = false
+      controller.abort()
       window.clearInterval(interval)
       document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
@@ -815,6 +817,7 @@ export function HomePage({ onInitialScoreboardReady }: { onInitialScoreboardRead
   const [homepageStatus, setHomepageStatus] = useState<HomepageLoadStatus>('loading')
   const completedScoreboardsRef = useRef(new Set<string>())
   const homepageRequestIdRef = useRef(0)
+  const homepageRequestControllerRef = useRef<AbortController | null>(null)
   const initialAuthStatusRef = useRef(authStatus)
   const previousAuthStatusRef = useRef(authStatus)
   const homepageLanguageRef = useRef(i18n.language)
@@ -874,20 +877,29 @@ export function HomePage({ onInitialScoreboardReady }: { onInitialScoreboardRead
 
   const refreshHomepage = useCallback((accessToken?: string): void => {
     const requestId = ++homepageRequestIdRef.current
+    homepageRequestControllerRef.current?.abort()
+    const controller = new AbortController()
+    homepageRequestControllerRef.current = controller
     setHomepageStatus('loading')
-    getPublicHomepage(accessToken).then((value) => {
+    getPublicHomepage(accessToken, controller.signal).then((value) => {
       if (requestId !== homepageRequestIdRef.current) return
       setHomepage(value)
       setHomepageStatus('ready')
     }).catch(() => {
       if (requestId === homepageRequestIdRef.current) setHomepageStatus('error')
       // 中文：公开内容接口失败时保留已编排的默认首页，避免运营接口故障影响首页首屏。
+    }).finally(() => {
+      if (homepageRequestControllerRef.current === controller) homepageRequestControllerRef.current = null
     })
   }, [])
 
   useEffect(() => {
     refreshHomepage(initialAuthStatusRef.current === 'authenticated' ? getAccessToken() ?? undefined : undefined)
-    return () => { homepageRequestIdRef.current += 1 }
+    return () => {
+      homepageRequestIdRef.current += 1
+      homepageRequestControllerRef.current?.abort()
+      homepageRequestControllerRef.current = null
+    }
   }, [refreshHomepage])
 
   useEffect(() => {
@@ -1020,7 +1032,13 @@ export function ModelsPublicPage() {
   const [market, setMarket] = useState<PublicModelMarket | null>(null)
   useEffect(() => {
     const controller = new AbortController()
-    void getPublicModelMarket(controller.signal).then(setMarket).catch(() => setMarket(null))
+    void getPublicModelMarket(controller.signal)
+      .then((value) => {
+        if (!controller.signal.aborted) setMarket(value)
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setMarket(null)
+      })
     return () => controller.abort()
   }, [])
   const groups = useMemo<ModelsShowcaseGroup[]>(() => {

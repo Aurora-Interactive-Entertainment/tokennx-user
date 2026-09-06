@@ -152,8 +152,8 @@ function isUserModelList(value: unknown): value is UserModelList {
   return Array.isArray(candidate.items) && (candidate.activities === undefined || Array.isArray(candidate.activities))
 }
 
-export function getUserModels(query: UserModelsQuery): Promise<UserModelList> {
-  return fetchAuthenticatedJson<unknown>(buildUserModelsPath(query)).then((value) => {
+export function getUserModels(query: UserModelsQuery, signal?: AbortSignal): Promise<UserModelList> {
+  return fetchAuthenticatedJson<unknown>(buildUserModelsPath(query), { signal }).then((value) => {
     if (!isUserModelList(value)) throw new ApiError(i18n.t('api.models.invalidResponse'), 502, 100002, null)
     return { ...value, activities: value.activities ?? [] }
   })
@@ -173,8 +173,8 @@ function isUserModelDetail(value: unknown): value is UserModelDetail {
   return Boolean(candidate.model && typeof candidate.model === 'object' && candidate.specifications && candidate.metrics)
 }
 
-export function getUserModelDetail(model: string, query: UserModelsQuery): Promise<UserModelDetail> {
-  return fetchAuthenticatedJson<unknown>(buildUserModelDetailPath(model, query)).then((value) => {
+export function getUserModelDetail(model: string, query: UserModelsQuery, signal?: AbortSignal): Promise<UserModelDetail> {
+  return fetchAuthenticatedJson<unknown>(buildUserModelDetailPath(model, query), { signal }).then((value) => {
     if (!isUserModelDetail(value)) throw new ApiError(i18n.t('api.models.invalidResponse'), 502, 100002, null)
     return value
   })

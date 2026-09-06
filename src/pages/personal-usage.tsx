@@ -44,9 +44,10 @@ export function PersonalUsagePage() {
   useEffect(() => {
     if (tab !== "management") return;
     let active = true;
+    const controller = new AbortController();
     setApiKeysLoading(true);
-    void getUserApiKeys(context, "all").then((response) => { if (active) setApiKeys(response.items); }).catch(() => { if (active) setApiKeys([]); }).finally(() => { if (active) setApiKeysLoading(false); });
-    return () => { active = false; };
+    void getUserApiKeys(context, "all", { signal: controller.signal }).then((response) => { if (active) setApiKeys(response.items); }).catch(() => { if (active && !controller.signal.aborted) setApiKeys([]); }).finally(() => { if (active && !controller.signal.aborted) setApiKeysLoading(false); });
+    return () => { active = false; controller.abort(); };
   }, [context, tab]);
 
   function selectTab(nextTab: "board" | "management") {

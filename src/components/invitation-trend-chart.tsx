@@ -69,7 +69,14 @@ export function InvitationTrendChart({
     // 中文：使用 SVG 渲染，确保深浅色切换和高分屏下的折线图保持清晰。
     chart.setOption({
       animationDuration: 260,
-      grid: { left: 8, right: 8, top: 18, bottom: 30, containLabel: true },
+      grid: {
+        left: 8,
+        right: 8,
+        top: 18,
+        bottom: 30,
+        outerBoundsMode: "same",
+        outerBoundsContain: "axisLabel",
+      },
       tooltip: {
         trigger: "axis",
         confine: true,
