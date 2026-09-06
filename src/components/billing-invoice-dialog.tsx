@@ -120,37 +120,25 @@ function InvoiceFillStep({
           </Select>
           {fieldError('invoice_type')}
         </label>
-        <label className={fieldClass('project_name')}>
+        <div className={fieldClass('project_name')}>
           <span
             className="invoice-field-label"
             id="invoice-project-name-label"
           >
             {i18n.t('console.billing.projectName')} <em>*</em>
           </span>
-          <Select
+          <output
             id="invoice-project-name"
-            className="billing-filter"
-            dropdownClassName="billing-filter-dropdown"
-            value={form.project_name}
-            onChange={(value) =>
-              onChange('project_name', String(value ?? ''))
-            }
-            onSelect={(value) =>
-              onChange('project_name', String(value ?? ''))
-            }
-            block
-            aria-invalid={Boolean(errors.project_name)}
+            className="invoice-readonly-text"
             aria-labelledby="invoice-project-name-label"
+            aria-readonly="true"
+            aria-invalid={Boolean(errors.project_name)}
             aria-describedby="invoice-project_name-error"
           >
-            {options.projectNames.map((option) => (
-              <Select.Option key={option.value} value={option.value}>
-                {option.label}
-              </Select.Option>
-            ))}
-          </Select>
+            {form.project_name}
+          </output>
           {fieldError('project_name')}
-        </label>
+        </div>
         <label className={fieldClass('amount_yuan')}>
           <span className="invoice-field-label">
             {i18n.t('console.billing.invoiceAmountYuan')}

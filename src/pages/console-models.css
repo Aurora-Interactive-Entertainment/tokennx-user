@@ -436,6 +436,43 @@
   padding: 12px 20px 16px;
 }
 
+/* 中文：视频卡片底部保留一行费用说明，文本超出时截断，悬停由 Popover 展示完整价格示例。 */
+.models-console-page .model-card-video-pricing {
+  position: absolute;
+  right: 174px;
+  bottom: 16px;
+  left: 20px;
+  display: flex;
+  height: 32px;
+  align-items: flex-end;
+  /* 中文：费用说明与底部操作区有重叠时保持在操作按钮上层，确保 hover 能命中触发区。 */
+  z-index: 5;
+}
+
+.models-console-page .model-card-video-pricing-trigger {
+  display: block;
+  min-width: 0;
+  height: 18px;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  color: var(--color-text-tertiary);
+  background: transparent;
+  /* 中文：费用说明可交互但不显示问号光标，避免误导为错误提示。 */
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 18px;
+  text-align: left;
+  width: 100%;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.models-console-page .model-card-video-pricing-trigger:hover,
+.models-console-page .model-card-video-pricing-trigger:focus-visible {
+  color: var(--color-text-secondary);
+}
+
 .models-console-page .model-card-action.semi-button {
   min-width: 0;
   height: 32px;
@@ -520,5 +557,12 @@ html[data-theme="light"] .models-console-page .model-card-info-panel {
 
   .models-console-page .model-card-actions {
     padding-inline: 16px;
+  }
+
+  .models-console-page .model-card-video-pricing {
+    right: 16px;
+    bottom: 66px;
+    left: 16px;
+    height: 32px;
   }
 }

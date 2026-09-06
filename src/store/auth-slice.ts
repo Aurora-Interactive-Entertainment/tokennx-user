@@ -15,12 +15,15 @@ export interface AuthState {
   status: 'unknown' | 'loading' | 'unauthenticated' | 'authenticated'
   user: AuthUser | null
   error: AuthOperationError | null
+  /** 中文：记录本标签页主动登录次数，用于区分登录成功与后台会话刷新。 */
+  loginSequence: number
 }
 
 const initialState: AuthState = {
   status: 'unknown',
   user: null,
   error: null,
+  loginSequence: 0,
 }
 
 type ThunkConfig = { rejectValue: AuthOperationError }
@@ -46,8 +49,8 @@ export function authError(error: unknown): AuthOperationError {
 
 function completeAuth(result: AuthResult): AuthUser {
   if (result.status !== 'succeeded' || result.binding_required || !result.user) throw new Error(i18n.t('api.auth.incomplete'))
-  const promptRequired = result.prompt_required ?? result.promt_required
-  const user = promptRequired === undefined ? result.user : { ...result.user, prompt_required: promptRequired }
+  // 中文：首次登录标记位于认证响应顶层，登录成功后下沉到用户状态供控制台统一触发引导。
+  const user = result.promt_required === undefined ? result.user : { ...result.user, promt_required: result.promt_required }
   saveAuthTokens({ ...result, user })
   return user
 }
@@ -58,9 +61,11 @@ export const hydrateAuth = createAsyncThunk<AuthUser | null>('auth/hydrate', asy
   try {
     const result = await refreshAuthSession(refreshToken)
     if (result.status !== 'succeeded' || result.binding_required || !result.user) throw new Error(i18n.t('api.auth.incomplete'))
+    // 中文：刷新会话也保留认证响应中的首次登录标记，避免恢复页面时丢失引导状态。
     const user = result.user
     const access = getAccessToken()
-    return access ? await getCurrentUser(access) : user
+    const currentUser = access ? await getCurrentUser(access) : user
+    return result.promt_required === undefined ? currentUser : { ...currentUser, promt_required: result.promt_required }
   } catch (error) {
     // Preserve the session on service/network failures; only a 401 proves that
     // the refresh token is no longer authorized.
@@ -187,16 +192,16 @@ const authSlice = createSlice({
       .addCase(hydrateAuth.pending, (state) => { state.status = 'loading'; state.error = null })
       .addCase(hydrateAuth.fulfilled, (state, action) => { state.status = action.payload ? 'authenticated' : 'unauthenticated'; state.user = action.payload; state.error = null })
       .addCase(loginWithEmail.pending, (state) => { state.status = 'loading'; state.error = null })
-      .addCase(loginWithEmail.fulfilled, (state, action) => { state.status = 'authenticated'; state.user = action.payload; state.error = null })
+      .addCase(loginWithEmail.fulfilled, (state, action) => { state.status = 'authenticated'; state.user = action.payload; state.error = null; state.loginSequence += 1 })
       .addCase(loginWithEmail.rejected, (state, action) => { state.status = 'unauthenticated'; state.user = null; state.error = action.payload ?? { message: i18n.t('api.auth.emailLoginFailed'), code: 0, status: 0 } })
       .addCase(loginWithPhone.pending, (state) => { state.status = 'loading'; state.error = null })
-      .addCase(loginWithPhone.fulfilled, (state, action) => { state.status = 'authenticated'; state.user = action.payload; state.error = null })
+      .addCase(loginWithPhone.fulfilled, (state, action) => { state.status = 'authenticated'; state.user = action.payload; state.error = null; state.loginSequence += 1 })
       .addCase(loginWithPhone.rejected, (state, action) => { state.status = 'unauthenticated'; state.user = null; state.error = action.payload ?? { message: i18n.t('api.auth.phoneLoginFailed'), code: 0, status: 0 } })
       .addCase(completeWechatLogin.pending, (state) => { state.status = 'loading'; state.error = null })
-      .addCase(completeWechatLogin.fulfilled, (state, action) => { state.status = 'authenticated'; state.user = action.payload; state.error = null })
+      .addCase(completeWechatLogin.fulfilled, (state, action) => { state.status = 'authenticated'; state.user = action.payload; state.error = null; state.loginSequence += 1 })
       .addCase(completeWechatLogin.rejected, (state, action) => { state.status = 'unauthenticated'; state.user = null; state.error = action.payload ?? { message: i18n.t('api.auth.wechatLoginFailed'), code: 0, status: 0 } })
       .addCase(completeBinding.pending, (state) => { state.status = 'loading'; state.error = null })
-      .addCase(completeBinding.fulfilled, (state, action) => { state.status = 'authenticated'; state.user = action.payload; state.error = null })
+      .addCase(completeBinding.fulfilled, (state, action) => { state.status = 'authenticated'; state.user = action.payload; state.error = null; state.loginSequence += 1 })
       .addCase(completeBinding.rejected, (state, action) => { state.status = 'unauthenticated'; state.user = null; state.error = action.payload ?? { message: i18n.t('api.auth.phoneBindingFailed'), code: 0, status: 0 } })
       .addCase(logoutAuth.fulfilled, (state) => { state.status = 'unauthenticated'; state.user = null; state.error = null })
       .addCase(logoutAuth.rejected, (state, action) => { state.status = 'unauthenticated'; state.user = null; state.error = action.payload ?? null })

@@ -22,6 +22,7 @@ import Toast from "@douyinfe/semi-ui/lib/es/toast";
 import {
   IconApps,
   IconAlertTriangle,
+  IconArrowLeft,
   IconBarChartVStroked,
   IconBellStroked,
   IconBriefcaseStroked,
@@ -159,6 +160,8 @@ import { AccountDeletionFlow } from "./account-deletion-flow";
 import { BindEmailDialog } from "./bind-email-dialog";
 import { workspaceContextFor } from "@/utils/workspace";
 import { formatApiTime } from "@/utils/format";
+import { MarkdownContent } from "./markdown-content";
+import { VideoPricingPopover } from "./video-pricing-popover";
 import {
   publishProfileUpdate,
   subscribeProfileUpdates,
@@ -275,12 +278,13 @@ function persistBillingBalanceVisible(visible: boolean): void {
 function formatBillingOverviewAmount(value: string | undefined): string {
   const match = value?.trim().match(/^([+-]?)(\d+)(?:\.(\d+))?$/);
   if (!match) return "--";
-  const fraction = (match[3] ?? "").padEnd(3, "0");
-  let cents = BigInt(match[2]) * 100n + BigInt(fraction.slice(0, 2));
-  if (fraction[2] >= "5") cents += 1n;
-  const integer = (cents / 100n).toLocaleString();
-  const decimal = String(cents % 100n).padStart(2, "0");
-  return `${match[1] === "-" && cents !== 0n ? "-" : ""}${integer}.${decimal}`;
+  // 中文：费用悬浮卡金额统一保留 4 位小数，使用整数运算避免浮点误差。
+  const fraction = (match[3] ?? "").padEnd(5, "0");
+  let scaled = BigInt(match[2]) * 10000n + BigInt(fraction.slice(0, 4));
+  if (fraction[4] >= "5") scaled += 1n;
+  const integer = (scaled / 10000n).toLocaleString();
+  const decimal = String(scaled % 10000n).padStart(4, "0");
+  return `${match[1] === "-" && scaled !== 0n ? "-" : ""}${integer}.${decimal}`;
 }
 
 // 中文：登录后的默认工作页改为快速接入，控制台根路径不再承载总览页面。
@@ -718,10 +722,9 @@ export function ModelCard({
     MODEL_TYPE_MARKS[outputTypeValue] ??
     (model.modality === "multimodal" ? "M" : "?");
   // 中文：恢复模型原有标签，并限制数量，避免右上角标签挤压模型名称。
-  const cardTags = (model.tags?.length
-    ? model.tags
-    : model.labels.map((label) => ({ label })))
-    .slice(0, 4);
+  const cardTags = (
+    model.tags?.length ? model.tags : model.labels.map((label) => ({ label }))
+  ).slice(0, 4);
   const cardBody = (
     <>
       <div className="model-card-topline">
@@ -935,6 +938,10 @@ export function ModelCard({
             {cardBody}
           </Link>
         )}
+        {/* 中文：费用说明和价格示例仅对视频模型开放，避免其他模型出现无关提示。 */}
+        {model.modality === "video" ? (
+          <VideoPricingPopover model={model} />
+        ) : null}
         {onApi || onChat ? (
           <div className="model-card-actions">
             {onApi ? (
@@ -1239,7 +1246,11 @@ export function LoginPanel({
   onAuthFailure,
   inviteCode,
 }: {
-  onSuccess: (user?: { id?: string; email_masked?: string; prompt_required?: boolean; promt_required?: boolean }) => void;
+  onSuccess: (user?: {
+    id?: string;
+    email_masked?: string;
+    promt_required?: boolean;
+  }) => void;
   onAuthFailure?: () => void;
   inviteCode?: string;
 }) {
@@ -1332,7 +1343,9 @@ export function LoginPanel({
           setFeedback(t("login.bindingHint"));
           return;
         }
-        const user = await dispatch(completeWechatLogin(result.result)).unwrap();
+        const user = await dispatch(
+          completeWechatLogin(result.result),
+        ).unwrap();
         onSuccess(user);
       } catch (error) {
         if (active) {
@@ -1385,11 +1398,7 @@ export function LoginPanel({
       phoneInputRef.current?.value ?? phone,
     );
     if (currentPhone !== phone) setPhone(currentPhone);
-    if (
-      phoneRetryAfter > 0 ||
-      phoneCodeLoading ||
-      !validatePhone(currentPhone)
-    )
+    if (phoneRetryAfter > 0 || phoneCodeLoading || !validatePhone(currentPhone))
       return;
     setPhoneCodeLoading(true);
     setFeedback("");
@@ -1775,7 +1784,11 @@ export function normalizeLoginReturnPath(
 type LoginDialogProps = {
   open: boolean;
   onClose: () => void;
-  onSuccess: (user?: { id?: string; email_masked?: string; prompt_required?: boolean; promt_required?: boolean }) => void;
+  onSuccess: (user?: {
+    id?: string;
+    email_masked?: string;
+    promt_required?: boolean;
+  }) => void;
   dialogId?: string;
   inviteCode?: string;
 };
@@ -1830,7 +1843,11 @@ export function LoginDialog({
     };
   }, [mounted, onClose]);
 
-  function handleSuccess(user?: { id?: string; email_masked?: string; prompt_required?: boolean; promt_required?: boolean }): void {
+  function handleSuccess(user?: {
+    id?: string;
+    email_masked?: string;
+    promt_required?: boolean;
+  }): void {
     onSuccess(user);
     onClose();
   }
@@ -1875,7 +1892,11 @@ export function LoginPopover({
   onSuccess,
   inviteCode,
 }: {
-  onSuccess: (user?: { id?: string; email_masked?: string; prompt_required?: boolean; promt_required?: boolean }) => void;
+  onSuccess: (user?: {
+    id?: string;
+    email_masked?: string;
+    promt_required?: boolean;
+  }) => void;
   inviteCode?: string;
 }) {
   const { t } = useTranslation();
@@ -1951,7 +1972,13 @@ export function LoginRequiredAction({
         <LoginDialog
           open={open}
           onClose={() => setOpen(false)}
-          onSuccess={(user) => navigate(user && authUserNeedsEmailBinding(user) ? DEFAULT_CONSOLE_PATH : safeReturnPath)}
+          onSuccess={(user) =>
+            navigate(
+              user && authUserNeedsEmailBinding(user)
+                ? DEFAULT_CONSOLE_PATH
+                : safeReturnPath,
+            )
+          }
         />
       ) : null}
     </>
@@ -2018,11 +2045,38 @@ function LanguageToggleButton({ mobile = false }: { mobile?: boolean }) {
   );
 }
 
-export function authUserNeedsEmailBinding(user: { prompt_required?: boolean; promt_required?: boolean }): boolean {
-  return user.prompt_required === true || user.promt_required === true
+export function authUserNeedsEmailBinding(user: {
+  promt_required?: boolean;
+}): boolean {
+  return user.promt_required === true;
 }
 
-const EMAIL_ONBOARDING_SEEN_PREFIX = 'token-nx:email-onboarding-seen:'
+const EMAIL_ONBOARDING_SEEN_PREFIX = "token-nx:email-onboarding-seen:";
+
+function hasSeenEmailOnboarding(userID: string): boolean {
+  try {
+    return (
+      window.localStorage.getItem(
+        `${EMAIL_ONBOARDING_SEEN_PREFIX}${userID}`,
+      ) === "1"
+    );
+  } catch {
+    // 中文：存储不可用时不阻断首次登录引导展示。
+    return false;
+  }
+}
+
+function markEmailOnboardingSeen(userID: string | undefined): void {
+  if (!userID) return;
+  try {
+    window.localStorage.setItem(
+      `${EMAIL_ONBOARDING_SEEN_PREFIX}${userID}`,
+      "1",
+    );
+  } catch {
+    // 中文：隐私模式禁用存储时仍允许当前会话关闭弹窗，不阻断用户操作。
+  }
+}
 
 type PublicHeaderProps = {
   enterpriseAccess?: EnterpriseMenuAccess;
@@ -2104,18 +2158,26 @@ export function PublicHeader({
     typeof setTimeout
   > | null>(null);
   const currentPath = location.pathname;
+  const shownLoginSequenceRef = useRef(0);
   useEffect(() => {
-    const user = auth.user
-    if (auth.status !== 'authenticated' || !user?.id || !authUserNeedsEmailBinding(user)) return
-    const marker = `${EMAIL_ONBOARDING_SEEN_PREFIX}${user.id}`
-    try {
-      if (window.localStorage.getItem(marker) === '1') return
-      window.localStorage.setItem(marker, '1')
-    } catch {
-      // 中文：隐私模式禁用存储时仍允许本次引导显示，避免阻塞登录流程。
-    }
-    setBindEmailOpen(true)
-  }, [auth.status, auth.user])
+    const user = auth.user;
+    // 中文：仅首次登录且服务端明确要求绑定邮箱时展示一次引导。
+    if (
+      !currentPath.startsWith("/console") ||
+      auth.status !== "authenticated" ||
+      !user?.id ||
+      !authUserNeedsEmailBinding(user) ||
+      auth.loginSequence <= shownLoginSequenceRef.current
+    )
+      return;
+    shownLoginSequenceRef.current = auth.loginSequence;
+    if (hasSeenEmailOnboarding(user.id)) return;
+    setBindEmailOpen(true);
+  }, [auth.loginSequence, auth.status, auth.user, currentPath]);
+  const closeBindEmailDialog = (): void => {
+    markEmailOnboardingSeen(auth.user?.id);
+    setBindEmailOpen(false);
+  };
   const publicLinks =
     auth.status === "authenticated"
       ? [...PUBLIC_LINKS, AUTHENTICATED_PUBLIC_LINK]
@@ -2324,10 +2386,10 @@ export function PublicHeader({
         onMouseLeave={scheduleBillingMenuClose}
       >
         {linkNode}
-        {billingMenuOpen ? (
           <div
-            className="billing-hover-card"
+          className={`billing-hover-card${billingMenuOpen ? " is-open" : ""}`}
             role="dialog"
+          aria-hidden={!billingMenuOpen}
             aria-label={t("console.billing.balance")}
           >
             <div className="billing-hover-card-top">
@@ -2365,9 +2427,7 @@ export function PublicHeader({
                       : undefined
                   }
                 >
-                  {billingBalanceVisible
-                    ? billingBalance
-                    : maskedBillingBalance}
+                {billingBalanceVisible ? billingBalance : maskedBillingBalance}
                 </strong>
               </div>
               {/* 中文：顶部费用下拉中的充值入口与“查看模型”统一使用胶囊毛玻璃按钮。 */}
@@ -2402,7 +2462,6 @@ export function PublicHeader({
               {t("console.billing.billingCenter")}
             </Link>
           </div>
-        ) : null}
       </div>
     );
   }
@@ -2484,7 +2543,13 @@ export function PublicHeader({
             </div>
             {auth.status === "authenticated" ? (
               <>
-                <Link className="header-tool console-entry" to={DEFAULT_CONSOLE_PATH} aria-label={t("nav.console")} title={t("nav.console")} onClick={() => setMobileOpen(false)}>
+                <Link
+                  className="header-tool console-entry"
+                  to={DEFAULT_CONSOLE_PATH}
+                  aria-label={t("nav.console")}
+                  title={t("nav.console")}
+                  onClick={() => setMobileOpen(false)}
+                >
                   <span>{t("nav.console")}</span>
                 </Link>
                 <UserMenu
@@ -2516,7 +2581,8 @@ export function PublicHeader({
                 onSuccess={(user) => {
                   setMobileOpen(false);
                   // 中文：登录成功后统一进入快速接入页；邀请链接仍回到首页继续处理邀请。
-                  if (inviteCode && !authUserNeedsEmailBinding(user ?? {})) navigate("/", { replace: true });
+                  if (inviteCode && !authUserNeedsEmailBinding(user ?? {}))
+                    navigate("/", { replace: true });
                   else navigate(DEFAULT_CONSOLE_PATH, { replace: true });
                 }}
               />
@@ -2560,9 +2626,13 @@ export function PublicHeader({
       />
       <BindEmailDialog
         visible={bindEmailOpen}
-        onClose={() => setBindEmailOpen(false)}
-        onAuthFailure={() => { setBindEmailOpen(false); dispatch(invalidateAuth()); navigate('/', { replace: true }) }}
-        onBound={() => setBindEmailOpen(false)}
+        onClose={closeBindEmailDialog}
+        onAuthFailure={() => {
+          closeBindEmailDialog();
+          dispatch(invalidateAuth());
+          navigate("/", { replace: true });
+        }}
+        onBound={closeBindEmailDialog}
       />
     </>
   );
@@ -3570,15 +3640,12 @@ export function AccountSettingsModal({
     };
   }, [visible]);
 
-  useEffect(
-    () => {
+  useEffect(() => {
       if (!visible) return undefined;
       return subscribeProfileUpdates((nextProfile) =>
         applyProfile(nextProfile, false),
       );
-    },
-    [visible],
-  );
+  }, [visible]);
 
   useEffect(() => {
     if (!visible) return undefined;
@@ -3592,7 +3659,13 @@ export function AccountSettingsModal({
   useEffect(() => {
     if (!visible) return undefined;
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !contactProvider && !editingName && !deleteAccountVisible) onClose();
+      if (
+        event.key === "Escape" &&
+        !contactProvider &&
+        !editingName &&
+        !deleteAccountVisible
+      )
+        onClose();
     };
     document.addEventListener("keydown", handleKeyDown);
     return () => {
@@ -3836,7 +3909,11 @@ export function AccountSettingsModal({
                 <span className="account-settings-label">
                   {t("profile.deleteAccount")}
                 </span>
-                <button type="button" className="account-settings-delete" onClick={() => setDeleteAccountVisible(true)}>
+                <button
+                  type="button"
+                  className="account-settings-delete"
+                  onClick={() => setDeleteAccountVisible(true)}
+                >
                   {t("profile.deleteAccount")}
                 </button>
               </div>
@@ -3873,17 +3950,30 @@ export function AccountSettingsModal({
       <AccountDeletionFlow
         visible={deleteAccountVisible}
         profile={profile}
-        enterprises={store.workspaces.filter((workspace) => workspace.type === 'enterprise').map((workspace) => ({ id: workspace.id, enterprise_id: workspace.id, enterprise_name: workspace.name, enterprise_code: '', member_status: 'active', join_source: '', roles: [workspace.role], owner: workspace.role === 'owner', joined_at: 0, version: 0 }))}
+        enterprises={store.workspaces
+          .filter((workspace) => workspace.type === "enterprise")
+          .map((workspace) => ({
+            id: workspace.id,
+            enterprise_id: workspace.id,
+            enterprise_name: workspace.name,
+            enterprise_code: "",
+            member_status: "active",
+            join_source: "",
+            roles: [workspace.role],
+            owner: workspace.role === "owner",
+            joined_at: 0,
+            version: 0,
+          }))}
         onClose={() => setDeleteAccountVisible(false)}
         onAuthFailure={invalidateProfileSession}
         onHandleEnterprise={(enterpriseID) => {
-          if (enterpriseID) store.switchWorkspace(enterpriseID)
-          setDeleteAccountVisible(false)
-          navigate('/console/enterprise-settings')
+          if (enterpriseID) store.switchWorkspace(enterpriseID);
+          setDeleteAccountVisible(false);
+          navigate("/console/enterprise-settings");
         }}
         onSuccess={() => {
-          setDeleteAccountVisible(false)
-          invalidateProfileSession()
+          setDeleteAccountVisible(false);
+          invalidateProfileSession();
         }}
         t={t}
       />
@@ -3920,7 +4010,10 @@ function ConsoleTopBreadcrumb({
   if (!activeGroup || !activeItem) return null;
   const groupLabel = localizeConsoleNavLabel(t, activeGroup.label);
   return (
-    <nav className="console-top-breadcrumb" aria-label={t("console.common.breadcrumb")}>
+    <nav
+      className="console-top-breadcrumb"
+      aria-label={t("console.common.breadcrumb")}
+    >
       <span>{groupLabel}</span>
       <b aria-hidden="true">/</b>
       <strong>{localizeConsoleNavLabel(t, activeItem.label)}</strong>
@@ -4226,6 +4319,37 @@ const MANUSCRIPT_SUPPORT_MESSAGE_MAX_LENGTH = 1000;
 type SupportTab = "contact" | "notifications";
 const SUPPORT_OPEN_EVENT = "token-nx:open-support";
 const SUPPORT_NOTIFICATION_COUNT_EVENT = "token-nx:notification-count";
+const SUPPORT_DELETED_NOTIFICATIONS_STORAGE_KEY =
+  "token-nx:deleted-notifications";
+
+function readDeletedNotificationIDs(): Set<string> {
+  try {
+    const value = JSON.parse(
+      window.localStorage.getItem(SUPPORT_DELETED_NOTIFICATIONS_STORAGE_KEY) ??
+        "[]",
+    ) as unknown;
+    return new Set(
+      Array.isArray(value)
+        ? value.filter((item): item is string => typeof item === "string")
+        : [],
+    );
+  } catch {
+    return new Set();
+  }
+}
+
+function persistDeletedNotificationID(notificationID: string): void {
+  try {
+    const deleted = readDeletedNotificationIDs();
+    deleted.add(notificationID);
+    window.localStorage.setItem(
+      SUPPORT_DELETED_NOTIFICATIONS_STORAGE_KEY,
+      JSON.stringify([...deleted]),
+    );
+  } catch {
+    // 中文：本地存储不可用时仍保留当前页面内的删除反馈，不阻断用户操作。
+  }
+}
 
 // 中文：统一由页面头部和客服按钮发送打开请求，保证客服浮层只维护一份交互状态。
 export function requestSupportWidget(tab: SupportTab = "contact"): void {
@@ -4247,7 +4371,12 @@ export function PublicFooter() {
           <span className="manuscript-footer-logo">
             <img src={manuscriptFooterLogo} alt="Token NX" decoding="async" />
           </span>
-          <span>{t("footer.copyright", { year: new Date().getFullYear(), company: "Token NX, Inc." })}</span>
+          <span>
+            {t("footer.copyright", {
+              year: new Date().getFullYear(),
+              company: "Token NX, Inc.",
+            })}
+          </span>
           <small>{PUBLIC_COMPANY_INFO.name}</small>
         </div>
         <nav
@@ -4329,10 +4458,10 @@ export function PublicFooter() {
             <span>{t("footer.businessPrefix")}</span>
             <a
               className="manuscript-footer-business-action manuscript-footer-business-email"
-              href="mailto:wub@tokennx.com"
-              aria-label={`${t("footer.businessPrefix")}wub@tokennx.com`}
+              href={`mailto:${t("footer.businessEmail")}`}
+              aria-label={`${t("footer.businessPrefix")}${t("footer.businessEmail")}`}
             >
-              wub@tokennx.com
+              {t("footer.businessEmail")}
             </a>
           </div>
           <div className="manuscript-footer-qr-row">
@@ -4362,7 +4491,10 @@ export function PublicFooter() {
         aria-label={t("footer.filing")}
       >
         <span className="manuscript-footer-filing-copy">
-          {t("footer.copyright", { year: new Date().getFullYear(), company: PUBLIC_COMPANY_INFO.name })}
+          {t("footer.copyright", {
+            year: new Date().getFullYear(),
+            company: PUBLIC_COMPANY_INFO.name,
+          })}
         </span>
         <span className="manuscript-footer-filing-item">
           <img src={manuscriptFilingIcpIcon} alt="" aria-hidden="true" />
@@ -4394,6 +4526,8 @@ export function ManuscriptSupportWidget() {
   const [draft, setDraft] = useState("");
   const [replying, setReplying] = useState(false);
   const [notifications, setNotifications] = useState<UserNotification[]>([]);
+  const [selectedNotification, setSelectedNotification] =
+    useState<UserNotification | null>(null);
   const [notificationLoading, setNotificationLoading] = useState(false);
   const [notificationError, setNotificationError] = useState(false);
   const [notificationUnreadCount, setNotificationUnreadCount] = useState(0);
@@ -4425,6 +4559,7 @@ export function ManuscriptSupportWidget() {
       const detail = (event as CustomEvent<{ tab?: SupportTab }>).detail;
       if (detail?.tab === "contact" || detail?.tab === "notifications")
         setTab(detail.tab);
+      if (detail?.tab === "notifications") setSelectedNotification(null);
       if (closeTimerRef.current !== undefined)
         window.clearTimeout(closeTimerRef.current);
       setHovered(false);
@@ -4485,8 +4620,14 @@ export function ManuscriptSupportWidget() {
     void getNotifications({ limit: 100, signal: controller.signal })
       .then((response) => {
         if (controller.signal.aborted) return;
-        setNotifications(response.items ?? []);
-        publishNotificationCount(response.unread_count ?? 0);
+        const deletedIDs = readDeletedNotificationIDs();
+        const visibleNotifications = (response.items ?? []).filter(
+          (item) => !deletedIDs.has(item.id),
+        );
+        setNotifications(visibleNotifications);
+        publishNotificationCount(
+          visibleNotifications.filter((item) => !item.read).length,
+        );
       })
       .catch(() => {
         if (!controller.signal.aborted) setNotificationError(true);
@@ -4501,6 +4642,7 @@ export function ManuscriptSupportWidget() {
     if (closeTimerRef.current !== undefined)
       window.clearTimeout(closeTimerRef.current);
     setTab("contact");
+    setSelectedNotification(null);
     setHovered(false);
     setOpen(true);
     setMounted(true);
@@ -4554,7 +4696,9 @@ export function ManuscriptSupportWidget() {
     }, MOCK_SUPPORT_REPLY_DELAY_MS);
   }
 
-  async function handleNotificationClick(notification: UserNotification): Promise<void> {
+  async function handleNotificationClick(
+    notification: UserNotification,
+  ): Promise<void> {
     if (!notification.read) {
       // 中文：先在本地即时切换已读状态，让用户无需等待接口返回即可看到反馈。
       setNotifications((current) =>
@@ -4575,15 +4719,33 @@ export function ManuscriptSupportWidget() {
         publishNotificationCount(notificationUnreadCount);
       }
     }
-    // 中文：通知面板内的已读操作不关闭弹窗；仅在通知有目标地址时执行页面跳转。
-    if (notification.action_url?.startsWith("/")) navigate(notification.action_url);
+    // 中文：通知正文进入独立内页，避免在窄小的浮层中截断 Markdown 内容。
+    setSelectedNotification(notification);
+  }
+
+  function handleDeleteNotification(notificationID: string): void {
+    const deletedNotification = notifications.find(
+      (item) => item.id === notificationID,
+    );
+    if (!deletedNotification) return;
+    persistDeletedNotificationID(notificationID);
+    setNotifications((current) =>
+      current.filter((item) => item.id !== notificationID),
+    );
+    if (selectedNotification?.id === notificationID)
+      setSelectedNotification(null);
+    if (!deletedNotification.read) {
+      publishNotificationCount(Math.max(0, notificationUnreadCount - 1));
+    }
   }
 
   async function handleMarkAllNotificationsRead(): Promise<void> {
     if (notificationUnreadCount <= 0) return;
     const previousNotifications = notifications;
     // 中文：批量已读同样采用乐观更新，避免按钮点击后列表状态延迟变化。
-    setNotifications((current) => current.map((item) => ({ ...item, read: true })));
+    setNotifications((current) =>
+      current.map((item) => ({ ...item, read: true })),
+    );
     publishNotificationCount(0);
     try {
       await markAllNotificationsRead();
@@ -4649,7 +4811,10 @@ export function ManuscriptSupportWidget() {
               type="button"
               role="tab"
               aria-selected={tab === "notifications"}
-              onClick={() => setTab("notifications")}
+              onClick={() => {
+                setSelectedNotification(null);
+                setTab("notifications");
+              }}
             >
               <IconBellStroked />
               {t("support.notificationsTab")}
@@ -4774,7 +4939,38 @@ export function ManuscriptSupportWidget() {
               role="tabpanel"
               aria-label={t("support.notificationsTab")}
             >
-              {notificationLoading ? (
+              {selectedNotification ? (
+                <article className="manuscript-support-notification-detail">
+                  <button
+                    className="manuscript-support-notification-back"
+                    type="button"
+                    onClick={() => setSelectedNotification(null)}
+                  >
+                    <IconArrowLeft aria-hidden="true" />
+                  </button>
+                  <header className="manuscript-support-notification-detail-header">
+                    <span
+                      className={`manuscript-support-notification-detail-severity is-${selectedNotification.severity}`}
+                    >
+                      <i aria-hidden="true" />
+                      {selectedNotification.severity === "critical"
+                        ? t("support.notificationCritical")
+                        : selectedNotification.severity === "warning"
+                          ? t("support.notificationWarning")
+                          : t("support.notificationInfo")}
+                    </span>
+                    <time dateTime={selectedNotification.created_at}>
+                      {formatApiTime(selectedNotification.created_at)}
+                    </time>
+                  </header>
+                  <h2>{selectedNotification.title}</h2>
+                  <MarkdownContent
+                    content={selectedNotification.content || ""}
+                    className="manuscript-support-notification-markdown"
+                    enhancedCodeBlocks
+                  />
+                </article>
+              ) : notificationLoading ? (
                 <div className="manuscript-support-notifications-state">
                   <IconBellStroked />
                   <span>{t("support.notificationsLoading")}</span>
@@ -4793,7 +4989,11 @@ export function ManuscriptSupportWidget() {
               ) : (
                 <div className="manuscript-support-notification-content">
                   <div className="manuscript-support-notification-toolbar">
-                    <span>{t("support.notificationCount", { count: notifications.length })}</span>
+                    <span>
+                      {t("support.notificationCount", {
+                        count: notifications.length,
+                      })}
+                    </span>
                     <button
                       type="button"
                       onClick={() => void handleMarkAllNotificationsRead()}
@@ -4802,21 +5002,47 @@ export function ManuscriptSupportWidget() {
                       {t("support.markAllRead")}
                     </button>
                   </div>
-                  <div className="manuscript-support-notification-list" role="list">
+                  <div
+                    className="manuscript-support-notification-list"
+                    role="list"
+                  >
                     {notifications.map((notification) => (
-                      <button
+                      <div
                         className={`manuscript-support-notification-item${notification.read ? " is-read" : " is-unread"}`}
-                        type="button"
                         key={notification.id}
-                        onClick={() => void handleNotificationClick(notification)}
+                        role="listitem"
                       >
-                        <i className={`manuscript-support-notification-severity is-${notification.severity}`} aria-hidden="true" />
+                        <button
+                          className="manuscript-support-notification-open"
+                          type="button"
+                          onClick={() =>
+                            void handleNotificationClick(notification)
+                          }
+                        >
+                          <i
+                            className={`manuscript-support-notification-severity is-${notification.severity}`}
+                            aria-hidden="true"
+                          />
                         <span className="manuscript-support-notification-copy">
                           <strong>{notification.title}</strong>
                           <span>{notification.content}</span>
-                          <time dateTime={notification.created_at}>{formatApiTime(notification.created_at)}</time>
+                            <time dateTime={notification.created_at}>
+                              {formatApiTime(notification.created_at)}
+                            </time>
                         </span>
                       </button>
+                        <button
+                          className="manuscript-support-notification-delete"
+                          type="button"
+                          aria-label={t("support.deleteNotification")}
+                          title={t("support.deleteNotification")}
+                          onClick={() =>
+                            handleDeleteNotification(notification.id)
+                          }
+                        >
+                          <IconClose aria-hidden="true" />
+                        </button>
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -4936,7 +5162,9 @@ export function EmptyPanel({
 }) {
   // 中文：表格空状态保留表格表面色，普通页面空状态继续沿用透明背景。
   return (
-    <div className={`empty-panel${surface === "table" ? " empty-panel--table" : ""}`}>
+    <div
+      className={`empty-panel${surface === "table" ? " empty-panel--table" : ""}`}
+    >
       <IconFile size="extra-large" />
       <h3>{title}</h3>
       <p>{description}</p>

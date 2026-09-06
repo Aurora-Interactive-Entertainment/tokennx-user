@@ -18,14 +18,8 @@ export interface AuthUser {
   status: 'active' | string
   phone_masked?: string
   email_masked?: string
-  /** 登录后的引导字段，后端上线后可直接控制首次绑定邮箱流程。 */
-  first_login?: boolean
-  needs_email_binding?: boolean
-  bind_email_required?: boolean
-  email_binding_required?: boolean
-  is_new_user?: boolean
-  /** 认证响应中的首次登录引导标记（服务端历史拼写 promt_required 会被归一化）。 */
-  prompt_required?: boolean
+  /** 认证响应中的首次登录标记；服务端字段名固定为 promt_required。 */
+  promt_required?: boolean
 }
 
 export interface VerificationCodeResult {
@@ -40,9 +34,8 @@ export type PhoneCodeResult = VerificationCodeResult
 export interface AuthResult {
   status: 'succeeded' | 'pending_binding'
   binding_required: boolean
-  /** 接口现有字段名，promt_required 少了一个 p。 */
+  /** 用户本次是否为首次登录；服务端字段名固定为 promt_required。 */
   promt_required?: boolean
-  prompt_required?: boolean
   binding_ticket?: string
   access_token?: string
   refresh_token?: string

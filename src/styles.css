@@ -4118,7 +4118,16 @@ body textarea {
   top: calc(100% + 8px);
   right: 0;
   z-index: 120;
-  display: none;
+  /* 中文：保留下拉节点，通过透明度与位移实现平滑展开，避免 display 切换造成生硬闪现。 */
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-6px) scale(0.98);
+  transform-origin: top right;
+  transition:
+    opacity 0.18s ease,
+    transform 0.18s ease,
+    visibility 0s linear 0.18s;
   width: 240px;
   max-width: calc(100vw - 32px);
   max-height: calc(100dvh - 76px);
@@ -4131,7 +4140,11 @@ body textarea {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
 }
 .user-dropdown.open {
-  display: block;
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0) scale(1);
+  transition-delay: 0s;
 }
 .user-dropdown-header {
   padding: 12px;
@@ -4238,6 +4251,19 @@ body textarea {
   border-radius: 6px;
   background: var(--color-bg-menu);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  /* 中文：工作空间菜单挂载到 body 后使用同样的轻微上移/缩放入场。 */
+  animation: workspace-menu-enter 0.18s ease-out both;
+}
+
+@keyframes workspace-menu-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 .workspace-menu::-webkit-scrollbar {
   display: none;
@@ -9782,17 +9808,6 @@ html[data-theme="dark"] .generation-send-button.send-btn.is-running.semi-button:
   align-items: center;
   gap: var(--spacing-12);
 }
-.balance-inline {
-  display: inline-flex;
-  align-items: baseline;
-  gap: var(--spacing-6);
-  color: var(--color-text-secondary);
-  font-size: 12px;
-}
-.balance-inline strong {
-  color: var(--color-text-default-hover);
-  font-size: 16px;
-}
 .billing-filter-grid {
   display: flex;
   flex-wrap: wrap;
@@ -10186,14 +10201,20 @@ html[data-theme="dark"] .generation-send-button.send-btn.is-running.semi-button:
   color: var(--color-text-default);
   text-decoration: underline;
 }
-.billing-info-tooltip {
-  height: 16px !important;
-  min-height: 16px !important;
-  padding: 0 !important;
-  border: 0 !important;
-  color: var(--color-text-tertiary) !important;
-  background: transparent !important;
-  line-height: 16px !important;
+.billing-info-trigger {
+  display: inline-flex;
+  width: 16px;
+  height: 16px;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-tertiary);
+  cursor: default;
+  line-height: 1;
+}
+.billing-info-trigger:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--color-action-primary) 45%, transparent);
+  outline-offset: 2px;
+  border-radius: 50%;
 }
 .billing-info-icon {
   width: 14px;
@@ -10209,6 +10230,11 @@ html[data-theme="dark"] .generation-send-button.send-btn.is-running.semi-button:
 .billing-balance-card-total .billing-balance-card-footer > strong,
 .billing-balance-card-total > strong {
   color: var(--color-action-primary);
+}
+.billing-balance-card-total .billing-balance-total-value {
+  font-size: 26px;
+  /* 中文：总余额字号更大，向下微调以和右侧余额数字的视觉高度对齐。 */
+  transform: translateY(10px);
 }
 .billing-balance-recharge-button.semi-button {
   min-width: 80px;
@@ -10256,9 +10282,40 @@ html[data-theme="dark"] .billing-balance-recharge-button.semi-button:active:not(
   border-bottom: 0;
 }
 .billing-quota-label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-8);
   color: var(--color-text-secondary);
   font-size: 13px;
   font-weight: 550;
+}
+
+/* 中文：费用管理中的账本导出按钮在深色主题保持白底黑字，避免描边按钮与背景混淆。 */
+html[data-theme="dark"] .billing-export-button.semi-button {
+  border-color: #fff;
+  color: #17181b;
+  background: #fff;
+}
+
+html[data-theme="dark"] .billing-export-button.semi-button:hover,
+html[data-theme="dark"] .billing-export-button.semi-button:focus-visible,
+html[data-theme="dark"] .billing-export-button.semi-button:active {
+  border-color: #f2f2f2;
+  color: #17181b;
+  background: #f2f2f2;
+}
+.billing-quota-icon {
+  display: inline-flex;
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-tertiary);
+}
+.billing-quota-icon svg {
+  width: 16px;
+  height: 16px;
 }
 .billing-quota-track {
   height: 8px;
@@ -10302,9 +10359,11 @@ html[data-theme="dark"] .billing-balance-recharge-button.semi-button:active:not(
 .billing-quota-row.is-negative .billing-quota-value {
   color: var(--color-error, #df7b83);
 }
+.billing-quota-track-placeholder {
+  min-height: 8px;
+}
 .billing-quota-row.is-total {
-  min-height: 50px;
-  background: color-mix(in srgb, var(--color-action-primary) 10%, var(--color-bg-base-secondary));
+  border-top: 1px solid var(--color-border-neutral-l1);
 }
 .billing-quota-row.is-total .billing-quota-label,
 .billing-quota-row.is-total .billing-quota-value {
@@ -10336,15 +10395,6 @@ html[data-theme="dark"] .billing-balance-recharge-button.semi-button:active:not(
 .billing-console-page .analysis-actions > .semi-button {
   font-size: 13px;
   font-weight: 400;
-}
-.balance-inline {
-  color: var(--color-text-secondary);
-  font-size: 13px;
-}
-.balance-inline strong {
-  margin-left: var(--spacing-4);
-  color: var(--color-text-default);
-  font-size: 20px;
 }
 .billing-filter-grid {
   display: flex;
@@ -16112,7 +16162,7 @@ html[data-theme="light"] .app-loading-screen__logo-shell .brand-logo-image {
 /* 中文：宽屏首页按设计稿放大品牌区，移动端尺寸由 public-mobile-nav.css 独立控制。 */
 @media (min-width: 1281px) {
   .public-header--home .public-header-inner {
-    padding-inline: 80px;
+    padding-inline: 20px;
   }
 
   .public-header--home .header-logo {
@@ -16751,7 +16801,8 @@ html[data-theme="light"] .public-header--home .header-notification-dot {
   isolation: isolate;
   /* 中文：统一按钮本体与外扩彩色描边的圆角基准，避免四角曲率错位。 */
   --manuscript-model-button-radius: 23.505px;
-  --manuscript-model-rim-width: 2px;
+  /* 中文：与左侧 shader 的单层细边对齐，避免右侧描边显得更粗。 */
+  --manuscript-model-rim-width: 1px;
   width: 212.3px;
   min-width: 212.3px;
   height: 47.01px;
@@ -16818,7 +16869,7 @@ html[data-theme="light"] .public-header--home .header-notification-dot {
 
 .manuscript-hero-actions .manuscript-model-button::before {
   position: absolute;
-  /* 中文：使用 2px 描边宽度与左侧液态金属按钮保持一致。 */
+  /* 中文：右侧按钮使用 1px 单层描边，和左侧 shader 边缘保持同一视觉重量。 */
   inset: calc(-1 * var(--manuscript-model-rim-width));
   z-index: 0;
   /* 中文：伪元素向外扩展后同步增加圆角半径，使外圈和按钮内圈保持同心。 */
@@ -16832,15 +16883,15 @@ html[data-theme="light"] .public-header--home .header-notification-dot {
     rgba(255, 164, 77, .9)
   );
   content: "";
-  /* 中文：给描边增加轻微扩散，让边缘呈现与左侧按钮一致的蒙版质感。 */
-  opacity: .78;
-  filter: blur(.42px);
+  /* 中文：只保留极轻柔化，避免模糊把 1px 描边视觉放大成厚边。 */
+  opacity: .82;
+  filter: blur(.12px);
   pointer-events: none;
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask-composite: xor;
   mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   mask-composite: exclude;
-  padding: 2px;
+  padding: var(--manuscript-model-rim-width);
   animation: manuscript-model-rim 5.6s linear infinite;
 }
 
@@ -24672,6 +24723,23 @@ html:has(.login-page) {
   color: #fff;
   background: #303030;
   box-shadow: 0 0 0 1px #292929;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateY(-8px) scale(0.98);
+  transform-origin: top left;
+  transition:
+    opacity 160ms ease,
+    transform 180ms ease,
+    visibility 0ms linear 180ms;
+  will-change: opacity, transform;
+}
+.billing-hover-card.is-open {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: translateY(0) scale(1);
+  transition-delay: 0ms;
 }
 
 .billing-hover-card-top {
@@ -24972,6 +25040,13 @@ html:has(.login-page) {
   }
   .account-settings-input {
     width: min(220px, 48vw);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .billing-hover-card {
+    transition: none;
+    transform: none;
   }
 }
 
@@ -25840,12 +25915,6 @@ html[data-theme="light"]
 .quickstart-pdf-step-help a:active {
   color: #7c65ff;
 }
-/* 中文：工具文档链接在交互状态下保持原有文字颜色。 */
-html .quickstart-pdf-tool-detail a:hover,
-html .quickstart-pdf-tool-detail a:focus-visible,
-html .quickstart-pdf-tool-detail a:active {
-  color: #8d78ff;
-}
 .quickstart-pdf-step-panel {
   display: grid;
   grid-template-rows: 0fr;
@@ -25935,7 +26004,7 @@ html .quickstart-pdf-tool-detail a:active {
 /* 中文：应用、复制按钮使用与用量明细一致的纯文字链接样式。 */
 .quickstart-pdf-key-actions .semi-button:not(.semi-button-disabled) {
   border: 0;
-  color: #7898ee;
+  color: #3b7bff;
   background: transparent;
   box-shadow: none;
   font-weight: 400;
@@ -26012,7 +26081,7 @@ html .quickstart-pdf-tool-detail a:active {
   color: var(--text-primary);
 }
 .quickstart-pdf-cancel-button {
-  /* 中文：下一步按钮复用 AppModal 取消按钮的中性样式规范。 */
+  /* 中文：下一步按钮按主题使用高对比度配色，确保文字清晰可读。 */
   width: auto;
   min-width: 76px;
   height: 34px;
@@ -26026,6 +26095,28 @@ html .quickstart-pdf-tool-detail a:active {
   font-size: 13px;
   font-weight: 500;
   line-height: 20px;
+}
+html[data-theme="light"] .quickstart-pdf-cancel-button {
+  border-color: #17181b;
+  background: #17181b;
+  color: #fff;
+}
+html[data-theme="light"] .quickstart-pdf-cancel-button:hover:not(:disabled),
+html[data-theme="light"] .quickstart-pdf-cancel-button:focus-visible:not(:disabled) {
+  border-color: #303238;
+  background: #303238;
+  color: #fff;
+}
+html[data-theme="dark"] .quickstart-pdf-cancel-button {
+  border-color: #fff;
+  background: #fff;
+  color: #17181b;
+}
+html[data-theme="dark"] .quickstart-pdf-cancel-button:hover:not(:disabled),
+html[data-theme="dark"] .quickstart-pdf-cancel-button:focus-visible:not(:disabled) {
+  border-color: #f2f2f2;
+  background: #f2f2f2;
+  color: #17181b;
 }
 .quickstart-pdf-cancel-button:hover:not(:disabled),
 .quickstart-pdf-cancel-button:focus-visible:not(:disabled) {
@@ -26207,52 +26298,95 @@ html .quickstart-pdf-tool-detail a:active {
   color: #8d78ff;
   font-weight: 600;
 }
-.quickstart-pdf-agent-tabs {
-  margin-bottom: 18px;
-  border-bottom: 1px solid var(--border-subtle);
-  gap: 18px;
-}
-.quickstart-pdf-agent-tabs button {
-  position: relative;
-  min-width: 112px;
-  min-height: 38px;
-  padding-inline: 2px;
-  border-radius: 0;
-  background: transparent !important;
-  color: var(--text-secondary);
-  font-weight: 600;
-}
-.quickstart-pdf-agent-tabs button.is-active {
-  color: var(--text-primary);
-}
-.quickstart-pdf-agent-tabs button.is-active::after {
-  position: absolute;
-  right: 0;
-  bottom: -1px;
-  left: 0;
-  height: 2px;
-  background: var(--text-primary);
-  content: "";
-}
 .quickstart-pdf-mode-tabs {
-  margin-bottom: 12px;
-  gap: 0;
+  gap: 8px;
 }
 .quickstart-pdf-mode-tabs button {
-  width: 170px;
-  min-height: 40px;
-  border: 1px solid var(--border-default);
-  border-radius: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  min-width: 146px;
+  min-height: 44px;
+  padding: 0 18px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  background: var(--bg-base-soft);
   color: var(--text-secondary);
   font-weight: 600;
+  white-space: nowrap;
 }
-.quickstart-pdf-mode-tabs button + button {
-  margin-left: -1px;
+.quickstart-pdf-protocol-button {
+  position: static;
+  padding-inline: 18px !important;
+}
+.quickstart-pdf-protocol-button > span {
+  display: block;
+  width: auto;
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .quickstart-pdf-mode-tabs button.is-active {
-  background: transparent;
-  color: var(--text-primary);
-  border-color: var(--text-primary);
+  border-color: #8b6dff;
+  background: color-mix(in srgb, #8b6dff 7%, var(--bg-panel));
+  color: #8062f5;
+  box-shadow: 0 0 0 1px rgb(139 109 255 / 12%);
+}
+.quickstart-pdf-api-selector {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 50px;
+  margin-bottom: 18px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+.quickstart-pdf-protocol-tabs,
+.quickstart-pdf-api-mode-tabs {
+  flex: 0 0 auto;
+  min-width: 0;
+  max-width: 100%;
+  overflow: visible;
+}
+.quickstart-pdf-protocol-tabs button {
+  flex: 0 0 auto;
+  min-width: max-content;
+}
+.quickstart-pdf-api-mode-tabs button {
+  flex: 0 0 auto;
+  min-width: max-content;
+}
+.quickstart-pdf-protocol-icon {
+  position: static;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  margin-right: 9px;
+  object-fit: contain;
+  transform: none;
+}
+.quickstart-pdf-protocol-button.protocol-openai .quickstart-pdf-protocol-icon {
+  filter: brightness(0) invert(1);
+}
+html[data-theme="light"] .quickstart-pdf-protocol-button.protocol-openai .quickstart-pdf-protocol-icon {
+  filter: none;
+}
+html[data-theme="dark"] .quickstart-pdf-protocol-button:not(.is-active) {
+  border-color: #3b3d45;
+  background: #202126;
+  color: #d6d8e0;
+}
+html[data-theme="dark"] .quickstart-pdf-protocol-button:not(.is-active):hover,
+html[data-theme="dark"] .quickstart-pdf-api-mode-tabs button:not(.is-active):hover {
+  border-color: #686b78;
+  background: #292b33;
+  color: #fff;
+}
+html[data-theme="dark"] .quickstart-pdf-api-mode-tabs button:not(.is-active) {
+  border-color: #3b3d45;
+  background: #202126;
+  color: #d6d8e0;
 }
 .quickstart-pdf-language-tabs button {
   border-radius: 0;
@@ -26282,6 +26416,30 @@ html .quickstart-pdf-tool-detail a:active {
   background: #e8efff;
   padding: 3px 8px;
   border-radius: 3px;
+}
+.quickstart-pdf-code-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 10px;
+}
+.quickstart-pdf-code-heading .quickstart-pdf-code-hint {
+  margin-bottom: 0;
+}
+.quickstart-pdf-doc-link {
+  flex: 0 0 auto;
+  color: #8062f5;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  text-underline-offset: 3px;
+}
+.quickstart-pdf-doc-link:hover,
+.quickstart-pdf-doc-link:focus-visible,
+.quickstart-pdf-doc-link:active {
+  color: #6d4ee8;
+  text-decoration: underline;
 }
 .quickstart-pdf-code-shell {
   overflow: hidden;
@@ -26355,81 +26513,6 @@ html .quickstart-pdf-tool-detail a:active {
 .quickstart-code-token.is-number {
   color: #f2b477;
 }
-.quickstart-pdf-tools-panel {
-  display: block;
-  min-height: 250px;
-  border: 1px solid var(--border-subtle);
-  border-radius: 7px;
-  overflow: hidden;
-}
-.quickstart-pdf-tool-list {
-  display: flex;
-  align-items: stretch;
-  gap: 0;
-  overflow-x: auto;
-  padding: 0;
-  background: var(--bg-base-soft);
-  border-bottom: 1px solid var(--border-subtle);
-}
-.quickstart-pdf-tool-list button {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  min-width: max-content;
-  min-height: 58px;
-  padding: 0 18px;
-  border: 0;
-  border-right: 1px solid var(--border-subtle);
-  border-radius: 0;
-  background: transparent;
-  color: var(--text-secondary);
-  text-align: left;
-  cursor: pointer;
-}
-.quickstart-pdf-tool-list button:hover {
-  color: var(--text-primary);
-  background: color-mix(in srgb, var(--brand-soft) 55%, transparent);
-}
-.quickstart-pdf-tool-list button.is-active {
-  color: var(--text-primary);
-  background: var(--bg-panel);
-}
-.quickstart-pdf-tool-list button > span {
-  display: grid;
-  width: 22px;
-  height: 22px;
-  place-items: center;
-  border-radius: 6px;
-  color: #fff;
-  font-size: 11px;
-}
-.quickstart-pdf-tool-detail {
-  min-height: 220px;
-  padding: 30px 34px;
-  background: var(--bg-panel);
-}
-.quickstart-pdf-tool-detail h3 {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  margin: 0 0 12px;
-  color: var(--text-primary);
-  font-size: 18px;
-}
-.quickstart-pdf-tool-mark {
-  color: #54c99b;
-}
-.quickstart-pdf-tool-detail p {
-  max-width: 720px;
-  margin: 0 0 22px;
-  color: var(--text-secondary);
-  line-height: 1.7;
-}
-.quickstart-pdf-tool-detail a {
-  color: #8d78ff;
-  font-size: 13px;
-  font-weight: 600;
-}
 html[data-theme="light"] .quickstart-pdf-step {
   background: #fff;
   border-color: #e5e7eb;
@@ -26442,7 +26525,6 @@ html[data-theme="light"] .quickstart-pdf-step.is-open {
 html[data-theme="light"] .quickstart-pdf-key-table th,
 html[data-theme="light"] .quickstart-pdf-model-card,
 html[data-theme="light"] .quickstart-pdf-selected-model,
-html[data-theme="light"] .quickstart-pdf-tool-list,
 html[data-theme="light"] .quickstart-pdf-code-shell {
   background: #f7f8fa;
 }
@@ -26527,18 +26609,48 @@ html[data-theme="light"] .quickstart-code-token.is-number {
   .quickstart-pdf-model-grid {
     grid-template-columns: 1fr;
   }
-  .quickstart-pdf-tools-panel {
-    grid-template-columns: 1fr;
-  }
-  .quickstart-pdf-tool-list {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .quickstart-pdf-tool-detail {
-    padding: 20px;
-  }
   .quickstart-pdf-code-shell pre {
     min-height: 180px;
     padding: 14px;
+  }
+  .quickstart-pdf-api-selector {
+    align-items: center;
+    gap: 8px;
+  }
+  .quickstart-pdf-protocol-tabs,
+  .quickstart-pdf-api-mode-tabs {
+    width: max-content;
+  }
+  .quickstart-pdf-protocol-tabs {
+    flex: 0 0 auto;
+  }
+  .quickstart-pdf-protocol-tabs button {
+    flex: 0 0 auto;
+    min-width: max-content;
+  }
+  .quickstart-pdf-api-mode-tabs {
+    flex: 0 0 auto;
+  }
+  .quickstart-pdf-api-mode-tabs button {
+    flex: 0 0 auto;
+    min-width: max-content;
+  }
+  .quickstart-pdf-code-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+}
+
+/* 中文：第三步 API 选择器在中等宽度下允许换行，避免三组卡片挤压代码区域。 */
+@media (min-width: 721px) and (max-width: 980px) {
+  .quickstart-pdf-api-selector {
+    align-items: stretch;
+    flex-direction: row;
+  }
+  .quickstart-pdf-protocol-tabs,
+  .quickstart-pdf-api-mode-tabs {
+    width: max-content;
   }
 }
 
@@ -26570,15 +26682,16 @@ html[data-theme="light"] .public-header.public-header--home .console-entry:focus
   overflow: visible;
   border: 2px solid transparent !important;
   border-radius: var(--manuscript-model-button-radius) !important;
-  color: #fff !important;
+  /* 中文：深色模式使用白底黑字，浅色模式在下方反转为黑底白字。 */
+  color: #1f2329 !important;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, .085), rgba(255, 255, 255, .014) 44%, rgba(255, 255, 255, 0) 64%),
-    rgba(10, 12, 10, .42) !important;
+    linear-gradient(180deg, rgba(255, 255, 255, .96), rgba(255, 255, 255, .84) 46%, rgba(255, 255, 255, .94)),
+    #fff !important;
   box-shadow:
-    0 4px 10px rgba(0, 0, 0, .28),
-    0 14px 28px rgba(0, 0, 0, .18),
-    inset 0 1px 0 rgba(255, 255, 255, .13),
-    inset 0 -1px 3px rgba(255, 255, 255, .05) !important;
+    0 4px 10px rgba(0, 0, 0, .2),
+    0 14px 28px rgba(0, 0, 0, .14),
+    inset 0 1px 0 rgba(255, 255, 255, .72),
+    inset 0 -1px 3px rgba(0, 0, 0, .06) !important;
   transform: none !important;
   transition: none !important;
 }
@@ -26621,30 +26734,53 @@ html[data-theme="light"]
   background:
     linear-gradient(180deg, rgba(255, 255, 255, .085), rgba(255, 255, 255, .014) 44%, rgba(255, 255, 255, 0) 64%),
     rgba(10, 12, 10, .92) !important;
+  color: #fff !important;
 }
 
-/* 中文：浅色模式下登录、重新获取二维码使用浅色玻璃底，减少与浅色弹窗的反差。 */
+/* 中文：图二至图四的浅色模式统一使用黑底白字，并保留现有的黑色与阴影参数。 */
 html[data-theme="light"]
   :is(.login-capsule-soft, .header-login-capsule) {
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, .72), rgba(255, 255, 255, .42) 46%, rgba(255, 255, 255, .68)),
-    #f2f3ef !important;
-  color: #1f2329 !important;
-  /* 中文：浅色玻璃底降低外阴影和内侧高光，避免在浅色弹窗中过重。 */
+    linear-gradient(180deg, rgba(255, 255, 255, .085), rgba(255, 255, 255, .014) 44%, rgba(255, 255, 255, 0) 64%),
+    rgba(10, 12, 10, .92) !important;
+  color: #fff !important;
   box-shadow:
-    0 2px 5px rgba(0, 0, 0, .08),
-    0 6px 12px rgba(0, 0, 0, .05),
-    inset 0 1px 0 rgba(255, 255, 255, .62),
-    inset 0 -1px 2px rgba(0, 0, 0, .03) !important;
+    0 4px 10px rgba(0, 0, 0, .22),
+    0 10px 22px rgba(0, 0, 0, .14),
+    inset 0 1px 0 rgba(255, 255, 255, .13),
+    inset 0 -1px 3px rgba(255, 255, 255, .05) !important;
 }
 
-/* 中文：费用下拉中的链接规则优先级较高，浅色模式单独同步胶囊按钮的深色文字。 */
+/* 中文：费用下拉链接的文字规则优先级较高，单独同步深浅主题的反转颜色。 */
+.public-header .header-nav a.billing-hover-recharge.login-capsule-soft,
+.public-header .header-nav a.billing-hover-recharge.login-capsule-soft > span {
+  color: #1f2329 !important;
+  -webkit-text-fill-color: #1f2329 !important;
+}
 html[data-theme="light"]
   .public-header .header-nav a.billing-hover-recharge.login-capsule-soft,
 html[data-theme="light"]
   .public-header .header-nav a.billing-hover-recharge.login-capsule-soft > span {
-  color: #1f2329 !important;
-  -webkit-text-fill-color: #1f2329 !important;
+  color: #fff !important;
+  -webkit-text-fill-color: #fff !important;
+}
+
+/* 中文：图五控制台入口按主题反转黑白，浅色黑底白字，深色白底黑字。 */
+.public-header.public-header--home .console-entry,
+.public-header.public-header--home .console-entry:hover,
+.public-header.public-header--home .console-entry:focus-visible {
+  border-color: #fff;
+  color: #1f2329;
+  background: #fff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, .16);
+}
+html[data-theme="light"] .public-header.public-header--home .console-entry,
+html[data-theme="light"] .public-header.public-header--home .console-entry:hover,
+html[data-theme="light"] .public-header.public-header--home .console-entry:focus-visible {
+  border-color: #1f2329;
+  color: #fff;
+  background: #1f2329;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, .22);
 }
 
 :is(.login-capsule-action, .login-capsule-soft, .header-login-capsule):disabled,

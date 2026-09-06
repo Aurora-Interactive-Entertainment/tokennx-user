@@ -1639,7 +1639,7 @@ html[data-theme='dark'] .video-duration-select-dropdown .video-select-panel {
 
 html[data-theme='dark'] .video-duration-select-dropdown,
 html[data-theme='dark'] .video-duration-select-dropdown .video-select-panel {
-  background: var(--video-popup-input) !important;
+  background: #333333 !important;
 }
 
 .video-reference-select-dropdown .semi-select-option,

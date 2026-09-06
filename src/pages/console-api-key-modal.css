@@ -1,78 +1,43 @@
-/* 创建与编辑 API Key 弹窗：按业务分组保持双栏结构，避免样式外溢到其他弹窗。 */
+/* 中文：创建与编辑 API Key 弹窗复用 AppModal 基线，仅约束业务宽高和内部表单。 */
 .api-key-management-modal .semi-modal {
-  width: min(860px, calc(100vw - var(--spacing-32))) !important;
-  max-height: calc(100dvh - var(--spacing-32));
+  width: min(600px, calc(100vw - var(--spacing-32))) !important;
+  max-height: calc(100dvh - 64px);
   margin: auto;
 }
 
 .api-key-management-modal .semi-modal-content {
-  max-height: calc(100dvh - var(--spacing-32));
-  padding: 0;
-  overflow: hidden;
-  border-radius: var(--radius-8);
-}
-
-.api-key-management-modal .semi-modal-header {
-  min-height: 72px;
-  margin: 0;
-  padding: var(--spacing-20) var(--spacing-32) var(--spacing-16);
-}
-
-.api-key-management-modal .semi-modal-title {
-  color: var(--color-text-default);
-  font-size: 21px;
-  font-weight: 600;
-  line-height: 32px;
-}
-
-.api-key-management-modal .semi-button.semi-modal-close {
-  width: 34px;
-  height: 34px;
-  min-width: 34px;
-  padding: 0;
-  border-radius: var(--radius-6);
-  color: var(--color-text-secondary);
-  background: var(--color-bg-overlay-l2);
-}
-
-.api-key-management-modal .semi-button.semi-modal-close:hover,
-.api-key-management-modal .semi-button.semi-modal-close:focus-visible {
-  color: var(--color-text-default-hover);
-  background: var(--color-bg-overlay-l3);
+  max-height: inherit;
 }
 
 .api-key-management-modal .semi-modal-body {
   min-height: 0;
-  padding: var(--spacing-8) var(--spacing-32) var(--spacing-20);
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
 }
 
-.api-key-management-modal .semi-modal-footer {
-  margin: 0;
-  padding: var(--spacing-16) var(--spacing-32) var(--spacing-24);
-}
-
-.api-key-management-modal .semi-modal-footer .semi-button {
-  min-width: 76px;
-  height: 34px;
-  border-radius: var(--radius-6);
-}
-
 .api-key-modal-form {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  column-gap: var(--spacing-28);
-  row-gap: var(--spacing-18, 18px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-18, 18px);
 }
 
 .api-key-modal-form > .banner-notice,
 .api-key-modal-form > .api-key-tags-field,
-.api-key-modal-form > .api-key-advanced-toggle,
 .api-key-modal-form > .api-key-advanced-fields {
   grid-column: 1 / -1;
 }
+
+/* 中文：DOM 顺序服务于编辑复用，视觉顺序与创建稿一致。 */
+.api-key-modal-form > .api-key-name-field { order: 1; }
+.api-key-modal-form > .api-key-tags-field { order: 2; }
+.api-key-modal-form > .api-key-member-field { order: 3; }
+.api-key-modal-form > .api-key-limit-switch-field { order: 4; }
+.api-key-modal-form > .api-key-validity-field { order: 5; }
+.api-key-modal-form > .api-key-model-field { order: 6; }
+.api-key-modal-form > .api-key-billing-field { order: 7; }
+.api-key-modal-form > .api-key-whitelist-field { order: 8; }
+.api-key-modal-form > .api-key-advanced-fields { order: 9; }
 
 .api-key-modal-form > .banner-notice {
   min-height: 44px;
@@ -97,7 +62,7 @@
 .api-key-form-field .field-label {
   display: block;
   color: var(--color-text-default);
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   line-height: 1.45;
 }
@@ -117,7 +82,9 @@
 .api-key-management-modal .api-key-modal-form .semi-input-wrapper,
 .api-key-management-modal .api-key-modal-form .semi-select {
   min-width: 0;
-  height: 36px;
+  box-sizing: border-box;
+  height: 38px;
+  border-width: 1px;
   border-color: var(--color-border-neutral-l2);
   border-radius: var(--radius-6);
   background: var(--color-bg-base-secondary);
@@ -136,7 +103,7 @@
 
 .api-key-management-modal .api-key-modal-form .semi-input,
 .api-key-management-modal .api-key-modal-form .semi-select-selection {
-  height: 34px;
+  height: 36px;
   color: var(--color-text-default);
   font-size: 13px;
 }
@@ -166,6 +133,17 @@
   flex-wrap: wrap;
   align-items: center;
   gap: var(--spacing-20);
+}
+
+/* 中文：模型范围仅保留为旧数据兼容状态，不在新稿中重复展示单选项。 */
+.api-key-model-field .api-key-scope-options {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 .api-key-scope-radio {
@@ -214,7 +192,7 @@
 .billing-source-option {
   display: flex;
   min-width: 0;
-  min-height: 44px;
+  min-height: 38px;
   align-items: center;
   gap: var(--spacing-10);
   padding: 0 var(--spacing-16);
@@ -234,74 +212,19 @@
 }
 
 .api-key-model-picker {
-  overflow: hidden;
-  border: 1px solid var(--color-border-neutral-l1);
-  border-radius: var(--radius-6);
-  background: var(--color-bg-base-secondary);
-}
-
-.api-key-model-picker-toolbar {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-12);
-  padding: var(--spacing-10) var(--spacing-12);
-  border-bottom: 1px solid var(--color-border-neutral-l1);
-}
-
-.api-key-model-picker-toolbar .semi-input-wrapper {
   min-width: 0;
-  flex: 1;
 }
 
-.api-key-model-picker-toolbar > span {
-  flex: 0 0 auto;
-  color: var(--color-text-tertiary);
-  font-size: 12px;
-  white-space: nowrap;
+.api-key-model-picker .app-select {
+  width: 100%;
 }
 
-.api-key-model-list {
-  max-height: 180px;
-  overflow-y: auto;
-  padding: var(--spacing-4);
+.api-key-model-dropdown {
+  max-height: min(320px, 46vh);
 }
 
-.api-key-model-option {
-  display: flex;
-  min-height: 40px;
-  align-items: center;
-  gap: var(--spacing-8);
-  padding: 0 var(--spacing-8);
-  border-radius: var(--radius-4);
-  color: var(--color-text-default);
-  font-size: 13px;
-  cursor: pointer;
-}
-
-.api-key-model-option:hover {
-  background: var(--color-bg-overlay-l2);
-}
-
-.api-key-model-option > span {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.api-key-model-option small {
-  margin-left: auto;
-  color: var(--color-text-tertiary);
-  font-size: 11px;
-  white-space: nowrap;
-}
-
-.api-key-model-empty {
-  display: block;
-  padding: var(--spacing-16);
-  color: var(--color-text-tertiary);
-  font-size: 12px;
-  text-align: center;
+.api-key-whitelist-field {
+  grid-column: 1 / -1;
 }
 
 .api-key-limit-switch-field {
@@ -310,8 +233,8 @@
 
 .api-key-switch-row {
   display: flex;
-  min-height: 58px;
-  align-items: flex-start;
+  min-height: 44px;
+  align-items: center;
   justify-content: space-between;
   gap: var(--spacing-16);
   cursor: pointer;
@@ -341,37 +264,7 @@
 }
 
 .api-key-member-field {
-  grid-column: 2;
-}
-
-.api-key-advanced-toggle {
-  display: flex;
-  width: 100%;
-  min-height: 40px;
-  align-items: center;
-  gap: var(--spacing-8);
-  margin: 0;
-  padding: 0;
-  border: 0;
-  color: var(--color-text-secondary);
-  background: transparent;
-  font-size: 13px;
-  text-align: left;
-  cursor: pointer;
-}
-
-.api-key-advanced-toggle:hover {
-  color: var(--color-text-default-hover);
-}
-
-.api-key-expand-caret {
-  display: inline-block;
-  font-size: 10px;
-  transition: transform 0.15s ease;
-}
-
-.api-key-advanced-toggle[aria-expanded="true"] .api-key-expand-caret {
-  transform: rotate(90deg);
+  grid-column: auto;
 }
 
 .api-key-advanced-fields {
@@ -380,11 +273,45 @@
 
 .api-key-advanced-settings {
   display: grid;
-  gap: var(--spacing-16);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--spacing-14, 14px) var(--spacing-16);
   padding: var(--spacing-16);
   border: 1px solid var(--color-border-neutral-l1);
-  border-radius: var(--radius-6);
+  border-radius: var(--radius-8);
   background: var(--color-bg-overlay-l1);
+}
+
+/* 中文：把费用上限与三个限流输入排成截图中的 2x2 网格，提示横跨整行。 */
+.api-key-advanced-settings > .api-key-form-field:nth-child(2) {
+  display: contents;
+}
+
+.api-key-advanced-settings > .api-key-form-field:nth-child(2) > .field-label,
+.api-key-advanced-settings > .api-key-form-field:nth-child(2) > .api-key-field-hint {
+  display: none;
+}
+
+.api-key-advanced-settings > .api-key-form-field:nth-child(2) > .api-key-limit-grid {
+  display: contents;
+}
+
+.api-key-advanced-settings > .api-key-form-field:first-child {
+  grid-column: 1;
+}
+
+.api-key-advanced-settings > .api-key-form-field:nth-child(2) > .api-key-limit-grid > label:first-child {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.api-key-advanced-settings > .api-key-form-field:nth-child(2) > .api-key-limit-grid > label:nth-child(2) {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.api-key-advanced-settings > .api-key-form-field:nth-child(2) > .api-key-limit-grid > label:nth-child(3) {
+  grid-column: 2;
+  grid-row: 2;
 }
 
 .api-key-limit-field-head {
@@ -411,7 +338,7 @@
   left: var(--spacing-12);
   z-index: 1;
   color: var(--color-text-tertiary);
-  font-size: 14px;
+  font-size: 13px;
   pointer-events: none;
 }
 
@@ -425,8 +352,8 @@
 
 .api-key-limit-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--spacing-12);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--spacing-12) var(--spacing-16);
 }
 
 .api-key-limit-grid label {
@@ -454,12 +381,77 @@
   line-height: 1.7;
 }
 
-@media (max-width: 720px) {
-  .api-key-management-modal .semi-modal-wrap-center {
-    align-items: flex-start;
-    padding-block: var(--spacing-12);
+/* 中文：创建结果弹窗复用 AppModal 外壳，仅补充完整密钥的可读性和复制操作布局。 */
+.api-key-created-modal .semi-modal {
+  width: min(640px, calc(100vw - var(--spacing-32))) !important;
+}
+
+.api-key-created-modal-body {
+  display: grid;
+  gap: var(--spacing-20);
+}
+
+.api-key-created-modal-hint {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.api-key-created-modal-value {
+  display: flex;
+  min-width: 0;
+  align-items: stretch;
+  overflow: hidden;
+  border: 1px solid var(--color-border-neutral-l2);
+  border-radius: var(--radius-6);
+  background: var(--color-bg-base-tertiary);
+}
+
+.api-key-created-modal-value code {
+  min-width: 0;
+  flex: 1 1 auto;
+  align-self: center;
+  overflow-x: auto;
+  padding: 12px 14px;
+  color: var(--color-text-default);
+  font-family: var(--font-family-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+  font-size: 13px;
+  line-height: 20px;
+  white-space: nowrap;
+}
+
+.api-key-created-modal-value > .semi-button {
+  flex: 0 0 auto;
+  min-width: 96px;
+  min-height: 44px;
+  border: 0;
+  border-radius: 0;
+  font-size: 13px;
+}
+
+.api-key-created-modal-value > .semi-button .semi-icon {
+  margin-right: var(--spacing-6);
+}
+
+.api-key-created-modal-footer {
+  display: flex;
+  width: 100%;
+  justify-content: flex-end;
+}
+
+@media (max-width: 560px) {
+  .api-key-created-modal .semi-modal {
+    width: calc(100vw - var(--spacing-24)) !important;
   }
 
+  .api-key-created-modal-value > .semi-button {
+    min-width: 84px;
+    padding-inline: var(--spacing-10);
+  }
+}
+
+@media (max-width: 640px) {
   .api-key-management-modal .semi-modal {
     width: calc(100vw - var(--spacing-24)) !important;
     max-height: calc(100dvh - var(--spacing-24));
@@ -469,60 +461,21 @@
     max-height: calc(100dvh - var(--spacing-24));
   }
 
-  .api-key-management-modal .semi-modal-header {
-    min-height: 60px;
-    padding: var(--spacing-14) var(--spacing-16) var(--spacing-10);
-  }
-
-  .api-key-management-modal .semi-modal-title {
-    font-size: 20px;
-  }
-
-  .api-key-management-modal .semi-modal-body {
-    padding: var(--spacing-8) var(--spacing-16) var(--spacing-16);
-  }
-
-  .api-key-management-modal .semi-modal-footer {
-    padding: var(--spacing-12) var(--spacing-16) var(--spacing-16);
-  }
-
-  .api-key-form-field .field-label {
-    font-size: 15px;
-  }
-
-  .api-key-form-field .field-label small,
-  .api-key-field-hint {
-    font-size: 13px;
-  }
-
-  .api-key-management-modal .api-key-modal-form .semi-input-wrapper,
-  .api-key-management-modal .api-key-modal-form .semi-select {
-    height: 42px;
-  }
-
-  .api-key-management-modal .api-key-modal-form .semi-input,
-  .api-key-management-modal .api-key-modal-form .semi-select-selection {
-    height: 40px;
-    font-size: 15px;
-  }
-
-  .billing-source-option {
-    min-height: 48px;
-    font-size: 15px;
-  }
-
-  .api-key-switch-row strong {
-    font-size: 15px;
-  }
-
-  .api-key-switch-row small {
-    font-size: 13px;
-  }
-
-  .api-key-modal-form,
   .billing-source-options,
   .api-key-limit-grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .api-key-advanced-settings {
+    grid-template-columns: minmax(0, 1fr);
+    padding: var(--spacing-16);
+  }
+
+  .api-key-advanced-settings > .api-key-form-field:nth-child(2) > .api-key-limit-grid > label:first-child,
+  .api-key-advanced-settings > .api-key-form-field:nth-child(2) > .api-key-limit-grid > label:nth-child(2),
+  .api-key-advanced-settings > .api-key-form-field:nth-child(2) > .api-key-limit-grid > label:nth-child(3) {
+    grid-column: 1;
+    grid-row: auto;
   }
 
   .api-key-modal-form > *,
@@ -531,19 +484,10 @@
     grid-column: 1;
   }
 
-  .api-key-model-picker-toolbar {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .api-key-model-picker-toolbar > span {
-    align-self: flex-start;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .billing-source-option,
-  .api-key-expand-caret {
+  .billing-source-option {
     transition: none;
   }
 }

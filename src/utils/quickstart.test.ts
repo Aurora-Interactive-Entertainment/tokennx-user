@@ -12,6 +12,7 @@ describe('快速接入代码样例', () => {
   it('归一化未知的协议和语言参数', () => {
     expect(normalizeQuickstartProtocol(null)).toBe('openai')
     expect(normalizeQuickstartProtocol('unsupported')).toBe('openai')
+    expect(normalizeQuickstartProtocol('gemini')).toBe('gemini')
     expect(normalizeQuickstartLanguage(null)).toBe('python')
     expect(normalizeQuickstartLanguage('unsupported')).toBe('python')
   })
@@ -43,6 +44,21 @@ describe('快速接入代码样例', () => {
     expect(curlSample).toContain('https://gateway.example.com/v1/messages')
     expect(pythonSample).toContain('/v1/messages')
     expect(nodeSample).toContain('/v1/messages')
+    expect([pythonSample, nodeSample, curlSample].every((sample) => sample.includes('YOUR_TOKEN_NX_API_KEY'))).toBe(true)
+  })
+
+  it('生成 Gemini 官方 SDK 和 REST 请求样例', () => {
+    const endpoint = 'https://gateway.example.com/v1'
+    const pythonSample = quickstartCodeSample({ protocol: 'gemini', language: 'python', modelAlias: 'gemini-public', endpoint })
+    const nodeSample = quickstartCodeSample({ protocol: 'gemini', language: 'node', modelAlias: 'gemini-public', endpoint })
+    const curlSample = quickstartCodeSample({ protocol: 'gemini', language: 'curl', modelAlias: 'gemini-public', endpoint })
+
+    expect(pythonSample).toContain('from google import genai')
+    expect(pythonSample).toContain('client.models.generate_content')
+    expect(nodeSample).toContain('@google/genai')
+    expect(nodeSample).toContain('generateContent')
+    expect(curlSample).toContain('/v1beta/models/gemini-public:generateContent')
+    expect(curlSample).toContain('"contents":[{"parts":[{"text":"你好"}]}]')
     expect([pythonSample, nodeSample, curlSample].every((sample) => sample.includes('YOUR_TOKEN_NX_API_KEY'))).toBe(true)
   })
 })

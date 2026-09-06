@@ -276,16 +276,18 @@ export function ToolUsageClientsChart({ data }: { data: ToolUsageClients }) {
     color: MODEL_CHART_COLORS[index % MODEL_CHART_COLORS.length],
   }))
   const total = selectedValues.reduce((sum, item) => sum + item.value, 0)
+  // 中文：悬浮信息框只展示有用量的工具；整周无数据时隐藏整个信息框。
+  const nonZeroSelectedValues = selectedValues.filter((item) => item.value > 0)
 
   return <>
     <div className="apps-echart" ref={chartRef} role="img" aria-label={t('public.apps.chartLabel')} />
     <ChartHoverLegend
       className="apps-chart-legend"
-      visible={legendVisible}
+      visible={legendVisible && total > 0}
       ariaLabel={t('public.apps.legendLabel')}
       dateTime={selectedWeek}
       dateLabel={weekLabel(selectedWeek, i18n.language, true)}
-      items={selectedValues.map((item) => ({ ...item, value: formatToolUsageTokens(item.value) }))}
+      items={nonZeroSelectedValues.map((item) => ({ ...item, value: formatToolUsageTokens(item.value) }))}
       totalLabel={t('public.apps.all')}
       totalValue={formatToolUsageTokens(total)}
       position={legendPosition}

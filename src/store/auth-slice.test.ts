@@ -79,6 +79,16 @@ describe('认证 Redux 状态', () => {
     expect(getAccessToken()).toBe('access-token')
   })
 
+  it('登录时把顶层 promt_required 首次登录标记同步到用户状态', async () => {
+    const result = { ...authResult(), promt_required: true }
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(apiResponse(result))
+    const appStore = createAppStore()
+
+    await appStore.dispatch(loginWithPhone({ destination: '13800138000', code: '482915' })).unwrap()
+
+    expect(appStore.getState().auth.user?.promt_required).toBe(true)
+  })
+
   it('启动时轮换 refresh token 后用 access token 请求当前用户', async () => {
     window.localStorage.setItem(REFRESH_SESSION_KEY, JSON.stringify({ refreshToken: 'old-refresh', refreshExpiresAt: Date.UTC(2099, 1, 1) }))
     const fetchMock = vi.spyOn(globalThis, 'fetch')
@@ -92,6 +102,19 @@ describe('认证 Redux 状态', () => {
     expect(getAccessToken()).toBe('new-access')
     expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toMatchObject({ refresh_token: 'old-refresh' })
     expect(new Headers(fetchMock.mock.calls[1][1]?.headers).get('Authorization')).toBe('Bearer new-access')
+  })
+
+  it('刷新会话时保留顶层 promt_required 首次登录标记', async () => {
+    window.localStorage.setItem(REFRESH_SESSION_KEY, JSON.stringify({ refreshToken: 'old-refresh', refreshExpiresAt: Date.UTC(2099, 1, 1) }))
+    const refreshResult = { ...authResult('new-access', 'new-refresh'), promt_required: true }
+    vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(apiResponse(refreshResult))
+      .mockResolvedValueOnce(apiResponse(refreshResult.user))
+    const appStore = createAppStore()
+
+    await appStore.dispatch(hydrateAuth()).unwrap()
+
+    expect(appStore.getState().auth.user?.promt_required).toBe(true)
   })
 
   it('refresh 失败时清理持久化会话并回到未认证状态', async () => {

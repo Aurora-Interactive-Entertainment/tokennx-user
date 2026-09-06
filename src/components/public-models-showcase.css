@@ -107,3 +107,7 @@ html[data-theme="light"] .models-showcase-card-description { color: #727783; }
 html[data-theme="light"] .models-showcase-card-prices > div { background: #fff; }
 html[data-theme="light"] .models-showcase-card-prices dt { color: #353941; }
 html[data-theme="light"] .models-showcase-card-docs { color: #25262b !important; border-color: #d9dbe1; }
+/* 中文：深色模式下“立即体验”使用高对比白底黑字，避免按钮融入卡片背景。 */
+html:not([data-theme="light"]) .models-showcase-card-primary { border-color: #fff; color: #17181b; background: #fff; }
+html:not([data-theme="light"]) .models-showcase-card-primary:hover,
+html:not([data-theme="light"]) .models-showcase-card-primary:focus-visible { border-color: #f1f1f1; color: #17181b; background: #f1f1f1; }

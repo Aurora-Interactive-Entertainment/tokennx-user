@@ -261,6 +261,12 @@ describe('用户费用管理页面', () => {
     expect(await screen.findByRole('heading', { name: '费用分析' })).toBeInTheDocument()
     expect(screen.getByText('本期总费用')).toBeInTheDocument()
     expect(screen.getByText('平均每百万 Token 费用')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '订阅管理' })).toBeNull()
+    expect(screen.getAllByText('¥110.0000').length).toBeGreaterThanOrEqual(2)
+    const quotaSection = document.querySelector('.billing-quota-section') as HTMLElement
+    expect(quotaSection).not.toBeNull()
+    expect(within(quotaSection).getByText('总余额')).toBeInTheDocument()
+    expect(quotaSection.querySelectorAll('.billing-quota-icon svg')).toHaveLength(7)
     expect(screen.getByRole('figure', { name: '按模型总费用' })).toBeInTheDocument()
     expect(screen.getByText('账本明细')).toBeInTheDocument()
     const ledgerRegion = screen.getByRole('region', { name: '账本明细表' })
@@ -295,8 +301,9 @@ describe('用户费用管理页面', () => {
   it('使用账面余额展示，不因预授权释放回升可用余额', async () => {
     renderBilling({ analysisWallet: { paid_available_yuan: '99.999733000', bonus_available_yuan: '0.000000000', total_available_yuan: '99.999733000', total_balance_yuan: '100.000000000' } })
     expect((await screen.findAllByText('账户余额')).length).toBeGreaterThan(0)
-    expect(screen.getByText('¥100.0000')).toBeInTheDocument()
-    expect(screen.getByTitle('¥100.000000000')).toBeInTheDocument()
+    const totalCard = document.querySelector('.billing-balance-card-total') as HTMLElement
+    expect(totalCard).not.toBeNull()
+    expect(within(totalCard).getByText('¥100.0000')).toBeInTheDocument()
     expect(screen.queryByText('¥99.999733')).toBeNull()
   })
 
@@ -412,27 +419,19 @@ describe('用户费用管理页面', () => {
     fireEvent.mouseDown(specialOption as HTMLElement)
     fireEvent.mouseUp(specialOption as HTMLElement)
     fireEvent.click(specialOption as HTMLElement)
-    const projectNameSelect = within(dialog).getByLabelText(/项目名称/)
-    await user.click(projectNameSelect)
-    const projectNameOptions = Array.from(document.querySelectorAll('.semi-select-option'))
-    const projectOption = projectNameOptions.find((option) =>
-      option.textContent?.includes('*信息技术服务*软件服务费'),
-    )
-    expect(projectOption).toBeDefined()
-    fireEvent.mouseDown(projectOption as HTMLElement)
-    fireEvent.mouseUp(projectOption as HTMLElement)
-    fireEvent.click(projectOption as HTMLElement)
+    expect(within(dialog).queryByRole('combobox', { name: /项目名称/ })).not.toBeInTheDocument()
+    expect(within(dialog).getByText('生产生活服务信息服务费', { exact: true })).toBeInTheDocument()
     await user.click(within(dialog).getByRole('button', { name: '确认开票' }))
     expect(within(dialog).getByText('请核对发票信息，提交后如需修改需要重新申请。')).toBeInTheDocument()
     expect(within(dialog).getByText('未填写')).toBeInTheDocument()
-    expect(within(dialog).getByText('*信息技术服务*软件服务费')).toBeInTheDocument()
+    expect(within(dialog).getByText('生产生活服务信息服务费')).toBeInTheDocument()
     await user.click(within(dialog).getByRole('button', { name: '再核对一下' }))
     await user.click(within(dialog).getByRole('button', { name: '确认开票' }))
     await user.click(within(dialog).getByRole('button', { name: '确认提交' }))
     expect(await within(dialog).findByText('开票申请提交成功')).toBeInTheDocument()
     expect(getPostInput()).not.toBeNull()
     const invoiceInput = JSON.parse(getPostInput()?.body ?? '{}')
-    expect(invoiceInput).toMatchObject({ amount_yuan: '40.00', title: '接口返回的个人抬头', taxpayer_type: 'personal', invoice_type: 'special', project_name: '*信息技术服务*软件服务费' })
+    expect(invoiceInput).toMatchObject({ amount_yuan: '40.00', title: '接口返回的个人抬头', taxpayer_type: 'personal', invoice_type: 'special', project_name: '生产生活服务信息服务费' })
     expect(invoiceInput).not.toHaveProperty('email')
     expect(getPostInput()?.headers.get('Idempotency-Key')).toBeTruthy()
     expect(fetchMock.mock.calls.some(([input, options]) => new URL(String(input), window.location.origin).pathname.endsWith('/invoices') && options?.method === 'POST')).toBe(true)
@@ -511,14 +510,14 @@ describe('用户费用管理页面', () => {
     await user.click(screen.getByRole('tab', { name: 'Invoices' }))
     expect(await screen.findByText('Submitted')).toBeInTheDocument()
     await user.click(await screen.findByRole('button', { name: 'Invoice now' }))
-    expect(within(screen.getByRole('dialog')).getByRole('combobox', { name: 'Project name *' })).toHaveTextContent('*Production and daily services* cloud service fee')
+    expect(within(screen.getByRole('dialog')).getByRole('status', { name: 'Project name *' })).toHaveTextContent('Production and daily services information service fee')
   })
 })
 
 describe('费用页纯函数', () => {
 	it('校验接口字段和选填邮箱格式', () => {
 		expect(validateInvoiceForm({ amount_yuan: '50.001', title: '', tax_identifier: '', taxpayer_type: 'enterprise', email: 'bad', project_name: '', invoice_type: 'normal' }, '50.00')).toMatchObject({ amount_yuan: '请输入大于 0 且最多保留两位小数的金额', title: '请输入发票抬头', tax_identifier: '企业抬头必须填写纳税人识别号', email: '请输入有效的接收邮箱' })
-		expect(validateInvoiceForm({ amount_yuan: '50.00', title: '个人抬头', tax_identifier: '', taxpayer_type: 'personal', email: '', project_name: '*生产生活服务*云服务费', invoice_type: 'normal' }, '50.00')).toEqual({})
+		expect(validateInvoiceForm({ amount_yuan: '50.00', title: '个人抬头', tax_identifier: '', taxpayer_type: 'personal', email: '', project_name: '生产生活服务信息服务费', invoice_type: 'normal' }, '50.00')).toEqual({})
 		expect(validateInvoiceForm({ amount_yuan: '50.00', title: '个人抬头', tax_identifier: '', taxpayer_type: 'personal', email: '', project_name: '', invoice_type: '' }, '50.00')).toMatchObject({ invoice_type: '请选择发票类型', project_name: '请选择项目名称' })
 	})
 

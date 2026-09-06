@@ -8,13 +8,13 @@ describe("个人用量分布数据", () => {
         { id: "tool-claude", name: "Claude Code", request_count: 319 },
         { id: "tool-empty", name: "无用量工具", request_count: 0 },
       ]),
-    ).toEqual([{ name: "Claude Code", value: 319 }]);
+    ).toEqual([{ name: "Claude Code", value: 319, requestCount: 319 }]);
   });
 
   it("兼容数字字符串并按用量降序排列", () => {
     expect(distributionEntries({ "Claude Code": "319", Codex: 120 })).toEqual([
-      { name: "Claude Code", value: 319 },
-      { name: "Codex", value: 120 },
+      { name: "Claude Code", value: 319, requestCount: 319 },
+      { name: "Codex", value: 120, requestCount: 120 },
     ]);
   });
 
@@ -27,6 +27,16 @@ describe("个人用量分布数据", () => {
           },
         },
       }),
-    ).toEqual([{ name: "Claude Code", value: 319 }]);
+    ).toEqual([{ name: "Claude Code", value: 319, requestCount: 319 }]);
+  });
+
+  it("保留请求数和 Token 字段供分布列表展示", () => {
+    expect(
+      distributionEntries([
+        { name: "GPT", request_count: 12, total_tokens: 151870000 },
+      ]),
+    ).toEqual([
+      { name: "GPT", value: 151870000, requestCount: 12, totalTokens: 151870000 },
+    ]);
   });
 });

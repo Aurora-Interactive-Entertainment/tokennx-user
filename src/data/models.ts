@@ -59,6 +59,8 @@ export interface ModelRecord {
   throughput: ModelThroughput
   maxOutput?: string
   params?: Record<string, string[] | number[]>
+  // 中文：保留后端原始价格明细，视频价格示例可据此展示不同计费场景。
+  prices?: UserModelPrice[]
 }
 
 export const MODEL_ALIAS_UNSET_LABEL = '未设置别名'
@@ -229,6 +231,8 @@ export function userModelToRecord(model: UserModelItem): ModelRecord {
     providerCount: model.provider_count,
     throughput: formatUserModelThroughput(model.total_tokens),
     ...(typeof model.max_tokens === 'number' && Number.isFinite(model.max_tokens) ? { maxOutput: formatContextWindow(model.max_tokens) } : {}),
+    ...(model.prices?.length ? { prices: model.prices } : {}),
+    ...(model.params ? { params: model.params } : {}),
   }
 }
 

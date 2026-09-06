@@ -302,10 +302,13 @@ describe('密钥管理页面', () => {
     await screen.findByText('默认密钥')
     await user.click(screen.getAllByRole('button', { name: /创建 API 密钥/ })[0])
 
-    expect(screen.getByText('GPT-4o（OpenAI · gpt-public）')).toBeInTheDocument()
+    // 中文：限制开关关闭时高级配置收起，打开后再验证模型多选内容。
+    await user.click(screen.getByRole('switch', { name: '启用限制' }))
+    fireEvent.click(document.querySelector('#key-models') as HTMLElement)
+
+    expect(screen.getByRole('option', { name: /GPT-4o（OpenAI · gpt-public）/ })).toBeInTheDocument()
     expect(screen.queryByText('内部模型')).toBeNull()
     expect(screen.queryByText('gpt-4o')).toBeNull()
-    expect(screen.getByRole('checkbox', { name: 'GPT-4o（OpenAI · gpt-public）' })).toBeChecked()
   })
 
   // 中文：企业空间模型选择必须以服务端按企业权限过滤后的 API Key 模型列表为准。
@@ -325,9 +328,11 @@ describe('密钥管理页面', () => {
 
     await screen.findByRole('heading', { name: '我的密钥' })
     await user.click(screen.getAllByRole('button', { name: /创建 API 密钥/ })[0])
+    await user.click(screen.getByRole('switch', { name: '启用限制' }))
     await user.click(screen.getByRole('radio', { name: '指定模型' }))
+    fireEvent.click(document.querySelector('#key-models') as HTMLElement)
 
-    expect(screen.getByRole('checkbox', { name: '企业已启用模型（企业厂商 · enterprise-enabled-public）' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: /企业已启用模型（企业厂商 · enterprise-enabled-public）/ })).toBeInTheDocument()
     expect(screen.queryByText('企业已关闭模型（企业厂商 · enterprise-disabled-public）')).not.toBeInTheDocument()
     expect(screen.queryByText('GPT-4o（OpenAI · gpt-public）')).not.toBeInTheDocument()
     expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/api/user/models'))).toBe(false)
@@ -357,7 +362,7 @@ describe('密钥管理页面', () => {
     expect(within(createdRow).getByText(/2026-07-20/)).toBeInTheDocument()
   })
 
-  it('复制列表密钥时使用完整值，并在创建后直接回到列表', async () => {
+  it('复制列表密钥时使用完整值，并在创建后显示完整密钥弹窗', async () => {
     const user = userEvent.setup()
     const { fetchMock } = mockApiKeyApi()
     const writeText = vi.fn().mockResolvedValue(undefined)
@@ -376,8 +381,14 @@ describe('密钥管理页面', () => {
       const requestURL = new URL(String(url), 'https://saas.example.com')
       return requestURL.pathname === '/api/user/api-keys' && requestURL.searchParams.get('account_type') === 'personal' && options?.method === 'POST'
     })).toBe(true)
+    const createdSecretDialog = screen.getByRole('heading', { name: '创建密钥' }).closest('[role="dialog"]')
+    expect(createdSecretDialog).not.toBeNull()
+    expect(within(createdSecretDialog as HTMLElement).getByText('nx_live_created_persisted_secret')).toBeInTheDocument()
+    await user.click(within(createdSecretDialog as HTMLElement).getByRole('button', { name: '复制' }))
+    await waitFor(() => expect(writeText).toHaveBeenLastCalledWith('nx_live_created_persisted_secret'))
+    await user.click(within(createdSecretDialog as HTMLElement).getByRole('button', { name: '完成' }))
+    await waitFor(() => expect(screen.queryByRole('heading', { name: '创建密钥' })).not.toBeInTheDocument())
     const createdRow = await waitFor(() => screen.getByText('生产环境密钥').closest('tr') as HTMLElement)
-    expect(screen.queryByText(/一次性密钥|只展示这一次/)).not.toBeInTheDocument()
     expect(within(createdRow).queryByRole('link', { name: '详情' })).not.toBeInTheDocument()
     expect(within(createdRow).getByRole('button', { name: '复制完整 API 密钥' })).toBeInTheDocument()
 

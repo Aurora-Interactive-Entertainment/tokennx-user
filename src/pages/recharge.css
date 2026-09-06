@@ -17,24 +17,24 @@
   min-height: 34px;
   padding-inline: 14px;
   border-radius: 6px;
-  border-color: #fff;
-  color: #17181b;
-  background: #fff;
+  border-color: #17181b;
+  color: #fff;
+  background: #17181b;
   font-size: 12px;
   transition: background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease, transform 0.16s ease;
 }
 
 .recharge-console-page .recharge-alert-button.semi-button.semi-button-primary:hover:not(:disabled),
 .recharge-console-page .recharge-alert-button.semi-button.semi-button-primary:focus-visible:not(:disabled) {
-  border-color: #f0f2f5;
-  color: #17181b;
-  background: #f0f2f5;
+  border-color: #2f3033;
+  color: #fff;
+  background: #2f3033;
 }
 
 .recharge-console-page .recharge-alert-button.semi-button.semi-button-primary:active:not(:disabled) {
-  border-color: #e4e7ed;
-  color: #17181b;
-  background: #e4e7ed;
+  border-color: #000;
+  color: #fff;
+  background: #000;
 }
 
 .recharge-notice {
@@ -96,16 +96,6 @@
   color: #6b98f5;
   text-decoration: underline;
   text-underline-offset: 2px;
-}
-
-.recharge-notice-toggle {
-  margin-top: 8px;
-  padding: 0;
-  border: 0;
-  color: #477ff2;
-  background: transparent;
-  font-size: 13px;
-  cursor: pointer;
 }
 
 .recharge-balance-card {

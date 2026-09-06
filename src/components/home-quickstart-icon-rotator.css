@@ -19,31 +19,45 @@
   height: 100%;
   object-fit: contain;
   opacity: 0;
-  transform: scale(.72);
-  /* 中文：交接间隔 2.7 秒，总周期随图标数量同步放大，保证一次只亮一个。 */
-  animation: home-quickstart-icon-breathe 21.6s ease-in-out infinite;
-  animation-delay: calc(var(--home-quickstart-icon-index) * 2.7s);
+  transform: scale(.58);
+  /* 中文：交接间隔 2.25 秒，总周期随图标数量同步放大，保证任意时刻都有一个图标可见。 */
+  animation: home-quickstart-icon-breathe 18s linear infinite;
+  animation-delay: calc(var(--home-quickstart-icon-index) * 2.25s);
   animation-fill-mode: both;
 }
 
-/* 中文：淡入/淡出各 0.5 秒，亮起保持 2.2 秒；前一个淡出与下一个淡入完全同步反向衔接，无空档。 */
+/* 中文：每个图标在 2.25 秒窗口内完成“小 → 大 → 小”的呼吸；
+   放大与缩小各约 0.2 秒，两个方向都更快更干脆，缩小幅度加大，
+   缩到最小时正好完成淡出交给下一个图标。 */
 @keyframes home-quickstart-icon-breathe {
   0% {
     opacity: 0;
     filter: drop-shadow(0 0 0 rgba(255, 255, 255, 0));
-    transform: scale(.72);
+    transform: scale(.58);
+    animation-timing-function: ease-out;
   }
-  2.32%,
-  12.5% {
+  1.11% {
     opacity: 1;
     filter: drop-shadow(0 0 5px rgba(255, 255, 255, .6));
     transform: scale(1);
+    animation-timing-function: linear;
   }
-  14.82%,
+  11.39% {
+    opacity: 1;
+    filter: drop-shadow(0 0 5px rgba(255, 255, 255, .6));
+    transform: scale(1);
+    animation-timing-function: ease-in;
+  }
+  12.5% {
+    opacity: 0;
+    filter: drop-shadow(0 0 0 rgba(255, 255, 255, 0));
+    transform: scale(.58);
+    animation-timing-function: linear;
+  }
   100% {
     opacity: 0;
     filter: drop-shadow(0 0 0 rgba(255, 255, 255, 0));
-    transform: scale(.72);
+    transform: scale(.58);
   }
 }
 

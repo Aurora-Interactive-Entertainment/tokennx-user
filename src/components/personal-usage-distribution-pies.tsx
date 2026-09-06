@@ -12,12 +12,18 @@ import {
 } from "@/api/personal-usage";
 import { MODEL_CHART_COLORS } from "@/components/chart-colors";
 import { useResolvedTheme } from "@/theme";
+import i18n from "@/i18n";
 import { dateRangeToTrendQuery } from "./personal-usage-date-picker";
 import "./personal-usage-distribution-pies.css";
 
 echarts.use([PieChart, TooltipComponent, CanvasRenderer, SVGRenderer]);
 
-type DistributionEntry = { name: string; value: number };
+export type DistributionEntry = {
+  name: string;
+  value: number;
+  requestCount?: number;
+  totalTokens?: number;
+};
 const DISTRIBUTION_NAME_KEYS = [
   "name",
   "label",
@@ -44,6 +50,18 @@ const DISTRIBUTION_VALUE_KEYS = [
   "usage",
   "amount",
 ] as const;
+const DISTRIBUTION_REQUEST_KEYS = [
+  "request_count",
+  "requests",
+  "total_count",
+  "count",
+  "value",
+] as const;
+const DISTRIBUTION_TOKEN_KEYS = [
+  "total_tokens",
+  "tokens",
+  "token_count",
+] as const;
 const DISTRIBUTION_WRAPPER_KEYS = [
   "items",
   "data",
@@ -61,6 +79,16 @@ function distributionNumber(value: unknown): number | null {
     return Number.isFinite(parsed) ? parsed : null;
   }
   return null;
+}
+
+function distributionMetric(
+  item: Record<string, unknown>,
+  keys: readonly string[],
+): number | undefined {
+  const value = keys.map((key) => distributionNumber(item[key])).find(
+    (candidate): candidate is number => candidate !== null,
+  );
+  return value === undefined ? undefined : value;
 }
 
 // 中文：兼容接口返回的数组和键值对象，并统一为 ECharts 所需的数据项格式。
@@ -123,7 +151,24 @@ function distributionEntry(
   const count = DISTRIBUTION_VALUE_KEYS.map((key) =>
     distributionNumber(item[key]),
   ).find((candidate): candidate is number => candidate !== null);
-  return count !== undefined && count > 0 ? { name, value: count } : null;
+  if (count === undefined || count <= 0) return null;
+  const requestCount = distributionMetric(item, DISTRIBUTION_REQUEST_KEYS);
+  const totalTokens = distributionMetric(item, DISTRIBUTION_TOKEN_KEYS);
+  return {
+    name,
+    value: count,
+    ...(requestCount !== undefined ? { requestCount } : {}),
+    ...(totalTokens !== undefined ? { totalTokens } : {}),
+  };
+}
+
+function formatDistributionMetric(value: number | undefined, suffix = ""): string {
+  if (value === undefined || !Number.isFinite(value)) return "--";
+  if (suffix === "token") {
+    if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(2)}M`;
+    if (value >= 1_000) return `${(value / 1_000).toFixed(2)}K`;
+  }
+  return new Intl.NumberFormat(i18n.language).format(value);
 }
 
 function DistributionPie({
@@ -132,17 +177,22 @@ function DistributionPie({
   data,
   loading,
   error,
+  nameLabel,
+  requestLabel,
+  tokenLabel,
 }: {
   title: string;
   id: string;
   data: DistributionEntry[];
   loading: boolean;
   error: string;
+  nameLabel: string;
+  requestLabel: string;
+  tokenLabel: string;
 }) {
   const { t } = useTranslation();
   const theme = useResolvedTheme();
   const chartRef = useRef<HTMLDivElement>(null);
-  const total = data.reduce((sum, item) => sum + item.value, 0);
 
   useEffect(() => {
     const node = chartRef.current;
@@ -171,7 +221,7 @@ function DistributionPie({
         {
           type: "pie",
           // 中文：环形图在独立网格列内居中并限制半径，避免右侧超出卡片被裁切。
-          radius: ["38%", "62%"],
+          radius: ["40%", "65%"],
           center: ["50%", "50%"],
           avoidLabelOverlap: true,
           itemStyle: {
@@ -219,23 +269,27 @@ function DistributionPie({
         ) : (
           <>
             <div className="personal-usage-pie-legend" aria-label={title}>
+              <div className="personal-usage-pie-legend-header" aria-hidden="true">
+                <span>{nameLabel}</span>
+                <span>{requestLabel}</span>
+                <span>{tokenLabel}</span>
+              </div>
               {data.map((item, index) => (
                 <div
                   className="personal-usage-pie-legend-item"
                   key={item.name + "-" + index}
                 >
-                  <i
-                    style={{
-                      backgroundColor:
-                        MODEL_CHART_COLORS[index % MODEL_CHART_COLORS.length],
-                    }}
-                  />
-                  <span title={item.name}>{item.name}</span>
-                  <b>
-                    {total > 0
-                      ? ((item.value / total) * 100).toFixed(2) + "%"
-                      : "0%"}
-                  </b>
+                  <span className="personal-usage-pie-legend-name">
+                    <i
+                      style={{
+                        backgroundColor:
+                          MODEL_CHART_COLORS[index % MODEL_CHART_COLORS.length],
+                      }}
+                    />
+                    <span title={item.name}>{item.name}</span>
+                  </span>
+                  <b>{formatDistributionMetric(item.requestCount)}</b>
+                  <b>{formatDistributionMetric(item.totalTokens, "token")}</b>
                 </div>
               ))}
             </div>
@@ -301,6 +355,9 @@ export function PersonalUsageDistributionPies({
         data={modelDistribution}
         loading={loading}
         error={error}
+        nameLabel={t("console.personalUsage.pie.model")}
+        requestLabel={t("console.personalUsage.pie.requests")}
+        tokenLabel={t("console.personalUsage.pie.tokens")}
       />
       <DistributionPie
         title={t("console.personalUsage.pie.sources")}
@@ -308,6 +365,9 @@ export function PersonalUsageDistributionPies({
         data={toolDistribution}
         loading={loading}
         error={error}
+        nameLabel={t("console.personalUsage.pie.source")}
+        requestLabel={t("console.personalUsage.pie.requests")}
+        tokenLabel={t("console.personalUsage.pie.tokens")}
       />
       {error ? (
         <button

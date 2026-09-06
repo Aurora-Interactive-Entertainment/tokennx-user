@@ -222,15 +222,17 @@ export function RankingRecentUsageChart({ data }: { data: RecentModelUsage }) {
     color: RANKING_SERIES_COLORS[index % RANKING_SERIES_COLORS.length],
   }))
   const total = selectedValues.reduce((sum, item) => sum + item.value, 0)
+  // 中文：悬浮信息框只展示有用量的模型；整周无数据时隐藏整个信息框。
+  const nonZeroSelectedValues = selectedValues.filter((item) => item.value > 0)
 
   return <>
     <div className="ranking-chart ranking-echart" ref={chartRef} role="img" aria-label={t('public.rankings.chartLabel')} />
     <ChartHoverLegend
-      visible={legendVisible}
+      visible={legendVisible && total > 0}
       ariaLabel={t('public.rankings.legendLabel')}
       dateTime={selectedWeek}
       dateLabel={weekLabel(selectedWeek, i18n.language, true)}
-      items={selectedValues.map((item) => ({ id: item.code, name: item.name, value: formatRankingTokens(item.value), color: item.color }))}
+      items={nonZeroSelectedValues.map((item) => ({ id: item.code, name: item.name, value: formatRankingTokens(item.value), color: item.color }))}
       totalLabel={t('public.rankings.all')}
       totalValue={formatRankingTokens(total)}
     />

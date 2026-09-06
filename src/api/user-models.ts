@@ -49,6 +49,8 @@ export interface UserModelItem {
   provider_count: number
   total_tokens?: string | number
   prices: UserModelPrice[] | null
+  // 中文：视频模型可选参数由目录接口透传，用于价格示例的分辨率/时长展示。
+  params?: Record<string, string[] | number[]>
   availability?: {
     rate?: number
     sample_count?: number

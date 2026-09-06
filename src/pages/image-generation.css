@@ -806,6 +806,18 @@
   place-items: center;
   padding: 20px;
   background: rgba(0, 0, 0, 0.32);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity 180ms ease,
+    visibility 0ms linear 180ms;
+}
+.image-picker-backdrop.is-open {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transition-delay: 0ms;
 }
 .image-picker {
   display: flex;
@@ -817,6 +829,16 @@
   border-radius: 12px;
   background: var(--color-bg-base-secondary);
   box-shadow: 0 18px 60px rgba(0, 0, 0, 0.24);
+  opacity: 0;
+  transform: translateY(8px) scale(0.98);
+  transition:
+    opacity 180ms ease,
+    transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  will-change: opacity, transform;
+}
+.image-picker-backdrop.is-open .image-picker {
+  opacity: 1;
+  transform: translateY(0) scale(1);
 }
 .image-picker-header,
 .image-picker-footer {
@@ -906,6 +928,20 @@
 .image-picker-footer .semi-button:last-child:disabled:focus-visible {
   color: var(--color-text-tertiary);
   background: var(--color-bg-overlay-l1) !important;
+  box-shadow: none;
+}
+
+/* 中文：图片生成模型选择弹窗在深色模式使用白底黑字，确保确认按钮醒目但不沉闷。 */
+html[data-theme="dark"] .image-picker-footer .semi-button:last-child:not(:disabled):not(.semi-button-disabled) {
+  color: #17181b;
+  background: #fff !important;
+}
+html[data-theme="dark"] .image-picker-footer .semi-button:last-child:not(:disabled):not(.semi-button-disabled):hover,
+html[data-theme="dark"] .image-picker-footer .semi-button:last-child:not(:disabled):not(.semi-button-disabled):active,
+html[data-theme="dark"] .image-picker-footer .semi-button:last-child:not(:disabled):not(.semi-button-disabled):focus,
+html[data-theme="dark"] .image-picker-footer .semi-button:last-child:not(:disabled):not(.semi-button-disabled):focus-visible {
+  color: #17181b;
+  background: #f2f2f2 !important;
   box-shadow: none;
 }
 .image-picker-search {
@@ -1334,5 +1370,13 @@ html[data-theme="dark"] .image-history-item:focus-visible {
   .image-result-more-menu {
     top: auto;
     bottom: calc(100% + 6px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .image-picker-backdrop,
+  .image-picker {
+    transition: none;
+    transform: none;
   }
 }

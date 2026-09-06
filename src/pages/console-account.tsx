@@ -10,6 +10,7 @@ import type { TFunction } from "i18next";
 import { getActiveLocale } from "@/i18n";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import Button from "@douyinfe/semi-ui/lib/es/button";
+import SemiFormLabel from "@douyinfe/semi-ui/lib/es/form/label";
 import Modal from "@/components/app-modal";
 import Switch from "@douyinfe/semi-ui/lib/es/switch";
 import Toast from "@douyinfe/semi-ui/lib/es/toast";
@@ -91,6 +92,7 @@ type ApiKeyExpiryPreset = "never" | "30days" | "90days" | "365days" | "current";
 type ApiKeyFormState = {
   name: string;
   tagsText: string;
+  whitelistText: string;
   memberID: string;
   expiresAt: number | null;
   scope: ApiKeyScope;
@@ -122,17 +124,77 @@ function emptyApiKeyForm(): ApiKeyFormState {
   return {
     name: "",
     tagsText: "",
+    whitelistText: "",
     memberID: "",
     expiresAt: null,
     scope: "all",
     modelIds: [],
     billingSource: "balance",
-    limitsEnabled: true,
+    // 中文：默认仅展示基础信息，限制配置由用户主动开启后再展开。
+    limitsEnabled: false,
     costLimitYuan: "",
     rpm: "",
     tpm: "",
     concurrency: "",
   };
+}
+
+// 中文：白名单暂未接入后端，先按常见的 IPv4/IPv6 地址及 CIDR 格式做前端校验。
+function isValidIPv4(value: string): boolean {
+  const parts = value.split(".");
+  return parts.length === 4 && parts.every((part) =>
+    /^\d{1,3}$/.test(part) && Number(part) <= 255,
+  );
+}
+
+function ipv6SegmentCount(value: string): number {
+  if (!value) return 0;
+  const groups = value.split(":");
+  let count = 0;
+  for (const group of groups) {
+    if (group.includes(".")) {
+      if (groups.indexOf(group) !== groups.length - 1 || !isValidIPv4(group)) {
+        return -1;
+      }
+      count += 2;
+      continue;
+    }
+    if (!/^[0-9a-f]{1,4}$/i.test(group)) return -1;
+    count += 1;
+  }
+  return count;
+}
+
+function isValidIPv6(value: string): boolean {
+  if (!value || value.includes(":::")) return false;
+  const compressionParts = value.split("::");
+  if (compressionParts.length > 2) return false;
+  if (compressionParts.length === 2) {
+    // “::” 至少压缩一个分段，因此未压缩部分必须少于 8 段。
+    const leftCount = ipv6SegmentCount(compressionParts[0]);
+    const rightCount = ipv6SegmentCount(compressionParts[1]);
+    return leftCount >= 0 && rightCount >= 0 && leftCount + rightCount < 8;
+  }
+  return ipv6SegmentCount(value) === 8;
+}
+
+function parseWhitelist(value: string): { entries: string[]; invalid: string | null } {
+  const entries = value
+    .split(/[,，;；|\n\r\t]+/)
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+  const invalid = entries.find((entry) => {
+    const parts = entry.split("/");
+    if (parts.length > 2 || !parts[0]) return true;
+    const [address, prefix] = parts;
+    const ipv6 = address.includes(":");
+    const validAddress = ipv6 ? isValidIPv6(address) : isValidIPv4(address);
+    if (!validAddress) return true;
+    if (prefix === undefined) return false;
+    const maxPrefix = ipv6 ? 128 : 32;
+    return !/^\d{1,3}$/.test(prefix) || Number(prefix) > maxPrefix;
+  }) ?? null;
+  return { entries, invalid };
 }
 
 function apiDateLabel(value: ApiTimeValue | null): string {
@@ -205,11 +267,11 @@ export function ApiKeysPage({
   const store = useAppStore();
   const currentUserID = useAppSelector((state) => state.auth.user?.id ?? "");
   const [modalVisible, setModalVisible] = useState(false);
+  // 中文：创建成功后仅在结果弹窗生命周期内保留完整密钥，关闭后立即从页面状态清除。
+  const [createdSecret, setCreatedSecret] = useState<string | null>(null);
   const [editingKey, setEditingKey] = useState<UserApiKey | null>(null);
   const [form, setForm] = useState<ApiKeyFormState>(emptyApiKeyForm);
   const [expiryPreset, setExpiryPreset] = useState<ApiKeyExpiryPreset>("never");
-  const [modelSearch, setModelSearch] = useState("");
-  const [advancedOpen, setAdvancedOpen] = useState(false);
   const [filter, setFilter] = useState<ApiKeyStatusFilter>("all");
   const [result, setResult] = useState<UserApiKeyList | null>(null);
   const [loading, setLoading] = useState(true);
@@ -249,6 +311,7 @@ export function ApiKeysPage({
     setEditingKey(null);
     setAction(null);
     setModalVisible(false);
+    setCreatedSecret(null);
     setActionLoading(false);
     setSelectedKeyIDs([]);
     setBulkAction(null);
@@ -432,8 +495,6 @@ export function ApiKeysPage({
     setEnterpriseMembers([]);
     setMembersError("");
     setExpiryPreset("never");
-    setModelSearch("");
-    setAdvancedOpen(false);
     setModalVisible(true);
   }
 
@@ -443,6 +504,8 @@ export function ApiKeysPage({
     setForm({
       name: key.name,
       tagsText: key.tags.join(", "),
+      // 中文：白名单尚未由接口返回，编辑旧密钥时保持为空，后续接入字段后再回填。
+      whitelistText: "",
       memberID: "",
       expiresAt: key.expires_at,
       scope: key.scope,
@@ -456,13 +519,6 @@ export function ApiKeysPage({
         key.limits.concurrency === null ? "" : String(key.limits.concurrency),
     });
     setExpiryPreset(key.expires_at !== null ? "current" : "never");
-    setModelSearch("");
-    setAdvancedOpen(
-      key.limits.cost_limit_yuan !== null ||
-        key.limits.rpm !== null ||
-        key.limits.tpm !== null ||
-        key.limits.concurrency !== null,
-    );
     setModalVisible(true);
   }
 
@@ -475,6 +531,7 @@ export function ApiKeysPage({
     setForm({
       name: "",
       tagsText: "",
+      whitelistText: "",
       memberID: "",
       expiresAt: first.expires_at,
       scope: first.scope,
@@ -490,13 +547,6 @@ export function ApiKeysPage({
           : String(first.limits.concurrency),
     });
     setExpiryPreset(first.expires_at !== null ? "current" : "never");
-    setModelSearch("");
-    setAdvancedOpen(
-      first.limits.cost_limit_yuan !== null ||
-        first.limits.rpm !== null ||
-        first.limits.tpm !== null ||
-        first.limits.concurrency !== null,
-    );
     setModalVisible(true);
   }
 
@@ -564,10 +614,13 @@ export function ApiKeysPage({
       Toast.warning(t("console.account.tagsInvalid"));
       return null;
     }
-    if (form.scope === "selected" && form.modelIds.length === 0) {
-      Toast.warning(t("console.account.modelRequired"));
+    const whitelist = parseWhitelist(form.whitelistText);
+    if (whitelist.invalid) {
+      Toast.warning(t("console.account.whitelistInvalid", { value: whitelist.invalid }));
       return null;
     }
+    // 中文：模型范围不选任何模型时按全部模型提交，避免空选择被误判为无权限。
+    const scope: ApiKeyScope = form.modelIds.length > 0 ? "selected" : "all";
     const parseLimit = (value: string): number | null => {
       if (!value.trim()) return null;
       const parsed = Number(value);
@@ -595,14 +648,15 @@ export function ApiKeysPage({
       tags: bulk ? [] : tags,
       ...(memberID ? { member_id: memberID } : {}),
       expires_at: form.expiresAt,
-      scope: form.scope,
-      model_ids: form.scope === "all" ? [] : form.modelIds,
+      scope,
+      model_ids: scope === "all" ? [] : form.modelIds,
       billing_source: form.billingSource,
       limits_enabled: form.limitsEnabled,
       cost_limit_yuan: cost || null,
       rpm,
       tpm,
       concurrency,
+      // 中文：白名单仅完成前端采集和校验，接口字段就绪后再补入请求体。
     };
   }
 
@@ -652,7 +706,13 @@ export function ApiKeysPage({
         );
         setModalVisible(false);
         setEditingKey(null);
-        Toast.success(t("console.account.createSuccess"));
+        const secret = (created.secret || created.item.secret || "").trim();
+        if (secret) {
+          // 中文：完整密钥只在创建完成后展示一次，避免用户离开弹窗后再次暴露。
+          setCreatedSecret(secret);
+        } else {
+          Toast.success(t("console.account.createSuccess"));
+        }
       }
     } catch (error: unknown) {
       if (isAuthenticationFailure(error)) {
@@ -924,6 +984,10 @@ export function ApiKeysPage({
     void copyText(key.secret, t("console.account.copiedKey"));
   }
 
+  function closeCreatedSecretModal(): void {
+    setCreatedSecret(null);
+  }
+
   const items = result?.items ?? [];
   // 中文：测试或旧会话没有用户 ID 时保留服务端列表，真实登录会按当前用户收窄企业“我的密钥”。
   const departmentMemberUserIDs = new Set(
@@ -983,11 +1047,8 @@ export function ApiKeysPage({
   }
 
   const availableModels = result?.available_models ?? [];
-  const filteredModels = availableModels.filter((model) =>
-    apiKeyModelLabel(model, t)
-      .toLocaleLowerCase()
-      .includes(modelSearch.trim().toLocaleLowerCase()),
-  );
+  // 中文：所有限制相关配置统一跟随开关展开，避免默认表单过长。
+  const advancedVisible = form.limitsEnabled;
   const availableModelsLoading = loading && result === null;
   const workspaceLabel =
     store.activeWorkspace.type === "enterprise"
@@ -1478,9 +1539,6 @@ export function ApiKeysPage({
         }}
       >
         <div className="modal-form api-key-modal-form">
-          <BannerNotice tone="info">
-            <span>{t("console.account.secureHint")}</span>
-          </BannerNotice>
           {availableModelsLoading ? (
             <BannerNotice tone="info">
               {t("console.account.visibleModelsLoading")}
@@ -1504,12 +1562,14 @@ export function ApiKeysPage({
                   {t("console.account.tagsHint")}
                 </span>
               </div>
-              <div className="api-key-form-field">
-                <label className="field-label" htmlFor="key-name">
+              <div className="api-key-form-field api-key-name-field">
+                <SemiFormLabel className="field-label" name="key-name" required>
                   {t("console.account.keyName")}
-                </label>
+                </SemiFormLabel>
                 <Input
                   id="key-name"
+                  required
+                  aria-required="true"
                   value={form.name}
                   onChange={(value) => updateForm({ name: value })}
                   placeholder={t("console.account.keyNamePlaceholder")}
@@ -1522,114 +1582,101 @@ export function ApiKeysPage({
               </div>
             </>
           ) : null}
-          <div className="api-key-form-field">
-            <label className="field-label" htmlFor="key-expiry">
-              {t("console.account.validity")}
-            </label>
-            <Select
-              id="key-expiry"
-              value={expiryPreset}
-              onChange={(value) => selectExpiry(String(value))}
-              block
-            >
-              {editingKey || bulkEditing ? (
-                <Select.Option value="current">
-                  {t("console.account.keepExpiry")}
-                </Select.Option>
-              ) : null}
-              <Select.Option value="never">
-                {t("console.account.forever")}
-              </Select.Option>
-              <Select.Option value="30days">
-                {t("console.account.days30")}
-              </Select.Option>
-              <Select.Option value="90days">
-                {t("console.account.days90")}
-              </Select.Option>
-              <Select.Option value="365days">
-                {t("console.account.year1")}
-              </Select.Option>
-            </Select>
-            <span className="api-key-field-hint">
-              {t("console.account.expiryHint")}
-            </span>
-          </div>
-          <fieldset className="api-key-form-field api-key-fieldset">
-            <legend className="field-label">
-              {t("console.account.keyScope")}
-            </legend>
-            <div className="api-key-scope-options">
-              <label className="api-key-scope-radio">
-                <input
-                  type="radio"
-                  name="api-key-scope"
-                  value="all"
-                  checked={form.scope === "all"}
-                  onChange={() => updateForm({ scope: "all", modelIds: [] })}
-                />
-                <span>{t("console.account.currentEnabledModels")}</span>
-              </label>
-              <label className="api-key-scope-radio">
-                <input
-                  type="radio"
-                  name="api-key-scope"
-                  value="selected"
-                  checked={form.scope === "selected"}
-                  onChange={() => updateForm({ scope: "selected" })}
-                />
-                <span>{t("console.account.selectedModel")}</span>
-              </label>
-            </div>
-            {form.scope === "selected" ? (
-              <div className="api-key-model-picker">
-                <div className="api-key-model-picker-toolbar">
-                  <Input
-                    className="api-key-model-search"
-                    value={modelSearch}
-                    onChange={setModelSearch}
-                    placeholder={t("console.account.searchModel")}
-                    aria-label={t("console.account.searchModel")}
-                  />
-                  <span>
-                    {t("console.account.selectedCount", {
-                      count: form.modelIds.length,
-                    })}
-                  </span>
-                </div>
-                <div className="api-key-model-list">
-                  {filteredModels.length ? (
-                    filteredModels.map((model) => (
-                      <label className="api-key-model-option" key={model.id}>
-                        <input
-                          type="checkbox"
-                          checked={form.modelIds.includes(model.id)}
-                          onChange={(event) =>
-                            updateForm({
-                              modelIds: event.target.checked
-                                ? [...form.modelIds, model.id]
-                                : form.modelIds.filter((id) => id !== model.id),
-                            })
-                          }
-                        />
-                        <span>{apiKeyModelLabel(model, t)}</span>
-                      </label>
-                    ))
-                  ) : (
-                    <span className="api-key-model-empty">
-                      {t("console.account.noMatchingModels")}
-                    </span>
-                  )}
-                </div>
+          {advancedVisible ? (
+            <>
+              <div className="api-key-form-field api-key-validity-field api-key-advanced-inline-field">
+                <label className="field-label" htmlFor="key-expiry">
+                  {t("console.account.validity")}
+                </label>
+                <Select
+                  id="key-expiry"
+                  value={expiryPreset}
+                  onChange={(value) => selectExpiry(String(value))}
+                  block
+                >
+                  {editingKey || bulkEditing ? (
+                    <Select.Option value="current">
+                      {t("console.account.keepExpiry")}
+                    </Select.Option>
+                  ) : null}
+                  <Select.Option value="never">
+                    {t("console.account.forever")}
+                  </Select.Option>
+                  <Select.Option value="30days">
+                    {t("console.account.days30")}
+                  </Select.Option>
+                  <Select.Option value="90days">
+                    {t("console.account.days90")}
+                  </Select.Option>
+                  <Select.Option value="365days">
+                    {t("console.account.year1")}
+                  </Select.Option>
+                </Select>
+                <span className="api-key-field-hint">
+                  {t("console.account.expiryHint")}
+                </span>
               </div>
-            ) : null}
-            <span className="api-key-field-hint">
-              {t("console.account.modelScopeHint")}
-            </span>
-          </fieldset>
-          <fieldset
-            className="api-key-form-field api-key-fieldset"
-            aria-describedby="billing-source-hint"
-          >
+              <div className="api-key-form-field api-key-model-field api-key-advanced-inline-field">
+                <label className="field-label" htmlFor="key-models">
+                  {t("console.account.availableModels")}
+                </label>
+                {/* 中文：保留范围单选的无障碍与旧测试入口，视觉交互以 Semi 多选下拉框为准。 */}
+                <div className="api-key-scope-options">
+                  <label className="api-key-scope-radio">
+                    <input
+                      type="radio"
+                      name="api-key-scope"
+                      value="all"
+                      checked={form.scope === "all"}
+                      onChange={() => updateForm({ scope: "all", modelIds: [] })}
+                    />
+                    <span>{t("console.account.currentEnabledModels")}</span>
+                  </label>
+                  <label className="api-key-scope-radio">
+                    <input
+                      type="radio"
+                      name="api-key-scope"
+                      value="selected"
+                      checked={form.scope === "selected"}
+                      onChange={() => updateForm({ scope: "selected" })}
+                    />
+                    <span>{t("console.account.selectedModel")}</span>
+                  </label>
+                </div>
+                <div className="api-key-model-picker">
+                  <Select
+                    id="key-models"
+                    multiple
+                    value={form.modelIds}
+                    onChange={(value) => {
+                      const modelIds = Array.isArray(value) ? value.map(String) : [];
+                      updateForm({ modelIds, scope: modelIds.length ? "selected" : "all" });
+                    }}
+                    filter
+                    searchPosition="dropdown"
+                    position="top"
+                    maxTagCount={2}
+                    placeholder={t("console.account.allModelsPlaceholder")}
+                    emptyContent={t("console.account.noMatchingModels")}
+                    block
+                    dropdownClassName="trae-select-dropdown api-key-model-dropdown"
+                    aria-label={t("console.account.availableModels")}
+                  >
+                    {availableModels.map((model) => (
+                      <Select.Option key={model.id} value={model.id}>
+                        {apiKeyModelLabel(model, t)}
+                      </Select.Option>
+                    ))}
+                  </Select>
+                </div>
+                <span className="api-key-field-hint">
+                  {t("console.account.modelScopeHint")}
+                </span>
+              </div>
+              <fieldset
+                className="api-key-form-field api-key-fieldset api-key-billing-field api-key-advanced-inline-field"
+                aria-describedby="billing-source-hint"
+              >
             <legend className="field-label">
               {t("console.account.expenseSource")}
             </legend>
@@ -1658,7 +1705,25 @@ export function ApiKeysPage({
             <span className="api-key-field-hint" id="billing-source-hint">
               {t("console.account.billingHint")}
             </span>
-          </fieldset>
+              </fieldset>
+              <div className="api-key-form-field api-key-whitelist-field api-key-advanced-inline-field">
+                <label className="field-label" htmlFor="key-whitelist">
+                  {t("console.account.whitelist")} <small>（{t("console.account.optional")}）</small>
+                </label>
+                <Input
+                  id="key-whitelist"
+                  value={form.whitelistText}
+                  onChange={(value) => updateForm({ whitelistText: value })}
+                  placeholder={t("console.account.whitelistPlaceholder")}
+                  maxLength={2048}
+                  aria-describedby="key-whitelist-hint"
+                />
+                <span className="api-key-field-hint" id="key-whitelist-hint">
+                  {t("console.account.whitelistHint")}
+                </span>
+              </div>
+            </>
+          ) : null}
           <div className="api-key-form-field api-key-limit-switch-field">
             <label className="api-key-switch-row">
               <span>
@@ -1674,10 +1739,9 @@ export function ApiKeysPage({
           </div>
           {mode === "enterprise" && !editingKey && !bulkEditing ? (
             <div className="api-key-form-field api-key-member-field">
-              <label className="field-label" htmlFor="key-member">
-                {t("console.account.operator")}{" "}
-                <small>（{t("console.account.required")}）</small>
-              </label>
+              <SemiFormLabel className="field-label" name="key-member" required>
+                {t("console.account.operator")}
+              </SemiFormLabel>
               <Select
                 id="key-member"
                 value={form.memberID}
@@ -1695,6 +1759,7 @@ export function ApiKeysPage({
                 }
                 block
                 aria-required="true"
+                inputProps={{ required: true, "aria-required": true }}
                 dropdownClassName="trae-select-dropdown trae-members-filter-dropdown api-key-member-dropdown"
               >
                 {enterpriseMembers.map((member) => (
@@ -1708,22 +1773,9 @@ export function ApiKeysPage({
               </span>
             </div>
           ) : null}
-          <button
-            className="api-key-advanced-toggle"
-            type="button"
-            aria-expanded={advancedOpen}
-            aria-controls="api-key-advanced-fields"
-            onClick={() => setAdvancedOpen((value) => !value)}
-          >
-            <span className="api-key-expand-caret" aria-hidden="true">
-              ▶
-            </span>
-            <span>{t("console.account.advanced")}</span>
-          </button>
-          <div id="api-key-advanced-fields" className="api-key-advanced-fields">
-            {advancedOpen ? (
-              form.limitsEnabled ? (
-                <div className="api-key-advanced-settings">
+          {advancedVisible ? (
+            <div id="api-key-advanced-fields" className="api-key-advanced-fields">
+              <div className="api-key-advanced-settings">
                   <div className="api-key-form-field">
                     <div className="api-key-limit-field-head">
                       <label className="field-label" htmlFor="key-cost-limit">
@@ -1733,7 +1785,7 @@ export function ApiKeysPage({
                       <span>{t("console.account.unsetAccountBalance")}</span>
                     </div>
                     <div className="api-key-input-with-prefix">
-                      <span>¥</span>
+                      <span>￥</span>
                       <Input
                         id="key-cost-limit"
                         value={form.costLimitYuan}
@@ -1797,16 +1849,49 @@ export function ApiKeysPage({
                       {t("console.account.rateLimitHint")}
                     </span>
                   </div>
-                </div>
-              ) : (
-                <span className="api-key-field-hint api-key-limit-disabled-hint">
-                  {t("console.account.limitsDisabledHint")}
-                </span>
-              )
-            ) : null}
-          </div>
+              </div>
+            </div>
+          ) : null}
         </div>
       </Modal>
+      {createdSecret ? (
+        <Modal
+          className="api-key-created-modal"
+          title={t("console.account.createdKeyTitle")}
+          visible
+          onCancel={closeCreatedSecretModal}
+          footer={
+            <div className="api-key-created-modal-footer">
+              <Button
+                theme="solid"
+                type="tertiary"
+                onClick={closeCreatedSecretModal}
+              >
+                {t("console.account.createdKeyDone")}
+              </Button>
+            </div>
+          }
+        >
+          <div className="api-key-created-modal-body">
+            <p className="api-key-created-modal-hint">
+              {t("console.account.createdKeyHint")}
+            </p>
+            <div className="api-key-created-modal-value">
+              <code>{createdSecret}</code>
+              <Button
+                theme="solid"
+                type="primary"
+                icon={<IconCopy aria-hidden="true" />}
+                onClick={() => {
+                  void copyText(createdSecret, t("console.account.copiedKey"));
+                }}
+              >
+                {t("console.account.createdKeyCopy")}
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      ) : null}
       <Modal
         key={bulkAction?.type ?? "bulk-closed"}
         title={

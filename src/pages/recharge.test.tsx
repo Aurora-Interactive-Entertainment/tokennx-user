@@ -111,9 +111,10 @@ describe("充值管理页面", () => {
       ),
     ).toBeNull();
     expect(screen.getByRole("link", { name: "发票管理" })).toHaveAttribute("href", "/console/billing?tab=invoice");
-    expect(screen.getByRole("link", { name: "提现" })).toHaveAttribute("href", "/console/billing");
     expect(screen.getByRole("link", { name: "收支明细" })).toHaveAttribute("href", "/console/billing#billingLedgerHeading");
-    expect(screen.getByRole("link", { name: "续费管理" })).toHaveAttribute("href", "/console/trae-enterprise/subscription");
+    expect(screen.queryByRole("link", { name: "提现" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "续费管理" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "收起更多" })).toBeNull();
 
     await user.click(screen.getByRole("button", { name: "200 元" }));
     await user.click(screen.getByRole("button", { name: "立即充值" }));
@@ -167,6 +168,9 @@ describe("充值管理页面", () => {
         </Provider>
       </MemoryRouter>,
     );
+
+    await waitFor(() => expect(screen.getAllByText("¥4.2800")).toHaveLength(2));
+    expect(screen.getByText("¥0.0000")).toBeInTheDocument();
 
     const user = userEvent.setup();
     // 中文：兼容其他工作区窗口同步的历史“预警”文案，测试只关注按钮可打开标准弹窗。

@@ -167,10 +167,32 @@
   cursor: default;
 }
 
+/* 中文：固定项目名称使用文案展示，保留与其他只读字段一致的尺寸和边框。 */
+.invoice-readonly-text {
+  display: flex;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  height: 32px;
+  align-items: center;
+  overflow: hidden;
+  padding: 0 10px;
+  border: 1px solid var(--color-border-neutral-l2);
+  border-radius: 6px;
+  color: var(--color-text-secondary);
+  background: var(--color-bg-base-default);
+  font-size: 13px;
+  line-height: 30px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .invoice-enterprise-link {
   margin-right: auto;
   color: var(--color-action-primary);
   font-size: 13px;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 .invoice-enterprise-link:hover {

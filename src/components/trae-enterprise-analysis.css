@@ -239,6 +239,12 @@
   line-height: 1;
 }
 
+/* 中文：浅色模式使用灰白底，降低排行榜序号块与页面背景的黑白反差。 */
+html[data-theme="light"] .trae-analysis-ranking-rank {
+  color: #20b96a;
+  background: #f1f2f4;
+}
+
 .trae-analysis-ranking-name {
   min-width: 0;
   overflow: hidden;

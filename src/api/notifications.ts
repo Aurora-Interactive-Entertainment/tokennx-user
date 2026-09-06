@@ -11,7 +11,7 @@ export interface UserNotification {
   severity: NotificationSeverity
   title: string
   content: string
-  action_url: string
+  action_url?: string
   read: boolean
   created_at: string
   read_at?: string

@@ -6,7 +6,7 @@ import DatePicker from '@douyinfe/semi-ui/lib/es/datePicker'
 import Tooltip from '@douyinfe/semi-ui/lib/es/tooltip'
 import Modal from '@/components/app-modal'
 import Toast from '@douyinfe/semi-ui/lib/es/toast'
-import { IconDownload, IconInfoCircle, IconRefresh } from '@douyinfe/semi-icons'
+import { IconCoinMoneyStroked, IconDownload, IconGiftStroked, IconHistory, IconInfoCircle, IconMoneyExchangeStroked, IconRefresh, IconShareMoneyStroked, IconTaskMoneyStroked, IconTicketCodeExchangeStroked } from '@douyinfe/semi-icons'
 import { isApiError, isAuthenticationFailure } from '@/api/http'
 import {
   BILLING_FIRST_PAGE,
@@ -290,7 +290,7 @@ function BillingPagination({ page, total, pageSize, label, disabled, onPageChang
 }
 
 function LedgerTable({ items }: { items: BillingStatementLine[] }) {
-  return <div className="source-table-scroll billing-ledger-scroll" role="region" aria-label={i18n.t('console.billing.ledgerTable')} tabIndex={0}><table className="ledger-table"><thead><tr><th>{i18n.t('console.billing.time')}</th><th>{i18n.t('console.billing.type')}</th><th>{i18n.t('console.billing.relatedDescription')}</th><th>{i18n.t('console.billing.amountChange')}</th><th>{i18n.t('console.billing.balance')}</th></tr></thead><tbody>{items.map((item) => <tr key={item.id}><td>{formatApiTime(item.occurred_at)}</td><td>{statementKindLabel(item)}</td><td><strong>{statementDescription(item)}</strong>{item.request_id ? <small>{item.request_id}</small> : null}</td><td className={item.direction === 'income' ? 'amount-positive' : item.direction === 'expense' ? 'amount-negative' : ''}><MoneyText value={item.amount_yuan} direction={item.direction} /></td><td>{item.balance_after_yuan ? <MoneyText value={item.balance_after_yuan} /> : '--'}</td></tr>)}</tbody></table></div>
+  return <div className="source-table-scroll billing-ledger-scroll" role="region" aria-label={i18n.t('console.billing.ledgerTable')} tabIndex={0}><table className="ledger-table"><thead><tr><th>{i18n.t('console.billing.time')}</th><th>{i18n.t('console.billing.type')}</th><th>{i18n.t('console.billing.relatedDescription')}</th><th>{i18n.t('console.billing.amountChange')}</th><th>{i18n.t('console.billing.balance')}</th></tr></thead><tbody>{items.map((item) => <tr key={item.id}><td>{formatApiTime(item.occurred_at)}</td><td>{statementKindLabel(item)}</td><td><strong>{statementDescription(item)}</strong></td><td className={item.direction === 'income' ? 'amount-positive' : item.direction === 'expense' ? 'amount-negative' : ''}><MoneyText value={item.amount_yuan} direction={item.direction} /></td><td>{item.balance_after_yuan ? <MoneyText value={item.balance_after_yuan} /> : '--'}</td></tr>)}</tbody></table></div>
 }
 
 function BillingLedgerSection({ state, lineType, page, pageSize, onLineTypeChange, onPageChange, onPageSizeChange, onRetry, onExport, exporting }: { state: ResourceState<BillingPageResult<BillingStatementLine>>; lineType: BillingStatementTypeFilter; page: number; pageSize: number; onLineTypeChange: (value: BillingStatementTypeFilter) => void; onPageChange: (value: number) => void; onPageSizeChange: (value: number) => void; onRetry: () => void; onExport: () => void; exporting: boolean }) {
@@ -310,7 +310,7 @@ function BillingLedgerSection({ state, lineType, page, pageSize, onLineTypeChang
             <Select.Option value="reward">{i18n.t('console.billing.gift')}</Select.Option>
           </Select>
         </label>
-        <Button theme="outline" size="small" icon={<IconDownload />} loading={exporting} disabled={!data?.items.length || loading || exporting} onClick={onExport}>{i18n.t('console.billing.exportCsv')}</Button>
+        <Button className="billing-export-button" theme="outline" size="small" icon={<IconDownload />} loading={exporting} disabled={!data?.items.length || loading || exporting} onClick={onExport}>{i18n.t('console.billing.exportCsv')}</Button>
       </div>
     </div>
     {loading && !data ? <BillingLoading label={i18n.t('console.billing.loadingLedger')} /> : state.status === 'error' ? <BillingError state={state} onRetry={onRetry} /> : !data?.items.length ? <EmptyPanel surface="table" title={i18n.t('console.billing.noLedger')} description={i18n.t('console.billing.adjustLedger')} /> : <div className="table-scroll"><LedgerTable items={data.items} /></div>}
@@ -324,7 +324,7 @@ function RequestFocus({ data, requestId }: { data: BillingAnalysisResponse | nul
   return <div className="callout request-focus" aria-live="polite"><strong>{entry ? i18n.t('console.billing.requestSummary', { requestId }) : i18n.t('console.billing.requestNotFound', { requestId })}</strong><span>{entry ? <>{entry.description} · {entry.direction === 'expense' ? i18n.t('console.common.success') : i18n.t('console.billing.notBilled')} · {entry.direction === 'expense' ? <>{i18n.t('console.billing.cost')} <MoneyText value={entry.amount_yuan} /></> : i18n.t('console.billing.notBilled')}</> : i18n.t('console.billing.cleanedRequest')}</span><div className="request-focus-actions"><Link className="btn btn-secondary btn-sm" to="/console/billing">{i18n.t('console.billing.allLedger')}</Link></div></div>
 }
 
-type BillingQuotaRow = { key: string; label: string; value: string; tone?: 'recharge' | 'reward' | 'gift' | 'invitation' | 'expired' | 'negative' | 'total' }
+type BillingQuotaRow = { key: string; label: string; value: string; icon: ReactNode; tone?: 'recharge' | 'reward' | 'gift' | 'invitation' | 'expired' | 'negative' | 'total' }
 
 function safeAmount(value: string | number | undefined | null): number {
   const amount = Number(value ?? 0)
@@ -332,12 +332,13 @@ function safeAmount(value: string | number | undefined | null): number {
 }
 
 function PlainMoney({ value, negative = false }: { value: string; negative?: boolean }) {
-  const display = formatYuan(value, 2)
+  const display = formatYuan(value, BACKOFFICE_MONEY_DISPLAY_DECIMAL_PLACES)
   return <span>{negative && display !== '--' ? `-${display}` : display}</span>
 }
 
 function BillingSectionInfo({ content }: { content: string }) {
-  return <Tooltip className="app-info-tooltip billing-info-tooltip" content={content} position="top"><IconInfoCircle className="app-info-icon billing-info-icon" aria-label={content} /></Tooltip>
+  // 中文：信息说明仅保留图标触发器，提示内容交给 Semi Tooltip 渲染，避免正文常驻占位。
+  return <Tooltip className="app-info-tooltip billing-info-tooltip" content={content} position="top"><span className="billing-info-trigger" tabIndex={0} aria-label={content}><IconInfoCircle className="billing-info-icon" aria-hidden="true" /></span></Tooltip>
 }
 
 function AccountBalanceSection({ wallet, onRecharge, onBalanceAlert }: { wallet: BillingAnalysisResponse['wallet']; onRecharge: () => void; onBalanceAlert: () => void }) {
@@ -347,7 +348,7 @@ function AccountBalanceSection({ wallet, onRecharge, onBalanceAlert }: { wallet:
       <article className="billing-balance-card billing-balance-card-total">
         <div className="billing-balance-card-heading"><span>{i18n.t('console.billing.totalBalance')}</span><BillingSectionInfo content={i18n.t('console.billing.totalBalanceHint')} /><button type="button" className="billing-balance-alert-link" onClick={onBalanceAlert}>{i18n.t('console.billing.balanceReminder')}</button></div>
         <div className="billing-balance-card-footer">
-          <strong><PlainMoney value={wallet.total_balance_yuan || wallet.total_available_yuan} /></strong>
+          <strong className="billing-balance-total-value"><PlainMoney value={wallet.total_balance_yuan || wallet.total_available_yuan} /></strong>
           <Button className="billing-balance-recharge-button" theme="solid" size="small" onClick={onRecharge}>{i18n.t('console.billing.rechargeNow')}</Button>
         </div>
       </article>
@@ -377,13 +378,13 @@ function CreditDetailsSection({ data }: { data: BillingAnalysisResponse }) {
   const expiredFromLedger = sumLedger((item) => /过期|expire/i.test(item.description))
   const total = safeAmount(quota?.total_yuan) || safeAmount(wallet.total_balance_yuan || wallet.total_available_yuan)
   const rows: BillingQuotaRow[] = [
-    { key: 'recharge', label: i18n.t('console.billing.quotaRecharge'), value: quota?.recharge_yuan ?? (rechargeFromLedger !== '0' ? rechargeFromLedger : wallet.paid_available_yuan), tone: 'recharge' },
-    { key: 'reward', label: i18n.t('console.billing.quotaReward'), value: quota?.reward_yuan ?? (rewardFromLedger !== '0' ? rewardFromLedger : wallet.bonus_available_yuan), tone: 'reward' },
-    { key: 'gift', label: i18n.t('console.billing.quotaGift'), value: quota?.gift_yuan ?? giftFromLedger, tone: 'gift' },
-    { key: 'invitation', label: i18n.t('console.billing.quotaInvitation'), value: quota?.invitation_yuan ?? invitationFromLedger, tone: 'invitation' },
-    { key: 'expired', label: i18n.t('console.billing.quotaExpired'), value: quota?.expired_yuan ?? expiredFromLedger, tone: 'expired' },
-    { key: 'usage', label: i18n.t('console.billing.quotaUsage'), value: quota?.usage_yuan ?? (usageFromLedger !== '0' ? usageFromLedger : metrics.total_cost_yuan), tone: 'negative' },
-    { key: 'total', label: i18n.t('console.billing.totalBalance'), value: quota?.total_yuan ?? wallet.total_balance_yuan ?? wallet.total_available_yuan, tone: 'total' },
+    { key: 'recharge', label: i18n.t('console.billing.quotaRecharge'), value: quota?.recharge_yuan ?? (rechargeFromLedger !== '0' ? rechargeFromLedger : wallet.paid_available_yuan), icon: <IconCoinMoneyStroked aria-hidden="true" />, tone: 'recharge' },
+    { key: 'reward', label: i18n.t('console.billing.quotaReward'), value: quota?.reward_yuan ?? (rewardFromLedger !== '0' ? rewardFromLedger : wallet.bonus_available_yuan), icon: <IconTicketCodeExchangeStroked aria-hidden="true" />, tone: 'reward' },
+    { key: 'gift', label: i18n.t('console.billing.quotaGift'), value: quota?.gift_yuan ?? giftFromLedger, icon: <IconGiftStroked aria-hidden="true" />, tone: 'gift' },
+    { key: 'invitation', label: i18n.t('console.billing.quotaInvitation'), value: quota?.invitation_yuan ?? invitationFromLedger, icon: <IconShareMoneyStroked aria-hidden="true" />, tone: 'invitation' },
+    { key: 'expired', label: i18n.t('console.billing.quotaExpired'), value: quota?.expired_yuan ?? expiredFromLedger, icon: <IconHistory aria-hidden="true" />, tone: 'expired' },
+    { key: 'usage', label: i18n.t('console.billing.quotaUsage'), value: quota?.usage_yuan ?? (usageFromLedger !== '0' ? usageFromLedger : metrics.total_cost_yuan), icon: <IconTaskMoneyStroked aria-hidden="true" />, tone: 'negative' },
+    { key: 'total', label: i18n.t('console.billing.totalBalance'), value: wallet.total_balance_yuan || wallet.total_available_yuan, icon: <IconMoneyExchangeStroked aria-hidden="true" />, tone: 'total' },
   ]
   return <section className="billing-quota-section" aria-labelledby="billingQuotaHeading">
     <h2 id="billingQuotaHeading" className="billing-subsection-heading">{i18n.t('console.billing.quotaDetails')}</h2>
@@ -392,8 +393,8 @@ function CreditDetailsSection({ data }: { data: BillingAnalysisResponse }) {
         const amount = safeAmount(row.value)
         const percent = total > 0 ? Math.min(100, Math.max(0, amount / total * 100)) : 0
         return <div className={`billing-quota-row${row.tone ? ` is-${row.tone}` : ''}`} key={row.key}>
-          <span className="billing-quota-label">{row.label}</span>
-          {row.tone === 'total' ? <span className="billing-quota-total-spacer" aria-hidden="true" /> : <div className="billing-quota-track" aria-hidden="true"><span style={{ width: `${percent}%` }} /></div>}
+          <span className="billing-quota-label"><span className="billing-quota-icon">{row.icon}</span>{row.label}</span>
+          {row.key === 'total' ? <span className="billing-quota-track-placeholder" aria-hidden="true" /> : <div className="billing-quota-track" aria-hidden="true"><span style={{ width: `${percent}%` }} /></div>}
           <strong className="billing-quota-value"><PlainMoney value={row.value} negative={row.tone === 'negative'} /></strong>
         </div>
       })}
@@ -401,7 +402,7 @@ function CreditDetailsSection({ data }: { data: BillingAnalysisResponse }) {
   </section>
 }
 
-function AnalysisTab({ state, ledger, dateRange, apiKeyID, model, billingType, departmentID, memberID, departments, members, directoryLoading, directoryEnabled, onRecharge, onBalanceAlert, onSubscription, onFilterChange, onDateRangeChange, onRetry }: { state: ResourceState<BillingAnalysisResponse>; ledger: ReactNode; dateRange: Date[]; apiKeyID: string; model: string; billingType: string; departmentID: string; memberID: string; departments: EnterpriseDepartment[]; members: EnterpriseMember[]; directoryLoading: boolean; directoryEnabled: boolean; onRecharge: () => void; onBalanceAlert: () => void; onSubscription: () => void; onFilterChange: (key: 'apiKey' | 'model' | 'billingType' | 'department' | 'member', value: string) => void; onDateRangeChange: (value: Date[]) => void; onRetry: () => void }) {
+function AnalysisTab({ state, ledger, dateRange, apiKeyID, model, billingType, departmentID, memberID, departments, members, directoryLoading, directoryEnabled, onRecharge, onBalanceAlert, onFilterChange, onDateRangeChange, onRetry }: { state: ResourceState<BillingAnalysisResponse>; ledger: ReactNode; dateRange: Date[]; apiKeyID: string; model: string; billingType: string; departmentID: string; memberID: string; departments: EnterpriseDepartment[]; members: EnterpriseMember[]; directoryLoading: boolean; directoryEnabled: boolean; onRecharge: () => void; onBalanceAlert: () => void; onFilterChange: (key: 'apiKey' | 'model' | 'billingType' | 'department' | 'member', value: string) => void; onDateRangeChange: (value: Date[]) => void; onRetry: () => void }) {
   if (state.status === 'loading' || state.status === 'idle') return <BillingLoading label={i18n.t('console.billing.loadingAnalysis')} />
   if (state.status === 'error') return <BillingError state={state} onRetry={onRetry} />
   const data = state.data
@@ -434,23 +435,7 @@ function AnalysisTab({ state, ledger, dateRange, apiKeyID, model, billingType, d
         <CreditDetailsSection data={data} />
       </div>
       <div className="analysis-header">
-        <h2 className="analysis-heading" id="analysisHeading">
-          {i18n.t('console.billing.analysis')}
-        </h2>
-        <div className="analysis-actions">
-          <span className="balance-inline">
-            {i18n.t('console.billing.balance')}
-            <strong>
-              <MoneyText value={wallet.total_balance_yuan || wallet.total_available_yuan} />
-            </strong>
-          </span>
-          <Button theme="solid" type="primary" size="small" onClick={onRecharge}>
-            {i18n.t('console.billing.rechargeNow')}
-          </Button>
-          <Button theme="outline" size="small" onClick={onSubscription}>
-            {i18n.t('console.billing.subscriptionManage')}
-          </Button>
-        </div>
+        <h2 className="analysis-heading" id="analysisHeading">{i18n.t('console.billing.analysis')}</h2>
       </div>
       <div className="billing-filter-grid" aria-label={i18n.t('console.billing.filterLabel')}>
         <label className="billing-filter-field" htmlFor="billing-period-filter">
@@ -1036,7 +1021,7 @@ export function BillingPage() {
   const ledgerSection = <BillingLedgerSection state={ledgerState} lineType={ledgerLineType} page={ledgerPage} pageSize={ledgerPageSize} onLineTypeChange={(value) => { setLedgerLineType(value); setLedgerPage(BILLING_FIRST_PAGE) }} onPageChange={setLedgerPage} onPageSizeChange={(value) => { setLedgerPageSize(value); setLedgerPage(BILLING_FIRST_PAGE) }} onRetry={() => setReloadToken((value) => value + 1)} onExport={() => void exportCSV()} exporting={exportingLedger} />
 
   let content: ReactNode
-  if (activeTab === 'overview') content = <AnalysisTab state={analysisState} ledger={ledgerSection} dateRange={dateRange} apiKeyID={apiKeyID} model={model} billingType={billingType} departmentID={departmentID} memberID={memberID} departments={departments} members={members} directoryLoading={directoryLoading} directoryEnabled={context.account_type === 'enterprise'} onRecharge={() => navigate('/console/recharge')} onBalanceAlert={() => setBalanceAlertOpen(true)} onSubscription={() => navigate('/console/trae-enterprise/subscription')} onFilterChange={changeAnalysisFilter} onDateRangeChange={changeAnalysisDateRange} onRetry={() => setReloadToken((value) => value + 1)} />
+  if (activeTab === 'overview') content = <AnalysisTab state={analysisState} ledger={ledgerSection} dateRange={dateRange} apiKeyID={apiKeyID} model={model} billingType={billingType} departmentID={departmentID} memberID={memberID} departments={departments} members={members} directoryLoading={directoryLoading} directoryEnabled={context.account_type === 'enterprise'} onRecharge={() => navigate('/console/recharge')} onBalanceAlert={() => setBalanceAlertOpen(true)} onFilterChange={changeAnalysisFilter} onDateRangeChange={changeAnalysisDateRange} onRetry={() => setReloadToken((value) => value + 1)} />
   else content = <InvoiceTab state={invoiceState} faqOpen={invoiceFaqOpen} downloadingInvoiceID={downloadingInvoiceID} onToggleFaq={() => setInvoiceFaqOpen((value) => !value)} onRetry={() => setReloadToken((value) => value + 1)} onOpenDialog={openInvoiceDialog} onDownload={(item) => void downloadInvoice(item)} onPageChange={setInvoicePage} onPageSizeChange={(nextPageSize) => { setInvoicePageSize(nextPageSize); setInvoicePage(BILLING_FIRST_PAGE) }} page={invoicePage} pageSize={invoicePageSize} />
 
   return <div className="page-stack billing-console-page"><PageTitle title={t('console.billing.title')} description={t('console.billing.description')} /><RequestFocus data={analysisState.data} requestId={requestedRecordId} /><PaymentReturnNotice state={paymentReturnState} onRetry={() => setPaymentReturnRetryToken((value) => value + 1)} /><ConsoleTabs items={BILLING_TABS.map(([itemKey, label]) => ({ itemKey, tab: t(label) }))} activeKey={activeTab} onChange={(value) => onTabChange(value as BillingTab)} ariaLabel={t('console.billing.title')} /><div className="billing-tab-panel" role="tabpanel" id={`panel-${activeTab}`} aria-labelledby={`tab-${activeTab}`}>{content}</div><BillingInvoiceDialog open={dialogOpen} form={invoiceForm} options={getInvoiceDialogOptions(invoiceState.data)} errors={invoiceFormErrors} step={dialogStep} submitting={submittingInvoice} onClose={closeInvoiceDialog} onChange={updateInvoiceForm} onNext={nextInvoiceStep} onBack={() => { setDialogStep(1); setInvoiceFormErrors({}) }} onSubmit={() => void submitInvoice()} /><BalanceAlertDialog visible={balanceAlertOpen} onClose={() => setBalanceAlertOpen(false)} onAuthFailure={handleAuthFailure} /></div>

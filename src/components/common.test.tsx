@@ -97,6 +97,8 @@ beforeEach(() => {
 afterEach(() => {
   vi.restoreAllMocks()
   window.localStorage.removeItem('token-nx:auth:phone-code-cooldown:v1')
+  window.localStorage.removeItem('token-nx:email-onboarding-seen:email-onboarding-user')
+  window.localStorage.removeItem('token-nx:email-onboarding-seen:email-onboarding-close-user')
   clearAuthTokens()
 })
 
@@ -411,6 +413,62 @@ describe('公共 Header 布局', () => {
     expect(document.querySelector('.public-header')).toHaveClass('public-header--home')
   })
 
+  it('首次登录且服务端要求绑定邮箱时显示弹窗，关闭后不再重复显示', async () => {
+    const appStore = createAppStore()
+
+    render(
+      <MemoryRouter initialEntries={['/console/quickstart']}>
+        <Provider store={appStore}><AppStoreProvider><PublicHeader /></AppStoreProvider></Provider>
+      </MemoryRouter>,
+    )
+
+    appStore.dispatch({ type: 'auth/loginWithPhone/fulfilled', payload: { id: 'email-onboarding-user', display_name: '测试用户', avatar_url: '', locale: 'zh-CN', timezone: 'Asia/Shanghai', status: 'active', promt_required: true } })
+    expect(await screen.findByRole('dialog', { name: '绑定邮箱' })).toBeInTheDocument()
+    const bindDialog = screen.getByRole('dialog', { name: '绑定邮箱' })
+    expect(within(bindDialog).getByText('邮箱').closest('.semi-form-field-label')).toHaveClass('semi-form-field-label-required')
+    expect(within(bindDialog).getByText('验证码').closest('.semi-form-field-label')).toHaveClass('semi-form-field-label-required')
+    await userEvent.setup().click(within(bindDialog).getByRole('button', { name: '绑定' }))
+    expect(await within(bindDialog).findAllByText('请输入正确的邮箱地址')).toHaveLength(1)
+    await userEvent.setup().click(within(bindDialog).getByRole('button', { name: '稍后再填' }))
+    await waitFor(() => expect(window.localStorage.getItem('token-nx:email-onboarding-seen:email-onboarding-user')).toBe('1'))
+    appStore.dispatch({ type: 'auth/loginWithPhone/fulfilled', payload: { id: 'email-onboarding-user', display_name: '测试用户', avatar_url: '', locale: 'zh-CN', timezone: 'Asia/Shanghai', status: 'active', promt_required: true } })
+    expect(bindDialog).toHaveClass('semi-modal-content-animate-hide')
+  })
+
+  it('刷新会话或公共页面不显示临时绑定邮箱弹窗', () => {
+    const appStore = createAppStore()
+    const view = render(
+      <MemoryRouter initialEntries={['/console/quickstart']}>
+        <Provider store={appStore}><AppStoreProvider><PublicHeader /></AppStoreProvider></Provider>
+      </MemoryRouter>,
+    )
+    appStore.dispatch({ type: 'auth/hydrate/fulfilled', payload: { id: 'user-1', display_name: '测试用户', avatar_url: '', locale: 'zh-CN', timezone: 'Asia/Shanghai', status: 'active', promt_required: true } })
+    expect(screen.queryByRole('dialog', { name: '绑定邮箱' })).not.toBeInTheDocument()
+    view.unmount()
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <Provider store={appStore}><AppStoreProvider><PublicHeader /></AppStoreProvider></Provider>
+      </MemoryRouter>,
+    )
+    appStore.dispatch({ type: 'auth/loginWithPhone/fulfilled', payload: { id: 'user-1', display_name: '测试用户', avatar_url: '', locale: 'zh-CN', timezone: 'Asia/Shanghai', status: 'active', promt_required: false } })
+    expect(screen.queryByRole('dialog', { name: '绑定邮箱' })).not.toBeInTheDocument()
+  })
+
+  it('点击关闭按钮后也永久记录该用户已处理邮箱引导', async () => {
+    const appStore = createAppStore()
+    render(
+      <MemoryRouter initialEntries={['/console/quickstart']}>
+        <Provider store={appStore}><AppStoreProvider><PublicHeader /></AppStoreProvider></Provider>
+      </MemoryRouter>,
+    )
+
+    appStore.dispatch({ type: 'auth/loginWithPhone/fulfilled', payload: { id: 'email-onboarding-close-user', display_name: '测试用户', avatar_url: '', locale: 'zh-CN', timezone: 'Asia/Shanghai', status: 'active', promt_required: true } })
+    const bindDialog = await screen.findByRole('dialog', { name: '绑定邮箱' })
+    await userEvent.setup().click(within(bindDialog).getByRole('button', { name: 'close' }))
+    await waitFor(() => expect(window.localStorage.getItem('token-nx:email-onboarding-seen:email-onboarding-close-user')).toBe('1'))
+    expect(bindDialog).toHaveClass('semi-modal-content-animate-hide')
+  })
+
   it('通知红点与铃铛资源分离并由未读数量控制', () => {
     const { rerender } = render(
       <MemoryRouter initialEntries={['/']}>
@@ -457,9 +515,9 @@ describe('公共 Header 布局', () => {
     const billingLink = within(navigation).getByRole('link', { name: '费用' })
     await user.hover(billingLink)
     const dialog = await screen.findByRole('dialog', { name: '账户余额' })
-    expect(await within(dialog).findByText('128.50')).toBeInTheDocument()
-    expect(within(dialog).getByText('20.00')).toBeInTheDocument()
-    expect(within(dialog).getByText('88.00')).toBeInTheDocument()
+    expect(await within(dialog).findByText('128.5000')).toBeInTheDocument()
+    expect(within(dialog).getByText('20.0000')).toBeInTheDocument()
+    expect(within(dialog).getByText('88.0000')).toBeInTheDocument()
     const overviewCalls = () => fetchMock.mock.calls.filter(([input]) => new URL(String(input), window.location.origin).pathname === '/api/user/account/overview')
     expect(overviewCalls()).toHaveLength(1)
     const overviewURL = new URL(String(overviewCalls()[0]?.[0]), window.location.origin)
@@ -468,12 +526,12 @@ describe('公共 Header 布局', () => {
     expect(new Headers(overviewCalls()[0]?.[1]?.headers).get('Authorization')).toBe('Bearer overview-access-token')
 
     await user.click(within(dialog).getByRole('button', { name: '隐藏余额' }))
-    expect(within(dialog).getByText('*****')).toBeInTheDocument()
+    expect(within(dialog).getByText('*******')).toBeInTheDocument()
     expect(within(dialog).getByRole('button', { name: '显示余额' })).toBeInTheDocument()
     expect(window.localStorage.getItem('token-nx:billing-balance-visible:v1')).toBe('hidden')
 
     await user.click(within(dialog).getByRole('button', { name: '显示余额' }))
-    expect(within(dialog).getByText('128.50')).toBeInTheDocument()
+    expect(within(dialog).getByText('128.5000')).toBeInTheDocument()
     expect(window.localStorage.getItem('token-nx:billing-balance-visible:v1')).toBe('visible')
 
     await user.unhover(billingLink)
@@ -654,7 +712,7 @@ describe('公共 Header 布局', () => {
     expect(screen.getByRole('link', { name: i18n.t('footer.userAgreement') })).toHaveAttribute('href', '/terms')
     expect(screen.getByRole('link', { name: i18n.t('footer.privacyAgreement') })).toHaveAttribute('href', '/privacy')
     expect(screen.getByRole('link', { name: i18n.t('footer.rechargeAgreement') })).toHaveAttribute('href', '/recharge-agreement')
-    expect(screen.getByRole('link', { name: '商务合作：wub@tokennx.com' })).toHaveAttribute('href', 'mailto:wub@tokennx.com')
+    expect(screen.getByRole('link', { name: '商务合作：bd@tokennx.com' })).toHaveAttribute('href', 'mailto:bd@tokennx.com')
 
     await user.click(screen.getByRole('button', { name: '售前咨询：在线咨询' }))
     expect(await screen.findByRole('dialog', { name: '联系客服' })).toBeInTheDocument()

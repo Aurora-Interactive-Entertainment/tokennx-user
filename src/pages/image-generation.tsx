@@ -394,6 +394,24 @@ function ImageModelPicker({
   const [query, setQuery] = useState("");
   const [previewModel, setPreviewModel] = useState(selected[0] ?? IMAGE_MODELS[0][0]);
   const [draftSelected, setDraftSelected] = useState<string[]>(selected);
+  // 中文：保留弹窗节点至关闭动效结束，避免条件卸载导致收起动画被截断。
+  const [isMounted, setIsMounted] = useState(visible);
+  const [isActive, setIsActive] = useState(false);
+  useEffect(() => {
+    let frame: number | undefined;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    if (visible) {
+      setIsMounted(true);
+      frame = requestAnimationFrame(() => setIsActive(true));
+    } else {
+      setIsActive(false);
+      timer = setTimeout(() => setIsMounted(false), 180);
+    }
+    return () => {
+      if (frame !== undefined) cancelAnimationFrame(frame);
+      if (timer !== undefined) clearTimeout(timer);
+    };
+  }, [visible]);
   useEffect(() => {
     if (visible) {
       setPreviewModel(selected[0] ?? IMAGE_MODELS[0][0]);
@@ -407,10 +425,10 @@ function ImageModelPicker({
       ),
     [query],
   );
-  if (!visible) return null;
+  if (!isMounted) return null;
   return (
     <div
-      className="image-picker-backdrop"
+      className={`image-picker-backdrop${isActive ? " is-open" : ""}`}
       role="presentation"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onClose();

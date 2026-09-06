@@ -1,0 +1,143 @@
+/* 中文：弹层挂到 body，避免模型卡片的 overflow 和层叠上下文裁剪内容。 */
+.video-pricing-popover-portal {
+  position: fixed;
+  z-index: 2000;
+  width: max-content;
+  max-width: max(0px, calc(100vw - 160px));
+  padding-bottom: 10px;
+  transform: translate(-50%, -100%);
+}
+
+.video-pricing-popover-content {
+  box-sizing: border-box;
+  width: min(980px, max(0px, calc(100vw - 160px)));
+  padding: 22px 24px 18px;
+  border: 1px solid var(--color-border-neutral-l2);
+  border-radius: 18px;
+  color: var(--color-text-default);
+  /* 中文：使用次级表面色和双层阴影增强弹层与页面背景的层次。 */
+  background: color-mix(
+    in srgb,
+    var(--color-bg-base-secondary) 88%,
+    var(--color-bg-base-default)
+  );
+  box-shadow:
+    0 0 0 1px
+      color-mix(in srgb, var(--color-border-neutral-l2) 55%, transparent),
+    0 18px 48px color-mix(in srgb, var(--color-text-default) 26%, transparent);
+}
+
+.video-pricing-popover-heading {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+.video-pricing-popover-heading strong {
+  font-size: 18px;
+  line-height: 26px;
+}
+
+.video-pricing-popover-heading span,
+.video-pricing-formula,
+.video-pricing-note {
+  color: var(--color-text-tertiary);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.video-pricing-popover-heading b {
+  color: var(--color-text-default);
+}
+
+.video-pricing-tabs {
+  display: inline-flex;
+  max-width: 100%;
+  margin-bottom: 10px;
+  padding: 3px;
+  border-radius: 9px;
+  background: var(--color-bg-base-secondary);
+}
+
+.video-pricing-tabs button {
+  min-height: 30px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 7px;
+  color: var(--color-text-tertiary);
+  background: transparent;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.video-pricing-tabs button.is-active {
+  color: var(--color-text-default);
+  background: var(--color-bg-base-default);
+  box-shadow: 0 1px 4px
+    color-mix(in srgb, var(--color-text-default) 10%, transparent);
+}
+
+.video-pricing-formula {
+  margin: 0 0 10px;
+  text-align: right;
+}
+
+.video-pricing-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--color-border-neutral-l1);
+  border-radius: 10px;
+}
+
+.video-pricing-table {
+  width: 100%;
+  min-width: 760px;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.video-pricing-table th,
+.video-pricing-table td {
+  padding: 12px 10px;
+  border-bottom: 1px solid var(--color-border-neutral-l1);
+  white-space: nowrap;
+  text-align: left;
+}
+
+.video-pricing-table thead th {
+  color: var(--color-text-secondary);
+  background: var(--color-bg-base-secondary);
+  font-weight: 500;
+}
+
+.video-pricing-table tbody tr:last-child th,
+.video-pricing-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.video-pricing-table tbody th {
+  color: var(--color-text-default);
+  font-weight: 650;
+}
+
+.video-pricing-table tbody td {
+  color: var(--color-text-secondary);
+}
+
+.video-pricing-table tbody td:nth-last-child(-n + 2) {
+  color: var(--color-text-default);
+  font-weight: 600;
+}
+
+.video-pricing-note {
+  display: block;
+  margin-top: 10px;
+}
+
+@media (max-width: 720px) {
+  .video-pricing-popover-content {
+    width: min(980px, max(0px, calc(100vw - 160px)));
+    padding: 16px 12px 12px;
+  }
+}
