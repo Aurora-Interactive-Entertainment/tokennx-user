@@ -23,7 +23,6 @@ export function RealNameRequiredDialog({ visible, onCancel, onVerify, onComplete
       footer={null}
       width={680}
       maskClosable={false}
-      motion={false}
     >
       <div className="real-name-required-content">
         <div className="real-name-required-icon" aria-hidden="true"><span><IconUserStroked /></span></div>

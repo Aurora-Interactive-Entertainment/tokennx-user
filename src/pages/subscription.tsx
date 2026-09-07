@@ -377,7 +377,7 @@ export function SubscriptionPage() {
                 {t("console.subscriptionPage.upgrade")}
               </Button>
             </div>
-            <h3>{t("console.subscriptionPage.fallback.free.name")} <small>{t("console.subscriptionPage.fallback.free.badge")}</small></h3>
+            <h3>{t("console.subscriptionPage.fallback.free.name")} </h3>
             <p>{t("console.subscriptionPage.fallback.free.quota")}</p>
             <div className="subscription-card-divider" />
             <p className="subscription-current-hint">{t("console.subscriptionPage.freeHint")}</p>

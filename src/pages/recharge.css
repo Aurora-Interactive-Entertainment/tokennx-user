@@ -37,6 +37,21 @@
   background: #000;
 }
 
+/* 中文：深色主题下使用高对比白底黑字，保持提醒按钮与费用中心按钮一致。 */
+html[data-theme="dark"] .recharge-console-page .recharge-alert-button.semi-button.semi-button-primary {
+  border-color: #fff;
+  color: #17181b;
+  background: #fff;
+}
+
+html[data-theme="dark"] .recharge-console-page .recharge-alert-button.semi-button.semi-button-primary:hover:not(:disabled),
+html[data-theme="dark"] .recharge-console-page .recharge-alert-button.semi-button.semi-button-primary:focus-visible:not(:disabled),
+html[data-theme="dark"] .recharge-console-page .recharge-alert-button.semi-button.semi-button-primary:active:not(:disabled) {
+  border-color: #e4e7ed;
+  color: #17181b;
+  background: #e4e7ed;
+}
+
 .recharge-notice {
   display: grid;
   grid-template-columns: 20px minmax(0, 1fr);
@@ -270,6 +285,13 @@
 .recharge-console-page .recharge-amount-content,
 .recharge-console-page .recharge-method-controls {
   min-width: 0;
+}
+
+.recharge-console-page .recharge-amount-validation {
+  margin: 8px 0 0;
+  color: #e45b61;
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .recharge-console-page .recharge-options {

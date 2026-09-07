@@ -17,7 +17,7 @@
 .docs-markdown pre code { color: inherit; font: 12px/1.7 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; white-space: pre; }
 .docs-markdown table { display: table; width: 100%; max-width: 100%; overflow: visible; border-collapse: collapse; }
 .docs-markdown th, .docs-markdown td { padding: 14px 12px; border: 1px solid #353535; color: #8b8b8b; text-align: left; }
-.docs-markdown th { color: #fff; background: #202020; font-weight: 500; }
+.docs-markdown th { color: var(--table-header-color, #fff); background: #202020; font-size: 13px; font-weight: 500; }
 .docs-markdown .markdown-image-frame { position: relative; display: block; min-block-size: clamp(120px, 22vw, 220px); max-width: 100%; margin: 30px auto; overflow: hidden; border-radius: 4px; background: #202020; }
 .docs-markdown .markdown-image-frame.is-loaded { min-block-size: 0; background: transparent; }
 .docs-markdown .markdown-image { display: block; max-width: 100%; height: auto; margin: 0 auto; border-radius: inherit; opacity: 0; transition: opacity .18s ease-out; }
@@ -31,8 +31,8 @@
 html[data-theme="light"] .docs-markdown h1,
 html[data-theme="light"] .docs-markdown h2,
 html[data-theme="light"] .docs-markdown h3,
-html[data-theme="light"] .docs-markdown h4,
-html[data-theme="light"] .docs-markdown th { color: #17181b; }
+html[data-theme="light"] .docs-markdown h4 { color: #17181b; }
+html[data-theme="light"] .docs-markdown th { color: #000; }
 html[data-theme="light"] .docs-markdown { color: #626975; }
 html[data-theme="light"] .docs-markdown blockquote { border-left-color: #17181b; }
 html[data-theme="light"] .docs-markdown blockquote, html[data-theme="light"] .docs-markdown th { background: #eef0f2; }

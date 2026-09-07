@@ -27,12 +27,12 @@ import {
 } from "@douyinfe/semi-icons";
 import {
   BannerNotice,
-  EmptyPanel,
   MetricCard,
   ModelLogo,
   PageTitle,
   SectionHeading,
 } from "@/components/common";
+import { TraeTableEmpty } from "@/components/trae-table-empty";
 import { BackofficeMoneyText as MoneyText } from "@/components/money";
 import {
   CompatCard as Card,
@@ -1086,6 +1086,9 @@ export function ApiKeysPage({
     mode === "enterprise"
       ? t("console.account.enterpriseApiKeysDescription")
       : t("console.account.apiKeysDescription");
+  // 中文：空状态也沿用完整表头，列数随企业选择列和扩展字段保持一致。
+  const apiKeyTableColumnCount =
+    6 + (showExtendedColumns ? 6 : 0) + (enterpriseSelectionEnabled ? 1 : 0);
   const normalizedFilterMemberSearch = filterMemberSearch
     .trim()
     .toLocaleLowerCase();
@@ -1185,23 +1188,6 @@ export function ApiKeysPage({
           <span className="api-keys-loading-spinner" />
           {t("console.account.noKeysLoading")}
         </div>
-      ) : rows.length === 0 ? (
-        <EmptyPanel
-          surface="table"
-          title={t("console.account.noKeys")}
-          description={t("console.account.noKeysHint")}
-          action={
-            <Button
-              className="api-key-create-button"
-              theme="solid"
-              type="primary"
-              icon={<IconPlus />}
-              onClick={openCreate}
-            >
-              {t("console.account.create")}
-            </Button>
-          }
-        />
       ) : (
         <div
           className="source-table-scroll"
@@ -1243,7 +1229,16 @@ export function ApiKeysPage({
               </tr>
             </thead>
             <tbody>
-              {rows.map((row) => {
+              {rows.length === 0 ? (
+                <tr>
+                  <td
+                    className="api-keys-empty-cell"
+                    colSpan={apiKeyTableColumnCount}
+                  >
+                    <TraeTableEmpty />
+                  </td>
+                </tr>
+              ) : rows.map((row) => {
                 const limit = row.limits.cost_limit_yuan
                   ? Number(row.limits.cost_limit_yuan)
                   : 0;
@@ -1570,7 +1565,6 @@ export function ApiKeysPage({
               <div className="api-key-form-field api-key-tags-field">
                 <label className="field-label" htmlFor="key-tags">
                   {t("console.account.tags")}{" "}
-                  <small>（{t("console.account.optional")}）</small>
                 </label>
                 <Input
                   id="key-tags"
@@ -1602,11 +1596,7 @@ export function ApiKeysPage({
                   <span className="api-key-field-error" id="key-name-error" role="alert">
                     {requiredErrors.name}
                   </span>
-                ) : (
-                  <span className="api-key-field-hint">
-                    {Array.from(form.name).length}/32
-                  </span>
-                )}
+                ) : null}
               </div>
             </>
           ) : null}
@@ -1726,7 +1716,7 @@ export function ApiKeysPage({
               </fieldset>
               <div className="api-key-form-field api-key-whitelist-field api-key-advanced-inline-field">
                 <label className="field-label" htmlFor="key-whitelist">
-                  {t("console.account.whitelist")} <small>（{t("console.account.optional")}）</small>
+                  {t("console.account.whitelist")}
                 </label>
                 <Input
                   id="key-whitelist"
@@ -1805,9 +1795,7 @@ export function ApiKeysPage({
                     <div className="api-key-limit-field-head">
                       <label className="field-label" htmlFor="key-cost-limit">
                         {t("console.account.cumulativeLimit")}{" "}
-                        <small>（{t("console.account.optional")}）</small>
                       </label>
-                      <span>{t("console.account.unsetAccountBalance")}</span>
                     </div>
                     <div className="api-key-input-with-prefix">
                       <span>￥</span>
@@ -1825,7 +1813,6 @@ export function ApiKeysPage({
                   <div className="api-key-form-field">
                     <label className="field-label">
                       {t("console.account.rateLimit")}{" "}
-                      <small>（{t("console.account.optional")}）</small>
                     </label>
                     <div className="api-key-limit-grid">
                       <label>

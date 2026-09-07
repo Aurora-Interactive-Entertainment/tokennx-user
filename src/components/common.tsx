@@ -31,7 +31,6 @@ import {
   IconClose,
   IconCommentStroked,
   IconCopyStroked,
-  IconCreditCardStroked,
   IconCustomerSupport,
   IconEditStroked,
   IconExit,
@@ -40,22 +39,27 @@ import {
   IconFile,
   IconGiftStroked,
   IconIdCardStroked,
+  IconInviteStroked,
   IconImage,
   IconInfoCircle,
   IconKeyStroked,
   IconLightningStroked,
   IconMenu,
+  IconCoinMoneyStroked,
   IconMoonStroked,
+  IconNoteMoneyStroked,
   IconPieChartStroked,
   IconPlayCircle,
   IconRefresh,
   IconSearch,
   IconShieldStroked,
+  IconCrownStroked,
   IconSettingStroked,
   IconSend,
   IconSunStroked,
   IconTick,
   IconTickCircle,
+  IconTicketCodeStroked,
   IconUserGroup,
   IconUserStroked,
   IconVideo,
@@ -2648,6 +2652,8 @@ type ConsoleNavIconName =
   | "usage"
   | "records"
   | "billing"
+  | "subscription"
+  | "recharge"
   | "real-name"
   | "settings"
   | "account"
@@ -2657,7 +2663,9 @@ type ConsoleNavIconName =
   | "pie"
   | "logout"
   | "workspace"
-  | "gift";
+  | "gift"
+  | "invitation"
+  | "reward";
 
 type ConsoleNavItem = {
   key: string;
@@ -2688,7 +2696,11 @@ const CONSOLE_NAV_ICONS: Record<
   "api-keys": (props) => <IconKeyStroked {...props} />,
   usage: (props) => <IconBarChartVStroked {...props} />,
   records: (props) => <IconFile {...props} />,
-  billing: (props) => <IconCreditCardStroked {...props} />,
+  billing: (props) => <IconNoteMoneyStroked {...props} />,
+  subscription: (props) => <IconCrownStroked {...props} />,
+  recharge: (props) => <IconCoinMoneyStroked {...props} />,
+  invitation: (props) => <IconInviteStroked {...props} />,
+  reward: (props) => <IconTicketCodeStroked {...props} />,
   "real-name": (props) => <IconIdCardStroked {...props} />,
   settings: (props) => <IconSettingStroked {...props} />,
   account: (props) => <IconUserStroked {...props} />,
@@ -2748,11 +2760,11 @@ const personalNavGroups: ConsoleNavGroup[] = [
       {
         key: "/console/trae-enterprise/subscription",
         label: "订阅管理",
-        icon: "billing",
+        icon: "subscription",
       },
       { key: "/console/settings", label: "个人设置", icon: "account" },
       { key: "/console/billing", label: "费用管理", icon: "billing" },
-      { key: "/console/recharge", label: "充值管理", icon: "billing" },
+      { key: "/console/recharge", label: "充值管理", icon: "recharge" },
       { key: "/console/api-keys", label: "我的密钥", icon: "api-keys" },
     ],
   },
@@ -2760,11 +2772,11 @@ const personalNavGroups: ConsoleNavGroup[] = [
     key: "activity",
     label: "活动中心",
     items: [
-      { key: "/console/invitations", label: "邀请返现", icon: "gift" },
+      { key: "/console/invitations", label: "邀请返现", icon: "invitation" },
       {
         key: "/console/real-name-reward",
         label: "认证返现",
-        icon: "gift",
+        icon: "reward",
         actionOnly: true,
         soon: true,
       },
@@ -2839,7 +2851,7 @@ const enterpriseNavGroups: ConsoleNavGroup[] = [
       {
         key: "/console/trae-enterprise/subscription",
         label: "订阅管理",
-        icon: "billing",
+        icon: "subscription",
         permissionScope: "billing",
       },
       {
@@ -2852,7 +2864,7 @@ const enterpriseNavGroups: ConsoleNavGroup[] = [
       {
         key: "/console/recharge",
         label: "充值管理",
-        icon: "billing",
+        icon: "recharge",
         permissionScope: "billing",
       },
     ],

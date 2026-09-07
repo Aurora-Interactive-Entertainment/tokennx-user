@@ -1,57 +1,90 @@
-.trae-dialog-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 150;
-  display: grid;
-  place-items: center;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  padding: 20px;
-  background: rgba(0, 0, 0, 0.55);
+/* 中文：人员管理页弹窗统一使用 AppModal 外观，组件样式文件只保留业务宽度约束。 */
+.app-modal.trae-dialog .semi-modal {
+  width: min(460px, calc(100vw - 32px));
 }
 
-.trae-dialog {
-  width: min(460px, 100%);
-  border: 1px solid var(--color-border-neutral-l2);
-  border-radius: 8px;
-  background: var(--color-bg-menu);
-  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.3);
+/* 中文：AppModal 已负责标题、关闭按钮、遮罩、滚动锁定和响应式间距。 */
+.app-modal.trae-dialog .semi-modal-content {
+  min-width: 0;
 }
 
-.trae-dialog > header {
+/* 中文：弹窗正文内部的操作区沿用 AppModal footer 的按钮尺寸和主题颜色。 */
+.app-modal.trae-dialog .trae-dialog-actions {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 12px;
-  border-bottom: 1px solid var(--color-border-neutral-l1);
+  justify-content: flex-end;
+  gap: var(--spacing-8, 8px);
+  margin: 20px 0 0;
+  padding: 0;
 }
 
-.trae-dialog > header h2 {
-  color: var(--color-text-default-hover);
-  font-size: 16px;
+.app-modal.trae-dialog .trae-dialog-actions button {
+  box-sizing: border-box;
+  min-width: 76px;
+  min-height: 34px;
+  padding: 0 14px;
+  border-radius: var(--radius-6, 6px);
+  font-size: 13px;
+  font-weight: 500;
 }
 
-.trae-dialog > header button {
-  display: inline-grid;
-  width: 28px;
-  height: 28px;
-  place-items: center;
-  border: 0;
-  border-radius: 5px;
-  color: var(--color-text-tertiary);
-  background: transparent;
-  cursor: pointer;
+.app-modal.trae-dialog .trae-dialog-actions .trae-primary-button {
+  border-color: var(--color-action-primary);
+  color: var(--color-action-on-primary);
+  background: var(--color-action-primary);
 }
 
-.trae-dialog > header button:hover {
+.app-modal.trae-dialog .trae-dialog-actions .trae-primary-button:hover:not(:disabled),
+.app-modal.trae-dialog .trae-dialog-actions .trae-primary-button:focus-visible:not(:disabled) {
+  border-color: var(--color-action-primary-hover);
+  color: var(--color-action-on-primary);
+  background: var(--color-action-primary-hover);
+  transform: none;
+}
+
+.app-modal.trae-dialog .trae-dialog-actions .trae-secondary-button {
+  border-color: var(--color-border-neutral-l2);
+  color: var(--color-text-default);
+  background: var(--color-bg-base-tertiary);
+}
+
+.app-modal.trae-dialog .trae-dialog-actions .trae-secondary-button:hover:not(:disabled),
+.app-modal.trae-dialog .trae-dialog-actions .trae-secondary-button:focus-visible:not(:disabled) {
+  border-color: var(--color-border-neutral-l3);
   color: var(--color-text-default-hover);
   background: var(--color-bg-overlay-l3);
+  transform: none;
+}
+
+.app-modal.trae-dialog .trae-dialog-actions .trae-danger-button {
+  border-color: #f65a5a;
+  color: #fff;
+  background: #f65a5a;
+}
+
+.app-modal.trae-dialog .trae-dialog-actions .trae-danger-button:hover:not(:disabled),
+.app-modal.trae-dialog .trae-dialog-actions .trae-danger-button:focus-visible:not(:disabled) {
+  border-color: #e34d4d;
+  color: #fff;
+  background: #e34d4d;
+}
+
+/* 中文：正文已由 AppModal 统一提供内边距，避免旧弹窗壳的重复留白。 */
+.app-modal.trae-dialog .trae-dialog-form,
+.app-modal.trae-dialog .trae-rule-list,
+.app-modal.trae-dialog .trae-member-action-content,
+.app-modal.trae-dialog .trae-confirm-dialog-content,
+.app-modal.trae-dialog .trae-department-detail-content,
+.app-modal.trae-dialog .trae-invitation-usage-content {
+  padding: 0;
 }
 
 @media (max-width: 560px) {
-  .trae-dialog-backdrop {
-    align-items: end;
-    padding: 12px;
+  .app-modal.trae-dialog .semi-modal {
+    width: min(100%, calc(100vw - 24px));
+  }
+
+  .app-modal.trae-dialog .trae-dialog-actions {
+    flex-wrap: wrap;
   }
 }

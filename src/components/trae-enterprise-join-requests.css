@@ -20,7 +20,7 @@
 }
 
 .trae-table.trae-request-table th {
-  color: var(--color-text-tertiary);
+  color: var(--table-header-color);
 }
 
 .trae-request-table tbody tr:nth-child(even):not(:has(.trae-table-empty)) td {

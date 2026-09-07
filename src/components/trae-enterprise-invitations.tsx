@@ -20,7 +20,7 @@ import {
 } from "@/pages/enterprise-console-shared";
 import { formatApiTime } from "@/utils/format";
 import { startOfLocalDay } from "@/utils/date-range";
-import { TraeDialog } from "./trae-dialog";
+import { deferTraeDialogClose, TraeDialog } from "./trae-dialog";
 import { TraePagination } from "./trae-pagination";
 import { TraeTableEmpty } from "./trae-table-empty";
 import "./trae-date-picker.css";
@@ -345,7 +345,7 @@ export function TraeEnterpriseInvitations({
             <p className="trae-invitation-form-hint">{t("traeEnterprise.inviteList.roleHint")}</p>
             {createError ? <p className="trae-request-review-error">{createError.message}</p> : null}
             <div className="trae-dialog-actions">
-              <button className="trae-secondary-button" type="button" disabled={creating} onClick={() => onCreateOpenChange(false)}>{t("traeEnterprise.common.cancel")}</button>
+              <button className="trae-secondary-button" type="button" disabled={creating} onClick={() => deferTraeDialogClose(() => onCreateOpenChange(false))}>{t("traeEnterprise.common.cancel")}</button>
               <button className="trae-primary-button" type="submit" disabled={creating}>{creating ? t("traeEnterprise.inviteList.creating") : t("traeEnterprise.inviteList.createButton")}</button>
             </div>
           </Form>
@@ -364,7 +364,7 @@ export function TraeEnterpriseInvitations({
               <div><span>{t("traeEnterprise.inviteList.available")}</span><strong>{Math.max(0, detailInvitation.max_uses - detailInvitation.used_count)}</strong></div>
             </div>
             {usageLoading ? <div className="trae-request-state"><span className="console-loading-spinner" />{t("traeEnterprise.inviteList.loading")}</div> : usageError ? <EnterpriseError message={usageError.message} requestId={usageError.requestId} onRetry={() => setDetailInvitation({ ...detailInvitation })} /> : usages.length === 0 ? <div className="trae-invitation-no-usage"><strong>{t("traeEnterprise.inviteList.noUsage")}</strong><span>{t("traeEnterprise.inviteList.noUsageHint")}</span></div> : <div className="trae-invitation-usage-list">{usages.map((usage) => <div key={usage.member_id ?? usage.user_id}><span><strong>{usage.user_name || usage.user_id}</strong><small>{usage.user_id}</small></span><time>{formatApiTime(usage.joined_at)}</time></div>)}</div>}
-            <div className="trae-dialog-actions"><button className="trae-primary-button" type="button" onClick={() => setDetailInvitation(null)}>{t("traeEnterprise.common.confirm")}</button></div>
+            <div className="trae-dialog-actions"><button className="trae-primary-button" type="button" onClick={() => deferTraeDialogClose(() => setDetailInvitation(null))}>{t("traeEnterprise.common.confirm")}</button></div>
           </div>
         </TraeDialog>
       ) : null}

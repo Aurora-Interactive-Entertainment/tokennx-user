@@ -9,6 +9,7 @@ import { PieChart } from 'echarts/charts'
 import { TooltipComponent } from 'echarts/components'
 import { SVGRenderer } from 'echarts/renderers'
 import {
+  getAllEnterpriseMembers,
   getEnterpriseDepartments,
   type EnterpriseContext,
   type EnterpriseDepartment,
@@ -419,6 +420,7 @@ export function TraeUsageDetail({ context, memberID, onMemberChange }: UsageDeta
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(20)
   const [data, setData] = useState(EMPTY_DETAIL)
+  const [memberContacts, setMemberContacts] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(true)
   const [exporting, setExporting] = useState(false)
   const exportLockRef = useRef(false)
@@ -426,6 +428,33 @@ export function TraeUsageDetail({ context, memberID, onMemberChange }: UsageDeta
   const [reload, setReload] = useState(0)
   const today = useMemo(() => startOfToday(), [])
   const minDate = useMemo(() => addDays(today, -89), [today])
+
+  useEffect(() => {
+    const controller = new AbortController()
+    let active = true
+    getAllEnterpriseMembers(
+      { enterprise_id: context.id },
+      { signal: controller.signal },
+    ).then((members) => {
+      if (!active) return
+      // 中文：用量接口的筛选成员可能不含联系方式，按成员 ID 和用户 ID 合并成员目录中的脱敏手机号。
+      const contacts: Record<string, string> = {}
+      members.forEach((member) => {
+        const contact = member.masked_contact?.trim()
+        if (!contact) return
+        contacts[member.id] = contact
+        contacts[member.user_id] = contact
+      })
+      setMemberContacts(contacts)
+    }).catch((reason: unknown) => {
+      if (!active || controller.signal.aborted) return
+      if (isAuthenticationFailure(reason)) handleError(reason)
+    })
+    return () => {
+      active = false
+      controller.abort()
+    }
+  }, [context.id, handleError])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -512,7 +541,11 @@ export function TraeUsageDetail({ context, memberID, onMemberChange }: UsageDeta
     }
   }
 
-  const memberOptions = [{ value: 'all', label: t('traeEnterprise.usage.allMembers') }, ...data.filters.members.map((member) => ({ value: member.id, label: formatPersonOptionLabel(member.name, member.masked_contact || member.phone || member.email) }))]
+  const memberOptions = [{ value: 'all', label: t('traeEnterprise.usage.allMembers') }, ...data.filters.members.map((member) => {
+    const memberID = member.id || member.member_id || member.user_id || ''
+    const phone = member.phone || member.masked_phone || member.phone_masked || member.masked_contact || memberContacts[memberID] || (member.user_id ? memberContacts[member.user_id] : '')
+    return { value: memberID, label: formatPersonOptionLabel(member.name, phone || member.email) }
+  })]
   const modelOptions = [{ value: 'all', label: t('traeEnterprise.usage.allModels') }, ...data.filters.models.map((item) => ({ value: item.code, label: item.alias || item.name || item.code }))]
   const statusOptions = [
     { value: 'all', label: t('traeEnterprise.usage.allStatuses') },

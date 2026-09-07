@@ -73,9 +73,14 @@ export interface EnterpriseUsageModelFilter {
 
 export interface EnterpriseUsageMemberFilter {
   id: string
+  // 中文：不同版本的用量接口可能使用 member_id/user_id 和不同的手机号字段名，统一做兼容解析。
+  member_id?: string
+  user_id?: string
   name: string
   // 中文：兼容后端在人员筛选目录中返回的脱敏联系方式。
   masked_contact?: string
+  masked_phone?: string
+  phone_masked?: string
   phone?: string
   email?: string
 }

@@ -1,16 +1,20 @@
 /* 中文：创建与编辑 API Key 弹窗复用 AppModal 基线，仅约束业务宽高和内部表单。 */
 .api-key-management-modal .semi-modal {
   width: min(600px, calc(100vw - var(--spacing-32))) !important;
+  /* 中文：创建表单展开后仍与视口上下各保留 48px，避免底部操作区贴边或被裁切。 */
   max-height: calc(100dvh - 96px);
-  margin: auto;
 }
 
 .api-key-management-modal .semi-modal-content {
+  display: flex;
   max-height: inherit;
+  flex-direction: column;
+  overflow: hidden;
 }
 
-.api-key-management-modal .semi-modal-body {
+.api-key-management-modal .semi-modal-content > .semi-modal-body {
   min-height: 0;
+  flex: 1 1 auto;
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -143,6 +147,7 @@
 .api-key-management-modal .api-key-modal-form .semi-input,
 .api-key-management-modal .api-key-modal-form .semi-select-selection {
   height: 36px;
+  margin: 0;
   color: var(--color-text-default);
   font-size: 13px;
 }

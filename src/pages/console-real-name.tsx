@@ -182,10 +182,18 @@ function realNameVerificationLabel(profile: RealNameProfile): string {
     : i18n.t("console.realName.identityVerification");
 }
 function isMobileDevice(): boolean {
-  return (
-    typeof window !== "undefined" &&
-    window.matchMedia?.("(max-width: 700px)").matches
+  if (typeof window === "undefined") return false;
+  // 中文：不能只按视口宽度判断，桌面浏览器缩放会把 CSS 视口缩小而误判为移动端。
+  const userAgent = window.navigator?.userAgent ?? "";
+  const mobileUserAgent =
+    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+      userAgent,
+    );
+  const compactTouchLayout = Boolean(
+    window.matchMedia?.("(pointer: coarse)").matches &&
+    window.matchMedia?.("(max-width: 700px)").matches,
   );
+  return mobileUserAgent || compactTouchLayout;
 }
 function isRealNameLoginExpired(error: unknown): boolean {
   return isApiError(error)
@@ -273,6 +281,7 @@ export function RealNamePage() {
   const [qrExpiresAt, setQrExpiresAt] = useState<number | null>(null);
   const [clock, setClock] = useState(() => Date.now());
   const qrCanvas = useRef<HTMLCanvasElement>(null);
+  const qrFrame = useRef<HTMLDivElement>(null);
   const submitLocked = useRef(false);
   const refreshLocked = useRef(false);
   const confirmRequest = useRef<{
@@ -460,11 +469,42 @@ export function RealNamePage() {
     return () => window.clearInterval(timer);
   }, [clock, qrExpiresAt, receipt]);
   useEffect(() => {
-    if (!receipt?.certify_url || !qrCanvas.current || isMobileDevice()) return;
-    void QRCode.toCanvas(qrCanvas.current, receipt.certify_url, {
-      width: REAL_NAME_QR_SIZE,
-      margin: 1,
-    }).catch(() => Toast.error(t("console.realName.qrFailed")));
+    // 中文：先缓存并校验二维码地址，避免异步绘制闭包中的可选字段无法完成类型收窄。
+    const certifyUrl = receipt?.certify_url?.trim();
+    if (
+      !certifyUrl ||
+      !qrCanvas.current ||
+      !qrFrame.current ||
+      isMobileDevice()
+    )
+      return;
+    let disposed = false;
+    const drawQRCode = () => {
+      const canvas = qrCanvas.current;
+      const frame = qrFrame.current;
+      if (!canvas || !frame) return;
+      const size = Math.max(
+        1,
+        Math.floor(frame.clientWidth || REAL_NAME_QR_SIZE),
+      );
+      void QRCode.toCanvas(canvas, certifyUrl, {
+        width: size,
+        margin: 1,
+      }).catch(() => {
+        if (!disposed) Toast.error(t("console.realName.qrFailed"));
+      });
+    };
+    drawQRCode();
+    if (typeof ResizeObserver === "undefined")
+      return () => {
+        disposed = true;
+      };
+    const observer = new ResizeObserver(drawQRCode);
+    observer.observe(qrFrame.current);
+    return () => {
+      disposed = true;
+      observer.disconnect();
+    };
   }, [receipt, t]);
 
   function validateField(field: RealNameField): void {
@@ -859,6 +899,7 @@ export function RealNamePage() {
         >
           {receipt?.certify_url && !isMobileDevice() ? (
             <div
+              ref={qrFrame}
               className={`personal-real-name-qr-frame${qrExpired ? " is-expired" : ""}`}
             >
               <canvas

@@ -30,7 +30,7 @@ import {
   IconUserGroup,
   IconUserListStroked,
 } from "@douyinfe/semi-icons";
-import { TraeDialog } from "@/components/trae-dialog";
+import { deferTraeDialogClose, TraeDialog } from "@/components/trae-dialog";
 import { TraeEnterpriseInvitations } from "@/components/trae-enterprise-invitations";
 import { TraeEnterpriseJoinRequests } from "@/components/trae-enterprise-join-requests";
 import { TraeTableEmpty } from "@/components/trae-table-empty";
@@ -542,11 +542,7 @@ function MemberStatusRulesTooltip({ t }: { t: Translate }) {
   return (
     <div className="trae-status-rules-tooltip">
       <p>{t("traeEnterprise.members.ruleActive")}</p>
-      <p>{t("traeEnterprise.members.rulePending")}</p>
       <p>{t("traeEnterprise.members.ruleSuspended")}</p>
-      <button type="button" onClick={() => undefined}>
-        {t("traeEnterprise.members.stateRules")}
-      </button>
     </div>
   );
 }
@@ -1192,6 +1188,7 @@ function TraeDepartmentDialog({
     state.mode === "edit"
       ? t("traeEnterprise.members.editDepartmentTitle")
       : t("traeEnterprise.members.newDepartmentTitle");
+  const close = useCallback(() => deferTraeDialogClose(onClose), [onClose]);
   return (
     <TraeDialog title={title} onClose={onClose}>
       <Form<{ name: string }>
@@ -1245,7 +1242,7 @@ function TraeDepartmentDialog({
           <button
             className="trae-secondary-button"
             type="button"
-            onClick={onClose}
+            onClick={close}
           >
             {t("traeEnterprise.common.cancel")}
           </button>
@@ -1282,13 +1279,14 @@ function TraeMemberActionDialog({
     member?.role === "member" ? "member" : "admin",
   );
   const title = t(`traeEnterprise.members.${action}`);
+  const close = useCallback(() => deferTraeDialogClose(onClose), [onClose]);
   const complete = async () => {
     await onComplete(action === "changeDepartment" ? { departmentID } : action === "changeRole" ? { role } : {});
-    onClose();
+    close();
   };
   const actions = (
     <div className="trae-dialog-actions">
-      <button className="trae-secondary-button" type="button" onClick={onClose}>
+      <button className="trae-secondary-button" type="button" onClick={close}>
         {t("traeEnterprise.common.cancel")}
       </button>
       <button className="trae-primary-button" type="button" onClick={complete}>
@@ -1337,7 +1335,7 @@ function TraeMemberActionDialog({
             ))}
           </div>
           <div className="trae-dialog-actions">
-            <button className="trae-secondary-button" type="button" onClick={onClose}>
+            <button className="trae-secondary-button" type="button" onClick={close}>
               {t("traeEnterprise.common.cancel")}
             </button>
             <button className="trae-primary-button trae-danger-button" type="button" onClick={complete}>
@@ -1393,6 +1391,7 @@ function TraeDepartmentDetailDialog({
   onEdit: () => void;
 }) {
   const parentID = findTraeParentDepartmentID(nodes, node.id);
+  const close = useCallback(() => deferTraeDialogClose(onClose), [onClose]);
   return (
     <TraeDialog
       className="trae-department-detail-dialog"
@@ -1415,7 +1414,7 @@ function TraeDepartmentDetailDialog({
           </div>
         </dl>
         <div className="trae-dialog-actions">
-          <button className="trae-secondary-button" type="button" onClick={onClose}>
+          <button className="trae-secondary-button" type="button" onClick={close}>
             {t("traeEnterprise.common.confirm")}
           </button>
           <button className="trae-primary-button" type="button" onClick={onEdit}>
@@ -1565,6 +1564,14 @@ function TraeEnterpriseMembersContent({ context }: { context: EnterpriseContext 
       ),
     [debouncedQuery, members, status],
   );
+  // 中文：筛选请求期间继续展示上一次结果，避免新状态尚未返回时表体先变为空态造成闪烁。
+  const tableData = loading && members.length > 0 ? members : filtered;
+  function handleMemberStatusChange(value: string): void {
+    // 中文：先锁定表体加载态，再切换筛选条件，避免状态变更后的首帧先渲染空表。
+    setLoading(true);
+    setLoadError(null);
+    setStatus(value);
+  }
   const selectedMembers = useMemo(
     () =>
       members.filter((member) => selectedMemberIDs.includes(member.id)),
@@ -1755,7 +1762,7 @@ function TraeEnterpriseMembersContent({ context }: { context: EnterpriseContext 
               <TraeSelect
                 label={t("traeEnterprise.members.status")}
                 value={status}
-                onChange={setStatus}
+                onChange={handleMemberStatusChange}
                 dropdownClassName="trae-members-filter-dropdown"
                 options={[
                   { value: "all", label: t("traeEnterprise.members.status") },
@@ -1777,19 +1784,19 @@ function TraeEnterpriseMembersContent({ context }: { context: EnterpriseContext 
             <div className="trae-table-scroll">
               {loadError ? (
                 <EnterpriseError message={loadError.message} requestId={loadError.requestId} onRetry={() => setReloadToken((value) => value + 1)} />
-              ) : loading && members.length === 0 ? (
-                <EnterpriseLoading label={t("console.enterprise.loadData")} />
-              ) : <Table
-                className="trae-semi-member-table"
-                dataSource={filtered}
-                rowKey="id"
-                pagination={false}
-                rowSelection={{
-                  selectedRowKeys: selectedMemberIDs,
-                  onChange: (keys) => setSelectedMemberIDs(keys ?? []),
-                  width: 44,
-                }}
-                columns={[
+              ) : (
+                <div className="trae-member-table-frame" aria-busy={loading}>
+                  <Table
+                    className="trae-semi-member-table"
+                    dataSource={tableData}
+                    rowKey="id"
+                    pagination={false}
+                    rowSelection={{
+                      selectedRowKeys: selectedMemberIDs,
+                      onChange: (keys) => setSelectedMemberIDs(keys ?? []),
+                      width: 44,
+                    }}
+                    columns={[
                   {
                     title: t("traeEnterprise.members.person"),
                     dataIndex: "name",
@@ -1947,13 +1954,21 @@ function TraeEnterpriseMembersContent({ context }: { context: EnterpriseContext 
                       </div>
                     ),
                   },
-                ]}
-                empty={
-                  filtered.length === 0 ? (
-                    <TraeTableEmpty hint={t("traeEnterprise.members.empty")} />
-                  ) : undefined
-                }
-              />}
+                    ]}
+                    empty={
+                      tableData.length === 0 ? (
+                        <TraeTableEmpty hint={t("traeEnterprise.members.empty")} />
+                      ) : undefined
+                    }
+                  />
+                  {loading ? (
+                    <div className="trae-member-table-loading" role="status">
+                      <span className="console-loading-spinner" />
+                      {t("console.enterprise.loadData")}
+                    </div>
+                  ) : null}
+                </div>
+              )}
               <TraeMemberBulkActions
                 members={selectedMembers}
                 operator={{
@@ -2048,10 +2063,10 @@ function TraeEnterpriseMembersContent({ context }: { context: EnterpriseContext 
               </Form.Select.Option>
             </Form.Select>
             <div className="trae-dialog-actions">
-              <button
-                className="trae-secondary-button"
-                type="button"
-                onClick={() => setDialog(null)}
+          <button
+            className="trae-secondary-button"
+            type="button"
+            onClick={() => deferTraeDialogClose(() => setDialog(null))}
               >
                 {t("traeEnterprise.common.cancel")}
               </button>
@@ -2145,8 +2160,10 @@ function TraeEnterpriseMembersContent({ context }: { context: EnterpriseContext 
           onClose={() => setDepartmentDetailNode(null)}
           onEdit={() => {
             const node = departmentDetailNode;
-            setDepartmentDetailNode(null);
-            setDepartmentDialog({ mode: "edit", node });
+            deferTraeDialogClose(() => {
+              setDepartmentDetailNode(null);
+              setDepartmentDialog({ mode: "edit", node });
+            });
           }}
         />
       ) : null}
@@ -2162,7 +2179,7 @@ function TraeEnterpriseMembersContent({ context }: { context: EnterpriseContext 
               <button
                 className="trae-primary-button"
                 type="button"
-                onClick={() => setDepartmentDeleteBlockedNode(null)}
+                onClick={() => deferTraeDialogClose(() => setDepartmentDeleteBlockedNode(null))}
               >
                 {t("traeEnterprise.common.confirm")}
               </button>
@@ -2182,7 +2199,7 @@ function TraeEnterpriseMembersContent({ context }: { context: EnterpriseContext 
               <button
                 className="trae-secondary-button"
                 type="button"
-                onClick={() => setDepartmentDeleteNode(null)}
+                onClick={() => deferTraeDialogClose(() => setDepartmentDeleteNode(null))}
               >
                 {t("traeEnterprise.common.cancel")}
               </button>

@@ -203,6 +203,27 @@ function parseAmount(value: string): number | null {
   return Number.isFinite(amount) && amount > 0 ? amount : null
 }
 
+type RechargeAmountValidation = 'required' | 'invalid' | 'minimum' | null
+
+function validateRechargeAmount(value: string): RechargeAmountValidation {
+  const normalized = value.trim()
+  if (!normalized) return 'required'
+  if (!/^\d+(?:\.\d{1,2})?$/.test(normalized)) return 'invalid'
+  const amount = Number(normalized)
+  if (!Number.isFinite(amount)) return 'invalid'
+  return amount < MIN_RECHARGE_AMOUNT ? 'minimum' : null
+}
+
+// 中文：输入框只保留数字、小数点和两位小数，避免负号、字母等字符进入支付请求。
+function sanitizeRechargeAmountInput(value: string): string {
+  const sanitized = value.replace(/[^\d.]/g, '')
+  const separatorIndex = sanitized.indexOf('.')
+  if (separatorIndex < 0) return sanitized
+  const integerPart = sanitized.slice(0, separatorIndex)
+  const decimalPart = sanitized.slice(separatorIndex + 1).replace(/\./g, '').slice(0, 2)
+  return `${integerPart}.${decimalPart}`
+}
+
 function BillingLoading({ label }: { label: string }) {
   return <div className="billing-loading" role="status"><span className="api-keys-loading-spinner" />{label}</div>
 }
@@ -281,8 +302,9 @@ export function PaymentReturnNotice({ state, onRetry }: { state: ResourceState<B
   return <BannerNotice tone={copy.tone}><span className="billing-request-error-copy"><strong>{copy.label}</strong><small>{i18n.t('console.billing.paymentReturnOrder', { orderNo: state.data.order_no })}</small></span></BannerNotice>
 }
 
-function Metric({ label, value, note, tone = '', action }: { label: string; value: ReactNode; note?: ReactNode; tone?: string; action?: ReactNode }) {
-  return <article className={`metric-card billing-metric-card${tone ? ` ${tone}` : ''}`}><span className="metric-label">{label}</span>{action ? <div className="metric-action-slot">{action}</div> : null}<strong className="metric-value">{value}</strong>{note ? <span className="metric-note">{note}</span> : null}</article>
+function Metric({ label, value, note, tone = '', action, noteAsTooltip = false }: { label: string; value: ReactNode; note?: ReactNode; tone?: string; action?: ReactNode; noteAsTooltip?: boolean }) {
+  const tooltipContent = typeof note === 'string' || typeof note === 'number' ? String(note) : ''
+  return <article className={`metric-card billing-metric-card${noteAsTooltip ? ' billing-metric-card--tooltip' : ''}${tone ? ` ${tone}` : ''}`}><div className="billing-metric-heading"><span className="metric-label">{label}</span>{noteAsTooltip && tooltipContent ? <BillingSectionInfo content={tooltipContent} /> : null}</div>{action ? <div className="metric-action-slot">{action}</div> : null}<strong className="metric-value">{value}</strong>{note && !noteAsTooltip ? <span className="metric-note">{note}</span> : null}</article>
 }
 
 function BillingPagination({ page, total, pageSize, label, disabled, onPageChange, onPageSizeChange }: { page: number; total: number; pageSize: number; label: string; disabled: boolean; onPageChange: (page: number) => void; onPageSizeChange: (pageSize: number) => void }) {
@@ -488,12 +510,12 @@ function AnalysisTab({ state, ledger, dateRange, apiKeyID, model, billingType, d
         </label> : null}
       </div>
       <div className="metric-grid billing-metrics-grid">
-        <Metric label={i18n.t('console.billing.currentCost')} value={<MoneyText value={metrics.total_cost_yuan} />} note={i18n.t('console.billing.modelSpend')} tone="highlight" />
-        <Metric label={i18n.t('console.billing.inputCost')} value={<MoneyText value={metrics.input_cost_yuan} />} note={i18n.t('console.billing.textInput')} />
-        <Metric label={i18n.t('console.billing.outputCost')} value={<MoneyText value={metrics.output_cost_yuan} />} note={i18n.t('console.billing.textOutput')} />
-        <Metric label={i18n.t('console.billing.otherCost')} value={<MoneyText value={otherCost} />} note={i18n.t('console.billing.otherCostHint')} />
-        <Metric label={i18n.t('console.billing.averageRequestCost')} value={<MoneyText value={metrics.average_request_cost_yuan} />} note={i18n.t('console.billing.billedSuccessRequests')} />
-        <Metric label={i18n.t('console.billing.averageMillionTokenCost')} value={<MoneyText value={metrics.average_million_token_yuan} />} note={i18n.t('console.billing.textCallsOnly')} />
+        <Metric label={i18n.t('console.billing.currentCost')} value={<MoneyText value={metrics.total_cost_yuan} />} note={i18n.t('console.billing.modelSpend')} tone="highlight" noteAsTooltip />
+        <Metric label={i18n.t('console.billing.inputCost')} value={<MoneyText value={metrics.input_cost_yuan} />} note={i18n.t('console.billing.textInput')} noteAsTooltip />
+        <Metric label={i18n.t('console.billing.outputCost')} value={<MoneyText value={metrics.output_cost_yuan} />} note={i18n.t('console.billing.textOutput')} noteAsTooltip />
+        <Metric label={i18n.t('console.billing.otherCost')} value={<MoneyText value={otherCost} />} note={i18n.t('console.billing.otherCostHint')} noteAsTooltip />
+        <Metric label={i18n.t('console.billing.averageRequestCost')} value={<MoneyText value={metrics.average_request_cost_yuan} />} note={i18n.t('console.billing.billedSuccessRequests')} noteAsTooltip />
+        <Metric label={i18n.t('console.billing.averageMillionTokenCost')} value={<MoneyText value={metrics.average_million_token_yuan} />} note={i18n.t('console.billing.textCallsOnly')} noteAsTooltip />
       </div>
       <BillingCostCharts modelCosts={data.model_daily_costs ?? []} billingTypeCosts={data.billing_type_daily_costs ?? []} apiKeyCosts={data.api_key_daily_costs ?? []} />
       {ledger}
@@ -581,9 +603,10 @@ export function RechargeTab({ context, onOrderUpdated, onAuthFailure }: { contex
       Toast.warning(i18n.t('console.billing.wechatPaymentUnavailable'))
       return
     }
+    const amountValidation = validateRechargeAmount(amount)
     const value = parseAmount(amount)
-    if (value === null || value < MIN_RECHARGE_AMOUNT) {
-      Toast.error(i18n.t('console.billing.quickAmountError'))
+    if (amountValidation !== null || value === null) {
+      Toast.error(i18n.t(amountValidation === 'required' ? 'console.billing.amountRequired' : amountValidation === 'minimum' ? 'console.billing.amountMinimum' : 'console.billing.amountInvalid'))
       return
     }
     if (submitting) return
@@ -631,6 +654,8 @@ export function RechargeTab({ context, onOrderUpdated, onAuthFailure }: { contex
   const paymentCopy = paymentOrder ? paymentStatusCopy(paymentOrder.status) : null
   const paymentActive = paymentOrder ? isPaymentActive(paymentOrder.status) : false
   const rechargeAmount = parseAmount(amount)
+  const amountValidation = selected === null ? validateRechargeAmount(amount) : null
+  const amountValidationMessage = amountValidation === 'required' ? i18n.t('console.billing.amountRequired') : amountValidation === 'minimum' ? i18n.t('console.billing.amountMinimum') : amountValidation === 'invalid' ? i18n.t('console.billing.amountInvalid') : ''
   const customAmountSelected = selected === null && Boolean(amount.trim())
 
   return (
@@ -642,8 +667,9 @@ export function RechargeTab({ context, onOrderUpdated, onAuthFailure }: { contex
           <div className="recharge-amount-content">
             <div className="recharge-options" id="rechargeOptions">
               {RECHARGE_OPTIONS.map((value) => <button type="button" className={`recharge-option${selected === value ? ' active' : ''}`} aria-pressed={selected === value} key={value} onClick={() => choose(value)}><span className="recharge-amount">{value} {i18n.t('console.billing.amountUnit')}</span><span className="recharge-selected-corner" aria-hidden="true">✓</span></button>)}
-              <label className={`recharge-option recharge-option-other${customAmountSelected ? ' active' : ''}`} htmlFor="rechargeCustomAmount"><input id="rechargeCustomAmount" aria-label={i18n.t('console.billing.otherAmount')} inputMode="decimal" type="number" min={MIN_RECHARGE_AMOUNT} step="0.01" value={selected === null ? amount : ''} onChange={(event) => { setSelected(null); setAmount(event.target.value) }} placeholder={i18n.t('console.billing.otherAmountPlaceholder')} /><span className="recharge-selected-corner" aria-hidden="true">✓</span></label>
+              <label className={`recharge-option recharge-option-other${customAmountSelected ? ' active' : ''}`} htmlFor="rechargeCustomAmount"><input id="rechargeCustomAmount" aria-label={i18n.t('console.billing.otherAmount')} aria-describedby="rechargeAmountValidation" aria-invalid={amountValidation !== null} inputMode="decimal" type="text" value={selected === null ? amount : ''} onFocus={() => { if (selected !== null) { setSelected(null); setAmount('') } }} onChange={(event) => { setSelected(null); setAmount(sanitizeRechargeAmountInput(event.target.value)) }} placeholder={i18n.t('console.billing.otherAmountPlaceholder')} /><span className="recharge-selected-corner" aria-hidden="true">✓</span></label>
             </div>
+            {amountValidationMessage ? <p className="recharge-amount-validation" id="rechargeAmountValidation" role="alert">{amountValidationMessage}</p> : null}
           </div>
         </div>
         <div className="recharge-form-row recharge-method-row">
@@ -653,7 +679,7 @@ export function RechargeTab({ context, onOrderUpdated, onAuthFailure }: { contex
             <button type="button" className={`recharge-method-option${paymentMethod === 'alipay' ? ' is-selected' : ''}`} aria-label={i18n.t('console.billing.alipayPay')} aria-pressed={paymentMethod === 'alipay'} onClick={() => setPaymentMethod('alipay')}><img className="recharge-method-icon" src={alipayIcon} alt="" /><span>{i18n.t('console.billing.alipay')}</span><span className="recharge-selected-corner" aria-hidden="true">✓</span></button>
           </div>
         </div>
-        <div className="recharge-form-actions"><Button className="recharge-confirm-button" theme="solid" type="primary" aria-label={i18n.t('console.billing.rechargeNow')} loading={submitting} disabled={submitting || !agreementAccepted || rechargeAmount === null || rechargeAmount < MIN_RECHARGE_AMOUNT} onClick={() => void handleRecharge()}>{i18n.t('console.billing.rechargeNow')}</Button><span>{i18n.t('console.billing.viewRechargeRecordsPrefix')} <Link to="/console/billing">{i18n.t('console.billing.rechargeRecords')}</Link></span></div>
+        <div className="recharge-form-actions"><Button className="recharge-confirm-button" theme="solid" type="primary" aria-label={i18n.t('console.billing.rechargeNow')} loading={submitting} disabled={submitting || !agreementAccepted || rechargeAmount === null || rechargeAmount < MIN_RECHARGE_AMOUNT || amountValidation !== null} onClick={() => void handleRecharge()}>{i18n.t('console.billing.rechargeNow')}</Button><span>{i18n.t('console.billing.viewRechargeRecordsPrefix')} <Link to="/console/billing">{i18n.t('console.billing.rechargeRecords')}</Link></span></div>
       </div>
       {paymentOrder && paymentCopy && paymentDialogOpen ? <Modal visible title={i18n.t('console.billing.rechargeModalTitle')} onCancel={closePaymentDialog} footer={null} className="payment-qr-dialog">
         <div className="payment-qr-dialog-content">

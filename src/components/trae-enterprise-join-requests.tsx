@@ -18,7 +18,7 @@ import {
   type EnterpriseRequestError,
 } from "@/pages/enterprise-console-shared";
 import { formatApiTime } from "@/utils/format";
-import { TraeDialog } from "./trae-dialog";
+import { deferTraeDialogClose, TraeDialog } from "./trae-dialog";
 import { TraePagination } from "./trae-pagination";
 import { TraeTableEmpty } from "./trae-table-empty";
 import "./trae-enterprise-join-requests.css";
@@ -324,7 +324,7 @@ export function TraeEnterpriseJoinRequests({
             </p>
             {reviewError ? <p className="trae-request-review-error">{reviewError.message}</p> : null}
             <div className="trae-dialog-actions">
-              <button className="trae-secondary-button" type="button" disabled={reviewing} onClick={() => setReviewDialog(null)}>
+              <button className="trae-secondary-button" type="button" disabled={reviewing} onClick={() => deferTraeDialogClose(() => setReviewDialog(null))}>
                 {t("traeEnterprise.common.cancel")}
               </button>
               <button className="trae-primary-button" type="button" disabled={reviewing} onClick={() => void submitReview({ action: "approve" })}>
@@ -366,7 +366,7 @@ export function TraeEnterpriseJoinRequests({
             />
             {reviewError ? <p className="trae-request-review-error">{reviewError.message}</p> : null}
             <div className="trae-dialog-actions">
-              <button className="trae-secondary-button" type="button" disabled={reviewing} onClick={() => setReviewDialog(null)}>
+              <button className="trae-secondary-button" type="button" disabled={reviewing} onClick={() => deferTraeDialogClose(() => setReviewDialog(null))}>
                 {t("traeEnterprise.common.cancel")}
               </button>
               <button className="trae-danger-button" type="submit" disabled={reviewing}>

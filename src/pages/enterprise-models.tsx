@@ -5,6 +5,7 @@ import {
   useState,
   type CSSProperties,
 } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import Toast from '@douyinfe/semi-ui/lib/es/toast';
 import {
@@ -661,47 +662,92 @@ function ModelStateControl({
   canManage,
   saving,
   scope,
+  menuOpen,
   onToggle,
   onOpenVisibility,
+  onMenuOpenChange,
 }: {
   model: DirectoryModel;
   canManage: boolean;
   saving: boolean;
   scope: VisibilityScope;
+  menuOpen: boolean;
   onToggle: (model: DirectoryModel) => void;
   onOpenVisibility: (model: DirectoryModel) => void;
+  onMenuOpenChange: (modelID: string | null) => void;
 }) {
   const { t } = useTranslation();
-  const [menuOpen, setMenuOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const [menuPosition, setMenuPosition] = useState<{
+    top: number;
+    right: number;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!menuOpen) {
+      setMenuPosition(null);
+      return;
+    }
+    function updateMenuPosition(): void {
+      const trigger = triggerRef.current;
+      if (!trigger) return;
+      const rect = trigger.getBoundingClientRect();
+      // 中文：菜单挂到 body 后按按钮右侧对齐，并固定显示在按钮下方。
+      setMenuPosition({
+        top: rect.bottom + 4,
+        right: Math.max(8, window.innerWidth - rect.right),
+      });
+    }
+    updateMenuPosition();
+    window.addEventListener('resize', updateMenuPosition);
+    window.addEventListener('scroll', updateMenuPosition, true);
+    return () => {
+      window.removeEventListener('resize', updateMenuPosition);
+      window.removeEventListener('scroll', updateMenuPosition, true);
+    };
+  }, [menuOpen]);
+
   return (
     <div className="enterprise-model-state">
       <ModelScopeIndicator scope={scope} t={t} />
       {canManage ? (
         <div className="enterprise-model-actions">
           <button
+            ref={triggerRef}
             type="button"
             className="enterprise-model-more"
             aria-label={t('console.enterprise.model.visibility.more')}
             aria-haspopup="menu"
             aria-expanded={menuOpen}
-            onClick={() => setMenuOpen((value) => !value)}
+            onClick={() => onMenuOpenChange(menuOpen ? null : model.id)}
           >
             <IconMore />
           </button>
-          {menuOpen ? (
-            <div className="enterprise-model-menu" role="menu">
-              <button
-                type="button"
-                role="menuitem"
-                onClick={() => {
-                  setMenuOpen(false);
-                  onOpenVisibility(model);
-                }}
-              >
-                {t('console.enterprise.model.visibility.scopeAction')}
-              </button>
-            </div>
-          ) : null}
+          {menuOpen
+            ? createPortal(
+                <div
+                  className="enterprise-model-menu"
+                  role="menu"
+                  style={{
+                    top: menuPosition?.top ?? 0,
+                    right: menuPosition?.right ?? 0,
+                    visibility: menuPosition ? 'visible' : 'hidden',
+                  }}
+                >
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      onMenuOpenChange(null);
+                      onOpenVisibility(model);
+                    }}
+                  >
+                    {t('console.enterprise.model.visibility.scopeAction')}
+                  </button>
+                </div>,
+                document.body,
+              )
+            : null}
         </div>
       ) : null}
       <button
@@ -736,6 +782,23 @@ function ModelsTable({
   onOpenVisibility: (model: DirectoryModel) => void;
 }) {
   const { t } = useTranslation();
+  const [openMenuModelID, setOpenMenuModelID] = useState<string | null>(null);
+
+  useEffect(() => {
+    function handlePointerDown(event: PointerEvent): void {
+      const target = event.target;
+      if (
+        target instanceof Element &&
+        target.closest('.enterprise-model-actions, .enterprise-model-menu')
+      ) {
+        return;
+      }
+      setOpenMenuModelID(null);
+    }
+    document.addEventListener('pointerdown', handlePointerDown);
+    return () => document.removeEventListener('pointerdown', handlePointerDown);
+  }, []);
+
   return (
     <div
       className="enterprise-models-table-scroll"
@@ -766,8 +829,10 @@ function ModelsTable({
                   canManage={canManage}
                   saving={savingModelID === model.id}
                   scope={scopes[model.id] ?? 'all'}
+                  menuOpen={openMenuModelID === model.id}
                   onToggle={onToggle}
                   onOpenVisibility={onOpenVisibility}
+                  onMenuOpenChange={setOpenMenuModelID}
                 />
               </td>
             </tr>

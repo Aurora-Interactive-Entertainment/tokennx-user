@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { IconRefresh } from "@douyinfe/semi-icons";
 import {
@@ -43,6 +43,8 @@ export function PersonalTokenHeatmap({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [reloadKey, setReloadKey] = useState(0);
+  const heatmapScrollRef = useRef<HTMLDivElement>(null);
+  const heatmapTrackRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -155,6 +157,45 @@ export function PersonalTokenHeatmap({
     };
   }, [items, monthFormatter]);
 
+  useEffect(() => {
+    const scroll = heatmapScrollRef.current;
+    const track = heatmapTrackRef.current;
+    if (!scroll || !track || typeof ResizeObserver === "undefined") return;
+
+    const updateCellSize = (availableWidth: number) => {
+      const styles = getComputedStyle(track);
+      const gap = Number.parseFloat(styles.getPropertyValue("--heatmap-gap"));
+      const labelWidth = Number.parseFloat(
+        styles.getPropertyValue("--heatmap-label-width"),
+      );
+      const minCell = Number.parseFloat(
+        styles.getPropertyValue("--heatmap-cell-min"),
+      );
+      const maxCell = Number.parseFloat(
+        styles.getPropertyValue("--heatmap-cell-max"),
+      );
+      if (![gap, labelWidth, minCell, maxCell].every(Number.isFinite)) return;
+
+      // 中文：按可用宽度等比分配小格尺寸，限制上下限后保持横纵间距一致。
+      const cell = Math.min(
+        maxCell,
+        Math.max(
+          minCell,
+          (availableWidth - labelWidth - (heatmap.columns - 1) * gap) /
+            heatmap.columns,
+        ),
+      );
+      track.style.setProperty("--heatmap-cell", `${cell}px`);
+    };
+
+    updateCellSize(scroll.clientWidth);
+    const observer = new ResizeObserver(([entry]) => {
+      updateCellSize(entry.contentRect.width);
+    });
+    observer.observe(scroll);
+    return () => observer.disconnect();
+  }, [heatmap.columns, loading, error]);
+
   const total = useMemo(
     () => items.reduce((sum, item) => sum + item.total_tokens, 0),
     [items],
@@ -206,9 +247,10 @@ export function PersonalTokenHeatmap({
             </button>
           </div>
         ) : (
-          <div className="personal-token-heatmap-scroll">
+          <div className="personal-token-heatmap-scroll" ref={heatmapScrollRef}>
             <div
               className="personal-token-heatmap-track"
+              ref={heatmapTrackRef}
               style={
                 { "--heatmap-columns": heatmap.columns } as React.CSSProperties
               }

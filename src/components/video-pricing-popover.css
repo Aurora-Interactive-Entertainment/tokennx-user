@@ -106,8 +106,9 @@
 }
 
 .video-pricing-table thead th {
-  color: var(--color-text-secondary);
+  color: var(--table-header-color, var(--color-text-secondary));
   background: var(--color-bg-base-secondary);
+  font-size: 13px;
   font-weight: 500;
 }
 

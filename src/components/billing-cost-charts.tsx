@@ -88,6 +88,13 @@ function normalizeChart<T>(input: ChartInput<T>, legacy: { date: (item: T) => st
   return isBillingCostChart(input) ? normalizeServerChart(input, language) : normalizeLegacyChart(input, legacy.date, legacy.name, legacy.cost, language)
 }
 
+// 中文：账单类型由接口返回内部枚举，展示层统一转换为当前语言，避免图例直接显示 balance/subscription。
+function billingTypeLabel(value: string, t: (key: string) => string): string {
+  if (value === 'balance') return t('console.billing.balanceType')
+  if (value === 'subscription') return t('console.billing.subscription')
+  return value || '--'
+}
+
 // 中文：日期较多时只展示有限数量的刻度，避免横轴文本互相遮挡；数据点和 tooltip 仍保留完整日期。
 function dateAxisInterval(labelCount: number): number {
   const maxVisibleLabels = 8
@@ -108,8 +115,9 @@ function BillingCostChart({ title, chart, emptyLabel, chartType = 'line' }: { ti
     const palette = ['#1dc981', '#4c8bf5', '#f6a623', '#8b5cf6', '#ef5b8d', '#14b8a6']
     instance.setOption({
       animationDuration: 240,
-      grid: { top: chart.series.length > 1 ? 38 : 18, right: 12, bottom: 38, left: 48 },
-      legend: chart.series.length > 1 ? { top: 0, type: 'scroll', textStyle: { color: textColor, fontSize: 11 } } : undefined,
+      grid: { top: 18, right: 12, bottom: 62, left: 48 },
+      // 中文：所有折线图都在左下角保留图例，单序列图也要明确说明线条含义。
+      legend: chart.series.length > 0 ? { left: 0, bottom: 0, type: 'scroll', textStyle: { color: textColor, fontSize: 11 } } : undefined,
       tooltip: {
         trigger: 'axis',
         transitionDuration: 0,
@@ -183,12 +191,16 @@ export function BillingCostCharts({ modelCosts, billingTypeCosts, apiKeyCosts }:
   const modelChart = useMemo(() => normalizeChart(modelCosts, { date: (item) => item.date, name: (item) => item.model_name || item.model_code || item.model_id || '--', cost: (item) => item.cost_yuan }, i18n.language), [modelCosts, i18n.language])
   const billingTypeChart = useMemo(() => normalizeChart(billingTypeCosts, { date: (item) => item.date, name: (item) => item.billing_type, cost: (item) => item.cost_yuan }, i18n.language), [billingTypeCosts, i18n.language])
   const apiKeyChart = useMemo(() => normalizeChart(apiKeyCosts, { date: (item) => item.date, name: (item) => item.api_key_name || item.api_key_id || '--', cost: (item) => item.cost_yuan }, i18n.language), [apiKeyCosts, i18n.language])
+  const translatedBillingTypeChart = useMemo(() => ({
+    ...billingTypeChart,
+    series: billingTypeChart.series.map((item) => ({ ...item, name: billingTypeLabel(item.name, t) })),
+  }), [billingTypeChart, t])
   const emptyLabel = t('console.billing.chartEmpty')
 
   return (
     <section className="billing-cost-charts" aria-label={t('console.billing.costCharts')}>
       <BillingCostChart title={t('console.billing.modelCostChart')} chart={modelChart} emptyLabel={emptyLabel} chartType="bar" />
-      <BillingCostChart title={t('console.billing.billingTypeCostChart')} chart={billingTypeChart} emptyLabel={emptyLabel} />
+      <BillingCostChart title={t('console.billing.billingTypeCostChart')} chart={translatedBillingTypeChart} emptyLabel={emptyLabel} />
       <BillingCostChart title={t('console.billing.apiKeyCostChart')} chart={apiKeyChart} emptyLabel={emptyLabel} />
     </section>
   )

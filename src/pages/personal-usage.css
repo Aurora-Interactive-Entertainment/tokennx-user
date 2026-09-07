@@ -157,7 +157,7 @@ html[data-theme="light"]
 .personal-usage-cue-table { width: 100%; min-width: 0; border-collapse: collapse; table-layout: fixed; color: var(--color-text-default); }
 .personal-usage-cue-table th,
 .personal-usage-cue-table td { height: 48px; min-width: 0; box-sizing: border-box; padding: 0 12px; border-bottom: 1px solid var(--color-border-neutral-l1); color: var(--color-text-secondary); font-size: 11px; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.personal-usage-cue-table th { height: 42px; color: var(--color-text-tertiary); background: var(--color-bg-base-tertiary); font-weight: 600; }
+.personal-usage-cue-table th { height: 42px; color: var(--table-header-color); background: var(--color-bg-base-tertiary); font-size: 13px; font-weight: 500; }
 .personal-usage-cue-table tbody tr:nth-child(even) td { background: var(--color-bg-overlay-l1); }
 .personal-usage-cue-table tbody tr:hover td { background: var(--color-bg-overlay-l2); }
 .personal-usage-cue-table td { color: var(--color-text-default); }

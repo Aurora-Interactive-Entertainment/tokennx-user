@@ -220,6 +220,46 @@ describe("充值管理页面", () => {
     expect(document.querySelector(".semi-toast")).toBeNull();
   });
 
+  it("实时提示自定义充值金额错误并在满足最低金额后启用充值", async () => {
+    render(
+      <MemoryRouter initialEntries={["/console/recharge"]}>
+        <Provider store={createAppStore()}>
+          <AppStoreProvider>
+            <RechargePage />
+          </AppStoreProvider>
+        </Provider>
+      </MemoryRouter>,
+    );
+
+    const user = userEvent.setup();
+    const amountInput = screen.getByRole("textbox", { name: "其他金额" });
+    const rechargeButton = screen.getByRole("button", { name: "立即充值" });
+
+    await user.click(amountInput);
+    expect(screen.getByRole("alert")).toHaveTextContent("请输入充值金额");
+    expect(rechargeButton).toBeDisabled();
+
+    await user.type(amountInput, "9");
+    expect(screen.getByRole("alert")).toHaveTextContent("最低充值金额为 10 元");
+    expect(rechargeButton).toBeDisabled();
+
+    await user.clear(amountInput);
+    await user.type(amountInput, "10");
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(rechargeButton).toBeEnabled();
+
+    await user.clear(amountInput);
+    await user.type(amountInput, ".");
+    expect(screen.getByRole("alert")).toHaveTextContent("请输入有效的充值金额");
+    expect(amountInput).toHaveValue(".");
+    expect(rechargeButton).toBeDisabled();
+
+    await user.clear(amountInput);
+    await user.type(amountInput, "10.");
+    expect(screen.getByRole("alert")).toHaveTextContent("请输入有效的充值金额");
+    expect(rechargeButton).toBeDisabled();
+  });
+
   it.each([
     { workspaceType: "personal" as const, workspaceId: "personal-recharge-1", accountType: "personal" },
     { workspaceType: "enterprise" as const, workspaceId: "enterprise-recharge-1", accountType: "enterprise" },

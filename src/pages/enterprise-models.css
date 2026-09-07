@@ -59,9 +59,9 @@
 .enterprise-models-table--managed th {
   height: 42px;
   background: var(--color-bg-base-tertiary);
-  color: var(--color-text-tertiary);
-  font-size: 12px;
-  font-weight: 600;
+  color: var(--table-header-color);
+  font-size: 13px;
+  font-weight: 500;
 }
 
 .enterprise-models-table--managed th:last-child,
@@ -194,19 +194,18 @@
 }
 
 .enterprise-model-actions {
-  position: relative;
   display: inline-flex;
 }
 .enterprise-model-menu {
-  position: absolute;
-  z-index: 20;
-  top: calc(100% + 4px);
-  right: 0;
+  /* 中文：菜单通过 Portal 脱离表格裁切，并始终定位在触发按钮下方。 */
+  position: fixed;
+  z-index: 100;
   min-width: 96px;
   padding: 4px;
   border: 1px solid var(--color-border-neutral-l1);
   border-radius: 6px;
-  background: var(--color-bg-base-secondary);
+  /* 中文：使用实色菜单背景，避免与相邻模型行透叠。 */
+  background: var(--color-bg-menu, var(--color-bg-base-secondary));
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.24);
 }
 .enterprise-model-menu button {

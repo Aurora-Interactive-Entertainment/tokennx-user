@@ -6,7 +6,7 @@
 .trae-page-heading h1 { color: var(--color-text-default-hover); font-size: 22px; font-weight: 650; line-height: 30px; }
 .trae-page-heading-action { display: flex; align-items: center; gap: 8px; }
 .trae-toolbar { display: flex; align-items: center; gap: 10px; min-width: 0; margin-bottom: 22px; flex-wrap: wrap; }
-.trae-select.semi-select { width: 200px; height: 38px; min-width: 0; border: 1px solid var(--color-border-neutral-l2); border-radius: 6px; color: var(--color-text-secondary); background: var(--color-bg-base-secondary); }
+.trae-select.semi-select { width: 200px; height: 32px; min-width: 0; border: 1px solid var(--color-border-neutral-l2); border-radius: 6px; color: var(--color-text-secondary); background: var(--color-bg-base-secondary); }
 .trae-select.semi-select:hover { border-color: var(--color-border-neutral-l2); background: var(--color-bg-base-secondary); }
 .trae-select.semi-select.semi-select-open, .trae-select.semi-select.semi-select-focus { border-color: var(--color-brand); background: var(--color-bg-base-secondary); }
 .trae-select .semi-select-selection { min-width: 0; padding: 0 12px; }
@@ -96,7 +96,7 @@
 .trae-table-scroll { min-width: 0; overflow-x: auto; border: 1px solid var(--color-border-neutral-l1); border-radius: 6px; background: var(--color-bg-base-secondary); }
 .trae-table { width: 100%; min-width: 840px; border-collapse: collapse; }
 .trae-table th, .trae-table td { height: 48px; padding: 0 12px; border-bottom: 1px solid var(--color-border-neutral-l1); color: var(--color-text-secondary); font-size: 11px; text-align: left; white-space: nowrap; }
-.trae-table th { height: 42px; color: var(--color-text-tertiary); background: var(--color-bg-base-tertiary); font-size: 11px; font-weight: 600; }
+.trae-table th { height: 42px; color: var(--table-header-color); background: var(--color-bg-base-tertiary); font-size: 13px; font-weight: 500; }
 .trae-table tbody tr:last-child td { border-bottom: 0; }
 .trae-table tbody tr:hover td { background: var(--color-bg-overlay-l1); }
 .trae-table td { color: var(--color-text-default); }
@@ -172,15 +172,12 @@
 .trae-usage-person-card { display: grid; gap: 16px; padding: 16px; border: 1px solid var(--color-border-neutral-l1); border-radius: 7px; background: var(--color-bg-base-secondary); }
 .trae-usage-person-values { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; color: var(--color-text-tertiary); font-size: 10px; }
 .trae-usage-person-values b { display: block; margin-top: 3px; color: var(--color-text-default-hover); font-size: 12px; font-weight: 550; }
-.trae-dialog.trae-confirm-dialog { width: min(360px, 100%); }
-.trae-dialog.trae-confirm-dialog > header { padding: 12px; border-bottom: 0; }
-.trae-dialog.trae-confirm-dialog > header h2 { font-size: 16px; }
+.app-modal.trae-dialog.trae-confirm-dialog .semi-modal { width: min(360px, calc(100vw - 32px)); }
 .trae-confirm-dialog-content { padding: 0 12px 12px; }
 .trae-confirm-dialog-content p { margin: 0 0 14px; color: var(--color-text-secondary); font-size: 13px; line-height: 1.5; }
 .trae-confirm-dialog-content .trae-dialog-actions { margin: 0; padding: 0; }
 .trae-confirm-dialog-content .trae-dialog-actions button { min-height: 30px; font-size: 13px; }
-.trae-member-action-dialog { width: min(480px, 100%); }
-.trae-member-action-dialog > header { padding: 12px; border-bottom: 0; }
+.app-modal.trae-dialog.trae-member-action-dialog .semi-modal { width: min(480px, calc(100vw - 32px)); }
 .trae-dialog-title-with-icon { display: inline-flex; align-items: center; gap: 7px; }
 .trae-dialog-title-with-icon > svg { width: 16px; height: 16px; color: var(--color-text-tertiary); }
 .trae-member-action-content { padding: 0 12px 12px; }
@@ -330,9 +327,7 @@
 .trae-department-picker-label span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .trae-department-picker-label svg { width: 14px; height: 14px; margin-left: auto; color: var(--color-brand); }
 .trae-department-dialog-form { gap: 16px; }
-.trae-dialog:has(.trae-department-dialog-form) { width: min(480px, 100%); }
-.trae-dialog:has(.trae-department-dialog-form) > header { border-bottom: 0; padding: 12px 12px 8px; }
-.trae-dialog:has(.trae-department-dialog-form) > header h2 { font-size: 16px; }
+.app-modal.trae-dialog:has(.trae-department-dialog-form) .semi-modal { width: min(480px, calc(100vw - 32px)); }
 .trae-department-dialog-form { padding: 0 12px 12px; }
 .trae-department-dialog-form label { gap: 6px; color: var(--color-text-secondary); font-size: 13px; }
 .trae-department-dialog-form label > span { color: var(--color-text-default-hover); font-size: 13px; font-weight: 600; }
@@ -362,7 +357,7 @@
 .trae-select-dropdown.trae-members-filter-dropdown .semi-select-option-selected, .trae-select-dropdown.trae-members-filter-dropdown .semi-select-option-focused, .trae-select-dropdown.trae-members-filter-dropdown .semi-select-option:hover { background: var(--color-bg-overlay-l3); color: var(--color-text-default-hover); }
 /* 人员表格自身承载边框，保留 Semi 内部横向滚动并统一裁切圆角。 */
 .trae-members-page .trae-semi-member-table { box-sizing: border-box; min-width: 840px; overflow: hidden; border: 1px solid var(--color-border-neutral-l1); border-radius: 6px; background: var(--color-bg-base-secondary); }
-.trae-members-page .trae-semi-member-table .semi-table-thead > .semi-table-row > .semi-table-row-head { height: 42px; color: var(--color-text-secondary); background: var(--color-bg-base-tertiary); font-size: 13px; font-weight: 600; white-space: nowrap; }
+.trae-members-page .trae-semi-member-table .semi-table-thead > .semi-table-row > .semi-table-row-head { height: 42px; color: var(--table-header-color); background: var(--color-bg-base-tertiary); font-size: 13px; font-weight: 500; white-space: nowrap; }
 /* A fixed row rhythm requires non-person columns to stay on one line. */
 .trae-members-page .trae-semi-member-table .semi-table-tbody > .semi-table-row { height: 48px; }
 .trae-members-page .trae-semi-member-table .semi-table-tbody > .semi-table-row > .semi-table-row-cell { box-sizing: border-box; height: 48px; padding-block: 0; overflow: hidden; color: var(--color-text-default); font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
@@ -378,6 +373,8 @@
 .trae-members-page .trae-table-scroll:has(.trae-semi-member-table)::-webkit-scrollbar { width: 6px; height: 6px; }
 .trae-members-page .trae-table-scroll:has(.trae-semi-member-table)::-webkit-scrollbar-track { background: transparent; }
 .trae-members-page .trae-table-scroll:has(.trae-semi-member-table)::-webkit-scrollbar-thumb { border-radius: 3px; background: var(--color-border-neutral-l2); }
+.trae-members-page .trae-member-table-frame { position: relative; min-width: 840px; }
+.trae-members-page .trae-member-table-loading { position: absolute; top: 43px; right: 0; bottom: 0; left: 0; z-index: 2; display: flex; min-height: 120px; align-items: center; justify-content: center; gap: 8px; color: var(--color-text-secondary); background: color-mix(in srgb, var(--color-bg-base-secondary) 78%, transparent); font-size: 13px; pointer-events: none; }
 .trae-members-page .trae-semi-member-table .semi-table-body { overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; scrollbar-color: var(--color-border-neutral-l2) transparent; }
 .trae-members-page .trae-semi-member-table .semi-table-body::-webkit-scrollbar { width: 6px; height: 6px; }
 .trae-members-page .trae-semi-member-table .semi-table-body::-webkit-scrollbar-track { background: transparent; }
@@ -412,7 +409,7 @@
 .trae-departments-table .semi-table-row-cell { overflow: visible !important; }
 .trae-departments-table .semi-table-row { position: relative; z-index: 0; }
 .trae-departments-table .semi-table-row:has(.trae-department-table-menu) { z-index: 20; }
-.trae-departments-table .semi-table-thead > .semi-table-row > .semi-table-row-head { box-sizing: border-box; height: 45px; padding-block: 0; color: var(--color-text-default-hover); background: var(--color-bg-base-tertiary); font-size: 13px; font-weight: 600; }
+.trae-departments-table .semi-table-thead > .semi-table-row > .semi-table-row-head { box-sizing: border-box; height: 45px; padding-block: 0; color: var(--table-header-color); background: var(--color-bg-base-tertiary); font-size: 13px; font-weight: 500; }
 .trae-departments-table .semi-table-tbody > .semi-table-row { height: 45px; }
 .trae-departments-table .semi-table-tbody > .semi-table-row > .semi-table-row-cell { box-sizing: border-box; height: 45px; padding-block: 0; color: var(--color-text-default); font-size: 13px; }
 .trae-departments-table .semi-table-tbody > .semi-table-row:nth-child(even) > .semi-table-row-cell { background: var(--color-bg-overlay-l1); }
