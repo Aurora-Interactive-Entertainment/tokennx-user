@@ -653,6 +653,10 @@ export function EnterpriseCreatePage() {
     isFreshNewMode || editingInformation
       ? 1
       : stepFromCertification(certification, applicantType);
+  // 中文：审核通过或流程已完成视为认证成功，进度条步骤渲染为绿色。
+  const certificationVerified =
+    certification?.status === "approved" ||
+    certification?.current_stage === "completed";
   const isLegalFaceStage =
     applicantType === "legal_representative" &&
     isFaceVerificationStage(certification);
@@ -668,6 +672,7 @@ export function EnterpriseCreatePage() {
         <EnterpriseCertificationProgress
           applicantType={applicantType}
           step={step}
+          verified={certificationVerified}
         />
         {showInformationForm ? (
           <EnterpriseCertificationForm

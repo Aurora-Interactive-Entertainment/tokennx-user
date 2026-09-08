@@ -38,8 +38,9 @@
 .api-key-modal-form > .api-key-member-field { order: 3; }
 .api-key-modal-form > .api-key-limit-switch-field { order: 4; }
 .api-key-modal-form > .api-key-validity-field { order: 5; }
-.api-key-modal-form > .api-key-model-field { order: 6; }
-.api-key-modal-form > .api-key-billing-field { order: 7; }
+/* 中文：费用来源与可用模型位置对调，费用来源显示在可用模型上方。 */
+.api-key-modal-form > .api-key-billing-field { order: 6; }
+.api-key-modal-form > .api-key-model-field { order: 7; }
 .api-key-modal-form > .api-key-whitelist-field { order: 8; }
 .api-key-modal-form > .api-key-advanced-fields { order: 9; }
 
@@ -49,8 +50,9 @@
   animation: api-key-advanced-enter 180ms cubic-bezier(0.2, 0, 0, 1) both;
 }
 
-.api-key-model-field { animation-delay: 20ms; }
-.api-key-billing-field { animation-delay: 40ms; }
+/* 中文：动画延迟与对调后的视觉顺序保持一致。 */
+.api-key-billing-field { animation-delay: 20ms; }
+.api-key-model-field { animation-delay: 40ms; }
 .api-key-whitelist-field { animation-delay: 60ms; }
 .api-key-advanced-fields { animation-delay: 80ms; }
 

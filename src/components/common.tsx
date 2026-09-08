@@ -3997,7 +3997,9 @@ export function AccountSettingsModal({
         onAuthFailure={invalidateProfileSession}
         onHandleEnterprise={(enterpriseID) => {
           if (enterpriseID) store.switchWorkspace(enterpriseID);
+          // 中文：跳转处理企业前，注销流程弹窗与外层账户设置弹窗一并关闭。
           setDeleteAccountVisible(false);
+          onClose();
           navigate("/console/enterprise-settings");
         }}
         onSuccess={() => {

@@ -530,11 +530,9 @@ function MemberStatus({ value, t }: { value: string; t: Translate }) {
       : value === "pending"
         ? t("traeEnterprise.members.pending")
         : t("traeEnterprise.members.suspended");
+  // 中文：成员状态徽章与操作日志的状态徽章样式保持一致（带边框圆角小标签）。
   return (
-    <span className={`trae-status-badge is-${value}`}>
-      <i />
-      {label}
-    </span>
+    <span className={`trae-member-status-pill is-${value}`}>{label}</span>
   );
 }
 

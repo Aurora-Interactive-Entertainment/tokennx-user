@@ -304,7 +304,9 @@ export function SettingsPage() {
         onAuthFailure={invalidateSession}
         onHandleEnterprise={(enterpriseID) => {
           if (enterpriseID) store.switchWorkspace(enterpriseID)
+          // 中文：跳转处理企业前，注销流程弹窗与外层账户设置弹窗一并关闭。
           setDeactivateVisible(false)
+          setAccountSettingsOpen(false)
           navigate('/console/enterprise-settings')
         }}
         onSuccess={() => {

@@ -1,6 +1,7 @@
 /* 中文：智能对话页独立覆盖参考工作台的布局，避免影响其他控制台页面。 */
 .console-content:has(.playground-console-page) {
-  min-height: calc(100vh - 64px);
+  /* 中文：头部实际高度为 72px，修正此前 64px 导致的 8px 溢出滚动条。 */
+  min-height: calc(100vh - 72px);
   position: relative;
   z-index: 45;
 }

@@ -113,6 +113,11 @@
 .trae-status-badge.is-active i, .trae-status-badge.is-success i { background: var(--color-success); }
 .trae-status-badge.is-pending i { background: #b798e6; }
 .trae-status-badge.is-suspended i, .trae-status-badge.is-failed i { background: #df7b83; }
+/* 中文：人员管理状态徽章，外形与操作日志状态徽章一致（带边框圆角小标签），颜色沿用成员状态语义。 */
+.trae-member-status-pill { display: inline-flex; width: fit-content; align-items: center; min-height: 20px; padding: 0 7px; border: 1px solid var(--color-border-neutral-l2); border-radius: 4px; color: var(--color-text-secondary); background: var(--color-bg-base-tertiary); font-size: 11px; line-height: 18px; white-space: nowrap; }
+.trae-member-status-pill.is-active { border-color: color-mix(in srgb, var(--color-success) 32%, transparent); color: var(--color-success); }
+.trae-member-status-pill.is-pending { border-color: color-mix(in srgb, #b798e6 34%, transparent); color: #b798e6; }
+.trae-member-status-pill.is-suspended { border-color: color-mix(in srgb, #df7b83 32%, transparent); color: #df7b83; }
 .trae-table-action-cell { position: relative; width: 42px; text-align: right; }
 .trae-table-action-cell > button { display: inline-grid; width: 28px; height: 28px; place-items: center; border: 0; border-radius: 5px; color: var(--color-text-tertiary); background: transparent; cursor: pointer; }
 .trae-table-action-cell > button:hover { color: var(--color-text-default-hover); background: var(--color-bg-overlay-l3); }

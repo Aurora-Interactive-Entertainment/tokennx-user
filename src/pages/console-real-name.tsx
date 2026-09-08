@@ -103,7 +103,8 @@ function maskRealNameIdNumber(value: string): string {
   return `${normalized.slice(0, 4)}${"*".repeat(Math.max(4, normalized.length - 8))}${normalized.slice(-4)}`;
 }
 
-function RealNameStepper({ step }: { step: RealNameStep }) {
+// verified：认证通过时给进度条加 is-verified，用于把最终步骤圆圈渲染为绿色。
+function RealNameStepper({ step, verified = false }: { step: RealNameStep; verified?: boolean }) {
   const { t } = useTranslation();
   const labels = [
     t("console.realName.stepInformation"),
@@ -113,7 +114,7 @@ function RealNameStepper({ step }: { step: RealNameStep }) {
 
   return (
     <ol
-      className="real-name-stepper"
+      className={`real-name-stepper${verified ? " is-verified" : ""}`}
       aria-label={t("console.realName.stepsLabel")}
     >
       {labels.map((label, index) => {
@@ -691,7 +692,7 @@ export function RealNamePage() {
             {t("console.realName.personalFaceTitle")}
           </h1>
         </header>
-        <RealNameStepper step={step} />
+        <RealNameStepper step={step} verified={verified} />
 
         {!verified ? (
           <form className="real-name-form" onSubmit={submit} noValidate>

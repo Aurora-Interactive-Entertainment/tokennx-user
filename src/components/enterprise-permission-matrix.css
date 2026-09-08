@@ -108,13 +108,14 @@
   background: var(--color-border-neutral-l3);
 }
 
+/* 中文：权限开关选中态与模型页开关绿色（#33c192）保持一致。 */
 .enterprise-governance-permission-control .semi-switch-checked,
 .enterprise-governance-permission-control .semi-switch-checked:hover {
-  background: var(--color-brand);
+  background: #33c192;
 }
 
 .enterprise-governance-permission-control .semi-switch-focus {
-  outline-color: color-mix(in srgb, var(--color-brand) 42%, transparent);
+  outline-color: color-mix(in srgb, #33c192 42%, transparent);
 }
 
 .enterprise-governance-permission-control .semi-switch-disabled {
@@ -124,7 +125,7 @@
 .enterprise-governance-permission-control
   .semi-switch-disabled.semi-switch-checked {
   border-color: transparent;
-  background: var(--color-brand);
+  background: #33c192;
 }
 
 @media (max-width: 900px) {

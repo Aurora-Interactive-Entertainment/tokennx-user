@@ -363,7 +363,16 @@ function BillingSectionInfo({ content }: { content: string }) {
   return <Tooltip className="app-info-tooltip billing-info-tooltip" content={content} position="top"><span className="billing-info-trigger" tabIndex={0} aria-label={content}><IconInfoCircle className="billing-info-icon" aria-hidden="true" /></span></Tooltip>
 }
 
-function AccountBalanceSection({ wallet, onRecharge, onBalanceAlert }: { wallet: BillingAnalysisResponse['wallet']; onRecharge: () => void; onBalanceAlert: () => void }) {
+// 中文：Token NX 积分卡片，积分按当前周期消耗的输入+输出 token 汇总展示。
+function PointsBalanceCard({ metrics }: { metrics: BillingAnalysisResponse['metrics'] }) {
+  const points = safeAmount(metrics.input_tokens) + safeAmount(metrics.output_tokens)
+  return <article className="billing-balance-card">
+    <div className="billing-balance-card-heading"><span>{i18n.t('console.billing.pointsBalance')}</span><BillingSectionInfo content={i18n.t('console.billing.pointsBalanceHint')} /></div>
+    <strong>{formatCount(points)}</strong>
+  </article>
+}
+
+function AccountBalanceSection({ wallet, metrics, onRecharge, onBalanceAlert }: { wallet: BillingAnalysisResponse['wallet']; metrics: BillingAnalysisResponse['metrics']; onRecharge: () => void; onBalanceAlert: () => void }) {
   return <section className="billing-balance-section" aria-labelledby="billingBalanceHeading">
     <h2 id="billingBalanceHeading" className="billing-subsection-heading">{i18n.t('console.billing.accountBalance')}</h2>
     <div className="billing-balance-grid">
@@ -382,6 +391,7 @@ function AccountBalanceSection({ wallet, onRecharge, onBalanceAlert }: { wallet:
         <div className="billing-balance-card-heading"><span>{i18n.t('console.billing.rewardBalance')}</span><BillingSectionInfo content={i18n.t('console.billing.rewardBalanceHint')} /></div>
         <strong><PlainMoney value={wallet.bonus_available_yuan} /></strong>
       </article>
+      <PointsBalanceCard metrics={metrics} />
     </div>
   </section>
 }
@@ -453,7 +463,7 @@ function AnalysisTab({ state, ledger, dateRange, apiKeyID, model, billingType, d
   return (
     <section id="billing-analysis" className="billing-analysis" aria-labelledby="analysisHeading">
       <div className="billing-balance-and-quota">
-        <AccountBalanceSection wallet={wallet} onRecharge={onRecharge} onBalanceAlert={onBalanceAlert} />
+        <AccountBalanceSection wallet={wallet} metrics={metrics} onRecharge={onRecharge} onBalanceAlert={onBalanceAlert} />
         <CreditDetailsSection data={data} />
       </div>
       <div className="analysis-header">

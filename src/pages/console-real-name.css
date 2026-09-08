@@ -102,6 +102,12 @@
   background: var(--color-action-primary);
 }
 
+/* 中文：认证通过（全部完成）时，当前步骤圆圈也使用绿色成功色。 */
+.real-name-stepper.is-verified li.is-current .real-name-step-marker {
+  color: #fff;
+  background: var(--color-success);
+}
+
 .real-name-stepper li.is-current strong {
   font-weight: 600;
 }
@@ -110,14 +116,16 @@
   color: var(--color-text-default);
 }
 
+/* 中文：已完成步骤同样使用绿色，白勾。 */
 .real-name-stepper li.is-complete .real-name-step-marker {
   border: 0;
-  color: #0c0c0d;
-  background: #f5f5f5;
+  color: #fff;
+  background: var(--color-success);
 }
 
+/* 中文：已完成步骤之间的连接线同步改为绿色。 */
 .real-name-stepper li.is-complete .real-name-step-line {
-  background: var(--color-action-primary);
+  background: var(--color-success);
 }
 
 .real-name-step-marker svg {
@@ -279,14 +287,15 @@
   text-align: center;
 }
 
+/* 中文：认证完成的大图标同样使用绿色成功色。 */
 .real-name-complete-icon {
   display: grid;
   width: 56px;
   height: 56px;
   place-items: center;
   border-radius: 50%;
-  color: var(--color-action-on-primary);
-  background: var(--color-action-primary);
+  color: #fff;
+  background: var(--color-success);
 }
 
 .real-name-complete-icon svg {
@@ -567,13 +576,13 @@ html[data-theme="light"] .real-name-step-marker {
   background: #f4f6fa;
 }
 
-/* 中文：浅色模式使用黑底白勾，深色模式则由默认规则呈现白底黑勾。 */
+/* 中文：浅色模式已完成步骤与默认规则一致，使用绿色成功色。 */
 html[data-theme="light"]
   .real-name-stepper
   li.is-complete
   .real-name-step-marker {
   color: #fff;
-  background: #1f2023;
+  background: var(--color-success);
 }
 
 html[data-theme="light"] .personal-real-name-qr-expired-overlay {

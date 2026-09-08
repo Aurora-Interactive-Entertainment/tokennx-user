@@ -1,6 +1,7 @@
 /* 中文：视频生成页使用与智能对话一致的视口内圆角工作区，不改变任务相关组件结构。 */
 .console-content:has(.video-console-page) {
-  min-height: calc(100vh - 64px);
+  /* 中文：头部实际高度为 72px，修正此前 64px 导致的 8px 溢出滚动条。 */
+  min-height: calc(100vh - 72px);
   position: relative;
   z-index: 45;
 }

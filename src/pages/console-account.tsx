@@ -1631,6 +1631,36 @@ export function ApiKeysPage({
                   </Select.Option>
                 </Select>
               </div>
+              {/* 中文：费用来源与可用模型位置对调，费用来源在上。 */}
+              <fieldset
+                className="api-key-form-field api-key-fieldset api-key-billing-field api-key-advanced-inline-field"
+              >
+            <legend className="field-label">
+              {t("console.account.expenseSource")}
+            </legend>
+            <div className="billing-source-options">
+              <label className="billing-source-option">
+                <input
+                  type="radio"
+                  name="api-key-billing-source"
+                  value="balance"
+                  checked={form.billingSource === "balance"}
+                  onChange={() => updateForm({ billingSource: "balance" })}
+                />
+                <span>{t("console.account.balanceExpense")}</span>
+              </label>
+              <label className="billing-source-option">
+                <input
+                  type="radio"
+                  name="api-key-billing-source"
+                  value="subscription"
+                  checked={form.billingSource === "subscription"}
+                  onChange={() => updateForm({ billingSource: "subscription" })}
+                />
+                <span>{t("console.account.subscriptionExpense")}</span>
+              </label>
+            </div>
+              </fieldset>
               <div className="api-key-form-field api-key-model-field api-key-advanced-inline-field">
                 <label className="field-label" htmlFor="key-models">
                   {t("console.account.availableModels")}
@@ -1685,35 +1715,6 @@ export function ApiKeysPage({
                   </Select>
                 </div>
               </div>
-              <fieldset
-                className="api-key-form-field api-key-fieldset api-key-billing-field api-key-advanced-inline-field"
-              >
-            <legend className="field-label">
-              {t("console.account.expenseSource")}
-            </legend>
-            <div className="billing-source-options">
-              <label className="billing-source-option">
-                <input
-                  type="radio"
-                  name="api-key-billing-source"
-                  value="balance"
-                  checked={form.billingSource === "balance"}
-                  onChange={() => updateForm({ billingSource: "balance" })}
-                />
-                <span>{t("console.account.balanceExpense")}</span>
-              </label>
-              <label className="billing-source-option">
-                <input
-                  type="radio"
-                  name="api-key-billing-source"
-                  value="subscription"
-                  checked={form.billingSource === "subscription"}
-                  onChange={() => updateForm({ billingSource: "subscription" })}
-                />
-                <span>{t("console.account.subscriptionExpense")}</span>
-              </label>
-            </div>
-              </fieldset>
               <div className="api-key-form-field api-key-whitelist-field api-key-advanced-inline-field">
                 <label className="field-label" htmlFor="key-whitelist">
                   {t("console.account.whitelist")}

@@ -6,11 +6,14 @@ import "./enterprise-certification-progress.css";
 interface EnterpriseCertificationProgressProps {
   applicantType: EnterpriseApplicantType;
   step: number;
+  // 中文：认证通过时给进度条加 is-verified，用于把已完成/当前步骤渲染为绿色。
+  verified?: boolean;
 }
 
 export function EnterpriseCertificationProgress({
   applicantType,
   step,
+  verified = false,
 }: EnterpriseCertificationProgressProps) {
   const { t } = useTranslation();
   const labels =
@@ -27,7 +30,7 @@ export function EnterpriseCertificationProgress({
 
   return (
     <ol
-      className={`enterprise-certification-progress${applicantType === "authorized_agent" ? " is-agent" : ""}`}
+      className={`enterprise-certification-progress${applicantType === "authorized_agent" ? " is-agent" : ""}${verified ? " is-verified" : ""}`}
       aria-label={t("console.enterpriseCreate.stepsLabel")}
     >
       {labels.map((label, index) => {
