@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link, useNavigate, useSearchParams } from 'react-router'
+import { useSearchParams } from 'react-router'
 import Button from '@douyinfe/semi-ui/lib/es/button'
 import Dropdown from '@douyinfe/semi-ui/lib/es/dropdown'
 import type { RenderSingleSelectedItemFn } from '@douyinfe/semi-ui/lib/es/select'
@@ -10,16 +10,13 @@ import { IconAlertTriangle, IconArrowUp, IconCheckCircleStroked, IconChevronDown
 import { EmptyPanel, PageTitle } from '@/components/common'
 import { appToast } from '@/components/app-toast'
 import { CompatInput as Input, CompatSelect as Select } from '@/components/semi-compat'
-import { getUserApiKeys, type UserApiKey, type UserApiKeyContext } from '@/api/user-api-keys'
 import { cancelVideoTask, getVideoTask, submitVideoGeneration, videoTaskIsTerminal, VideoRuntimeError, type VideoTask, type VideoTaskStatus } from '@/api/video-runtime'
-import { isAuthenticationFailure } from '@/api/http'
-import { invalidateAuth } from '@/store/auth-slice'
-import { useAppDispatch, useAppSelector } from '@/store/hooks'
+import { getAccessToken } from '@/auth/token-storage'
+import { useAppSelector } from '@/store/hooks'
 import { useAppStore } from '@/data/app-state'
 import { findModelInList, modelAlias, type ModelRecord } from '@/data/models'
 import { useUserModels } from '@/data/user-models'
-import { apiKeySupportsModel } from '@/utils/model-access'
-import { workspaceContextFor, workspaceContextKey } from '@/utils/workspace'
+import { workspaceContextFor, workspaceContextKey, type WorkspaceAccountContext } from '@/utils/workspace'
 import { LEGACY_VIDEO_HISTORY_KEY, VIDEO_SESSION_HISTORY_KEY, readUserSessionHistory, writeUserSessionHistory } from '@/utils/ephemeral-history'
 import './video-generation.css'
 
@@ -69,7 +66,6 @@ type VideoHistoryEntry = {
 }
 
 type VideoSubmissionSnapshot = {
-  apiKey: string
   model: string
   modelId: string
   modelName: string
@@ -147,7 +143,7 @@ function writeVideoHistory(userId: string | null, entries: VideoHistoryEntry[]):
   writeUserSessionHistory(VIDEO_SESSION_HISTORY_KEY, userId, entries.map(compactVideoHistoryEntry), VIDEO_HISTORY_LIMIT)
 }
 
-function workspaceKeyFor(context: UserApiKeyContext): string {
+function workspaceKeyFor(context: WorkspaceAccountContext): string {
   return workspaceContextKey(context)
 }
 
@@ -300,14 +296,12 @@ export function VideoPage() {
     <span className="video-reference-option-icon">{String(value) === 'reference' ? <IconImage aria-hidden="true" /> : <IconVideo aria-hidden="true" />}</span>
     <span>{String(value) === 'reference' ? t('console.video.referenceMode') : t('console.video.firstLastFrame')}</span>
   </>
-  const dispatch = useAppDispatch()
   const auth = useAppSelector((state) => state.auth)
   const userId = auth.status === 'authenticated'
     ? auth.user?.id ?? null
     : auth.status === 'unauthenticated'
       ? null
       : ''
-  const navigate = useNavigate()
   const store = useAppStore()
   const [searchParams] = useSearchParams()
   const { models, loading: modelsLoading, error: modelsError } = useUserModels()
@@ -315,12 +309,9 @@ export function VideoPage() {
   useEffect(() => {
     if (modelsError) appToast.error(modelsError)
   }, [modelsError])
-  const workspaceContext = useMemo<UserApiKeyContext>(() => workspaceContextFor(store.activeWorkspace), [store.activeWorkspace.id, store.activeWorkspace.type])
+  const workspaceContext = useMemo<WorkspaceAccountContext>(() => workspaceContextFor(store.activeWorkspace), [store.activeWorkspace.id, store.activeWorkspace.type])
   const workspaceKey = workspaceKeyFor(workspaceContext)
   const requestedModel = searchParams.get('model') ?? ''
-  const [apiKeys, setApiKeys] = useState<UserApiKey[]>([])
-  const [apiKeysLoading, setApiKeysLoading] = useState(true)
-  const [apiKeyError, setApiKeyError] = useState('')
   const [modelID, setModelID] = useState(requestedModel)
   const [prompt, setPrompt] = useState('')
   const [duration, setDuration] = useState(DEFAULT_VIDEO_DURATION)
@@ -363,18 +354,13 @@ export function VideoPage() {
     return () => document.removeEventListener('pointerdown', handlePointerDown)
   }, [])
 
-  const usableApiKeys = useMemo(() => apiKeys.filter((key) => key.status === 'active' && key.secret.trim()), [apiKeys])
-  // 中文：后端为每个用户返回默认密钥，页面直接使用首个可用密钥，不再让用户重复选择。
-  const selectedApiKey = usableApiKeys[0]
-  // 中文：模型选择器只展示当前工作空间真实返回的视频模型，不使用内置目录伪造可用项。
+  // 中文：视频 Runtime 使用登录态隐藏试用额度，模型选择器仅展示当前空间目录中的视频模型。
   const videoModels = useMemo(() => models.filter((model) => model.modality === 'video' && Boolean(modelAlias(model))), [models])
-  const selectableVideoModels = useMemo(() => selectedApiKey ? videoModels.filter((model) => apiKeySupportsModel(selectedApiKey, model)) : [], [selectedApiKey, videoModels])
-  // 中文：有密钥时严格按密钥权限过滤；没有密钥时保留模型目录用于配置预览。
-  const displayVideoModels = selectedApiKey ? selectableVideoModels : videoModels
+  const displayVideoModels = videoModels
   const selectedModel = findModelInList(displayVideoModels, modelID) ?? displayVideoModels[0]
   const selectedHistory = history.find((entry) => entry.id === selectedHistoryID)
   const operationBusy = submitting || polling || cancelling
-  const canSubmit = Boolean(selectedApiKey && selectedModel && prompt.trim() && !operationBusy)
+  const canSubmit = Boolean(selectedModel && prompt.trim() && !operationBusy)
   // 中文：生成中允许点击发送按钮取消任务；取消请求处理期间锁定按钮，空输入时禁止提交。
   const canCancel = submitting || Boolean(currentTask && taskIsActive(currentTask))
   const sendDisabled = cancelling || (!canCancel && !canSubmit)
@@ -385,9 +371,6 @@ export function VideoPage() {
     pollControllerRef.current?.abort()
     submitControllerRef.current = null
     pollControllerRef.current = null
-    setApiKeys([])
-    setApiKeysLoading(true)
-    setApiKeyError('')
     setModelID(requestedModel)
     setCurrentTask(null)
     setSelectedHistoryID('')
@@ -415,29 +398,6 @@ export function VideoPage() {
     const otherWorkspaceEntries = readVideoHistory(userId).filter((entry) => entry.workspaceKey !== workspaceKey)
     writeVideoHistory(userId, [...history, ...otherWorkspaceEntries])
   }, [history, userId, workspaceKey])
-
-  useEffect(() => {
-    let active = true
-    const controller = new AbortController()
-    setApiKeysLoading(true)
-    setApiKeyError('')
-    void getUserApiKeys(workspaceContext, 'active', { signal: controller.signal }).then((result) => {
-      if (!active || controller.signal.aborted) return
-      const keys = result.items
-      setApiKeys(keys)
-    }).catch((error: unknown) => {
-      if (!active || controller.signal.aborted) return
-      if (isAuthenticationFailure(error)) {
-        dispatch(invalidateAuth())
-        navigate('/', { replace: true })
-        return
-      }
-      setApiKeyError(error instanceof Error ? error.message : t('console.video.apiKeyLoadFailed'))
-    }).finally(() => {
-      if (active) setApiKeysLoading(false)
-    })
-    return () => { active = false; controller.abort() }
-  }, [dispatch, navigate, t, workspaceContext])
 
   useEffect(() => {
     if (!selectedModel) {
@@ -497,7 +457,7 @@ export function VideoPage() {
     }
   }
 
-  async function pollTask(apiKey: string, initialTask: VideoTask, entry: VideoHistoryEntry): Promise<void> {
+  async function pollTask(initialTask: VideoTask, entry: VideoHistoryEntry): Promise<void> {
     pollControllerRef.current?.abort()
     const controller = new AbortController()
     pollControllerRef.current = controller
@@ -509,7 +469,10 @@ export function VideoPage() {
         await waitForVideoPoll(attempt === 0 ? VIDEO_POLL_INITIAL_DELAY_MS : VIDEO_POLL_INTERVAL_MS, controller.signal)
         if (controller.signal.aborted) return
         attempt += 1
-        task = await getVideoTask(apiKey, task.taskId, controller.signal)
+        // 中文：每次轮询读取最新登录态令牌，兼容后台刷新令牌后的访问令牌轮换。
+        const accessToken = getAccessToken()?.trim()
+        if (!accessToken) throw new VideoRuntimeError(t('api.modelRuntime.accessTokenRequired'), 401, 'invalid_user_session', null)
+        task = await getVideoTask(accessToken, task.taskId, controller.signal)
         updateTask(task, entry)
       }
       if (!controller.signal.aborted && !videoTaskIsTerminal(task.status) && task.status !== 'unknown') {
@@ -532,17 +495,11 @@ export function VideoPage() {
   }
 
   function buildSubmissionSnapshot(retry: VideoSubmissionSnapshot | undefined): VideoSubmissionSnapshot | null {
-    if (retry) {
-      if (!selectedApiKey || selectedApiKey.secret !== retry.apiKey) {
-        Toast.warning(t('console.video.retryKeyMismatch'))
-        return null
-      }
-      return retry
-    }
-    if (!selectedApiKey) {
-      Toast.warning(t('console.video.apiKeyRequired'))
+    if (!getAccessToken()?.trim()) {
+      Toast.warning(t('api.modelRuntime.accessTokenRequired'))
       return null
     }
+    if (retry) return retry
     if (!selectedModel) {
       Toast.warning(t('console.video.modelRequired'))
       return null
@@ -551,12 +508,8 @@ export function VideoPage() {
       Toast.warning(t('console.video.promptRequired'))
       return null
     }
-    if (!apiKeySupportsModel(selectedApiKey, selectedModel)) {
-      Toast.warning(t('console.video.modelPermissionDenied'))
-      return null
-    }
     return {
-      apiKey: selectedApiKey.secret, model: modelAlias(selectedModel), modelId: selectedModel.id, modelName: selectedModel.name,
+      model: modelAlias(selectedModel), modelId: selectedModel.id, modelName: selectedModel.name,
       prompt: prompt.trim(), duration, size, inputReference: inputReference.trim(), idempotencyKey: createIdempotencyKey(),
     }
   }
@@ -576,13 +529,15 @@ export function VideoPage() {
     submitControllerRef.current = controller
     lastSubmissionRef.current = snapshot
     try {
-      const task = await submitVideoGeneration({ ...snapshot, signal: controller.signal })
+      const accessToken = getAccessToken()?.trim()
+      if (!accessToken) throw new VideoRuntimeError(t('api.modelRuntime.accessTokenRequired'), 401, 'invalid_user_session', null)
+      const task = await submitVideoGeneration({ ...snapshot, accessToken, signal: controller.signal })
       const entry = createHistoryEntry(task, snapshot)
       const storedSnapshot = { ...snapshot, historyId: entry.id }
       lastSubmissionRef.current = storedSnapshot
       updateTask(task, entry)
       Toast.success(task.status === 'succeeded' ? t('console.video.generated') : t('console.video.taskSubmitted'))
-      if (!videoTaskIsTerminal(task.status) && task.status !== 'unknown') void pollTask(snapshot.apiKey, task, entry)
+      if (!videoTaskIsTerminal(task.status) && task.status !== 'unknown') void pollTask(task, entry)
     } catch (error: unknown) {
       if (controller.signal.aborted && submitAbortReasonRef.current === 'navigation') return
       if (controller.signal.aborted && submitAbortReasonRef.current === 'user') {
@@ -603,17 +558,19 @@ export function VideoPage() {
   }
 
   async function cancelCurrentTask(): Promise<void> {
-    if (!currentTask || !selectedApiKey || !taskIsActive(currentTask) || cancelling) return
+    if (!currentTask || !taskIsActive(currentTask) || cancelling) return
     pollControllerRef.current?.abort()
     setPolling(false)
     setCancelling(true)
     setRequestFailure(null)
     try {
-      const task = await cancelVideoTask(selectedApiKey.secret, currentTask.taskId)
+      const accessToken = getAccessToken()?.trim()
+      if (!accessToken) throw new VideoRuntimeError(t('api.modelRuntime.accessTokenRequired'), 401, 'invalid_user_session', null)
+      const task = await cancelVideoTask(accessToken, currentTask.taskId)
       const entry = history.find((item) => item.id === selectedHistoryID)
       if (entry) updateTask(task, entry)
       Toast.info(t('console.video.cancelRequested'))
-      if (entry && !videoTaskIsTerminal(task.status) && task.status !== 'unknown') void pollTask(selectedApiKey.secret, task, entry)
+      if (entry && !videoTaskIsTerminal(task.status) && task.status !== 'unknown') void pollTask(task, entry)
     } catch (error: unknown) {
       setRequestFailure(readVideoFailure(error, t('console.video.cancelFailed')))
     } finally {
@@ -703,18 +660,14 @@ export function VideoPage() {
     setInputReference(entry.inputReference ?? '')
     setReferenceUrl(entry.inputReference && isPersistableReference(entry.inputReference) ? entry.inputReference : '')
     setReferenceName(entry.inputReference ? t('console.video.referenceImage') : '')
-    if (selectedApiKey && !videoTaskIsTerminal(entry.status) && entry.status !== 'unknown') void pollTask(selectedApiKey.secret, historyTask(entry), entry)
+    if (getAccessToken()?.trim() && !videoTaskIsTerminal(entry.status) && entry.status !== 'unknown') void pollTask(historyTask(entry), entry)
   }
 
   function retryCurrent(): void {
     const entry = history.find((item) => item.id === selectedHistoryID)
     if (!entry) return
-    const snapshot = lastSubmissionRef.current?.historyId === entry.id ? lastSubmissionRef.current : selectedApiKey ? {
-      apiKey: selectedApiKey.secret, model: entry.model, modelId: entry.modelId, modelName: entry.modelName, prompt: entry.prompt, duration: entry.duration, size: entry.size, inputReference: entry.inputReference ?? '', idempotencyKey: createIdempotencyKey(),
-    } : undefined
-    if (!snapshot) {
-      Toast.warning(t('console.video.apiKeyRequired'))
-      return
+    const snapshot = lastSubmissionRef.current?.historyId === entry.id ? lastSubmissionRef.current : {
+      model: entry.model, modelId: entry.modelId, modelName: entry.modelName, prompt: entry.prompt, duration: entry.duration, size: entry.size, inputReference: entry.inputReference ?? '', idempotencyKey: createIdempotencyKey(),
     }
     void submitVideo(snapshot)
   }
@@ -778,9 +731,6 @@ export function VideoPage() {
 
   const workspaceNotices: VideoWorkspaceNoticeItem[] = []
   if (requestFailure) workspaceNotices.push({ id: 'request-failure', message: requestFailure.message, requestId: requestFailure.requestId, action: <Button theme="outline" size="small" onClick={() => setRequestFailure(null)}>{t('console.common.close')}</Button> })
-  if (apiKeyError) workspaceNotices.push({ id: 'api-key-error', message: apiKeyError, action: <Button theme="outline" size="small" icon={<IconRefresh />} onClick={() => window.location.reload()}>{t('console.common.reload')}</Button> })
-  if (!apiKeysLoading && usableApiKeys.length === 0) workspaceNotices.push({ id: 'no-api-key', message: t('console.video.noApiKey'), action: <Link className="workspace-notice-link" to="/console/api-keys">{t('console.video.createApiKey')}</Link> })
-  if (selectedApiKey && selectableVideoModels.length === 0) workspaceNotices.push({ id: 'no-key-models', message: t('console.video.noKeyModels') })
   if (!videoModels.length) workspaceNotices.push({ id: 'no-video-models', message: t('console.video.noModelsHint') })
   // 中文：已有任务时优先保留结果卡片，提交/轮询错误直接展示在卡片内，保证仍可编辑、重试和删除。
   const showWorkspaceNotices = workspaceNotices.length > 0 && !submitting && !currentTask

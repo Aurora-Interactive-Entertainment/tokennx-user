@@ -3,36 +3,22 @@ import { useTranslation } from 'react-i18next'
 import DatePicker from '@douyinfe/semi-ui/lib/es/datePicker'
 import Select from '@douyinfe/semi-ui/lib/es/select'
 import Toast from '@douyinfe/semi-ui/lib/es/toast'
-import { IconDownload, IconInfoCircle, IconSearch } from '@douyinfe/semi-icons'
+import { IconDownload, IconInfoCircle } from '@douyinfe/semi-icons'
 import * as echarts from 'echarts/core'
 import { PieChart } from 'echarts/charts'
 import { TooltipComponent } from 'echarts/components'
 import { SVGRenderer } from 'echarts/renderers'
 import {
   getAllEnterpriseMembers,
-  getEnterpriseDepartments,
   type EnterpriseContext,
-  type EnterpriseDepartment,
 } from '@/api/enterprise-console'
 import {
-  getEnterpriseUsageDepartments,
   getEnterpriseUsageDetail,
-  getEnterpriseUsageMembers,
-  getEnterpriseUsageSummary,
-  type EnterpriseUsageDepartment,
   type EnterpriseUsageDetailResponse,
-  type EnterpriseUsageMember,
-  type EnterpriseUsagePage,
-  type EnterpriseUsagePeriod,
   type EnterpriseUsageStatus,
-  type EnterpriseUsageSummaryResponse,
 } from '@/api/enterprise-usage'
-import { TraePagination } from '@/components/trae-pagination'
 import { TraeTableEmpty } from '@/components/trae-table-empty'
-import {
-  TraeUsageDepartmentTable,
-  type TraeUsageDepartmentNode,
-} from '@/components/trae-usage-department-table'
+import { TraePagination } from '@/components/trae-pagination'
 import {
   EnterpriseError,
   EnterpriseLoading,
@@ -50,13 +36,11 @@ import {
 import { isAuthenticationFailure } from '@/api/http'
 import { useResolvedTheme } from '@/theme'
 import { BACKOFFICE_MONEY_DISPLAY_DECIMAL_PLACES, formatApiTime, formatCount, formatPersonOptionLabel, formatYuan } from '@/utils/format'
-import { addLocalDays as addDays, endOfLocalDay, startOfLocalDay, startOfLocalToday as startOfToday } from '@/utils/date-range'
+import { addLocalDays as addDays, startOfLocalToday as startOfToday } from '@/utils/date-range'
 import './trae-date-picker.css'
 import './trae-enterprise-usage.css'
 
 echarts.use([PieChart, TooltipComponent, SVGRenderer])
-
-type UsagePeriodLabel = { start: string; end: string }
 
 type UsageSelectProps = {
   label: string
@@ -83,33 +67,7 @@ function UsageSelect({ label, value, options, searchable = false, onChange }: Us
   )
 }
 
-function formatPeriodDate(value: string | number, language: string): string {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return '--'
-  return new Intl.DateTimeFormat(language.startsWith('en') ? 'en-US' : 'zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(date)
-}
-
-function toPeriodLabel(period: EnterpriseUsagePeriod, language: string): UsagePeriodLabel {
-  return {
-    start: formatPeriodDate(period.start_at, language),
-    end: formatPeriodDate(period.end_at, language),
-  }
-}
-
-function useDebouncedValue(value: string, delay = 250): string {
-  const [debounced, setDebounced] = useState(value)
-  useEffect(() => {
-    const timer = window.setTimeout(() => setDebounced(value), delay)
-    return () => window.clearTimeout(timer)
-  }, [delay, value])
-  return debounced
-}
-
-function UsageDonut({ usage, balance }: { usage: number; balance: number }) {
+function UsageDonut({ usage, balance }: { usage: number; balance?: number }) {
   const { t } = useTranslation()
   const theme = useResolvedTheme()
   const chartRef = useRef<HTMLDivElement>(null)
@@ -141,7 +99,7 @@ function UsageDonut({ usage, balance }: { usage: number; balance: number }) {
         emphasis: { scale: true, scaleSize: 4 },
         data: [
           { name: t('traeEnterprise.usage.totalCost'), value: Math.max(usage, 0.0000001), itemStyle: { color: '#1DC981' } },
-          { name: t('traeEnterprise.usage.accountBalance'), value: Math.max(balance, 0.0000001), itemStyle: { color: theme === 'dark' ? '#4b515c' : '#c9ced8' } },
+          ...(balance === undefined ? [] : [{ name: t('traeEnterprise.usage.accountBalance'), value: Math.max(balance, 0.0000001), itemStyle: { color: theme === 'dark' ? '#4b515c' : '#c9ced8' } }]),
         ],
       }],
     })
@@ -156,174 +114,138 @@ function UsageDonut({ usage, balance }: { usage: number; balance: number }) {
   return <div className="trae-usage-donut" ref={chartRef} role="img" aria-label={t('traeEnterprise.usage.overall')} />
 }
 
-async function loadDepartmentCatalog(enterpriseID: string, signal: AbortSignal): Promise<EnterpriseDepartment[]> {
-  async function loadChildren(parentID?: string): Promise<EnterpriseDepartment[]> {
-    const departments: EnterpriseDepartment[] = []
-    let page = 1
-    let total = 0
-    do {
-      const response = await getEnterpriseDepartments(
-        { enterprise_id: enterpriseID },
-        { parent_id: parentID, page, page_size: 20, signal },
-      )
-      departments.push(...response.items)
-      total = response.total
-      if (response.items.length === 0 || departments.length >= total) break
-      page += 1
-    } while (page <= Math.ceil(total / 20))
-    return Promise.all(departments.map(async (department) => ({
-      ...department,
-      children: department.child_count > 0 ? await loadChildren(department.id) : [],
-    }))) as Promise<EnterpriseDepartment[]>
+type UsageModelRow = {
+  model_code: string
+  model_name: string
+  model_alias: string
+  vendor: string
+  requests: number
+  input_tokens: number
+  output_tokens: number
+  cached_tokens: number
+  cost_yuan: string
+}
+
+type UsageTotals = {
+  requests: number
+  input_tokens: number
+  output_tokens: number
+  cached_tokens: number
+  cost_yuan: string
+}
+
+function decimalSum(values: Iterable<string | number | null | undefined>): string {
+  // 费用字段是十进制字符串；页面展示可安全使用 Number，最终保留字符串以免
+  // 把 API 的金额字段改成浮点数再传回后端。
+  const total = Array.from(values).reduce<number>((sum, value) => {
+    const number = typeof value === 'number' ? value : Number(value ?? 0)
+    return sum + (Number.isFinite(number) ? number : 0)
+  }, 0)
+  return total.toFixed(BACKOFFICE_MONEY_DISPLAY_DECIMAL_PLACES)
+}
+
+function summarizeUsage(items: EnterpriseUsageDetailResponse['items']): UsageTotals {
+  return {
+    requests: items.reduce((sum, item) => sum + (Number(item.requests) || 0), 0),
+    input_tokens: items.reduce((sum, item) => sum + (Number(item.input_tokens) || 0), 0),
+    output_tokens: items.reduce((sum, item) => sum + (Number(item.output_tokens) || 0), 0),
+    cached_tokens: items.reduce((sum, item) => sum + (Number(item.cached_tokens) || 0), 0),
+    cost_yuan: decimalSum(items.map((item) => item.cost_yuan)),
   }
-  return loadChildren()
 }
 
-async function loadAllUsageDepartments(enterpriseID: string, signal: AbortSignal): Promise<EnterpriseUsageDepartment[]> {
-  const items: EnterpriseUsageDepartment[] = []
-  let page = 1
-  let total = 0
-  do {
-    const response = await getEnterpriseUsageDepartments(
-      { enterprise_id: enterpriseID },
-      { page, page_size: 20, signal },
-    )
-    items.push(...(response.items ?? []))
-    total = response.total ?? items.length
-    if (response.items.length === 0 || items.length >= total) break
-    page += 1
-  } while (page <= Math.ceil(total / 20))
-  return items
-}
-
-type DepartmentWithChildren = EnterpriseDepartment & { children?: DepartmentWithChildren[] }
-
-function mergeDepartmentUsage(
-  context: EnterpriseContext,
-  catalog: DepartmentWithChildren[],
-  usageItems: EnterpriseUsageDepartment[],
-  summary: EnterpriseUsageSummaryResponse | null,
-): TraeUsageDepartmentNode[] {
-  const usageByID = new Map(usageItems.map((item) => [item.department_id, item]))
-  const catalogIDs = new Set<string>()
-  function mapNode(node: DepartmentWithChildren): TraeUsageDepartmentNode {
-    catalogIDs.add(node.id)
-    const usage = usageByID.get(node.id)
-    return {
-      id: node.id,
-      name: node.name,
-      total: formatYuan(usage?.cost_yuan ?? '0', BACKOFFICE_MONEY_DISPLAY_DECIMAL_PLACES),
-      tokens: formatCount(usage?.total_tokens ?? 0),
-      requests: formatCount(usage?.request_count ?? 0),
-      children: node.children?.map(mapNode),
+function groupUsageByModel(items: EnterpriseUsageDetailResponse['items']): UsageModelRow[] {
+  const groups = new Map<string, UsageModelRow>()
+  items.forEach((item) => {
+    const key = item.model_code || item.model_name || item.id
+    const current = groups.get(key) ?? {
+      model_code: item.model_code,
+      model_name: item.model_name,
+      model_alias: item.model_alias,
+      vendor: item.vendor,
+      requests: 0,
+      input_tokens: 0,
+      output_tokens: 0,
+      cached_tokens: 0,
+      cost_yuan: '0',
     }
+    current.requests += Number(item.requests) || 0
+    current.input_tokens += Number(item.input_tokens) || 0
+    current.output_tokens += Number(item.output_tokens) || 0
+    current.cached_tokens += Number(item.cached_tokens) || 0
+    current.cost_yuan = decimalSum([current.cost_yuan, item.cost_yuan])
+    groups.set(key, current)
+  })
+  return Array.from(groups.values()).sort((left, right) => right.requests - left.requests)
+}
+
+async function loadAllUsageRows(enterpriseID: string, signal: AbortSignal): Promise<EnterpriseUsageDetailResponse> {
+  const first = await getEnterpriseUsageDetail(
+    { enterprise_id: enterpriseID },
+    { range: 'today', page: 1, page_size: 100, signal },
+  )
+  const items = [...(first.items ?? [])]
+  const total = Number(first.total) || items.length
+  let page = 2
+  while (items.length < total && page <= Math.ceil(total / 100)) {
+    const next = await getEnterpriseUsageDetail(
+      { enterprise_id: enterpriseID },
+      { range: 'today', page, page_size: 100, signal },
+    )
+    items.push(...(next.items ?? []))
+    if ((next.items ?? []).length === 0) break
+    page += 1
   }
-  const knownNodes = catalog.map(mapNode)
-  const unmatchedNodes = usageItems
-    .filter((item) => !catalogIDs.has(item.department_id))
-    .map((item) => ({
-      id: item.department_id,
-      name: item.department_name,
-      total: formatYuan(item.cost_yuan, BACKOFFICE_MONEY_DISPLAY_DECIMAL_PLACES),
-      tokens: formatCount(item.total_tokens),
-      requests: formatCount(item.request_count),
-    }))
-  return [{
-    id: `enterprise-${context.id}`,
-    name: context.name,
-    total: formatYuan(summary?.summary.total_cost_yuan ?? '0', BACKOFFICE_MONEY_DISPLAY_DECIMAL_PLACES),
-    tokens: formatCount((summary?.summary.input_tokens ?? 0) + (summary?.summary.output_tokens ?? 0)),
-    requests: formatCount(summary?.summary.request_count ?? 0),
-    children: [...knownNodes, ...unmatchedNodes],
-  }]
+  return { ...first, items }
 }
 
 type UsageBoardProps = {
   context: EnterpriseContext
-  onDetail: (memberID: string) => void
-  onPeriodChange: (period: UsagePeriodLabel) => void
+  /** 保留旧页面回调以兼容灰度构建；新用量行按模型展示。 */
+  onDetail?: (memberID: string) => void
 }
 
-export function TraeUsageBoard({ context, onDetail, onPeriodChange }: UsageBoardProps) {
-  const { t, i18n } = useTranslation()
+export function TraeUsageBoard({ context, onDetail }: UsageBoardProps) {
+  const { t } = useTranslation()
   const handleError = useEnterpriseErrorHandler()
-  const [memberQuery, setMemberQuery] = useState('')
-  const debouncedMemberQuery = useDebouncedValue(memberQuery)
-  const [departmentQuery, setDepartmentQuery] = useState('')
-  const [memberPage, setMemberPage] = useState(1)
-  const [memberPageSize, setMemberPageSize] = useState(20)
-  const [summary, setSummary] = useState<EnterpriseUsageSummaryResponse | null>(null)
-  const [members, setMembers] = useState<EnterpriseUsagePage<EnterpriseUsageMember>>({ items: [], total: 0, page: 1, page_size: 20, period: { range: '', start_at: 0, end_at: 0 } })
-  const [departments, setDepartments] = useState<TraeUsageDepartmentNode[]>([])
-  const [overviewLoading, setOverviewLoading] = useState(true)
-  const [membersLoading, setMembersLoading] = useState(true)
-  const [overviewError, setOverviewError] = useState<EnterpriseRequestError | null>(null)
-  const [membersError, setMembersError] = useState<EnterpriseRequestError | null>(null)
-  const [overviewReload, setOverviewReload] = useState(0)
-  const [membersReload, setMembersReload] = useState(0)
+  const [overview, setOverview] = useState<EnterpriseUsageDetailResponse | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<EnterpriseRequestError | null>(null)
+  const [reload, setReload] = useState(0)
 
   useEffect(() => {
     const controller = new AbortController()
     let active = true
-    setOverviewLoading(true)
-    setOverviewError(null)
-    Promise.all([
-      getEnterpriseUsageSummary({ enterprise_id: context.id }, { signal: controller.signal }),
-      loadAllUsageDepartments(context.id, controller.signal),
-      loadDepartmentCatalog(context.id, controller.signal),
-    ]).then(([nextSummary, usageDepartments, catalog]) => {
-      if (!active) return
-      setSummary(nextSummary)
-      setDepartments(mergeDepartmentUsage(context, catalog as DepartmentWithChildren[], usageDepartments, nextSummary))
-      onPeriodChange(toPeriodLabel(nextSummary.period, i18n.language))
-    }).catch((reason: unknown) => {
-      if (!active || controller.signal.aborted) return
-      setOverviewError(handleError(reason))
-    }).finally(() => {
-      if (active) setOverviewLoading(false)
-    })
+    setLoading(true)
+    setError(null)
+    loadAllUsageRows(context.id, controller.signal)
+      .then((response) => {
+        if (active) setOverview(response)
+      })
+      .catch((reason: unknown) => {
+        if (!active || controller.signal.aborted) return
+        setError(handleError(reason))
+      })
+      .finally(() => {
+        if (active) setLoading(false)
+      })
     return () => {
       active = false
       controller.abort()
     }
-  }, [context, handleError, i18n.language, onPeriodChange, overviewReload])
+  }, [context.id, handleError, reload])
 
-  useEffect(() => {
-    const controller = new AbortController()
-    let active = true
-    setMembersLoading(true)
-    setMembersError(null)
-    getEnterpriseUsageMembers(
-      { enterprise_id: context.id },
-      {
-        keyword: debouncedMemberQuery.trim() || undefined,
-        page: memberPage,
-        page_size: memberPageSize,
-        signal: controller.signal,
-      },
-    ).then((response) => {
-      if (active) setMembers({ ...response, items: response.items ?? [] })
-    }).catch((reason: unknown) => {
-      if (!active || controller.signal.aborted) return
-      setMembersError(handleError(reason))
-    }).finally(() => {
-      if (active) setMembersLoading(false)
-    })
-    return () => {
-      active = false
-      controller.abort()
-    }
-  }, [context.id, debouncedMemberQuery, handleError, memberPage, memberPageSize, membersReload])
-
-  const totalCost = Number(summary?.summary.total_cost_yuan ?? 0)
-  const accountAmount = summary?.summary.account_amount_yuan ?? summary?.account_amount_yuan ?? '0'
-  const accountBalance = Number(accountAmount)
-  const totalTokens = (summary?.summary.input_tokens ?? 0) + (summary?.summary.output_tokens ?? 0)
+  const items = overview?.items ?? []
+  const totals = useMemo(() => summarizeUsage(items), [items])
+  const modelRows = useMemo(() => groupUsageByModel(items), [items])
+  const totalTokens = totals.input_tokens + totals.output_tokens
+  const canViewBilling = overview?.can_view_billing ?? false
+  const totalCost = Number(totals.cost_yuan)
 
   return <>
-    {overviewError ? (
-      <EnterpriseError message={overviewError.message} requestId={overviewError.requestId} onRetry={() => setOverviewReload((value) => value + 1)} />
-    ) : overviewLoading && !summary ? (
+    {error ? (
+      <EnterpriseError message={error.message} requestId={error.requestId} onRetry={() => setReload((value) => value + 1)} />
+    ) : loading && !overview ? (
       <EnterpriseLoading />
     ) : (
       <div className="trae-usage-summary trae-usage-summary--official">
@@ -332,11 +254,11 @@ export function TraeUsageBoard({ context, onDetail, onPeriodChange }: UsageBoard
             <div className="trae-usage-overall-copy">
               <div className="trae-usage-summary-heading"><span>{t('traeEnterprise.usage.overall')}</span><IconInfoCircle className="app-info-icon" aria-hidden="true" /></div>
               <div className="trae-usage-overall-details">
-                <strong>{formatYuan(accountAmount, BACKOFFICE_MONEY_DISPLAY_DECIMAL_PLACES)}</strong>
-                <span><i className="is-base" />{t('traeEnterprise.usage.usedCost')} {formatYuan(summary?.summary.total_cost_yuan ?? '0', BACKOFFICE_MONEY_DISPLAY_DECIMAL_PLACES)}</span>
+                <strong>{canViewBilling ? formatYuan(totals.cost_yuan, BACKOFFICE_MONEY_DISPLAY_DECIMAL_PLACES) : '--'}</strong>
+                <span><i className="is-base" />{t('traeEnterprise.usage.usedCost')} {canViewBilling ? formatYuan(totals.cost_yuan, BACKOFFICE_MONEY_DISPLAY_DECIMAL_PLACES) : '--'}</span>
               </div>
             </div>
-            <UsageDonut usage={Number.isFinite(totalCost) ? totalCost : 0} balance={Number.isFinite(accountBalance) ? accountBalance : 0} />
+            <UsageDonut usage={Number.isFinite(totalCost) ? totalCost : 0} />
           </div>
         </article>
         <article className="trae-usage-summary-card trae-usage-summary-card--account">
@@ -346,37 +268,29 @@ export function TraeUsageBoard({ context, onDetail, onPeriodChange }: UsageBoard
             <span>{t('traeEnterprise.usage.tokenUnit')}</span>
           </strong>
           <div className="trae-usage-account-stats">
-            <span>{t('traeEnterprise.usage.requestCount')} <b>{formatCount(summary?.summary.request_count ?? 0)}</b></span>
+            <span>{t('traeEnterprise.usage.requestCount')} <b>{formatCount(totals.requests)}</b></span>
           </div>
         </article>
       </div>
     )}
 
     <section className="trae-section">
-      <div className="trae-section-heading"><h2>{t('traeEnterprise.usage.people')}</h2></div>
-      <div className="trae-toolbar">
-        <label className="trae-inline-search trae-inline-search--wide"><IconSearch aria-hidden="true" /><input aria-label={t('traeEnterprise.usage.searchPeople')} placeholder={t('traeEnterprise.usage.searchPeople')} value={memberQuery} onChange={(event) => { setMemberQuery(event.target.value); setMemberPage(1) }} /></label>
-      </div>
-      {membersError ? (
-        <EnterpriseError message={membersError.message} requestId={membersError.requestId} onRetry={() => setMembersReload((value) => value + 1)} />
-      ) : membersLoading && members.items.length === 0 ? (
-        <EnterpriseLoading />
-      ) : <>
-        <div className="trae-table-scroll" aria-busy={membersLoading}>
+      <div className="trae-section-heading"><h2>{t('traeEnterprise.usage.byModel')}</h2></div>
+      {loading && modelRows.length === 0 ? <EnterpriseLoading /> : <>
+        <div className="trae-table-scroll" aria-busy={loading}>
           <table className="trae-table trae-usage-board-table">
-            <thead><tr><th>{t('traeEnterprise.usage.name')}</th><th>{t('traeEnterprise.usage.department')}</th><th>{t('traeEnterprise.usage.totalTokens')}</th><th>{t('traeEnterprise.usage.requestCount')}</th><th>{t('traeEnterprise.usage.totalCost')}</th><th>{t('traeEnterprise.usage.operation')}</th></tr></thead>
-            <tbody>{members.items.map((member) => <tr key={member.member_id}><td><span className="trae-person-cell"><span><strong>{member.member_name || '--'}</strong><small>{member.email || '--'}</small></span></span></td><td>{member.department_name || '--'}</td><td className="trae-usage-number">{formatCount(member.total_tokens)}</td><td className="trae-usage-number">{formatCount(member.request_count)}</td><td className="trae-usage-number">{formatYuan(member.cost_yuan, BACKOFFICE_MONEY_DISPLAY_DECIMAL_PLACES)}</td><td><button className="trae-text-button" type="button" onClick={() => onDetail(member.member_id)}>{t('traeEnterprise.usage.detailAction')}</button></td></tr>)}</tbody>
+            <thead><tr><th>{t('traeEnterprise.usage.name')}</th><th>{t('traeEnterprise.usage.totalTokens')}</th><th>{t('traeEnterprise.usage.requestCount')}</th><th>{t('traeEnterprise.usage.totalCost')}</th><th>{t('traeEnterprise.usage.operation')}</th></tr></thead>
+            <tbody>{modelRows.map((model) => <tr key={model.model_code || model.model_name}>
+              <td><span className="trae-person-cell"><span><strong>{model.model_alias || model.model_name || model.model_code || '--'}</strong><small>{model.vendor || model.model_code || '--'}</small></span></span></td>
+              <td className="trae-usage-number">{formatCount(model.input_tokens + model.output_tokens)}</td>
+              <td className="trae-usage-number">{formatCount(model.requests)}</td>
+              <td className="trae-usage-number">{canViewBilling ? formatYuan(model.cost_yuan, BACKOFFICE_MONEY_DISPLAY_DECIMAL_PLACES) : '--'}</td>
+              <td>{onDetail ? <button className="trae-text-button" type="button" onClick={() => onDetail('all')}>{t('traeEnterprise.usage.detailAction')}</button> : null}</td>
+            </tr>)}</tbody>
           </table>
-          {members.items.length === 0 ? <TraeTableEmpty hint={t('traeEnterprise.usage.detailEmpty')} /> : null}
+          {modelRows.length === 0 ? <TraeTableEmpty hint={t('traeEnterprise.usage.detailEmpty')} /> : null}
         </div>
-        <TraePagination ariaLabel={t('traeEnterprise.usage.memberPagination')} total={members.total} currentPage={members.page || memberPage} pageSize={members.page_size || memberPageSize} pageSizeOpts={[20, 50, 100]} summary={t('traeEnterprise.usage.paginationSummary', { total: formatCount(members.total) })} disabled={membersLoading} onChange={(nextPage, nextPageSize) => { setMemberPageSize(nextPageSize); setMemberPage(nextPageSize === memberPageSize ? nextPage : 1) }} />
       </>}
-    </section>
-
-    <section className="trae-section">
-      <div className="trae-section-heading"><h2>{t('traeEnterprise.usage.departments')}</h2></div>
-      <div className="trae-toolbar"><label className="trae-inline-search trae-inline-search--wide trae-usage-department-search"><IconSearch aria-hidden="true" /><input aria-label={t('traeEnterprise.usage.searchDepartment')} placeholder={t('traeEnterprise.usage.searchDepartment')} value={departmentQuery} onChange={(event) => setDepartmentQuery(event.target.value)} /></label></div>
-      <TraeUsageDepartmentTable dataSource={departments} departmentTitle={t('traeEnterprise.usage.department')} periodTotalTitle={t('traeEnterprise.usage.totalCost')} tokenTitle={t('traeEnterprise.usage.totalTokens')} requestTitle={t('traeEnterprise.usage.requestCount')} query={departmentQuery} />
     </section>
   </>
 }
@@ -400,13 +314,16 @@ const EMPTY_DETAIL: EnterpriseUsageDetailResponse = {
 }
 
 function customRangeOptions(range: string, dates: Date[]) {
-  if (range !== 'custom' || dates.length !== 2) return { range: range as 'today' | '7d' | '30d' }
-  const endOfSelectedDay = new Date(dates[1])
-  endOfSelectedDay.setHours(23, 59, 59, 999)
+  if (range !== 'custom') return { range: range as 'today' | '7d' | '30d' }
+  if (dates.length !== 2) return { range: '30d' as const }
+  // 后端按 UTC 自然日聚合；DatePicker 给的是本地日期，显式按日期部分
+  // 构造 UTC 边界，避免东八区用户查询时整体偏移一天。
+  const startAt = Date.UTC(dates[0].getFullYear(), dates[0].getMonth(), dates[0].getDate())
+  const endAt = Date.UTC(dates[1].getFullYear(), dates[1].getMonth(), dates[1].getDate() + 1)
   return {
     range: 'custom' as const,
-    start_at: dates[0].getTime(),
-    end_at: Math.min(Date.now(), endOfSelectedDay.getTime()),
+    start_at: startAt,
+    end_at: Math.min(Date.now(), endAt),
   }
 }
 
@@ -509,10 +426,10 @@ export function TraeUsageDetail({ context, memberID, onMemberChange }: UsageDeta
       // 中文：企业用量导出使用后端的成员聚合定义；模型和状态筛选仅属于明细查询接口，不能发送给导出接口。
       const filters: Record<string, string> = { range }
       if (range === 'custom' && customRange.length === 2) {
-        const start = startOfLocalDay(customRange[0])
-        const end = new Date(Math.min(Date.now(), endOfLocalDay(customRange[1]).getTime() + 1))
-        filters.start_at = start.toISOString()
-        filters.end_at = end.toISOString()
+        const start = Date.UTC(customRange[0].getFullYear(), customRange[0].getMonth(), customRange[0].getDate())
+        const end = Date.UTC(customRange[1].getFullYear(), customRange[1].getMonth(), customRange[1].getDate() + 1)
+        filters.start_at = new Date(start).toISOString()
+        filters.end_at = new Date(Math.min(Date.now(), end)).toISOString()
       }
       if (memberID !== 'all') filters.member_id = memberID
       const task = await createExportTask(

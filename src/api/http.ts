@@ -4,7 +4,7 @@ import { reportCriticalApiFailure } from '@/observability/sentry'
 const DEFAULT_API_BASE_URL = 'http://127.0.0.1:8081'
 const REQUEST_TIMEOUT_MS = 15000
 export const AUTH_UNAUTHORIZED_STATUS = 401
-export const AUTH_INVALID_CODE = 110001
+export const AUTH_INVALID_CODE = 160001
 
 export function resolveBackendBaseUrl(apiBaseUrl: string | undefined, proxyTarget: string | undefined, fallback = DEFAULT_API_BASE_URL): string {
   const configuredBaseUrl = apiBaseUrl?.trim() || proxyTarget?.trim() || fallback
@@ -132,8 +132,13 @@ export async function fetchResponse(path: string, options: FetchJsonOptions = {}
   const requestId = createRequestId()
   // 中文：允许文件流请求覆盖默认 JSON 协商头，普通接口仍默认接受 JSON。
   if (!headers.has('Accept')) headers.set('Accept', 'application/json')
-  headers.set('X-Request-ID', requestId)
-  headers.set('X-App-Lang', getActiveLanguage())
+  // 中文：调用方可复用同一个请求编号进行幂等重试；未显式提供时才生成新编号。
+  if (!headers.has('X-Request-ID')) headers.set('X-Request-ID', requestId)
+  const activeLanguage = getActiveLanguage()
+  // 中文：调用方显式指定语言时必须优先于当前全局语言，公开新闻/模型接口依赖该优先级。
+  if (!headers.has('X-App-Lang')) headers.set('X-App-Lang', activeLanguage)
+  // 中文：公开模型展示接口按 Accept-Language 返回单语言字段，同时保留业务接口使用的 X-App-Lang。
+  if (!headers.has('Accept-Language')) headers.set('Accept-Language', activeLanguage)
   if (isFormDataBody) headers.delete('Content-Type')
   else if (options.body !== undefined) headers.set('Content-Type', 'application/json')
   if (options.accessToken) headers.set('Authorization', `Bearer ${options.accessToken}`)

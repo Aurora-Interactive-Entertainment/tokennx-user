@@ -1,5 +1,5 @@
 import { fetchAuthenticatedJson } from './authenticated'
-import { ApiError, isApiError } from './http'
+import { ApiError, isApiError, type FetchJsonOptions } from './http'
 import type { ApiTimestamp } from '@/utils/format'
 import i18n from '@/i18n'
 
@@ -36,11 +36,12 @@ export interface ProfileContact {
 export interface UserProfile {
   id: string
   display_name: string
-  avatar_url: string
-  locale: string
-  timezone: string
+  // 中文：新版个人资料接口不再返回头像、语言和时区；保留可选字段兼容灰度中的旧响应。
+  avatar_url?: string
+  locale?: string
+  timezone?: string
   status: string
-  version: number
+  version?: string | number
   phone: ProfileContact
   email: ProfileContact
 }
@@ -52,7 +53,7 @@ export interface ProfileContactCodeRequest {
   country_code?: string
 }
 
-export type ProfileContactCodeResult = unknown[]
+export type ProfileContactCodeResult = Record<string, never>
 
 export interface UpdateProfileContactRequest {
   current_destination?: string
@@ -72,7 +73,7 @@ export interface EnterpriseMembership {
   owner: boolean
   joined_at: ApiTimestamp
   exited_at?: ApiTimestamp | null
-  version: number
+  version: string | number
 }
 
 export interface NotificationPreference {
@@ -87,8 +88,15 @@ export interface NotificationPreference {
   sms_supported?: boolean
   mandatory?: boolean
   threshold_supported?: boolean
-  threshold_amount_nano?: number
-  version: number
+  threshold_amount_nano?: string | number
+  version: string | number
+}
+
+interface EnterpriseMembershipPage {
+  items: EnterpriseMembership[]
+  page: number
+  page_size: number
+  total: number
 }
 
 export interface AccountDeletionPrecheck {
@@ -118,7 +126,13 @@ export interface NotificationPreferences {
   items: NotificationPreference[]
 }
 
-export type NotificationPreferenceThresholds = Partial<Record<NotificationPreferenceCode, number>>
+export type NotificationPreferenceThresholds = Partial<Record<NotificationPreferenceCode, number | null>>
+export interface NotificationPreferenceChannelSettings {
+  in_app_enabled: boolean
+  email_enabled: boolean
+  sms_enabled: boolean
+}
+export type NotificationPreferenceChannels = Partial<Record<NotificationPreferenceCode, NotificationPreferenceChannelSettings>>
 
 const PHONE_PATTERN = /^1[3-9][0-9]{9}$/
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -153,10 +167,14 @@ export function getProfileErrorMessage(error: unknown): string {
 		100004: 'api.profile.missing',
 		100006: 'api.profile.stateChanged',
 		100007: 'api.profile.authUnavailable',
+		160001: 'api.profile.sessionExpired',
+		160003: 'api.profile.contactAlreadyBound',
+		160004: 'api.profile.codeTooFrequent',
 		110001: 'api.profile.sessionExpired',
 		110003: 'api.profile.contactAlreadyBound',
 		110004: 'api.profile.codeTooFrequent',
 		110005: 'api.profile.contactUnbound',
+		161002: 'api.profile.contactVerificationFailed',
 		110006: 'api.profile.contactVerificationFailed',
 		110030: 'api.profile.accountDeletionConflict',
 		110031: 'api.profile.accountDeletionEnterpriseBlocked',
@@ -198,8 +216,32 @@ export function updateProfileContact(accessToken: string, provider: ContactProvi
   })
 }
 
-export function getProfileEnterprises(accessToken: string): Promise<EnterpriseMembership[]> {
-  return fetchAuthenticatedJson<EnterpriseMembership[]>(`${PROFILE_PATH}/enterprises`, { accessToken })
+export async function getProfileEnterprises(
+  accessToken: string,
+  options: Pick<FetchJsonOptions, 'signal'> = {},
+): Promise<EnterpriseMembership[]> {
+  const memberships: EnterpriseMembership[] = []
+  let page = 1
+
+  while (true) {
+    const result = await fetchAuthenticatedJson<EnterpriseMembership[] | EnterpriseMembershipPage>(
+      `${PROFILE_PATH}/enterprises?page=${page}&page_size=100`,
+      { accessToken, signal: options.signal },
+    )
+
+    // 中文：灰度期间旧服务仍返回裸数组；新服务统一返回标准分页对象。
+    if (Array.isArray(result)) return result
+    if (!result || !Array.isArray(result.items) || !Number.isInteger(result.page)
+      || !Number.isInteger(result.page_size) || result.page_size <= 0
+      || !Number.isInteger(result.total) || result.total < 0) {
+      throw new ApiError(i18n.t('api.profile.requestFailed'), 502, 100003, null)
+    }
+
+    memberships.push(...result.items)
+    const lastPage = Math.max(1, Math.ceil(result.total / result.page_size))
+    if (result.items.length === 0 || memberships.length >= result.total || page >= lastPage) return memberships
+    page += 1
+  }
 }
 
 // 中文：注销前置检查只读取状态，不会冻结账号或创建注销申请。
@@ -216,10 +258,19 @@ export function getNotificationPreferences(accessToken: string): Promise<Notific
   return fetchAuthenticatedJson<NotificationPreferences>(`${PROFILE_PATH}/notification-preferences`, { accessToken })
 }
 
-export function updateNotificationPreferences(accessToken: string, values: Partial<Record<NotificationPreferenceCode, boolean>>, thresholds?: NotificationPreferenceThresholds): Promise<NotificationPreferences> {
+export function updateNotificationPreferences(
+  accessToken: string,
+  values: Partial<Record<NotificationPreferenceCode, boolean>>,
+  thresholds?: NotificationPreferenceThresholds,
+  channels?: NotificationPreferenceChannels,
+): Promise<NotificationPreferences> {
   return fetchAuthenticatedJson<NotificationPreferences>(`${PROFILE_PATH}/notification-preferences`, {
     method: 'PUT',
-    body: thresholds ? { values, thresholds } : { values },
+    body: {
+      values,
+      ...(channels ? { channels } : {}),
+      ...(thresholds ? { thresholds } : {}),
+    },
     accessToken,
   })
 }

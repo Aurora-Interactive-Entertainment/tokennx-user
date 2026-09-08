@@ -38,13 +38,13 @@ import {
   type TraeMemberBulkAction,
   type TraeMemberRole,
 } from "@/components/trae-member-bulk-actions";
-import { getAccessToken } from "@/auth/token-storage";
 import {
   createEnterpriseDepartment,
   deleteEnterpriseDepartment,
   getEnterpriseDepartmentMembers,
   getEnterpriseDepartments,
   getEnterpriseMembers,
+  getAllEnterpriseMembers,
   removeEnterpriseMember,
   updateEnterpriseDepartment,
   updateEnterpriseMemberDepartment,
@@ -52,6 +52,7 @@ import {
   type EnterpriseContext,
   type EnterpriseDepartment,
   type EnterpriseMember,
+  type EnterpriseVersion,
 } from "@/api/enterprise-console";
 import { EnterprisePageShell, useEnterpriseConsoleContext, useEnterpriseErrorHandler, EnterpriseError, EnterpriseLoading } from "./enterprise-console-shared";
 import { ConsoleTabs } from "@/components/console-tabs";
@@ -84,7 +85,7 @@ type TraeMemberRow = {
   joined: string;
   department: string;
   departmentID: string;
-  version: number;
+  version: EnterpriseVersion;
 };
 
 // 其他企业分析组件使用同一行模型；成员管理页本身只展示服务端返回的数据。
@@ -115,19 +116,58 @@ function toTraeMemberRow(member: EnterpriseMember): TraeMemberRow {
   };
 }
 
-async function loadEnterpriseDepartmentTree(
+// 中文：成员目录同样是标准分页响应，页面表格需要读取全部匹配成员后再进行本地状态筛选。
+async function loadAllEnterpriseMemberRows(
+  enterpriseID: string,
+  selectedDepartmentID: string,
+  keyword: string,
+  status: string,
+  signal: AbortSignal,
+): Promise<{ items: EnterpriseMember[]; total: number }> {
+  if (selectedDepartmentID === "company" && !keyword && !status) {
+    const items = await getAllEnterpriseMembers({ enterprise_id: enterpriseID }, { signal });
+    return { items, total: items.length };
+  }
+  const items: EnterpriseMember[] = [];
+  let page = 1;
+  let total = 0;
+  do {
+    const result = selectedDepartmentID === "company"
+      ? await getEnterpriseMembers({ enterprise_id: enterpriseID }, { page, page_size: 100, keyword: keyword || undefined, status: status !== "all" ? status : undefined, signal })
+      : await getEnterpriseDepartmentMembers({ enterprise_id: enterpriseID }, selectedDepartmentID, { page, page_size: 100, name: keyword || undefined, status: status !== "all" ? status : undefined, signal });
+    items.push(...result.items);
+    total = result.total;
+    if (!result.items.length || items.length >= total) break;
+    page += 1;
+  } while (page <= 100);
+  return { items, total };
+}
+
+// 中文：部门列表是分页接口；每个父部门都要逐页读取，避免邀请/部门选择器只看到前 10 条。
+export async function loadEnterpriseDepartmentTree(
   enterpriseID: string,
   signal: AbortSignal,
 ): Promise<TraeDepartmentNode[]> {
   const request = { enterprise_id: enterpriseID };
+  const pageSize = 10;
   async function loadChildren(parentID?: string): Promise<TraeDepartmentNode[]> {
-    const response = await getEnterpriseDepartments(request, {
-      parent_id: parentID,
-      page: 1,
-      page_size: 10,
-      signal,
-    });
-    const nodes = await Promise.all(response.items.map(async (department) => ({
+    const departments: EnterpriseDepartment[] = [];
+    let page = 1;
+    let total = 0;
+    // 中文：沿用原 page_size=10 以兼容旧部署，同时按 total 继续请求后续页。
+    do {
+      const response = await getEnterpriseDepartments(request, {
+        parent_id: parentID,
+        page,
+        page_size: pageSize,
+        signal,
+      });
+      departments.push(...response.items);
+      total = Number(response.total) || departments.length;
+      if (response.items.length === 0 || departments.length >= total) break;
+      page += 1;
+    } while (page <= Math.ceil(total / pageSize));
+    const nodes = await Promise.all(departments.map(async (department) => ({
       id: department.id,
       name: department.name,
       parentID: department.parent_id ?? undefined,
@@ -208,7 +248,7 @@ type TraeDepartmentNode = {
   depth?: number;
   childCount?: number;
   memberCount?: number;
-  version?: number;
+  version?: EnterpriseVersion;
   isVirtual?: boolean;
   limits?: EnterpriseDepartment["limits"];
 };
@@ -1494,11 +1534,7 @@ function TraeEnterpriseMembersContent({ context }: { context: EnterpriseContext 
     let active = true;
     setLoading(true);
     setLoadError(null);
-    const commonOptions = { page: 1, page_size: 10, signal: controller.signal, accessToken: getAccessToken() ?? undefined };
-    const request = selectedDepartmentID === "company"
-      ? getEnterpriseMembers({ enterprise_id: context.id }, { ...commonOptions, keyword: debouncedQuery.trim() || undefined, status: status !== "all" ? status : undefined })
-      : getEnterpriseDepartmentMembers({ enterprise_id: context.id }, selectedDepartmentID, { ...commonOptions, name: debouncedQuery.trim() || undefined });
-    request
+    loadAllEnterpriseMemberRows(context.id, selectedDepartmentID, debouncedQuery.trim(), status, controller.signal)
       .then((result) => {
         if (!active) return;
         const rows = result.items.map(toTraeMemberRow).filter((row) => status === "all" || row.status === status);
@@ -2323,15 +2359,13 @@ export function TraeEnterpriseUsagePage() {
   const { context, loading, error, reload } = useEnterpriseConsoleContext();
   const [tab, setTab] = useState<"board" | "detail">("board");
   const [detailMemberID, setDetailMemberID] = useState("all");
-  const [period, setPeriod] = useState<{ start: string; end: string } | null>(null);
-  const handlePeriodChange = useCallback((nextPeriod: { start: string; end: string }) => setPeriod(nextPeriod), []);
-  return <TraeShell title={t("traeEnterprise.usage.title")} className="trae-usage-page-official" action={period ? <span className="trae-cycle-label trae-cycle-label--heading">{t("traeEnterprise.usage.cycle", period)}</span> : undefined}>
+  return <TraeShell title={t("traeEnterprise.usage.title")} className="trae-usage-page-official">
     <ConsoleTabs
       items={(["board", "detail"] as const).map((item) => ({ itemKey: item, tab: t(`traeEnterprise.usage.tabs.${item}`) }))}
       activeKey={tab}
       onChange={(value) => setTab(value as "board" | "detail")}
       ariaLabel={t("traeEnterprise.usage.title")}
     />
-    {loading || !context && !error ? <EnterpriseLoading label={t("console.enterprise.contextLoading")} /> : error || !context ? <EnterpriseError message={error?.message ?? t("console.enterprise.contextFailed")} requestId={error?.requestId ?? null} onRetry={reload} /> : <Suspense fallback={<EnterpriseLoading label={t("console.enterprise.loadData")} />}>{tab === "board" ? <TraeUsageBoard context={context} onPeriodChange={handlePeriodChange} onDetail={(memberID) => { setDetailMemberID(memberID); setTab("detail"); }} /> : <TraeUsageDetail context={context} memberID={detailMemberID} onMemberChange={setDetailMemberID} />}</Suspense>}
+    {loading || !context && !error ? <EnterpriseLoading label={t("console.enterprise.contextLoading")} /> : error || !context ? <EnterpriseError message={error?.message ?? t("console.enterprise.contextFailed")} requestId={error?.requestId ?? null} onRetry={reload} /> : <Suspense fallback={<EnterpriseLoading label={t("console.enterprise.loadData")} />}>{tab === "board" ? <TraeUsageBoard context={context} onDetail={(memberID) => { setDetailMemberID(memberID); setTab("detail"); }} /> : <TraeUsageDetail context={context} memberID={detailMemberID} onMemberChange={setDetailMemberID} />}</Suspense>}
   </TraeShell>;
 }

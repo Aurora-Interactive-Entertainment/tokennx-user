@@ -4,7 +4,7 @@ const SENSITIVE_KEY_PATTERN =
   /(?:token|authorization|cookie|password|secret|api[-_]?key|prompt|content|message|email|phone|mobile|id[-_]?card)/i;
 const EXTENSION_URL_PATTERN = /^(?:chrome|moz|safari-web)-extension:\/\//i;
 const THIRD_PARTY_FRAME_PATTERN =
-  /(?:googletagmanager\.com|google-analytics\.com|doubleclick\.net|clarity\.ms)\//i;
+  /(?:googletagmanager\.com|google-analytics\.com|doubleclick\.net|clarity\.ms|hm\.baidu\.com)\//i;
 const NOISE_MESSAGE_PATTERN =
   /ResizeObserver loop limit exceeded|ResizeObserver loop completed with undelivered notifications/i;
 const NETWORK_NOISE_PATTERN =

@@ -53,12 +53,17 @@ function modelPublicHref(model: { id: string; alias?: string }): string | undefi
 }
 
 const HOME_MODEL_MOSAIC_COLUMNS = 6
-const HOME_REWARD_STATS = [
-  { value: '00', unitKey: 'rewardPendingUnit', labelKey: 'rewardPending' },
-  { value: '00', unitKey: 'rewardApprovedUnit', labelKey: 'rewardApproved' },
-  { value: '00', unitKey: 'rewardRejectedUnit', labelKey: 'rewardRejected' },
+const HOME_REWARD_STAT_KEYS = [
+  { unitKey: 'rewardPendingUnit', labelKey: 'rewardPending' },
+  { unitKey: 'rewardApprovedUnit', labelKey: 'rewardApproved' },
+  { unitKey: 'rewardRejectedUnit', labelKey: 'rewardRejected' },
 ] as const
 const HOME_REWARD_AVATAR_COUNT = 6
+
+function formatHomepageReward(value: string): string {
+  const amount = Number(value)
+  return Number.isFinite(amount) && amount >= 0 ? amount.toFixed(2) : '0.00'
+}
 type HomePartner = { name: string; logoMarkup?: string; logoUrl?: string; href?: string; logoKind: 'wordmark' | 'mark' | 'css' }
 const PUBLIC_COMPANY_KEYS: Record<string, string> = {
   阿里云: 'aliyun',
@@ -687,7 +692,11 @@ const HOME_DEFAULT_PROMOTION_ITEMS: HomePromotionItem[] = [
 ]
 
 function homepageModelPrice(model: HomepagePromotionModel, meterKind: 'input_token' | 'output_token'): string {
-  const price = model.prices.find((item) => item.meter_kind === meterKind)
+  // 中文：新版价格契约使用 input/output，兼容旧服务的 input_token/output_token 命名。
+  const aliases = meterKind === 'input_token'
+    ? new Set(['input', 'input_token', 'text_input'])
+    : new Set(['output', 'output_token', 'text_output'])
+  const price = model.prices.find((item) => aliases.has(item.meter_kind.trim().toLowerCase()))
   if (!price) return '--'
   const unitPrice = typeof price.unit_price_yuan === 'number' ? price.unit_price_yuan : Number(price.unit_price_yuan)
   if (!Number.isFinite(unitPrice)) return '--'
@@ -841,6 +850,12 @@ export function HomePage({ onInitialScoreboardReady }: { onInitialScoreboardRead
   const isHomepageLoading = homepageStatus === 'loading' && homepage === null
   const isHomepageError = homepageStatus === 'error' && homepage === null
   const managedCards = homepage?.cards ?? []
+  const promotionUsernames = homepage?.promotion.usernames ?? []
+  const rewardValues = [
+    formatHomepageReward(homepage?.promotion.total_reward_yuan ?? '0'),
+    String(homepage?.promotion.invited_count ?? 0),
+    String(homepage?.promotion.visit_count ?? 0),
+  ]
   const promotionItems = useMemo(() => {
     return managedPromotionItems(homepage, i18n.language)
   }, [homepage, i18n.language])
@@ -972,7 +987,10 @@ export function HomePage({ onInitialScoreboardReady }: { onInitialScoreboardRead
 
         <section className="manuscript-section manuscript-promotion" aria-labelledby="homePromotionTitle">
           <div className="manuscript-section-heading"><div><h2 id="homePromotionTitle">{t('home.rebuild.promotionTitle')}</h2><p>{t('home.rebuild.manuscriptPromotionDescription')}</p></div></div>
-          <div className="manuscript-promotion-grid" role={isHomepageLoading ? 'status' : undefined} aria-busy={isHomepageLoading || undefined}>{isHomepageLoading ? <><span className="public-sr-only">{t('home.rebuild.loadingPromotions')}</span><HomePromotionSkeleton /></> : <><article className="manuscript-reward-card"><h3>{t('home.rebuild.rewardTitle')}</h3><p>{t('home.rebuild.rewardDescription')}</p><div className="manuscript-reward-marks" aria-hidden="true">{Array.from({ length: HOME_REWARD_AVATAR_COUNT }, (_, index) => <span className="manuscript-reward-avatar" aria-hidden="true" key={`reward-avatar-${index}`} />)}</div><div className="manuscript-reward-login"><span>{t('home.rebuild.rewardLoginHint')}</span><LoginRequiredAction returnPath="/console/invitations">{t('home.rebuild.rewardLoginAction')}</LoginRequiredAction></div><div className="manuscript-reward-stats">{HOME_REWARD_STATS.map(({ value, unitKey, labelKey }) => <HomeRewardStat value={value} unit={t(`home.rebuild.${unitKey}`)} label={t(`home.rebuild.${labelKey}`)} key={labelKey} />)}</div></article><div className="manuscript-news-column">
+          <div className="manuscript-promotion-grid" role={isHomepageLoading ? 'status' : undefined} aria-busy={isHomepageLoading || undefined}>{isHomepageLoading ? <><span className="public-sr-only">{t('home.rebuild.loadingPromotions')}</span><HomePromotionSkeleton /></> : <><article className="manuscript-reward-card"><h3>{t('home.rebuild.rewardTitle')}</h3><p>{t('home.rebuild.rewardDescription')}</p><div className="manuscript-reward-marks">{Array.from({ length: promotionUsernames.length || HOME_REWARD_AVATAR_COUNT }, (_, index) => {
+            const username = promotionUsernames[index]
+            return <span className="manuscript-reward-avatar" aria-hidden={username ? undefined : true} aria-label={username} title={username} key={`reward-avatar-${index}-${username ?? 'placeholder'}`} />
+          })}</div><div className="manuscript-reward-login"><span>{t('home.rebuild.rewardLoginHint')}</span><LoginRequiredAction returnPath="/console/invitations">{t('home.rebuild.rewardLoginAction')}</LoginRequiredAction></div><div className="manuscript-reward-stats">{HOME_REWARD_STAT_KEYS.map(({ unitKey, labelKey }, index) => <HomeRewardStat value={rewardValues[index] ?? '0'} unit={t(`home.rebuild.${unitKey}`)} label={t(`home.rebuild.${labelKey}`)} key={labelKey} />)}</div></article><div className="manuscript-news-column">
             {homepage?.ad_slots.length ? <ManagedAdSlots entries={homepage.ad_slots} /> : null}
             <div className="manuscript-news-grid">{managedNews.map((entry, index) => <ManagedNewsCard entry={entry} newsIndex={managedNewsSlots[index] ?? index % 2} key={entry.id} />)}</div>
           </div></>}</div>

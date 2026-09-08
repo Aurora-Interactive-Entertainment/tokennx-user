@@ -1,6 +1,7 @@
 import { fetchAuthenticatedJson } from './authenticated'
 import { ApiError, isApiError } from './http'
 import i18n from '@/i18n'
+import type { ApiTimeValue } from '@/utils/format'
 
 export const USER_MODELS_PATH = '/api/user/models'
 
@@ -90,8 +91,8 @@ export interface UserModelActivity {
   name: string
   description?: string
   status: 'active' | string
-  starts_at?: string
-  ends_at?: string
+  starts_at?: ApiTimeValue
+  ends_at?: ApiTimeValue
   sort_order: number
 }
 
@@ -159,6 +160,24 @@ export function getUserModels(query: UserModelsQuery, signal?: AbortSignal): Pro
   })
 }
 
+export async function getAllUserModels(query: UserModelsQuery, signal?: AbortSignal): Promise<UserModelList> {
+  const items: UserModelItem[] = []
+  let activities: UserModelActivitySummary[] = []
+  let page = 1
+
+  while (true) {
+    const result = await getUserModels({ ...query, page, page_size: 100 }, signal)
+    if (page === 1) activities = result.activities
+    items.push(...result.items)
+
+    // 中文：旧服务不返回分页元信息，此时首包就是完整目录；新服务按真实总数继续读取。
+    if (result.total === undefined || result.page_size === undefined) return { items, activities }
+    const lastPage = Math.max(1, Math.ceil(result.total / result.page_size))
+    if (result.items.length === 0 || page >= lastPage) return { items, activities }
+    page += 1
+  }
+}
+
 function buildUserModelDetailPath(model: string, query: UserModelsQuery): string {
   const params = new URLSearchParams({ account_type: query.account_type })
   if (query.account_type === 'enterprise' && query.enterprise_id?.trim()) {
@@ -186,7 +205,7 @@ export function getUserModelsErrorMessage(error: unknown): string {
     100001: 'api.models.invalidQuery',
     100002: 'api.models.invalidResponse',
     100007: 'api.models.unavailable',
-    110001: 'api.models.sessionExpired',
+    160001: 'api.models.sessionExpired',
     120003: 'api.models.forbidden',
   }
   return messageKeys[error.code] ? i18n.t(messageKeys[error.code]) : error.message

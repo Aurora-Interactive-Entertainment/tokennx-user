@@ -65,7 +65,19 @@ function authResult(): AuthResult {
   }
 }
 
-function mockApiKeyApi(config: { expireAccess?: boolean; refreshFails?: boolean; empty?: boolean; limitsDisabled?: boolean; noSelectedModels?: boolean; withoutSecret?: boolean; createdAtAsNumber?: boolean; enterpriseItems?: boolean; availableModels?: Array<{ id: string; alias: string; name: string; company: string }> } = {}) {
+function mockApiKeyApi(config: {
+  expireAccess?: boolean;
+  refreshFails?: boolean;
+  empty?: boolean;
+  limitsDisabled?: boolean;
+  noSelectedModels?: boolean;
+  withoutSecret?: boolean;
+  createdAtAsNumber?: boolean;
+  enterpriseItems?: boolean;
+  availableModels?: Array<{ id: string; alias: string; name: string; company: string }>;
+  subscription?: { hasSubscription: boolean; models: Array<{ id: string; alias: string; name: string; company: string }> };
+  subscriptionError?: boolean;
+} = {}) {
   const keyItem = structuredClone(KEY_ITEM)
   if (config.limitsDisabled) keyItem.limits.enabled = false
   if (config.withoutSecret) keyItem.secret = ''
@@ -80,7 +92,7 @@ function mockApiKeyApi(config: { expireAccess?: boolean; refreshFails?: boolean;
     const url = String(input)
     const method = requestOptions?.method ?? 'GET'
     if (url.endsWith('/api/auth/refresh')) {
-      if (config.refreshFails) return apiResponse(null, 401, 110001, '认证信息无效')
+      if (config.refreshFails) return apiResponse(null, 401, 160001, '认证信息无效')
       accessExpired = false
       return apiResponse({ ...authResult(), access_token: 'refreshed-api-key-token', refresh_token: 'rotated-refresh' })
     }
@@ -97,8 +109,14 @@ function mockApiKeyApi(config: { expireAccess?: boolean; refreshFails?: boolean;
         description: '企业空间已关闭的模型', capabilities: ['chat'], provider_count: 1, prices: [],
       }] })
     }
-    if (accessExpired && url.includes('/api/user/api-keys')) return apiResponse(null, 401, 110001, '认证信息无效')
+    if (accessExpired && url.includes('/api/user/api-keys')) return apiResponse(null, 401, 160001, '认证信息无效')
     if (url.includes('/api/user/api-keys') && method === 'GET' && !url.includes('/activity')) {
+      if (url.includes('/subscription-models')) {
+        if (config.subscriptionError) return apiResponse(null, 500, 100002, '订阅查询失败')
+        return apiResponse(config.subscription
+          ? { has_subscription: config.subscription.hasSubscription, models: config.subscription.models }
+          : { has_subscription: false, models: [] })
+      }
       const accountType = new URL(url, 'https://saas.example.com').searchParams.get('account_type')
       return apiResponse({ items: accountType === 'enterprise' && !config.enterpriseItems ? [] : items, available_models: config.availableModels ?? [{ id: 'gpt-4o', alias: 'gpt-public', name: 'GPT-4o', company: 'OpenAI' }] })
     }
@@ -152,6 +170,31 @@ function renderPage(observeLocation = false, initialEntry = '/console/api-keys',
       </MemoryRouter>,
     ),
   }
+}
+
+// 中文：企业编辑测试覆盖专用接口与当前成员通用 PUT 的分流，避免误把不可编辑字段静默丢弃。
+function mockEnterpriseKeyEditApi(key: typeof KEY_ITEM) {
+  const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, requestOptions) => {
+    const url = new URL(String(input), 'https://saas.example.com')
+    const method = requestOptions?.method ?? 'GET'
+    if (url.pathname === '/api/user/models') return apiResponse({ items: [] })
+    if (url.pathname === '/api/user/enterprise/enterprise-1/departments') return apiResponse({ items: [], total: 0, page: 1, page_size: 20 })
+    if (url.pathname === '/api/user/enterprise/enterprise-1/members') {
+      return apiResponse({ items: [{ id: 'member-1', user_id: 'user-1', display_name: '接口用户', masked_contact: '138****5678', status: 'active' }], total: 1, page: 1, page_size: 20 })
+    }
+    if (url.pathname === '/api/user/enterprise/enterprise-1/api-keys' && method === 'GET') {
+      return apiResponse({ items: [key], available_models: [], total: 1, page: 1, page_size: 20 })
+    }
+    if (url.pathname === `/api/user/api-keys/${key.id}` && method === 'PUT') {
+      const body = JSON.parse(String(requestOptions?.body)) as Record<string, unknown>
+      return apiResponse({ ...key, name: body.name, tags: body.tags, expires_at: null })
+    }
+    if (url.pathname === '/api/user/enterprise/enterprise-1/api-keys/batch' && method === 'POST') {
+      return apiResponse({ items: [key], updated: 1 })
+    }
+    throw new Error(`unexpected request: ${method} ${url}`)
+  })
+  return fetchMock
 }
 
 describe('密钥管理页面', () => {
@@ -209,10 +252,17 @@ describe('密钥管理页面', () => {
       activeWorkspaceId: 'enterprise-1',
       workspaces: [{ id: 'enterprise-1', name: '示例企业', type: 'enterprise', role: 'owner' }],
     }))
-    mockApiKeyApi()
+    const { fetchMock } = mockApiKeyApi()
     renderPage(false, '/console/enterprise-api-keys', false, 'enterprise')
 
     await user.click(await screen.findByRole('button', { name: /创建 API 密钥/ }))
+    await waitFor(() => {
+      const memberRequests = fetchMock.mock.calls
+        .map(([input]) => new URL(String(input), 'https://saas.example.com'))
+        .filter((url) => url.pathname === '/api/user/enterprise/enterprise-1/members')
+      expect(memberRequests.length).toBeGreaterThanOrEqual(2)
+      expect(memberRequests.every((url) => !url.searchParams.has('status'))).toBe(true)
+    })
     await user.click(screen.getByRole('button', { name: 'confirm' }))
 
     expect(await screen.findByText('请输入密钥名称')).toBeInTheDocument()
@@ -355,6 +405,106 @@ describe('密钥管理页面', () => {
     expect(screen.queryByText('企业已关闭模型（企业厂商 · enterprise-disabled-public）')).not.toBeInTheDocument()
     expect(screen.queryByText('GPT-4o（OpenAI · gpt-public）')).not.toBeInTheDocument()
     expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/api/user/models'))).toBe(false)
+  })
+
+  it('企业成员编辑自己的密钥使用完整 PUT 并发送 RFC3339 字段', async () => {
+    const user = userEvent.setup()
+    window.localStorage.setItem('token-nx:user-front:v1', JSON.stringify({
+      activeWorkspaceId: 'enterprise-1',
+      workspaces: [{ id: 'enterprise-1', name: '示例企业', type: 'enterprise', role: 'owner' }],
+    }))
+    const fetchMock = mockEnterpriseKeyEditApi(structuredClone(KEY_ITEM))
+    renderPage(false, '/console/enterprise-api-keys', false, 'enterprise')
+
+    await user.click(await screen.findByRole('button', { name: '编辑 API 密钥' }))
+    const nameInput = screen.getByLabelText('密钥名称')
+    await user.clear(nameInput)
+    await user.type(nameInput, '本人更新密钥')
+    await user.click(screen.getByRole('button', { name: 'confirm' }))
+
+    await waitFor(() => expect(fetchMock.mock.calls.some(([url, options]) => {
+      const requestURL = new URL(String(url), 'https://saas.example.com')
+      return requestURL.pathname === `/api/user/api-keys/${KEY_ID}` && options?.method === 'PUT'
+    })).toBe(true))
+    const putCall = fetchMock.mock.calls.find(([url, options]) => {
+      const requestURL = new URL(String(url), 'https://saas.example.com')
+      return requestURL.pathname === `/api/user/api-keys/${KEY_ID}` && options?.method === 'PUT'
+    })
+    expect(JSON.parse(String(putCall?.[1]?.body))).toMatchObject({ name: '本人更新密钥', expires_at: null })
+  })
+
+  it('企业编辑他人密钥时禁用不支持的字段并使用批量更新接口', async () => {
+    const user = userEvent.setup()
+    window.localStorage.setItem('token-nx:user-front:v1', JSON.stringify({
+      activeWorkspaceId: 'enterprise-1',
+      workspaces: [{ id: 'enterprise-1', name: '示例企业', type: 'enterprise', role: 'owner' }],
+    }))
+    const foreignKey = { ...structuredClone(KEY_ITEM), creator: { ...KEY_ITEM.creator, id: 'user-other', display_name: '其他成员' } }
+    const fetchMock = mockEnterpriseKeyEditApi(foreignKey)
+    renderPage(false, '/console/enterprise-api-keys', false, 'enterprise')
+
+    await user.click(await screen.findByRole('button', { name: '编辑 API 密钥' }))
+    expect(screen.getByLabelText('密钥名称')).toBeDisabled()
+    expect(screen.getByLabelText('标签')).toBeDisabled()
+    // Semi Select 的可访问标签挂在外层 div，使用 id/aria-disabled 断言而非 getByLabelText。
+    expect(document.querySelector('#key-expiry')).toHaveAttribute('aria-disabled', 'true')
+    await user.click(screen.getByRole('button', { name: 'confirm' }))
+
+    await waitFor(() => expect(fetchMock.mock.calls.some(([url, options]) => {
+      const requestURL = new URL(String(url), 'https://saas.example.com')
+      return requestURL.pathname === '/api/user/enterprise/enterprise-1/api-keys/batch' && options?.method === 'POST'
+    })).toBe(true))
+    expect(fetchMock.mock.calls.some(([url, options]) => String(url).includes('/api/user/api-keys/') && options?.method === 'PUT')).toBe(false)
+  })
+
+  // 中文：订阅计费必须以订阅模型接口返回的集合为准，并在成功后自动全选。
+  it('切换订阅计费时加载并全选订阅模型，提交非空模型子集', async () => {
+    const user = userEvent.setup()
+    const subscriptionModels = [
+      { id: 'sub-model-a', alias: 'sub-a', name: '订阅模型 A', company: '订阅厂商' },
+      { id: 'sub-model-b', alias: 'sub-b', name: '订阅模型 B', company: '订阅厂商' },
+    ]
+    const { fetchMock } = mockApiKeyApi({
+      subscription: { hasSubscription: true, models: subscriptionModels },
+    })
+    renderPage(false, '/console/api-keys')
+
+    await screen.findByText('默认密钥')
+    await user.click(screen.getByRole('button', { name: /创建 API 密钥/ }))
+    await user.type(screen.getByLabelText('密钥名称'), '订阅密钥')
+    await user.click(screen.getByRole('switch', { name: '启用限制' }))
+    await user.click(screen.getByRole('radio', { name: '按订阅消耗' }))
+
+    expect(await screen.findByText('已选 2 个')).toBeInTheDocument()
+    const confirm = screen.getByRole('button', { name: 'confirm' })
+    await waitFor(() => expect(confirm).toBeEnabled())
+    await user.click(confirm)
+    await waitFor(() => expect(fetchMock.mock.calls.some(([url, options]) => {
+      const requestURL = new URL(String(url), 'https://saas.example.com')
+      return requestURL.pathname === '/api/user/api-keys' && options?.method === 'POST'
+    })).toBe(true))
+    const postCall = fetchMock.mock.calls.find(([url, options]) => {
+      const requestURL = new URL(String(url), 'https://saas.example.com')
+      return requestURL.pathname === '/api/user/api-keys' && options?.method === 'POST'
+    })
+    const body = JSON.parse(String(postCall?.[1]?.body)) as { billing_source: string; scope: string; model_ids: string[] }
+    expect(body).toMatchObject({ billing_source: 'subscription', scope: 'selected' })
+    expect(body.model_ids).toEqual(['sub-model-a', 'sub-model-b'])
+  })
+
+  it('无订阅或订阅查询失败时禁止提交 API 密钥', async () => {
+    const user = userEvent.setup()
+    mockApiKeyApi({ subscription: { hasSubscription: false, models: [] } })
+    renderPage(false, '/console/api-keys')
+
+    await screen.findByText('默认密钥')
+    await user.click(screen.getByRole('button', { name: /创建 API 密钥/ }))
+    await user.type(screen.getByLabelText('密钥名称'), '无订阅密钥')
+    await user.click(screen.getByRole('switch', { name: '启用限制' }))
+    await user.click(screen.getByRole('radio', { name: '按订阅消耗' }))
+
+    expect(await screen.findByText('当前没有可用的订阅模型')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'confirm' })).toBeDisabled()
   })
 
   it('历史密钥没有完整值时不回退复制脱敏文本', async () => {

@@ -66,21 +66,21 @@ function mockAccountProfileApi() {
     if (url.endsWith('/api/user/profile') && method === 'GET') return profileApiResponse(profile)
     if (url.endsWith('/api/user/profile/nickname') && method === 'PUT') {
       const body = JSON.parse(String(options?.body)) as { display_name: string }
-      profile = { ...profile, display_name: body.display_name, version: profile.version + 1 }
+      profile = { ...profile, display_name: body.display_name, version: Number(profile.version ?? 0) + 1 }
       return profileApiResponse(profile)
     }
     if (url.endsWith('/api/user/profile/contact/code')) return profileApiResponse([])
     if (url.endsWith('/api/user/profile/phone') && method === 'PUT') {
-      profile = { ...profile, phone: { bound: true, masked_identifier: '139****9000' }, version: profile.version + 1 }
+      profile = { ...profile, phone: { bound: true, masked_identifier: '139****9000' }, version: Number(profile.version ?? 0) + 1 }
       return profileApiResponse(profile)
     }
     if (url.endsWith('/api/user/profile/email') && method === 'PUT') {
-      profile = { ...profile, email: { bound: true, masked_identifier: 'n***@example.com' }, version: profile.version + 1 }
+      profile = { ...profile, email: { bound: true, masked_identifier: 'n***@example.com' }, version: Number(profile.version ?? 0) + 1 }
       return profileApiResponse(profile)
     }
     throw new Error(`unexpected request: ${url}`)
   })
-  saveAuthTokens({ status: 'succeeded', binding_required: false, access_token: 'profile-access-token', refresh_token: 'profile-refresh-token', refresh_expires_at: Date.UTC(2099, 0, 1), user: ACCOUNT_PROFILE })
+  saveAuthTokens({ status: 'succeeded', binding_required: false, access_token: 'profile-access-token', refresh_token: 'profile-refresh-token', refresh_expires_at: Date.UTC(2099, 0, 1), user: { id: ACCOUNT_PROFILE.id, display_name: ACCOUNT_PROFILE.display_name, avatar_url: ACCOUNT_PROFILE.avatar_url ?? '', locale: ACCOUNT_PROFILE.locale ?? 'zh-CN', timezone: ACCOUNT_PROFILE.timezone ?? 'Asia/Shanghai', status: ACCOUNT_PROFILE.status ?? 'active' } })
   return { fetchMock, getProfile: () => profile }
 }
 

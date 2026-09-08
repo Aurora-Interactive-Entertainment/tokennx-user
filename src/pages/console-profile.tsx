@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
 import Button from '@douyinfe/semi-ui/lib/es/button'
 import Switch from '@douyinfe/semi-ui/lib/es/switch'
@@ -23,7 +23,8 @@ import { NEW_ENTERPRISE_CREATE_PATH } from '@/api/enterprise-certification'
 import { useAppStore } from '@/data/app-state'
 import { getEnterpriseContext, type EnterpriseContext, type EnterpriseRoleOption } from '@/api/enterprise-console'
 import { invalidateAuth, updateAuthenticatedUser } from '@/store/auth-slice'
-import { useAppDispatch } from '@/store/hooks'
+import { useAppDispatch, useAppSelector } from '@/store/hooks'
+import type { AuthUser } from '@/api/auth'
 import { useTranslation } from 'react-i18next'
 import { appToast as Toast } from '@/components/app-toast'
 import { publishProfileUpdate, subscribeProfileUpdates } from '@/profile/profile-sync'
@@ -42,13 +43,14 @@ const PREFERENCE_DEFINITIONS: Record<NotificationPreferenceCode, { labelKey: str
   product_updates: { labelKey: 'profile.notifications.productUpdates', descriptionKey: 'profile.notifications.productUpdatesDescription' },
 }
 
-function profileToAuthUser(profile: UserProfile) {
+function profileToAuthUser(profile: UserProfile, fallback?: AuthUser | null): AuthUser {
   return {
     id: profile.id,
     display_name: limitDisplayNameLength(profile.display_name),
-    avatar_url: profile.avatar_url,
-    locale: profile.locale,
-    timezone: profile.timezone,
+    // 中文：新版资料接口省略这些认证字段，更新昵称或联系方式时不得清空现有值。
+    avatar_url: profile.avatar_url ?? fallback?.avatar_url ?? '',
+    locale: profile.locale ?? fallback?.locale ?? 'zh-CN',
+    timezone: profile.timezone ?? fallback?.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone,
     status: profile.status,
     phone_masked: profile.phone.masked_identifier,
     email_masked: profile.email.masked_identifier,
@@ -68,6 +70,9 @@ function roleLabels(roles: string[], locale: string, roleOptions: EnterpriseRole
 export function SettingsPage() {
   const { t } = useTranslation()
   const dispatch = useAppDispatch()
+  const authUser = useAppSelector((state) => state.auth.user)
+  const authUserRef = useRef(authUser)
+  authUserRef.current = authUser
   const navigate = useNavigate()
   const store = useAppStore()
   const activeEnterpriseID = store.activeWorkspace.type === 'enterprise' ? store.activeWorkspace.id : ''
@@ -119,7 +124,7 @@ export function SettingsPage() {
       setPreferences(nextPreferences)
       setEnterpriseContext(nextEnterpriseContext)
       // 中文：首次加载也同步认证状态，确保 Header 与个人中心展示一致。
-      dispatch(updateAuthenticatedUser(profileToAuthUser(normalizedProfile)))
+      dispatch(updateAuthenticatedUser(profileToAuthUser(normalizedProfile, authUserRef.current)))
     } catch (requestError) {
       if (!handleProfileError(requestError)) setError(getProfileErrorMessage(requestError))
     } finally {
@@ -155,11 +160,11 @@ export function SettingsPage() {
         id: membership.enterprise_id,
         name: membership.enterprise_name,
         type: t('profile.workspace.enterpriseType'),
-        role: roleLabels(membership.roles.length ? membership.roles : ['owner'], profile.locale, membership.enterprise_id === enterpriseContext?.id ? enterpriseContext.role_options : []),
+        role: roleLabels(membership.roles.length ? membership.roles : ['owner'], profile.locale ?? authUser?.locale ?? 'zh-CN', membership.enterprise_id === enterpriseContext?.id ? enterpriseContext.role_options : []),
         current: activeWorkspaceId === membership.enterprise_id || activeWorkspaceId === membership.id,
       })),
     ]
-  }, [enterprises, enterpriseContext, profile, store.activeWorkspace.id, store.activeWorkspace.type, t])
+  }, [authUser?.locale, enterprises, enterpriseContext, profile, store.activeWorkspace.id, store.activeWorkspace.type, t])
 
   const anchorItems = useMemo<SettingsAnchorItem[]>(() => [
     { id: 'settings-account', label: t('profile.account.title') },
@@ -171,7 +176,7 @@ export function SettingsPage() {
   const applyProfile = useCallback((nextProfile: UserProfile, publish = true): void => {
     const normalizedProfile = normalizeProfile(nextProfile)
     setProfile(normalizedProfile)
-    dispatch(updateAuthenticatedUser(profileToAuthUser(normalizedProfile)))
+    dispatch(updateAuthenticatedUser(profileToAuthUser(normalizedProfile, authUserRef.current)))
     if (publish) publishProfileUpdate(normalizedProfile)
   }, [dispatch])
 

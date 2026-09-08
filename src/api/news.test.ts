@@ -56,6 +56,9 @@ describe('news api', () => {
       items: [{ id: 'news-1', category: '产品动态', description: '摘要', cover_image: 'https://cdn.example/cover.png', publish_date: '2026-08-19T00:00:00Z' }],
     })
     expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('/api/news?page=2&page_size=20&locale=en-US&keyword=%E6%9B%B4%E6%96%B0&tag=%E4%BA%A7%E5%93%81%E5%8A%A8%E6%80%81'), expect.objectContaining({ credentials: 'omit' }))
+    const listHeaders = new Headers(fetchMock.mock.calls[0]?.[1]?.headers)
+    expect(listHeaders.get('X-App-Lang')).toBe('en-US')
+    expect(listHeaders.get('Accept-Language')).toBe('en-US')
   })
 
   it('loads markdown content from the detail endpoint', async () => {

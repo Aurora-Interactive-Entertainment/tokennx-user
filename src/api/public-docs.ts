@@ -21,7 +21,14 @@ export interface PublicDocument {
   slug: string
   title: string
   content_markdown: string
-  updated_at: number
+  updated_at?: number
+}
+
+interface PublicDocsPage {
+  items: PublicDocsNode[]
+  page: number
+  page_size: number
+  total: number
 }
 
 const PUBLIC_OBJECT_ID_PATTERN = /^[0-9A-HJKMNP-TV-Z]{26}$/
@@ -50,12 +57,28 @@ function parseNode(value: unknown): PublicDocsNode | null {
   }
 }
 
-function parseTree(value: unknown): PublicDocsNode[] {
+function parseNodes(value: unknown): PublicDocsNode[] {
   if (!Array.isArray(value)) throw invalidResponse()
   return value.flatMap((item) => {
     const node = parseNode(item)
     return node ? [node] : []
   })
+}
+
+function parseTreePage(value: unknown): PublicDocsPage | PublicDocsNode[] {
+  // 中文：发布切换期间兼容旧服务返回的平铺数组，新服务使用统一分页对象。
+  if (Array.isArray(value)) return parseNodes(value)
+  if (!isRecord(value) || typeof value.page !== 'number' || !Number.isInteger(value.page)
+    || typeof value.page_size !== 'number' || !Number.isInteger(value.page_size) || value.page_size <= 0
+    || typeof value.total !== 'number' || !Number.isInteger(value.total) || value.total < 0) {
+    throw invalidResponse()
+  }
+  return {
+    items: parseNodes(value.items),
+    page: value.page as number,
+    page_size: value.page_size,
+    total: value.total,
+  }
 }
 
 function parseDocument(value: unknown): PublicDocument {
@@ -64,13 +87,13 @@ function parseDocument(value: unknown): PublicDocument {
   if (typeof value.slug !== 'string' || !value.slug.trim()) throw invalidResponse()
   if (typeof value.title !== 'string' || !value.title.trim()) throw invalidResponse()
   if (typeof value.content_markdown !== 'string') throw invalidResponse()
-  if (typeof value.updated_at !== 'number' || !Number.isFinite(value.updated_at)) throw invalidResponse()
+  if (value.updated_at !== undefined && (typeof value.updated_at !== 'number' || !Number.isFinite(value.updated_at))) throw invalidResponse()
   return {
     id: value.id,
     slug: value.slug,
     title: value.title,
     content_markdown: value.content_markdown,
-    updated_at: value.updated_at,
+    ...(typeof value.updated_at === 'number' ? { updated_at: value.updated_at } : {}),
   }
 }
 
@@ -85,8 +108,21 @@ export function getPublicDocumentAssetUrl(objectId: string): string | undefined 
 }
 
 export async function getPublicDocsTree(locale: PublicDocsLocale, signal?: AbortSignal): Promise<PublicDocsNode[]> {
-  const value = await fetchJson<unknown>(`${PUBLIC_DOCS_TREE_PATH}?locale=${encodeURIComponent(locale)}`, { signal })
-  return parseTree(value)
+  const nodes: PublicDocsNode[] = []
+  let page = 1
+
+  while (true) {
+    const value = await fetchJson<unknown>(
+      `${PUBLIC_DOCS_TREE_PATH}?locale=${encodeURIComponent(locale)}&page=${page}&page_size=100`,
+      { signal },
+    )
+    const result = parseTreePage(value)
+    if (Array.isArray(result)) return result
+    nodes.push(...result.items)
+    const lastPage = Math.max(1, Math.ceil(result.total / result.page_size))
+    if (result.items.length === 0 || page >= lastPage) return nodes
+    page += 1
+  }
 }
 
 export async function getPublicDocument(documentId: string, locale: PublicDocsLocale, signal?: AbortSignal): Promise<PublicDocument> {

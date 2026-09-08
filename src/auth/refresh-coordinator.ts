@@ -1,5 +1,5 @@
 import { refreshSession, type AuthResult, type AuthTimestamp } from '@/api/auth'
-import { getAuthSessionSnapshot, getAuthTabId, getDeviceId, getDeviceName, saveAuthTokens, subscribeAuthTokenChanges, type AuthSessionSnapshot } from './token-storage'
+import { getAuthSessionSnapshot, getAuthTabId, saveAuthTokens, subscribeAuthTokenChanges, type AuthSessionSnapshot } from './token-storage'
 
 const REFRESH_LOCK_NAME = 'token-nx:auth:refresh:v1'
 const REFRESH_LOCK_STORAGE_KEY = 'token-nx:auth:refresh-lock:v1'
@@ -197,10 +197,7 @@ async function refreshInsideLock(refreshToken: string): Promise<AuthenticatedSes
     expectedRevision = latest.revision
   }
 
-  const refreshed = await refreshSession(tokenToUse, {
-    device_id: getDeviceId(),
-    device_name: getDeviceName(),
-  })
+  const refreshed = await refreshSession(tokenToUse)
   if (!isAuthenticatedSession(refreshed)) throw new Error('刷新会话未完成')
   if (!saveAuthTokens(refreshed, { expectedRefreshToken, expectedRevision })) throw new Error('认证会话在刷新期间发生变化')
   return refreshed

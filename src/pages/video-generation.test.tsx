@@ -6,15 +6,12 @@ import { MemoryRouter } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AppStoreProvider } from '@/data/app-state'
 import { createAppStore } from '@/store'
-import type { UserApiKey } from '@/api/user-api-keys'
 import type { VideoTask } from '@/api/video-runtime'
 import type { ModelRecord } from '@/data/models'
-import { getUserApiKeys } from '@/api/user-api-keys'
 import { cancelVideoTask, getVideoTask, submitVideoGeneration } from '@/api/video-runtime'
+import { clearAuthTokens, saveAuthTokens } from '@/auth/token-storage'
 import { useUserModels } from '@/data/user-models'
 import { VideoPage } from './video-generation'
-
-vi.mock('@/api/user-api-keys', () => ({ getUserApiKeys: vi.fn() }))
 
 vi.mock('@/api/video-runtime', () => {
   class MockVideoRuntimeError extends Error {
@@ -81,15 +78,6 @@ vi.mock('@/components/semi-compat', () => {
   return { CompatInput: Object.assign(MockInput, { TextArea: MockTextArea }), CompatSelect: Object.assign(MockSelect, { Option: MockOption }) }
 })
 
-function activeApiKey(overrides: Partial<UserApiKey> = {}): UserApiKey {
-  return {
-    id: 'key-video-test', name: '视频联调密钥', masked_key: 'nx_live_••••••••test', secret: 'nx_live_video_secret', status: 'active', scope: 'all', model_ids: null, models: [], tags: [], billing_source: 'balance',
-    limits: { enabled: true, cost_limit_yuan: null, used_amount_yuan: '0', rpm: null, tpm: null, concurrency: null },
-    creator: { id: 'user-video-test', display_name: '测试用户', masked_phone: '138****0000' }, created_at: Date.parse('2026-07-30T10:00:00Z'), expires_at: null, last_used_at: null,
-    ...overrides,
-  }
-}
-
 function videoModel(overrides: Partial<ModelRecord> = {}): ModelRecord {
   return {
     id: 'cogvideo', code: 'cogvideo', alias: 'cogvideo-public', name: 'CogVideo', company: '智谱AI', modality: 'video', capabilities: ['视频生成'], description: '视频模型',
@@ -108,32 +96,32 @@ function renderVideoPage(): void {
 
 describe('视频生成页面', () => {
   beforeEach(() => {
+    clearAuthTokens({ force: true })
     window.localStorage.clear()
     vi.clearAllMocks()
+    saveAuthTokens({ status: 'succeeded', binding_required: false, access_token: 'user-access-token', refresh_token: 'video-refresh-token', refresh_expires_at: Date.UTC(2099, 0, 1) })
     vi.mocked(useUserModels).mockReturnValue({ models: [videoModel(), videoModel({ id: 'other-video', code: 'other-video', alias: 'other-video-public', name: 'Other Video' })], activities: [], total: null, page: null, pageSize: null, loading: false, error: '', refresh: vi.fn() })
-    vi.mocked(getUserApiKeys).mockResolvedValue({ items: [activeApiKey()], available_models: [] })
   })
 
   afterEach(() => {
+    clearAuthTokens({ force: true })
     vi.restoreAllMocks()
   })
 
-  it('加载 API Key 后只展示该密钥可调用的视频模型', async () => {
-    vi.mocked(getUserApiKeys).mockResolvedValue({ items: [activeApiKey({ scope: 'selected', model_ids: ['cogvideo'] })], available_models: [] })
+  it('不依赖 API Key，展示当前空间目录中的全部视频模型', async () => {
     const user = userEvent.setup()
     renderVideoPage()
 
     expect(await screen.findByRole('option', { name: /CogVideo/ })).toBeInTheDocument()
     const modelSelect = document.getElementById('video-model')
     expect(modelSelect).not.toBeNull()
-    expect(screen.queryByRole('option', { name: /Other Video/ })).toBeNull()
+    expect(screen.getByRole('option', { name: /Other Video/ })).toBeInTheDocument()
     expect(document.querySelector('.video-history-panel')).toBeInTheDocument()
     expect(document.querySelector('.video-workspace.experience-workbench')).toBeInTheDocument()
   })
 
   it('模型接口没有数据时不展示伪造模型，并在选择器中显示空状态', async () => {
     vi.mocked(useUserModels).mockReturnValue({ models: [], activities: [], total: null, page: null, pageSize: null, loading: false, error: '', refresh: vi.fn() })
-    vi.mocked(getUserApiKeys).mockResolvedValue({ items: [activeApiKey({ scope: 'selected', model_ids: ['unavailable-model'] })], available_models: [] })
     renderVideoPage()
 
     // 中文：空模型列表只能显示本地化空态，不能回退为不可实际调用的内置模型。
@@ -141,12 +129,12 @@ describe('视频生成页面', () => {
     expect(screen.getByRole('option', { name: '当前空间暂无可用视频模型' })).toBeInTheDocument()
   })
 
-  it('直接使用默认 API Key 且不显示密钥选择框', async () => {
+  it('使用登录态令牌且不显示密钥选择框', async () => {
     renderVideoPage()
 
     await screen.findByRole('option', { name: /CogVideo/ })
     expect(document.querySelector('.video-api-key-select')).toBeNull()
-    expect(screen.queryByText(/默认 API Key/)).toBeNull()
+    expect(screen.queryByText(/API Key/)).toBeNull()
   })
 
   it('提交真实参数并轮询到结果视频', async () => {
@@ -162,8 +150,8 @@ describe('视频生成页面', () => {
     await user.click(screen.getByRole('button', { name: '生成视频' }))
 
     await waitFor(() => expect(submitVideoGeneration).toHaveBeenCalledTimes(1))
-    expect(vi.mocked(submitVideoGeneration).mock.calls[0]?.[0]).toMatchObject({ apiKey: 'nx_live_video_secret', model: 'cogvideo-public', prompt: '海边日落，镜头缓慢推进', duration: 5, size: '1280x720', inputReference: 'https://cdn.example.com/reference.png' })
-    await waitFor(() => expect(getVideoTask).toHaveBeenCalledWith('nx_live_video_secret', 'task-video-1', expect.anything()), { timeout: 2_500 })
+    expect(vi.mocked(submitVideoGeneration).mock.calls[0]?.[0]).toMatchObject({ accessToken: 'user-access-token', model: 'cogvideo-public', prompt: '海边日落，镜头缓慢推进', duration: 5, size: '1280x720', inputReference: 'https://cdn.example.com/reference.png' })
+    await waitFor(() => expect(getVideoTask).toHaveBeenCalledWith('user-access-token', 'task-video-1', expect.anything()), { timeout: 2_500 })
     expect(await screen.findByLabelText('视频生成结果')).toBeInTheDocument()
     expect(document.querySelector('.video-status-success')).toHaveTextContent('已完成')
   })
@@ -181,8 +169,8 @@ describe('视频生成页面', () => {
     await waitFor(() => expect(submitVideoGeneration).toHaveBeenCalledTimes(1))
     await user.click(within(screen.getByRole('article')).getByRole('button', { name: '取消生成' }))
 
-    await waitFor(() => expect(cancelVideoTask).toHaveBeenCalledWith('nx_live_video_secret', 'task-video-1'))
-    await waitFor(() => expect(getVideoTask).toHaveBeenCalledWith('nx_live_video_secret', 'task-video-1', expect.anything()), { timeout: 2_500 })
+    await waitFor(() => expect(cancelVideoTask).toHaveBeenCalledWith('user-access-token', 'task-video-1'))
+    await waitFor(() => expect(getVideoTask).toHaveBeenCalledWith('user-access-token', 'task-video-1', expect.anything()), { timeout: 2_500 })
     expect(screen.getByRole('status', { name: '取消中' })).toBeInTheDocument()
   })
 
@@ -235,11 +223,15 @@ describe('视频生成页面', () => {
     expect(screen.getByRole('combobox', { name: '时长' })).toHaveValue('duration')
   })
 
-  it('工作区缺少可用密钥时在结果区内显示提示', async () => {
-    vi.mocked(getUserApiKeys).mockResolvedValue({ items: [], available_models: [] })
+  it('没有 API Key 也不阻止登录用户发起生成', async () => {
+    vi.mocked(submitVideoGeneration).mockResolvedValue(pendingTask)
     renderVideoPage()
 
-    await waitFor(() => expect(document.querySelector('.video-workspace-notice')).toBeInTheDocument())
+    await screen.findByRole('option', { name: /CogVideo/ })
+    const user = userEvent.setup()
+    await user.type(screen.getByLabelText('视频提示词'), '一只鸟掠过湖面')
+    await user.click(screen.getByRole('button', { name: '生成视频' }))
+    await waitFor(() => expect(submitVideoGeneration).toHaveBeenCalledTimes(1))
     expect(document.querySelector('.video-workspace.experience-workbench')).toBeInTheDocument()
     expect(document.querySelector('.video-console-page > .banner-notice')).toBeNull()
   })

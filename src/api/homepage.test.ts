@@ -51,7 +51,14 @@ describe('公开首页内容 API', () => {
       ],
     }))
 
-    await expect(getPublicHomepage()).resolves.toEqual({ cards: [], promotion_models: [], ad_slots: [], news: [], partners: [], promotion: [] })
+    await expect(getPublicHomepage()).resolves.toEqual({
+      cards: [],
+      promotion_models: [],
+      ad_slots: [],
+      news: [],
+      partners: [],
+      promotion: { usernames: [], invited_count: 0, visit_count: 0, total_reward_yuan: '0.000000000' },
+    })
   })
 
   it('首次匿名读取复用 HTML 阶段的首页预请求', async () => {
@@ -101,7 +108,7 @@ describe('公开首页内容 API', () => {
       ad_slots: [],
       news: [],
       partners: [],
-      promotion: [{ id: 'member-promotion' }],
+      promotion: { usernames: [' 林舟 ', '', 42, '周然'], invited_count: 2, visit_count: 128, total_reward_yuan: '36.500000000' },
     }))
 
     await expect(getPublicHomepage('access-token')).resolves.toMatchObject({
@@ -118,7 +125,7 @@ describe('公开首页内容 API', () => {
           },
         },
       }],
-      promotion: [{ id: 'member-promotion' }],
+      promotion: { usernames: ['林舟', '周然'], invited_count: 2, visit_count: 128, total_reward_yuan: '36.500000000' },
     })
     const headers = new Headers(fetchMock.mock.calls[0][1]?.headers)
     expect(headers.get('Authorization')).toBe('Bearer access-token')

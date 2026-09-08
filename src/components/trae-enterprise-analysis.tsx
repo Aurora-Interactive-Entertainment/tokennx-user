@@ -24,11 +24,6 @@ import {
   type EnterpriseMember,
 } from "@/api/enterprise-console";
 import {
-  getEnterpriseUsageDepartments,
-  type EnterpriseUsageDepartment,
-  type EnterpriseUsageDepartmentsRequest,
-} from "@/api/enterprise-usage";
-import {
   EnterpriseError,
   EnterpriseLoading,
   useEnterpriseErrorHandler,
@@ -105,53 +100,19 @@ function getRequestOptions(
   if (memberID && memberID !== "all") options.member_id = memberID;
   if (!start || !end) return { ...options, range: "30d" };
 
-  const days = Math.round((end.getTime() - start.getTime()) / 86_400_000);
+  // 接口约定自定义区间必须使用 UTC 自然日边界；日期选择器给出的 Date
+  // 是本地午夜，因此先按年月日重建 UTC 时间戳，避免夏令时或时区偏移造成少一天。
+  const startAt = Date.UTC(start.getFullYear(), start.getMonth(), start.getDate());
+  const endAt = Date.UTC(end.getFullYear(), end.getMonth(), end.getDate(), 23, 59, 59, 999);
+  const days = Math.round((endAt - startAt) / 86_400_000);
   if (days === 7) return { ...options, range: "7d" };
   if (days === 30) return { ...options, range: "30d" };
-
-  const rangeEnd = new Date(end);
-  rangeEnd.setHours(23, 59, 59, 999);
   return {
     ...options,
     range: "custom",
-    start_at: start.getTime(),
-    end_at: Math.min(Date.now(), rangeEnd.getTime()),
+    start_at: startAt,
+    end_at: Math.min(Date.now(), endAt),
   };
-}
-
-function getDepartmentUsageOptions(dateRange: Date[]): Omit<EnterpriseUsageDepartmentsRequest, "page" | "page_size" | "signal"> {
-  const start = dateRange[0];
-  const end = dateRange[1];
-  if (!start || !end) return { range: "30d" };
-  const rangeEnd = new Date(end);
-  rangeEnd.setHours(23, 59, 59, 999);
-  return {
-    range: "custom",
-    start_at: start.getTime(),
-    end_at: Math.min(Date.now(), rangeEnd.getTime()),
-  };
-}
-
-async function loadAllDepartmentUsage(
-  enterpriseID: string,
-  dateRange: Date[],
-  signal: AbortSignal,
-): Promise<EnterpriseUsageDepartment[]> {
-  const items: EnterpriseUsageDepartment[] = [];
-  const period = getDepartmentUsageOptions(dateRange);
-  let page = 1;
-  let total = 0;
-  do {
-    const response = await getEnterpriseUsageDepartments(
-      { enterprise_id: enterpriseID },
-      { ...period, page, page_size: 100, signal },
-    );
-    items.push(...(response.items ?? []));
-    total = response.total ?? items.length;
-    if (response.items.length === 0 || items.length >= total) break;
-    page += 1;
-  } while (page <= Math.ceil(total / 100));
-  return items;
 }
 
 function TraeDateRangePicker({
@@ -579,7 +540,6 @@ export function TraeEnterpriseAnalysis({ context }: AnalysisProps) {
   });
   const [members, setMembers] = useState<EnterpriseMember[]>([]);
   const [data, setData] = useState<EnterpriseAnalyticsResponse | null>(null);
-  const [departmentUsage, setDepartmentUsage] = useState<EnterpriseUsageDepartment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<EnterpriseRequestError | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
@@ -620,16 +580,6 @@ export function TraeEnterpriseAnalysis({ context }: AnalysisProps) {
       controller.abort();
     };
   }, [context.id, dateRange, handleError, reloadToken, scope]);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    loadAllDepartmentUsage(context.id, dateRange, controller.signal)
-      .then(setDepartmentUsage)
-      .catch((reason: unknown) => {
-        if (!controller.signal.aborted) setDepartmentUsage([]);
-      });
-    return () => controller.abort();
-  }, [context.id, dateRange]);
 
   const metrics = data?.metrics;
   const cumulativeTokens = (metrics?.cumulative_input_tokens ?? 0) + (metrics?.cumulative_output_tokens ?? 0);
@@ -728,25 +678,9 @@ export function TraeEnterpriseAnalysis({ context }: AnalysisProps) {
           {data ? <ModelPieChart data={data.models} title={t("traeEnterprise.analysis.models")} /> : <TraeEmpty />}
         </TraeSection>
         <TraeSection title={t("traeEnterprise.analysis.departments")} className="trae-analysis-pie-section">
-          {departmentUsage.length > 0 ? (
-            <ModelPieChart
-              title={t("traeEnterprise.analysis.departments")}
-              data={departmentUsage.map((item) => ({
-                alias: item.department_name,
-                name: item.department_name,
-                code: item.department_id,
-                request_count: 0,
-                input_tokens: 0,
-                output_tokens: 0,
-                total_tokens: item.total_tokens,
-                cost_yuan: item.cost_yuan,
-              }))}
-            />
-          ) : (
-            <div className="trae-analysis-pie-content trae-analysis-pie-empty">
-              <TraeEmpty hint={t("traeEnterprise.analysis.noDepartments")} />
-            </div>
-          )}
+          <div className="trae-analysis-pie-content trae-analysis-pie-empty">
+            <TraeEmpty hint={t("traeEnterprise.analysis.noDepartments")} />
+          </div>
         </TraeSection>
       </div>
     </div>

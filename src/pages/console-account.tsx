@@ -2,6 +2,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -45,8 +46,9 @@ import { modelAlias } from "@/data/models";
 import { NEW_ENTERPRISE_CREATE_PATH } from "@/api/enterprise-certification";
 import {
   getUserApiKeyErrorMessage,
-  getUserApiKeys,
-  getEnterpriseApiKeys,
+  getAllUserApiKeys,
+  getAllEnterpriseApiKeys,
+  getSubscriptionModels,
   createUserApiKey,
   createEnterpriseApiKey,
   batchManageEnterpriseApiKeys,
@@ -61,6 +63,7 @@ import {
   type UserApiKeyContext,
   type UserApiKeyList,
   type UserApiKeyMutation,
+  type ApiKeyModel,
   type EnterpriseApiKeyBatchResponse,
 } from "@/api/user-api-keys";
 import {
@@ -109,6 +112,13 @@ type ApiKeyFormState = {
 type ApiKeyRequiredField = "name" | "memberID";
 type ApiKeyRequiredErrors = Partial<Record<ApiKeyRequiredField, string>>;
 
+type SubscriptionModelsState = {
+  loading: boolean;
+  error: string;
+  hasSubscription: boolean;
+  models: ApiKeyModel[];
+};
+
 type ApiKeyAction = {
   type: "enable" | "disable" | "delete";
   key: UserApiKey;
@@ -125,6 +135,13 @@ const API_KEY_USAGE_PERCENT_MAX = 100;
 const API_KEY_USAGE_WARNING_THRESHOLD = 80;
 const API_KEY_PAGE_SIZE = 10;
 const PERSONAL_USAGE_MANAGEMENT_PATH = "/console/usage?tab=management";
+
+const EMPTY_SUBSCRIPTION_MODELS: SubscriptionModelsState = {
+  loading: false,
+  error: "",
+  hasSubscription: false,
+  models: [],
+};
 function emptyApiKeyForm(): ApiKeyFormState {
   return {
     name: "",
@@ -206,6 +223,13 @@ function apiDateLabel(value: ApiTimeValue | null): string {
   return formatApiTime(value);
 }
 
+function expiryToRFC3339(value: number | null): string | null {
+  if (value === null) return null;
+  const date = new Date(value);
+  // 中文：接口要求 RFC3339 UTC 字符串；无效日期按未设置处理，避免提交数字时间戳触发 400。
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
 function yuanLabel(value: string | null): ReactNode {
   if (!value) return "--";
   return <MoneyText value={value} />;
@@ -268,6 +292,17 @@ export function ApiKeysPage({
   const { t } = useTranslation();
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
+  const authFailureHandled = useRef(false);
+  // 中文：页面会并行读取多个资源；同一轮 401 只清理一次会话并跳转登录页。
+  const handleAuthFailure = useCallback((error: unknown): boolean => {
+    if (!isAuthenticationFailure(error)) return false;
+    if (!authFailureHandled.current) {
+      authFailureHandled.current = true;
+      dispatch(invalidateAuth());
+      navigate("/", { replace: true });
+    }
+    return true;
+  }, [dispatch, navigate]);
   const [searchParams] = useSearchParams();
   const store = useAppStore();
   const currentUserID = useAppSelector((state) => state.auth.user?.id ?? "");
@@ -282,6 +317,9 @@ export function ApiKeysPage({
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(API_KEY_PAGE_SIZE);
   const [result, setResult] = useState<UserApiKeyList | null>(null);
+  const [subscriptionModels, setSubscriptionModels] = useState<SubscriptionModelsState>(
+    EMPTY_SUBSCRIPTION_MODELS,
+  );
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -313,6 +351,16 @@ export function ApiKeysPage({
     [store.activeWorkspace.id, store.activeWorkspace.type],
   );
   const workspaceKey = workspaceContextKey(workspaceContext);
+  // 中文：企业批量更新接口只支持模型、费用来源和限制配置；本人密钥仍可走完整 PUT。
+  const enterpriseOwnKeyEditing = Boolean(
+    mode === "enterprise" &&
+      editingKey &&
+      currentUserID &&
+      editingKey.creator.id === currentUserID,
+  );
+  const enterpriseBatchEditLimited = Boolean(
+    mode === "enterprise" && editingKey && !enterpriseOwnKeyEditing,
+  );
 
   useEffect(() => {
     setResult(null);
@@ -325,6 +373,7 @@ export function ApiKeysPage({
     setBulkAction(null);
     setBulkActionLoading(false);
     setBulkEditing(false);
+    setSubscriptionModels(EMPTY_SUBSCRIPTION_MODELS);
     setDepartmentFilter("all");
     setMemberFilter("all");
     setFilterMemberSearch("");
@@ -367,11 +416,7 @@ export function ApiKeysPage({
       })
       .catch((error: unknown) => {
         if (!active || controller.signal.aborted) return;
-        if (isAuthenticationFailure(error)) {
-          dispatch(invalidateAuth());
-          navigate("/", { replace: true });
-          return;
-        }
+        if (handleAuthFailure(error)) return;
         setFilterCatalogError(getUserApiKeyErrorMessage(error));
       })
       .finally(() => {
@@ -381,7 +426,7 @@ export function ApiKeysPage({
       active = false;
       controller.abort();
     };
-  }, [dispatch, mode, navigate, workspaceContext]);
+  }, [dispatch, handleAuthFailure, mode, navigate, workspaceContext]);
 
   useEffect(() => {
     if (
@@ -397,13 +442,13 @@ export function ApiKeysPage({
     let active = true;
     setMembersLoading(true);
     setMembersError("");
+    // 中文：企业 API Key 可分配给在职或停用成员；省略状态参数以使用接口默认的两类合集。
     getEnterpriseMembers(
       { enterprise_id: workspaceContext.enterprise_id },
       {
         page: 1,
         page_size: 20,
         keyword: memberSearch.trim() || undefined,
-        status: "active",
         signal: controller.signal,
       },
     )
@@ -412,11 +457,7 @@ export function ApiKeysPage({
       })
       .catch((error: unknown) => {
         if (!active || controller.signal.aborted) return;
-        if (isAuthenticationFailure(error)) {
-          dispatch(invalidateAuth());
-          navigate("/", { replace: true });
-          return;
-        }
+        if (handleAuthFailure(error)) return;
         setMembersError(getUserApiKeyErrorMessage(error));
       })
       .finally(() => {
@@ -430,6 +471,7 @@ export function ApiKeysPage({
     bulkEditing,
     dispatch,
     editingKey,
+    handleAuthFailure,
     memberSearch,
     mode,
     modalVisible,
@@ -438,28 +480,79 @@ export function ApiKeysPage({
   ]);
 
   useEffect(() => {
+    if (!modalVisible || form.billingSource !== "subscription") {
+      return undefined;
+    }
+    const controller = new AbortController();
+    let active = true;
+    // 中文：切换订阅计费后必须重新读取当前空间权益，不能复用余额模型目录或旧表单选择。
+    setSubscriptionModels({
+      loading: true,
+      error: "",
+      hasSubscription: false,
+      models: [],
+    });
+    getSubscriptionModels(workspaceContext, { signal: controller.signal })
+      .then((value) => {
+        if (!active) return;
+        const models = value.models;
+        setSubscriptionModels({
+          loading: false,
+          error: "",
+          hasSubscription: value.has_subscription,
+          models,
+        });
+        // 中文：查询成功后自动全选订阅模型；用户随后可以在下拉框中取消部分模型。
+        setForm((previous) =>
+          previous.billingSource === "subscription"
+            ? {
+                ...previous,
+                scope: models.length ? "selected" : "all",
+                modelIds: models.map((model) => model.id),
+              }
+            : previous,
+        );
+      })
+      .catch((error: unknown) => {
+        if (!active || controller.signal.aborted) return;
+        if (handleAuthFailure(error)) return;
+        setSubscriptionModels({
+          loading: false,
+          error: getUserApiKeyErrorMessage(error),
+          hasSubscription: false,
+          models: [],
+        });
+        setForm((previous) =>
+          previous.billingSource === "subscription"
+            ? { ...previous, scope: "all", modelIds: [] }
+            : previous,
+        );
+      });
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, [dispatch, form.billingSource, handleAuthFailure, modalVisible, navigate, workspaceContext]);
+
+  useEffect(() => {
     let active = true;
     const controller = new AbortController();
     setLoading(true);
     setErrorMessage("");
     (mode === "enterprise"
-      ? getEnterpriseApiKeys(
+      ? getAllEnterpriseApiKeys(
           workspaceContext,
           filter,
           memberFilter === "all" ? undefined : memberFilter,
           { signal: controller.signal },
         )
-      : getUserApiKeys(workspaceContext, filter, { signal: controller.signal }))
+      : getAllUserApiKeys(workspaceContext, filter, { signal: controller.signal }))
       .then((value) => {
         if (active) setResult(value);
       })
       .catch((error: unknown) => {
         if (!active || controller.signal.aborted) return;
-        if (isAuthenticationFailure(error)) {
-          dispatch(invalidateAuth());
-          navigate("/", { replace: true });
-          return;
-        }
+        if (handleAuthFailure(error)) return;
         const message = getUserApiKeyErrorMessage(error);
         setErrorMessage(message);
         Toast.error(message);
@@ -474,6 +567,7 @@ export function ApiKeysPage({
   }, [
     dispatch,
     filter,
+    handleAuthFailure,
     memberFilter,
     mode,
     navigate,
@@ -492,9 +586,21 @@ export function ApiKeysPage({
     });
   }
 
+  function changeBillingSource(source: ApiKeyFormState["billingSource"]): void {
+    // 中文：余额与订阅模型目录相互独立，切回余额时清空订阅选择，防止跨来源提交旧模型。
+    if (source === "balance") {
+      setSubscriptionModels(EMPTY_SUBSCRIPTION_MODELS);
+      updateForm({ billingSource: source, scope: "all", modelIds: [] });
+      return;
+    }
+    setSubscriptionModels({ ...EMPTY_SUBSCRIPTION_MODELS });
+    updateForm({ billingSource: source, scope: "all", modelIds: [] });
+  }
+
   function openCreate(): void {
     setEditingKey(null);
     setBulkEditing(false);
+    setSubscriptionModels(EMPTY_SUBSCRIPTION_MODELS);
     setRequiredErrors({});
     const requestedModelKey = searchParams.get("model")?.trim();
     const requestedModel = requestedModelKey
@@ -522,6 +628,7 @@ export function ApiKeysPage({
   function openEdit(key: UserApiKey): void {
     setEditingKey(key);
     setBulkEditing(false);
+    setSubscriptionModels(EMPTY_SUBSCRIPTION_MODELS);
     setRequiredErrors({});
     setForm({
       name: key.name,
@@ -550,6 +657,7 @@ export function ApiKeysPage({
     if (!first) return;
     setEditingKey(null);
     setBulkEditing(true);
+    setSubscriptionModels(EMPTY_SUBSCRIPTION_MODELS);
     setRequiredErrors({});
     setForm({
       name: "",
@@ -578,6 +686,7 @@ export function ApiKeysPage({
     setModalVisible(false);
     setEditingKey(null);
     setBulkEditing(false);
+    setSubscriptionModels(EMPTY_SUBSCRIPTION_MODELS);
     setRequiredErrors({});
   }
 
@@ -646,8 +755,48 @@ export function ApiKeysPage({
       Toast.warning(t("console.account.whitelistInvalid", { value: whitelist.invalid }));
       return null;
     }
-    // 中文：模型范围不选任何模型时按全部模型提交，避免空选择被误判为无权限。
-    const scope: ApiKeyScope = form.modelIds.length > 0 ? "selected" : "all";
+    let selectedModelIds = Array.from(new Set(form.modelIds));
+    if (form.billingSource === "subscription") {
+      if (subscriptionModels.loading) {
+        Toast.warning(t("console.account.subscriptionModelsLoading"));
+        return null;
+      }
+      if (subscriptionModels.error) {
+        Toast.warning(subscriptionModels.error);
+        return null;
+      }
+      if (!subscriptionModels.hasSubscription) {
+        Toast.warning(t("console.account.subscriptionModelsUnavailable"));
+        return null;
+      }
+      if (!subscriptionModels.models.length) {
+        Toast.warning(t("console.account.subscriptionModelsEmpty"));
+        return null;
+      }
+      if (!selectedModelIds.length) {
+        Toast.warning(t("console.account.subscriptionModelRequired"));
+        return null;
+      }
+      if (selectedModelIds.length > 256) {
+        Toast.warning(t("console.account.subscriptionModelLimit"));
+        return null;
+      }
+      const allowedModelIDs = new Set(subscriptionModels.models.map((model) => model.id));
+      if (selectedModelIds.some((modelID) => !allowedModelIDs.has(modelID))) {
+        // 中文：只允许提交本次订阅查询返回的模型，避免旧目录或篡改值绕过服务端校验。
+        selectedModelIds = selectedModelIds.filter((modelID) => allowedModelIDs.has(modelID));
+      }
+      if (!selectedModelIds.length) {
+        Toast.warning(t("console.account.subscriptionModelRequired"));
+        return null;
+      }
+    }
+    // 中文：余额来源不选任何模型时按全部模型提交；订阅来源始终提交非空模型子集。
+    const scope: ApiKeyScope = form.billingSource === "subscription"
+      ? "selected"
+      : selectedModelIds.length > 0
+        ? "selected"
+        : "all";
     const parseLimit = (value: string): number | null => {
       if (!value.trim()) return null;
       const parsed = Number(value);
@@ -674,9 +823,9 @@ export function ApiKeysPage({
       name: bulk ? "" : name,
       tags: bulk ? [] : tags,
       ...(memberID ? { member_id: memberID } : {}),
-      expires_at: form.expiresAt,
+      expires_at: expiryToRFC3339(form.expiresAt),
       scope,
-      model_ids: scope === "all" ? [] : form.modelIds,
+      model_ids: scope === "all" ? [] : selectedModelIds,
       billing_source: form.billingSource,
       limits_enabled: form.limitsEnabled,
       cost_limit_yuan: cost || null,
@@ -693,7 +842,7 @@ export function ApiKeysPage({
     setSaving(true);
     try {
       if (editingKey) {
-        const updated = mode === "enterprise"
+        const updated = mode === "enterprise" && !enterpriseOwnKeyEditing
           ? (await batchManageEnterpriseApiKeys(workspaceContext, {
               action: "update",
               items: [{ key_id: editingKey.id }],
@@ -743,12 +892,7 @@ export function ApiKeysPage({
         }
       }
     } catch (error: unknown) {
-      if (isAuthenticationFailure(error)) {
-        dispatch(invalidateAuth());
-        navigate("/", { replace: true });
-      } else {
-        Toast.error(getUserApiKeyErrorMessage(error));
-      }
+      if (!handleAuthFailure(error)) Toast.error(getUserApiKeyErrorMessage(error));
     } finally {
       setSaving(false);
     }
@@ -780,7 +924,9 @@ export function ApiKeysPage({
           name: key.name,
           tags: key.tags,
           expires_at:
-            expiryPreset === "current" ? key.expires_at : input.expires_at,
+            expiryPreset === "current"
+              ? expiryToRFC3339(key.expires_at)
+              : input.expires_at,
         }),
       ),
       );
@@ -789,11 +935,12 @@ export function ApiKeysPage({
     const updated: UserApiKey[] = mode === "enterprise"
       ? (enterpriseBatchResult?.items ?? [])
       : settledOutcomes.flatMap((outcome) => outcome.status === "fulfilled" && "id" in outcome.value ? [outcome.value] : []);
-    const authenticationFailed = settledOutcomes.some(
+    const authenticationFailure = settledOutcomes.find(
       (outcome) =>
         outcome.status === "rejected" &&
         isAuthenticationFailure(outcome.reason),
     );
+    const authenticationFailed = Boolean(authenticationFailure);
     const failedCount = mode === "enterprise" ? (updated.length ? 0 : selected.length) : outcomes.length - updated.length;
     if (updated.length) {
       setResult((previous) =>
@@ -809,8 +956,7 @@ export function ApiKeysPage({
     }
     setBulkEditSaving(false);
     if (authenticationFailed) {
-      dispatch(invalidateAuth());
-      navigate("/", { replace: true });
+      handleAuthFailure(authenticationFailure?.status === "rejected" ? authenticationFailure.reason : undefined);
       setModalVisible(false);
       setBulkEditing(false);
       return;
@@ -878,12 +1024,7 @@ export function ApiKeysPage({
       }
       setAction(null);
     } catch (error: unknown) {
-      if (isAuthenticationFailure(error)) {
-        dispatch(invalidateAuth());
-        navigate("/", { replace: true });
-      } else {
-        Toast.error(getUserApiKeyErrorMessage(error));
-      }
+      if (!handleAuthFailure(error)) Toast.error(getUserApiKeyErrorMessage(error));
     } finally {
       setActionLoading(false);
     }
@@ -910,11 +1051,12 @@ export function ApiKeysPage({
     const updated: UserApiKey[] = mode === "enterprise"
       ? (enterpriseBatchResult?.items ?? [])
       : settledOutcomes.flatMap((outcome) => outcome.status === "fulfilled" && "id" in outcome.value ? [outcome.value] : []);
-    const authenticationFailed = settledOutcomes.some(
+    const authenticationFailure = settledOutcomes.find(
       (outcome) =>
         outcome.status === "rejected" &&
         isAuthenticationFailure(outcome.reason),
     );
+    const authenticationFailed = Boolean(authenticationFailure);
     const enterpriseSuccessCount = enterpriseBatchResult?.updated ?? 0;
     const failedCount = mode === "enterprise" ? Math.max(0, current.keys.length - enterpriseSuccessCount) : outcomes.length - updated.length;
     const succeededIDs = mode === "enterprise" && current.type === "delete" && enterpriseSuccessCount > 0
@@ -947,8 +1089,7 @@ export function ApiKeysPage({
     setBulkAction(null);
     setSelectedKeyIDs([]);
     if (authenticationFailed) {
-      dispatch(invalidateAuth());
-      navigate("/", { replace: true });
+      handleAuthFailure(authenticationFailure?.status === "rejected" ? authenticationFailure.reason : undefined);
       return;
     }
     if (failedCount) {
@@ -1087,6 +1228,17 @@ export function ApiKeysPage({
   }
 
   const availableModels = result?.available_models ?? [];
+  const formAvailableModels = form.billingSource === "subscription"
+    ? subscriptionModels.models
+    : availableModels;
+  const subscriptionFormBlocked = form.billingSource === "subscription" && (
+    subscriptionModels.loading ||
+    Boolean(subscriptionModels.error) ||
+    !subscriptionModels.hasSubscription ||
+    subscriptionModels.models.length === 0 ||
+    form.modelIds.length === 0 ||
+    form.modelIds.length > 256
+  );
   // 中文：所有限制相关配置统一跟随开关展开，避免默认表单过长。
   const advancedVisible = form.limitsEnabled;
   const availableModelsLoading = loading && result === null;
@@ -1604,10 +1756,15 @@ export function ApiKeysPage({
         cancelText={t("console.common.cancel")}
         okButtonProps={{
           loading: saving || bulkEditSaving,
-          disabled: saving || bulkEditSaving,
+          disabled: saving || bulkEditSaving || subscriptionFormBlocked,
         }}
       >
         <div className="modal-form api-key-modal-form">
+          {enterpriseBatchEditLimited ? (
+            <BannerNotice tone="info">
+              {t("console.account.enterpriseEditLimitedHint")}
+            </BannerNotice>
+          ) : null}
           {availableModelsLoading ? (
             <BannerNotice tone="info">
               {t("console.account.visibleModelsLoading")}
@@ -1623,6 +1780,7 @@ export function ApiKeysPage({
                   id="key-tags"
                   value={form.tagsText}
                   onChange={(value) => updateForm({ tagsText: value })}
+                  disabled={enterpriseBatchEditLimited}
                   placeholder={t("console.account.tagsPlaceholder")}
                   maxLength={120}
                 />
@@ -1640,6 +1798,7 @@ export function ApiKeysPage({
                   aria-required="true"
                   value={form.name}
                   onChange={(value) => updateForm({ name: value })}
+                  disabled={enterpriseBatchEditLimited}
                   validateStatus={requiredErrors.name ? "error" : "default"}
                   placeholder={t("console.account.keyNamePlaceholder")}
                   maxLength={32}
@@ -1663,6 +1822,7 @@ export function ApiKeysPage({
                   id="key-expiry"
                   value={expiryPreset}
                   onChange={(value) => selectExpiry(String(value))}
+                  disabled={enterpriseBatchEditLimited}
                   block
                 >
                   {editingKey || bulkEditing ? (
@@ -1698,7 +1858,7 @@ export function ApiKeysPage({
                   name="api-key-billing-source"
                   value="balance"
                   checked={form.billingSource === "balance"}
-                  onChange={() => updateForm({ billingSource: "balance" })}
+                  onChange={() => changeBillingSource("balance")}
                 />
                 <span>{t("console.account.balanceExpense")}</span>
               </label>
@@ -1708,13 +1868,13 @@ export function ApiKeysPage({
                   name="api-key-billing-source"
                   value="subscription"
                   checked={form.billingSource === "subscription"}
-                  onChange={() => updateForm({ billingSource: "subscription" })}
+                  onChange={() => changeBillingSource("subscription")}
                 />
                 <span>{t("console.account.subscriptionExpense")}</span>
               </label>
             </div>
               </fieldset>
-              <div className="api-key-form-field api-key-model-field api-key-advanced-inline-field">
+            <div className="api-key-form-field api-key-model-field api-key-advanced-inline-field">
                 <label className="field-label" htmlFor="key-models">
                   {t("console.account.availableModels")}
                 </label>
@@ -1741,13 +1901,31 @@ export function ApiKeysPage({
                     <span>{t("console.account.selectedModel")}</span>
                   </label>
                 </div>
+                {form.billingSource === "subscription" ? (
+                  <BannerNotice tone={subscriptionModels.error ? "warning" : "info"}>
+                    {subscriptionModels.loading
+                      ? t("console.account.subscriptionModelsLoading")
+                      : subscriptionModels.error
+                        ? t("console.account.subscriptionModelsLoadFailed")
+                        : !subscriptionModels.hasSubscription
+                          ? t("console.account.subscriptionModelsUnavailable")
+                          : !subscriptionModels.models.length
+                            ? t("console.account.subscriptionModelsEmpty")
+                            : form.modelIds.length > 256
+                              ? t("console.account.subscriptionModelLimit")
+                              : t("console.account.selectedCount", { count: subscriptionModels.models.length })}
+                  </BannerNotice>
+                ) : null}
                 <div className="api-key-model-picker">
                   <Select
                     id="key-models"
                     multiple
                     value={form.modelIds}
                     onChange={(value) => {
-                      const modelIds = Array.isArray(value) ? value.map(String) : [];
+                      const pickedModelIds = Array.isArray(value) ? value.map(String) : [];
+                      const modelIds = form.billingSource === "subscription"
+                        ? pickedModelIds.filter((modelID) => subscriptionModels.models.some((model) => model.id === modelID))
+                        : pickedModelIds;
                       updateForm({ modelIds, scope: modelIds.length ? "selected" : "all" });
                     }}
                     filter
@@ -1757,10 +1935,11 @@ export function ApiKeysPage({
                     placeholder={t("console.account.allModelsPlaceholder")}
                     emptyContent={t("console.account.noMatchingModels")}
                     block
+                    disabled={form.billingSource === "subscription" && (subscriptionModels.loading || Boolean(subscriptionModels.error) || !subscriptionModels.models.length)}
                     dropdownClassName="trae-select-dropdown api-key-model-dropdown"
                     aria-label={t("console.account.availableModels")}
                   >
-                    {availableModels.map((model) => (
+                    {formAvailableModels.map((model) => (
                       <Select.Option key={model.id} value={model.id}>
                         {apiKeyModelLabel(model, t)}
                       </Select.Option>
@@ -2275,6 +2454,17 @@ export function InvitationsPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
+  const authFailureHandled = useRef(false);
+  // 中文：邀请概览失败时也只触发一次会话失效跳转。
+  const handleAuthFailure = useCallback((error: unknown): boolean => {
+    if (!isAuthenticationFailure(error)) return false;
+    if (!authFailureHandled.current) {
+      authFailureHandled.current = true;
+      dispatch(invalidateAuth());
+      navigate("/", { replace: true });
+    }
+    return true;
+  }, [dispatch, navigate]);
   const [copied, setCopied] = useState(false);
   const [overview, setOverview] = useState<InvitationOverview | null>(null);
   const [loading, setLoading] = useState(true);
@@ -2290,11 +2480,7 @@ export function InvitationsPage() {
       .then(setOverview)
       .catch((reason: unknown) => {
         if (controller.signal.aborted) return;
-        if (isAuthenticationFailure(reason)) {
-          dispatch(invalidateAuth());
-          navigate("/", { replace: true });
-          return;
-        }
+        if (handleAuthFailure(reason)) return;
         setError(
           reason instanceof Error
             ? reason.message
@@ -2305,7 +2491,7 @@ export function InvitationsPage() {
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [dispatch, navigate, t]);
+  }, [handleAuthFailure, navigate, t]);
 
   function copyLink(): void {
     navigator.clipboard

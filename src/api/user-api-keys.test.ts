@@ -12,6 +12,9 @@ import {
   getUserApiKeyActivity,
   getUserApiKeyErrorMessage,
   getUserApiKeys,
+  getAllUserApiKeys,
+  getAllEnterpriseApiKeys,
+  getSubscriptionModels,
   revokeUserApiKey,
   updateUserApiKey,
   type UserApiKeyContext,
@@ -34,7 +37,7 @@ function lastRequest(fetchMock: FetchSpy): { url: string; options: RequestInit |
 const mutation = {
   name: '生产环境密钥',
   tags: ['生产', '前端'],
-  expires_at: null,
+  expires_at: '2027-01-01T00:00:00.000Z',
   scope: 'all' as const,
   model_ids: [] as string[],
   billing_source: 'balance' as const,
@@ -103,12 +106,16 @@ describe('用户 API 密钥接口封装', () => {
 
     await getUserApiKeyActivity(enterpriseContext, 'key-1', 10)
     expect(lastRequest(fetchMock).url).toBe('/api/user/api-keys/key-1/activity?account_type=enterprise&enterprise_id=enterprise-1&limit=10')
+    await getUserApiKeyActivity(personalContext, 'key-1', 1000)
+    expect(lastRequest(fetchMock).url).toBe('/api/user/api-keys/key-1/activity?account_type=personal&limit=100')
+    await getUserApiKeyActivity(personalContext, 'key-1', 0)
+    expect(lastRequest(fetchMock).url).toBe('/api/user/api-keys/key-1/activity?account_type=personal&limit=1')
 
     expect(() => getUserApiKeys({ account_type: 'enterprise', enterprise_id: ' ' })).toThrowError('企业 API Key 上下文缺少企业 ID')
   })
 
   it('映射固定业务错误码并保留未知错误原文', () => {
-    expect(getUserApiKeyErrorMessage(new ApiError('服务错误', 401, 110001, 'req-1'))).toBe('登录状态已失效，请重新登录')
+    expect(getUserApiKeyErrorMessage(new ApiError('服务错误', 401, 160001, 'req-1'))).toBe('登录状态已失效，请重新登录')
     expect(getUserApiKeyErrorMessage(new ApiError('服务错误', 409, 100006, 'req-2'))).toBe('API 密钥状态已变化，请刷新后重试')
     expect(getUserApiKeyErrorMessage(new ApiError('服务错误', 409, 100009, 'req-3'))).toBe('API 密钥已过期，无法重新启用')
     expect(getUserApiKeyErrorMessage(new Error('offline'))).toBe('API 密钥请求失败，请稍后重试')
@@ -126,6 +133,57 @@ describe('用户 API 密钥接口封装', () => {
     await batchManageEnterpriseApiKeys({ account_type: 'enterprise', enterprise_id: 'ent/01' }, { action: 'disable', items: [{ key_id: 'key-1' }] })
     expect(lastRequest(fetchMock).url).toBe('/api/user/enterprise/ent%2F01/api-keys/batch')
     expect(lastRequest(fetchMock).options?.method).toBe('POST')
+  })
+
+  it('透传分页参数并将灰度旧响应规范化为非空 model_ids 和分页字段', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => response({
+      items: [{ model_ids: null, models: null, tags: null }],
+      available_models: [],
+    }))
+
+    const result = await getUserApiKeys(personalContext, 'all', { page: 2, page_size: 50 })
+    expect(lastRequest(fetchMock).url).toBe('/api/user/api-keys?account_type=personal&status=all&page=2&page_size=50')
+    expect(result.page).toBe(2)
+    expect(result.page_size).toBe(50)
+    expect(result.total).toBe(1)
+    expect(result.items[0]?.model_ids).toEqual([])
+    expect(result.items[0]?.tags).toEqual([])
+    expect(result.items[0]?.models).toEqual([])
+  })
+
+  it('查询订阅模型使用当前账户上下文并规范化无订阅响应', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => response({
+      has_subscription: false,
+      models: null,
+    }))
+
+    await expect(getSubscriptionModels(enterpriseContext)).resolves.toEqual({
+      has_subscription: false,
+      models: [],
+    })
+    expect(lastRequest(fetchMock).url).toBe('/api/user/api-keys/subscription-models?account_type=enterprise&enterprise_id=enterprise-1')
+  })
+
+  it('聚合新分页并在重复旧页时安全停止', async () => {
+    let calls = 0
+    const firstItem = { id: 'key-1', model_ids: [], models: [], tags: [] }
+    const secondItem = { id: 'key-2', model_ids: [], models: [], tags: [] }
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      calls += 1
+      const url = new URL(String(input), 'https://saas.example.com')
+      const page = Number(url.searchParams.get('page'))
+      if (page === 1) return response({ items: [firstItem], available_models: [], page: 1, page_size: 1, total: 2 })
+      if (page === 2) return response({ items: [secondItem], available_models: [], page: 2, page_size: 1, total: 2 })
+      return response({ items: [secondItem], available_models: [], page: 3, page_size: 1, total: 2 })
+    })
+    const result = await getAllUserApiKeys(personalContext)
+    expect(calls).toBe(2)
+    expect(result.items.map((item) => item.id)).toEqual(['key-1', 'key-2'])
+    expect(result.total).toBe(2)
+    expect(fetchMock.mock.calls.map(([input]) => new URL(String(input), 'https://saas.example.com').searchParams.get('page'))).toEqual(['1', '2'])
+
+    const enterpriseResult = await getAllEnterpriseApiKeys(enterpriseContext, 'all', 'member-1')
+    expect(enterpriseResult.items).toHaveLength(2)
   })
 
   it('列表请求透传取消信号', async () => {

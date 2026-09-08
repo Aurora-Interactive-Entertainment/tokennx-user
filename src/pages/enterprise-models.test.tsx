@@ -8,10 +8,13 @@ import type { AuthResult } from '@/api/auth'
 import { clearAuthTokens, saveAuthTokens } from '@/auth/token-storage'
 import { ApiError } from '@/api/http'
 import {
+  getAllEnterpriseMembers,
   getEnterpriseContext,
+  getEnterpriseDepartments,
   getEnterpriseModels,
   updateEnterpriseModel,
   type EnterpriseContext,
+  type EnterpriseDepartment,
   type EnterpriseModel,
   type EnterpriseModelPage,
 } from '@/api/enterprise-console'
@@ -23,13 +26,17 @@ vi.mock('@/api/enterprise-console', async () => {
   const actual = await vi.importActual<typeof import('@/api/enterprise-console')>('@/api/enterprise-console')
   return {
     ...actual,
+    getAllEnterpriseMembers: vi.fn(),
     getEnterpriseContext: vi.fn(),
+    getEnterpriseDepartments: vi.fn(),
     getEnterpriseModels: vi.fn(),
     updateEnterpriseModel: vi.fn(),
   }
 })
 
 const getEnterpriseContextMock = vi.mocked(getEnterpriseContext)
+const getEnterpriseDepartmentsMock = vi.mocked(getEnterpriseDepartments)
+const getAllEnterpriseMembersMock = vi.mocked(getAllEnterpriseMembers)
 const getEnterpriseModelsMock = vi.mocked(getEnterpriseModels)
 const updateEnterpriseModelMock = vi.mocked(updateEnterpriseModel)
 
@@ -125,6 +132,8 @@ beforeEach(() => {
   window.localStorage.clear()
   saveAuthTokens(AUTH_RESULT)
   getEnterpriseContextMock.mockResolvedValue(CONTEXT)
+  getEnterpriseDepartmentsMock.mockResolvedValue({ context: CONTEXT, items: [], total: 0, page: 1, page_size: 100 })
+  getAllEnterpriseMembersMock.mockResolvedValue([])
   getEnterpriseModelsMock.mockResolvedValue(modelPage())
   updateEnterpriseModelMock.mockResolvedValue({ ...GPT_MODEL, enabled: false, setting_version: 2 })
 })
@@ -171,13 +180,13 @@ describe('企业模型管理页面', () => {
     expect(updateEnterpriseModelMock).not.toHaveBeenCalled()
   })
 
-  it('接口返回空目录时展示系统模型兜底', async () => {
+  it('接口返回空目录时如实展示空状态，不注入本地模型', async () => {
     getEnterpriseModelsMock.mockResolvedValue(modelPage([]))
     renderPage()
 
-    expect(await screen.findByText('Doubao-Seed-Evolving')).toBeInTheDocument()
-    expect(screen.getByText('DeepSeek-V4-Pro')).toBeInTheDocument()
-    expect(screen.queryByText('GPT-4o')).toBeNull()
+    expect(await screen.findByText('当前空间暂无可用模型')).toBeInTheDocument()
+    expect(screen.queryByText('Doubao-Seed-Evolving')).toBeNull()
+    expect(screen.queryByRole('switch')).toBeNull()
   })
 
   it('按当前版本提交模型启用状态并更新页面状态', async () => {
@@ -193,6 +202,73 @@ describe('企业模型管理页面', () => {
       { enabled: false, expected_version: GPT_MODEL.setting_version },
     ))
     expect(await screen.findByRole('switch', { name: '启用 GPT-4o' })).toHaveAttribute('aria-checked', 'false')
+  })
+
+  it('保存可见范围时调用模型 PATCH 并提交范围和当前版本', async () => {
+    const user = userEvent.setup()
+    getEnterpriseDepartmentsMock.mockResolvedValue({
+      context: CONTEXT,
+      items: [{
+        id: 'operations',
+        name: '运营',
+        depth: 1,
+        child_count: 0,
+        member_count: 0,
+        version: '1',
+        created_at: 0,
+        updated_at: 0,
+      } as EnterpriseDepartment],
+      total: 1,
+      page: 1,
+      page_size: 100,
+    })
+    const modelWithVisibility: EnterpriseModel = {
+      ...GPT_MODEL,
+      visibility: {
+        scope: 'all',
+        departments: [],
+        members: [],
+      },
+    }
+    getEnterpriseModelsMock.mockResolvedValue(modelPage([modelWithVisibility, CLAUDE_MODEL]))
+    updateEnterpriseModelMock.mockResolvedValue({
+      ...modelWithVisibility,
+      visibility: {
+        scope: 'partial',
+        departments: [{ id: 'operations', name: '运营' }],
+        members: [],
+      },
+      setting_version: '2',
+    })
+    renderPage()
+
+    const moreActions = await screen.findAllByRole('button', { name: '更多操作' })
+    await user.click(moreActions[0])
+    await user.click(await screen.findByRole('menuitem', { name: '可见范围' }))
+    await waitFor(() => expect(getEnterpriseDepartmentsMock).toHaveBeenCalledWith(
+      { enterprise_id: ENTERPRISE_ID },
+      expect.objectContaining({ page: 1, page_size: 100 }),
+    ))
+    expect(getAllEnterpriseMembersMock).toHaveBeenCalledWith(
+      { enterprise_id: ENTERPRISE_ID },
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    )
+    await user.click(screen.getByRole('radio', { name: '部分人员可见' }))
+    await user.click(screen.getByRole('button', { name: /部门/ }))
+    await user.click(screen.getByRole('checkbox', { name: '运营' }))
+    await user.click(screen.getByRole('button', { name: '确定' }))
+
+    await waitFor(() => expect(updateEnterpriseModelMock).toHaveBeenCalledWith(
+      { enterprise_id: ENTERPRISE_ID },
+      GPT_MODEL.id,
+      {
+        enabled: true,
+        visibility_scope: 'partial',
+        department_ids: ['operations'],
+        member_ids: [],
+        expected_version: GPT_MODEL.setting_version,
+      },
+    ))
   })
 
   it('版本冲突时展示错误并自动刷新模型目录', async () => {

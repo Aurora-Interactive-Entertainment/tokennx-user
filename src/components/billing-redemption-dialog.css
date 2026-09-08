@@ -1,0 +1,83 @@
+.billing-redemption-modal .semi-modal {
+  width: min(440px, calc(100vw - 32px));
+}
+
+.billing-reward-card-footer {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: auto;
+}
+
+.billing-reward-card-footer > strong {
+  color: var(--color-text-default);
+  font-size: 24px;
+  font-weight: 650;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.billing-redeem-button.semi-button {
+  flex: 0 0 auto;
+  padding-inline: 0;
+  color: var(--color-action-primary);
+  font-size: 12px;
+}
+
+.billing-redemption-form {
+  display: grid;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+.billing-redemption-label {
+  color: var(--color-text-default-hover);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.billing-redemption-input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 1px solid var(--color-border-neutral-l2);
+  border-radius: var(--radius-6, 6px);
+  color: var(--color-text-default);
+  background: var(--color-bg-base-tertiary);
+  font: inherit;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.billing-redemption-input:focus {
+  border-color: var(--color-action-primary);
+  outline: 2px solid color-mix(in srgb, var(--color-action-primary) 20%, transparent);
+  outline-offset: 1px;
+}
+
+.billing-redemption-input.is-invalid {
+  border-color: var(--color-danger, #df4545);
+}
+
+.billing-redemption-hint,
+.billing-redemption-error {
+  margin: 0;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.billing-redemption-hint {
+  color: var(--color-text-secondary);
+}
+
+.billing-redemption-error {
+  color: var(--color-danger, #df4545);
+}
+
+@media (max-width: 560px) {
+  .billing-redemption-modal .semi-modal {
+    width: calc(100vw - 24px);
+  }
+}

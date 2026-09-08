@@ -64,19 +64,19 @@ const INVITATION: EnterpriseInvitation = {
 beforeEach(() => {
   vi.clearAllMocks();
   getInvitationsMock.mockResolvedValue({ context: CONTEXT, items: [INVITATION], total: 1, page: 1, page_size: 10 });
-  getUsagesMock.mockResolvedValue([]);
+  getUsagesMock.mockResolvedValue({ items: [] });
   createInvitationMock.mockResolvedValue(INVITATION);
   clipboardWriteTextMock.mockReset();
   clipboardWriteTextMock.mockResolvedValue(undefined);
   Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText: clipboardWriteTextMock } });
 });
 
-function renderInvitations(createOpen = false) {
+function renderInvitations(createOpen = false, context: EnterpriseContext = CONTEXT) {
   return render(
     <MemoryRouter>
       <Provider store={createAppStore()}>
         <TraeEnterpriseInvitations
-          context={CONTEXT}
+          context={context}
           departments={[{ id: "dept_sales", name: "销售部" }]}
           createOpen={createOpen}
           onCreateOpenChange={vi.fn()}
@@ -112,9 +112,19 @@ describe("Trae 企业邀请链接", () => {
     expect(screen.getAllByText("请选择所属部门").length).toBeGreaterThan(0);
   });
 
+  it("角色目录为空时不猜测 member，也不允许提交邀请", async () => {
+    const contextWithoutRoles: EnterpriseContext = { ...CONTEXT, role_options: [] };
+    renderInvitations(true, contextWithoutRoles);
+
+    const dialog = screen.getByRole("dialog", { name: "邀请成员" });
+    expect(within(dialog).getByText("当前企业暂无可分配角色，请刷新企业权限后再创建邀请。")).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: "生成邀请链接" })).toBeDisabled();
+    expect(createInvitationMock).not.toHaveBeenCalled();
+  });
+
   it("点击使用情况后查询对应邀请链接的使用记录", async () => {
     const user = userEvent.setup();
-    getUsagesMock.mockResolvedValue([{ user_id: "user_1", member_id: "member_1", user_name: "张三", joined_at: "2026-08-26T09:00:00Z" }]);
+    getUsagesMock.mockResolvedValue({ items: [{ user_id: "user_1", member_id: "member_1", user_name: "张三", joined_at: "2026-08-26T09:00:00Z" }] });
     renderInvitations();
     await user.click(await screen.findByRole("button", { name: "使用情况" }));
     expect(await screen.findByRole("dialog", { name: "邀请链接使用情况" })).toHaveTextContent("张三");

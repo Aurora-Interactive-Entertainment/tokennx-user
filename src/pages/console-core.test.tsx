@@ -39,7 +39,7 @@ function activeApiKey(): UserApiKey {
     secret: 'nx_live_test_secret',
     status: 'active',
     scope: 'all',
-    model_ids: null,
+    model_ids: [],
     models: [],
     tags: [],
     billing_source: 'balance',
@@ -186,6 +186,9 @@ describe('控制台模型接入页面', () => {
     expect(screen.getByText('第一步')).toBeInTheDocument()
     expect(screen.getByText('第二步')).toBeInTheDocument()
     expect(screen.getByText('第三步')).toBeInTheDocument()
+    // 快速接入文档规定页面只读取模型目录，密钥创建通过链接交给密钥管理页。
+    expect(vi.mocked(globalThis.fetch).mock.calls.every(([input]) => !String(input).includes('/api/user/api-keys'))).toBe(true)
+    expect(screen.getByRole('link', { name: '立即创建' })).toHaveAttribute('href', expect.stringContaining('/console/api-keys?return='))
 
     const integrationToggle = screen.getByRole('button', { name: 'API 接入' })
     await user.click(integrationToggle)

@@ -37,6 +37,7 @@ describe('认证 HTTP 客户端', () => {
     expect(new Headers(options?.headers).get('Authorization')).toBe('Bearer access-token')
     expect(new Headers(options?.headers).get('X-Request-ID')).toBeTruthy()
     expect(new Headers(options?.headers).get('X-App-Lang')).toBe('zh-CN')
+    expect(new Headers(options?.headers).get('Accept-Language')).toBe('zh-CN')
   })
 
 	it('将后端业务错误转换为 ApiError', async () => {
@@ -80,6 +81,7 @@ describe('认证 HTTP 客户端', () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(response({ ok: true }))
     await fetchJson('/api/test')
     expect(new Headers(fetchMock.mock.calls[0]?.[1]?.headers).get('X-App-Lang')).toBe('en-US')
+    expect(new Headers(fetchMock.mock.calls[0]?.[1]?.headers).get('Accept-Language')).toBe('en-US')
   })
   it('external AbortSignal cancels the wrapped request without a network error', async () => {
     const external = new AbortController()

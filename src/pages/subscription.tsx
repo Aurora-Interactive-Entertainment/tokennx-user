@@ -104,6 +104,17 @@ function formatPlanValidity(seconds: number | undefined, language: string): stri
   return `${days} days validity`;
 }
 
+function formatPlanPrice(priceCent: string | number | undefined): { free: boolean; label: string } {
+  // 中文：price_cent 是服务端精确金额字符串，展示时按字符串拆分，避免大整数转 number 丢精度。
+  const raw = String(priceCent ?? '').trim()
+  if (!/^\d+$/.test(raw)) return { free: false, label: '¥0.00' }
+  const normalized = raw.replace(/^0+(?=\d)/, '')
+  const whole = normalized.length > 2 ? normalized.slice(0, -2) : '0'
+  const fraction = normalized.slice(-2).padStart(2, '0')
+  const free = normalized === '0'
+  return { free, label: `¥${whole}.${fraction}` }
+}
+
 function planTone(plan: ProductPlanSummary, index: number): SubscriptionPlan["tone"] {
   const identity = `${plan.code} ${plan.name} ${plan.display_name}`.toLowerCase();
   if (identity.includes("ultra") || identity.includes("旗舰")) return "ultra";
@@ -113,9 +124,7 @@ function planTone(plan: ProductPlanSummary, index: number): SubscriptionPlan["to
 }
 
 function mapProductPlan(plan: ProductPlanSummary, index: number, language: string): SubscriptionPlan {
-  const priceCent = Number(plan.price?.price_cent);
-  const isFree = Number.isFinite(priceCent) && priceCent === 0;
-  const priceYuan = Number.isFinite(priceCent) ? priceCent / 100 : 0;
+  const planPrice = formatPlanPrice(plan.price?.price_cent)
   const validity = formatPlanValidity(plan.price?.validity_seconds, language);
   const parsedModelCount = Number(plan.model_count);
   const modelCount = Number.isFinite(parsedModelCount) ? parsedModelCount : 0;
@@ -128,14 +137,14 @@ function mapProductPlan(plan: ProductPlanSummary, index: number, language: strin
     code: plan.code,
     name: plan.display_name?.trim() || plan.name?.trim() || plan.code,
     quota: modelCount > 0 ? `${featurePrefix}: ${modelCount}` : typeFeature,
-    price: isFree ? "$0" : `¥${priceYuan.toFixed(2)}`,
+    price: planPrice.free ? "$0" : planPrice.label,
     description: plan.description?.trim() || typeFeature,
     features: [
       modelCount > 0 ? `${featurePrefix}: ${modelCount}` : typeFeature,
       ...(validity ? [validity] : []),
     ],
-    tone: isFree ? "free" : planTone(plan, index),
-    current: isFree,
+    tone: planPrice.free ? "free" : planTone(plan, index),
+    current: planPrice.free,
   };
 }
 

@@ -77,7 +77,8 @@ export interface BillingRewardIssuance {
   rule_code: string
   trigger_type: string
   event_id: string
-  dedupe_key: string
+  // 中文：去重键属于服务端内部字段，新接口不会返回；保留可选字段兼容旧响应。
+  dedupe_key?: string
   recipient_role: string
   recipient_type: string
   recipient_id: string
@@ -92,9 +93,12 @@ export interface BillingRewardIssuance {
   grant_id: string | null
   grant_expires_at: ApiTimestamp | null
   status: BillingRewardStatus
+  skip_reason?: string
   skip_reason_code: string | null
   failure_reason_code: string | null
-  version: string
+  journal_id?: string | null
+  reversal_journal_id?: string | null
+  version: string | number
   created_at: ApiTimestamp
   updated_at: ApiTimestamp
 }
@@ -122,11 +126,13 @@ export interface BillingPageResult<T> {
 }
 
 export interface BillingSummaryResponse {
-  account: BillingAccount
-  wallet: BillingWallet
+  // 中文：新接口将 account/wallet/bonus_grants 收敛在 wallet 对象内；account 保留为旧版本兼容字段。
+  account?: BillingAccount
+  wallet: BillingWalletResponse
   recent_rewards: BillingRewardIssuance[]
   recent_statements: BillingStatementLine[]
-  unread_reward_count: number | string
+  unread_rewards: string
+  unread_reward_count?: number | string
 }
 
 export interface BillingAnalysisOption {
@@ -152,6 +158,12 @@ export interface BillingAnalysisFilters {
   periods: BillingAnalysisOption[]
   api_keys: BillingAnalysisApiKey[]
   models: BillingAnalysisModel[]
+}
+
+export interface BillingRedemptionResult {
+  amount_yuan: string
+  expires_at: ApiTimestamp | null
+  bonus_balance_yuan: string
 }
 
 export interface BillingDailyModelCost {
@@ -184,14 +196,17 @@ export interface BillingCostChartSeries {
 }
 
 export interface BillingCostChart {
-  xAxis: {
+  x_axis?: {
     type: 'category' | string
-    boundaryGap: boolean
+    boundary_gap: boolean
     data: number[]
   }
-  yAxis: {
+  y_axis?: {
     type: 'value' | string
   }
+  // 中文：以下驼峰字段只用于兼容灰度期间的旧账务服务响应。
+  xAxis?: { type: 'category' | string; boundaryGap: boolean; data: number[] }
+  yAxis?: { type: 'value' | string }
   series: BillingCostChartSeries[]
 }
 
@@ -302,14 +317,14 @@ export interface BillingInvoiceResponse {
 export interface BillingInvoiceInput {
   amount_yuan: string
   title: string
-  tax_identifier: string
-  taxpayer_type: 'enterprise' | 'personal'
+  tax_identifier?: string
+  taxpayer_type?: 'enterprise' | 'personal'
   email?: string
-  project_name: string
-  invoice_type: BillingInvoiceType
+  project_name?: string
+  invoice_type?: BillingInvoiceType
 }
 
-export type BillingPaymentScene = 'pc'
+export type BillingPaymentScene = 'pc' | 'h5'
 export type BillingPaymentOrderStatus = 'pending' | 'paying' | 'paid' | 'closed' | 'expired' | 'exception' | string
 
 export interface BillingPaymentTransaction {
@@ -317,7 +332,7 @@ export interface BillingPaymentTransaction {
   payment_no: string
   attempt_no: number
   payment_product: 'alipay_page' | 'alipay_wap' | string
-  amount_cent: number
+  amount_cent: string | number
   amount_yuan: string
   status: 'created' | 'pending' | 'succeeded' | 'failed' | 'closed' | 'expired' | 'exception' | string
   provider_transaction_no?: string
@@ -337,9 +352,12 @@ export interface BillingPaymentOrder {
   order_type: string
   status: BillingPaymentOrderStatus
   currency: string
-  amount_cent: number
+  amount_cent: string | number
   amount_yuan: string
-  paid_amount_cent: number
+  paid_amount_cent: string | number
+  account_type?: BillingAccountType
+  enterprise_id?: string
+  enterprise_name?: string
   paid_amount_yuan: string
   billing_account_id: string
   user_id?: string
@@ -369,6 +387,12 @@ export interface BillingPaymentStartResult {
   qr_url?: string
 }
 
+export interface BillingPaymentRequestOptions extends Pick<BillingRequestOptions, 'accessToken' | 'signal'> {
+  /** 支付场景，默认电脑网站；移动端可传 h5。 */
+  scene?: BillingPaymentScene
+  channel?: 'alipay' | string
+}
+
 export const BILLING_PAYMENT_SCENE_PC: BillingPaymentScene = 'pc'
 
 export type BillingStatementDirectionFilter = 'all' | BillingStatementDirection
@@ -382,15 +406,22 @@ export interface BillingStatementRequestOptions extends BillingRequestOptions {
 }
 
 export interface BillingAnalysisRequestOptions extends BillingRequestOptions {
+  /** 旧页面月份输入，仅在客户端转换为 start_at/end_at，不发送给新接口。 */
   period?: string
   start_at?: string | number
   end_at?: string | number
   api_key_id?: string
   model?: string
+  /** 旧接口筛选项；新费用分析接口不再接收。 */
   source?: string
   billing_type?: 'subscription' | 'balance' | string
   member_id?: string
   department_id?: string
+}
+
+export interface BillingBonusGrantRequestOptions extends BillingRequestOptions {
+  source_type?: string
+  status?: string
 }
 
 export function createBillingQuery(context: BillingContext, extra: Record<string, string | number | undefined> = {}): string {
@@ -429,7 +460,26 @@ export function getAccountOverview(context: BillingContext, options: Pick<Billin
 
 export function getBillingSummary(context: BillingContext, options: Pick<BillingRequestOptions, 'accessToken' | 'signal'> = {}): Promise<BillingSummaryResponse> {
   const query = createBillingQuery(context)
-  return fetchAuthenticatedJson<BillingSummaryResponse>(`${BILLING_PATH}/summary?${query}`, options)
+  type SummaryWire = Omit<BillingSummaryResponse, 'wallet' | 'unread_rewards'> & {
+    wallet: BillingWalletResponse | BillingWallet
+    unread_rewards?: string
+    unread_reward_count?: number | string
+  }
+  return fetchAuthenticatedJson<SummaryWire>(`${BILLING_PATH}/summary?${query}`, options).then((value) => {
+    // 中文：灰度期间旧服务返回扁平 wallet/unread_reward_count，统一在边界转换成新契约。
+    const rawWallet = value.wallet as BillingWalletResponse | BillingWallet | undefined
+    const wallet = rawWallet && typeof rawWallet === 'object' && 'wallet' in rawWallet
+      ? rawWallet
+      : { account: value.account ?? { id: '', type: context.account_type, name: '' }, wallet: rawWallet ?? ({} as BillingWallet), bonus_grants: [] }
+    return {
+      ...value,
+      account: value.account ?? wallet.account,
+      wallet,
+      unread_rewards: typeof value.unread_rewards === 'string'
+        ? value.unread_rewards
+        : String(value.unread_reward_count ?? '0'),
+    }
+  })
 }
 
 export function getBillingRewards(context: BillingContext, options: BillingRequestOptions = {}): Promise<BillingPageResult<BillingRewardIssuance>> {
@@ -438,9 +488,9 @@ export function getBillingRewards(context: BillingContext, options: BillingReque
   return fetchAuthenticatedJson<BillingPageResult<BillingRewardIssuance>>(`${BILLING_PATH}/rewards?${query}`, requestOptions(options))
 }
 
-export function getBillingBonusGrants(context: BillingContext, options: BillingRequestOptions = {}): Promise<BillingPageResult<BillingBonusGrant>> {
+export function getBillingBonusGrants(context: BillingContext, options: BillingBonusGrantRequestOptions = {}): Promise<BillingPageResult<BillingBonusGrant>> {
   const page = listOptions(options)
-  const query = createBillingQuery(context, page)
+  const query = createBillingQuery(context, { ...page, source_type: options.source_type, status: options.status })
   return fetchAuthenticatedJson<BillingPageResult<BillingBonusGrant>>(`${BILLING_PATH}/bonus-grants?${query}`, requestOptions(options))
 }
 
@@ -455,6 +505,31 @@ export function getBillingStatements(context: BillingContext, options: BillingSt
     ended_at: options.ended_at,
   })
   return fetchAuthenticatedJson<BillingPageResult<BillingStatementLine>>(`${BILLING_PATH}/statements?${query}`, requestOptions(options))
+}
+
+/** 中文：兑换码核销使用请求编号保证超时重试不会重复入账。 */
+export function redeemBillingCode(
+  code: string,
+  options: Pick<BillingRequestOptions, 'accessToken' | 'signal'> & { requestId?: string } = {},
+): Promise<BillingRedemptionResult> {
+  const requestCode = code.trim()
+  // 中文：兑换码格式在客户端先校验，避免把明显无效的请求发送到服务端；服务端仍会做最终校验。
+  if (!/^[A-Za-z0-9]{12}$/.test(requestCode)) {
+    return Promise.reject(new ApiError(i18n.t('api.billing.errors.100001'), 400, 100001, null))
+  }
+  const requestId = options.requestId?.trim() || (
+    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : `redeem-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+  )
+  const headers = { 'X-Request-ID': requestId }
+  return fetchAuthenticatedJson<BillingRedemptionResult>('/api/user/redemption-codes/redeem', {
+    accessToken: options.accessToken,
+    signal: options.signal,
+    method: 'POST',
+    body: { code: requestCode },
+    ...(headers ? { headers } : {}),
+  })
 }
 
 export function getBillingAnalysis(context: BillingContext, options: BillingAnalysisRequestOptions = {}): Promise<BillingAnalysisResponse> {
@@ -473,12 +548,10 @@ export function getBillingAnalysis(context: BillingContext, options: BillingAnal
     }
   }
   const query = createBillingQuery(context, {
-    period: options.period,
     start_at: startAt,
     end_at: endAt,
     api_key_id: options.api_key_id,
     model: options.model,
-    source: options.source,
     billing_type: options.billing_type,
     member_id: options.member_id,
     department_id: options.department_id,
@@ -506,15 +579,15 @@ const PAYMENT_ORDER_PATH = '/api/user/payment/orders'
 
 function paymentIdempotencyOptions(idempotencyKey: string, options: Pick<BillingRequestOptions, 'accessToken' | 'signal'>): FetchJsonOptions {
   const normalizedKey = idempotencyKey.trim()
-  if (!normalizedKey) throw new ApiError(i18n.t('api.billing.paymentIdempotencyRequired'), 400, 140001, null)
+  if (!normalizedKey) throw new ApiError(i18n.t('api.billing.paymentIdempotencyRequired'), 400, 170001, null)
   return { ...options, method: 'POST', headers: { 'Idempotency-Key': normalizedKey } }
 }
 
-function paymentOrderPath(orderID: string, suffix = '', context?: BillingContext): string {
+function paymentOrderPath(orderID: string, suffix = '', context: BillingContext = { account_type: 'personal' }): string {
   const normalizedID = orderID.trim()
-  if (!normalizedID) throw new ApiError(i18n.t('api.billing.paymentOrderRequired'), 400, 140001, null)
+  if (!normalizedID) throw new ApiError(i18n.t('api.billing.paymentOrderRequired'), 400, 170001, null)
   const path = `${PAYMENT_ORDER_PATH}/${encodeURIComponent(normalizedID)}${suffix}`
-  return context ? `${path}?${createBillingQuery(context)}` : path
+  return `${path}?${createBillingQuery(context)}`
 }
 
 export function createBillingPaymentOrder(context: BillingContext, input: BillingPaymentCreateInput, idempotencyKey: string, options: Pick<BillingRequestOptions, 'accessToken' | 'signal'> = {}): Promise<BillingPaymentOrder> {
@@ -526,10 +599,11 @@ export function createBillingPaymentOrder(context: BillingContext, input: Billin
   })
 }
 
-export function startBillingPayment(orderID: string, idempotencyKey: string, options: Pick<BillingRequestOptions, 'accessToken' | 'signal'> = {}, context?: BillingContext): Promise<BillingPaymentStartResult> {
+export function startBillingPayment(orderID: string, idempotencyKey: string, options: BillingPaymentRequestOptions = {}, context?: BillingContext): Promise<BillingPaymentStartResult> {
+  const { scene = BILLING_PAYMENT_SCENE_PC, channel, accessToken, signal } = options
   return fetchAuthenticatedJson<BillingPaymentStartResult>(paymentOrderPath(orderID, '/pay', context), {
-    ...paymentIdempotencyOptions(idempotencyKey, options),
-    body: { scene: BILLING_PAYMENT_SCENE_PC },
+    ...paymentIdempotencyOptions(idempotencyKey, { accessToken, signal }),
+    body: { scene, ...(channel ? { channel } : {}) },
   })
 }
 
@@ -538,7 +612,11 @@ export function getBillingPaymentOrder(orderID: string, options: Pick<BillingReq
 }
 
 export function closeBillingPaymentOrder(orderID: string, options: Pick<BillingRequestOptions, 'accessToken' | 'signal'> = {}, context?: BillingContext): Promise<BillingPaymentOrder> {
-  return fetchAuthenticatedJson<BillingPaymentOrder>(paymentOrderPath(orderID, '/close', context), paymentIdempotencyOptions(`close-${orderID}`, options))
+  return fetchAuthenticatedJson<BillingPaymentOrder>(paymentOrderPath(orderID, '/close', context), {
+    ...paymentIdempotencyOptions(`close-${orderID}`, options),
+    // 中文：关单接口要求显式空 JSON 对象，不能省略请求体。
+    body: {},
+  })
 }
 
 export function downloadBillingInvoice(url: string, options: Pick<BillingRequestOptions, 'accessToken' | 'signal'> = {}): Promise<Response> {
@@ -561,6 +639,9 @@ const BILLING_ERROR_KEYS: Record<number, string> = {
   130009: 'api.billing.errors.130009',
   130010: 'api.billing.errors.130010',
   130011: 'api.billing.errors.130011',
+  130103: 'api.billing.errors.130103',
+  130104: 'api.billing.errors.130104',
+  130105: 'api.billing.errors.130105',
   140001: 'api.billing.errors.140001',
   140002: 'api.billing.errors.140002',
   140003: 'api.billing.errors.140003',
@@ -569,6 +650,13 @@ const BILLING_ERROR_KEYS: Record<number, string> = {
   140006: 'api.billing.errors.140006',
   140007: 'api.billing.errors.140007',
   140008: 'api.billing.errors.140008',
+  170001: 'api.billing.errors.170001',
+  170003: 'api.billing.errors.170003',
+  170004: 'api.billing.errors.170004',
+  170005: 'api.billing.errors.170005',
+  170007: 'api.billing.errors.170007',
+  170008: 'api.billing.errors.170008',
+  170012: 'api.billing.errors.170012',
 }
 
 export function getBillingErrorMessage(error: unknown): string {

@@ -65,6 +65,7 @@ export function getRealNameErrorMessage(error: unknown): string {
 		100001: 'api.realName.invalidInput',
 		100002: 'api.realName.unavailable',
 		100006: 'api.realName.stateChanged',
+		160001: 'api.realName.sessionExpired',
 		110001: 'api.realName.sessionExpired',
 		110022: 'api.realName.expired',
 		110023: 'api.realName.faceFailed',

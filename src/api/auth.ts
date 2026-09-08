@@ -1,5 +1,5 @@
 import { fetchJson } from './http'
-import { isApiTimestamp, type ApiTimestamp } from '@/utils/format'
+import { isApiTimestamp, type ApiTimeValue, type ApiTimestamp } from '@/utils/format'
 
 // 中文：认证接口统一使用 Unix 毫秒时间戳表示访问令牌和刷新令牌的过期时间。
 export type AuthTimestamp = number
@@ -23,9 +23,10 @@ export interface AuthUser {
 }
 
 export interface VerificationCodeResult {
-  destination_masked: string
-  expires_at: ApiTimestamp
-  retry_after_seconds: number
+  // 中文：新验证码接口成功体固定为空对象；这些字段仅用于兼容灰度期间的旧后端。
+  destination_masked?: string
+  expires_at?: ApiTimeValue
+  retry_after_seconds?: number
 }
 
 export type EmailCodeResult = VerificationCodeResult
@@ -55,22 +56,19 @@ export interface WechatStatusResult {
   result?: AuthResult
 }
 
-export interface DeviceInfo {
-  device_id?: string
-  device_name?: string
-}
-
-export function sendEmailCode(destination: string, locale = 'zh-CN'): Promise<EmailCodeResult> {
+export function sendEmailCode(destination: string): Promise<EmailCodeResult> {
   return fetchJson<EmailCodeResult>('/api/auth/email/code', {
     method: 'POST',
-    body: { destination, locale },
+    body: { destination },
   })
 }
 
-export function loginByEmail(destination: string, code: string, device: DeviceInfo, locale = 'zh-CN'): Promise<AuthResult> {
-  return fetchJson<AuthResult>('/api/auth/email/login', {
+export function loginByEmail(destination: string, code: string, inviteCode?: string): Promise<AuthResult> {
+  const query = inviteCode?.trim() ? `?invite_code=${encodeURIComponent(inviteCode.trim())}` : ''
+  return fetchJson<AuthResult>(`/api/auth/email/login${query}`, {
     method: 'POST',
-    body: { destination, code, locale, ...device },
+    // 中文：设备信息和语言由请求头推断，邀请码只允许放在查询参数中。
+    body: { destination, code },
   })
 }
 
@@ -97,14 +95,14 @@ export function getWechatStatus(state: string): Promise<WechatStatusResult> {
   return fetchJson<WechatStatusResult>(`/api/auth/wechat/status?state=${encodeURIComponent(state)}`)
 }
 
-export function sendBindingPhoneCode(bindingTicket: string, phone: string, locale = 'zh-CN'): Promise<PhoneCodeResult> {
+export function sendBindingPhoneCode(bindingTicket: string, phone: string, countryCode = '+86'): Promise<PhoneCodeResult> {
   return fetchJson<PhoneCodeResult>('/api/auth/bind-phone/code', {
     method: 'POST',
-    body: { binding_ticket: bindingTicket, phone, locale },
+    body: { binding_ticket: bindingTicket, phone, country_code: countryCode },
   })
 }
 
-export function bindWechatPhone(bindingTicket: string, phone: string, code: string, _device?: DeviceInfo, _locale = 'zh-CN', inviteCode?: string): Promise<AuthResult> {
+export function bindWechatPhone(bindingTicket: string, phone: string, code: string, inviteCode?: string): Promise<AuthResult> {
   const query = inviteCode?.trim() ? `?invite_code=${encodeURIComponent(inviteCode.trim())}` : ''
   return fetchJson<AuthResult>(`/api/auth/bind-phone${query}`, {
     method: 'POST',
@@ -115,11 +113,12 @@ export function bindWechatPhone(bindingTicket: string, phone: string, code: stri
 
 let refreshPromise: Promise<AuthResult> | null = null
 
-export function refreshSession(refreshToken: string, device: DeviceInfo): Promise<AuthResult> {
+export function refreshSession(refreshToken: string): Promise<AuthResult> {
   if (!refreshPromise) {
     refreshPromise = fetchJson<AuthResult>('/api/auth/refresh', {
       method: 'POST',
-      body: { refresh_token: refreshToken, ...device },
+      // 中文：刷新接口只接收刷新令牌，设备信息由服务端从浏览器请求头生成。
+      body: { refresh_token: refreshToken },
     }).finally(() => {
       refreshPromise = null
     })

@@ -17,11 +17,14 @@ export interface ToolUsageLeaderboardItem {
 
 export interface ToolUsageLeaderboard {
   period: ToolUsagePeriod
+  started_at?: number
+  ended_at?: number
+  generated_at?: number
   items: ToolUsageLeaderboardItem[]
 }
 
 export interface ToolWeeklyUsage {
-  week_start: number
+  week_start: string | number
   request_count: number
   total_tokens: number
 }
@@ -70,6 +73,12 @@ function optionalTimestamp(value: unknown): number | undefined {
   return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : undefined
 }
 
+function weekStartValue(value: unknown): string | number {
+  if (typeof value === 'number' && Number.isFinite(value) && value >= 0) return value
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) return value
+  return invalidResponse()
+}
+
 function periodValue(value: unknown): ToolUsagePeriod {
   if (value === 'day' || value === 'week' || value === 'month' || value === 'year') return value
   return invalidResponse()
@@ -77,16 +86,24 @@ function periodValue(value: unknown): ToolUsagePeriod {
 
 function parseLeaderboard(value: unknown): ToolUsageLeaderboard {
   if (!isRecord(value) || !Array.isArray(value.items)) return invalidResponse()
+  const startedAt = optionalTimestamp(value.started_at)
+  const endedAt = optionalTimestamp(value.ended_at)
+  const generatedAt = optionalTimestamp(value.generated_at)
   return {
     period: periodValue(value.period),
+    ...(startedAt !== undefined ? { started_at: startedAt } : {}),
+    ...(endedAt !== undefined ? { ended_at: endedAt } : {}),
+    ...(generatedAt !== undefined ? { generated_at: generatedAt } : {}),
     items: value.items.map((item, index) => {
       if (!isRecord(item)) return invalidResponse()
       const rank = typeof item.rank === 'number' && Number.isInteger(item.rank) && item.rank > 0 ? item.rank : index + 1
       const logoUrl = optionalStringValue(item.logo_url)
+      const identifier = optionalStringValue(item.id) ?? optionalStringValue(item.tool)
+      if (!identifier) return invalidResponse()
       return {
-        id: stringValue(item.id),
+        id: identifier,
         rank,
-        name: stringValue(item.name),
+        name: optionalStringValue(item.name) ?? identifier,
         description: typeof item.description === 'string' ? item.description.trim() : '',
         ...(logoUrl ? { logo_url: logoUrl } : {}),
         request_count: numberValue(item.request_count),
@@ -118,7 +135,7 @@ function parseClients(value: unknown): ToolUsageClients {
         total_tokens: numberValue(item.total_tokens),
         weekly_usage: item.weekly_usage.map((usage) => {
           if (!isRecord(usage)) return invalidResponse()
-          return { week_start: numberValue(usage.week_start), request_count: numberValue(usage.request_count), total_tokens: numberValue(usage.total_tokens) }
+          return { week_start: weekStartValue(usage.week_start), request_count: numberValue(usage.request_count), total_tokens: numberValue(usage.total_tokens) }
         }),
       }
     }),

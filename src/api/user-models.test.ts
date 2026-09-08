@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { clearAuthTokens, saveAuthTokens } from '@/auth/token-storage'
 import type { AuthResult } from './auth'
 import { ApiError } from './http'
-import { getUserModelDetail, getUserModels, getUserModelsErrorMessage } from './user-models'
+import { getAllUserModels, getUserModelDetail, getUserModels, getUserModelsErrorMessage } from './user-models'
 
 function response(data: unknown, status = 200, code = 0, msg = 'success'): Response {
   return new Response(JSON.stringify({ code, msg, data }), {
@@ -97,5 +97,20 @@ describe('用户模型目录接口封装', () => {
   it('兼容未返回活动摘要的全量目录响应', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(response({ items: [] }))
     await expect(getUserModels({ account_type: 'personal' })).resolves.toEqual({ items: [], activities: [] })
+  })
+
+  it('为在线测试等非分页页面聚合完整模型目录', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(response({ items: [{ id: 'model-1' }], activities: [{ id: 'activity-1' }], total: 2, page: 1, page_size: 1 }))
+      .mockResolvedValueOnce(response({ items: [{ id: 'model-2' }], activities: [{ id: 'ignored' }], total: 2, page: 2, page_size: 1 }))
+
+    await expect(getAllUserModels({ account_type: 'personal' })).resolves.toEqual({
+      items: [{ id: 'model-1' }, { id: 'model-2' }],
+      activities: [{ id: 'activity-1' }],
+    })
+    expect(fetchMock.mock.calls.map(([url]) => String(url))).toEqual([
+      '/api/user/models?account_type=personal&page=1&page_size=100',
+      '/api/user/models?account_type=personal&page=2&page_size=100',
+    ])
   })
 })

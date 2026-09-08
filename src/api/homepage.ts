@@ -85,7 +85,14 @@ export interface PublicHomepage {
   ad_slots: HomepageEntry[]
   news: HomepageEntry[]
   partners: HomepageEntry[]
-  promotion: unknown[]
+  promotion: HomepagePromotion
+}
+
+export interface HomepagePromotion {
+  usernames: string[]
+  invited_count: number
+  visit_count: number
+  total_reward_yuan: string
 }
 
 export interface PublicHomepageStats {
@@ -187,6 +194,32 @@ function parseEntries(value: unknown, kind: HomepageKind): HomepageEntry[] {
   })
 }
 
+function parsePromotion(value: unknown): HomepagePromotion {
+  const emptyPromotion: HomepagePromotion = {
+    usernames: [],
+    invited_count: 0,
+    visit_count: 0,
+    total_reward_yuan: '0.000000000',
+  }
+  if (!isRecord(value)) return emptyPromotion
+
+  const invitedCount = typeof value.invited_count === 'number' && Number.isFinite(value.invited_count) && value.invited_count >= 0
+    ? Math.floor(value.invited_count)
+    : 0
+  const visitCount = typeof value.visit_count === 'number' && Number.isFinite(value.visit_count) && value.visit_count >= 0
+    ? Math.floor(value.visit_count)
+    : 0
+  const reward = typeof value.total_reward_yuan === 'string' && value.total_reward_yuan.trim()
+    && Number.isFinite(Number(value.total_reward_yuan)) && Number(value.total_reward_yuan) >= 0
+    ? value.total_reward_yuan.trim()
+    : emptyPromotion.total_reward_yuan
+  // 中文：用户名仅用于首页展示，过滤异常值并严格限制为接口承诺的六条。
+  const usernames = Array.isArray(value.usernames)
+    ? value.usernames.filter((name): name is string => typeof name === 'string' && Boolean(name.trim())).map((name) => name.trim()).slice(0, 6)
+    : []
+  return { usernames, invited_count: invitedCount, visit_count: visitCount, total_reward_yuan: reward }
+}
+
 function parseHomepage(value: unknown): PublicHomepage {
   if (!isRecord(value)) throw new ApiError(i18n.t('api.homepage.invalidResponse'), 502, 100003, null)
   return {
@@ -195,7 +228,7 @@ function parseHomepage(value: unknown): PublicHomepage {
     ad_slots: parseEntries(value.ad_slots, 'ad_slot'),
     news: parseEntries(value.news, 'news'),
     partners: parseEntries(value.partners, 'partner'),
-    promotion: Array.isArray(value.promotion) ? value.promotion : [],
+    promotion: parsePromotion(value.promotion),
   }
 }
 

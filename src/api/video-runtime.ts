@@ -9,7 +9,8 @@ const MAX_PROMPT_LENGTH = 8_000
 export type VideoTaskStatus = 'pending' | 'processing' | 'cancelling' | 'succeeded' | 'failed' | 'cancelled' | 'expired' | 'unknown'
 
 export interface VideoGenerationInput {
-  apiKey: string
+  /** 登录态访问令牌；视频 Runtime 不再接受 API Key。 */
+  accessToken: string
   model: string
   prompt: string
   duration: number
@@ -209,11 +210,11 @@ export function videoTaskIsTerminal(status: VideoTaskStatus): boolean {
 }
 
 export async function submitVideoGeneration(input: VideoGenerationInput): Promise<VideoTask> {
-  const apiKey = input.apiKey.trim()
+  const accessToken = input.accessToken.trim()
   const model = input.model.trim()
   const prompt = input.prompt.trim()
   const idempotencyKey = input.idempotencyKey.trim()
-  if (!apiKey) throw new VideoRuntimeError(i18n.t('api.videoRuntime.apiKeyRequired'), 401, 'api_key_required', null)
+  if (!accessToken) throw new VideoRuntimeError(i18n.t('api.modelRuntime.accessTokenRequired'), 401, 'invalid_user_session', null)
   if (!model || !prompt || prompt.length > MAX_PROMPT_LENGTH || !Number.isInteger(input.duration) || input.duration <= 0 || !input.size.trim() || !idempotencyKey) {
     throw new VideoRuntimeError(i18n.t('api.videoRuntime.invalidRequest'), 400, 'invalid_request', null)
   }
@@ -228,8 +229,9 @@ export async function submitVideoGeneration(input: VideoGenerationInput): Promis
       signal: requestController.controller.signal,
       headers: {
         Accept: 'application/json',
-        Authorization: `Bearer ${apiKey}`,
+        Authorization: `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
+        'X-ThinkGo-User-Session': '1',
         'Idempotency-Key': idempotencyKey,
         'X-Request-ID': requestId,
         'X-App-Lang': getActiveLanguage(),
@@ -249,10 +251,10 @@ export async function submitVideoGeneration(input: VideoGenerationInput): Promis
   }
 }
 
-export async function getVideoTask(apiKey: string, taskId: string, signal?: AbortSignal): Promise<VideoTask> {
-  const normalizedKey = apiKey.trim()
+export async function getVideoTask(accessToken: string, taskId: string, signal?: AbortSignal): Promise<VideoTask> {
+  const normalizedToken = accessToken.trim()
   const normalizedTaskId = taskId.trim()
-  if (!normalizedKey) throw new VideoRuntimeError(i18n.t('api.videoRuntime.apiKeyRequired'), 401, 'api_key_required', null)
+  if (!normalizedToken) throw new VideoRuntimeError(i18n.t('api.modelRuntime.accessTokenRequired'), 401, 'invalid_user_session', null)
   if (!normalizedTaskId) throw new VideoRuntimeError(i18n.t('api.videoRuntime.taskIdRequired'), 400, 'task_id_required', null)
   const requestId = createRequestId()
   const requestController = createRequestController(signal)
@@ -263,7 +265,8 @@ export async function getVideoTask(apiKey: string, taskId: string, signal?: Abor
       signal: requestController.controller.signal,
       headers: {
         Accept: 'application/json',
-        Authorization: `Bearer ${normalizedKey}`,
+        Authorization: `Bearer ${normalizedToken}`,
+        'X-ThinkGo-User-Session': '1',
         'X-Request-ID': requestId,
         'X-App-Lang': getActiveLanguage(),
       },
@@ -280,10 +283,10 @@ export async function getVideoTask(apiKey: string, taskId: string, signal?: Abor
   }
 }
 
-export async function cancelVideoTask(apiKey: string, taskId: string, signal?: AbortSignal): Promise<VideoTask> {
-  const normalizedKey = apiKey.trim()
+export async function cancelVideoTask(accessToken: string, taskId: string, signal?: AbortSignal): Promise<VideoTask> {
+  const normalizedToken = accessToken.trim()
   const normalizedTaskId = taskId.trim()
-  if (!normalizedKey) throw new VideoRuntimeError(i18n.t('api.videoRuntime.apiKeyRequired'), 401, 'api_key_required', null)
+  if (!normalizedToken) throw new VideoRuntimeError(i18n.t('api.modelRuntime.accessTokenRequired'), 401, 'invalid_user_session', null)
   if (!normalizedTaskId) throw new VideoRuntimeError(i18n.t('api.videoRuntime.taskIdRequired'), 400, 'task_id_required', null)
   const requestId = createRequestId()
   const requestController = createRequestController(signal)
@@ -294,7 +297,8 @@ export async function cancelVideoTask(apiKey: string, taskId: string, signal?: A
       signal: requestController.controller.signal,
       headers: {
         Accept: 'application/json',
-        Authorization: `Bearer ${normalizedKey}`,
+        Authorization: `Bearer ${normalizedToken}`,
+        'X-ThinkGo-User-Session': '1',
         'X-Request-ID': requestId,
         'X-App-Lang': getActiveLanguage(),
       },

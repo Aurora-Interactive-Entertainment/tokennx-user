@@ -1,4 +1,5 @@
 import { fetchAuthenticatedJson } from './authenticated'
+import type { ApiTimeValue } from '@/utils/format'
 
 const NOTIFICATIONS_PATH = '/api/user/notifications'
 
@@ -13,8 +14,9 @@ export interface UserNotification {
   content: string
   action_url?: string
   read: boolean
-  created_at: string
-  read_at?: string
+  // 中文：新接口返回 Unix 毫秒；保留字符串类型以兼容灰度期间旧通知记录。
+  created_at: ApiTimeValue
+  read_at?: ApiTimeValue
 }
 
 export interface NotificationListResponse {

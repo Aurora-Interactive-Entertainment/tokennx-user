@@ -78,29 +78,36 @@ export function PersonalUsageTrendChart({
     [t],
   );
   const tooltipDateFormatter = useMemo(
-    () => new Intl.DateTimeFormat(i18n.language, { dateStyle: "medium", timeZone: "UTC" }),
+    () =>
+      new Intl.DateTimeFormat(i18n.language, {
+        dateStyle: "medium",
+        timeZone: "UTC",
+      }),
     [i18n.language],
   );
   const tooltipNumberFormatters = useMemo(
-    () => new Map(
-      seriesMeta.map((series) => [
-        series.name,
-        new Intl.NumberFormat(i18n.language, {
-          minimumFractionDigits: series.name === "cost" ? 4 : 0,
-          maximumFractionDigits:
-            series.name === "cost" ? 4 : series.name === "tokens" ? 2 : 0,
-        }),
-      ]),
-    ),
+    () =>
+      new Map(
+        seriesMeta.map((series) => [
+          series.name,
+          new Intl.NumberFormat(i18n.language, {
+            minimumFractionDigits: series.name === "cost" ? 4 : 0,
+            maximumFractionDigits:
+              series.name === "cost" ? 4 : series.name === "tokens" ? 2 : 0,
+          }),
+        ]),
+      ),
     [i18n.language, seriesMeta],
   );
 
   useEffect(() => {
     const node = chartRef.current;
-    if (!node || !data || data.xAxis.data.length === 0) return undefined;
-    const chart = echarts.init(node, undefined, { renderer: getChartRenderer() });
+    if (!node || !data || data.x_axis.data.length === 0) return undefined;
+    const chart = echarts.init(node, undefined, {
+      renderer: getChartRenderer(),
+    });
     const isDark = theme === "dark";
-    const labels = data.xAxis.data.map((timestamp) =>
+    const labels = data.x_axis.data.map((timestamp) =>
       new Intl.DateTimeFormat(i18n.language, {
         month: "2-digit",
         day: "2-digit",
@@ -167,7 +174,7 @@ export function PersonalUsageTrendChart({
             dataIndex?: number;
           }>;
           const index = items[0]?.dataIndex ?? 0;
-          const date = tooltipDateFormatter.format(data.xAxis.data[index]);
+          const date = tooltipDateFormatter.format(data.x_axis.data[index]);
           return `<div style="font-size:12px;line-height:24px"><div>${date}</div>${seriesMeta.map((series) => `<div style="display:flex;gap:8px;min-width:190px"><i style="width:8px;height:8px;margin-top:8px;border-radius:50%;background:${series.color}"></i><span style="flex:1">${series.label}</span><strong>${tooltipNumberFormatters.get(series.name)?.format(values.get(series.name)?.[index] ?? 0) ?? 0}</strong></div>`).join("")}</div>`;
         },
       },

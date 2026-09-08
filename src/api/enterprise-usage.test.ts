@@ -57,7 +57,6 @@ describe('企业用量 API', () => {
         status: 'success',
         page: 3,
         page_size: 50,
-        granularity: 'hour',
       },
     )
 
@@ -72,8 +71,35 @@ describe('企业用量 API', () => {
       status: 'success',
       page: '3',
       page_size: '50',
-      granularity: 'hour',
     })
+  })
+
+  it('新企业用量明细不会发送已废弃的 month、granularity 或 api_key_id', async () => {
+    const fetchMock = mockApiResponse({
+      account: { id: 'account-1', type: 'enterprise', name: '示例企业' },
+      can_filter_members: true,
+      can_view_billing: true,
+      filters: { models: [], api_keys: [], members: [] },
+      items: [],
+      granularity: 'day',
+      page: 1,
+      page_size: 20,
+      total: 0,
+    })
+
+    await getEnterpriseUsageDetail(
+      { enterprise_id: 'enterprise-1' },
+      { range: 'custom', start_at: '2026-08-01T00:00:00Z', end_at: '2026-08-02T00:00:00Z' },
+    )
+
+    const url = new URL(String(fetchMock.mock.calls[0]?.[0]), 'http://local')
+    expect(url.pathname).toBe('/api/user/enterprise/enterprise-1/usage')
+    expect(url.searchParams.get('range')).toBe('custom')
+    expect(url.searchParams.get('start_at')).toBe('2026-08-01T00:00:00Z')
+    expect(url.searchParams.get('end_at')).toBe('2026-08-02T00:00:00Z')
+    expect(url.searchParams.has('month')).toBe(false)
+    expect(url.searchParams.has('granularity')).toBe(false)
+    expect(url.searchParams.has('api_key_id')).toBe(false)
   })
 
   it('明细默认按服务端日粒度查询，不重复发送默认粒度参数', async () => {

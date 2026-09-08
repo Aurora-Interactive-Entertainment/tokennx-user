@@ -34,21 +34,43 @@ describe('个人中心 API 封装', () => {
   beforeEach(() => vi.restoreAllMocks())
 
   it('按接口文档读取资料、企业关系和通知偏好', async () => {
-    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => response({ items: [] }))
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      if (String(input).includes('/enterprises')) return response({ items: [], page: 1, page_size: 100, total: 0 })
+      return response({ items: [] })
+    })
 
     await getUserProfile('profile-token')
     expect(lastRequest(fetchMock).url).toBe('/api/user/profile')
     expect(new Headers(lastRequest(fetchMock).options?.headers).get('Authorization')).toBe('Bearer profile-token')
 
     await getProfileEnterprises('profile-token')
-    expect(lastRequest(fetchMock).url).toBe('/api/user/profile/enterprises')
+    expect(lastRequest(fetchMock).url).toBe('/api/user/profile/enterprises?page=1&page_size=100')
 
     await getNotificationPreferences('profile-token')
     expect(lastRequest(fetchMock).url).toBe('/api/user/profile/notification-preferences')
   })
 
+  it('聚合企业关系列表的全部分页，并兼容旧服务裸数组', async () => {
+    const membership = { id: 'membership-1' }
+    const fetchMock = vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(response({ items: [membership], page: 1, page_size: 1, total: 2 }))
+      .mockResolvedValueOnce(response({ items: [{ id: 'membership-2' }], page: 2, page_size: 1, total: 2 }))
+
+    await expect(getProfileEnterprises('profile-token')).resolves.toEqual([
+      membership,
+      { id: 'membership-2' },
+    ])
+    expect(fetchMock.mock.calls.map(([url]) => String(url))).toEqual([
+      '/api/user/profile/enterprises?page=1&page_size=100',
+      '/api/user/profile/enterprises?page=2&page_size=100',
+    ])
+
+    fetchMock.mockResolvedValueOnce(response([membership]))
+    await expect(getProfileEnterprises('profile-token')).resolves.toEqual([membership])
+  })
+
   it('按接口文档提交昵称、联系方式验证码和联系方式更换', async () => {
-    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => response([]))
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => response({}))
 
     await updateProfileNickname('profile-token', '  新的昵称  ')
     const nicknameRequest = lastRequest(fetchMock)
@@ -125,7 +147,7 @@ describe('个人中心输入约束和错误提示', () => {
     expect(isNotificationPreferenceCode('low_balance')).toBe(true)
     expect(isNotificationPreferenceCode('unknown')).toBe(false)
     expect(getProfileErrorMessage(new ApiError('服务错误', 409, 100006, 'request-1'))).toBe('资料状态已变化，请刷新后重试')
-    expect(getProfileErrorMessage(new ApiError('服务错误', 429, 110004, 'request-2'))).toBe('验证码发送过于频繁，请稍后再试')
+    expect(getProfileErrorMessage(new ApiError('服务错误', 429, 160004, 'request-2'))).toBe('验证码发送过于频繁，请稍后再试')
     expect(getProfileErrorMessage(new Error('offline'))).toBe('个人中心请求失败，请稍后重试')
   })
 })

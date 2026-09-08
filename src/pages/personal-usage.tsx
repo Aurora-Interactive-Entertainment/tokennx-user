@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router";
 import Tooltip from "@douyinfe/semi-ui/lib/es/tooltip";
@@ -15,7 +15,6 @@ import { PersonalUsageDistributionPies } from "@/components/personal-usage-distr
 import { ConsoleTabs } from "@/components/console-tabs";
 import { useAppStore } from "@/data/app-state";
 import type { PersonalUsageContext } from "@/api/personal-usage";
-import { getUserApiKeys, type UserApiKey } from "@/api/user-api-keys";
 import "@/trae-enterprise.css";
 import "./personal-usage.css";
 
@@ -25,8 +24,6 @@ export function PersonalUsagePage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const tab = searchParams.get("tab") === "management" ? "management" : "board";
   const requestedApiKeyID = searchParams.get("api_key_id")?.trim() || "";
-  const [apiKeys, setApiKeys] = useState<UserApiKey[]>([]);
-  const [apiKeysLoading, setApiKeysLoading] = useState(false);
   const [dateRange, setDateRange] = useState<Date[]>(() => {
     const today = startOfLocalToday();
     return [addLocalDays(today, -29), today];
@@ -41,15 +38,6 @@ export function PersonalUsagePage() {
         : { account_type: "personal" },
     [store.activeWorkspace.id, store.activeWorkspace.type],
   );
-  useEffect(() => {
-    if (tab !== "management") return;
-    let active = true;
-    const controller = new AbortController();
-    setApiKeysLoading(true);
-    void getUserApiKeys(context, "all", { signal: controller.signal }).then((response) => { if (active) setApiKeys(response.items); }).catch(() => { if (active && !controller.signal.aborted) setApiKeys([]); }).finally(() => { if (active && !controller.signal.aborted) setApiKeysLoading(false); });
-    return () => { active = false; controller.abort(); };
-  }, [context, tab]);
-
   function selectTab(nextTab: "board" | "management") {
     const nextSearchParams = new URLSearchParams(searchParams);
     if (nextTab === "management") nextSearchParams.set("tab", nextTab);
@@ -108,7 +96,11 @@ export function PersonalUsagePage() {
           />
         </section>
       ) : (
-        <PersonalUsageManagement context={context} apiKeyID={requestedApiKeyID || undefined} apiKeys={apiKeys} apiKeysLoading={apiKeysLoading} onApiKeyChange={selectApiKey} />
+        <PersonalUsageManagement
+          context={context}
+          apiKeyID={requestedApiKeyID || undefined}
+          onApiKeyChange={selectApiKey}
+        />
       )}
     </div>
   );

@@ -52,15 +52,19 @@ function normalizeItems<T>(items: CostItems<T>): T[] {
 function isBillingCostChart(value: unknown): value is BillingCostChart {
   if (!value || typeof value !== 'object') return false
   const chart = value as Partial<BillingCostChart>
-  return Boolean(chart.xAxis && Array.isArray(chart.xAxis.data) && Array.isArray(chart.series))
+  const xAxis = chart.x_axis ?? chart.xAxis
+  return Boolean(xAxis && Array.isArray(xAxis.data) && Array.isArray(chart.series))
 }
 
-function normalizeServerChart(chart: BillingCostChart, language: string): NormalizedChart {
+export function normalizeBillingCostChart(chart: BillingCostChart, language: string): NormalizedChart {
+  // 中文：新账务接口统一使用 snake_case，驼峰轴名仅用于兼容旧服务。
+  const xAxis = chart.x_axis ?? chart.xAxis
+  if (!xAxis) return { labels: [], series: [] }
   return {
-    labels: chart.xAxis.data.map((value) => formatDateLabel(value, language)),
+    labels: xAxis.data.map((value) => formatDateLabel(value, language)),
     series: chart.series.map((item) => ({
       name: item.name || '--',
-      data: chart.xAxis.data.map((_, index) => numberValue(item.data?.[index])),
+      data: xAxis.data.map((_, index) => numberValue(item.data?.[index])),
     })),
   }
 }
@@ -85,7 +89,7 @@ function normalizeLegacyChart<T>(items: CostItems<T>, date: (item: T) => string,
 }
 
 function normalizeChart<T>(input: ChartInput<T>, legacy: { date: (item: T) => string; name: (item: T) => string; cost: (item: T) => string }, language: string): NormalizedChart {
-  return isBillingCostChart(input) ? normalizeServerChart(input, language) : normalizeLegacyChart(input, legacy.date, legacy.name, legacy.cost, language)
+  return isBillingCostChart(input) ? normalizeBillingCostChart(input, language) : normalizeLegacyChart(input, legacy.date, legacy.name, legacy.cost, language)
 }
 
 // 中文：账单类型由接口返回内部枚举，展示层统一转换为当前语言，避免图例直接显示 balance/subscription。

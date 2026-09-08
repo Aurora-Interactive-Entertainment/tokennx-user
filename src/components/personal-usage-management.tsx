@@ -1,22 +1,20 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import Tooltip from "@douyinfe/semi-ui/lib/es/tooltip";
 import Select from "@douyinfe/semi-ui/lib/es/select";
 import Toast from "@douyinfe/semi-ui/lib/es/toast";
-import {
-  IconDownload,
-  IconInfoCircle,
-  IconRefresh,
-} from "@douyinfe/semi-icons";
+import { IconDownload, IconRefresh } from "@douyinfe/semi-icons";
 import {
   getPersonalUsageErrorMessage,
-  getUsageOverview,
+  getUsageFilters,
+  getUsageModels,
+  getUsageSummary,
   getUsageRecords,
   type PersonalUsageContext,
-  type UsageOverviewResponse,
+  type UsageFiltersResponse,
+  type UsageModelsResponse,
+  type UsageSummaryResponse,
   type UsageRecordsResponse,
 } from "@/api/personal-usage";
-import type { UserApiKey } from "@/api/user-api-keys";
 import { TraePagination } from "./trae-pagination";
 import {
   addLocalDays,
@@ -33,13 +31,19 @@ import {
   saveExportResponse,
   waitForExportTask,
 } from "@/api/exports";
-import { BACKOFFICE_MONEY_DISPLAY_DECIMAL_PLACES, formatYuan as formatMoneyYuan } from "@/utils/format";
+import {
+  BACKOFFICE_MONEY_DISPLAY_DECIMAL_PLACES,
+  formatYuan as formatMoneyYuan,
+} from "@/utils/format";
 
 type CueRange = "today" | "7d" | "30d" | "custom";
 
 function formatPersonalUsageYuan(value: string): string {
   // 中文：保留个人用量页原有的全角人民币符号，只统一金额精度和舍入规则。
-  return formatMoneyYuan(value, BACKOFFICE_MONEY_DISPLAY_DECIMAL_PLACES).replace("¥", "￥");
+  return formatMoneyYuan(
+    value,
+    BACKOFFICE_MONEY_DISPLAY_DECIMAL_PLACES,
+  ).replace("¥", "￥");
 }
 
 function ResourceStatus({
@@ -72,9 +76,16 @@ function ResourceStatus({
   return null;
 }
 
-function PersonalUsageOverview({ apiKeyID }: { apiKeyID?: string }) {
+function PersonalUsageOverview({
+  context,
+  apiKeyID,
+}: {
+  context: PersonalUsageContext;
+  apiKeyID?: string;
+}) {
   const { t } = useTranslation();
-  const [data, setData] = useState<UsageOverviewResponse | null>(null);
+  const [summary, setSummary] = useState<UsageSummaryResponse | null>(null);
+  const [models, setModels] = useState<UsageModelsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [reloadKey, setReloadKey] = useState(0);
@@ -83,8 +94,23 @@ function PersonalUsageOverview({ apiKeyID }: { apiKeyID?: string }) {
     const controller = new AbortController();
     setLoading(true);
     setError("");
-    void getUsageOverview(controller.signal, apiKeyID)
-      .then(setData)
+    // 中文：用量管理页按新文档同时读取摘要和分页模型统计，不再调用旧 overview 接口。
+    void Promise.all([
+      getUsageSummary(
+        context,
+        { range: "30d", ...(apiKeyID ? { api_key_id: apiKeyID } : {}) },
+        controller.signal,
+      ),
+      getUsageModels(
+        context,
+        { range: "30d", ...(apiKeyID ? { api_key_id: apiKeyID } : {}) },
+        controller.signal,
+      ),
+    ])
+      .then(([summaryResponse, modelsResponse]) => {
+        setSummary(summaryResponse);
+        setModels(modelsResponse);
+      })
       .catch((reason: unknown) => {
         if (!controller.signal.aborted)
           setError(getPersonalUsageErrorMessage(reason));
@@ -93,55 +119,42 @@ function PersonalUsageOverview({ apiKeyID }: { apiKeyID?: string }) {
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [apiKeyID, reloadKey]);
+  }, [apiKeyID, context, reloadKey]);
 
+  const metrics = summary?.metrics;
   return (
-    <>
-      {/* <h2 id="personal-usage-model-title">
-        {t("console.personalUsage.models")}
-      </h2> */}
-      <div className="personal-usage-model-card">
-        <div className="personal-usage-model-total">
-          <span>{t("console.personalUsage.total")}</span>
-          <strong>
-            {data ? formatPersonalUsageYuan(data.total_cost_yuan) : "--"}{" "}
-            <small>
-              | {data ? formatPersonalUsageYuan(data.account_balance_yuan) : "--"}{" "}
-              <Tooltip
-                className="app-info-tooltip"
-                content={t("console.personalUsage.balanceHint")}
-              >
-                <IconInfoCircle className="app-info-icon" aria-hidden="true" />
-              </Tooltip>
-            </small>
-          </strong>
-        </div>
-        {loading || error ? (
-          <ResourceStatus
-            loading={loading}
-            error={error}
-            onRetry={() => setReloadKey((value) => value + 1)}
-          />
-        ) : data?.models.length ? (
-          <div className="personal-usage-model-list">
-            {data.models.map((row) => (
-              <div
-                className="personal-usage-model-row"
-                key={`${row.name}-${row.vendor}`}
-                title={row.vendor}
-              >
-                <span>{row.name}</span>
-                <strong>{formatPersonalUsageYuan(row.total_cost_yuan)}</strong>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="personal-usage-resource-status">
-            {t("console.personalUsage.noModels")}
-          </div>
-        )}
+    <div className="personal-usage-model-card">
+      <div className="personal-usage-model-total">
+        <span>{t("console.personalUsage.total")}</span>
+        <strong>
+          {metrics ? formatPersonalUsageYuan(metrics.total_cost_yuan) : "--"}
+        </strong>
       </div>
-    </>
+      {loading || error ? (
+        <ResourceStatus
+          loading={loading}
+          error={error}
+          onRetry={() => setReloadKey((value) => value + 1)}
+        />
+      ) : models?.items.length ? (
+        <div className="personal-usage-model-list">
+          {models.items.map((row) => (
+            <div
+              className="personal-usage-model-row"
+              key={`${row.model_code}-${row.vendor}`}
+              title={row.vendor}
+            >
+              <span>{row.model_alias || row.model_name || row.model_code}</span>
+              <strong>{formatPersonalUsageYuan(row.cost_yuan)}</strong>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="personal-usage-resource-status">
+          {t("console.personalUsage.noModels")}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -153,7 +166,13 @@ function rangeDates(range: CueRange, customRange: Date[]): Date[] {
   return customRange;
 }
 
-function PersonalUsageRecords({ context, apiKeyID }: { context: PersonalUsageContext; apiKeyID?: string }) {
+function PersonalUsageRecords({
+  context,
+  apiKeyID,
+}: {
+  context: PersonalUsageContext;
+  apiKeyID?: string;
+}) {
   const { t, i18n } = useTranslation();
   const today = useMemo(() => startOfLocalToday(), []);
   const [range, setRange] = useState<CueRange>("today");
@@ -205,7 +224,15 @@ function PersonalUsageRecords({ context, apiKeyID }: { context: PersonalUsageCon
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [apiKeyID, bounds.endAt, bounds.startAt, context, page, pageSize, reloadKey]);
+  }, [
+    apiKeyID,
+    bounds.endAt,
+    bounds.startAt,
+    context,
+    page,
+    pageSize,
+    reloadKey,
+  ]);
 
   function selectRange(nextRange: CueRange) {
     setRange(nextRange);
@@ -234,9 +261,10 @@ function PersonalUsageRecords({ context, apiKeyID }: { context: PersonalUsageCon
     setExporting(true);
     try {
       // 中文：个人调用记录导出使用当前账务主体、API Key 和完整时间边界，服务端生成全部匹配记录。
-      const contextPayload: ExportContext = context.account_type === "enterprise"
-        ? { account_type: "enterprise", enterprise_id: context.enterprise_id }
-        : { account_type: "personal" };
+      const contextPayload: ExportContext =
+        context.account_type === "enterprise"
+          ? { account_type: "enterprise", enterprise_id: context.enterprise_id }
+          : { account_type: "personal" };
       const task = await createExportTask(
         {
           export_code: "user.usage.records",
@@ -378,31 +406,78 @@ function PersonalUsageRecords({ context, apiKeyID }: { context: PersonalUsageCon
 export function PersonalUsageManagement({
   context,
   apiKeyID,
-  apiKeys,
-  apiKeysLoading,
   onApiKeyChange,
 }: {
   context: PersonalUsageContext;
   apiKeyID?: string;
-  apiKeys: UserApiKey[];
-  apiKeysLoading?: boolean;
   onApiKeyChange: (value: string) => void;
 }) {
   const { t } = useTranslation();
-  const keyOptions = [{ value: "all", label: t("console.personalUsage.cue.allKeys") }, ...apiKeys.map((key) => ({ value: key.id, label: key.name || key.masked_key || key.id }))];
+  const [filters, setFilters] = useState<UsageFiltersResponse | null>(null);
+  const [filtersLoading, setFiltersLoading] = useState(true);
+  const [filtersError, setFiltersError] = useState("");
+  const [reloadKey, setReloadKey] = useState(0);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setFiltersLoading(true);
+    setFiltersError("");
+    // 中文：筛选目录独立于日期范围，按文档只请求一次并复用 API Key 选项。
+    void getUsageFilters(context, controller.signal)
+      .then(setFilters)
+      .catch((reason: unknown) => {
+        if (!controller.signal.aborted)
+          setFiltersError(getPersonalUsageErrorMessage(reason));
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setFiltersLoading(false);
+      });
+    return () => controller.abort();
+  }, [context, reloadKey]);
+
+  const keyOptions = [
+    { value: "all", label: t("console.personalUsage.cue.allKeys") },
+    ...(filters?.api_keys ?? []).map((key) => ({
+      value: key.id,
+      label: key.name || key.id,
+    })),
+  ];
   return (
     <section
       className="personal-usage-management"
       aria-labelledby="personal-usage-model-title"
     >
       <div className="personal-usage-management-heading">
-        <h2 id="personal-usage-model-title">{t("console.personalUsage.models")}</h2>
-        <Select className="trae-select personal-usage-key-select" dropdownClassName="trae-select-dropdown trae-members-filter-dropdown personal-usage-key-dropdown" value={apiKeyID || "all"} loading={apiKeysLoading} onChange={(value) => onApiKeyChange(String(value))} aria-label={t("console.personalUsage.cue.keyFilter")}>
-          {keyOptions.map((option) => <Select.Option key={option.value} value={option.value}>{option.label}</Select.Option>)}
+        <h2 id="personal-usage-model-title">
+          {t("console.personalUsage.models")}
+        </h2>
+        <Select
+          className="trae-select personal-usage-key-select"
+          dropdownClassName="trae-select-dropdown trae-members-filter-dropdown personal-usage-key-dropdown"
+          value={apiKeyID || "all"}
+          loading={filtersLoading}
+          onChange={(value) => onApiKeyChange(String(value))}
+          aria-label={t("console.personalUsage.cue.keyFilter")}
+        >
+          {keyOptions.map((option) => (
+            <Select.Option key={option.value} value={option.value}>
+              {option.label}
+            </Select.Option>
+          ))}
         </Select>
       </div>
-      <PersonalUsageOverview apiKeyID={apiKeyID} />
-      <PersonalUsageRecords context={context} apiKeyID={apiKeyID} />
+      {filtersError ? (
+        <ResourceStatus
+          loading={false}
+          error={filtersError}
+          onRetry={() => setReloadKey((value) => value + 1)}
+        />
+      ) : (
+        <>
+          <PersonalUsageOverview context={context} apiKeyID={apiKeyID} />
+          <PersonalUsageRecords context={context} apiKeyID={apiKeyID} />
+        </>
+      )}
     </section>
   );
 }

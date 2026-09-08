@@ -91,6 +91,27 @@ function distributionMetric(
   return value === undefined ? undefined : value;
 }
 
+// 中文：新版趋势接口按 metric 只返回一组指标；Token 明细由三类 Token 字段相加得到。
+function distributionTokenTotal(item: Record<string, unknown>): number | undefined {
+  const values = [item.input_tokens, item.output_tokens, item.cached_tokens]
+    .map(distributionNumber);
+  if (values.some((value) => value !== null)) {
+    const numericValues = values.filter((value): value is number => value !== null);
+    return numericValues.reduce((sum, value) => sum + value, 0);
+  }
+  return distributionMetric(item, DISTRIBUTION_TOKEN_KEYS);
+}
+
+function distributionValue(item: Record<string, unknown>): number | undefined {
+  // 保留旧接口中 total_tokens/value 优先的行为，再兼容新版 tokens/cost 字段。
+  const direct = distributionMetric(item, DISTRIBUTION_VALUE_KEYS);
+  if (direct !== undefined) return direct;
+  const tokenTotal = distributionTokenTotal(item);
+  if (tokenTotal !== undefined) return tokenTotal;
+  const cost = distributionNumber(item.cost_yuan);
+  return cost === null ? undefined : cost;
+}
+
 // 中文：兼容接口返回的数组和键值对象，并统一为 ECharts 所需的数据项格式。
 export function distributionEntries(value: unknown): DistributionEntry[] {
   if (!value) return [];
@@ -148,18 +169,47 @@ function distributionEntry(
           typeof candidate === "string" && candidate.trim().length > 0,
       )
       ?.trim() || "item-" + (index + 1);
-  const count = DISTRIBUTION_VALUE_KEYS.map((key) =>
-    distributionNumber(item[key]),
-  ).find((candidate): candidate is number => candidate !== null);
+  const count = distributionValue(item);
   if (count === undefined || count <= 0) return null;
   const requestCount = distributionMetric(item, DISTRIBUTION_REQUEST_KEYS);
-  const totalTokens = distributionMetric(item, DISTRIBUTION_TOKEN_KEYS);
+  const totalTokens = distributionTokenTotal(item);
   return {
     name,
     value: count,
     ...(requestCount !== undefined ? { requestCount } : {}),
     ...(totalTokens !== undefined ? { totalTokens } : {}),
   };
+}
+
+/**
+ * 中文：将 requests 与 tokens 两次趋势响应按名称合并，保证图表值和明细列使用各自准确口径。
+ * 服务端可能只在某一口径中返回某个维度，因此这里取两个响应的并集。
+ */
+export function mergeDistributionEntries(
+  requestValue: unknown,
+  tokenValue: unknown,
+): DistributionEntry[] {
+  const requests = distributionEntries(requestValue);
+  const tokens = distributionEntries(tokenValue);
+  const requestMap = new Map(requests.map((item) => [item.name, item]));
+  const tokenMap = new Map(tokens.map((item) => [item.name, item]));
+  const names = new Set([...requestMap.keys(), ...tokenMap.keys()]);
+  return [...names]
+    .map((name) => {
+      const request = requestMap.get(name);
+      const token = tokenMap.get(name);
+      const value = request?.value ?? token?.value ?? 0;
+      const requestCount = request?.requestCount ?? request?.value;
+      const totalTokens = token?.totalTokens ?? token?.value;
+      return {
+        name,
+        value,
+        ...(requestCount !== undefined ? { requestCount } : {}),
+        ...(totalTokens !== undefined ? { totalTokens } : {}),
+      };
+    })
+    .filter((item) => item.value > 0 || (item.totalTokens ?? 0) > 0)
+    .sort((left, right) => right.value - left.value);
 }
 
 function formatDistributionMetric(value: number | undefined, suffix = ""): string {
@@ -314,7 +364,10 @@ export function PersonalUsageDistributionPies({
   dateRange: Date[];
 }) {
   const { t } = useTranslation();
-  const [data, setData] = useState<UsageTrendResponse | null>(null);
+  const [data, setData] = useState<{
+    requests: UsageTrendResponse;
+    tokens: UsageTrendResponse;
+  } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [reloadKey, setReloadKey] = useState(0);
@@ -324,9 +377,12 @@ export function PersonalUsageDistributionPies({
     const controller = new AbortController();
     setLoading(true);
     setError("");
-    // 中文：模型与调用来源分布由趋势接口返回，必须与趋势图使用同一工作空间和时间范围。
-    void getUsageTrend(context, query, controller.signal)
-      .then(setData)
+    // 中文：新版接口按 metric 返回单一分布口径，同时请求 requests/tokens 以完整填充列表。
+    void Promise.all([
+      getUsageTrend(context, { ...query, metric: "requests" }, controller.signal),
+      getUsageTrend(context, { ...query, metric: "tokens" }, controller.signal),
+    ])
+      .then(([requests, tokens]) => setData({ requests, tokens }))
       .catch((reason: unknown) => {
         if (!controller.signal.aborted)
           setError(getPersonalUsageErrorMessage(reason));
@@ -338,12 +394,18 @@ export function PersonalUsageDistributionPies({
   }, [context, query, reloadKey]);
 
   const modelDistribution = useMemo(
-    () => distributionEntries(data?.model_distribution),
-    [data?.model_distribution],
+    () => mergeDistributionEntries(
+      data?.requests.model_distribution,
+      data?.tokens.model_distribution,
+    ),
+    [data?.requests.model_distribution, data?.tokens.model_distribution],
   );
   const toolDistribution = useMemo(
-    () => distributionEntries(data?.tool_distribution),
-    [data?.tool_distribution],
+    () => mergeDistributionEntries(
+      data?.requests.tool_distribution,
+      data?.tokens.tool_distribution,
+    ),
+    [data?.requests.tool_distribution, data?.tokens.tool_distribution],
   );
   const retry = () => setReloadKey((value) => value + 1);
 

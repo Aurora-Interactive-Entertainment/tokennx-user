@@ -334,6 +334,7 @@ export function getEnterpriseCertificationErrorMessage(error: unknown): string {
     100002: i18n.t("console.enterpriseCreate.serviceUnavailable"),
     100004: i18n.t("console.enterpriseCreate.recordMissing"),
     100006: i18n.t("console.enterpriseCreate.stateChanged"),
+    160001: i18n.t("console.enterpriseCreate.loginExpired"),
     110001: i18n.t("console.enterpriseCreate.loginExpired"),
   };
   return messages[error.code] ?? error.message;

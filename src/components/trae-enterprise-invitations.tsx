@@ -8,6 +8,7 @@ import {
   createEnterpriseInvitation,
   getEnterpriseInvitationUsages,
   getEnterpriseInvitations,
+  updateEnterpriseInvitation,
   type EnterpriseContext,
   type EnterpriseInvitation,
   type EnterpriseInvitationUsage,
@@ -81,7 +82,8 @@ export function TraeEnterpriseInvitations({
   const { t } = useTranslation();
   const handleError = useEnterpriseErrorHandler();
   const roles = useMemo(() => invitationRoleOptions(context), [context.role_options]);
-  const defaultRole = roles.find((role) => role.code === "member")?.code ?? roles[0]?.code ?? "member";
+  // 文档要求角色必须来自当前企业启用的非所有者角色目录；目录为空时不能猜测 member。
+  const defaultRole = roles.find((role) => role.code === "member")?.code ?? roles[0]?.code ?? "";
   const [status, setStatus] = useState("all");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(INVITATION_PAGE_SIZE);
@@ -96,6 +98,7 @@ export function TraeEnterpriseInvitations({
   const [usages, setUsages] = useState<EnterpriseInvitationUsage[]>([]);
   const [usageLoading, setUsageLoading] = useState(false);
   const [usageError, setUsageError] = useState<EnterpriseRequestError | null>(null);
+  const [updatingInvitationID, setUpdatingInvitationID] = useState<string | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -146,7 +149,7 @@ export function TraeEnterpriseInvitations({
       { accessToken: getAccessToken() ?? undefined, signal: controller.signal },
     )
       .then((result) => {
-        if (active) setUsages(result);
+        if (active) setUsages(result.items);
       })
       .catch((reason: unknown) => {
         if (!active || controller.signal.aborted) return;
@@ -167,6 +170,10 @@ export function TraeEnterpriseInvitations({
   }
 
   async function submitCreate(values: CreateInvitationValues) {
+    if (!roles.some((role) => role.code === values.role)) {
+      setCreateError({ message: t("traeEnterprise.inviteList.roleUnavailable"), requestId: null });
+      return;
+    }
     const maxUses = Number(values.maxUses);
     if (!Number.isInteger(maxUses) || maxUses < 1 || maxUses > 999) return;
     const expiresAtValue = normalizeDateValue(values.expiresAt);
@@ -206,12 +213,31 @@ export function TraeEnterpriseInvitations({
     }
   }
 
+  async function updateInvitation(invitation: EnterpriseInvitation, action: "revoke" | "regenerate") {
+    setUpdatingInvitationID(invitation.id);
+    try {
+      await updateEnterpriseInvitation(
+        { enterprise_id: context.id },
+        invitation.id,
+        { action, expected_version: invitation.version },
+        { accessToken: getAccessToken() ?? undefined },
+      );
+      setReloadToken((value) => value + 1);
+      Toast.success(t(`traeEnterprise.inviteList.${action}Success`));
+    } catch (reason: unknown) {
+      const handled = handleError(reason);
+      if (handled) Toast.error(handled.message);
+    } finally {
+      setUpdatingInvitationID(null);
+    }
+  }
+
   function invitationURL(invitation: EnterpriseInvitation) {
     const value = invitation.invite_url || (invitation.invite_token ? `/join?token=${encodeURIComponent(invitation.invite_token)}` : "");
     return value ? (value.startsWith("http") ? value : `${window.location.origin}${value}`) : "";
   }
 
-  const roleItems = roles.length > 0 ? roles : [{ code: "member", name: t("traeEnterprise.members.member"), owner_role: false }];
+  const roleItems = roles;
   const statusOptions = [
     { value: "all", label: t("traeEnterprise.inviteList.allStatuses") },
     { value: "active", label: t("traeEnterprise.inviteList.active") },
@@ -272,6 +298,14 @@ export function TraeEnterpriseInvitations({
                 <td><div className="trae-invitation-actions">
                   {invitationURL(invitation) ? <button type="button" onClick={() => void copyInvitationURL(invitationURL(invitation))}><IconCopy aria-hidden="true" />{t("traeEnterprise.inviteList.copy")}</button> : null}
                   <button type="button" onClick={() => setDetailInvitation(invitation)}>{t("traeEnterprise.inviteList.usageDetails")}</button>
+                  {invitation.status === "active" ? <>
+                    <button type="button" disabled={updatingInvitationID === invitation.id} onClick={() => void updateInvitation(invitation, "regenerate")}>
+                      {t("traeEnterprise.inviteList.regenerate")}
+                    </button>
+                    <button type="button" disabled={updatingInvitationID === invitation.id} onClick={() => void updateInvitation(invitation, "revoke")}>
+                      {t("traeEnterprise.inviteList.revoke")}
+                    </button>
+                  </> : null}
                 </div></td>
               </tr>
             ))}
@@ -332,6 +366,7 @@ export function TraeEnterpriseInvitations({
             >
               {roleItems.map((role) => <Form.Select.Option key={role.code} value={role.code}>{role.name}</Form.Select.Option>)}
             </Form.Select>
+            {roles.length === 0 ? <p className="trae-request-review-error" role="alert">{t("traeEnterprise.inviteList.roleUnavailable")}</p> : null}
             <Form.Select
               field="departmentId"
               label={t("traeEnterprise.inviteList.department")}
@@ -346,7 +381,7 @@ export function TraeEnterpriseInvitations({
             {createError ? <p className="trae-request-review-error">{createError.message}</p> : null}
             <div className="trae-dialog-actions">
               <button className="trae-secondary-button" type="button" disabled={creating} onClick={() => deferTraeDialogClose(() => onCreateOpenChange(false))}>{t("traeEnterprise.common.cancel")}</button>
-              <button className="trae-primary-button" type="submit" disabled={creating}>{creating ? t("traeEnterprise.inviteList.creating") : t("traeEnterprise.inviteList.createButton")}</button>
+              <button className="trae-primary-button" type="submit" disabled={creating || roles.length === 0}>{creating ? t("traeEnterprise.inviteList.creating") : t("traeEnterprise.inviteList.createButton")}</button>
             </div>
           </Form>
         </TraeDialog>

@@ -2,7 +2,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiError } from './http'
 import {
   BILLING_PAGE_SIZE,
-  BILLING_PAYMENT_SCENE_PC,
   closeBillingPaymentOrder,
   createBillingQuery,
   createBillingPaymentOrder,
@@ -19,6 +18,7 @@ import {
   getBillingPaymentOrder,
   startBillingPayment,
   submitBillingInvoice,
+  redeemBillingCode,
   type BillingContext,
 } from './billing'
 
@@ -84,10 +84,12 @@ describe('用户账务 API 客户端', () => {
 
     const urls = fetchMock.mock.calls.map(([input]) => new URL(String(input), window.location.origin))
     expect(urls.map((url) => url.pathname)).toEqual(['/api/user/billing/analysis', '/api/user/billing/invoices', '/api/user/billing/invoices'])
-    expect(urls[0]?.searchParams.get('period')).toBe('2026-07')
+    expect(urls[0]?.searchParams.get('period')).toBeNull()
+    expect(urls[0]?.searchParams.get('start_at')).toBe(String(Date.UTC(2026, 6, 1)))
+    expect(urls[0]?.searchParams.get('end_at')).toBe(String(Date.UTC(2026, 7, 1)))
     expect(urls[0]?.searchParams.get('api_key_id')).toBe('key-1')
     expect(urls[0]?.searchParams.get('model')).toBe('gpt-4o')
-    expect(urls[0]?.searchParams.get('source')).toBe('recharge')
+    expect(urls[0]?.searchParams.get('source')).toBeNull()
     expect(urls[1]?.searchParams.get('page')).toBe('3')
     expect(urls[1]?.searchParams.get('page_size')).toBe('5')
     expect(fetchMock.mock.calls[2]?.[1]?.method).toBe('POST')
@@ -95,7 +97,7 @@ describe('用户账务 API 客户端', () => {
 	expect(JSON.parse(String(fetchMock.mock.calls[2]?.[1]?.body))).toMatchObject({ amount_yuan: '20.00', taxpayer_type: 'enterprise', invoice_type: 'special' })
   })
 
-  it('只通过电脑网站支付创建充值订单、生成支付宝表单并支持查单关单', async () => {
+  it('支持电脑/手机网站支付并通过服务端返回表单', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, requestOptions) => {
       const url = new URL(String(input), window.location.origin)
       if (url.pathname.endsWith('/pay')) return apiResponse({ order: { id: 'order-1' }, transaction: { id: 'transaction-1' }, form_html: '<form></form>' })
@@ -103,7 +105,7 @@ describe('用户账务 API 客户端', () => {
     })
 
     await createBillingPaymentOrder(PERSONAL_CONTEXT, { amount_yuan: '50.00', description: '账户充值' }, 'payment-order-1', { accessToken: 'billing-token' })
-    await startBillingPayment('order-1', 'payment-start-1', { accessToken: 'billing-token' })
+    await startBillingPayment('order-1', 'payment-start-1', { accessToken: 'billing-token', scene: 'h5', channel: 'alipay' })
     await getBillingPaymentOrder('order-1', { accessToken: 'billing-token' })
     await closeBillingPaymentOrder('order-1', { accessToken: 'billing-token' })
 
@@ -115,13 +117,15 @@ describe('用户账务 API 客户端', () => {
       '/api/user/payment/orders/order-1/close',
     ])
     expect(calls[0].url.searchParams.get('account_type')).toBe('personal')
+    expect(calls.slice(1).every(({ url }) => url.searchParams.get('account_type') === 'personal')).toBe(true)
     expect(calls[0].options?.method).toBe('POST')
     expect(JSON.parse(String(calls[0].options?.body))).toEqual({ amount_yuan: '50.00', description: '账户充值' })
     expect(new Headers(calls[0].options?.headers).get('Idempotency-Key')).toBe('payment-order-1')
-    expect(JSON.parse(String(calls[1].options?.body))).toEqual({ scene: BILLING_PAYMENT_SCENE_PC })
+    expect(JSON.parse(String(calls[1].options?.body))).toEqual({ scene: 'h5', channel: 'alipay' })
     expect(new Headers(calls[1].options?.headers).get('Idempotency-Key')).toBe('payment-start-1')
     expect(calls[2].options?.method).toBeUndefined()
     expect(calls[3].options?.method).toBe('POST')
+    expect(JSON.parse(String(calls[3].options?.body))).toEqual({})
     expect(new Headers(calls[3].options?.headers).get('Idempotency-Key')).toBe('close-order-1')
     expect(new Headers(calls[1].options?.headers).get('Authorization')).toBe('Bearer billing-token')
   })
@@ -150,6 +154,26 @@ describe('用户账务 API 客户端', () => {
     expect(queryURL.searchParams.get('enterprise_id')).toBe(ENTERPRISE_CONTEXT.enterprise_id)
     expect(() => startBillingPayment('order-1', '  ')).toThrowError('支付请求缺少幂等标识，请重试')
     expect(() => closeBillingPaymentOrder('  ')).toThrowError('支付订单编号不能为空')
+  })
+
+  it('将新版摘要钱包与未读奖励字段归一化，并支持兑换码请求编号', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, options) => {
+      const url = new URL(String(input), window.location.origin)
+      if (url.pathname.endsWith('/summary')) {
+        return apiResponse({
+          wallet: { account: { id: 'acct-1', type: 'personal', name: '个人空间' }, wallet: { id: 'wallet-1', currency: 'CNY', status: 'active', paid_available_yuan: '1', bonus_available_yuan: '2', paid_frozen_yuan: '0', bonus_frozen_yuan: '0', debt_yuan: '0', total_available_yuan: '3', total_balance_yuan: '3', version: '1' }, bonus_grants: [] },
+          recent_rewards: [], recent_statements: [], unread_rewards: '4',
+        })
+      }
+      return apiResponse({ amount_yuan: '10.000000000', expires_at: null, bonus_balance_yuan: '10.000000000' })
+    })
+    const summary = await getBillingSummary(PERSONAL_CONTEXT, { accessToken: 'billing-token' })
+    expect(summary.wallet.wallet.total_available_yuan).toBe('3')
+    expect(summary.unread_rewards).toBe('4')
+    await redeemBillingCode('  A1B2C3D4E5F6  ', { accessToken: 'billing-token', requestId: 'redeem-request-1' })
+    const redeemCall = fetchMock.mock.calls[1]
+    expect(JSON.parse(String(redeemCall?.[1]?.body))).toEqual({ code: 'A1B2C3D4E5F6' })
+    expect(new Headers(redeemCall?.[1]?.headers).get('X-Request-ID')).toBe('redeem-request-1')
   })
 
   it('映射权限、1300xx 和网络错误，同时保留服务端请求 ID', () => {

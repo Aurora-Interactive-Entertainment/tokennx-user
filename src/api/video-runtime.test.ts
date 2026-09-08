@@ -3,7 +3,7 @@ import { MODEL_API_BASE_URL } from './model-runtime'
 import { VideoRuntimeError, cancelVideoTask, getVideoTask, submitVideoGeneration, videoTaskIsTerminal } from './video-runtime'
 
 const DEFAULT_INPUT = {
-  apiKey: 'nx_live_video_key',
+  accessToken: 'user-access-token',
   model: 'cogvideo-public',
   prompt: '海边日落，镜头缓慢推进',
   duration: 5,
@@ -22,7 +22,7 @@ function jsonResponse(data: unknown, status = 200, headers: Record<string, strin
 describe('视频任务运行时请求', () => {
   beforeEach(() => vi.restoreAllMocks())
 
-  it('提交时发送 API Key、幂等键和媒体参数，并使用后端任务头兜底任务 ID', async () => {
+  it('提交时发送登录态令牌、会话标记、幂等键和媒体参数，并使用后端任务头兜底任务 ID', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse({ status: 'queued' }, 202, {
       'X-Request-ID': 'server-request-1',
       'X-ThinkGo-Task-ID': 'task_local_1',
@@ -39,7 +39,8 @@ describe('视频任务运行时请求', () => {
     expect(options?.method).toBe('POST')
     expect(options?.credentials).toBe('omit')
     const headers = new Headers(options?.headers)
-    expect(headers.get('Authorization')).toBe('Bearer nx_live_video_key')
+    expect(headers.get('Authorization')).toBe('Bearer user-access-token')
+    expect(headers.get('X-ThinkGo-User-Session')).toBe('1')
     expect(headers.get('Idempotency-Key')).toBe('video-submit-1')
     expect(headers.get('X-Request-ID')).toBeTruthy()
     expect(headers.get('X-App-Lang')).toBe('zh-CN')
@@ -61,7 +62,7 @@ describe('视频任务运行时请求', () => {
       metadata: { url: 'https://cdn.example.com/video.mp4' },
     }, 200, { 'X-Request-ID': 'server-request-2' }))
 
-    await expect(getVideoTask('nx_live_video_key', 'task/local 2')).resolves.toMatchObject({
+    await expect(getVideoTask('user-access-token', 'task/local 2')).resolves.toMatchObject({
       taskId: 'task_local_2',
       status: 'succeeded',
       progress: 100,
@@ -70,21 +71,23 @@ describe('视频任务运行时请求', () => {
     })
     expect(String(fetchMock.mock.calls[0]?.[0])).toBe(`${MODEL_API_BASE_URL}/videos/task%2Flocal%202`)
     expect(fetchMock.mock.calls[0]?.[1]?.method).toBe('GET')
+    expect(new Headers(fetchMock.mock.calls[0]?.[1]?.headers).get('X-ThinkGo-User-Session')).toBe('1')
   })
 
   it('取消时使用 DELETE，并把取消请求保留为非终态以等待服务端确认', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse({ status: 'cancel_requested' }))
 
-    await expect(cancelVideoTask('nx_live_video_key', 'task-3')).resolves.toMatchObject({ taskId: 'task-3', status: 'cancelling' })
+    await expect(cancelVideoTask('user-access-token', 'task-3')).resolves.toMatchObject({ taskId: 'task-3', status: 'cancelling' })
     expect(String(fetchMock.mock.calls[0]?.[0])).toBe(`${MODEL_API_BASE_URL}/videos/task-3`)
     expect(fetchMock.mock.calls[0]?.[1]?.method).toBe('DELETE')
+    expect(new Headers(fetchMock.mock.calls[0]?.[1]?.headers).get('X-ThinkGo-User-Session')).toBe('1')
   })
 
   it('拒绝缺少关键字段，并保留服务端错误的状态、错误码和请求号', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch')
-    await expect(submitVideoGeneration({ ...DEFAULT_INPUT, apiKey: ' ' })).rejects.toMatchObject({ status: 401, code: 'api_key_required' })
+    await expect(submitVideoGeneration({ ...DEFAULT_INPUT, accessToken: ' ' })).rejects.toMatchObject({ status: 401, code: 'invalid_user_session' })
     await expect(submitVideoGeneration({ ...DEFAULT_INPUT, prompt: ' ' })).rejects.toMatchObject({ status: 400, code: 'invalid_request' })
-    await expect(getVideoTask(DEFAULT_INPUT.apiKey, ' ')).rejects.toMatchObject({ status: 400, code: 'task_id_required' })
+    await expect(getVideoTask(DEFAULT_INPUT.accessToken, ' ')).rejects.toMatchObject({ status: 400, code: 'task_id_required' })
     expect(fetchMock).not.toHaveBeenCalled()
 
     vi.mocked(globalThis.fetch).mockResolvedValue(jsonResponse({ error: { message: '余额不足', code: 'insufficient_balance' } }, 402, { 'X-Request-ID': 'billing-request-1' }))

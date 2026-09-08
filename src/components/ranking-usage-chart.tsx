@@ -29,6 +29,10 @@ function weekDate(week: string): Date | null {
   return Number.isNaN(date.getTime()) ? null : date
 }
 
+function usageWeekKey(value: string | number): string {
+  return typeof value === 'string' ? value : new Date(value).toISOString().slice(0, 10)
+}
+
 function weekLabel(week: string, language: string, includeYear = false): string {
   const date = weekDate(week)
   if (!date) return week
@@ -49,7 +53,7 @@ export function RankingRecentUsageChart({ data }: { data: RecentModelUsage }) {
   const [legendVisible, setLegendVisible] = useState(false)
   const legendVisibleRef = useRef(false)
   const usageByModel = useMemo(() => data.items.map((item) => {
-    const weekly = new Map(item.weekly_usage.map((usage) => [new Date(usage.week_start).toISOString().slice(0, 10), usage.total_tokens]))
+    const weekly = new Map(item.weekly_usage.map((usage) => [usageWeekKey(usage.week_start), usage.total_tokens]))
     return data.weeks.map((week) => weekly.get(week) ?? 0)
   }), [data.items, data.weeks])
 

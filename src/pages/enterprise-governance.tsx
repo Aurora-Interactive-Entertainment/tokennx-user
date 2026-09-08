@@ -16,6 +16,7 @@ import {
   type EnterprisePermissionDefinition,
   type EnterpriseRole,
   type EnterpriseRoleInput,
+  type EnterpriseVersion,
 } from "@/api/enterprise-console";
 import {
   EnterpriseEmpty,
@@ -31,7 +32,7 @@ export { updatePermissionSelection } from "@/components/enterprise-permission-ma
 
 type RoleDraft = {
   id?: string;
-  version?: number;
+  version?: EnterpriseVersion;
   builtIn: boolean;
   ownerRole: boolean;
   name: string;

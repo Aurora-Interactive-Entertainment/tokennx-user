@@ -22,6 +22,7 @@ import {
 	downloadBillingInvoice,
   submitBillingInvoice,
   type BillingAnalysisResponse,
+  type BillingAnalysisFilters,
   type BillingContext,
   type BillingInvoiceInput,
   type BillingInvoiceItem,
@@ -31,6 +32,8 @@ import {
   type BillingPaymentStartResult,
   type BillingStatementLine,
 } from '@/api/billing'
+import { getAllUserApiKeys } from '@/api/user-api-keys'
+import { getAllUserModels } from '@/api/user-models'
 import { getAllEnterpriseMembers, getEnterpriseDepartments, type EnterpriseDepartment, type EnterpriseMember } from '@/api/enterprise-console'
 import { BannerNotice, EmptyPanel, PageTitle } from '@/components/common'
 import { appToast } from '@/components/app-toast'
@@ -60,6 +63,7 @@ import {
 } from '@/components/billing-invoice-form'
 import RealNameRequiredDialog from '@/components/real-name-required-dialog'
 import { BalanceAlertDialog } from '@/components/balance-alert-dialog'
+import { BillingRedemptionDialog } from '@/components/billing-redemption-dialog'
 import '@/components/trae-date-picker.css'
 
 export { validateInvoiceForm } from '@/components/billing-invoice-form'
@@ -147,6 +151,32 @@ async function loadBillingDepartments(enterpriseID: string, signal: AbortSignal)
     })
   }
   return result
+}
+
+const EMPTY_BILLING_FILTERS: BillingAnalysisFilters = { periods: [], api_keys: [], models: [] }
+
+// 中文：费用分析新版不再返回 filters，筛选目录分别来自 API Key 和用户模型目录接口。
+async function loadBillingFilterCatalog(context: BillingContext, signal: AbortSignal): Promise<BillingAnalysisFilters> {
+  const keyContext = context.account_type === 'enterprise' && context.enterprise_id
+    ? { account_type: 'enterprise' as const, enterprise_id: context.enterprise_id }
+    : { account_type: 'personal' as const }
+  const [keys, models] = await Promise.all([
+    getAllUserApiKeys(keyContext, 'all', { signal }),
+    getAllUserModels({
+      account_type: context.account_type,
+      ...(context.account_type === 'enterprise' && context.enterprise_id ? { enterprise_id: context.enterprise_id } : {}),
+    }, signal),
+  ])
+  return {
+    periods: [],
+    api_keys: keys.items.map((item) => ({ id: item.id, name: item.name, masked_key: item.masked_key, status: item.status })),
+    models: models.items.map((item) => ({
+      code: item.alias || item.code || item.id,
+      alias: item.alias || item.code || item.id,
+      name: item.name || item.alias || item.code || item.id,
+      vendor: item.company || '',
+    })),
+  }
 }
 
 function invoiceStatusClass(status: string): string {
@@ -372,7 +402,7 @@ function PointsBalanceCard({ metrics }: { metrics: BillingAnalysisResponse['metr
   </article>
 }
 
-function AccountBalanceSection({ wallet, metrics, onRecharge, onBalanceAlert }: { wallet: BillingAnalysisResponse['wallet']; metrics: BillingAnalysisResponse['metrics']; onRecharge: () => void; onBalanceAlert: () => void }) {
+function AccountBalanceSection({ wallet, metrics, onRecharge, onBalanceAlert, onRedeem }: { wallet: BillingAnalysisResponse['wallet']; metrics: BillingAnalysisResponse['metrics']; onRecharge: () => void; onBalanceAlert: () => void; onRedeem?: () => void }) {
   return <section className="billing-balance-section" aria-labelledby="billingBalanceHeading">
     <h2 id="billingBalanceHeading" className="billing-subsection-heading">{i18n.t('console.billing.accountBalance')}</h2>
     <div className="billing-balance-grid">
@@ -389,7 +419,10 @@ function AccountBalanceSection({ wallet, metrics, onRecharge, onBalanceAlert }: 
       </article>
       <article className="billing-balance-card">
         <div className="billing-balance-card-heading"><span>{i18n.t('console.billing.rewardBalance')}</span><BillingSectionInfo content={i18n.t('console.billing.rewardBalanceHint')} /></div>
-        <strong><PlainMoney value={wallet.bonus_available_yuan} /></strong>
+        <div className="billing-reward-card-footer">
+          <strong><PlainMoney value={wallet.bonus_available_yuan} /></strong>
+          {onRedeem ? <Button className="billing-redeem-button" theme="borderless" size="small" onClick={onRedeem}>{i18n.t('console.billing.redeemCode')}</Button> : null}
+        </div>
       </article>
       <PointsBalanceCard metrics={metrics} />
     </div>
@@ -434,7 +467,7 @@ function CreditDetailsSection({ data }: { data: BillingAnalysisResponse }) {
   </section>
 }
 
-function AnalysisTab({ state, ledger, dateRange, apiKeyID, model, billingType, departmentID, memberID, departments, members, directoryLoading, directoryEnabled, onRecharge, onBalanceAlert, onFilterChange, onDateRangeChange, onRetry }: { state: ResourceState<BillingAnalysisResponse>; ledger: ReactNode; dateRange: Date[]; apiKeyID: string; model: string; billingType: string; departmentID: string; memberID: string; departments: EnterpriseDepartment[]; members: EnterpriseMember[]; directoryLoading: boolean; directoryEnabled: boolean; onRecharge: () => void; onBalanceAlert: () => void; onFilterChange: (key: 'apiKey' | 'model' | 'billingType' | 'department' | 'member', value: string) => void; onDateRangeChange: (value: Date[]) => void; onRetry: () => void }) {
+function AnalysisTab({ state, ledger, dateRange, apiKeyID, model, billingType, departmentID, memberID, departments, members, directoryLoading, directoryEnabled, filterCatalog, onRecharge, onBalanceAlert, onRedeem, onFilterChange, onDateRangeChange, onRetry }: { state: ResourceState<BillingAnalysisResponse>; ledger: ReactNode; dateRange: Date[]; apiKeyID: string; model: string; billingType: string; departmentID: string; memberID: string; departments: EnterpriseDepartment[]; members: EnterpriseMember[]; directoryLoading: boolean; directoryEnabled: boolean; filterCatalog: BillingAnalysisFilters; onRecharge: () => void; onBalanceAlert: () => void; onRedeem?: () => void; onFilterChange: (key: 'apiKey' | 'model' | 'billingType' | 'department' | 'member', value: string) => void; onDateRangeChange: (value: Date[]) => void; onRetry: () => void }) {
   if (state.status === 'loading' || state.status === 'idle') return <BillingLoading label={i18n.t('console.billing.loadingAnalysis')} />
   if (state.status === 'error') return <BillingError state={state} onRetry={onRetry} />
   const data = state.data
@@ -442,28 +475,26 @@ function AnalysisTab({ state, ledger, dateRange, apiKeyID, model, billingType, d
   // 中文：后端在部分旧版本或权限受限场景下可能省略分析子对象，统一使用空数据渲染。
   const metrics = data.metrics ?? EMPTY_ANALYSIS_METRICS
   const wallet = data.wallet ?? EMPTY_ANALYSIS_WALLET
-  // 中文：费用筛选只暴露有别名的模型，旧 code 仅留在服务端兼容查询中。
-  // 中文：兼容旧版或权限受限接口未返回筛选项的情况，避免费用页因空数据白屏。
+  // 中文：优先使用独立目录接口返回的筛选项，旧响应仍可通过 data.filters 灰度兼容。
+  const sourceFilters = data.filters ?? filterCatalog
   const filters = {
-    periods: data.filters?.periods ?? [],
-    api_keys: data.filters?.api_keys ?? [],
-    models: (data.filters?.models ?? []).flatMap((option) => {
-      const alias = option.alias?.trim() || ''
+    periods: sourceFilters.periods ?? [],
+    api_keys: sourceFilters.api_keys ?? [],
+    models: (sourceFilters.models ?? []).flatMap((option) => {
+      const alias = option.alias?.trim() || option.code?.trim() || ''
       if (!alias) return []
-      return [
-        {
-          ...option,
-          code: alias,
-          name: `${option.name || i18n.t('console.playground.unnamedModel')}（${option.vendor || i18n.t('console.common.unknown')} · ${alias}）`,
-        },
-      ]
+      return [{
+        ...option,
+        code: alias,
+        name: option.name || `${i18n.t('console.playground.unnamedModel')}（${option.vendor || i18n.t('console.common.unknown')} · ${alias}）`,
+      }]
     }),
   }
   const otherCost = (Number(metrics.image_cost_yuan || 0) + Number(metrics.audio_cost_yuan || 0) + Number(metrics.video_cost_yuan || 0)).toFixed(4)
   return (
     <section id="billing-analysis" className="billing-analysis" aria-labelledby="analysisHeading">
       <div className="billing-balance-and-quota">
-        <AccountBalanceSection wallet={wallet} metrics={metrics} onRecharge={onRecharge} onBalanceAlert={onBalanceAlert} />
+        <AccountBalanceSection wallet={wallet} metrics={metrics} onRecharge={onRecharge} onBalanceAlert={onBalanceAlert} onRedeem={onRedeem} />
         <CreditDetailsSection data={data} />
       </div>
       <div className="analysis-header">
@@ -753,6 +784,8 @@ export function BillingPage() {
   const [departments, setDepartments] = useState<EnterpriseDepartment[]>([])
   const [members, setMembers] = useState<EnterpriseMember[]>([])
   const [directoryLoading, setDirectoryLoading] = useState(false)
+  const [analysisFilters, setAnalysisFilters] = useState<BillingAnalysisFilters>(EMPTY_BILLING_FILTERS)
+  const filterCatalogLoadedRef = useRef('')
   const [analysisState, setAnalysisState] = useState<ResourceState<BillingAnalysisResponse>>(resourceState())
   const [ledgerState, setLedgerState] = useState<ResourceState<BillingPageResult<BillingStatementLine>>>(resourceState())
   const [invoiceState, setInvoiceState] = useState<ResourceState<BillingInvoiceResponse>>(resourceState())
@@ -769,6 +802,7 @@ export function BillingPage() {
   const [paymentReturnState, setPaymentReturnState] = useState<ResourceState<BillingPaymentOrder>>(resourceState())
   const [paymentReturnRetryToken, setPaymentReturnRetryToken] = useState(0)
   const [balanceAlertOpen, setBalanceAlertOpen] = useState(false)
+  const [redemptionOpen, setRedemptionOpen] = useState(false)
 
   // 中文：兼容旧版费用页充值链接，保留订单参数后转到新的充值管理页面。
   useEffect(() => {
@@ -799,11 +833,14 @@ export function BillingPage() {
     setMemberID('')
     setDepartments([])
     setMembers([])
+    setAnalysisFilters(EMPTY_BILLING_FILTERS)
+    filterCatalogLoadedRef.current = ''
     setPeriod(currentPeriod())
     setDateRange(defaultBillingDateRange())
     setLedgerState(resourceState())
     setInvoiceState(resourceState())
     setPaymentReturnState(resourceState())
+    setRedemptionOpen(false)
   }, [contextKey, requestedTab])
 
   useEffect(() => {
@@ -860,6 +897,15 @@ export function BillingPage() {
     void getBillingAnalysis(context, { start_at: startAt, end_at: endAt, api_key_id: apiKeyID || undefined, model: model || undefined, billing_type: billingType || undefined, department_id: departmentID || undefined, member_id: memberID || undefined, signal: controller.signal }).then((data) => {
       if (controller.signal.aborted) return
       setAnalysisState({ status: 'success', data, error: '', requestId: null })
+      // 中文：新版分析响应不含 filters；目录只在当前账务主体首次成功返回后补拉一次。
+      if (!data.filters && filterCatalogLoadedRef.current !== contextKey) {
+        filterCatalogLoadedRef.current = contextKey
+        void loadBillingFilterCatalog(context, controller.signal).then((catalog) => {
+          if (!controller.signal.aborted) setAnalysisFilters(catalog)
+        }).catch((error: unknown) => {
+          if (!controller.signal.aborted && isAuthenticationFailure(error)) handleAuthFailure()
+        })
+      }
     }).catch((error: unknown) => {
       if (controller.signal.aborted) return
       if (isAuthenticationFailure(error)) {
@@ -869,7 +915,7 @@ export function BillingPage() {
       setAnalysisState(loadError(error))
     })
     return () => controller.abort()
-  }, [apiKeyID, billingType, context, dateRange, departmentID, handleAuthFailure, loadError, memberID, model, reloadToken])
+  }, [apiKeyID, billingType, context, contextKey, dateRange, departmentID, handleAuthFailure, loadError, memberID, model, reloadToken])
 
   useEffect(() => {
     if (activeTab !== 'overview') return
@@ -1057,8 +1103,8 @@ export function BillingPage() {
   const ledgerSection = <BillingLedgerSection state={ledgerState} lineType={ledgerLineType} page={ledgerPage} pageSize={ledgerPageSize} onLineTypeChange={(value) => { setLedgerLineType(value); setLedgerPage(BILLING_FIRST_PAGE) }} onPageChange={setLedgerPage} onPageSizeChange={(value) => { setLedgerPageSize(value); setLedgerPage(BILLING_FIRST_PAGE) }} onRetry={() => setReloadToken((value) => value + 1)} onExport={() => void exportCSV()} exporting={exportingLedger} />
 
   let content: ReactNode
-  if (activeTab === 'overview') content = <AnalysisTab state={analysisState} ledger={ledgerSection} dateRange={dateRange} apiKeyID={apiKeyID} model={model} billingType={billingType} departmentID={departmentID} memberID={memberID} departments={departments} members={members} directoryLoading={directoryLoading} directoryEnabled={context.account_type === 'enterprise'} onRecharge={() => navigate('/console/recharge')} onBalanceAlert={() => setBalanceAlertOpen(true)} onFilterChange={changeAnalysisFilter} onDateRangeChange={changeAnalysisDateRange} onRetry={() => setReloadToken((value) => value + 1)} />
+  if (activeTab === 'overview') content = <AnalysisTab state={analysisState} ledger={ledgerSection} dateRange={dateRange} apiKeyID={apiKeyID} model={model} billingType={billingType} departmentID={departmentID} memberID={memberID} departments={departments} members={members} directoryLoading={directoryLoading} directoryEnabled={context.account_type === 'enterprise'} filterCatalog={analysisFilters} onRecharge={() => navigate('/console/recharge')} onBalanceAlert={() => setBalanceAlertOpen(true)} onRedeem={context.account_type === 'personal' ? () => setRedemptionOpen(true) : undefined} onFilterChange={changeAnalysisFilter} onDateRangeChange={changeAnalysisDateRange} onRetry={() => setReloadToken((value) => value + 1)} />
   else content = <InvoiceTab state={invoiceState} faqOpen={invoiceFaqOpen} downloadingInvoiceID={downloadingInvoiceID} onToggleFaq={() => setInvoiceFaqOpen((value) => !value)} onRetry={() => setReloadToken((value) => value + 1)} onOpenDialog={openInvoiceDialog} onDownload={(item) => void downloadInvoice(item)} onPageChange={setInvoicePage} onPageSizeChange={(nextPageSize) => { setInvoicePageSize(nextPageSize); setInvoicePage(BILLING_FIRST_PAGE) }} page={invoicePage} pageSize={invoicePageSize} />
 
-  return <div className="page-stack billing-console-page"><PageTitle title={t('console.billing.title')} description={t('console.billing.description')} /><RequestFocus data={analysisState.data} requestId={requestedRecordId} /><PaymentReturnNotice state={paymentReturnState} onRetry={() => setPaymentReturnRetryToken((value) => value + 1)} /><ConsoleTabs items={BILLING_TABS.map(([itemKey, label]) => ({ itemKey, tab: t(label) }))} activeKey={activeTab} onChange={(value) => onTabChange(value as BillingTab)} ariaLabel={t('console.billing.title')} /><div className="billing-tab-panel" role="tabpanel" id={`panel-${activeTab}`} aria-labelledby={`tab-${activeTab}`}>{content}</div><BillingInvoiceDialog open={dialogOpen} form={invoiceForm} options={getInvoiceDialogOptions(invoiceState.data)} errors={invoiceFormErrors} step={dialogStep} submitting={submittingInvoice} onClose={closeInvoiceDialog} onChange={updateInvoiceForm} onNext={nextInvoiceStep} onBack={() => { setDialogStep(1); setInvoiceFormErrors({}) }} onSubmit={() => void submitInvoice()} /><BalanceAlertDialog visible={balanceAlertOpen} onClose={() => setBalanceAlertOpen(false)} onAuthFailure={handleAuthFailure} /></div>
+  return <div className="page-stack billing-console-page"><PageTitle title={t('console.billing.title')} description={t('console.billing.description')} /><RequestFocus data={analysisState.data} requestId={requestedRecordId} /><PaymentReturnNotice state={paymentReturnState} onRetry={() => setPaymentReturnRetryToken((value) => value + 1)} /><ConsoleTabs items={BILLING_TABS.map(([itemKey, label]) => ({ itemKey, tab: t(label) }))} activeKey={activeTab} onChange={(value) => onTabChange(value as BillingTab)} ariaLabel={t('console.billing.title')} /><div className="billing-tab-panel" role="tabpanel" id={`panel-${activeTab}`} aria-labelledby={`tab-${activeTab}`}>{content}</div><BillingInvoiceDialog open={dialogOpen} form={invoiceForm} options={getInvoiceDialogOptions(invoiceState.data)} errors={invoiceFormErrors} step={dialogStep} submitting={submittingInvoice} onClose={closeInvoiceDialog} onChange={updateInvoiceForm} onNext={nextInvoiceStep} onBack={() => { setDialogStep(1); setInvoiceFormErrors({}) }} onSubmit={() => void submitInvoice()} /><BalanceAlertDialog visible={balanceAlertOpen} onClose={() => setBalanceAlertOpen(false)} onAuthFailure={handleAuthFailure} /><BillingRedemptionDialog visible={redemptionOpen} onClose={() => setRedemptionOpen(false)} onSuccess={() => setReloadToken((value) => value + 1)} onAuthFailure={handleAuthFailure} /></div>
 }

@@ -137,7 +137,11 @@ export async function getNewsList(page = 1, pageSize = 20, signalOrLocale?: Abor
   const params = new URLSearchParams({ page: String(safePage), page_size: String(safePageSize), locale: resolved.locale })
   if (filters?.keyword?.trim()) params.set('keyword', filters.keyword.trim())
   if (filters?.tag?.trim()) params.set('tag', filters.tag.trim())
-  const value = await fetchJson<unknown>(`${url}?${params.toString()}`, { signal: resolved.signal })
+  const value = await fetchJson<unknown>(`${url}?${params.toString()}`, {
+    signal: resolved.signal,
+    // 中文：接口按 X-App-Lang 优先于 locale 查询参数，显式语言需同步写入请求头。
+    headers: { 'X-App-Lang': resolved.locale, 'Accept-Language': resolved.locale },
+  })
   const payload = isRecord(value) ? value : {}
   const rawItems = Array.isArray(payload.items) ? payload.items : []
   const items = rawItems.flatMap((item) => {
@@ -154,7 +158,10 @@ export async function getNewsDetail(id: string, signalOrLocale?: AbortSignal | N
   const resolved = resolveSignalAndLocale(signalOrLocale, localeOrSignal)
   const url = makeApiUrl(`/api/news/${encodeURIComponent(id)}`)
   const params = new URLSearchParams({ locale: resolved.locale })
-  const value = await fetchJson<unknown>(`${url}?${params.toString()}`, { signal: resolved.signal })
+  const value = await fetchJson<unknown>(`${url}?${params.toString()}`, {
+    signal: resolved.signal,
+    headers: { 'X-App-Lang': resolved.locale, 'Accept-Language': resolved.locale },
+  })
   const article = normalizeArticle(value, true)
   if (!article || !('content' in article)) throw new Error('Invalid news response')
   return article

@@ -31,6 +31,10 @@ function weekLabel(week: string, language: string, includeYear = false): string 
   }).format(new Date(Date.UTC(year, month - 1, day)))
 }
 
+function usageWeekKey(value: string | number): string {
+  return typeof value === 'string' ? value : new Date(value).toISOString().slice(0, 10)
+}
+
 /** 悬浮信息框宽度，与样式中 .chart-hover-legend 的 width 保持一致。 */
 const LEGEND_WIDTH = 210
 /** 信息框与鼠标、面板边缘之间保留的间距。 */
@@ -48,7 +52,7 @@ export function ToolUsageClientsChart({ data }: { data: ToolUsageClients }) {
   const legendVisibleRef = useRef(false)
   const lastPointerRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 })
   const seriesData = useMemo(() => data.items.map((item) => {
-    const values = new Map(item.weekly_usage.map((usage) => [new Date(usage.week_start).toISOString().slice(0, 10), usage.total_tokens]))
+    const values = new Map(item.weekly_usage.map((usage) => [usageWeekKey(usage.week_start), usage.total_tokens]))
     return { name: item.name, values: data.weeks.map((week) => values.get(week) ?? 0) }
   }), [data.items, data.weeks])
   // 堆叠后每周总量峰值，用于无数据时给 y 轴兜底一个整数刻度范围。

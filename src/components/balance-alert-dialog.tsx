@@ -11,9 +11,10 @@ import './balance-alert-dialog.css'
 
 const NOTIFICATION_THRESHOLD_SCALE = 1_000_000_000
 
-function thresholdNanoToYuan(value: number | undefined): string {
-  if (!Number.isFinite(value) || value === undefined) return '0.00'
-  return (value / NOTIFICATION_THRESHOLD_SCALE).toFixed(2)
+function thresholdNanoToYuan(value: string | number | undefined): string {
+  const parsed = typeof value === 'number' ? value : Number(value)
+  if (!Number.isFinite(parsed)) return '0.00'
+  return (parsed / NOTIFICATION_THRESHOLD_SCALE).toFixed(2)
 }
 
 function thresholdYuanToNano(value: string): number | null {

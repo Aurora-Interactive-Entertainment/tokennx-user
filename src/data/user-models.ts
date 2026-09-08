@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { getAccessToken } from '@/auth/token-storage'
-import { getUserModelDetail, getUserModels, getUserModelsErrorMessage, type UserModelAccountType, type UserModelDetail, type UserModelList, type UserModelsQuery, type UserModelModality } from '@/api/user-models'
+import { getAllUserModels, getUserModelDetail, getUserModels, getUserModelsErrorMessage, type UserModelAccountType, type UserModelDetail, type UserModelList, type UserModelsQuery, type UserModelModality } from '@/api/user-models'
 import { isAuthenticationFailure } from '@/api/http'
 import { invalidateAuth } from '@/store/auth-slice'
 import { useAppDispatch } from '@/store/hooks'
@@ -83,7 +83,10 @@ export function useUserModels(options: UseUserModelsOptions = {}): UserModelsSta
       error: '',
     }))
     const query: UserModelsQuery = { ...workspaceQuery(workspaceType, workspaceId), ...(options.activityId ? { activity_id: options.activityId } : {}), ...(options.modelType ? { model_type: options.modelType } : {}), ...(trimmedKeyword ? { keyword: trimmedKeyword } : {}), ...(options.page !== undefined ? { page: options.page } : {}), ...(options.pageSize !== undefined ? { page_size: options.pageSize } : {}) }
-    void getUserModels(query, controller.signal).then((result) => {
+    const request = options.page === undefined && options.pageSize === undefined
+      ? getAllUserModels(query, controller.signal)
+      : getUserModels(query, controller.signal)
+    void request.then((result) => {
       const nextState = { models: mapUserModels(result.items), activities: result.activities, total: result.total ?? null, page: result.page ?? null, pageSize: result.page_size ?? null, loading: false, error: '' }
       if (cacheable && result.page === undefined && result.page_size === undefined) {
         fullDirectoryCache.current.set(directoryKey, { models: nextState.models, activities: nextState.activities, total: null, page: null, pageSize: null })

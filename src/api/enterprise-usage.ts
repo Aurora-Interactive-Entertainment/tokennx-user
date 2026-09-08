@@ -4,11 +4,16 @@ import {
   createEnterpriseQuery,
   type EnterpriseListOptions,
   type EnterpriseRequestContext,
+  type EnterpriseUsageItem as CanonicalEnterpriseUsageItem,
+  type EnterpriseUsageModelFilter as CanonicalEnterpriseUsageModelFilter,
+  type EnterpriseUsageMemberFilter as CanonicalEnterpriseUsageMemberFilter,
+  type EnterpriseUsageResponse as CanonicalEnterpriseUsageResponse,
 } from './enterprise-console'
 
-export type EnterpriseUsageRange = 'today' | '7d' | '30d' | 'custom' | 'month'
+export type EnterpriseUsageRange = 'today' | '7d' | '30d' | 'custom'
 export type EnterpriseUsageStatus = 'all' | 'success' | 'error' | 'cancelled'
-export type EnterpriseUsageGranularity = 'hour' | 'day' | 'week' | 'month'
+// 企业用量主接口固定按 UTC 自然日聚合；保留别名仅供旧类型导入，不能作为请求参数。
+export type EnterpriseUsageGranularity = 'day'
 
 export interface EnterpriseUsagePeriod {
   range: string
@@ -64,66 +69,15 @@ export interface EnterpriseUsagePage<T> {
   page_size: number
 }
 
-export interface EnterpriseUsageModelFilter {
-  code: string
-  alias: string
-  name: string
-  vendor: string
-}
+export type EnterpriseUsageModelFilter = CanonicalEnterpriseUsageModelFilter
 
-export interface EnterpriseUsageMemberFilter {
-  id: string
-  // 中文：不同版本的用量接口可能使用 member_id/user_id 和不同的手机号字段名，统一做兼容解析。
-  member_id?: string
-  user_id?: string
-  name: string
-  // 中文：兼容后端在人员筛选目录中返回的脱敏联系方式。
-  masked_contact?: string
-  masked_phone?: string
-  phone_masked?: string
-  phone?: string
-  email?: string
-}
+export type EnterpriseUsageMemberFilter = CanonicalEnterpriseUsageMemberFilter
 
-export interface EnterpriseUsageAggregateItem {
-  id: string
-  bucket_start: number
-  bucket_end: number
-  granularity: EnterpriseUsageGranularity
-  model_code: string
-  model_alias: string
-  model_name: string
-  vendor: string
-  requests: number
-  success_count: number
-  error_count: number
-  cancelled_count: number
-  input_tokens: number
-  output_tokens: number
-  cached_tokens: number
-  cost_yuan: string
-  average_latency_ms: number | null
-}
-
-export interface EnterpriseUsageDetailResponse {
-  account: { id: string; type: 'enterprise'; name: string }
-  can_filter_members: boolean
-  can_view_billing: boolean
-  filters: {
-    models: EnterpriseUsageModelFilter[]
-    api_keys: Array<{ id: string; name: string }>
-    members: EnterpriseUsageMemberFilter[]
-  }
-  items: EnterpriseUsageAggregateItem[]
-  granularity: EnterpriseUsageGranularity
-  page: number
-  page_size: number
-  total: number
-}
+export type EnterpriseUsageAggregateItem = CanonicalEnterpriseUsageItem
+export type EnterpriseUsageDetailResponse = CanonicalEnterpriseUsageResponse
 
 type UsagePeriodRequest = EnterpriseListOptions & {
   range?: EnterpriseUsageRange
-  month?: string
   start_at?: string | number
   end_at?: string | number
 }
@@ -141,7 +95,7 @@ export type EnterpriseUsageDepartmentsRequest = UsagePeriodRequest & {
 }
 
 export type EnterpriseUsageDetailRequest = EnterpriseListOptions & {
-  range?: Exclude<EnterpriseUsageRange, 'month'>
+  range?: EnterpriseUsageRange
   start_at?: string | number
   end_at?: string | number
   member_id?: string
@@ -149,7 +103,6 @@ export type EnterpriseUsageDetailRequest = EnterpriseListOptions & {
   status?: EnterpriseUsageStatus
   page?: number
   page_size?: number
-  granularity?: EnterpriseUsageGranularity
 }
 
 function usagePath(context: EnterpriseRequestContext, suffix = ''): string {
@@ -168,7 +121,6 @@ function requestOptions(options: EnterpriseListOptions): EnterpriseListOptions {
 function periodQuery(options: UsagePeriodRequest): Record<string, string | number | undefined> {
   return {
     range: options.range,
-    month: options.month,
     start_at: options.start_at,
     end_at: options.end_at,
   }
@@ -178,6 +130,7 @@ export function getEnterpriseUsageSummary(
   context: EnterpriseRequestContext,
   options: UsagePeriodRequest = {},
 ): Promise<EnterpriseUsageSummaryResponse> {
+  // @deprecated 旧版摘要路由仅保留灰度兼容；新页面统一调用主用量入口。
   const query = createEnterpriseQuery(periodQuery(options))
   return fetchAuthenticatedJson<EnterpriseUsageSummaryResponse>(
     `${usagePath(context, '/summary')}${query ? `?${query}` : ''}`,
@@ -189,6 +142,7 @@ export function getEnterpriseUsageMembers(
   context: EnterpriseRequestContext,
   options: EnterpriseUsageMembersRequest = {},
 ): Promise<EnterpriseUsagePage<EnterpriseUsageMember>> {
+  // @deprecated 旧版人员聚合路由仅保留灰度兼容；主入口不再返回成员聚合。
   const query = createEnterpriseQuery({
     ...periodQuery(options),
     keyword: options.keyword,
@@ -205,6 +159,7 @@ export function getEnterpriseUsageDepartments(
   context: EnterpriseRequestContext,
   options: EnterpriseUsageDepartmentsRequest = {},
 ): Promise<EnterpriseUsagePage<EnterpriseUsageDepartment>> {
+  // @deprecated 旧版部门聚合路由仅保留灰度兼容；主入口不再返回部门聚合。
   const query = createEnterpriseQuery({
     ...periodQuery(options),
     department_name: options.department_name,
@@ -230,12 +185,18 @@ export function getEnterpriseUsageDetail(
     status: options.status,
     page: options.page ?? 1,
     page_size: options.page_size ?? 20,
-    // The enterprise endpoint defaults to daily buckets. Only send this
-    // parameter when a caller explicitly requests another granularity.
-    granularity: options.granularity,
   })
   return fetchAuthenticatedJson<EnterpriseUsageDetailResponse>(
     `${usagePath(context)}?${query}`,
     requestOptions(options),
   )
+}
+
+// 当前合同的主入口名称与后端路由一致；保留 Detail 别名供旧页面调用，二者
+// 必须共享同一请求构造逻辑，避免灰度期间一个入口又带回废弃参数。
+export function getEnterpriseUsage(
+  context: EnterpriseRequestContext,
+  options: EnterpriseUsageDetailRequest = {},
+): Promise<EnterpriseUsageDetailResponse> {
+  return getEnterpriseUsageDetail(context, options)
 }

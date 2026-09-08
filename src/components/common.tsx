@@ -164,7 +164,7 @@ import { appToast } from "./app-toast";
 import { AccountDeletionFlow } from "./account-deletion-flow";
 import { BindEmailDialog } from "./bind-email-dialog";
 import { workspaceContextFor } from "@/utils/workspace";
-import { formatApiTime } from "@/utils/format";
+import { apiTimeToDate, formatApiTime } from "@/utils/format";
 import { MarkdownContent } from "./markdown-content";
 import { VideoPricingPopover } from "./video-pricing-popover";
 import {
@@ -1090,10 +1090,6 @@ function maskLoginPhone(value: string): string {
     : value;
 }
 
-function internationalLoginPhone(dialCode: string, value: string): string {
-  return `${dialCode}${normalizeLoginPhone(value)}`;
-}
-
 type PhoneCodeCooldown = {
   destination: string;
   countryCode: string;
@@ -1496,13 +1492,17 @@ export function LoginPanel({
       const result = await dispatch(
         requestBindingCode({
           bindingTicket,
-          phone: internationalLoginPhone(LOGIN_DIAL_CODE.code, bindingPhone),
+          phone: normalizeLoginPhone(bindingPhone),
+          countryCode: LOGIN_DIAL_CODE.code,
         }),
       ).unwrap();
       setBindingCodeSent(true);
       setBindingRetryAfter(LOGIN_CODE_RETRY_SECONDS);
       setFeedback(
-        t("login.sentTo", { destination: result.destination_masked }),
+        t("login.sentTo", {
+          destination:
+            result.destination_masked || maskLoginPhone(bindingPhone),
+        }),
       );
     } catch (error) {
       handleLoginError(error);
@@ -1526,7 +1526,7 @@ export function LoginPanel({
       const user = await dispatch(
         completeBinding({
           bindingTicket,
-          phone: internationalLoginPhone(LOGIN_DIAL_CODE.code, bindingPhone),
+          phone: normalizeLoginPhone(bindingPhone),
           code: bindingCode,
           inviteCode,
         }),
@@ -3576,9 +3576,13 @@ export function AccountSettingsModal({
     return {
       id: nextProfile.id,
       display_name: limitDisplayNameLength(nextProfile.display_name),
-      avatar_url: nextProfile.avatar_url,
-      locale: nextProfile.locale,
-      timezone: nextProfile.timezone,
+      // 中文：新版资料响应省略这些字段，局部资料更新时沿用当前认证信息。
+      avatar_url: nextProfile.avatar_url ?? auth.user?.avatar_url ?? "",
+      locale: nextProfile.locale ?? auth.user?.locale ?? "zh-CN",
+      timezone:
+        nextProfile.timezone ??
+        auth.user?.timezone ??
+        Intl.DateTimeFormat().resolvedOptions().timeZone,
       status: nextProfile.status,
       phone_masked: nextProfile.phone.masked_identifier,
       email_masked: nextProfile.email.masked_identifier,
@@ -5043,7 +5047,7 @@ export function ManuscriptSupportWidget() {
                           ? t("support.notificationWarning")
                           : t("support.notificationInfo")}
                     </span>
-                    <time dateTime={selectedNotification.created_at}>
+                    <time dateTime={apiTimeToDate(selectedNotification.created_at)?.toISOString()}>
                       {formatApiTime(selectedNotification.created_at)}
                     </time>
                   </header>
@@ -5110,7 +5114,7 @@ export function ManuscriptSupportWidget() {
                         <span className="manuscript-support-notification-copy">
                           <strong>{notification.title}</strong>
                           <span>{notification.content}</span>
-                            <time dateTime={notification.created_at}>
+                            <time dateTime={apiTimeToDate(notification.created_at)?.toISOString()}>
                               {formatApiTime(notification.created_at)}
                             </time>
                         </span>

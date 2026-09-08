@@ -96,5 +96,8 @@ describe("exports API", () => {
     expect(getExportErrorMessage(new ApiError("limit", 429, 150005, null))).toBe(
       "导出任务数量已达上限，请稍后再试",
     );
+    expect(getExportErrorMessage(new ApiError("storage", 503, 100007, null))).toBe(
+      "导出文件存储暂时不可用，请稍后重试",
+    );
   });
 });

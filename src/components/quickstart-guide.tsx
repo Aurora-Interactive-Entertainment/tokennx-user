@@ -1,16 +1,12 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import Button from '@douyinfe/semi-ui/lib/es/button'
 import Toast from '@douyinfe/semi-ui/lib/es/toast'
 import { appToast } from '@/components/app-toast'
-import { IconCopy, IconFile, IconSearch } from '@douyinfe/semi-icons'
-import { CompatInput as Input } from '@/components/semi-compat'
-import { useAppStore } from '@/data/app-state'
-import { workspaceContextFor } from '@/utils/workspace'
+import { IconCopy, IconFile } from '@douyinfe/semi-icons'
 import { findModelInList, modelAlias, type ModelRecord } from '@/data/models'
 import { useUserModels } from '@/data/user-models'
-import { getUserApiKeys, type UserApiKey, type UserApiKeyContext } from '@/api/user-api-keys'
 import { normalizeQuickstartLanguage, normalizeQuickstartProtocol, QUICKSTART_API_BASE_URL, quickstartCodeSample, type QuickstartLanguage, type QuickstartProtocol } from '@/utils/quickstart'
 import openAiIcon from '@/assets/svg/OpenAl.svg'
 import claudeIcon from '@/assets/svg/Claudecode.svg'
@@ -108,16 +104,16 @@ function StepPanel({ children, open }: { children: ReactNode; open: boolean }) {
   return <div className={`quickstart-pdf-step-panel${open ? ' is-open' : ''}`} aria-hidden={!open}><div>{children}</div></div>
 }
 
-function ApiKeyStep({ keys, loading, contextQuery, onCopy, onApply, appliedKeyID, t }: { keys: UserApiKey[]; loading: boolean; contextQuery: string; onCopy: (value: string) => void; onApply: (key: UserApiKey) => void; appliedKeyID: string; t: (key: string, options?: Record<string, unknown>) => string }) {
-  const [query, setQuery] = useState('')
-  const rows = keys.filter((key) => key.name.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()))
+function ApiKeyStep({ contextQuery, t }: { contextQuery: string; t: (key: string, options?: Record<string, unknown>) => string }) {
   return <>
     <p className="quickstart-pdf-description">{t('console.quickstart.stepApiKeyHint')}</p>
-    <Input className="quickstart-pdf-search" prefix={<IconSearch aria-hidden="true" />} value={query} onChange={setQuery} placeholder={t('console.quickstart.keySearch')} aria-label={t('console.quickstart.keySearch')} />
     <div className="quickstart-pdf-key-table-wrap">
-      <table className="quickstart-pdf-key-table"><thead><tr><th>{t('console.quickstart.keyName')}</th><th>{t('console.quickstart.keyValue')}</th><th>{t('console.quickstart.keyScope')}</th><th>{t('console.quickstart.keyOperation')}</th></tr></thead><tbody>
-        {loading ? <tr><td className="quickstart-pdf-table-state" colSpan={4}>{t('console.common.loadingModels')}</td></tr> : rows.length ? rows.map((key) => <tr key={key.id}><td><strong>{key.name}</strong></td><td><code>{key.masked_key}</code></td><td>{key.scope === 'all' ? t('console.quickstart.allModels') : key.models.length ? key.models.map((item) => item.name).join('、') : t('console.quickstart.pending')}</td><td><div className="quickstart-pdf-key-actions"><Button theme="borderless" size="small" disabled={!key.secret} onClick={() => onApply(key)}>{t('console.quickstart.applyKey')}{appliedKeyID === key.id ? ' ✓' : ''}</Button><Button theme="borderless" size="small" disabled={!key.secret} onClick={() => onCopy(key.secret || key.masked_key)}>{t('console.quickstart.copy')}</Button></div></td></tr>) : <tr><td className="quickstart-pdf-table-state" colSpan={4}><div className="quickstart-pdf-empty"><span className="quickstart-pdf-empty-icon"><IconFile aria-hidden="true" /></span><strong>{t('console.quickstart.noKeys')}</strong><span>{t('console.quickstart.keyHint')}</span><Link className="quickstart-pdf-outline-button" to={'/console/api-keys?return=' + encodeURIComponent('/console/quickstart?' + contextQuery)}>{t('console.quickstart.createNow')}</Link></div></td></tr>}
-      </tbody></table>
+      <div className="quickstart-pdf-empty">
+        <span className="quickstart-pdf-empty-icon"><IconFile aria-hidden="true" /></span>
+        <strong>{t('console.quickstart.keyManagementTitle')}</strong>
+        <span>{t('console.quickstart.keyManagementHint')}</span>
+        <Link className="quickstart-pdf-outline-button" to={'/console/api-keys?return=' + encodeURIComponent('/console/quickstart?' + contextQuery)}>{t('console.quickstart.createNow')}</Link>
+      </div>
     </div>
   </>
 }
@@ -138,10 +134,10 @@ function ModelStep({ models, selected, onSelect, onNext, t }: { models: ModelRec
   </>
 }
 
-function AgentStep({ model, language, protocol, appliedApiKey, setLanguage, setProtocol, t, onCopy }: { model: ModelRecord; language: QuickstartLanguage; protocol: QuickstartProtocol; appliedApiKey: string; setLanguage: (value: QuickstartLanguage) => void; setProtocol: (value: QuickstartProtocol) => void; t: (key: string) => string; onCopy: (value: string) => void }) {
+function AgentStep({ model, language, protocol, setLanguage, setProtocol, t, onCopy }: { model: ModelRecord; language: QuickstartLanguage; protocol: QuickstartProtocol; setLanguage: (value: QuickstartLanguage) => void; setProtocol: (value: QuickstartProtocol) => void; t: (key: string) => string; onCopy: (value: string) => void }) {
   const [apiMode, setApiMode] = useState<QuickstartApiMode>('chat')
   const alias = modelAlias(model)
-  const code = (protocol === 'openai' && apiMode === 'responses' ? responseCodeSample(language, alias) : quickstartCodeSample({ protocol, language, modelAlias: alias })).replaceAll('YOUR_TOKEN_NX_API_KEY', appliedApiKey || 'YOUR_TOKEN_NX_API_KEY')
+  const code = protocol === 'openai' && apiMode === 'responses' ? responseCodeSample(language, alias) : quickstartCodeSample({ protocol, language, modelAlias: alias })
   return <div id="quickstart-agent" className="quickstart-pdf-agent">
     <div className="quickstart-pdf-api-panel">
       <div className="quickstart-pdf-api-selector">
@@ -172,7 +168,6 @@ function AgentStep({ model, language, protocol, appliedApiKey, setLanguage, setP
 }
 export function QuickstartGuide() {
   const { t } = useTranslation()
-  const store = useAppStore()
   const [searchParams, setSearchParams] = useSearchParams()
   const { models, loading: modelsLoading, error: modelsError } = useUserModels()
   const textModels = models.filter((item) => item.modality === 'text' && modelAlias(item))
@@ -183,11 +178,6 @@ export function QuickstartGuide() {
   const [language, setLanguage] = useState<QuickstartLanguage>(searchParams.get('language') ? normalizeQuickstartLanguage(searchParams.get('language')) : 'curl')
   const [protocol, setProtocol] = useState<QuickstartProtocol>(normalizeQuickstartProtocol(searchParams.get('protocol')))
   const [openStep, setOpenStep] = useState<QuickstartStep>(1)
-  const [keys, setKeys] = useState<UserApiKey[]>([])
-  const [keysLoading, setKeysLoading] = useState(true)
-  const [appliedApiKey, setAppliedApiKey] = useState('')
-  const [appliedKeyID, setAppliedKeyID] = useState('')
-  const workspaceContext = useMemo<UserApiKeyContext>(() => workspaceContextFor(store.activeWorkspace), [store.activeWorkspace.id, store.activeWorkspace.type])
 
   useEffect(() => {
     if (modelsError) appToast.error(modelsError)
@@ -199,14 +189,6 @@ export function QuickstartGuide() {
     setSearchParams({ model: alias, protocol, language }, { replace: true })
   }, [language, model, protocol, requestedModel, requestedModelAlias, requestedProtocol, setSearchParams])
 
-  useEffect(() => {
-    let active = true
-    const controller = new AbortController()
-    setKeysLoading(true)
-    void getUserApiKeys(workspaceContext, 'all', { signal: controller.signal }).then((result) => { if (active) setKeys(result.items) }).catch(() => { if (active && !controller.signal.aborted) setKeys([]) }).finally(() => { if (active && !controller.signal.aborted) setKeysLoading(false) })
-    return () => { active = false; controller.abort() }
-  }, [workspaceContext])
-
   function copy(value: string): void {
     if (!navigator.clipboard) return
     void navigator.clipboard.writeText(value).then(() => Toast.success(t('console.quickstart.copySuccess'))).catch(() => Toast.error(t('console.common.copyFailed')))
@@ -216,14 +198,13 @@ export function QuickstartGuide() {
   if (modelsError) return <div className="quickstart-page quickstart-pdf-page" />
   if (!model) return <div className="quickstart-page quickstart-pdf-page"><p>{t('console.quickstart.noModelsHint')}</p></div>
   const contextQuery = `model=${encodeURIComponent(modelAlias(model))}&protocol=${protocol}&language=${language}`
-  const completed = keys.some((key) => key.status === 'active')
   const toggle = (step: QuickstartStep) => setOpenStep(openStep === step ? 0 : step)
   return <div className="quickstart-page quickstart-pdf-page">
     <div className="quickstart-pdf-intro"><div><strong>{t('console.quickstart.heroTitle')}</strong><p>{t('console.quickstart.heroHint')} <Link to="/console/trae-enterprise/subscription">{t('console.quickstart.subscription')}</Link></p></div></div>
     <div className="quickstart-pdf-steps">
-      <section className={`quickstart-pdf-step${openStep === 1 ? ' is-open' : ''}`}><StepHeader label={t('console.quickstart.stepOne')} title={t('console.quickstart.stepApiKey')} open={openStep === 1} onToggle={() => toggle(1)} help={<Link to={QUICKSTART_API_KEY_DOC_HREF}>{t('console.quickstart.viewHelp')}</Link>} status={<span className="quickstart-pdf-status"><i className={completed ? 'is-complete' : ''} />{t('console.quickstart.completedCount', { count: completed ? 1 : 0 })}</span>} /><StepPanel open={openStep === 1}><ApiKeyStep keys={keys} loading={keysLoading} contextQuery={contextQuery} onCopy={copy} onApply={(key) => { setAppliedApiKey(key.secret || ''); setAppliedKeyID(key.id); Toast.success(t('console.quickstart.applySuccess')) }} appliedKeyID={appliedKeyID} t={t} /></StepPanel></section>
+      <section className={`quickstart-pdf-step${openStep === 1 ? ' is-open' : ''}`}><StepHeader label={t('console.quickstart.stepOne')} title={t('console.quickstart.stepApiKey')} open={openStep === 1} onToggle={() => toggle(1)} help={<Link to={QUICKSTART_API_KEY_DOC_HREF}>{t('console.quickstart.viewHelp')}</Link>} /><StepPanel open={openStep === 1}><ApiKeyStep contextQuery={contextQuery} t={t} /></StepPanel></section>
       <section className={`quickstart-pdf-step${openStep === 2 ? ' is-open' : ''}`}><StepHeader label={t('console.quickstart.stepTwo')} title={t('console.quickstart.stepModel')} open={openStep === 2} onToggle={() => toggle(2)} status={<span className="quickstart-pdf-status"><i />{model.name}</span>} /><StepPanel open={openStep === 2}><ModelStep models={textModels} selected={model} onSelect={(alias) => { setSearchParams({ model: alias, protocol, language }); setOpenStep(2) }} onNext={() => { setOpenStep(3); window.requestAnimationFrame(() => document.getElementById('quickstart-agent')?.scrollIntoView({ behavior: 'smooth', block: 'start' })) }} t={t} /></StepPanel></section>
-      <section className={`quickstart-pdf-step${openStep === 3 ? ' is-open' : ''}`}><StepHeader label={t('console.quickstart.stepThree')} title={t('console.quickstart.apiIntegration')} open={openStep === 3} onToggle={() => toggle(3)} /><StepPanel open={openStep === 3}><AgentStep model={model} language={language} protocol={protocol} appliedApiKey={appliedApiKey} setLanguage={(next) => { setLanguage(next); setSearchParams({ model: modelAlias(model), protocol, language: next }) }} setProtocol={(next) => { setProtocol(next); setSearchParams({ model: modelAlias(model), protocol: next, language }) }} t={t} onCopy={copy} /></StepPanel></section>
+      <section className={`quickstart-pdf-step${openStep === 3 ? ' is-open' : ''}`}><StepHeader label={t('console.quickstart.stepThree')} title={t('console.quickstart.apiIntegration')} open={openStep === 3} onToggle={() => toggle(3)} /><StepPanel open={openStep === 3}><AgentStep model={model} language={language} protocol={protocol} setLanguage={(next) => { setLanguage(next); setSearchParams({ model: modelAlias(model), protocol, language: next }) }} setProtocol={(next) => { setProtocol(next); setSearchParams({ model: modelAlias(model), protocol: next, language }) }} t={t} onCopy={copy} /></StepPanel></section>
     </div>
   </div>
 }

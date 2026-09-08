@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { distributionEntries } from "./personal-usage-distribution-pies";
+import {
+  distributionEntries,
+  mergeDistributionEntries,
+} from "./personal-usage-distribution-pies";
 
 describe("个人用量分布数据", () => {
   it("把工具 request_count 映射为饼图数据", () => {
@@ -37,6 +40,17 @@ describe("个人用量分布数据", () => {
       ]),
     ).toEqual([
       { name: "GPT", value: 151870000, requestCount: 12, totalTokens: 151870000 },
+    ]);
+  });
+
+  it("合并新版 requests/tokens 两种指标响应", () => {
+    expect(
+      mergeDistributionEntries(
+        [{ id: "tool-a", name: "Tool A", request_count: 4 }],
+        [{ id: "tool-a", name: "Tool A", input_tokens: 100, output_tokens: 25, cached_tokens: 5 }],
+      ),
+    ).toEqual([
+      { name: "Tool A", value: 4, requestCount: 4, totalTokens: 130 },
     ]);
   });
 });

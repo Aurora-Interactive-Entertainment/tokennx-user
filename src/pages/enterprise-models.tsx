@@ -20,9 +20,13 @@ import {
   IconUserGroup,
 } from '@douyinfe/semi-icons';
 import {
+  getAllEnterpriseMembers,
+  getEnterpriseDepartments,
   getEnterpriseModels,
   updateEnterpriseModel,
   type EnterpriseContext,
+  type EnterpriseDepartment,
+  type EnterpriseMember,
   type EnterpriseModel,
   type EnterpriseModelPage,
 } from '@/api/enterprise-console';
@@ -49,133 +53,36 @@ type Department = {
   path: string;
   children?: Department[];
 };
+type VisibilityPerson = { id: string; name: string; email: string };
 type VisibilitySelection = { departments: string[]; people: string[] };
-
-const PEOPLE = [
-  { id: 'lhb', name: 'lhb', email: '1197715732@qq.com' },
-  { id: 'zhuhanxin', name: 'zhuhanxin', email: 'zhuhanxin0308@163.com' },
-  { id: 'han', name: 'han', email: 'abca12a@gmail.com' },
-  { id: '伍佰', name: '伍佰', email: 'ljingfind@126.com' },
-];
 
 const PAGE_SIZE = 10;
 
-// The platform directory mirrors the system models shown in the enterprise console.
-const MODEL_SEEDS: Array<[string, string, string, boolean, string]> = [
-  [
-    'doubao-seed-evolving',
-    'Doubao-Seed-Evolving',
-    'Volcengine',
-    true,
-    'doubao',
-  ],
-  ['doubao-seed-2.1-pro', 'Doubao-Seed-2.1-Pro', 'Volcengine', false, 'doubao'],
-  [
-    'doubao-seed-2.1-turbo',
-    'Doubao-Seed-2.1-Turbo',
-    'Volcengine',
-    false,
-    'doubao',
-  ],
-  [
-    'doubao-seed-2.0-code',
-    'Doubao-Seed-2.0-Code',
-    'Volcengine',
-    false,
-    'doubao',
-  ],
-  ['doubao-seed-code', 'Doubao-Seed-Code', 'Volcengine', true, 'doubao'],
-  ['glm-5.3', 'GLM-5.3', '智谱 AI', true, 'glm'],
-  ['glm-5.2', 'GLM-5.2', '智谱 AI', true, 'glm'],
-  ['glm-5.1', 'GLM-5.1', '智谱 AI', true, 'glm'],
-  ['glm-5v-turbo', 'GLM-5V-Turbo', '智谱 AI', true, 'glm'],
-  ['glm-5', 'GLM-5', '智谱 AI', true, 'glm'],
-  ['minimax-m3', 'MiniMax-M3', 'MiniMax', true, 'minimax'],
-  ['minimax-m2.7', 'MiniMax-M2.7', 'MiniMax', true, 'minimax'],
-  ['qwen3.8-max', 'Qwen3.8-Max', 'Qwen', true, 'qwen'],
-  ['qwen-3.7-plus', 'Qwen3.7-Plus', 'Qwen', false, 'qwen'],
-  ['kimi-k2.7-code', 'Kimi-K2.7-Code', 'Moonshot AI', true, 'kimi'],
-  [
-    'deepseek-v4-pro-official',
-    'DeepSeek-V4-Pro 正式版',
-    'DeepSeek',
-    true,
-    'deepseek',
-  ],
-  ['deepseek-v4-pro', 'DeepSeek-V4-Pro', 'DeepSeek', true, 'deepseek'],
-  ['deepseek-v4-flash', 'DeepSeek-V4-Flash', 'DeepSeek', true, 'deepseek'],
-  [
-    'deepseek-v4-flash-official',
-    'DeepSeek-V4-Flash 正式版',
-    'DeepSeek',
-    true,
-    'deepseek',
-  ],
-  ['glm-5-turbo', 'GLM-5-Turbo', '智谱 AI', true, 'glm'],
-];
-
-const SYSTEM_MODELS: DirectoryModel[] = MODEL_SEEDS.map(
-  ([id, name, company, enabled, iconKey]) => ({
-    id,
-    code: id,
-    name,
-    company,
-    modality: 'text',
-    capabilities: ['chat'],
-    enabled,
-    setting_version: 1,
-    iconKey,
-  }),
-);
-
-const deepDepartment: Department = {
-  id: 'level-5',
-  name: '五级',
-  path: '极光互娱科技（深圳）有限公司/测试子级别部门/五级',
-};
-let deepDepartmentParent = deepDepartment;
-for (const [index, name] of [
-  '六级',
-  '七级',
-  '八级',
-  '九级',
-  '十级',
-  '11',
-].entries()) {
-  const child: Department = {
-    id: `level-${index + 6}`,
-    name,
-    path: `${deepDepartmentParent.path}/${name}`,
-  };
-  deepDepartmentParent.children = [child];
-  deepDepartmentParent = child;
+// 中文：模型目录为分页接口；页面需要完整目录来避免隐藏可管理模型。
+async function loadAllEnterpriseModels(
+  context: EnterpriseContext,
+  signal: AbortSignal,
+): Promise<EnterpriseModelPage> {
+  const first = await getEnterpriseModels(
+    { enterprise_id: context.id },
+    { page: 1, page_size: PAGE_SIZE, include_disabled: true, signal },
+  );
+  const items = [...(Array.isArray(first.items) ? first.items : [])];
+  const total = Number(first.total) || items.length;
+  let page = 2;
+  // 以请求 page_size 计算上限，且保留空页短路，避免异常服务端响应导致死循环。
+  while (items.length < total && page <= Math.ceil(total / PAGE_SIZE)) {
+    const next = await getEnterpriseModels(
+      { enterprise_id: context.id },
+      { page, page_size: PAGE_SIZE, include_disabled: true, signal },
+    );
+    const nextItems = Array.isArray(next.items) ? next.items : [];
+    items.push(...nextItems);
+    if (nextItems.length === 0) break;
+    page += 1;
+  }
+  return { ...first, items };
 }
-
-const DEPARTMENTS: Department = {
-  id: 'root',
-  name: '极光互娱科技（深圳）有限公司',
-  path: '极光互娱科技（深圳）有限公司',
-  children: [
-    {
-      id: 'operations',
-      name: '运营',
-      path: '极光互娱科技（深圳）有限公司/运营',
-    },
-    {
-      id: 'test-level-1',
-      name: '测试子级别部门',
-      path: '极光互娱科技（深圳）有限公司/测试子级别部门',
-      children: [
-        {
-          id: 'test-level-2',
-          name: '测试三级子部门',
-          path: '极光互娱科技（深圳）有限公司/测试子级别部门/测试三级子部门',
-        },
-        deepDepartment,
-      ],
-    },
-  ],
-};
 
 function modelIcon(model: DirectoryModel): string {
   if (model.iconKey === 'deepseek') return 'DS';
@@ -186,23 +93,93 @@ function modelIcon(model: DirectoryModel): string {
   return '◐';
 }
 
+function modelIconKey(model: EnterpriseModel): string | undefined {
+  const identity = `${model.code} ${model.company}`.toLowerCase();
+  if (identity.includes('deepseek')) return 'deepseek';
+  if (identity.includes('minimax')) return 'minimax';
+  if (identity.includes('kimi') || identity.includes('moonshot')) return 'kimi';
+  if (identity.includes('qwen')) return 'qwen';
+  if (identity.includes('glm') || identity.includes('智谱')) return 'glm';
+  if (identity.includes('doubao') || identity.includes('volcengine')) return 'doubao';
+  return undefined;
+}
+
 function normalizeDirectory(data: EnterpriseModelPage): EnterpriseModelPage {
-  const modelMeta = new Map(SYSTEM_MODELS.map((model) => [model.id, model]));
-  // 中文：接口有数据时完全遵循服务端返回的可用模型，不再人为注入或锁定默认模型。
-  const items = data.items.length > 0
-    ? data.items.map((item) => ({
-        ...item,
-        iconKey: modelMeta.get(item.id)?.iconKey,
-      }))
-    : SYSTEM_MODELS;
+  // 中文：目录为空时如实展示空状态，不能注入本地演示模型覆盖后端结果。
+  const items = (Array.isArray(data.items) ? data.items : []).map((item) => ({
+    ...item,
+    iconKey: modelIconKey(item),
+  }));
   return {
     ...data,
     items,
-    total: items.length,
-    page_size: items.length,
-    enabled_count: items.filter((item) => item.enabled).length,
-    disabled_count: items.filter((item) => !item.enabled).length,
+    total: Number.isFinite(data.total) ? data.total : items.length,
+    page_size: Number.isFinite(data.page_size) ? data.page_size : items.length,
+    enabled_count: Number.isFinite(data.enabled_count)
+      ? data.enabled_count
+      : items.filter((item) => item.enabled).length,
+    disabled_count: Number.isFinite(data.disabled_count)
+      ? data.disabled_count
+      : items.filter((item) => !item.enabled).length,
   };
+}
+
+async function loadVisibilityDepartments(
+  context: EnterpriseContext,
+  signal: AbortSignal,
+): Promise<Department[]> {
+  async function loadChildren(
+    parentID: string | undefined,
+    parentPath: string,
+  ): Promise<Department[]> {
+    const records: EnterpriseDepartment[] = [];
+    let page = 1;
+    let total = 0;
+    do {
+      const response = await getEnterpriseDepartments(
+        { enterprise_id: context.id },
+        { parent_id: parentID, page, page_size: 100, signal },
+      );
+      records.push(...(Array.isArray(response.items) ? response.items : []));
+      total = Number.isFinite(response.total) ? response.total : records.length;
+      if (!response.items?.length || records.length >= total) break;
+      page += 1;
+    } while (page <= Math.ceil(total / 100));
+
+    return Promise.all(
+      records.map(async (department) => {
+        const path = parentPath
+          ? `${parentPath}/${department.name}`
+          : department.name;
+        return {
+          id: department.id,
+          name: department.name,
+          path,
+          children: department.child_count > 0
+            ? await loadChildren(department.id, path)
+            : [],
+        };
+      }),
+    );
+  }
+
+  // 根查询不传 parent_id，服务端返回一级部门；选择器再按 child_count 递归读取下级。
+  return loadChildren(undefined, '');
+}
+
+async function loadVisibilityPeople(
+  context: EnterpriseContext,
+  signal: AbortSignal,
+): Promise<VisibilityPerson[]> {
+  const members: EnterpriseMember[] = await getAllEnterpriseMembers(
+    { enterprise_id: context.id },
+    { signal },
+  );
+  return members.map((member) => ({
+    id: member.id,
+    name: member.display_name || member.user_id,
+    email: member.masked_contact || '',
+  }));
 }
 
 function applyModelUpdate(
@@ -226,28 +203,85 @@ function applyModelUpdate(
   };
 }
 
+function visibilitySelectionFromModel(model: EnterpriseModel): {
+  scope: VisibilityScope;
+  selection: VisibilitySelection;
+} {
+  const visibility = model.visibility;
+  return {
+    scope: visibility?.scope === 'partial' ? 'partial' : 'all',
+    selection: {
+      departments: Array.isArray(visibility?.departments)
+        ? visibility.departments.map((item) => item.id)
+        : [],
+      people: Array.isArray(visibility?.members)
+        ? visibility.members.map((item) => item.id)
+        : [],
+    },
+  };
+}
+
+function visibilityUpdatePayload(
+  scope: VisibilityScope,
+  selection: VisibilitySelection,
+): {
+  visibility_scope: VisibilityScope;
+  department_ids: string[];
+  member_ids: string[];
+} {
+  return {
+    visibility_scope: scope,
+    // 服务端要求 all 范围显式传空数组，partial 范围传所选部门/成员公开 ID。
+    department_ids: scope === 'partial' ? [...selection.departments] : [],
+    member_ids: scope === 'partial' ? [...selection.people] : [],
+  };
+}
+
+function modelVisibilityPayload(model: EnterpriseModel): {
+  visibility_scope?: VisibilityScope;
+  department_ids?: string[];
+  member_ids?: string[];
+} {
+  if (!model.visibility) return {};
+  return visibilityUpdatePayload(
+    model.visibility.scope === 'partial' ? 'partial' : 'all',
+    {
+      departments: Array.isArray(model.visibility.departments)
+        ? model.visibility.departments.map((item) => item.id)
+        : [],
+      people: Array.isArray(model.visibility.members)
+        ? model.visibility.members.map((item) => item.id)
+        : [],
+    },
+  );
+}
+
 function collectDepartments(node: Department): Department[] {
   return [node, ...(node.children ?? []).flatMap(collectDepartments)];
 }
 
 function SelectionSummary({
   selection,
+  departments,
+  people,
   onRemove,
   t,
 }: {
   selection: VisibilitySelection;
+  departments: Department[];
+  people: VisibilityPerson[];
   onRemove: (kind: SelectionKind, id: string) => void;
   t: (key: string, options?: Record<string, unknown>) => string;
 }) {
-  const departments = collectDepartments(DEPARTMENTS).filter((item) =>
-    selection.departments.includes(item.id),
-  );
-  const people = selection.people.map((id) => {
-    const person = PEOPLE.find((item) => item.id === id);
+  const selectedDepartments = departments
+    .flatMap(collectDepartments)
+    .filter((item) => selection.departments.includes(item.id));
+  const selectedPeople = selection.people.map((id) => {
+    const person = people.find((item) => item.id === id);
     return {
       id,
       name: person?.name ?? id,
-      path: person?.email ?? '极光互娱科技（深圳）有限公司',
+      path: person?.email ?? '',
     };
   });
   return (
@@ -273,7 +307,7 @@ function SelectionSummary({
         </button>
       </div>
       <div className="model-visibility-selected-list">
-        {departments.map((item) => (
+        {selectedDepartments.map((item) => (
           <div
             className="model-visibility-selected-item"
             key={item.id}
@@ -293,7 +327,7 @@ function SelectionSummary({
             </button>
           </div>
         ))}
-        {people.map((item) => (
+        {selectedPeople.map((item) => (
           <div
             className="model-visibility-selected-item"
             key={item.id}
@@ -402,13 +436,22 @@ function DepartmentNode({
 function ModelVisibilityDialog({
   initialScope,
   initialSelection,
+  departments,
+  people,
+  saving,
   onClose,
   onSave,
 }: {
   initialScope: VisibilityScope;
   initialSelection: VisibilitySelection;
+  departments: Department[];
+  people: VisibilityPerson[];
+  saving: boolean;
   onClose: () => void;
-  onSave: (scope: VisibilityScope, selection: VisibilitySelection) => void;
+  onSave: (
+    scope: VisibilityScope,
+    selection: VisibilitySelection,
+  ) => void | Promise<boolean | void>;
 }) {
   const { t } = useTranslation();
   const [visible, setVisible] = useState(true);
@@ -452,10 +495,10 @@ function ModelVisibilityDialog({
     }));
   }
   const visiblePeople = query
-    ? PEOPLE.filter((person) =>
+    ? people.filter((person) =>
         `${person.name} ${person.email}`.includes(query),
       )
-    : PEOPLE;
+    : people;
   return (
     <AppModal
       className="model-visibility-modal"
@@ -479,9 +522,16 @@ function ModelVisibilityDialog({
           <Button
             theme="solid"
             type="primary"
-            onClick={() => {
-              onSave(scope, selection);
-              closeDialog();
+            loading={saving}
+            disabled={saving}
+            onClick={async () => {
+              if (scope === 'partial' && selection.departments.length === 0 && selection.people.length === 0) {
+                Toast.warning(t('console.enterprise.model.visibility.partialRequired'));
+                return;
+              }
+              const saved = await onSave(scope, selection);
+              // 保存失败时保持弹窗打开，便于用户修正范围或重试；成功后再执行退出动画。
+              if (saved !== false) closeDialog();
             }}
           >
             {t('console.enterprise.model.visibility.confirm')}
@@ -562,54 +612,65 @@ function ModelVisibilityDialog({
                 ) : null}
                 <div className="model-visibility-scroll-area">
                   {kind === 'department' ? (
-                    <DepartmentNode
-                      node={DEPARTMENTS}
-                      selected={selection.departments}
-                      expanded={expanded}
-                      onToggle={toggleDepartment}
-                      onExpand={(id) =>
-                        setExpanded((current) =>
-                          current.includes(id)
-                            ? current.filter((item) => item !== id)
-                            : [...current, id],
-                        )
-                      }
-                      t={t}
-                    />
+                    departments.length > 0 ? departments.map((department) => (
+                      <DepartmentNode
+                        key={department.id}
+                        node={department}
+                        selected={selection.departments}
+                        expanded={expanded}
+                        onToggle={toggleDepartment}
+                        onExpand={(id) =>
+                          setExpanded((current) =>
+                            current.includes(id)
+                              ? current.filter((item) => item !== id)
+                              : [...current, id],
+                          )
+                        }
+                        t={t}
+                      />
+                    )) : (
+                      <p className="model-visibility-empty">{t('console.enterprise.model.visibility.emptyDepartments')}</p>
+                    )
                   ) : kind === 'person' ? (
-                    <div className="model-visibility-people-list">
-                      {visiblePeople.map((person) => (
-                        <label
-                          key={person.id}
-                          title={`${person.name} · ${person.email}`}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={selection.people.includes(person.id)}
-                            onChange={() =>
-                              setSelection((current) => ({
-                                ...current,
-                                people: current.people.includes(person.id)
-                                  ? current.people.filter(
-                                      (item) => item !== person.id,
-                                    )
-                                  : [...current.people, person.id],
-                              }))
-                            }
-                          />
-                          <span>
-                            <strong>{person.name}</strong>
-                            <small>{person.email}</small>
-                          </span>
-                        </label>
-                      ))}
-                    </div>
+                    visiblePeople.length > 0 ? (
+                      <div className="model-visibility-people-list">
+                        {visiblePeople.map((person) => (
+                          <label
+                            key={person.id}
+                            title={`${person.name} · ${person.email}`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selection.people.includes(person.id)}
+                              onChange={() =>
+                                setSelection((current) => ({
+                                  ...current,
+                                  people: current.people.includes(person.id)
+                                    ? current.people.filter(
+                                        (item) => item !== person.id,
+                                      )
+                                    : [...current.people, person.id],
+                                }))
+                              }
+                            />
+                            <span>
+                              <strong>{person.name}</strong>
+                              <small>{person.email}</small>
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="model-visibility-empty">{t('console.enterprise.model.visibility.emptyPeople')}</p>
+                    )
                   ) : null}
                 </div>
               </div>
             </div>
             <SelectionSummary
               selection={selection}
+              departments={departments}
+              people={people}
               onRemove={removeSelection}
               t={t}
             />
@@ -836,29 +897,31 @@ function ModelsContent({ context }: { context: EnterpriseContext }) {
   const [savingModelID, setSavingModelID] = useState('');
   const [reloadToken, setReloadToken] = useState(0);
   const [openModel, setOpenModel] = useState<DirectoryModel | null>(null);
-  const [scopes, setScopes] = useState<Record<string, VisibilityScope>>({
-    'doubao-seed-2.1-pro': 'partial',
-  });
-  const [selections, setSelections] = useState<
-    Record<string, VisibilitySelection>
-  >({ 'doubao-seed-2.1-pro': { departments: ['operations'], people: [] } });
+  const [scopes, setScopes] = useState<Record<string, VisibilityScope>>({});
+  const [selections, setSelections] = useState<Record<string, VisibilitySelection>>({});
+  const [visibilityDepartments, setVisibilityDepartments] = useState<Department[]>([]);
+  const [visibilityPeople, setVisibilityPeople] = useState<VisibilityPerson[]>([]);
 
   useEffect(() => {
     const controller = new AbortController();
     let active = true;
     setLoading(true);
     setError(null);
-    getEnterpriseModels(
-      { enterprise_id: context.id },
-      {
-        page: 1,
-        page_size: PAGE_SIZE,
-        include_disabled: true,
-        signal: controller.signal,
-      },
-    )
+    loadAllEnterpriseModels(context, controller.signal)
       .then((result) => {
-        if (active) setData(normalizeDirectory(result));
+        if (!active) return;
+        const normalized = normalizeDirectory(result);
+        setData(normalized);
+        // 中文：可见范围以服务端目录为准；旧响应缺失 visibility 时按全员可见兼容。
+        const nextScopes: Record<string, VisibilityScope> = {};
+        const nextSelections: Record<string, VisibilitySelection> = {};
+        normalized.items.forEach((model) => {
+          const current = visibilitySelectionFromModel(model);
+          nextScopes[model.id] = current.scope;
+          nextSelections[model.id] = current.selection;
+        });
+        setScopes(nextScopes);
+        setSelections(nextSelections);
       })
       .catch((reason: unknown) => {
         if (!active || controller.signal.aborted) return;
@@ -873,6 +936,35 @@ function ModelsContent({ context }: { context: EnterpriseContext }) {
       controller.abort();
     };
   }, [context.id, handleError, reloadToken]);
+
+  useEffect(() => {
+    if (!openModel) return;
+    const controller = new AbortController();
+    let active = true;
+    // 中文：只在打开可见范围弹窗时读取目录，避免模型列表页额外发起成员/部门请求。
+    void Promise.all([
+      loadVisibilityDepartments(context, controller.signal),
+      loadVisibilityPeople(context, controller.signal),
+    ])
+      .then(([departments, people]) => {
+        if (!active) return;
+        setVisibilityDepartments(departments);
+        setVisibilityPeople(people);
+      })
+      .catch((reason: unknown) => {
+        if (!active || controller.signal.aborted) return;
+        const handled = handleError(reason);
+        if (handled) setActionError(handled);
+        // 目录失败时清空选择项，避免继续提交无法校验的本地演示 ID。
+        setVisibilityDepartments([]);
+        setVisibilityPeople([]);
+      });
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, [context.id, handleError, openModel]);
+
   async function toggleModel(model: DirectoryModel): Promise<void> {
     if (!canManage || savingModelID) return;
     setSavingModelID(model.id);
@@ -881,11 +973,20 @@ function ModelsContent({ context }: { context: EnterpriseContext }) {
       const updated = await updateEnterpriseModel(
         { enterprise_id: context.id },
         model.id,
-        { enabled: !model.enabled, expected_version: model.setting_version },
+        {
+          enabled: !model.enabled,
+          ...modelVisibilityPayload(model),
+          expected_version: model.setting_version,
+        },
       );
       setData((previous) =>
         previous ? applyModelUpdate(previous, updated) : previous,
       );
+      if (updated.visibility) {
+        const current = visibilitySelectionFromModel(updated);
+        setScopes((previous) => ({ ...previous, [updated.id]: current.scope }));
+        setSelections((previous) => ({ ...previous, [updated.id]: current.selection }));
+      }
       Toast.success(
         updated.enabled
           ? t('console.enterprise.model.updated')
@@ -902,14 +1003,45 @@ function ModelsContent({ context }: { context: EnterpriseContext }) {
       setSavingModelID('');
     }
   }
-  function saveVisibility(
+  async function saveVisibility(
     scope: VisibilityScope,
     selection: VisibilitySelection,
-  ): void {
-    if (!openModel) return;
-    setScopes((current) => ({ ...current, [openModel.id]: scope }));
-    setSelections((current) => ({ ...current, [openModel.id]: selection }));
-    Toast.success(t('console.enterprise.model.visibility.saved'));
+  ): Promise<boolean> {
+    if (!openModel) return false;
+    const currentModel = data?.items.find((item) => item.id === openModel.id) ?? openModel;
+    setSavingModelID(currentModel.id);
+    setActionError(null);
+    try {
+      const updated = await updateEnterpriseModel(
+        { enterprise_id: context.id },
+        currentModel.id,
+        {
+          enabled: currentModel.enabled,
+          ...visibilityUpdatePayload(scope, selection),
+          expected_version: currentModel.setting_version,
+        },
+      );
+      setData((previous) =>
+        previous ? applyModelUpdate(previous, updated) : previous,
+      );
+      const next = updated.visibility
+        ? visibilitySelectionFromModel(updated)
+        : { scope, selection };
+      setScopes((current) => ({ ...current, [currentModel.id]: next.scope }));
+      setSelections((current) => ({ ...current, [currentModel.id]: next.selection }));
+      Toast.success(t('console.enterprise.model.visibility.saved'));
+      return true;
+    } catch (reason: unknown) {
+      const handled = handleError(reason);
+      if (handled) setActionError(handled);
+      if (isApiError(reason) && reason.code === 140004) {
+        Toast.warning(t('console.enterprise.model.conflict'));
+        setReloadToken((value) => value + 1);
+      }
+      return false;
+    } finally {
+      setSavingModelID('');
+    }
   }
   const directoryItems = useMemo(
     () => (data?.items ?? []) as DirectoryModel[],
@@ -945,16 +1077,22 @@ function ModelsContent({ context }: { context: EnterpriseContext }) {
       ) : loading && !data ? (
         <EnterpriseLoading label={t('console.enterprise.model.loading')} />
       ) : (
-        <ModelsTable
-          items={directoryItems}
-          canManage={canManage}
-          savingModelID={savingModelID}
-          scopes={scopes}
-          onToggle={(model) => {
-            void toggleModel(model);
-          }}
-          onOpenVisibility={setOpenModel}
-        />
+        directoryItems.length > 0 ? (
+          <ModelsTable
+            items={directoryItems}
+            canManage={canManage}
+            savingModelID={savingModelID}
+            scopes={scopes}
+            onToggle={(model) => {
+              void toggleModel(model);
+            }}
+            onOpenVisibility={setOpenModel}
+          />
+        ) : (
+          <div className="enterprise-models-empty" role="status">
+            {t('console.common.noModels')}
+          </div>
+        )
       )}
       {openModel ? (
         <ModelVisibilityDialog
@@ -962,6 +1100,9 @@ function ModelsContent({ context }: { context: EnterpriseContext }) {
           initialSelection={
             selections[openModel.id] ?? { departments: [], people: [] }
           }
+          departments={visibilityDepartments}
+          people={visibilityPeople}
+          saving={savingModelID === openModel.id}
           onClose={() => setOpenModel(null)}
           onSave={saveVisibility}
         />

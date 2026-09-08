@@ -35,6 +35,7 @@ import {
   updateEnterpriseMemberRole,
   updateEnterpriseMemberStatus,
   updateEnterpriseMemberTag,
+  batchUpdateEnterpriseMembers,
   updateEnterpriseTag,
   type EnterpriseRequestContext,
 } from './enterprise-console'
@@ -84,6 +85,20 @@ describe('企业控制台 API 客户端', () => {
     expect(new Headers(fetchMock.mock.calls[0]?.[1]?.headers).get('Authorization')).toBe('Bearer enterprise-token')
   })
 
+  it('读取邀请使用记录的新 items 信封，并兼容旧裸数组响应', async () => {
+    const responses = [
+      apiResponse({ items: [{ user_id: 'user-1', user_name: '张三', joined_at: 1785576600000 }] }),
+      apiResponse([{ user_id: 'user-2', user_name: '李四', joined_at: 1785576600001 }]),
+    ]
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async () => responses.shift() ?? apiResponse({ items: [] }))
+
+    const current = await getEnterpriseInvitationUsages(CONTEXT, 'link-1', { accessToken: 'token' })
+    const legacy = await getEnterpriseInvitationUsages(CONTEXT, 'link-1', { accessToken: 'token' })
+    expect(current.items).toHaveLength(1)
+    expect(current.items[0]?.user_id).toBe('user-1')
+    expect(legacy.items[0]?.user_id).toBe('user-2')
+  })
+
   it('按接口契约读取企业模型目录并编码筛选条件', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => apiResponse({ items: [], total: 0, page: 2, page_size: 10, enabled_count: 0, disabled_count: 0 }))
     await getEnterpriseModels(CONTEXT, { page: 2, page_size: 10, keyword: 'GPT/4', modality: 'text', include_disabled: true, accessToken: 'enterprise-token' })
@@ -100,7 +115,7 @@ describe('企业控制台 API 客户端', () => {
   it('按企业部门接口契约生成部门、部门成员和成员变更请求', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => apiResponse({ items: [], total: 0, page: 1, page_size: 10 }))
     await getEnterpriseDepartments(CONTEXT, { parent_id: 'dept-root', page_size: 10, accessToken: 'token' })
-    await getEnterpriseDepartmentMembers(CONTEXT, 'dept-sales', { name: '张', page: 2, accessToken: 'token' })
+    await getEnterpriseDepartmentMembers(CONTEXT, 'dept-sales', { name: '张', status: 'pending', page: 2, accessToken: 'token' })
     await createEnterpriseDepartment(CONTEXT, { parent_id: null, name: '研发' }, { accessToken: 'token' })
     await updateEnterpriseMemberDepartment(CONTEXT, 'member-1', { department_id: 'dept-sales', expected_version: 3 }, { accessToken: 'token' })
     await removeEnterpriseMember(CONTEXT, 'member-1', 4, { accessToken: 'token' })
@@ -109,6 +124,7 @@ describe('企业控制台 API 客户端', () => {
     expect(requests[0]?.url.searchParams.get('parent_id')).toBe('dept-root')
     expect(requests[1]?.url.pathname).toBe('/api/user/enterprise/ent%2F01K0NX/departments/dept-sales/members')
     expect(requests[1]?.url.searchParams.get('name')).toBe('张')
+    expect(requests[1]?.url.searchParams.get('status')).toBe('pending')
     expect(requests[2]?.method).toBe('POST')
     expect(requests[3]?.body).toEqual({ department_id: 'dept-sales', expected_version: 3 })
     expect(requests[4]?.method).toBe('DELETE')
@@ -150,6 +166,43 @@ describe('企业控制台 API 客户端', () => {
     expect(urls[2]?.searchParams.get('action')).toBe('role.update')
     expect(urls[2]?.searchParams.get('actor_id')).toBe('member-1')
     expect(urls[3]?.pathname).toBe('/api/user/enterprise/ent%2F01K0NX/audit-logs/event%2F1')
+  })
+
+  it('使用企业成员批量接口提交统一角色或状态变更', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => apiResponse({ items: [], updated: 2 }))
+
+    await batchUpdateEnterpriseMembers(
+      CONTEXT,
+      {
+        action: 'role',
+        members: [
+          { member_id: 'member-1', expected_version: '3' },
+          { member_id: 'member-2', expected_version: 5 },
+        ],
+        role: 'member',
+      },
+      { accessToken: 'enterprise-token' },
+    )
+
+    const [input, init] = fetchMock.mock.calls[0] ?? []
+    expect(new URL(String(input), window.location.origin).pathname).toBe('/api/user/enterprise/ent%2F01K0NX/members/batch')
+    expect(init?.method).toBe('POST')
+    expect(JSON.parse(String(init?.body))).toEqual({
+      action: 'role',
+      members: [
+        { member_id: 'member-1', expected_version: '3' },
+        { member_id: 'member-2', expected_version: 5 },
+      ],
+      role: 'member',
+    })
+  })
+
+  it('将页面历史失败值映射为审计服务端的 failure 枚举', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => apiResponse({ items: [], total: 0, page: 1, page_size: 20 }))
+    await getEnterpriseAuditLogs(CONTEXT, { result: 'failed', accessToken: 'token' })
+
+    const requestURL = new URL(String(fetchMock.mock.calls[0]?.[0]), window.location.origin)
+    expect(requestURL.searchParams.get('result')).toBe('failure')
   })
 
   it('按企业分析接口契约返回指标并归一化缺省列表', async () => {
@@ -208,6 +261,26 @@ describe('企业控制台 API 客户端', () => {
     expect(new URL(String(input), window.location.origin).pathname).toBe('/api/user/enterprise/ent%2F01K0NX/models/model%2Fpublic-1')
     expect(init?.method).toBe('PATCH')
     expect(JSON.parse(String(init?.body))).toEqual({ enabled: false, expected_version: 2 })
+  })
+
+  it('更新企业模型可见范围时发送规范字段并保留字符串版本', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => apiResponse({ id: 'model-1', enabled: true, setting_version: '3', visibility: { scope: 'partial', departments: [], members: [] } }))
+    await updateEnterpriseModel(CONTEXT, 'model-1', {
+      enabled: true,
+      visibility_scope: 'partial',
+      department_ids: ['dept-1'],
+      member_ids: ['member-1'],
+      expected_version: '2',
+    }, { accessToken: 'token' })
+
+    const [, init] = fetchMock.mock.calls[0] ?? []
+    expect(JSON.parse(String(init?.body))).toEqual({
+      enabled: true,
+      visibility_scope: 'partial',
+      department_ids: ['dept-1'],
+      member_ids: ['member-1'],
+      expected_version: '2',
+    })
   })
 
   it('拒绝空模型编号，避免形成无效更新路径', () => {

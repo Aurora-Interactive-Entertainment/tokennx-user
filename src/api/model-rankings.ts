@@ -27,7 +27,7 @@ export interface ModelUsageLeaderboard {
 }
 
 export interface ModelWeeklyUsage {
-  week_start: ApiTimestamp
+  week_start: string | ApiTimestamp
   total_tokens: number
   request_count: number
 }
@@ -42,6 +42,9 @@ export interface RecentModelUsageItem {
 }
 
 export interface RecentModelUsage {
+  started_at?: ApiTimestamp
+  ended_at?: ApiTimestamp
+  generated_at?: ApiTimestamp
   weeks: string[]
   items: RecentModelUsageItem[]
 }
@@ -72,6 +75,16 @@ function parseString(value: unknown): string {
 function parseTime(value: unknown): ApiTimestamp {
   if (isApiTimestamp(value)) return value
   return invalidResponse()
+}
+
+function parseWeekStart(value: unknown): string | ApiTimestamp {
+  if (isApiTimestamp(value)) return value
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) return value
+  return invalidResponse()
+}
+
+function optionalTime(value: unknown): ApiTimestamp | undefined {
+  return value === undefined ? undefined : parseTime(value)
 }
 
 function parseChangeRate(value: unknown): number | null {
@@ -113,7 +126,7 @@ function parseLeaderboard(value: unknown): ModelUsageLeaderboard {
 function parseWeeklyUsage(value: unknown): ModelWeeklyUsage {
   if (!isRecord(value)) invalidResponse()
   return {
-    week_start: parseTime(value.week_start),
+    week_start: parseWeekStart(value.week_start),
     total_tokens: parseNonNegativeNumber(value.total_tokens),
     request_count: parseNonNegativeNumber(value.request_count),
   }
@@ -134,6 +147,9 @@ function parseRecentItem(value: unknown): RecentModelUsageItem {
 function parseRecentUsage(value: unknown): RecentModelUsage {
   if (!isRecord(value) || !Array.isArray(value.weeks) || !Array.isArray(value.items)) invalidResponse()
   return {
+    ...(optionalTime(value.started_at) !== undefined ? { started_at: optionalTime(value.started_at) } : {}),
+    ...(optionalTime(value.ended_at) !== undefined ? { ended_at: optionalTime(value.ended_at) } : {}),
+    ...(optionalTime(value.generated_at) !== undefined ? { generated_at: optionalTime(value.generated_at) } : {}),
     weeks: value.weeks.map(parseString),
     items: value.items.map(parseRecentItem),
   }

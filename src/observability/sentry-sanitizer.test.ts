@@ -90,6 +90,28 @@ describe("Sentry 隐私清洗", () => {
     ).toBe(true);
     expect(
       isDiscardedBrowserNoise(
+        {
+          type: undefined,
+          exception: {
+            values: [
+              {
+                stacktrace: {
+                  frames: [
+                    {
+                      filename:
+                        "https://hm.baidu.com/hm.js?9943442444aca71a570988ecd05365e8",
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+        },
+        {},
+      ),
+    ).toBe(true);
+    expect(
+      isDiscardedBrowserNoise(
         { type: undefined },
         {
           originalException: Object.assign(new Error("Bad request"), {

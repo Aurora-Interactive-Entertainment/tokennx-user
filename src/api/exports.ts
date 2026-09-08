@@ -29,6 +29,8 @@ export interface CreateExportTaskInput {
   context?: ExportContext;
   filters?: ExportFilters;
   columns?: string[];
+  /** 内置导出不支持排序；如传入只能是空数组。 */
+  sort?: string[];
   file_name?: string;
 }
 
@@ -56,6 +58,7 @@ export interface ExportTask {
   context?: ExportContext;
   filters?: ExportFilters;
   columns?: string[];
+  sort?: string[];
 }
 
 export interface ExportListResponse {
@@ -273,6 +276,8 @@ export function getExportErrorMessage(error: unknown): string {
     150007: "api.exports.expired",
     150008: "api.exports.storageUnavailable",
     150009: "api.exports.timeout",
+    // 导出存储依赖在创建/取消接口中使用公共 100007 码，和任务内部 150008 同义。
+    100007: "api.exports.storageUnavailable",
   };
   return keys[error.code] ? i18n.t(keys[error.code]) : error.message || i18n.t("api.exports.requestFailed");
 }

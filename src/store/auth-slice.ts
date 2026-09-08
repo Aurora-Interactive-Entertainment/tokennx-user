@@ -1,7 +1,7 @@
 import { createAsyncThunk, createSlice, type PayloadAction } from '@reduxjs/toolkit'
-import { getCurrentUser, loginByEmail, loginByPhone, logout, requestWechatQr as requestWechatQrRequest, sendBindingPhoneCode, sendEmailCode, sendPhoneCode, bindWechatPhone, type AuthResult, type AuthUser, type DeviceInfo, type EmailCodeResult, type PhoneCodeResult, type WechatQrResult, type WechatStatusResult, getWechatStatus } from '@/api/auth'
+import { getCurrentUser, loginByEmail, loginByPhone, logout, requestWechatQr as requestWechatQrRequest, sendBindingPhoneCode, sendEmailCode, sendPhoneCode, bindWechatPhone, type AuthResult, type AuthUser, type EmailCodeResult, type PhoneCodeResult, type WechatQrResult, type WechatStatusResult, getWechatStatus } from '@/api/auth'
 import { AUTH_INVALID_CODE, isApiError, isAuthenticationFailure } from '@/api/http'
-import { clearAuthTokens, getAccessToken, getDeviceId, getDeviceName, readRefreshToken, saveAuthTokens } from '@/auth/token-storage'
+import { clearAuthTokens, getAccessToken, readRefreshToken, saveAuthTokens } from '@/auth/token-storage'
 import { refreshAuthSession, withAuthSessionLock } from '@/auth/refresh-coordinator'
 import i18n from '@/i18n'
 
@@ -28,10 +28,6 @@ const initialState: AuthState = {
 
 type ThunkConfig = { rejectValue: AuthOperationError }
 
-function deviceInfo(): DeviceInfo {
-  return { device_id: getDeviceId(), device_name: getDeviceName() }
-}
-
 export function authError(error: unknown): AuthOperationError {
   if (!isApiError(error)) return { message: i18n.t('api.auth.requestFailed'), code: 0, status: 0 }
   const messages: Record<number, string> = {
@@ -40,6 +36,11 @@ export function authError(error: unknown): AuthOperationError {
     100006: i18n.t('api.auth.sessionConflict'),
     100007: i18n.t('api.auth.unavailable'),
     [AUTH_INVALID_CODE]: i18n.t('api.auth.invalidCode'),
+    // 中文：灰度期间兼容旧认证服务错误码，新部署统一使用 160xxx。
+    110001: i18n.t('api.auth.invalidCode'),
+    160002: i18n.t('api.auth.bindingRequired'),
+    160003: i18n.t('api.auth.phoneAlreadyBound'),
+    160004: i18n.t('api.auth.codeTooFrequent'),
     110002: i18n.t('api.auth.bindingRequired'),
     110003: i18n.t('api.auth.phoneAlreadyBound'),
     110004: i18n.t('api.auth.codeTooFrequent'),
@@ -90,9 +91,9 @@ export const requestEmailCode = createAsyncThunk<EmailCodeResult, { destination:
   }
 })
 
-export const loginWithEmail = createAsyncThunk<AuthUser, { destination: string; code: string }, ThunkConfig>('auth/loginWithEmail', async ({ destination, code }, { rejectWithValue }) => {
+export const loginWithEmail = createAsyncThunk<AuthUser, { destination: string; code: string; inviteCode?: string }, ThunkConfig>('auth/loginWithEmail', async ({ destination, code, inviteCode }, { rejectWithValue }) => {
   try {
-    return completeAuth(await loginByEmail(destination, code, deviceInfo()))
+    return completeAuth(await loginByEmail(destination, code, inviteCode))
   } catch (error) {
     return rejectWithValue(authError(error))
   }
@@ -130,9 +131,9 @@ export const pollWechatStatus = createAsyncThunk<WechatStatusResult, { state: st
   }
 })
 
-export const requestBindingCode = createAsyncThunk<PhoneCodeResult, { bindingTicket: string; phone: string }, ThunkConfig>('auth/requestBindingCode', async ({ bindingTicket, phone }, { rejectWithValue }) => {
+export const requestBindingCode = createAsyncThunk<PhoneCodeResult, { bindingTicket: string; phone: string; countryCode?: string }, ThunkConfig>('auth/requestBindingCode', async ({ bindingTicket, phone, countryCode = '+86' }, { rejectWithValue }) => {
   try {
-    return await sendBindingPhoneCode(bindingTicket, phone)
+    return await sendBindingPhoneCode(bindingTicket, phone, countryCode)
   } catch (error) {
     return rejectWithValue(authError(error))
   }
@@ -140,7 +141,7 @@ export const requestBindingCode = createAsyncThunk<PhoneCodeResult, { bindingTic
 
 export const completeBinding = createAsyncThunk<AuthUser, { bindingTicket: string; phone: string; code: string; inviteCode?: string }, ThunkConfig>('auth/completeBinding', async ({ bindingTicket, phone, code, inviteCode }, { rejectWithValue }) => {
   try {
-    return completeAuth(await bindWechatPhone(bindingTicket, phone, code, deviceInfo(), 'zh-CN', inviteCode))
+    return completeAuth(await bindWechatPhone(bindingTicket, phone, code, inviteCode))
   } catch (error) {
     return rejectWithValue(authError(error))
   }

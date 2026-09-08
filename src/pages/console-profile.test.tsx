@@ -109,7 +109,7 @@ function mockProfileApi(config: { expireAccess?: boolean; refreshFails?: boolean
     }
     if (accessExpired && url.includes('/api/user/profile')) return apiResponse(null, 401, 110001, '认证信息无效')
     if (url.endsWith('/api/user/profile') && method === 'GET') return apiResponse(profile)
-    if (url.endsWith('/api/user/profile/enterprises')) return apiResponse(ENTERPRISES)
+    if (url.includes('/api/user/profile/enterprises?')) return apiResponse(ENTERPRISES)
     if (url.endsWith('/api/user/account-deletion/precheck')) {
       if (config.deletionPrecheck404) return apiResponse(null, 404, 0, 'Not Found')
       return apiResponse({ can_request: true, owner_enterprises: config.ownerEnterprises ?? [], member_count: ENTERPRISES.length, balance_policy: 'paid_balance_non_refundable' })
