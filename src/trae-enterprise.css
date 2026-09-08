@@ -361,7 +361,7 @@
 .trae-select-dropdown.trae-members-filter-dropdown .semi-select-option-icon { display: none; }
 .trae-select-dropdown.trae-members-filter-dropdown .semi-select-option-selected, .trae-select-dropdown.trae-members-filter-dropdown .semi-select-option-focused, .trae-select-dropdown.trae-members-filter-dropdown .semi-select-option:hover { background: var(--color-bg-overlay-l3); color: var(--color-text-default-hover); }
 /* 人员表格自身承载边框，保留 Semi 内部横向滚动并统一裁切圆角。 */
-.trae-members-page .trae-semi-member-table { box-sizing: border-box; min-width: 840px; overflow: hidden; border: 1px solid var(--color-border-neutral-l1); border-radius: 6px; background: var(--color-bg-base-secondary); }
+.trae-members-page .trae-semi-member-table { box-sizing: border-box; min-width: 0; overflow: hidden; border: 1px solid var(--color-border-neutral-l1); border-radius: 6px; background: var(--color-bg-base-secondary); }
 .trae-members-page .trae-semi-member-table .semi-table-thead > .semi-table-row > .semi-table-row-head { height: 42px; color: var(--table-header-color); background: var(--color-bg-base-tertiary); font-size: 13px; font-weight: 500; white-space: nowrap; }
 /* A fixed row rhythm requires non-person columns to stay on one line. */
 .trae-members-page .trae-semi-member-table .semi-table-tbody > .semi-table-row { height: 48px; }
@@ -373,12 +373,13 @@
 .trae-members-page .trae-semi-member-table .semi-table-row-head .app-info-icon-trigger { display: inline-flex; width: 18px; height: 18px; align-items: center; justify-content: center; padding: 0; vertical-align: middle; line-height: 1; }
 .trae-members-page .trae-semi-member-table .semi-table-row-head .app-info-icon-trigger .app-info-icon { display: block; width: 14px; height: 18px; margin: 0; }
 .trae-members-page .trae-semi-member-table .semi-table-row-head .semi-table-column-sorter { color: var(--color-text-tertiary); }
-/* 中文：表格宽度不足时由外层承载横向滚动，避免固定列宽把右侧内容推出页面。 */
+/* 中文：表格宽度不足时由 Semi Table body 承载横向滚动，外层只负责布局和边框。 */
 .trae-members-page .trae-table-scroll:has(.trae-semi-member-table) { overflow-x: auto; overflow-y: hidden; border: 0; scrollbar-color: var(--color-border-neutral-l2) transparent; scrollbar-width: thin; }
 .trae-members-page .trae-table-scroll:has(.trae-semi-member-table)::-webkit-scrollbar { width: 6px; height: 6px; }
 .trae-members-page .trae-table-scroll:has(.trae-semi-member-table)::-webkit-scrollbar-track { background: transparent; }
 .trae-members-page .trae-table-scroll:has(.trae-semi-member-table)::-webkit-scrollbar-thumb { border-radius: 3px; background: var(--color-border-neutral-l2); }
-.trae-members-page .trae-member-table-frame { position: relative; min-width: 840px; }
+/* 中文：人员表格统一由 Semi Table 内部承载横向滚动，避免英文列名变长时外层再生成一条滚动条。 */
+.trae-members-page .trae-member-table-frame { position: relative; min-width: 0; }
 .trae-members-page .trae-member-table-loading { position: absolute; top: 43px; right: 0; bottom: 0; left: 0; z-index: 2; display: flex; min-height: 120px; align-items: center; justify-content: center; gap: 8px; color: var(--color-text-secondary); background: color-mix(in srgb, var(--color-bg-base-secondary) 78%, transparent); font-size: 13px; pointer-events: none; }
 .trae-members-page .trae-semi-member-table .semi-table-body { overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; scrollbar-color: var(--color-border-neutral-l2) transparent; }
 .trae-members-page .trae-semi-member-table .semi-table-body::-webkit-scrollbar { width: 6px; height: 6px; }

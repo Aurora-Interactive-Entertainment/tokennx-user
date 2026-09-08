@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import { IconChevronLeft, IconChevronRight } from "@douyinfe/semi-icons";
 import ConfigProvider from "@douyinfe/semi-ui/lib/es/configProvider";
 import Pagination from "@douyinfe/semi-ui/lib/es/pagination";
 import semiEnUS from "@douyinfe/semi-ui/lib/es/locale/source/en_US";
@@ -69,8 +70,9 @@ export function TraePagination({
             pageSizeOpts={pageSizeOpts}
             showSizeChanger
             hideOnSinglePage={false}
-            prevText="‹"
-            nextText="›"
+            // 中文：改用 SVG 箭头图标替代文本字符，文本字形受基线影响会偏下，SVG 可被网格精确居中。
+            prevText={<IconChevronLeft size="small" />}
+            nextText={<IconChevronRight size="small" />}
             disabled={disabled}
             onChange={onChange}
           />

@@ -51,8 +51,15 @@ function responseCodeSample(language: QuickstartLanguage, alias: string): string
 }
 
 function modelPrice(model: ModelRecord, t: (key: string, options?: Record<string, unknown>) => string): string {
-  const input = model.tokenNxPrice.inputRaw ?? (model.tokenNxPrice.input === undefined ? '--' : String(model.tokenNxPrice.input))
-  const output = model.tokenNxPrice.outputRaw ?? (model.tokenNxPrice.output === undefined ? '--' : String(model.tokenNxPrice.output))
+  // 输入/输出单价统一保留四位小数展示，原始值可能是服务端返回的长小数字符串
+  const format = (raw: string | undefined, value: number | undefined) => {
+    const source = raw ?? (value === undefined ? undefined : String(value))
+    if (source === undefined) return '--'
+    const parsed = Number(source)
+    return Number.isFinite(parsed) ? parsed.toFixed(4) : '--'
+  }
+  const input = format(model.tokenNxPrice.inputRaw, model.tokenNxPrice.input)
+  const output = format(model.tokenNxPrice.outputRaw, model.tokenNxPrice.output)
   return t('console.quickstart.modelPrice', { input, output })
 }
 

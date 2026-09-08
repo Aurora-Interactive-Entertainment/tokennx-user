@@ -1063,11 +1063,11 @@ html[data-theme='dark'] .video-console-page .video-reference-upload-card:hover,
 html[data-theme='dark'] .video-console-page .video-reference-upload-card:focus-visible {
   background: var(--color-bg-overlay-l2);
 }
-/* 中文：浅色模式 hover 与图片生成页一致：半透明 overlay 叠加在与图片页外壳相同的近白底（#fefefe）上，避免透出灰色输入框显得偏深。 */
+/* 中文：浅色模式 hover 与图片生成页一致；用不透明合成色替代渐变叠加（background-image 无法过渡，会显得生硬），颜色随 background-color 平滑变化。 */
 html[data-theme='light'] .video-console-page .video-reference-upload-card:hover,
 html[data-theme='light'] .video-console-page .video-reference-upload-card:focus-visible {
-  background-color: #fefefe;
-  background-image: linear-gradient(var(--color-bg-overlay-l2), var(--color-bg-overlay-l2));
+  /* 中文：等效 --color-bg-overlay-l2（rgba(23,24,27,0.045)）叠加在图片页外壳近白底 #fefefe 上的合成色。 */
+  background-color: color-mix(in srgb, rgb(23 24 27) 4.5%, #fefefe);
 }
 .video-console-page .video-reference-popover::after,
 .video-console-page .video-aspect-popover::after,

@@ -7547,11 +7547,13 @@ html[data-theme="dark"] .workspace-notice-link {
   color: #1f2329;
   background: #fff;
 }
-/* 中文：hover 只轻微压暗/压亮，保持黑白风格不变。 */
+/* 中文：hover 只轻微压暗/压亮背景，文字颜色保持不变（避免被全局链接 hover 色覆盖）。 */
 html[data-theme="light"] .workspace-notice-link:hover {
+  color: #fff;
   background: #17191c;
 }
 html[data-theme="dark"] .workspace-notice-link:hover {
+  color: #1f2329;
   background: #f7f7f7;
 }
 .message {
@@ -9409,6 +9411,38 @@ html[data-theme="dark"] .generation-send-button.send-btn.is-running.semi-button:
   border-radius: 50%;
   animation: api-key-spinner-rotate 0.72s linear infinite;
 }
+/* 中文：切换状态筛选时保留表格旧数据，仅在表格容器内叠加轻量加载态，避免整表闪烁。 */
+.api-keys-console-page .source-table-scroll {
+  position: relative;
+}
+.api-keys-console-page .source-table-scroll.is-refreshing::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: color-mix(in srgb, var(--color-bg-base-secondary) 55%, transparent);
+  pointer-events: none;
+}
+.api-keys-console-page .source-table-scroll.is-refreshing::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  width: 16px;
+  height: 16px;
+  margin: auto;
+  border: 2px solid var(--color-border-neutral-l3);
+  border-top-color: var(--color-text-default-hover);
+  border-radius: 50%;
+  animation: api-key-spinner-rotate 0.72s linear infinite;
+  pointer-events: none;
+}
+/* 中文：刷新后暂无数据时复用整块加载样式，去掉边框和底色以贴合表格内部展示。 */
+.api-keys-loading--inline {
+  min-height: 220px;
+  border: 0;
+  background: transparent;
+}
 .semi-modal:has(.api-key-modal-form) {
   width: min(860px, calc(100vw - var(--spacing-32))) !important;
   max-height: calc(100dvh - var(--spacing-32));
@@ -9774,6 +9808,10 @@ html[data-theme="dark"] .generation-send-button.send-btn.is-running.semi-button:
 
 @media (prefers-reduced-motion: reduce) {
   .api-keys-loading-spinner {
+    animation: none;
+  }
+  /* 中文：减少动效时表格内遮罩加载不旋转。 */
+  .api-keys-console-page .source-table-scroll.is-refreshing::after {
     animation: none;
   }
   .api-key-expand-caret,
@@ -18458,10 +18496,27 @@ html[data-theme="light"] .manuscript-hero::before {
   height: auto;
   pointer-events: none;
 }
-/* 中文：触发层改为文档流内元素，让胶囊高度由内容撑开。 */
+/* 中文：触发层改为文档流内元素，让胶囊高度由内容撑开；弹窗关闭后按钮延迟淡入，等待面板退场动画接近完成。 */
 .manuscript-support-trigger {
   position: relative;
   pointer-events: auto;
+  opacity: 1;
+  transform: translate3d(0, 0, 0) scale(1);
+  transition:
+    opacity 0.26s ease 0.22s,
+    transform 0.26s cubic-bezier(0.16, 1, 0.3, 1) 0.22s,
+    visibility 0s linear 0.22s;
+}
+/* 中文：弹窗展开时按钮立即向右下角缩小淡出，与面板入场方向一致。 */
+.manuscript-support-trigger.is-hidden {
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+  transform: translate3d(10px, 10px, 0) scale(0.72);
+  transition:
+    opacity 0.18s ease 0s,
+    transform 0.18s cubic-bezier(0.4, 0, 0.2, 1) 0s,
+    visibility 0s linear 0.18s;
 }
 .manuscript-support-assistant-button {
   position: relative;
@@ -18503,6 +18558,39 @@ html[data-theme="light"] .manuscript-hero::before {
   margin: 0;
   object-fit: contain;
 }
+/* 中文：客服入口现在由参考 EmotionBall 引擎绘制 SVG；保留透明 img 作为异步加载占位。 */
+.manuscript-support-assistant-canvas {
+  position: relative;
+  display: block;
+  width: 47px;
+  height: 47px;
+  flex: 0 0 47px;
+  margin: 0;
+}
+.manuscript-support-assistant-canvas > svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  /* 中文：保留 47px 点击区域，只缩小内部 SVG 的视觉尺寸。 */
+  transform: scale(0.88);
+  transform-origin: center;
+}
+.manuscript-support-assistant-canvas > .manuscript-support-assistant-image {
+  position: absolute;
+  inset: 7px;
+  display: block;
+  width: 33px;
+  height: 33px;
+  opacity: 1;
+}
+.manuscript-support-assistant-canvas.is-ready > .manuscript-support-assistant-image {
+  opacity: 0;
+}
+/* 中文：引擎接管后只保留一个真实表情，防止异步切换瞬间出现双球。 */
+.manuscript-support-assistant-canvas.is-ready > .manuscript-support-assistant-fallback {
+  display: none;
+}
 .manuscript-support-assistant-label {
   writing-mode: vertical-rl;
   text-orientation: upright;
@@ -18513,8 +18601,10 @@ html[data-theme="light"] .manuscript-hero::before {
   letter-spacing: 4px;
   line-height: 1;
 }
-/* 中文：英文文案较长，收窄字距避免胶囊过高。 */
+/* 中文：英文保持竖向胶囊，仅将整段拉丁文横置，避免按单字符堆叠撑高入口。 */
 html[lang="en"] .manuscript-support-assistant-label {
+  writing-mode: vertical-rl;
+  text-orientation: sideways;
   letter-spacing: 1px;
 }
 .manuscript-support-panel {
@@ -18728,6 +18818,12 @@ html[lang="en"] .manuscript-support-assistant-label {
   .manuscript-support-notifications {
     animation: none;
     transition: none;
+  }
+  /* 中文：减少动效时按钮仅做瞬时显隐，不做缩放位移过渡。 */
+  .manuscript-support-trigger,
+  .manuscript-support-trigger.is-hidden {
+    transition: none;
+    transform: none;
   }
 }
 .manuscript-support-chat-header {

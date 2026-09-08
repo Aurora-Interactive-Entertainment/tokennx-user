@@ -1071,6 +1071,8 @@ export function ApiKeysPage({
   // 中文：所有限制相关配置统一跟随开关展开，避免默认表单过长。
   const advancedVisible = form.limitsEnabled;
   const availableModelsLoading = loading && result === null;
+  // 中文：仅首次无数据时整块加载；切换筛选时保留旧数据在表格内叠加加载态，避免整表闪烁。
+  const initialTableLoading = availableModelsLoading;
   const workspaceLabel =
     store.activeWorkspace.type === "enterprise"
       ? store.activeWorkspace.name
@@ -1183,14 +1185,14 @@ export function ApiKeysPage({
           </Button>
         </BannerNotice>
       ) : null}
-      {loading ? (
+      {initialTableLoading ? (
         <div className="api-keys-loading" role="status">
           <span className="api-keys-loading-spinner" />
           {t("console.account.noKeysLoading")}
         </div>
       ) : (
         <div
-          className="source-table-scroll"
+          className={`source-table-scroll${loading && rows.length > 0 ? " is-refreshing" : ""}`}
           role="region"
           aria-label={t("console.account.tableRegion")}
           tabIndex={0}
@@ -1230,14 +1232,26 @@ export function ApiKeysPage({
             </thead>
             <tbody>
               {rows.length === 0 ? (
-                <tr>
-                  <td
-                    className="api-keys-empty-cell"
-                    colSpan={apiKeyTableColumnCount}
-                  >
-                    <TraeTableEmpty />
-                  </td>
-                </tr>
+                loading ? (
+                  // 中文：刷新后暂无数据时在表格内展示加载行，避免空态与加载态来回闪烁。
+                  <tr>
+                    <td colSpan={apiKeyTableColumnCount}>
+                      <div className="api-keys-loading api-keys-loading--inline" role="status">
+                        <span className="api-keys-loading-spinner" />
+                        {t("console.account.noKeysLoading")}
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  <tr>
+                    <td
+                      className="api-keys-empty-cell"
+                      colSpan={apiKeyTableColumnCount}
+                    >
+                      <TraeTableEmpty />
+                    </td>
+                  </tr>
+                )
               ) : rows.map((row) => {
                 const limit = row.limits.cost_limit_yuan
                   ? Number(row.limits.cost_limit_yuan)

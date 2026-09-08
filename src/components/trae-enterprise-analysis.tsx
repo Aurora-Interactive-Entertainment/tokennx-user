@@ -1,5 +1,4 @@
 import {
-  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -9,7 +8,6 @@ import {
 import { useTranslation } from "react-i18next";
 import DatePicker from "@douyinfe/semi-ui/lib/es/datePicker";
 import Select from "@douyinfe/semi-ui/lib/es/select";
-import Toast from "@douyinfe/semi-ui/lib/es/toast";
 import Tooltip from "@douyinfe/semi-ui/lib/es/tooltip";
 import { IconFile, IconInfoCircle } from "@douyinfe/semi-icons";
 import * as echarts from "echarts/core";
@@ -36,15 +34,6 @@ import {
   useEnterpriseErrorHandler,
   type EnterpriseRequestError,
 } from "@/pages/enterprise-console-shared";
-import { isAuthenticationFailure } from "@/api/http";
-import {
-  createExportIdempotencyKey,
-  createExportTask,
-  downloadExportTask,
-  getExportErrorMessage,
-  saveExportResponse,
-  waitForExportTask,
-} from "@/api/exports";
 import { useResolvedTheme } from "@/theme";
 import { formatCount, formatPersonOptionLabel } from "@/utils/format";
 import { getChartRenderer } from "@/components/chart-renderer";
@@ -64,14 +53,8 @@ const CHART_COLORS = [
   "#707582",
 ];
 
-export type AnalysisExportState = {
-  disabled: boolean;
-  run: () => void | Promise<void>;
-};
-
 type AnalysisProps = {
   context: EnterpriseContext;
-  onExportChange?: (state: AnalysisExportState) => void;
 };
 
 function dateKey(value: Date): string {
@@ -586,33 +569,7 @@ function ModelPieChart({
   );
 }
 
-function analysisCsvRows(
-  data: EnterpriseAnalyticsResponse,
-  t: (key: string) => string,
-): Array<Array<string | number>> {
-  const rows: Array<Array<string | number>> = [
-    [t("traeEnterprise.analysis.people"), t("traeEnterprise.analysis.total"), "", data.metrics.active_members],
-  ];
-  data.tools.forEach((tool) =>
-    rows.push([
-      t("traeEnterprise.analysis.mcp"),
-      tool.name,
-      t("traeEnterprise.analysis.requestCount"),
-      tool.request_count,
-    ]),
-  );
-  data.models.forEach((model) =>
-    rows.push([
-      t("traeEnterprise.analysis.models"),
-      model.alias || model.name || model.code,
-      t("traeEnterprise.analysis.totalTokens"),
-      model.total_tokens,
-    ]),
-  );
-  return rows;
-}
-
-export function TraeEnterpriseAnalysis({ context, onExportChange }: AnalysisProps) {
+export function TraeEnterpriseAnalysis({ context }: AnalysisProps) {
   const { t } = useTranslation();
   const handleError = useEnterpriseErrorHandler();
   const [scope, setScope] = useState("");
@@ -624,8 +581,6 @@ export function TraeEnterpriseAnalysis({ context, onExportChange }: AnalysisProp
   const [data, setData] = useState<EnterpriseAnalyticsResponse | null>(null);
   const [departmentUsage, setDepartmentUsage] = useState<EnterpriseUsageDepartment[]>([]);
   const [loading, setLoading] = useState(true);
-  const [exporting, setExporting] = useState(false);
-  const exportLockRef = useRef(false);
   const [error, setError] = useState<EnterpriseRequestError | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
 
@@ -675,50 +630,6 @@ export function TraeEnterpriseAnalysis({ context, onExportChange }: AnalysisProp
       });
     return () => controller.abort();
   }, [context.id, dateRange]);
-
-  const exportData = useCallback(async () => {
-    // 中文：ref 锁确保导出按钮快速连点时只提交一个异步导出任务。
-    if (!data || exportLockRef.current || exporting) return;
-    exportLockRef.current = true;
-    setExporting(true);
-    try {
-      // 中文：企业分析导出仅发送后端定义支持的时间范围和成员筛选，文件内容由服务端统一生成。
-      const request = getRequestOptions(dateRange, scope);
-      const filters = {
-        ...(request.member_id ? { member_id: request.member_id } : {}),
-        ...(request.range ? { range: request.range } : {}),
-        ...(request.start_at !== undefined ? { start_at: new Date(request.start_at).toISOString() } : {}),
-        ...(request.end_at !== undefined ? { end_at: new Date(request.end_at).toISOString() } : {}),
-      };
-      const task = await createExportTask(
-        {
-          export_code: "enterprise.analytics",
-          format: "csv",
-          context: { enterprise_id: context.id },
-          filters,
-          file_name: "数据分析",
-        },
-        { idempotencyKey: createExportIdempotencyKey("enterprise-analytics") },
-      );
-      const completed = await waitForExportTask(task.id);
-      const response = await downloadExportTask(completed.id);
-      await saveExportResponse(response, completed.file_name, "数据分析");
-      Toast.success(t("traeEnterprise.analysis.exportSuccess"));
-    } catch (error) {
-      if (isAuthenticationFailure(error)) {
-        handleError(error);
-      } else {
-        Toast.error(getExportErrorMessage(error));
-      }
-    } finally {
-      exportLockRef.current = false;
-      setExporting(false);
-    }
-  }, [context.id, data, dateRange, exporting, handleError, scope, t]);
-
-  useEffect(() => {
-    onExportChange?.({ disabled: !data || loading || exporting, run: exportData });
-  }, [data, exportData, exporting, loading, onExportChange]);
 
   const metrics = data?.metrics;
   const cumulativeTokens = (metrics?.cumulative_input_tokens ?? 0) + (metrics?.cumulative_output_tokens ?? 0);

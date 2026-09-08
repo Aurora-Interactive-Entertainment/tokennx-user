@@ -15,7 +15,6 @@ import {
   IconChevronRight,
   IconChevronUp,
   IconCreditCard,
-  IconDownload,
   IconEditStroked,
   IconExternalOpen,
   IconFile,
@@ -34,7 +33,6 @@ import { deferTraeDialogClose, TraeDialog } from "@/components/trae-dialog";
 import { TraeEnterpriseInvitations } from "@/components/trae-enterprise-invitations";
 import { TraeEnterpriseJoinRequests } from "@/components/trae-enterprise-join-requests";
 import { TraeTableEmpty } from "@/components/trae-table-empty";
-import type { AnalysisExportState } from "@/components/trae-enterprise-analysis";
 import {
   TraeMemberBulkActions,
   type TraeMemberBulkAction,
@@ -480,28 +478,10 @@ function TraeSection({
 export function TraeEnterpriseAnalysisPage() {
   const { t } = useTranslation();
   const { context, loading, error, reload } = useEnterpriseConsoleContext();
-  const [exportState, setExportState] = useState<AnalysisExportState>(() => ({
-    disabled: true,
-    run: () => undefined,
-  }));
-  const handleExportChange = useCallback((state: AnalysisExportState) => {
-    setExportState(state);
-  }, []);
   return (
     <TraeShell
       className="trae-analysis-page"
       title={t("traeEnterprise.analysis.title")}
-      action={
-        <button
-          className="trae-primary-button"
-          type="button"
-          disabled={exportState.disabled}
-          onClick={exportState.run}
-        >
-          <IconDownload aria-hidden="true" />
-          {t("traeEnterprise.analysis.export")}
-        </button>
-      }
     >
       {loading || (!context && !error) ? (
         <EnterpriseLoading label={t("console.enterprise.contextLoading")} />
@@ -515,7 +495,6 @@ export function TraeEnterpriseAnalysisPage() {
         <Suspense fallback={<EnterpriseLoading label={t("traeEnterprise.analysis.loading")} />}>
           <TraeEnterpriseAnalysis
             context={context}
-            onExportChange={handleExportChange}
           />
         </Suspense>
       )}

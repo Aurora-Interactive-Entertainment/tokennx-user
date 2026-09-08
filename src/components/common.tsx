@@ -54,6 +54,7 @@ import {
   IconSearch,
   IconShieldStroked,
   IconCrownStroked,
+  IconServerStroked,
   IconSettingStroked,
   IconSend,
   IconSunStroked,
@@ -180,7 +181,10 @@ import manuscriptCustomerQr from "@/assets/figma-home/footer-qr-customer.png";
 import manuscriptOfficialQr from "@/assets/figma-home/footer-qr-official.png";
 import manuscriptFilingIcpIcon from "@/assets/figma-home/filing-icp.png";
 import manuscriptFilingSecurityIcon from "@/assets/figma-home/filing-security.png";
-import supportAssistantImage from "@/assets/figma-home/support-assistant.svg";
+import {
+  SupportEmotionBall,
+  type SupportEmotionBallHandle,
+} from "./support-emotion-ball";
 import wechatIcon from "@/assets/figma-home/wechat.png";
 import deepseekLogo from "@lobehub/icons-static-svg/icons/deepseek-color.svg?raw";
 import anthropicLogo from "@lobehub/icons-static-svg/icons/claude-color.svg?raw";
@@ -2646,6 +2650,7 @@ export function PublicHeader({
 type ConsoleNavIconName =
   | "quickstart"
   | "models"
+  | "enterprise-models"
   | "model-test"
   | "image"
   | "video"
@@ -2691,6 +2696,8 @@ const CONSOLE_NAV_ICONS: Record<
 > = {
   quickstart: (props) => <IconLightningStroked {...props} />,
   models: (props) => <IconApps {...props} />,
+  // 中文：企业模型管理使用层叠服务器图标，与模型广场的九宫格图标区分开。
+  "enterprise-models": (props) => <IconServerStroked {...props} />,
   "model-test": (props) => <IconCommentStroked {...props} />,
   image: (props) => <IconImage {...props} />,
   video: (props) => <IconVideo {...props} />,
@@ -2888,7 +2895,7 @@ const enterpriseNavGroups: ConsoleNavGroup[] = [
       {
         key: "/console/enterprise-models",
         label: "模型管理",
-        icon: "models",
+        icon: "enterprise-models",
         permissionScope: "models",
       },
       {
@@ -4576,6 +4583,7 @@ export function ManuscriptSupportWidget() {
   const replyTimerRef = useRef<number | undefined>(undefined);
   const messageSequenceRef = useRef(0);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const assistantBallRef = useRef<SupportEmotionBallHandle | null>(null);
   const supportLocale: SupportLocale = translationI18n.language.startsWith("en")
     ? "en-US"
     : "zh-CN";
@@ -4724,6 +4732,8 @@ export function ManuscriptSupportWidget() {
   }
 
   function togglePanel(): void {
+    // 中文：首次点击客服入口先唤醒表情球；参考引擎会自动从 01 唤醒过渡到 02 待机。
+    assistantBallRef.current?.wake();
     if (open || mounted) closePanel();
     else openPanel();
   }
@@ -5123,7 +5133,10 @@ export function ManuscriptSupportWidget() {
           </div>
         </section>
       ) : null}
-      <div className="manuscript-support-trigger">
+      {/* 中文：弹窗展开时隐藏"在线助手"按钮，关闭后再过渡显现。 */}
+      <div
+        className={`manuscript-support-trigger${open ? " is-hidden" : ""}`}
+      >
         <button
           className="manuscript-support-assistant-button"
           type="button"
@@ -5132,14 +5145,7 @@ export function ManuscriptSupportWidget() {
           aria-expanded={open}
           onClick={togglePanel}
         >
-          <img
-            className="manuscript-support-assistant-image"
-            src={supportAssistantImage}
-            alt=""
-            aria-hidden="true"
-            width="33"
-            height="33"
-          />
+          <SupportEmotionBall ref={assistantBallRef} />
           <span className="manuscript-support-assistant-label">
             {t("support.trigger")}
           </span>

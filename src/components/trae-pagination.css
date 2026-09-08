@@ -52,8 +52,10 @@
   color: var(--color-text-secondary);
   background: var(--color-bg-base-secondary);
   font-size: 14px;
-  font-weight: 600;
 }
+/* 中文：箭头为 SVG 图标，固定 14px 并随网格居中，避免文本字形基线导致的偏下问题。 */
+.trae-usage-pagination .semi-page-prev svg,
+.trae-usage-pagination .semi-page-next svg { width: 14px; height: 14px; }
 .trae-usage-pagination .semi-page-prev.semi-page-item-disabled,
 .trae-usage-pagination .semi-page-next.semi-page-item-disabled {
   border-color: var(--color-border-neutral-l1);

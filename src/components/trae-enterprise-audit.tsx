@@ -311,7 +311,7 @@ export function TraeEnterpriseAudit({ context }: { context: EnterpriseContext })
           value={operator}
           searchable
           onChange={(value) => { setOperator(value); setPage(1); }}
-          options={[{ value: "all", label: t("traeEnterprise.audit.operator") }, ...operatorOptions]}
+          options={[{ value: "all", label: t("traeEnterprise.audit.allOperators") }, ...operatorOptions]}
         />
         <AuditDateRangePicker value={dateRange} onChange={(value) => { setDateRange(value); setPage(1); }} />
       </div>
