@@ -4,6 +4,8 @@ import { useCallback } from 'react'
 import { Provider } from 'react-redux'
 import ReactDOM from 'react-dom/client'
 import App from './App'
+import { AppErrorBoundary } from './components/app-error-boundary'
+import { createReactRootErrorHandler, initSentry } from './observability/sentry'
 import { store } from './store'
 import './i18n'
 import './theme'
@@ -12,6 +14,9 @@ import './components/console-form-controls.css'
 import './console-custom-typography.css'
 import './theme/semi-theme-tokens.css'
 import './components/dropdown-options.css'
+
+// 中文：监控必须先于 React 挂载初始化，才能捕获首屏和懒加载阶段的致命异常。
+initSentry()
 
 function applyInitialPerformanceMode(): void {
   if (typeof navigator === 'undefined' || typeof document === 'undefined') return
@@ -41,4 +46,9 @@ const appMount = document.getElementById('app-mount')
 if (!appMount) throw new Error('应用挂载节点不存在')
 
 // 中文：静态加载层独立于 React 根节点，由 App 首帧通知决定淡出时机。
-ReactDOM.createRoot(appMount).render(<AppRoot />)
+const rootErrorHandler = createReactRootErrorHandler()
+ReactDOM.createRoot(appMount, rootErrorHandler ? { onUncaughtError: rootErrorHandler } : undefined).render(
+  <AppErrorBoundary>
+    <AppRoot />
+  </AppErrorBoundary>,
+)

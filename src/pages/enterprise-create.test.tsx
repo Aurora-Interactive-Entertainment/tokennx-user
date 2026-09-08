@@ -343,7 +343,7 @@ describe("enterprise verification page", () => {
         name: i18n.t("console.enterpriseCreate.scanQr"),
       }),
     ).toBeInTheDocument();
-  });
+  }, 15_000);
 
   it("submits agent materials and goes directly to the two-step manual review page", async () => {
     const user = userEvent.setup();

@@ -1,4 +1,5 @@
 import i18n, { getActiveLanguage } from '@/i18n'
+import { reportCriticalApiFailure } from '@/observability/sentry'
 
 const DEFAULT_API_BASE_URL = 'http://127.0.0.1:8081'
 const REQUEST_TIMEOUT_MS = 15000
@@ -42,6 +43,28 @@ export class ApiError extends Error {
   }
 }
 
+function createApiError(
+  path: string,
+  options: FetchJsonOptions,
+  message: string,
+  status: number,
+  code: number,
+  requestId: string | null,
+): ApiError {
+  const error = new ApiError(message, status, code, requestId)
+
+  reportCriticalApiFailure({
+    error,
+    method: options.method || 'GET',
+    status,
+    code,
+    requestId: requestId || undefined,
+    path,
+  })
+
+  return error
+}
+
 function normalizeBaseUrl(value: string): string {
   return value.trim().replace(/\/+$/, '')
 }
@@ -76,12 +99,12 @@ export async function fetchJson<T>(path: string, options: FetchJsonOptions = {})
 	try {
 		payload = await response.json() as Partial<ApiEnvelope<T>>
 	} catch {
-		throw new ApiError(i18n.t('api.http.unreadableResponse'), response.status, 0, requestId)
+		throw createApiError(path, options, i18n.t('api.http.unreadableResponse'), response.status, 0, requestId)
 	}
 
-	if (!payload) throw new ApiError(i18n.t('api.http.unreadableResponse'), response.status, 0, requestId)
+	if (!payload) throw createApiError(path, options, i18n.t('api.http.unreadableResponse'), response.status, 0, requestId)
 	if (payload.code !== 0) {
-		throw new ApiError(errorMessage(payload, response), response.status, payload.code ?? 0, requestId)
+		throw createApiError(path, options, errorMessage(payload, response), response.status, payload.code ?? 0, requestId)
 	}
 	return payload.data as T
 }
@@ -133,8 +156,10 @@ export async function fetchResponse(path: string, options: FetchJsonOptions = {}
   } catch (error) {
     // 中文：调用方主动取消不应被误报为网络故障，页面卸载和用户点击停止都依赖该语义。
     if (options.signal?.aborted) throw error
-    if (timedOut && error instanceof DOMException && error.name === 'AbortError') throw new ApiError(i18n.t('api.http.timeout'), 408, 0, requestId)
-    throw new ApiError(i18n.t('api.http.networkFailure'), 0, 0, requestId)
+    if (timedOut && error instanceof DOMException && error.name === 'AbortError') {
+      throw createApiError(path, options, i18n.t('api.http.timeout'), 408, 0, requestId)
+    }
+    throw createApiError(path, options, i18n.t('api.http.networkFailure'), 0, 0, requestId)
   } finally {
     window.clearTimeout(timeout)
 		removeExternalAbortListener?.()
@@ -145,12 +170,12 @@ export async function fetchResponse(path: string, options: FetchJsonOptions = {}
 	try {
 		payload = await response.json() as Partial<ApiEnvelope<unknown>>
 	} catch {
-		throw new ApiError(i18n.t('api.http.unreadableResponse'), response.status, 0, response.headers.get('X-Request-ID') ?? requestId)
+		throw createApiError(path, options, i18n.t('api.http.unreadableResponse'), response.status, 0, response.headers.get('X-Request-ID') ?? requestId)
 	}
 
-	if (!payload) throw new ApiError(i18n.t('api.http.unreadableResponse'), response.status, 0, response.headers.get('X-Request-ID') ?? requestId)
+	if (!payload) throw createApiError(path, options, i18n.t('api.http.unreadableResponse'), response.status, 0, response.headers.get('X-Request-ID') ?? requestId)
 	const responseRequestId = response.headers.get('X-Request-ID') ?? requestId
-	throw new ApiError(errorMessage(payload, response), response.status, payload.code ?? 0, responseRequestId)
+	throw createApiError(path, options, errorMessage(payload, response), response.status, payload.code ?? 0, responseRequestId)
 }
 
 export function isApiError(error: unknown): error is ApiError {

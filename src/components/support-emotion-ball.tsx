@@ -62,6 +62,10 @@ interface SupportEmotionBallProps {
 }
 
 const EMOTION_BALL_ASSET_VERSION = "support-gaze-v9";
+// 中文：感应半径取视口短边的 58%，并限制上下界，方便统一调整跟随区域大小。
+const GAZE_RANGE_RATIO = 0.58;
+const GAZE_RANGE_MIN = 220;
+const GAZE_RANGE_MAX = 720;
 
 const SCRIPT_PATHS = [
   "/emotion-ball/rings.js",
@@ -180,6 +184,7 @@ export const SupportEmotionBall = forwardRef<
 >(function SupportEmotionBall({ className = "" }, ref) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const engineRef = useRef<EmotionEngine | null>(null);
+  const gazeInRangeRef = useRef(false);
   const initialEmotionRef = useRef<EmotionId>("02");
   const [emotion, setEmotion] = useState<EmotionId>("02");
   const [ready, setReady] = useState(false);
@@ -236,10 +241,29 @@ export const SupportEmotionBall = forwardRef<
       const dx = event.clientX - (rect.left + rect.width / 2);
       const dy = event.clientY - (rect.top + rect.height / 2);
       const distance = Math.hypot(dx, dy);
+      /* 中文：只在右下角助手周围的扇形区域接管眼神；半径随视口短边变化，兼容不同屏幕。 */
+      const followRadius = Math.min(
+        GAZE_RANGE_MAX,
+        Math.max(
+          GAZE_RANGE_MIN,
+          Math.min(window.innerWidth, window.innerHeight) * GAZE_RANGE_RATIO,
+        ),
+      );
+      if (distance > followRadius) {
+        if (gazeInRangeRef.current) {
+          gazeInRangeRef.current = false;
+          engine.clearGaze();
+        }
+        return;
+      }
+      gazeInRangeRef.current = true;
       /* 中文：引擎横纵最大位移分别为 24/15，预先反向校正椭圆比例；
        * 这样 SVG 最终位移方向会严格平行于“图标中心 → 鼠标”的真实像素向量。 */
       const directionLength = Math.hypot(dx / 24, dy / 15);
-      const strength = Math.tanh(distance / 180);
+      // 中文：从中心到感应边界平滑增加注视幅度，边界内保持连续，不会突然跳动。
+      const strength = Math.sin(
+        (Math.min(distance, followRadius) / followRadius) * (Math.PI / 2),
+      );
       const nx =
         directionLength > 0 ? (dx / 24 / directionLength) * strength : 0;
       const ny =
@@ -248,6 +272,7 @@ export const SupportEmotionBall = forwardRef<
       engine.setGaze(nx, ny);
     };
     const handlePointerLeave = () => {
+      gazeInRangeRef.current = false;
       engineRef.current?.clearGaze();
     };
     window.addEventListener("pointermove", handlePointerMove, { passive: true });

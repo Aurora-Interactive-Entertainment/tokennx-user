@@ -274,7 +274,8 @@ describe('用户费用管理页面', () => {
     expect(within(ledgerRegion).getByText('充值')).toBeInTheDocument()
     expect(within(ledgerRegion).getByText('奖励到账')).toBeInTheDocument()
     expect(within(ledgerRegion).getByText('奖励到账 · 注册奖励到账')).toBeInTheDocument()
-    expect(within(ledgerRegion).getByText('request-usage-1')).toBeInTheDocument()
+    // 中文：普通账本保持精简，Request ID 只在按请求定位的详情入口展示。
+    expect(within(ledgerRegion).queryByText('request-usage-1')).toBeNull()
 
     const analysisCall = fetchMock.mock.calls.find(([input]) => new URL(String(input), window.location.origin).pathname.endsWith('/analysis'))
     expect(analysisCall).toBeDefined()

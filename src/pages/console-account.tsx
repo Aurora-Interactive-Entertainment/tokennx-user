@@ -33,6 +33,7 @@ import {
   SectionHeading,
 } from "@/components/common";
 import { TraeTableEmpty } from "@/components/trae-table-empty";
+import { TraePagination } from "@/components/trae-pagination";
 import { BackofficeMoneyText as MoneyText } from "@/components/money";
 import {
   CompatCard as Card,
@@ -122,6 +123,7 @@ const API_KEY_DAY_MS = 24 * 60 * 60 * 1000;
 const API_KEY_USAGE_PERCENT_MIN = 0;
 const API_KEY_USAGE_PERCENT_MAX = 100;
 const API_KEY_USAGE_WARNING_THRESHOLD = 80;
+const API_KEY_PAGE_SIZE = 10;
 const PERSONAL_USAGE_MANAGEMENT_PATH = "/console/usage?tab=management";
 function emptyApiKeyForm(): ApiKeyFormState {
   return {
@@ -277,6 +279,8 @@ export function ApiKeysPage({
   const [requiredErrors, setRequiredErrors] = useState<ApiKeyRequiredErrors>({});
   const [expiryPreset, setExpiryPreset] = useState<ApiKeyExpiryPreset>("never");
   const [filter, setFilter] = useState<ApiKeyStatusFilter>("all");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(API_KEY_PAGE_SIZE);
   const [result, setResult] = useState<UserApiKeyList | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -324,10 +328,12 @@ export function ApiKeysPage({
     setDepartmentFilter("all");
     setMemberFilter("all");
     setFilterMemberSearch("");
+    setPage(1);
   }, [workspaceKey]);
 
   useEffect(() => {
     setSelectedKeyIDs([]);
+    setPage(1);
   }, [departmentFilter, filter, memberFilter]);
 
   useEffect(() => {
@@ -725,6 +731,7 @@ export function ApiKeysPage({
             ? { ...previous, items: [created.item, ...previous.items] }
             : previous,
         );
+        setPage(1);
         setModalVisible(false);
         setEditingKey(null);
         const secret = (created.secret || created.item.secret || "").trim();
@@ -1016,7 +1023,7 @@ export function ApiKeysPage({
       .filter((member) => member.department?.id === departmentFilter)
       .flatMap((member) => [member.user_id, member.id]),
   );
-  const rows = items.filter(
+  const filteredRows = items.filter(
     (item) =>
       (filter === "all" || item.status === filter) &&
       (mode !== "enterprise" ||
@@ -1027,16 +1034,28 @@ export function ApiKeysPage({
         !currentUserID ||
         item.creator.id === currentUserID),
   );
+  const totalRows = filteredRows.length;
+  const pageCount = Math.max(1, Math.ceil(totalRows / pageSize));
+  const currentPage = Math.min(page, pageCount);
+  // 中文：筛选结果变少时自动回到最后一页，避免表格出现空页。
+  useEffect(() => {
+    if (page !== currentPage) setPage(currentPage);
+  }, [currentPage, page]);
+  const rows = filteredRows.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize,
+  );
   const enterpriseSelectionEnabled = mode === "enterprise";
   // 中文：个人和企业密钥页统一只展示核心字段，批量勾选列仍仅在企业页保留。
   const showExtendedColumns = false;
-  const selectedRows = rows.filter((row) => selectedKeyIDs.includes(row.id));
+  const selectedRows = filteredRows.filter((row) => selectedKeyIDs.includes(row.id));
+  const selectedPageRows = rows.filter((row) => selectedKeyIDs.includes(row.id));
   const allRowsSelected =
     enterpriseSelectionEnabled &&
     rows.length > 0 &&
-    selectedRows.length === rows.length;
+    selectedPageRows.length === rows.length;
   const someRowsSelected =
-    enterpriseSelectionEnabled && selectedRows.length > 0;
+    enterpriseSelectionEnabled && selectedPageRows.length > 0;
 
   function toggleRowSelection(keyID: string, checked: boolean): void {
     setSelectedKeyIDs((previous) =>
@@ -1494,6 +1513,26 @@ export function ApiKeysPage({
           </table>
         </div>
       )}
+      {!initialTableLoading && totalRows > 0 ? (
+        <TraePagination
+          ariaLabel={t("console.common.page")}
+          currentPage={currentPage}
+          pageSize={pageSize}
+          total={totalRows}
+          pageSizeOpts={[10, 20, 50]}
+          summary={t("console.common.showRange", {
+            start: (currentPage - 1) * pageSize + 1,
+            end: Math.min(currentPage * pageSize, totalRows),
+            total: totalRows,
+          })}
+          disabled={loading}
+          onChange={(nextPage, nextPageSize) => {
+            setPageSize(nextPageSize);
+            setPage(nextPageSize === pageSize ? nextPage : 1);
+            setSelectedKeyIDs([]);
+          }}
+        />
+      ) : null}
       {enterpriseSelectionEnabled && selectedRows.length ? (
         <div
           className="api-key-bulk-toolbar"

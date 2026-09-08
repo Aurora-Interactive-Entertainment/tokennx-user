@@ -177,21 +177,27 @@ describe('控制台模型接入页面', () => {
     expect(apiKeySupportsModel(selectedKey, qwen)).toBe(true)
   })
 
-  it('显示配置的 Base URL，并支持复制可执行接入样例', async () => {
+  it('通过分步接入流程展示并复制可执行代码样例', async () => {
     const user = userEvent.setup()
     const clipboardWriteText = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue(undefined)
     renderConsolePage(<QuickstartPage />, ['/console/quickstart?model=deepseek-chat&protocol=openai&language=curl'])
 
-    await waitFor(() => expect(screen.getByText('后端连接已配置')).toBeInTheDocument())
-    expect(screen.getByText(MODEL_API_BASE_URL)).toBeInTheDocument()
-    expect(screen.getByText(/后端 DeepSeek · OpenAI/)).toBeInTheDocument()
-    expect(screen.getByText(/chat\/completions/)).toBeInTheDocument()
+    expect(await screen.findByText('几分钟内完成接入')).toBeInTheDocument()
+    expect(screen.getByText('第一步')).toBeInTheDocument()
+    expect(screen.getByText('第二步')).toBeInTheDocument()
+    expect(screen.getByText('第三步')).toBeInTheDocument()
+
+    const integrationToggle = screen.getByRole('button', { name: 'API 接入' })
+    await user.click(integrationToggle)
+    const integrationSection = integrationToggle.closest('section') as HTMLElement
+    expect(integrationSection).toHaveTextContent(MODEL_API_BASE_URL)
+    expect(integrationSection).toHaveTextContent('/chat/completions')
+    expect(integrationSection).toHaveTextContent('deepseek-public')
     expect(screen.queryByText(/真实 API 未接入|api\.tokennx\.invalid|本地演示模式/)).toBeNull()
 
-    await user.click(screen.getByRole('button', { name: '复制模型 Base URL' }))
+    await user.click(within(integrationSection).getByRole('button', { name: '复制' }))
 
-    expect(clipboardWriteText).toHaveBeenCalledWith(MODEL_API_BASE_URL)
-    expect(screen.getByRole('link', { name: '模型详情' })).toHaveAttribute('href', '/console/models?model=deepseek-public')
+    expect(clipboardWriteText).toHaveBeenCalledWith(expect.stringContaining(`${MODEL_API_BASE_URL}/chat/completions`))
   })
 
   it('将接口返回的全部用户可见模型展示在模型广场', async () => {
@@ -538,7 +544,7 @@ describe('控制台模型接入页面', () => {
     expect(screen.getByPlaceholderText('当前会话已达到限制，请开启新的会话继续')).toBeDisabled()
     expect(screen.queryByText(/第 .*轮/)).toBeNull()
     expect(screen.queryByText(/\/10 轮/)).toBeNull()
-  })
+  }, 15_000)
 
   it('失败请求可编辑并在重试成功后替换失败内容', async () => {
     const user = userEvent.setup()

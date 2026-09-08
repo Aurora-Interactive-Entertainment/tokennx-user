@@ -201,7 +201,8 @@ describe('控制台导航路径匹配', () => {
     expect(within(supportDialog).getByRole('tabpanel', { name: '通知' })).toBeInTheDocument()
   })
 
-  it('企业空间只展示企业名并为完整名称保留悬浮提示', () => {
+  it('企业空间在用户菜单中展示完整企业名', async () => {
+    const user = userEvent.setup()
     const previousSnapshot = window.localStorage.getItem('token-nx:user-front:v1')
     const enterpriseName = '华东智能模型服务与研发企业空间'
     window.localStorage.setItem('token-nx:user-front:v1', JSON.stringify({
@@ -211,18 +212,19 @@ describe('控制台导航路径匹配', () => {
     }))
 
     try {
+      const appStore = createAppStore()
+      appStore.dispatch({ type: 'auth/loginWithEmail/fulfilled', payload: { id: 'user-enterprise', display_name: 'han', avatar_url: '', locale: 'zh-CN', timezone: 'Asia/Shanghai', status: 'active' } })
       render(
         <MemoryRouter initialEntries={['/console/quickstart']}>
-          <Provider store={createAppStore()}>
+          <Provider store={appStore}>
             <AppStoreProvider><ConsoleLayout><span>页面内容</span></ConsoleLayout></AppStoreProvider>
           </Provider>
         </MemoryRouter>,
       )
 
-      const workspaceDisplay = screen.getByRole('status', { name: '当前空间' })
-      expect(workspaceDisplay).toHaveAttribute('title', enterpriseName)
-      expect(workspaceDisplay.querySelector('strong')).toHaveAttribute('title', enterpriseName)
-      expect(workspaceDisplay.querySelector('strong')).toHaveTextContent(enterpriseName)
+      await user.click(screen.getByRole('button', { name: '打开用户菜单' }))
+      const workspaceDisplay = screen.getByRole('menuitem', { name: '切换空间' })
+      expect(workspaceDisplay).toHaveTextContent(enterpriseName)
       expect(workspaceDisplay).not.toHaveTextContent('企业空间 · 所有者')
     } finally {
       if (previousSnapshot === null) {
@@ -293,7 +295,7 @@ describe('控制台导航路径匹配', () => {
       expect(navigation).toHaveTextContent('个人用量')
       expect(navigation).not.toHaveTextContent('用量统计')
       expect(navigation).not.toHaveTextContent('调用记录')
-      expect(navigation).toHaveTextContent('账号信息')
+      expect(navigation).toHaveTextContent('个人设置')
       expect(navigation).toHaveTextContent('我的密钥')
       for (const label of ['企业设置', '模型管理', '权限与标签', '费用管理']) {
         expect(navigation).not.toHaveTextContent(label)
@@ -716,7 +718,7 @@ describe('公共 Header 布局', () => {
 
   it('统一公共 Footer 分组支持展开、切换和收起', async () => {
     const user = userEvent.setup()
-    render(<MemoryRouter><PublicFooter /></MemoryRouter>)
+    render(<MemoryRouter><Provider store={createAppStore()}><PublicFooter /></Provider></MemoryRouter>)
 
     const productToggle = screen.getByRole('button', { name: i18n.t('footer.product') })
     const docsToggle = screen.getByRole('button', { name: i18n.t('footer.docs') })
@@ -778,11 +780,11 @@ describe('公共 Header 布局', () => {
     const expectedName = limitDisplayNameLength(longName)
     expect(screen.getByRole('button', { name: '打开用户菜单' })).toHaveTextContent(expectedName)
     expect(screen.getByRole('button', { name: '打开用户菜单' })).not.toHaveTextContent(longName)
-    expect(screen.getByRole('status', { name: '当前空间' })).toHaveTextContent('个人空间')
     await user.click(screen.getByRole('button', { name: '打开用户菜单' }))
     const menu = screen.getByRole('menu', { name: '用户菜单' })
     expect(menu).toHaveTextContent(expectedName)
     expect(menu).not.toHaveTextContent(longName)
+    expect(screen.getByRole('menuitem', { name: '切换空间' })).toHaveTextContent('个人空间')
   })
 })
 
@@ -895,7 +897,7 @@ describe('已登录用户菜单', () => {
     expect(menu).toHaveTextContent('137****7000')
     expect(menu).toHaveTextContent('当前空间 · 测试用户')
     expect(menu).toHaveTextContent('切换空间')
-    expect(menu).toHaveTextContent('快速接入')
+    expect(menu).not.toHaveTextContent('快速接入')
     expect(menu).toHaveTextContent('智能对话')
     expect(menu).toHaveTextContent('视频生成')
     expect(menu).not.toHaveTextContent('调用记录')
@@ -903,7 +905,7 @@ describe('已登录用户菜单', () => {
     expect(menu).toHaveTextContent('费用管理')
     expect(menu).toHaveTextContent('我的密钥')
     expect(menu).toHaveTextContent('邀请返现')
-    expect(menu).toHaveTextContent('认证返现')
+    expect(menu).not.toHaveTextContent('认证返现')
     expect(menu).not.toHaveTextContent('文档中心')
     expect(menu).not.toHaveTextContent('联系我们')
     expect(menu).toHaveTextContent('退出登录')
@@ -1069,13 +1071,13 @@ describe('已登录用户菜单', () => {
     await user.click(document.querySelector('.user-menu-trigger') as HTMLButtonElement)
 
     const userMenu = document.querySelector('.user-dropdown') as HTMLElement
-    const quickstartLink = userMenu.querySelector('a[href="/console/quickstart"]') as HTMLAnchorElement
+    const playgroundLink = userMenu.querySelector('a[href="/console/playground"]') as HTMLAnchorElement
     expect(header).toHaveClass('mobile-nav-open')
     expect(userMenu).toHaveClass('open')
 
-    await user.click(quickstartLink)
+    await user.click(playgroundLink)
 
-    expect(screen.getByTestId('common-location')).toHaveTextContent('/console/quickstart')
+    expect(screen.getByTestId('common-location')).toHaveTextContent('/console/playground')
     expect(header).not.toHaveClass('mobile-nav-open')
     expect(mobileMenuButton).toHaveAttribute('aria-expanded', 'false')
     expect(userMenu).not.toHaveClass('open')
@@ -1149,8 +1151,8 @@ describe('已登录用户菜单', () => {
     )
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
-    expect(screen.getByRole('status', { name: '当前空间' })).toHaveTextContent('个人空间')
     await user.click(screen.getByRole('button', { name: '打开用户菜单' }))
+    expect(screen.getByRole('menuitem', { name: '切换空间' })).toHaveTextContent('个人空间')
     await user.click(screen.getByRole('menuitem', { name: '切换空间' }))
     const workspaceMenu = screen.getByRole('menu', { name: '切换空间' })
     expect(workspaceMenu).toHaveTextContent('真实关联企业')
@@ -1161,7 +1163,6 @@ describe('已登录用户菜单', () => {
     expect(appStore.getState()).toBeDefined()
     expect(screen.getByRole('menu', { name: '用户菜单' })).toHaveTextContent('当前空间 · 真实关联企业')
     expect(screen.getByRole('menu', { name: '用户菜单' })).not.toHaveTextContent('人员管理')
-    expect(screen.getByRole('status', { name: '当前空间' })).toHaveTextContent('真实关联企业')
     const enterpriseNavigation = screen.getByRole('navigation', { name: '控制台导航' })
     expect(enterpriseNavigation).toHaveTextContent('我的数据')
     expect(enterpriseNavigation).not.toHaveTextContent('调用记录')
@@ -1211,9 +1212,8 @@ describe('已登录用户菜单', () => {
     )
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
-    await waitFor(() => expect(screen.getByRole('status', { name: '当前空间' })).toHaveTextContent('刷新后企业'))
     await userEvent.setup().click(screen.getByRole('button', { name: '打开用户菜单' }))
-    expect(screen.getByRole('menu', { name: '用户菜单' })).toHaveTextContent('当前空间 · 刷新后企业')
+    await waitFor(() => expect(screen.getByRole('menu', { name: '用户菜单' })).toHaveTextContent('当前空间 · 刷新后企业'))
     window.localStorage.removeItem('token-nx:user-front:v1')
   })
 

@@ -1,0 +1,62 @@
+.app-error-boundary {
+  display: grid;
+  min-width: 320px;
+  min-height: 100vh;
+  min-height: 100dvh;
+  place-items: center;
+  padding: 32px 20px;
+  background: var(--bg-base);
+  color: var(--text-default);
+}
+
+.app-error-boundary__card {
+  width: min(100%, 520px);
+  padding: 32px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  background: var(--bg-panel);
+  box-shadow: var(--shadow);
+}
+
+.app-error-boundary__eyebrow {
+  display: inline-block;
+  margin-bottom: 12px;
+  color: var(--danger);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.app-error-boundary h1 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: clamp(24px, 6vw, 34px);
+  line-height: 1.2;
+}
+
+.app-error-boundary p {
+  margin: 16px 0 0;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.app-error-boundary__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 28px;
+}
+
+@media (max-width: 520px) {
+  .app-error-boundary {
+    padding: 20px 16px;
+  }
+
+  .app-error-boundary__card {
+    padding: 24px 20px;
+  }
+
+  .app-error-boundary__actions .semi-button {
+    flex: 1 1 140px;
+  }
+}

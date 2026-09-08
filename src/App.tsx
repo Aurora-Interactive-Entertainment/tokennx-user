@@ -25,12 +25,17 @@ import {
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { subscribeAuthTokenChanges } from "@/auth/token-storage";
 import { SeoManager } from "@/seo/site-seo";
+import { syncSentryIdentity } from "@/observability/sentry";
 
 const loadPublicPages = () => import("@/pages/public");
 const loadInvitationPage = () => import("@/pages/join");
 const loadConsoleCorePages = () => import("@/pages/console-core");
 const loadConsoleAccountPages = () => import("@/pages/console-account");
 const loadNewsPages = () => import("@/pages/news");
+const SentryTestPage =
+  import.meta.env.DEV && import.meta.env.VITE_SENTRY_TEST_ENABLED === "true"
+    ? lazy(() => import("@/pages/sentry-test-page"))
+    : null;
 
 const HomePage = lazy(() =>
   loadPublicPages().then(({ HomePage }) => ({ default: HomePage })),
@@ -307,11 +312,30 @@ function BootReadyWatcher({ onBootReady }: { onBootReady: () => void }) {
 
 function AuthScopedStoreProvider({ children }: { children: ReactNode }) {
   const auth = useAppSelector((state) => state.auth)
+  const { i18n } = useTranslation()
+  const { pathname } = useLocation()
   const userId = auth.status === 'authenticated'
     ? auth.user?.id ?? null
     : auth.status === 'unauthenticated'
       ? null
       : ''
+
+  useEffect(() => {
+    const consoleScope = pathname.startsWith('/console/trae-enterprise')
+      || pathname.startsWith('/console/enterprise-')
+      ? 'enterprise'
+      : pathname.startsWith('/console')
+        ? 'personal'
+        : 'public'
+
+    // 中文：只同步内部用户 ID 和低敏页面范围，不上传邮箱、手机号或路由查询参数。
+    syncSentryIdentity({
+      userId: userId || null,
+      locale: i18n.language.startsWith('en') ? 'en-US' : 'zh-CN',
+      consoleScope,
+    })
+  }, [i18n.language, pathname, userId])
+
   // 中文：账号作用域变化时重新挂载，避免 effect 刷新前短暂渲染上一个账号的历史。
   const scopeKey = `${auth.status}:${auth.user?.id ?? ''}`
   return <AppStoreProvider key={scopeKey} userId={userId}>{children}</AppStoreProvider>
@@ -436,6 +460,9 @@ export default function App({ onBootReady }: { onBootReady: () => void }) {
                 />
               </Route>
               <Route path="/home" element={<Navigate to="/" replace />} />
+              {SentryTestPage ? (
+                <Route path="/__sentry-test" element={<SentryTestPage />} />
+              ) : null}
               <Route path="*" element={<NotFoundPage />} />
             </Routes>
           </Suspense>

@@ -12,8 +12,8 @@
     "build": "tsc -b && vite build && npm run size:check",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
-    "test:coverage": "vitest run --coverage",
+    "test": "vitest run --maxWorkers=4",
+    "test:coverage": "vitest run --coverage --maxWorkers=4",
     "test:watch": "vitest",
     "format:check": "prettier --check .",
     "size:check": "node scripts/check-bundle-size.mjs"
@@ -23,6 +23,7 @@
     "@douyinfe/semi-ui": "2.101.1",
     "@lobehub/icons-static-svg": "^1.94.0",
     "@reduxjs/toolkit": "^2.12.0",
+    "@sentry/react": "^10.73.0",
     "echarts": "^6.1.0",
     "hast-util-sanitize": "^5.0.2",
     "i18next": "^26.3.6",
@@ -41,6 +42,7 @@
   },
   "devDependencies": {
     "@douyinfe/semi-vite-plugin": "2.101.1",
+    "@sentry/vite-plugin": "^5.4.0",
     "@testing-library/jest-dom": "7.0.0",
     "@testing-library/react": "16.3.2",
     "@testing-library/user-event": "14.6.1",
@@ -57,6 +59,7 @@
     "vitest": "4.1.10"
   },
   "allowScripts": {
+    "@sentry/cli@2.58.6": true,
     "esbuild@0.25.12": true
   }
 }

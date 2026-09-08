@@ -56,19 +56,23 @@ npm ci
 
 项目已经提供以下环境文件：
 
-| 文件               | 使用场景        | 说明                                   |
-| ------------------ | --------------- | -------------------------------------- |
-| `.env.example`     | 配置参考        | 仅为模板，不会被 Vite 自动加载         |
-| `.env.development` | `npm run dev`   | 开发模式配置                           |
-| `.env.production`  | `npm run build` | 生产构建配置                           |
-
+| 文件               | 使用场景        | 说明                           |
+| ------------------ | --------------- | ------------------------------ |
+| `.env.example`     | 配置参考        | 仅为模板，不会被 Vite 自动加载 |
+| `.env.development` | `npm run dev`   | 开发模式配置                   |
+| `.env.production`  | `npm run build` | 生产构建配置                   |
 
 可配置变量如下：
 
-| 变量                    | 作用                                                       | 默认/建议值                                            |
-| ----------------------- | ---------------------------------------------------------- | ------------------------------------------------------ |
-| `VITE_API_BASE_URL`     | 非开发模式下的后端基础地址；模型调用会在此地址后追加 `/v1` | 生产环境填写可从浏览器访问的后端地址，开发环境通常留空 |
-| `VITE_API_PROXY_TARGET` | Vite 开发代理目标，接收 `/api` 和 `/v1` 请求               | `https://api.firebulls.cn:8443`    测试环境后端接口地址                            |
+| 变量                                  | 作用                                                       | 默认/建议值                                            |
+| ------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------ |
+| `VITE_API_BASE_URL`                   | 非开发模式下的后端基础地址；模型调用会在此地址后追加 `/v1` | 生产环境填写可从浏览器访问的后端地址，开发环境通常留空 |
+| `VITE_API_PROXY_TARGET`               | Vite 开发代理目标，接收 `/api` 和 `/v1` 请求               | `https://api.firebulls.cn:8443` 测试环境后端接口地址   |
+| `VITE_SENTRY_DSN`                     | Sentry 浏览器上报地址                                      | 开发环境留空，正式环境填写项目 DSN                     |
+| `VITE_SENTRY_ENVIRONMENT`             | Sentry 环境名称                                            | `development` / `staging` / `production`               |
+| `VITE_SENTRY_API_ERROR_SAMPLE_RATE`   | 关键写接口 5xx 采样率                                      | 正式环境 `0.1`                                         |
+| `VITE_SENTRY_CHUNK_ERROR_SAMPLE_RATE` | 懒加载资源错误采样率                                       | 正式环境 `0.1`                                         |
+| `VITE_SENTRY_TEST_ENABLED`            | 开发测试页开关                                             | 默认 `false`，正式环境必须为 `false`                   |
 
 注意事项：
 
@@ -116,7 +120,7 @@ npm run typecheck
 npm run build
 ```
 
-构建流程是 `tsc -b && vite build`，输出目录为 `dist/`。Vite 默认使用 production mode，并读取 `.env.production`。构建目标为 `es2022`，页面和公共依赖会进行代码分块，生产构建当前关闭 source map。
+构建流程是 `tsc -b && vite build`，输出目录为 `dist/`。Vite 默认使用 production mode，并读取 `.env.production`。构建目标为 `es2022`，页面和公共依赖会进行代码分块。普通构建不生成 source map；只有发布环境显式开启 Sentry 上传时才生成隐藏映射，上传成功后从 `dist/` 删除。
 
 ### 本地预览构建结果
 
@@ -151,6 +155,26 @@ npm run format:check
 - 覆盖率重点统计 `src/api`、`src/data`、`src/utils`、`src/components/support-chat.ts` 和账单页面等真实业务模块。
 
 测试用例应优先覆盖 API 成功与失败、认证刷新、输入校验、路由跳转、权限分支和用户可见状态。测试代码不应通过无意义的重复断言来抬高覆盖率。
+
+## Sentry 生产监控
+
+当前配置针对每月 5000 条错误额度做了严格控制：不启用 Performance、Replay、Logs、Metrics 和 Session 事件；自动错误只保留应用致命异常，懒加载错误和关键写接口 5xx 各采样 10%。浏览器还会按“错误签名 + 发布版本”限流：同一致命错误 24 小时最多一次，每个会话最多 5 条；关键接口每个签名 1 小时最多一次，每个会话最多 3 条；懒加载错误每个会话最多 1 条。
+
+以下内容会在发送前移除：请求和响应正文、请求头、Cookie、查询参数、邮箱、手机号、证件号、Token、API Key、控制台日志、点击元素信息以及任意 `extra` 数据。登录用户只关联内部用户 ID，`X-Request-ID` 仅作为低基数排查上下文，不作为标签。
+
+发布构建上传 Source Map 时，在 CI 中提供以下非 `VITE_` 环境变量：
+
+```dotenv
+SENTRY_SOURCE_MAP_UPLOAD=true
+SENTRY_AUTH_TOKEN=<Sentry 发布令牌>
+SENTRY_ORG=<组织 slug>
+SENTRY_PROJECT=<项目 slug>
+SENTRY_RELEASE=<唯一发布版本，例如 Git SHA>
+```
+
+这些变量缺失时，普通构建仍可运行；一旦将 `SENTRY_SOURCE_MAP_UPLOAD` 设为 `true`，缺少任一上传参数都会使构建失败，避免发布无法还原堆栈的版本。`SENTRY_AUTH_TOKEN` 只能放在 CI 密钥中，不得写入 `.env.production` 或提交到仓库。
+
+需要验证采集链路时，在本地 `.env.development.local` 临时填写 DSN，并设置 `VITE_SENTRY_TEST_ENABLED=true`，然后访问 `/__sentry-test`。验证结束后立即关闭开关；该路由不会进入正式构建。测试真实 DSN 会消耗错误额度，建议在独立测试项目中执行。
 
 ## 调试指南
 

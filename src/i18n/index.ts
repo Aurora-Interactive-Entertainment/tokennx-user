@@ -27,6 +27,20 @@ const resources = {
         light: '亮色主题',
         dark: '暗色主题',
       },
+      appError: {
+        eyebrow: 'APPLICATION ERROR',
+        title: '页面暂时无法正常显示',
+        description: '我们已记录必要的技术信息。你可以先重试，或刷新页面恢复使用。',
+        retry: '重试',
+        refresh: '刷新页面',
+      },
+      sentryTest: {
+        eyebrow: 'DEVELOPMENT ONLY',
+        title: 'Sentry 错误采集测试',
+        description: '此页面只在开发环境显式开启后出现，用于验证 JavaScript 与 React 错误链路。',
+        javascriptError: '触发 JavaScript 错误',
+        reactError: '触发 React 渲染错误',
+      },
       nav: {
         models: '模型',
         private: '私有化',
@@ -625,6 +639,20 @@ const resources = {
     translation: {
       language: { label: 'Language', toggle: 'Switch language', current: 'English' },
       theme: { label: 'Theme', switch: 'Switch theme', light: 'Light theme', dark: 'Dark theme' },
+      appError: {
+        eyebrow: 'APPLICATION ERROR',
+        title: 'This page cannot be displayed right now',
+        description: 'We recorded the necessary technical details. Try again or refresh the page to recover.',
+        retry: 'Try again',
+        refresh: 'Refresh page',
+      },
+      sentryTest: {
+        eyebrow: 'DEVELOPMENT ONLY',
+        title: 'Sentry error reporting test',
+        description: 'This page is available only when explicitly enabled in development and verifies JavaScript and React error reporting.',
+        javascriptError: 'Trigger JavaScript error',
+        reactError: 'Trigger React render error',
+      },
       nav: {
         models: 'Models', private: 'Private', ranking: 'Ranking', apps: 'Agent', docs: 'Docs', pricing: 'Pricing', billing: 'Billing', status: 'Status', about: 'About', news: 'News', console: 'Console', settings: 'Account settings', logout: 'Sign out', notifications: 'View notifications', close: 'Close navigation', open: 'Open navigation',
       },

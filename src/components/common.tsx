@@ -1288,8 +1288,14 @@ export function LoginPanel({
   const [bindingCodeLoading, setBindingCodeLoading] = useState(false);
   const [bindingLoading, setBindingLoading] = useState(false);
   const phoneInputRef = useRef<HTMLInputElement>(null);
+  const onSuccessRef = useRef(onSuccess);
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    // 中文：父组件重渲染可能产生新的回调，但不应因此重启正在进行的微信轮询。
+    onSuccessRef.current = onSuccess;
+  }, [onSuccess]);
 
   useEffect(() => {
     if (phoneRetryAfter <= 0) return undefined;
@@ -1355,7 +1361,7 @@ export function LoginPanel({
         const user = await dispatch(
           completeWechatLogin(result.result),
         ).unwrap();
-        onSuccess(user);
+        onSuccessRef.current(user);
       } catch (error) {
         if (active) {
           setWechatView("error");
@@ -1368,7 +1374,7 @@ export function LoginPanel({
       active = false;
       if (timer !== undefined) window.clearTimeout(timer);
     };
-  }, [dispatch, onSuccess, tab, wechatQr, wechatView]);
+  }, [dispatch, tab, t, wechatQr, wechatView]);
 
   function readLoginError(error: unknown): string {
     if (typeof error === "object" && error !== null && "message" in error)

@@ -163,7 +163,7 @@ function AgentStep({ model, language, protocol, appliedApiKey, setLanguage, setP
       <div className="quickstart-pdf-code-shell">
         <div className="quickstart-pdf-code-toolbar">
           <div className="quickstart-pdf-tabs quickstart-pdf-language-tabs" role="tablist">{(['curl', 'python', 'node'] as const).map((item) => <button type="button" role="tab" aria-selected={language === item} className={language === item ? 'is-active' : ''} key={item} onClick={() => setLanguage(item)}>{item === 'curl' ? 'cURL' : item === 'python' ? t('console.quickstart.python') : 'Node.js'}</button>)}</div>
-          <Button theme="borderless" size="small" icon={<IconCopy />} onClick={() => onCopy(code)}>{t('console.quickstart.copy')}</Button>
+          <Button theme="borderless" size="small" icon={<IconCopy aria-hidden="true" />} onClick={() => onCopy(code)}>{t('console.quickstart.copy')}</Button>
         </div>
         <pre><code>{highlightCode(code)}</code></pre>
       </div>

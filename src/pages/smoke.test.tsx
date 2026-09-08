@@ -381,9 +381,9 @@ describe('页面主链冒烟场景', () => {
 
   it('模型目录包含文本、视频和图片三个分组', async () => {
     render(<MemoryRouter><Provider store={createAppStore()}><AppStoreProvider><ModelsPublicPage /></AppStoreProvider></Provider></MemoryRouter>)
-    expect(screen.getByRole('heading', { name: '文本生成' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: '视频生成' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: '图片生成' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '文本模型' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '视频模型' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '图片模型' })).toBeInTheDocument()
   })
 
   it('登录页默认只显示手机号登录并校验号码格式', async () => {
@@ -468,7 +468,6 @@ describe('页面主链冒烟场景', () => {
   })
 
   it('微信扫码成功后会轮询状态并续接到控制台', async () => {
-    const user = userEvent.setup()
     const openMock = vi.spyOn(window, 'open').mockReturnValue(null)
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
       const url = String(input)
@@ -478,7 +477,8 @@ describe('页面主链冒烟场景', () => {
     })
 
     renderLogin('/console')
-    await user.click(screen.getByRole('button', { name: '使用微信登录' }))
+    // 中文：这里只触发异步扫码链路，避免 user-event 等待轮询副作用导致测试无法结束。
+    fireEvent.click(screen.getByRole('button', { name: '使用微信登录' }))
     expect(screen.queryByText(/本地演示|演示验证码|模拟扫码|占位二维码|演示占位/)).not.toBeInTheDocument()
     expect(await screen.findByText('控制台首页')).toBeInTheDocument()
     expect(openMock).not.toHaveBeenCalled()
@@ -486,11 +486,10 @@ describe('页面主链冒烟场景', () => {
   })
 
   it('微信二维码接口返回无法识别的响应时展示红色错误并允许重试', async () => {
-    const user = userEvent.setup()
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('not-json', { status: 200, headers: { 'Content-Type': 'application/json' } }))
 
     renderLogin('/console')
-    await user.click(screen.getByRole('button', { name: '使用微信登录' }))
+    fireEvent.click(screen.getByRole('button', { name: '使用微信登录' }))
 
     const errorStatus = await screen.findByText('服务返回了无法识别的响应')
     expect(errorStatus).toHaveClass('wechat-status', 'is-error')
@@ -511,7 +510,7 @@ describe('页面主链冒烟场景', () => {
     })
 
     renderLogin('/console')
-    await user.click(screen.getByRole('button', { name: '使用微信登录' }))
+    fireEvent.click(screen.getByRole('button', { name: '使用微信登录' }))
     expect(await screen.findByRole('heading', { name: '绑定手机号' })).toBeInTheDocument()
     await user.type(screen.getByLabelText('手机号'), '13900139000')
     await user.click(screen.getByRole('button', { name: '获取验证码' }))

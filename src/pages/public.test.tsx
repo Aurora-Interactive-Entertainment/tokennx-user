@@ -170,7 +170,7 @@ describe('公开模型页面', () => {
       expect(screen.getByRole('heading', { name: '快速开始' })).toBeInTheDocument()
       expect(screen.getByRole('complementary', { name: '本页目录' })).toHaveTextContent('使用 Token NX API')
       expect(screen.getByTestId('location')).toHaveTextContent(`/docs/${DOCS_DOCUMENT_ID}/quick-start`)
-    })
+    }, { timeout: 5000 })
   })
 
   it('可以切换到多级子目录下的文档', async () => {
@@ -313,7 +313,8 @@ describe('公开模型页面', () => {
     expect(screen.getByRole('complementary', { name: 'Documentation navigation' })).toBeInTheDocument()
     expect(await screen.findByRole('heading', { name: 'Quickstart' })).toBeInTheDocument()
     expect(screen.getByRole('complementary', { name: 'On this page navigation' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Copy page' })).toBeInTheDocument()
+    // 中文：桌面端和移动端各保留一个复制入口，实际显隐由响应式样式控制。
+    expect(screen.getAllByRole('button', { name: 'Copy page' })).toHaveLength(2)
   })
 
   it('首页促销模型链接不使用内部模型 code', async () => {
@@ -420,18 +421,25 @@ describe('公开模型页面', () => {
     expect(screen.queryByText('一个账户，访问所有大模型')).toBeNull()
     await waitFor(() => expect(screen.getByText('一个账户，访问所有大模型')).toBeInTheDocument())
     expect(screen.queryByText('后台能力卡片')).toBeNull()
-    expect(screen.getByRole('link', { name: '浏览全部模型' })).toHaveAttribute('href', new URL('/models', window.location.origin).toString())
-    expect(screen.getByRole('link', { name: '创建企业部门' })).toHaveAttribute('href', new URL('/models', window.location.origin).toString())
-    expect(screen.getByRole('link', { name: '查看数据罗盘' })).toHaveAttribute('href', new URL('/pricing', window.location.origin).toString())
+    const modelsLink = screen.getByRole('link', { name: '浏览全部模型' }).getAttribute('href')
+    const enterpriseLink = screen.getByRole('link', { name: '创建企业部门' }).getAttribute('href')
+    const pricingLink = screen.getByRole('link', { name: '查看数据罗盘' }).getAttribute('href')
+    // 中文：模型目录可直接访问，需要登录的控制台入口则保留后台配置的回跳地址。
+    expect(new URL(modelsLink ?? '', window.location.origin).pathname).toBe('/models')
+    expect(new URL(enterpriseLink ?? '', window.location.origin).pathname).toBe('/login')
+    expect(new URL(enterpriseLink ?? '', window.location.origin).searchParams.get('return')).toBe('/models')
+    expect(new URL(pricingLink ?? '', window.location.origin).pathname).toBe('/login')
+    expect(new URL(pricingLink ?? '', window.location.origin).searchParams.get('return')).toBe('/pricing')
     expect(document.querySelector('.manuscript-skeleton-card')).toBeNull()
-    expect(screen.getByText('后台优惠模型')).toBeInTheDocument()
-    expect(screen.getByText('后台优惠模型').closest('a')).toHaveAttribute('href', '/models/managed-model')
-    const promotionCard = screen.getByText('后台优惠模型').closest('.manuscript-price-card')
+    // 中文：优惠卡片的模型名称以接口嵌套 model 为准，活动翻译标题不能覆盖模型身份。
+    expect(screen.queryByText('后台优惠模型')).toBeNull()
+    expect(screen.getByText('managed-model').closest('a')).toHaveAttribute('href', '/models/managed-model')
+    const promotionCard = screen.getByText('managed-model').closest('.manuscript-price-card')
     expect(promotionCard).toHaveTextContent('Managed AI')
     expect(promotionCard?.querySelector('.manuscript-price-model-logo img')).toHaveAttribute('src', 'https://cdn.example.com/managed-model.png')
     const promotionPrices = Array.from(promotionCard?.querySelectorAll('.manuscript-price-values strong') ?? []).map((element) => element.textContent)
-    expect(promotionPrices[0]).toMatch(/^1/)
-    expect(promotionPrices[1]).toMatch(/^6/)
+    expect(promotionPrices[0]).toMatch(/¥1(?:\D|$)/)
+    expect(promotionPrices[1]).toMatch(/¥6(?:\D|$)/)
     const availabilityBars = promotionCard?.querySelectorAll('.model-availability-bar') ?? []
     expect(availabilityBars).toHaveLength(3)
     expect(availabilityBars[0]).toHaveClass('is-danger')

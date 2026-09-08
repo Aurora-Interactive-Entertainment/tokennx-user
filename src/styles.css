@@ -9041,6 +9041,10 @@ html[data-theme="dark"] .generation-send-button.send-btn.is-running.semi-button:
 .api-keys-console-page > .source-table-scroll {
   margin-top: 0;
 }
+/* 中文：密钥表格与分页属于同一组内容，收紧两者之间的留白。 */
+.api-keys-console-page > .source-table-scroll + .trae-usage-pagination {
+  margin-top: calc(-1 * var(--spacing-32));
+}
 .api-key-bulk-toolbar {
   display: flex;
   min-height: 64px;
@@ -16929,8 +16933,8 @@ html[data-theme="light"] .public-header--home .header-notification-dot {
   isolation: isolate;
   /* 中文：统一按钮本体与外扩彩色描边的圆角基准，避免四角曲率错位。 */
   --manuscript-model-button-radius: 23.505px;
-  /* 中文：与左侧 shader 的单层细边对齐，避免右侧描边显得更粗。 */
-  --manuscript-model-rim-width: 1px;
+  /* 中文：在当前 1px 基础上增加 0.5px，保持描边清晰但不过粗。 */
+  --manuscript-model-rim-width: 1.5px;
   width: 212.3px;
   min-width: 212.3px;
   height: 47.01px;
@@ -17011,7 +17015,9 @@ html[data-theme="light"] .public-header--home .header-notification-dot {
 
 .manuscript-hero-actions .manuscript-model-button::before {
   position: absolute;
-  /* 中文：右侧按钮使用 1px 单层描边，和左侧 shader 边缘保持同一视觉重量。 */
+  /* 中文：外扩渐变描边使用统一盒模型，确保上边缘与按钮本体同心对齐。 */
+  box-sizing: border-box;
+  /* 中文：右侧按钮使用 1.5px 单层描边，和左侧 shader 边缘保持同一视觉重量。 */
   inset: calc(-1 * var(--manuscript-model-rim-width));
   z-index: 0;
   /* 中文：伪元素向外扩展后同步增加圆角半径，使外圈和按钮内圈保持同心。 */

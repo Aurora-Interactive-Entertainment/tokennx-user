@@ -3,13 +3,16 @@ import { readFileSync } from 'node:fs'
 
 const typographyCss = readFileSync(new URL('src/console-custom-typography.css', `file://${process.cwd().replace(/\\/g, '/')}/`), 'utf8')
 const mainSource = readFileSync(new URL('src/main.tsx', `file://${process.cwd().replace(/\\/g, '/')}/`), 'utf8')
+const globalCss = readFileSync(new URL('src/styles.css', `file://${process.cwd().replace(/\\/g, '/')}/`), 'utf8')
 
 describe('后台自研字体样式作用域', () => {
   it('通过独立入口加载，并且不覆盖 Semi UI 或公开页面', () => {
     expect(mainSource).toContain("import './console-custom-typography.css'")
     expect(typographyCss).toContain('.console-page')
-    expect(typographyCss).toContain('ui-sans-serif')
-    expect(typographyCss).toContain('SF Pro Text')
+    expect(typographyCss).toContain('font-family: var(--font-family-base)')
+    expect(globalCss).toContain('--font-family-base:')
+    expect(globalCss).toContain('"Microsoft YaHei UI"')
+    expect(globalCss).toContain('"Segoe UI"')
     expect(typographyCss).not.toMatch(/\.semi-[^{]*\{[^}]*font-family/i)
     expect(typographyCss).not.toMatch(/(?:^|[\s,])(?:body|html|\.console-frame|\.public-main)\b[^{}]*\{[^}]*font-family/i)
     expect(typographyCss).not.toMatch(/\.public(?:-|\b)[^{]*\{[^}]*font-family/i)

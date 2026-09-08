@@ -1,6 +1,9 @@
 node_modules/
 dist/
 coverage/
+.env*.local
+.env.sentry-build-plugin
+.sentryclirc
 dist.zip
 .agents/
 skills-lock.json
