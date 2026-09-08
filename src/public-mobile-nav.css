@@ -2,6 +2,19 @@
   .public-header-host { --public-mobile-header-height: 58px; }
   body:has(.public-header.mobile-nav-open) { overflow: hidden; }
 
+  /* 中文：移动端顶栏从页面首帧就固定在视口，伪元素为脱离文档流的顶栏保留占位。 */
+  .public-header-host::before {
+    display: block;
+    height: var(--public-mobile-header-height);
+    content: "";
+  }
+  .public-header-host > .public-header {
+    position: fixed;
+    inset: 0 0 auto;
+    z-index: 100;
+    width: 100%;
+  }
+
   .public-header-host .public-header.public-header--home {
     height: 58px;
     border-bottom: 1px solid #353535;
@@ -106,7 +119,10 @@
 
   .public-header-host .public-header.mobile-nav-open .public-mobile-nav {
     position: absolute;
-    inset: var(--public-mobile-header-height) 20px 108px;
+    inset: var(--public-mobile-header-height)
+      max(20px, env(safe-area-inset-right))
+      calc(108px + env(safe-area-inset-bottom))
+      max(20px, env(safe-area-inset-left));
     z-index: 1;
     display: flex;
     width: auto;
@@ -129,7 +145,10 @@
   .public-header-host .docs-sidebar { top: calc(var(--public-mobile-header-height) + 82px); }
   .public-header-host.console-frame .console-sider { top: var(--public-mobile-header-height); }
   .public-header-host.console-frame .console-layout,
-  .public-header-host.console-frame .console-main-layout { min-height: calc(100vh - var(--public-mobile-header-height)); }
+  .public-header-host.console-frame .console-main-layout {
+    min-height: calc(100vh - var(--public-mobile-header-height));
+    min-height: calc(100dvh - var(--public-mobile-header-height));
+  }
   .public-header-host.console-frame .console-sidebar-backdrop { inset: var(--public-mobile-header-height) 0 0; }
   .public-header-host .public-header.mobile-nav-open .public-mobile-nav a,
   .public-header-host .public-header.mobile-nav-open .public-mobile-nav .public-nav-link {
@@ -184,9 +203,9 @@
 
   .public-header-host .public-header.mobile-nav-open .public-header-actions {
     position: absolute;
-    right: 20px;
-    bottom: 0;
-    left: 20px;
+    right: max(20px, env(safe-area-inset-right));
+    bottom: env(safe-area-inset-bottom);
+    left: max(20px, env(safe-area-inset-left));
     z-index: 2;
     display: flex;
     height: 64px;
@@ -222,6 +241,14 @@
   .public-header-host .public-header.mobile-nav-open .header-login-label--mobile { display: inline; }
 
   .public-header-host .public-header.mobile-nav-open .user-menu-shell { min-width: 0; max-width: none; flex: 1; }
+  /* 中文：移动端账号区按“头像/用户名 → 控制台 → 退出”排列，控制台入口保持在右侧。 */
+  .public-header-host .public-header.mobile-nav-open .user-menu-shell { order: 1; }
+  .public-header-host .public-header.mobile-nav-open .console-entry {
+    order: 2;
+    flex: 0 0 auto;
+    width: auto;
+  }
+  .public-header-host .public-header.mobile-nav-open .public-mobile-logout { order: 3; }
   .public-header-host .public-header.mobile-nav-open .user-menu-trigger--avatar-only {
     width: 100%;
     height: 44px;
@@ -270,62 +297,68 @@
 }
 
 @media (max-width: 770px) {
-  .public-header-host { --public-mobile-header-height: clamp(29px, 7.733vw, 58px); }
-  .public-header-host .public-header.public-header--home:not(.mobile-nav-open) { height: clamp(29px, 7.733vw, 58px); }
+  /* 中文：移动端使用真实 CSS 像素尺寸，不再按 750px 设计稿缩半，保证触控区至少 44px。 */
+  .public-header-host { --public-mobile-header-height: 56px; }
+  .public-header-host .public-header.public-header--home:not(.mobile-nav-open) { height: 56px; }
   .public-header-host .public-header--home .public-header-inner {
-    height: clamp(29px, 7.733vw, 58px);
-    padding-right: clamp(12px, 3.2vw, 24px);
-    padding-left: clamp(18px, 4.8vw, 36px);
+    height: 56px;
+    padding-right: max(14px, env(safe-area-inset-right));
+    padding-left: max(14px, env(safe-area-inset-left));
   }
   .public-header-host .public-header--home .header-logo {
-    width: clamp(49px, 13.067vw, 98px);
-    flex-basis: clamp(49px, 13.067vw, 98px);
+    width: 88px;
+    flex-basis: 88px;
   }
   .public-header-host .public-header--home .header-brand-image {
-    width: clamp(49px, 13.067vw, 98px);
-    height: clamp(12px, 3.2vw, 24px);
+    width: 88px;
+    height: 22px;
   }
   .public-header-host .public-header--home .header-trial-badge {
-    width: clamp(56px, 14.933vw, 112px);
-    height: clamp(14px, 3.733vw, 28px);
-    flex-basis: clamp(56px, 14.933vw, 112px);
-    margin-left: clamp(17px, 4.533vw, 34px);
-    border-radius: clamp(7px, 1.867vw, 14px);
+    width: 100px;
+    height: 26px;
+    flex-basis: 100px;
+    margin-left: 14px;
+    border-radius: 13px;
   }
   .public-header-host .public-header--home .header-trial-pill { width: 100%; height: 100%; }
   .public-header-host .public-header--home .header-trial-glass {
     border-radius: inherit;
-    backdrop-filter: blur(clamp(4px, 1.067vw, 8px)) saturate(120%);
+    backdrop-filter: blur(8px) saturate(120%);
   }
   .public-header-host .public-header--home .header-trial-badge strong,
-  .public-header-host .public-header--home .header-trial-subscription { font-size: clamp(7px, 1.867vw, 14px); }
+  .public-header-host .public-header--home .header-trial-subscription { font-size: 12px; }
   .public-header-host .public-header--home .header-trial-free {
-    top: clamp(-4px, -.533vw, -2px);
-    right: clamp(-26px, -3.467vw, -13px);
-    width: clamp(21px, 5.6vw, 42px);
-    height: clamp(13px, 3.467vw, 26px);
+    top: -3px;
+    right: -12px;
+    width: 38px;
+    height: 24px;
   }
   .public-header-host .public-header--home .header-trial-free img { width: 100%; height: 100%; }
   .public-header-host .public-header--home .header-trial-badge em {
-    font-size: clamp(6px, 1.6vw, 12px);
-    transform: translateY(clamp(-4px, -.533vw, -2px)) rotate(-4.5deg);
+    font-size: 10px;
+    transform: translateY(-3px) rotate(-4.5deg);
   }
   .public-header-host .public-header--home .mobile-menu-button {
-    width: clamp(26px, 6.933vw, 52px);
-    height: clamp(24px, 6.4vw, 48px);
-    flex-basis: clamp(26px, 6.933vw, 52px);
+    width: 44px;
+    height: 44px;
+    flex-basis: 44px;
   }
   .public-header-host .public-header--home .mobile-menu-button .icon-svg {
-    width: clamp(13px, 3.467vw, 26px);
-    height: clamp(13px, 3.467vw, 26px);
+    width: 22px;
+    height: 22px;
   }
-  .public-header-host .public-header.mobile-nav-open { --public-mobile-header-height: clamp(29px, 7.733vw, 58px); }
+  .public-header-host .public-header.mobile-nav-open { --public-mobile-header-height: 56px; }
 }
 
 @media (max-width: 770px) and (max-height: 720px) {
-  .public-header-host .public-header.mobile-nav-open .public-mobile-nav { padding-top: 43px; }
+  /* 中文：矮屏横屏压缩菜单纵向留白，菜单本身继续滚动，底部操作不会被浏览器工具栏遮挡。 */
+  .public-header-host .public-header.mobile-nav-open .public-mobile-nav {
+    bottom: calc(68px + env(safe-area-inset-bottom));
+    padding-top: 12px;
+  }
   .public-header-host .public-header.mobile-nav-open .public-mobile-nav a,
-  .public-header-host .public-header.mobile-nav-open .public-mobile-nav .public-nav-link { min-height: 64px; }
+  .public-header-host .public-header.mobile-nav-open .public-mobile-nav .public-nav-link { min-height: 48px; }
+  .public-header-host .public-header.mobile-nav-open .public-mobile-tools { margin-top: 12px; }
 }
 
 @media (max-width: 760px) {

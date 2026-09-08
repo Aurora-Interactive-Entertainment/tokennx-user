@@ -193,8 +193,12 @@
   }
 
   .app-modal .semi-modal {
-    max-width: calc(100vw - 24px);
-    max-height: calc(100dvh - 24px);
+    max-width: calc(
+      100vw - 24px - env(safe-area-inset-left) - env(safe-area-inset-right)
+    );
+    max-height: calc(
+      100dvh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom)
+    );
   }
 
   .app-modal .semi-modal-content.app-modal-content .semi-modal-header {
@@ -208,8 +212,12 @@
   }
 
   .app-modal .semi-modal-content.app-modal-content .semi-modal-close {
-    top: 10px;
-    right: 12px;
+    top: 4px;
+    right: 4px;
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    min-height: 44px;
   }
 
   .app-modal .semi-modal-content.app-modal-content > .semi-modal-body {
@@ -227,6 +235,8 @@
 
   .app-modal .semi-modal-content.app-modal-content .semi-modal-footer .semi-button {
     min-width: 72px;
+    height: 44px;
+    min-height: 44px;
   }
 }
 

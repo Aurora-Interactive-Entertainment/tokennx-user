@@ -8,6 +8,7 @@ html:has(.settings-console-page) {
   overflow: visible;
   /* 中文：桌面顶栏为 72px，避免沿用 64px 基线造成空页面额外溢出。 */
   min-height: calc(100vh - var(--public-mobile-header-height, 72px));
+  min-height: calc(100dvh - var(--public-mobile-header-height, 72px));
 }
 
 /* 中文：个人设置页沿用控制台色彩变量，确保浅色与深色模式保持一致。 */

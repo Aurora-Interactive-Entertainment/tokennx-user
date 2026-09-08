@@ -525,6 +525,16 @@ html[data-theme="light"] .enterprise-form-control > .app-input .semi-input {
     flex-direction: column;
   }
 
+  /* 中文：列布局继续保留 flex-wrap 会把说明文字排到视口外的新列，手机端必须关闭换列。 */
+  .enterprise-material-layout.has-example {
+    flex-wrap: nowrap;
+  }
+
+  .enterprise-material-layout.has-example .enterprise-material-copy {
+    width: 100%;
+    flex-basis: auto;
+  }
+
   .enterprise-material-layout.has-example .enterprise-material-example-button {
     width: min(200px, 100%);
   }

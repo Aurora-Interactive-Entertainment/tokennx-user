@@ -63,6 +63,7 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  min-height: 100dvh;
   background: var(--bg-base);
   color: var(--text-default);
   font-size: 14px;
@@ -401,6 +402,7 @@ html[data-theme="light"]
 .public-frame,
 .console-frame {
   min-height: 100vh;
+  min-height: 100dvh;
   background: var(--bg-base);
 }
 .public-header {
@@ -497,6 +499,7 @@ html[data-theme="light"]
 }
 .public-main {
   min-height: calc(100vh - 129px);
+  min-height: calc(100dvh - 129px);
 }
 .public-container {
   width: min(var(--content-width), calc(100% - 48px));
@@ -1885,6 +1888,7 @@ html[data-theme="light"]
 
 .console-layout {
   min-height: calc(100vh - 72px);
+  min-height: calc(100dvh - 72px);
   background: var(--bg-base);
 }
 .console-sider {
@@ -1956,6 +1960,7 @@ html[data-theme="light"]
 /* 中文：头部实际高度为 72px，min-height 需与之匹配，避免页面溢出视口产生滚动条。 */
 .console-main-layout {
   min-height: calc(100vh - 72px);
+  min-height: calc(100dvh - 72px);
   margin-left: var(--sider-width);
 }
 .console-content {
@@ -3156,12 +3161,16 @@ html[data-theme="light"]
   }
 }
 
-@media (max-width: 900px) {
+/* 中文：平板横屏也使用抽屉导航，为表格、图表和生成工作区保留完整内容宽度。 */
+@media (max-width: 1024px) {
   :root {
     --console-page-gutter: 20px;
   }
   .console-sider {
     width: min(var(--sider-width), calc(100vw - 56px));
+    /* 中文：工作台页面自身可能建立更高层级，抽屉必须位于内容层之上才能接收点击。 */
+    z-index: 60;
+    padding-left: env(safe-area-inset-left);
     transform: translateX(-100%);
     transition: transform 0.2s ease;
     box-shadow: var(--shadow);
@@ -3172,26 +3181,53 @@ html[data-theme="light"]
   .console-main-layout {
     margin-left: 0;
   }
+  /* 中文：Semi 横向布局默认的 overflow-x:hidden 会把主层变成滚动容器，导致移动工具栏吸顶失效。clip 只裁剪横向溢出，不抢占页面滚动参照。 */
+  .semi-layout-has-sider > .console-main-layout {
+    overflow-x: clip;
+    overflow-y: visible;
+  }
   .console-page {
-    padding-inline: var(--console-page-gutter);
+    padding-right: max(var(--console-page-gutter), env(safe-area-inset-right));
+    padding-left: max(var(--console-page-gutter), env(safe-area-inset-left));
   }
   .console-top-breadcrumb {
-    margin-inline: var(--console-page-gutter);
+    margin-right: max(var(--console-page-gutter), env(safe-area-inset-right));
+    margin-left: max(var(--console-page-gutter), env(safe-area-inset-left));
   }
   .console-mobile-toolbar {
+    /* 中文：移动端二级导航从首帧就固定在全局顶栏下方，避免 sticky 到达边界时产生位移。 */
+    position: fixed;
+    top: var(--public-mobile-header-height, 72px);
+    right: 0;
+    left: 0;
+    z-index: 25;
+    isolation: isolate;
     display: flex;
     align-items: center;
     gap: 10px;
     min-height: 48px;
-    padding: 7px var(--console-page-gutter);
+    padding: 7px max(var(--console-page-gutter), env(safe-area-inset-right)) 7px
+      max(var(--console-page-gutter), env(safe-area-inset-left));
     border-bottom: 1px solid var(--border-subtle);
+    background: var(--color-bg-base-default);
     color: var(--text-primary);
     font-size: 12px;
+  }
+  /* 中文：工具栏脱离文档流后补回占位，面包屑和正文不会被固定导航遮住。 */
+  .console-content {
+    padding-top: 58px;
+  }
+  .console-mobile-toolbar > .semi-button {
+    width: 44px;
+    height: 44px;
+    min-height: 44px;
+    flex: 0 0 44px;
+    touch-action: manipulation;
   }
   .console-sidebar-backdrop {
     position: fixed;
     inset: 64px 0 0;
-    z-index: 20;
+    z-index: 50;
     display: block;
     border: 0;
     background: rgba(0, 0, 0, 0.55);
@@ -3627,13 +3663,16 @@ html[data-theme="light"]
     --console-page-gutter: 12px;
   }
   .console-page {
-    padding-inline: var(--console-page-gutter);
+    padding-right: max(var(--console-page-gutter), env(safe-area-inset-right));
+    padding-left: max(var(--console-page-gutter), env(safe-area-inset-left));
   }
   .console-mobile-toolbar {
-    padding-inline: var(--console-page-gutter);
+    padding-right: max(var(--console-page-gutter), env(safe-area-inset-right));
+    padding-left: max(var(--console-page-gutter), env(safe-area-inset-left));
   }
   .console-top-breadcrumb {
-    margin-inline: var(--console-page-gutter);
+    margin-right: max(var(--console-page-gutter), env(safe-area-inset-right));
+    margin-left: max(var(--console-page-gutter), env(safe-area-inset-left));
   }
 }
 
@@ -6369,8 +6408,11 @@ body[theme-mode] {
   background: var(--color-bg-base-default);
 }
 
-.console-frame--quickstart .console-mobile-toolbar {
-  display: none;
+/* 中文：桌面端快速接入页不需要重复显示移动端抽屉入口；平板和手机必须保留该入口。 */
+@media (min-width: 1025px) {
+  .console-frame--quickstart .console-mobile-toolbar {
+    display: none;
+  }
 }
 
 @media (min-width: 761px) {
@@ -9807,6 +9849,24 @@ html[data-theme="dark"] .generation-send-button.send-btn.is-running.semi-button:
   .api-key-modal-form > *,
   .api-key-fieldset:has(.api-key-model-picker) {
     grid-column: 1;
+  }
+
+  /* 中文：状态筛选与创建按钮保持同一行，避免状态文案被压缩后换行。 */
+  .api-keys-toolbar-actions {
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr);
+    align-items: center;
+  }
+  .api-keys-toolbar-actions .status-filters {
+    width: max-content;
+  }
+  .api-keys-toolbar-actions .status-filter-btn {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+  .api-keys-toolbar-actions > .semi-button {
+    width: auto;
+    min-width: 0;
   }
 }
 
@@ -19908,6 +19968,7 @@ html[data-theme="light"] .docs-method-table > div {
     overflow-x: auto;
     scrollbar-width: none;
   }
+  .docs-product-nav::-webkit-scrollbar { display: none; }
   .docs-product-nav-inner {
     width: max-content;
     min-width: 100%;
@@ -21942,12 +22003,12 @@ html[data-theme="light"] .ranking-sidebar a.is-active {
     width: 100%;
   }
   .manuscript-support-widget {
-    right: 14px;
-    bottom: 14px;
+    right: max(14px, env(safe-area-inset-right));
+    bottom: max(14px, env(safe-area-inset-bottom));
   }
   .manuscript-support-panel {
-    right: 14px;
-    bottom: 14px;
+    right: max(14px, env(safe-area-inset-right));
+    bottom: max(14px, env(safe-area-inset-bottom));
   }
   .manuscript-price-card {
     min-height: 0;
@@ -21962,10 +22023,10 @@ html[data-theme="light"] .ranking-sidebar a.is-active {
 
 @media (max-width: 680px) {
   .login-popover {
-    top: 16px;
-    right: 16px;
-    bottom: 16px;
-    left: 16px;
+    top: max(16px, env(safe-area-inset-top));
+    right: max(16px, env(safe-area-inset-right));
+    bottom: max(16px, env(safe-area-inset-bottom));
+    left: max(16px, env(safe-area-inset-left));
     width: auto;
     height: auto;
     min-height: 0;
@@ -21974,15 +22035,62 @@ html[data-theme="light"] .ranking-sidebar a.is-active {
     border-radius: 24px;
   }
   .manuscript-support-panel {
-    top: 64px;
-    right: 16px;
-    bottom: 64px;
-    left: 16px;
+    top: max(64px, calc(env(safe-area-inset-top) + 12px));
+    right: max(16px, env(safe-area-inset-right));
+    bottom: max(64px, calc(env(safe-area-inset-bottom) + 12px));
+    left: max(16px, env(safe-area-inset-left));
     width: auto;
     height: auto;
     max-height: calc(100dvh - 128px);
     min-height: 0;
     border-radius: 24px;
+  }
+}
+
+@media (max-width: 480px) {
+  /* 中文：窄屏仅保留 47px 圆形表情入口，避免竖排标签遮挡正文、表格和发送按钮。 */
+  .manuscript-support-assistant-button {
+    width: 47px;
+    height: 47px;
+    min-height: 47px;
+    padding: 0;
+    border-radius: 50%;
+  }
+  .manuscript-support-assistant-label { display: none; }
+}
+
+@media (max-width: 480px) and (orientation: portrait) {
+  /* 中文：生成页把客服入口停在输入区上方，不遮挡发送、模型和附件操作。 */
+  .console-frame:has(.playground-console-page) > .manuscript-support-widget,
+  .console-frame:has(.image-console-page) > .manuscript-support-widget {
+    bottom: calc(175px + env(safe-area-inset-bottom));
+  }
+  .console-frame:has(.video-console-page) > .manuscript-support-widget {
+    bottom: calc(328px + env(safe-area-inset-bottom));
+  }
+}
+
+@media (max-width: 1024px) and (max-height: 480px) and (orientation: landscape) {
+  /* 中文：手机横屏纵向空间有限，生成页客服入口缩成圆球并移到工作区顶部。 */
+  .console-frame:has(.playground-console-page) > .manuscript-support-widget,
+  .console-frame:has(.image-console-page) > .manuscript-support-widget,
+  .console-frame:has(.video-console-page) > .manuscript-support-widget {
+    top: calc(var(--public-mobile-header-height, 56px) + 10px);
+    bottom: auto;
+  }
+  .console-frame:has(.playground-console-page) .manuscript-support-assistant-button,
+  .console-frame:has(.image-console-page) .manuscript-support-assistant-button,
+  .console-frame:has(.video-console-page) .manuscript-support-assistant-button {
+    width: 47px;
+    height: 47px;
+    min-height: 47px;
+    padding: 0;
+    border-radius: 50%;
+  }
+  .console-frame:has(.playground-console-page) .manuscript-support-assistant-label,
+  .console-frame:has(.image-console-page) .manuscript-support-assistant-label,
+  .console-frame:has(.video-console-page) .manuscript-support-assistant-label {
+    display: none;
   }
 }
 

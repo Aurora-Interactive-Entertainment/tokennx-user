@@ -4266,9 +4266,14 @@ export function ConsoleLayout({ children }: { children: ReactNode }) {
             <div className="console-mobile-toolbar">
               <Button
                 theme="borderless"
-                icon={<IconMenu />}
-                aria-label={t("console.common.openConsoleNav")}
-                onClick={() => setSidebarOpen(true)}
+                icon={sidebarOpen ? <IconClose /> : <IconMenu />}
+                aria-label={
+                  sidebarOpen
+                    ? t("console.common.closeConsoleNav")
+                    : t("console.common.openConsoleNav")
+                }
+                aria-expanded={sidebarOpen}
+                onClick={() => setSidebarOpen((open) => !open)}
               />
               <span>
                 {localizeConsoleNavLabel(

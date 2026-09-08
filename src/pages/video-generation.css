@@ -2,12 +2,16 @@
 .console-content:has(.video-console-page) {
   /* 中文：头部实际高度为 72px，修正此前 64px 导致的 8px 溢出滚动条。 */
   min-height: calc(100vh - 72px);
+  min-height: calc(100dvh - 72px);
   position: relative;
   z-index: 45;
 }
 
-.console-content:has(.video-console-page) .console-mobile-toolbar {
-  display: none;
+/* 中文：工作台仅在桌面端隐藏移动端导航工具栏，移动端需要通过它打开控制台菜单。 */
+@media (min-width: 1025px) {
+  .console-content:has(.video-console-page) .console-mobile-toolbar {
+    display: none;
+  }
 }
 
 .console-page:has(.video-console-page) {

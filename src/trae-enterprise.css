@@ -640,4 +640,17 @@
 .console-frame:has(.trae-page) .console-layout,
 .console-frame:has(.trae-page) .console-main-layout {
   min-height: calc(100vh - 72px);
+  min-height: calc(100dvh - 72px);
+}
+
+@media (max-width: 1070px) {
+  /* 中文：移动/平板顶栏为响应式高度，企业侧栏必须紧贴顶栏，不能继续使用桌面 72px 偏移。 */
+  .public-header-host.console-frame:has(.trae-page) .console-sider {
+    top: var(--public-mobile-header-height, 58px);
+  }
+  .public-header-host.console-frame:has(.trae-page) .console-layout,
+  .public-header-host.console-frame:has(.trae-page) .console-main-layout {
+    min-height: calc(100vh - var(--public-mobile-header-height, 58px));
+    min-height: calc(100dvh - var(--public-mobile-header-height, 58px));
+  }
 }

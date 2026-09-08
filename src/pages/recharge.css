@@ -1,6 +1,7 @@
 /* 中文：充值管理页按参考图使用整页信息层级，支付接口和二维码流程仍由原组件负责。 */
 .recharge-console-page {
   min-height: calc(100vh - 116px);
+  min-height: calc(100dvh - 116px);
 }
 
 .recharge-console-page > .page-title-row {

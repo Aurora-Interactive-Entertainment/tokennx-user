@@ -131,4 +131,17 @@ html[data-theme="light"] .trae-usage-pagination .semi-page-item-active:hover {
     justify-content: flex-start;
     flex-wrap: wrap;
   }
+  /* 中文：手机端扩大分页与每页条数选择器的可点击区域，同时保持单行可容纳。 */
+  .trae-usage-pagination .semi-page-item,
+  .trae-usage-pagination .semi-page-prev,
+  .trae-usage-pagination .semi-page-next {
+    min-width: 40px;
+    height: 40px;
+  }
+  .trae-usage-pagination .semi-select {
+    height: 40px;
+  }
+  .trae-usage-pagination .semi-select-selection {
+    height: 38px;
+  }
 }
