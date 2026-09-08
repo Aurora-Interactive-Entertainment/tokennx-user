@@ -1,0 +1,53 @@
+/* 中文：角色删除确认弹窗只补充业务宽度和正文布局，外壳、按钮和响应式间距统一复用 AppModal。 */
+.app-modal.enterprise-governance-delete-dialog .semi-modal {
+  width: min(440px, calc(100vw - 32px));
+}
+
+.app-modal.enterprise-governance-delete-dialog .semi-modal-content {
+  min-width: 0;
+}
+
+.enterprise-governance-delete-dialog-body {
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  line-height: 1.65;
+}
+
+.enterprise-governance-delete-dialog-body p {
+  margin: 0;
+}
+
+/* 中文：删除按钮保留危险色反馈，但不在 hover、focus 或按下时产生位移。 */
+.enterprise-governance-panel-actions .enterprise-governance-delete-button {
+  transform: none;
+}
+
+.enterprise-governance-panel-actions .enterprise-governance-delete-button:hover,
+.enterprise-governance-panel-actions
+  .enterprise-governance-delete-button:focus-visible,
+.enterprise-governance-panel-actions
+  .enterprise-governance-delete-button:active,
+.enterprise-governance-delete-dialog
+  .enterprise-governance-delete-confirm-button:hover,
+.enterprise-governance-delete-dialog
+  .enterprise-governance-delete-confirm-button:focus-visible,
+.enterprise-governance-delete-dialog
+  .enterprise-governance-delete-confirm-button:active,
+.enterprise-governance-delete-dialog
+  .enterprise-governance-delete-cancel-button:hover,
+.enterprise-governance-delete-dialog
+  .enterprise-governance-delete-cancel-button:focus-visible,
+.enterprise-governance-delete-dialog
+  .enterprise-governance-delete-cancel-button:active {
+  transform: none !important;
+}
+
+@media (max-width: 560px) {
+  .app-modal.enterprise-governance-delete-dialog .semi-modal {
+    width: min(100%, calc(100vw - 24px));
+  }
+
+  .enterprise-governance-delete-dialog-body {
+    font-size: 13px;
+  }
+}

@@ -1856,10 +1856,6 @@ function TraeEnterpriseMembersContent({ context }: { context: EnterpriseContext 
                     title: t("traeEnterprise.members.joined"),
                     dataIndex: "joined",
                     key: "joined",
-                    sorter: (a, b) =>
-                      String(a?.joined ?? "").localeCompare(
-                        String(b?.joined ?? ""),
-                      ),
                   },
                   {
                     title: t("traeEnterprise.members.department"),

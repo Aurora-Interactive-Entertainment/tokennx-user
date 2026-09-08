@@ -180,6 +180,7 @@ import manuscriptCustomerQr from "@/assets/figma-home/footer-qr-customer.png";
 import manuscriptOfficialQr from "@/assets/figma-home/footer-qr-official.png";
 import manuscriptFilingIcpIcon from "@/assets/figma-home/filing-icp.png";
 import manuscriptFilingSecurityIcon from "@/assets/figma-home/filing-security.png";
+import supportAssistantImage from "@/assets/figma-home/support-assistant.svg";
 import wechatIcon from "@/assets/figma-home/wechat.png";
 import deepseekLogo from "@lobehub/icons-static-svg/icons/deepseek-color.svg?raw";
 import anthropicLogo from "@lobehub/icons-static-svg/icons/claude-color.svg?raw";
@@ -3659,14 +3660,30 @@ export function AccountSettingsModal({
       );
   }, [visible]);
 
-  useEffect(() => {
-    if (!visible) return undefined;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+  useLayoutEffect(() => {
+    if (!rendered) return undefined;
+    const root = document.documentElement;
+    const body = document.body;
+    const previousRootOverflow = root.style.overflow;
+    const previousBodyPaddingRight = body.style.paddingRight;
+    const scrollbarWidth =
+      root.clientWidth > 0
+        ? Math.max(0, window.innerWidth - root.clientWidth)
+        : 0;
+
+    // 中文：锁定真正的页面滚动容器，避免 body 成为滚动容器后改变 sticky 顶栏的定位参照。
+    root.style.overflow = "hidden";
+    if (scrollbarWidth > 0) {
+      const currentPaddingRight =
+        Number.parseFloat(window.getComputedStyle(body).paddingRight) || 0;
+      body.style.paddingRight = `${currentPaddingRight + scrollbarWidth}px`;
+    }
+
     return () => {
-      document.body.style.overflow = previousOverflow;
+      root.style.overflow = previousRootOverflow;
+      body.style.paddingRight = previousBodyPaddingRight;
     };
-  }, [visible]);
+  }, [rendered]);
 
   useEffect(() => {
     if (!visible) return undefined;
@@ -4327,8 +4344,11 @@ const MANUSCRIPT_FOOTER_GROUPS = [
 ] as const;
 
 const MANUSCRIPT_SUPPORT_TRANSITION_MS = 360;
+// 中文：Tab 内容切换使用独立的短过渡，旧内容完成滑出后再卸载。
+const MANUSCRIPT_SUPPORT_TAB_TRANSITION_MS = 300;
 const MANUSCRIPT_SUPPORT_MESSAGE_MAX_LENGTH = 1000;
 type SupportTab = "contact" | "notifications";
+type SupportTabTransitionDirection = "forward" | "backward";
 const SUPPORT_OPEN_EVENT = "token-nx:open-support";
 const SUPPORT_NOTIFICATION_COUNT_EVENT = "token-nx:notification-count";
 const SUPPORT_DELETED_NOTIFICATIONS_STORAGE_KEY =
@@ -4533,8 +4553,10 @@ export function ManuscriptSupportWidget() {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const [hovered, setHovered] = useState(false);
   const [tab, setTab] = useState<SupportTab>("contact");
+  const [previousTab, setPreviousTab] = useState<SupportTab | null>(null);
+  const [tabTransitionDirection, setTabTransitionDirection] =
+    useState<SupportTabTransitionDirection>("forward");
   const [draft, setDraft] = useState("");
   const [replying, setReplying] = useState(false);
   const [notifications, setNotifications] = useState<UserNotification[]>([]);
@@ -4548,13 +4570,13 @@ export function ManuscriptSupportWidget() {
   ]);
   const rootRef = useRef<HTMLDivElement | null>(null);
   const closeTimerRef = useRef<number | undefined>(undefined);
+  const tabTransitionTimerRef = useRef<number | undefined>(undefined);
   const replyTimerRef = useRef<number | undefined>(undefined);
   const messageSequenceRef = useRef(0);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const supportLocale: SupportLocale = translationI18n.language.startsWith("en")
     ? "en-US"
     : "zh-CN";
-  const triggerExpanded = hovered && !mounted;
 
   function publishNotificationCount(count: number): void {
     const normalized = Math.max(0, Math.trunc(count));
@@ -4569,12 +4591,18 @@ export function ManuscriptSupportWidget() {
   useEffect(() => {
     const handleOpenRequest = (event: Event) => {
       const detail = (event as CustomEvent<{ tab?: SupportTab }>).detail;
-      if (detail?.tab === "contact" || detail?.tab === "notifications")
+      if (detail?.tab === "contact" || detail?.tab === "notifications") {
+        // 中文：外部打开请求直接定位目标栏目，避免弹窗入场时额外挂载旧内容。
+        if (tabTransitionTimerRef.current !== undefined)
+          window.clearTimeout(tabTransitionTimerRef.current);
+        setPreviousTab(null);
         setTab(detail.tab);
+      }
       if (detail?.tab === "notifications") setSelectedNotification(null);
       if (closeTimerRef.current !== undefined)
         window.clearTimeout(closeTimerRef.current);
-      setHovered(false);
+      if (tabTransitionTimerRef.current !== undefined)
+        window.clearTimeout(tabTransitionTimerRef.current);
       setOpen(true);
       setMounted(true);
     };
@@ -4605,6 +4633,8 @@ export function ManuscriptSupportWidget() {
         window.clearTimeout(closeTimerRef.current);
       if (replyTimerRef.current !== undefined)
         window.clearTimeout(replyTimerRef.current);
+      if (tabTransitionTimerRef.current !== undefined)
+        window.clearTimeout(tabTransitionTimerRef.current);
     },
     [],
   );
@@ -4653,16 +4683,36 @@ export function ManuscriptSupportWidget() {
   function openPanel(): void {
     if (closeTimerRef.current !== undefined)
       window.clearTimeout(closeTimerRef.current);
+    if (tabTransitionTimerRef.current !== undefined)
+      window.clearTimeout(tabTransitionTimerRef.current);
+    setPreviousTab(null);
     setTab("contact");
     setSelectedNotification(null);
-    setHovered(false);
     setOpen(true);
     setMounted(true);
   }
 
+  function selectTab(nextTab: SupportTab): void {
+    if (nextTab === tab) return;
+    if (tabTransitionTimerRef.current !== undefined)
+      window.clearTimeout(tabTransitionTimerRef.current);
+    setPreviousTab(tab);
+    setTabTransitionDirection(
+      nextTab === "notifications" ? "forward" : "backward",
+    );
+    // 中文：仅切换栏目，不清理通知详情，便于用户往返客服页后继续阅读。
+    setTab(nextTab);
+    tabTransitionTimerRef.current = window.setTimeout(() => {
+      setPreviousTab(null);
+      tabTransitionTimerRef.current = undefined;
+    }, MANUSCRIPT_SUPPORT_TAB_TRANSITION_MS);
+  }
+
   function closePanel(): void {
-    setHovered(false);
     setOpen(false);
+    if (tabTransitionTimerRef.current !== undefined)
+      window.clearTimeout(tabTransitionTimerRef.current);
+    setPreviousTab(null);
     if (closeTimerRef.current !== undefined)
       window.clearTimeout(closeTimerRef.current);
     closeTimerRef.current = window.setTimeout(
@@ -4784,14 +4834,7 @@ export function ManuscriptSupportWidget() {
   }
 
   return (
-    <div
-      ref={rootRef}
-      className={`manuscript-support-widget${triggerExpanded ? " is-hovered" : ""}`}
-      onMouseEnter={() => {
-        if (!mounted) setHovered(true);
-      }}
-      onMouseLeave={() => setHovered(false)}
-    >
+    <div ref={rootRef} className="manuscript-support-widget">
       {mounted ? (
         <section
           className={`manuscript-support-panel${open ? " is-open" : " is-closing"}`}
@@ -4813,7 +4856,7 @@ export function ManuscriptSupportWidget() {
               type="button"
               role="tab"
               aria-selected={tab === "contact"}
-              onClick={() => setTab("contact")}
+              onClick={() => selectTab("contact")}
             >
               <IconCommentStroked />
               {t("support.contactTab")}
@@ -4823,16 +4866,27 @@ export function ManuscriptSupportWidget() {
               type="button"
               role="tab"
               aria-selected={tab === "notifications"}
-              onClick={() => {
-                setSelectedNotification(null);
-                setTab("notifications");
-              }}
+              onClick={() => selectTab("notifications")}
             >
               <IconBellStroked />
               {t("support.notificationsTab")}
             </button>
           </div>
-          {tab === "contact" ? (
+          <div className="manuscript-support-content-viewport">
+            {(previousTab ? [previousTab, tab] : [tab]).map((contentTab) => {
+              const isCurrent = contentTab === tab;
+              const transitionClass = previousTab
+                ? isCurrent
+                  ? "is-entering"
+                  : "is-exiting"
+                : "";
+              return (
+                <div
+                  className={`manuscript-support-tab-content ${isCurrent ? "is-current" : "is-previous"} ${transitionClass} is-${tabTransitionDirection}`}
+                  aria-hidden={!isCurrent}
+                  key={contentTab}
+                >
+                  {contentTab === "contact" ? (
             <div
               className="manuscript-support-chat"
               role="tabpanel"
@@ -5061,29 +5115,32 @@ export function ManuscriptSupportWidget() {
               )}
             </div>
           )}
+                </div>
+              );
+            })}
+          </div>
         </section>
       ) : null}
       <div className="manuscript-support-trigger">
         <button
-          className="manuscript-support-icon-button"
+          className="manuscript-support-assistant-button"
           type="button"
           aria-label={open ? t("support.close") : t("support.open")}
           title={open ? t("support.close") : t("support.open")}
           aria-expanded={open}
           onClick={togglePanel}
         >
-          <IconCustomerSupport />
-        </button>
-        <button
-          className="manuscript-support-label-button"
-          type="button"
-          aria-label={t("support.trigger")}
-          aria-hidden={!triggerExpanded}
-          tabIndex={triggerExpanded ? 0 : -1}
-          onClick={togglePanel}
-        >
-          <IconCustomerSupport />
-          <span>{t("support.trigger")}</span>
+          <img
+            className="manuscript-support-assistant-image"
+            src={supportAssistantImage}
+            alt=""
+            aria-hidden="true"
+            width="33"
+            height="33"
+          />
+          <span className="manuscript-support-assistant-label">
+            {t("support.trigger")}
+          </span>
         </button>
       </div>
     </div>

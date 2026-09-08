@@ -161,7 +161,6 @@
 
 .enterprise-model-more,
 .model-visibility-icon-button,
-.model-visibility-close,
 .model-visibility-tree-expand {
   display: inline-grid;
   place-items: center;
@@ -181,9 +180,7 @@
 .enterprise-model-more:hover,
 .enterprise-model-more:focus-visible,
 .model-visibility-icon-button:hover,
-.model-visibility-icon-button:focus-visible,
-.model-visibility-close:hover,
-.model-visibility-close:focus-visible {
+.model-visibility-icon-button:focus-visible {
   color: var(--color-text-default);
   background: var(--color-bg-overlay-l2);
 }
@@ -289,54 +286,20 @@
   margin-left: auto;
 }
 
-.model-visibility-overlay {
-  position: fixed;
-  z-index: 1000;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  padding: 24px;
-  background: rgba(0, 0, 0, 0.62);
+/* 中文：可见范围弹窗复用 AppModal 外壳，业务样式只约束内容布局。 */
+.app-modal.model-visibility-modal .semi-modal {
+  width: min(800px, calc(100vw - 32px));
 }
-.model-visibility-dialog {
-  display: grid;
-  width: min(800px, 100%);
-  height: 500px;
-  max-height: calc(100vh - 48px);
-  grid-template-rows: auto auto minmax(0, 1fr) auto;
-  overflow: hidden;
-  border: 1px solid var(--color-border-neutral-l2);
-  border-radius: 8px;
-  background: var(--color-bg-base-secondary);
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
-  color: var(--color-text-default);
-  padding: 12px;
+
+.app-modal.model-visibility-modal .semi-modal-content {
+  min-width: 0;
 }
-.model-visibility-header {
+
+.app-modal.model-visibility-modal .semi-modal-content > .semi-modal-body {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 2px 0 4px;
+  flex-direction: column;
 }
-.model-visibility-header h2 {
-  font-size: 18px;
-  font-weight: 600;
-}
-.model-visibility-header p {
-  margin-top: 4px;
-  color: var(--color-text-tertiary);
-  font-size: 12px;
-}
-.model-visibility-close {
-  width: 28px;
-  height: 28px;
-  border-radius: 4px;
-}
-.model-visibility-close svg {
-  width: 18px;
-  height: 18px;
-}
+
 .model-visibility-radios {
   display: flex;
   gap: 22px;
@@ -375,6 +338,7 @@
   height: 360px;
   min-height: 0;
   grid-template-columns: 386px minmax(0, 1fr);
+  flex: 1 1 auto;
   margin: 8px 0 4px;
   border: 1px solid var(--color-border-neutral-l1);
   border-radius: 6px;
@@ -697,34 +661,9 @@
 }
 .model-visibility-footer {
   display: flex;
-  min-height: 32px;
   align-items: center;
   justify-content: flex-end;
-  gap: 10px;
-  padding: 8px 0 0;
-}
-.model-visibility-cancel,
-.model-visibility-confirm {
-  min-width: 64px;
-  height: 32px;
-  padding: 0 14px;
-  border-radius: 5px;
-  cursor: pointer;
-  font-size: 13px;
-}
-.model-visibility-cancel {
-  border: 1px solid var(--color-border-neutral-l1);
-  background: transparent;
-  color: var(--color-text-secondary);
-}
-.model-visibility-confirm {
-  border: 1px solid #17191d;
-  background: #17191d;
-  color: #fff !important;
-}
-
-html[data-theme='light'] .model-visibility-overlay {
-  background: rgba(18, 20, 24, 0.46);
+  gap: var(--spacing-8, 8px);
 }
 
 @media (max-width: 720px) {
@@ -746,9 +685,6 @@ html[data-theme='light'] .model-visibility-overlay {
   }
   .enterprise-model-state {
     gap: 4px;
-  }
-  .model-visibility-overlay {
-    padding: 12px;
   }
   .model-visibility-picker {
     grid-template-columns: 1fr;

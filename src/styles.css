@@ -7527,16 +7527,31 @@ html[data-theme="light"] .real-name-qr-expired-overlay span {
   gap: var(--spacing-8);
   flex-wrap: wrap;
 }
+/* 中文：工作区提示按钮默认黑底白字（浅色主题），深色主题反转为白底黑字。 */
 .workspace-notice-link {
   display: inline-flex;
   min-height: 32px;
   align-items: center;
   padding: 0 var(--spacing-12);
-  border: 1px solid var(--color-border-neutral-l2);
+  border: 1px solid transparent;
   border-radius: var(--radius-6);
-  color: var(--color-text-default);
-  background: var(--color-bg-overlay-l2);
+  color: #fff;
+  background: #1f2329;
   font-size: 12px;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
+}
+html[data-theme="dark"] .workspace-notice-link {
+  color: #1f2329;
+  background: #fff;
+}
+/* 中文：hover 只轻微压暗/压亮，保持黑白风格不变。 */
+html[data-theme="light"] .workspace-notice-link:hover {
+  background: #17191c;
+}
+html[data-theme="dark"] .workspace-notice-link:hover {
+  background: #f7f7f7;
 }
 .message {
   display: flex;
@@ -18426,99 +18441,74 @@ html[data-theme="light"] .manuscript-hero::before {
   width: 100%;
   max-width: none;
 }
-/* 中文：客服入口使用独立的固定图标盒，避免图标按按钮文本基线布局而产生视觉偏移。 */
+/* 中文：客服入口使用参考图中的竖向胶囊，宽度固定、高度随内容自适应，避免响应式布局抖动。 */
 .manuscript-support-widget {
-  --support-trigger-size: 56px;
-  --support-label-width: 144px;
   position: fixed;
   right: 24px;
   bottom: 24px;
   z-index: 1001;
-  width: var(--support-trigger-size);
-  height: var(--support-trigger-size);
+  width: 47px;
+  height: auto;
   pointer-events: none;
 }
+/* 中文：触发层改为文档流内元素，让胶囊高度由内容撑开。 */
 .manuscript-support-trigger {
-  position: absolute;
-  inset: 0;
+  position: relative;
   pointer-events: auto;
 }
-.manuscript-support-icon-button,
-.manuscript-support-label-button {
-  position: absolute;
-  top: 0;
+.manuscript-support-assistant-button {
+  position: relative;
   display: flex;
-  height: var(--support-trigger-size);
+  width: 47px;
+  box-sizing: border-box;
   align-items: center;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: calc(var(--support-trigger-size) / 2);
-  color: #fff;
-  background: #20242c;
-  box-shadow: none;
+  justify-content: center;
+  flex-direction: column;
+  padding: 0 0 12px;
+  border: 1px solid rgba(228, 228, 233, 0.92);
+  border-radius: 24px;
+  color: #26212f;
+  background: #fff;
+  box-shadow: 0 6px 16px rgba(40, 31, 56, 0.14);
   cursor: pointer;
-  line-height: 0;
-  transition:
-    background-color 0.2s ease,
-    border-color 0.2s ease,
-    box-shadow 0.2s ease,
-    transform 0.2s ease;
+  line-height: 1;
+  /* 中文：hover 只过渡边框颜色，不产生位移。 */
+  transition: border-color 0.2s ease;
 }
-.manuscript-support-icon-button {
-  right: 0;
-  z-index: 2;
+/* 中文：hover 只改变边框颜色（渐变描边），按钮保持静止。 */
+.manuscript-support-assistant-button:hover {
+  border-color: transparent;
+  background:
+    linear-gradient(#fff, #fff) padding-box,
+    linear-gradient(77.86deg, #8ac5ff -3.23%, #74abff 51.11%, #e1a9ff 98.65%) border-box;
+}
+.manuscript-support-assistant-button:focus-visible {
+  outline: 2px solid #8d63e8;
+  outline-offset: 3px;
+}
+/* 中文：图标占位固定 47x47，图形在占位内居中。 */
+.manuscript-support-assistant-image {
   display: grid;
-  width: var(--support-trigger-size);
-  overflow: hidden;
-  place-items: center;
-  padding: 0;
-}
-.manuscript-support-icon-button:hover {
-  border-color: rgba(255, 255, 255, 0.2);
-  background: #2d3543;
-  box-shadow: none;
-  transform: translateY(-1px);
-}
-.manuscript-support-icon-button .semi-icon,
-.manuscript-support-label-button .semi-icon {
-  display: grid;
-  width: 24px;
-  height: 24px;
-  flex: 0 0 24px;
+  width: 47px;
+  height: 47px;
+  flex: 0 0 47px;
   place-items: center;
   margin: 0;
-  line-height: 0;
+  object-fit: contain;
 }
-.manuscript-support-icon-button .semi-icon svg,
-.manuscript-support-label-button .semi-icon svg {
-  display: block;
-  width: 100%;
-  height: 100%;
-}
-.manuscript-support-label-button {
-  right: 0;
-  z-index: 1;
-  width: var(--support-label-width);
-  justify-content: flex-start;
-  gap: 8px;
-  padding: 0 16px;
-  opacity: 0;
-  pointer-events: none;
-  clip-path: inset(
-    0 0 0 calc(var(--support-label-width) - var(--support-trigger-size))
-  );
-  transition:
-    opacity 0.18s ease-out,
-    clip-path 0.3s cubic-bezier(0.22, 0.8, 0.26, 1);
-}
-.manuscript-support-label-button span {
+.manuscript-support-assistant-label {
+  writing-mode: vertical-rl;
+  text-orientation: upright;
+  white-space: nowrap;
   font-size: 14px;
-  font-weight: 650;
+  font-weight: 500;
+  /* 中文：竖排文字之间增加间距。 */
+  letter-spacing: 4px;
   line-height: 1;
 }
-.manuscript-support-widget.is-hovered .manuscript-support-label-button {
-  opacity: 1;
-  pointer-events: auto;
-  clip-path: inset(0);
+/* 中文：英文文案较长，收窄字距避免胶囊过高。 */
+html[lang="en"] .manuscript-support-assistant-label {
+  letter-spacing: 1px;
 }
 .manuscript-support-panel {
   position: fixed;
@@ -18533,7 +18523,7 @@ html[data-theme="light"] .manuscript-hero::before {
   gap: 12px;
   overflow: hidden;
   padding: 14px;
-  border: 2px solid rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 26px;
   color: #fff;
   background: rgba(18, 19, 21, 0.96);
@@ -18630,35 +18620,103 @@ html[data-theme="light"] .manuscript-hero::before {
   height: 16px;
   flex: 0 0 16px;
 }
+.manuscript-support-content-viewport {
+  position: relative;
+  min-height: 0;
+  flex: 1;
+  overflow: hidden;
+}
+.manuscript-support-tab-content {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  width: 100%;
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+.manuscript-support-tab-content.is-current {
+  z-index: 2;
+  pointer-events: auto;
+}
+.manuscript-support-tab-content.is-forward.is-entering {
+  animation: manuscript-support-tab-enter-from-right 0.3s
+    cubic-bezier(0.22, 0.8, 0.26, 1) both;
+}
+.manuscript-support-tab-content.is-forward.is-exiting {
+  animation: manuscript-support-tab-exit-to-left 0.3s
+    cubic-bezier(0.22, 0.8, 0.26, 1) both;
+}
+.manuscript-support-tab-content.is-backward.is-entering {
+  animation: manuscript-support-tab-enter-from-left 0.3s
+    cubic-bezier(0.22, 0.8, 0.26, 1) both;
+}
+.manuscript-support-tab-content.is-backward.is-exiting {
+  animation: manuscript-support-tab-exit-to-right 0.3s
+    cubic-bezier(0.22, 0.8, 0.26, 1) both;
+}
+@keyframes manuscript-support-tab-enter-from-right {
+  from {
+    opacity: 0.92;
+    transform: translate3d(100%, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+@keyframes manuscript-support-tab-exit-to-left {
+  from {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    opacity: 0.92;
+    transform: translate3d(-100%, 0, 0);
+  }
+}
+@keyframes manuscript-support-tab-enter-from-left {
+  from {
+    opacity: 0.92;
+    transform: translate3d(-100%, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+@keyframes manuscript-support-tab-exit-to-right {
+  from {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    opacity: 0.92;
+    transform: translate3d(100%, 0, 0);
+  }
+}
 .manuscript-support-chat {
   min-height: 0;
   display: flex;
   flex: 1;
   flex-direction: column;
   overflow: hidden;
-  animation: manuscript-support-tab-content-enter 0.36s
-    cubic-bezier(0.22, 0.8, 0.26, 1) both;
-  will-change: opacity, transform, filter;
 }
 .manuscript-support-notifications {
-  animation: manuscript-support-tab-content-enter 0.36s
-    cubic-bezier(0.22, 0.8, 0.26, 1) both;
-  will-change: opacity, transform, filter;
-}
-@keyframes manuscript-support-tab-content-enter {
-  from {
-    opacity: 0;
-    filter: blur(2px);
-    transform: translateY(12px) scale(0.985);
-  }
-  to {
-    opacity: 1;
-    filter: blur(0);
-    transform: translateY(0) scale(1);
-  }
+  display: grid;
+  min-height: 0;
+  flex: 1;
+  place-items: center;
+  align-content: center;
+  gap: 10px;
+  padding: 24px;
+  color: rgba(255, 255, 255, 0.62);
+  text-align: center;
 }
 @media (prefers-reduced-motion: reduce) {
   .manuscript-support-tab,
+  .manuscript-support-tab-content,
   .manuscript-support-chat,
   .manuscript-support-notifications {
     animation: none;
@@ -21823,7 +21881,7 @@ html[data-theme="light"] .ranking-sidebar a.is-active {
   .login-drawer-backdrop,
   .login-popover,
   .manuscript-support-panel,
-  .manuscript-support-label-button,
+  .manuscript-support-assistant-button,
   .manuscript-support-tab-thumb,
   .manuscript-support-typing i {
     animation: none;
@@ -22880,6 +22938,21 @@ html[data-theme="light"] .manuscript-support-panel {
   background: rgba(255, 255, 255, 0.94);
   box-shadow: 0 22px 58px rgba(23, 24, 27, 0.22);
 }
+html[data-theme="light"] .manuscript-support-assistant-button,
+html[data-theme="dark"] .manuscript-support-assistant-button {
+  border-color: rgba(228, 228, 233, 0.92);
+  color: #26212f;
+  background: #fff;
+  box-shadow: 0 6px 16px rgba(40, 31, 56, 0.14);
+}
+/* 中文：深浅主题的 hover 与基础规则一致，仅切换为渐变描边。 */
+html[data-theme="light"] .manuscript-support-assistant-button:hover,
+html[data-theme="dark"] .manuscript-support-assistant-button:hover {
+  border-color: transparent;
+  background:
+    linear-gradient(#fff, #fff) padding-box,
+    linear-gradient(77.86deg, #8ac5ff -3.23%, #74abff 51.11%, #e1a9ff 98.65%) border-box;
+}
 html[data-theme="light"] .manuscript-support-tabs {
   background: rgba(23, 24, 27, 0.07);
 }
@@ -23367,7 +23440,7 @@ html[data-theme="light"] .manuscript-support-notification-copy time {
   gap: var(--spacing-8);
 }
 .enterprise-governance-panel-actions .semi-button {
-  min-height: 36px;
+  min-height: 32px;
   padding-inline: var(--spacing-12);
   border-radius: var(--radius-6);
   font-size: 13px;
@@ -24048,10 +24121,7 @@ html[data-performance="lite"]
 }
 html[data-performance="lite"]
   .public-layout--manuscript-home
-  .manuscript-support-icon-button,
-html[data-performance="lite"]
-  .public-layout--manuscript-home
-  .manuscript-support-label-button {
+  .manuscript-support-assistant-button {
   box-shadow: none;
 }
 html[data-performance="lite"]
@@ -25920,6 +25990,14 @@ html[data-theme="light"]
   width: 100%;
   margin: 0;
   padding: 32px 0;
+  /* 中文：快速接入页使用黑白灰中性色，避免与全局主题色混用。 */
+  --quickstart-neutral-accent: var(--text-primary);
+  --quickstart-neutral-border: var(--border-strong);
+  --quickstart-neutral-soft: color-mix(
+    in srgb,
+    var(--text-primary) 8%,
+    transparent
+  );
 }
 .quickstart-pdf-intro {
   margin: 4px 0 20px;
@@ -25935,13 +26013,13 @@ html[data-theme="light"]
   font-size: 13px;
 }
 .quickstart-pdf-intro a {
-  color: #7c65ff;
+  color: var(--quickstart-neutral-accent);
   font-weight: 600;
 }
 .quickstart-pdf-intro a:hover,
 .quickstart-pdf-intro a:focus-visible,
 .quickstart-pdf-intro a:active {
-  color: #7c65ff;
+  color: var(--quickstart-neutral-accent);
 }
 .quickstart-pdf-steps {
   display: grid;
@@ -25958,7 +26036,7 @@ html[data-theme="light"]
     box-shadow 0.24s ease;
 }
 .quickstart-pdf-step.is-open {
-  border-color: color-mix(in srgb, #7c65ff 58%, var(--border-default));
+  border-color: var(--quickstart-neutral-border);
   box-shadow: 0 8px 26px rgb(0 0 0 / 14%);
 }
 .quickstart-pdf-step-header {
@@ -26018,7 +26096,7 @@ html[data-theme="light"]
   transform: translateY(-1px);
 }
 .quickstart-pdf-step-accordion-button:focus-visible {
-  outline: 2px solid color-mix(in srgb, #7c65ff 72%, transparent);
+  outline: 2px solid var(--quickstart-neutral-border);
   outline-offset: 2px;
 }
 .quickstart-pdf-step-title {
@@ -26046,11 +26124,11 @@ html[data-theme="light"]
   transition: color 0.2s ease;
 }
 .quickstart-pdf-step-header.is-open .quickstart-pdf-step-title em {
-  color: #7c65ff;
+  color: var(--quickstart-neutral-accent);
   font-size: 18px;
 }
 .quickstart-pdf-step-header.is-open .quickstart-pdf-step-title strong {
-  color: #7c65ff;
+  color: var(--quickstart-neutral-accent);
   font-size: 18px;
 }
 .quickstart-pdf-status {
@@ -26081,14 +26159,14 @@ html[data-theme="light"]
   white-space: nowrap;
 }
 .quickstart-pdf-step-help a {
-  color: #7c65ff;
+  color: var(--quickstart-neutral-accent);
   font-weight: 600;
   text-underline-offset: 3px;
 }
 .quickstart-pdf-step-help a:hover,
 .quickstart-pdf-step-help a:focus-visible,
 .quickstart-pdf-step-help a:active {
-  color: #7c65ff;
+  color: var(--quickstart-neutral-accent);
 }
 .quickstart-pdf-step-panel {
   display: grid;
@@ -26179,7 +26257,7 @@ html[data-theme="light"]
 /* 中文：应用、复制按钮使用与用量明细一致的纯文字链接样式。 */
 .quickstart-pdf-key-actions .semi-button:not(.semi-button-disabled) {
   border: 0;
-  color: #3b7bff;
+  color: var(--quickstart-neutral-accent);
   background: transparent;
   box-shadow: none;
   font-weight: 400;
@@ -26188,7 +26266,7 @@ html[data-theme="light"]
 .quickstart-pdf-key-actions
   .semi-button:focus-visible:not(.semi-button-disabled),
 .quickstart-pdf-key-actions .semi-button:active:not(.semi-button-disabled) {
-  color: #7898ee;
+  color: var(--quickstart-neutral-accent);
   background: transparent;
 }
 .quickstart-pdf-key-actions .semi-button.semi-button-disabled {
@@ -26222,8 +26300,8 @@ html[data-theme="light"]
   place-items: center;
   margin-bottom: 3px;
   border-radius: 50%;
-  background: var(--brand-soft);
-  color: #7c65ff;
+  background: var(--quickstart-neutral-soft);
+  color: var(--quickstart-neutral-accent);
 }
 .quickstart-pdf-outline-button,
 .quickstart-pdf-cancel-button {
@@ -26243,17 +26321,35 @@ html[data-theme="light"]
 }
 .quickstart-pdf-outline-button {
   margin-top: 8px;
-  border: 1px solid #7c65ff;
+  border: 1px solid var(--quickstart-neutral-border);
   color: var(--text-primary);
 }
-.quickstart-pdf-outline-button:hover,
-.quickstart-pdf-outline-button:focus-visible,
-.quickstart-pdf-outline-button:active {
-  color: var(--text-primary);
-  background: rgb(124 101 255 / 10%);
+/* 中文：立即创建按钮按主题反转黑白，确保两种主题下都有足够对比度。 */
+html[data-theme="light"] .quickstart-pdf-outline-button,
+html[data-theme="light"] .quickstart-pdf-outline-button:visited {
+  border-color: #17181b;
+  color: #fff;
+  background: #17181b;
 }
-.quickstart-pdf-outline-button:visited {
-  color: var(--text-primary);
+html[data-theme="light"] .quickstart-pdf-outline-button:hover,
+html[data-theme="light"] .quickstart-pdf-outline-button:focus-visible,
+html[data-theme="light"] .quickstart-pdf-outline-button:active {
+  border-color: #303238;
+  color: #fff;
+  background: #303238;
+}
+html[data-theme="dark"] .quickstart-pdf-outline-button,
+html[data-theme="dark"] .quickstart-pdf-outline-button:visited {
+  border-color: #fff;
+  color: #17181b;
+  background: #fff;
+}
+html[data-theme="dark"] .quickstart-pdf-outline-button:hover,
+html[data-theme="dark"] .quickstart-pdf-outline-button:focus-visible,
+html[data-theme="dark"] .quickstart-pdf-outline-button:active {
+  border-color: #f2f2f2;
+  color: #17181b;
+  background: #f2f2f2;
 }
 .quickstart-pdf-cancel-button {
   /* 中文：下一步按钮按主题使用高对比度配色，确保文字清晰可读。 */
@@ -26329,12 +26425,12 @@ html[data-theme="dark"] .quickstart-pdf-cancel-button:focus-visible:not(:disable
     background 0.2s ease;
 }
 .quickstart-pdf-model-card:hover {
-  border-color: color-mix(in srgb, #7c65ff 50%, var(--border-default));
+  border-color: var(--quickstart-neutral-border);
   transform: none;
 }
 .quickstart-pdf-model-card.is-selected {
-  border-color: #7c65ff;
-  background: color-mix(in srgb, #7c65ff 10%, var(--bg-base-soft));
+  border-color: var(--quickstart-neutral-border);
+  background: var(--quickstart-neutral-soft);
 }
 .quickstart-pdf-model-icon {
   display: grid;
@@ -26354,7 +26450,7 @@ html[data-theme="dark"] .quickstart-pdf-cancel-button:focus-visible:not(:disable
   background: #b45a30;
 }
 .quickstart-pdf-model-icon.tone-3 {
-  background: #7852c9;
+  background: #626873;
 }
 .quickstart-pdf-model-copy {
   display: grid;
@@ -26469,8 +26565,8 @@ html[data-theme="dark"] .quickstart-pdf-cancel-button:focus-visible:not(:disable
   color: var(--text-primary);
 }
 .quickstart-pdf-tabs button.is-active {
-  background: var(--brand-soft);
-  color: #8d78ff;
+  background: var(--quickstart-neutral-soft);
+  color: var(--quickstart-neutral-accent);
   font-weight: 600;
 }
 .quickstart-pdf-mode-tabs {
@@ -26503,10 +26599,9 @@ html[data-theme="dark"] .quickstart-pdf-cancel-button:focus-visible:not(:disable
   white-space: nowrap;
 }
 .quickstart-pdf-mode-tabs button.is-active {
-  border-color: #8b6dff;
-  background: color-mix(in srgb, #8b6dff 7%, var(--bg-panel));
-  color: #8062f5;
-  box-shadow: 0 0 0 1px rgb(139 109 255 / 12%);
+  border-color: var(--quickstart-neutral-border);
+  background: var(--quickstart-neutral-soft);
+  color: var(--quickstart-neutral-accent);
 }
 .quickstart-pdf-api-selector {
   display: flex;
@@ -26604,7 +26699,7 @@ html[data-theme="dark"] .quickstart-pdf-api-mode-tabs button:not(.is-active) {
 }
 .quickstart-pdf-doc-link {
   flex: 0 0 auto;
-  color: #8062f5;
+  color: var(--quickstart-neutral-accent);
   font-size: 13px;
   font-weight: 600;
   text-decoration: none;
@@ -26613,7 +26708,7 @@ html[data-theme="dark"] .quickstart-pdf-api-mode-tabs button:not(.is-active) {
 .quickstart-pdf-doc-link:hover,
 .quickstart-pdf-doc-link:focus-visible,
 .quickstart-pdf-doc-link:active {
-  color: #6d4ee8;
+  color: var(--quickstart-neutral-accent);
   text-decoration: underline;
 }
 .quickstart-pdf-code-shell {
@@ -26673,7 +26768,7 @@ html[data-theme="dark"] .quickstart-pdf-api-mode-tabs button:not(.is-active) {
   min-height: 1.75em;
 }
 .quickstart-code-token.is-url {
-  color: #c5a1f6;
+  color: #b8c1cf;
 }
 .quickstart-code-token.is-string {
   color: #7ed89d;
@@ -26694,7 +26789,7 @@ html[data-theme="light"] .quickstart-pdf-step {
   box-shadow: 0 3px 12px rgb(31 35 41 / 5%);
 }
 html[data-theme="light"] .quickstart-pdf-step.is-open {
-  border-color: #c7bdfc;
+  border-color: var(--quickstart-neutral-border);
   box-shadow: 0 8px 26px rgb(31 35 41 / 9%);
 }
 html[data-theme="light"] .quickstart-pdf-key-table th,
@@ -26717,7 +26812,7 @@ html[data-theme="light"] .quickstart-pdf-code-shell pre {
   color: #252a34;
 }
 html[data-theme="light"] .quickstart-code-token.is-url {
-  color: #8b6bb8;
+  color: #5c6675;
 }
 html[data-theme="light"] .quickstart-code-token.is-string,
 html[data-theme="light"] .quickstart-code-token.is-flag {
@@ -27023,4 +27118,12 @@ html[data-theme="light"]
 :is(.login-capsule-action, .login-capsule-soft, .header-login-capsule):disabled,
 :is(.login-capsule-action, .login-capsule-soft, .header-login-capsule).semi-button-disabled {
   opacity: .52;
+}
+
+/* 中文：费用下拉的“立即充值”不需要彩色 conic 描边，隐藏胶囊外圈并去掉预留的透明边框。 */
+.billing-hover-recharge.login-capsule-soft {
+  border-width: 0 !important;
+}
+.billing-hover-recharge.login-capsule-soft::before {
+  display: none;
 }

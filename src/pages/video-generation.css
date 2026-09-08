@@ -1062,6 +1062,12 @@ html[data-theme='dark'] .video-console-page .video-reference-upload-card:hover,
 html[data-theme='dark'] .video-console-page .video-reference-upload-card:focus-visible {
   background: var(--color-bg-overlay-l2);
 }
+/* 中文：浅色模式 hover 与图片生成页一致：半透明 overlay 叠加在与图片页外壳相同的近白底（#fefefe）上，避免透出灰色输入框显得偏深。 */
+html[data-theme='light'] .video-console-page .video-reference-upload-card:hover,
+html[data-theme='light'] .video-console-page .video-reference-upload-card:focus-visible {
+  background-color: #fefefe;
+  background-image: linear-gradient(var(--color-bg-overlay-l2), var(--color-bg-overlay-l2));
+}
 .video-console-page .video-reference-popover::after,
 .video-console-page .video-aspect-popover::after,
 .video-console-page .video-duration-popover::after {

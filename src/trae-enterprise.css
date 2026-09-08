@@ -58,7 +58,7 @@
 .trae-section { min-width: 0; margin-top: 28px; }
 .trae-section-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 28px; margin-bottom: 14px; }
 .trae-section-heading h2 { color: var(--color-text-default-hover); font-size: 16px; font-weight: 650; line-height: 1.45; }
-.trae-empty { display: grid; min-height: 132px; place-items: center; align-content: center; gap: 7px; padding: 22px; border: 1px solid var(--color-border-neutral-l1); border-radius: 7px; color: var(--color-text-tertiary); background: var(--color-bg-base-secondary); text-align: center; }
+.trae-empty { display: grid; min-height: 320px; place-items: center; align-content: center; gap: 7px; padding: 22px; border: 1px solid var(--color-border-neutral-l1); border-radius: 7px; color: var(--color-text-tertiary); background: var(--color-bg-base-secondary); text-align: center; }
 .trae-empty svg { font-size: 23px; color: var(--color-text-tertiary); }
 .trae-empty strong { color: var(--color-text-secondary); font-size: 13px; font-weight: 550; }
 .trae-empty span { font-size: 11px; }

@@ -1,6 +1,13 @@
+/* 中文：设置页只在内容实际溢出时显示页面滚动条，避免空页面长期保留右侧槽位。 */
+html:has(.settings-console-page) {
+  scrollbar-gutter: auto;
+}
+
 /* 中文：此页使用文档滚动，避免控制台外层的 overflow 阻断左侧导航吸顶。 */
 .console-main-layout:has(.settings-redesign-page) {
   overflow: visible;
+  /* 中文：桌面顶栏为 72px，避免沿用 64px 基线造成空页面额外溢出。 */
+  min-height: calc(100vh - var(--public-mobile-header-height, 72px));
 }
 
 /* 中文：个人设置页沿用控制台色彩变量，确保浅色与深色模式保持一致。 */

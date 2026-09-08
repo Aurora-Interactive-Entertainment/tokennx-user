@@ -222,6 +222,22 @@ describe('个人设置页面', () => {
     expect(fetchMock).toHaveBeenCalledTimes(3)
   })
 
+  it('打开账户弹窗时锁定根滚动容器且不改变 body 的滚动上下文', async () => {
+    const user = userEvent.setup()
+    mockProfileApi()
+    renderPage()
+
+    const dialog = await openAccountSettings(user)
+
+    expect(document.documentElement.style.overflow).toBe('hidden')
+    expect(document.body.style.overflow).toBe('')
+
+    await user.click(within(dialog).getByRole('button', { name: /关闭/ }))
+    await waitFor(() => expect(document.querySelector('.account-settings-overlay')).not.toBeInTheDocument())
+    expect(document.documentElement.style.overflow).toBe('')
+    expect(document.body.style.overflow).toBe('')
+  })
+
   it('资料接口返回认证失败时刷新令牌并继续加载个人中心', async () => {
     const { fetchMock } = mockProfileApi({ expireAccess: true })
     renderPage()

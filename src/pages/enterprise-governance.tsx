@@ -25,6 +25,7 @@ import {
   roleLabel,
   useEnterpriseErrorHandler,
 } from "./enterprise-console-shared";
+import "./enterprise-governance.css";
 
 export { updatePermissionSelection } from "@/components/enterprise-permission-matrix";
 
@@ -244,8 +245,9 @@ function RoleEditor({
           </p>
         </div>
         <div className="enterprise-governance-panel-actions">
-          {draft.id && !ownerRole ? (
+          {draft.id && !draft.builtIn && !ownerRole ? (
             <Button
+              className="enterprise-governance-delete-button"
               theme="borderless"
               type="danger"
               icon={<IconDeleteStroked />}
@@ -362,6 +364,54 @@ function RoleCreationDialog({
   );
 }
 
+function RoleDeletionDialog({
+  role,
+  deleting,
+  onConfirm,
+  onCancel,
+}: {
+  role: EnterpriseRole | null;
+  deleting: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <Modal
+      className="enterprise-governance-delete-dialog"
+      title={t("console.enterprise.governance.deleteRole")}
+      aria-label={t("console.enterprise.governance.deleteRole")}
+      visible={Boolean(role)}
+      maskClosable={!deleting}
+      closable={!deleting}
+      onCancel={onCancel}
+      onOk={onConfirm}
+      okType="danger"
+      okText={t("console.enterprise.governance.confirmDeleteRole")}
+      cancelText={t("console.common.cancel")}
+      confirmLoading={deleting}
+      okButtonProps={{
+        disabled: deleting,
+        className: "enterprise-governance-delete-confirm-button",
+      }}
+      cancelButtonProps={{
+        disabled: deleting,
+        className: "enterprise-governance-delete-cancel-button",
+      }}
+    >
+      <div className="enterprise-governance-delete-dialog-body">
+        <p>
+          {role
+            ? t("console.enterprise.governance.deleteConfirm", {
+                name: role.name,
+              })
+            : null}
+        </p>
+      </div>
+    </Modal>
+  );
+}
+
 function GovernanceContent({ context }: { context: EnterpriseContext }) {
   const { t } = useTranslation();
   const handleError = useEnterpriseErrorHandler();
@@ -375,6 +425,8 @@ function GovernanceContent({ context }: { context: EnterpriseContext }) {
     requestId: string | null;
   } | null>(null);
   const [saving, setSaving] = useState(false);
+  const [deleteRoleTarget, setDeleteRoleTarget] =
+    useState<EnterpriseRole | null>(null);
   const ownerRole =
     context.role === "owner" ||
     context.roles.includes("owner") ||
@@ -494,35 +546,37 @@ function GovernanceContent({ context }: { context: EnterpriseContext }) {
       setSaving(false);
     }
   }
-  async function removeRole(): Promise<void> {
-    if (
-      !roleDraft?.id ||
-      !selectedRole ||
-      !window.confirm(
-        t("console.enterprise.governance.deleteConfirm", {
-          name: selectedRole.name,
-        }),
-      )
-    )
+  function requestRemoveRole(): void {
+    // 中文：初次选择角色时编辑器使用派生 draft，不能依赖 roleDraft 判断当前角色是否可删除。
+    if (!selectedRole) return;
+    if (selectedRole.built_in || selectedRole.owner_role) {
+      Toast.warning(t("console.enterprise.governance.cannotDelete"));
       return;
+    }
     if (selectedRole.member_count > 0 || selectedRole.invitation_count > 0) {
       Toast.warning(t("console.enterprise.governance.roleInUse"));
       return;
     }
+    setDeleteRoleTarget(selectedRole);
+  }
+  async function removeRole(): Promise<void> {
+    const role = deleteRoleTarget;
+    if (!role) return;
     setSaving(true);
     try {
       await deleteEnterpriseRole(
         requestContext,
-        selectedRole.id,
-        selectedRole.version,
+        role.id,
+        role.version,
       );
       const remaining =
-        governance?.roles.filter((role) => role.id !== selectedRole.id) ?? [];
+        governance?.roles.filter((item) => item.id !== role.id) ?? [];
       setGovernance((previous) =>
         previous ? { ...previous, roles: remaining } : previous,
       );
       setSelectedRoleID(remaining[0]?.id ?? "");
       setRoleDraft(null);
+      setDeleteRoleTarget(null);
       Toast.success(t("console.enterprise.governance.deleteSuccess"));
     } catch (reason: unknown) {
       const result = handleError(reason);
@@ -580,7 +634,7 @@ function GovernanceContent({ context }: { context: EnterpriseContext }) {
               void saveRole();
             }}
             onDelete={() => {
-              void removeRole();
+              requestRemoveRole();
             }}
           />
         ) : (
@@ -602,6 +656,16 @@ function GovernanceContent({ context }: { context: EnterpriseContext }) {
           void saveRole();
         }}
         onCancel={() => setRoleDraft(null)}
+      />
+      <RoleDeletionDialog
+        role={deleteRoleTarget}
+        deleting={saving}
+        onConfirm={() => {
+          void removeRole();
+        }}
+        onCancel={() => {
+          if (!saving) setDeleteRoleTarget(null);
+        }}
       />
     </div>
   );

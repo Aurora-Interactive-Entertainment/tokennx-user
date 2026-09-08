@@ -653,22 +653,65 @@ describe('公共 Header 布局', () => {
     expect(supportDialog.querySelector('.manuscript-support-tab.is-active')).toHaveAttribute('aria-selected', 'true')
   })
 
+  it('从通知详情切到联系我们后再返回通知时保留详情', async () => {
+    const user = userEvent.setup()
+    saveAuthTokens({ status: 'succeeded', binding_required: false, access_token: 'notification-access-token', refresh_token: 'notification-refresh-token', refresh_expires_at: Date.UTC(2099, 0, 1) })
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, options) => {
+      const url = String(input)
+      const method = options?.method ?? 'GET'
+      if (url.includes('/api/user/notifications?') && method === 'GET') {
+        return profileApiResponse({
+          items: [{ id: 'notice-1', type: 'account', category: 'security', severity: 'info', title: '首次登录成功', content: '这是你第一次登录 Token NX，欢迎回来。', read: false, created_at: '2026-08-26T11:54:26Z' }],
+          unread_count: 1,
+        })
+      }
+      if (url.endsWith('/api/user/notifications/notice-1/read') && method === 'PATCH') return profileApiResponse({ read: true })
+      throw new Error(`unexpected request: ${url}`)
+    })
+
+    render(
+      <MemoryRouter>
+        <Provider store={createAppStore()}>
+          <AppStoreProvider><PublicFooter /></AppStoreProvider>
+        </Provider>
+      </MemoryRouter>,
+    )
+
+    await user.click(screen.getByRole('button', { name: i18n.t('support.open') }))
+    const supportDialog = await screen.findByRole('dialog', { name: i18n.t('support.dialogLabel') })
+    await user.click(within(supportDialog).getByRole('tab', { name: /通知/ }))
+    await user.click(await within(supportDialog).findByRole('button', { name: /首次登录成功/ }))
+    expect(await within(supportDialog).findByRole('heading', { name: '首次登录成功' })).toBeInTheDocument()
+
+    await user.click(within(supportDialog).getByRole('tab', { name: /联系我们/ }))
+    await user.click(within(supportDialog).getByRole('tab', { name: /通知/ }))
+
+    expect(within(supportDialog).getByRole('heading', { name: '首次登录成功' })).toBeInTheDocument()
+    expect(within(supportDialog).getByText('这是你第一次登录 Token NX，欢迎回来。')).toBeInTheDocument()
+  })
+
   it('关闭客服面板后会同步收起悬浮入口', async () => {
     const user = userEvent.setup()
-    render(<MemoryRouter><PublicFooter /></MemoryRouter>)
+    render(
+      <MemoryRouter>
+        <Provider store={createAppStore()}>
+          <AppStoreProvider><PublicFooter /></AppStoreProvider>
+        </Provider>
+      </MemoryRouter>,
+    )
 
     const widget = document.querySelector('.manuscript-support-widget') as HTMLElement
-    const labelButton = document.querySelector('.manuscript-support-label-button') as HTMLButtonElement
-    fireEvent.mouseEnter(widget)
-    expect(widget).toHaveClass('is-hovered')
+    const assistantButton = document.querySelector('.manuscript-support-assistant-button') as HTMLButtonElement
+    expect(assistantButton).toHaveTextContent(i18n.t('support.trigger'))
+    expect(assistantButton.querySelector('.manuscript-support-assistant-image')).toHaveAttribute('width', '33')
+    expect(assistantButton.querySelector('.manuscript-support-assistant-image')).toHaveAttribute('height', '33')
 
-    await user.click(labelButton)
+    await user.click(assistantButton)
     const supportDialog = await screen.findByRole('dialog', { name: i18n.t('support.dialogLabel') })
     await user.click(within(supportDialog).getByRole('button', { name: i18n.t('support.closePanel') }))
 
-    expect(widget).not.toHaveClass('is-hovered')
-    expect(labelButton).toHaveAttribute('aria-hidden', 'true')
-    expect(labelButton).toHaveAttribute('tabindex', '-1')
+    expect(widget).toHaveClass('manuscript-support-widget')
+    expect(assistantButton).toHaveAttribute('aria-expanded', 'false')
   })
 
   it('统一公共 Footer 分组支持展开、切换和收起', async () => {

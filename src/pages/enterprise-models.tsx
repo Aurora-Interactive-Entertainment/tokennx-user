@@ -7,6 +7,7 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
+import Button from '@douyinfe/semi-ui/lib/es/button';
 import Toast from '@douyinfe/semi-ui/lib/es/toast';
 import {
   IconChevronDown,
@@ -34,6 +35,7 @@ import {
   useEnterpriseErrorHandler,
   type EnterpriseRequestError,
 } from './enterprise-console-shared';
+import AppModal from '@/components/app-modal';
 import './enterprise-models.css';
 
 type DirectoryModel = EnterpriseModel & {
@@ -398,19 +400,18 @@ function DepartmentNode({
 }
 
 function ModelVisibilityDialog({
-  model,
   initialScope,
   initialSelection,
   onClose,
   onSave,
 }: {
-  model: DirectoryModel;
   initialScope: VisibilityScope;
   initialSelection: VisibilitySelection;
   onClose: () => void;
   onSave: (scope: VisibilityScope, selection: VisibilitySelection) => void;
 }) {
   const { t } = useTranslation();
+  const [visible, setVisible] = useState(true);
   const [scope, setScope] = useState(initialScope);
   const [kind, setKind] = useState<SelectionKind | null>(null);
   const [query, setQuery] = useState('');
@@ -428,16 +429,10 @@ function ModelVisibilityDialog({
     'level-9',
     'level-10',
   ]);
-  const dialogRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function handleKeyDown(event: KeyboardEvent): void {
-      if (event.key === 'Escape') onClose();
-    }
-    document.addEventListener('keydown', handleKeyDown);
-    dialogRef.current?.focus();
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [onClose]);
+  // 中文：先切换 visible 触发 AppModal 的退出动画，动画结束后再卸载业务节点。
+  function closeDialog(): void {
+    setVisible(false);
+  }
   function toggleDepartment(id: string): void {
     setSelection((current) => ({
       ...current,
@@ -462,33 +457,38 @@ function ModelVisibilityDialog({
       )
     : PEOPLE;
   return (
-    <div
-      className="model-visibility-overlay"
-      role="presentation"
-      onClick={onClose}
-    >
-      <div
-        className="model-visibility-dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="modelVisibilityTitle"
-        tabIndex={-1}
-        ref={dialogRef}
-        onClick={(event) => event.stopPropagation()}
-      >
-        <header className="model-visibility-header">
-          <h2 id="modelVisibilityTitle">
-            {t('console.enterprise.model.visibility.title')}
-          </h2>
-          <button
-            type="button"
-            className="model-visibility-close"
-            aria-label={t('console.enterprise.model.visibility.close')}
-            onClick={onClose}
+    <AppModal
+      className="model-visibility-modal"
+      visible={visible}
+      width={800}
+      height={560}
+      motion
+      title={t('console.enterprise.model.visibility.title')}
+      maskClosable
+      onCancel={closeDialog}
+      afterClose={onClose}
+      footer={
+        <div className="model-visibility-footer">
+          <Button
+            theme="outline"
+            type="tertiary"
+            onClick={closeDialog}
           >
-            <IconClose />
-          </button>
-        </header>
+            {t('console.enterprise.model.visibility.cancel')}
+          </Button>
+          <Button
+            theme="solid"
+            type="primary"
+            onClick={() => {
+              onSave(scope, selection);
+              closeDialog();
+            }}
+          >
+            {t('console.enterprise.model.visibility.confirm')}
+          </Button>
+        </div>
+      }
+    >
         <div
           className="model-visibility-radios"
           role="radiogroup"
@@ -614,28 +614,8 @@ function ModelVisibilityDialog({
               t={t}
             />
           </div>
-        )}
-        <footer className="model-visibility-footer">
-          <button
-            type="button"
-            className="model-visibility-cancel"
-            onClick={onClose}
-          >
-            {t('console.enterprise.model.visibility.cancel')}
-          </button>
-          <button
-            type="button"
-            className="model-visibility-confirm"
-            onClick={() => {
-              onSave(scope, selection);
-              onClose();
-            }}
-          >
-            {t('console.enterprise.model.visibility.confirm')}
-          </button>
-        </footer>
-      </div>
-    </div>
+          )}
+    </AppModal>
   );
 }
 
@@ -978,7 +958,6 @@ function ModelsContent({ context }: { context: EnterpriseContext }) {
       )}
       {openModel ? (
         <ModelVisibilityDialog
-          model={openModel}
           initialScope={scopes[openModel.id] ?? 'all'}
           initialSelection={
             selections[openModel.id] ?? { departments: [], people: [] }

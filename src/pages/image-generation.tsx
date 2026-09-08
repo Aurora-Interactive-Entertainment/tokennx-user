@@ -161,12 +161,6 @@ function ImageResultCard({
         <div className="image-result-error" role="alert">
           <strong>{t("console.image.resultFailed")}</strong>
           <p>{item.errorMessage ?? t("console.image.generationError")}</p>
-          <button type="button" className="image-request-id" onClick={copyRequestId}>
-            <IconCopy aria-hidden="true" />
-            {requestCopied
-              ? t("console.image.copySuccess")
-              : t("console.image.copyRequestId")}
-          </button>
         </div>
       ) : item.preview ? (
         <img src={item.preview} alt={item.prompt} />

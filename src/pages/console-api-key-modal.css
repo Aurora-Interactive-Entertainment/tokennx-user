@@ -1,8 +1,8 @@
 /* 中文：创建与编辑 API Key 弹窗复用 AppModal 基线，仅约束业务宽高和内部表单。 */
 .api-key-management-modal .semi-modal {
   width: min(600px, calc(100vw - var(--spacing-32))) !important;
-  /* 中文：创建表单展开后仍与视口上下各保留 48px，避免底部操作区贴边或被裁切。 */
-  max-height: calc(100dvh - 96px);
+  /* 中文：与全局 modal-wrap 的 24px 上下安全区保持一致，保证窄视口时上下外边距相等。 */
+  max-height: calc(100dvh - 48px);
 }
 
 .api-key-management-modal .semi-modal-content {
@@ -498,11 +498,12 @@
 @media (max-width: 640px) {
   .api-key-management-modal .semi-modal {
     width: calc(100vw - var(--spacing-24)) !important;
-    max-height: calc(100dvh - 48px);
+    /* 中文：移动端同样保留包裹层的上下安全区，底部操作区不会被视口裁切。 */
+    max-height: calc(100dvh - 24px);
   }
 
   .api-key-management-modal .semi-modal-content {
-    max-height: calc(100dvh - 48px);
+    max-height: calc(100dvh - 24px);
   }
 
   .billing-source-options,
