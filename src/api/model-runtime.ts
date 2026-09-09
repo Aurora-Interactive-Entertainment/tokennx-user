@@ -175,7 +175,9 @@ function mergeUsage(current: ParsedCompletionPayload, next: ParsedCompletionPayl
 
 function parseStreamEvent(event: string): { done: boolean; payload: ParsedCompletionPayload } {
   const data = event.split(/\r?\n/).filter((line) => line.startsWith('data:')).map((line) => line.slice(5).trimStart()).join('\n').trim()
-  if (!data || data === '[DONE]') return { done: true, payload: { content: '', reasoning: '', inputTokens: null, outputTokens: null, finishReason: null } }
+  // 中文：SSE 保活注释或空事件不代表流结束，只有服务端明确发送 [DONE] 才结束回答。
+  if (!data) return { done: false, payload: { content: '', reasoning: '', inputTokens: null, outputTokens: null, finishReason: null } }
+  if (data === '[DONE]') return { done: true, payload: { content: '', reasoning: '', inputTokens: null, outputTokens: null, finishReason: null } }
   try {
     return { done: false, payload: parseCompletionPayload(JSON.parse(data) as unknown) }
   } catch {

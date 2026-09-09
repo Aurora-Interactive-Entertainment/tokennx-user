@@ -38,7 +38,7 @@ const SentryTestPage =
     : null;
 
 const HomePage = lazy(() =>
-  loadPublicPages().then(({ HomePage }) => ({ default: HomePage })),
+  import("@/pages/home").then(({ HomePage }) => ({ default: HomePage })),
 );
 const ModelsPublicPage = lazy(() =>
   loadPublicPages().then(({ ModelsPublicPage }) => ({

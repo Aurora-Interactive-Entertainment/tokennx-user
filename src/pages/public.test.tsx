@@ -8,7 +8,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AppStoreProvider } from '@/data/app-state'
 import { createAppStore } from '@/store'
 import i18n from '@/i18n'
-import { AboutPage, AppsPage, DocsPage, HomePage, LegalPage, ModelDetailPage, ModelsPublicPage, PricingPage, RankingsPage, StatusPage } from './public'
+import { AboutPage, AppsPage, DocsPage, LegalPage, ModelDetailPage, ModelsPublicPage, PricingPage, RankingsPage, StatusPage } from './public'
+import { HomePage } from './home'
 
 function LocationProbe() {
   const location = useLocation()

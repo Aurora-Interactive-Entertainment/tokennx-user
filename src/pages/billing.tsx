@@ -16,6 +16,7 @@ import {
 	getBillingErrorMessage,
 	createBillingPaymentOrder,
 	getBillingPaymentOrder,
+	closeBillingPaymentOrder,
 	getBillingInvoices,
 	getBillingRequestId,
 	startBillingPayment,
@@ -41,6 +42,7 @@ import { TraePagination } from '@/components/trae-pagination'
 import { BackofficeMoneyText as MoneyText } from '@/components/money'
 import { PaymentQRCodeFrame } from '@/components/payment-qr-frame'
 import { PaymentQRCode } from '@/components/payment-qr-code'
+import { isAllowedAlipayPaymentUrl } from '@/api/payment-form'
 import { CompatSelect as Select } from '@/components/semi-compat'
 import alipayIcon from '@/assets/payment-icons/alipay.svg'
 import wechatIcon from '@/assets/payment-icons/wechat.svg'
@@ -94,6 +96,9 @@ function billingTabFromSearch(search: string): BillingTab {
 const RECHARGE_OPTIONS = [100, 200, 500, 1000, 2000, 5000, 10000] as const
 const MIN_RECHARGE_AMOUNT = 10
 const PAYMENT_STATUS_POLL_INTERVAL_MS = 2000
+// 中文：支付查单只在有限时间内自动进行，避免网络异常时无限请求后端。
+const PAYMENT_STATUS_POLL_TIMEOUT_MS = 5 * 60 * 1000
+const PAYMENT_STATUS_POLL_MAX_INTERVAL_MS = 10 * 1000
 const PAYMENT_ACTIVE_STATUSES = new Set(['pending', 'paying'])
 const DEFAULT_INVOICE_FILE_EXTENSION = 'pdf'
 export function billingContextForWorkspace(workspace: Pick<Workspace, 'id' | 'type'>): BillingContext {
@@ -127,6 +132,16 @@ function resourceState<T>(status: ResourceStatus = 'idle', data: T | null = null
 function defaultBillingDateRange(): Date[] {
   const today = startOfLocalDay(new Date())
   return [addLocalDays(today, -30), endOfLocalDay(today)]
+}
+
+// 中文：按日期选择器的日历日期生成 UTC 边界，避免本地时区导致账单跨日偏移。
+export function billingDateRangeToUtcMilliseconds(range: readonly Date[]): { startAt?: number; endAt?: number } {
+  const start = range[0]
+  const end = range[1]
+  return {
+    startAt: start ? Date.UTC(start.getFullYear(), start.getMonth(), start.getDate()) : undefined,
+    endAt: end ? Date.UTC(end.getFullYear(), end.getMonth(), end.getDate() + 1) : undefined,
+  }
 }
 
 // 中文：部门筛选需要包含多级部门，按父节点逐层拉取并展平目录。
@@ -308,6 +323,19 @@ function isPaymentActive(status: string): boolean {
   return PAYMENT_ACTIVE_STATUSES.has(status)
 }
 
+// 中文：支付订单的 paid 状态必须同时具备服务端确认时间，避免不完整响应被展示为已到账。
+function isPaymentSettled(order: Pick<BillingPaymentOrder, 'status' | 'paid_at'>): boolean {
+  return order.status === 'paid' && Boolean(order.paid_at)
+}
+
+function isPaymentOrderPollable(order: Pick<BillingPaymentOrder, 'status' | 'paid_at'>): boolean {
+  return isPaymentActive(order.status) || (order.status === 'paid' && !order.paid_at)
+}
+
+function paymentOrderStatusCopy(order: Pick<BillingPaymentOrder, 'status' | 'paid_at'>): ReturnType<typeof paymentStatusCopy> {
+  return paymentStatusCopy(isPaymentSettled(order) ? order.status : order.status === 'paid' ? 'unknown' : order.status)
+}
+
 function extractPaymentQRCodeValue(payment: BillingPaymentStartResult): string {
   const candidates = [
     payment.transaction?.payment_url,
@@ -316,7 +344,7 @@ function extractPaymentQRCodeValue(payment: BillingPaymentStartResult): string {
     payment.qr_code_url,
     payment.qr_url,
   ]
-  return candidates.find((value): value is string => typeof value === 'string' && Boolean(value.trim()))?.trim() ?? ''
+  return candidates.find((value): value is string => typeof value === 'string' && isAllowedAlipayPaymentUrl(value))?.trim() ?? ''
 }
 
 export function PaymentReturnNotice({ state, onRetry }: { state: ResourceState<BillingPaymentOrder>; onRetry: () => void }) {
@@ -328,7 +356,7 @@ export function PaymentReturnNotice({ state, onRetry }: { state: ResourceState<B
   if (state.status === 'loading') return <BannerNotice><span>{i18n.t('console.billing.paymentQuerying')}</span></BannerNotice>
   if (state.status === 'error') return null
   if (!state.data) return null
-  const copy = paymentStatusCopy(state.data.status)
+  const copy = paymentOrderStatusCopy(state.data)
   return <BannerNotice tone={copy.tone}><span className="billing-request-error-copy"><strong>{copy.label}</strong><small>{i18n.t('console.billing.paymentReturnOrder', { orderNo: state.data.order_no })}</small></span></BannerNotice>
 }
 
@@ -578,6 +606,9 @@ export function RechargeTab({ context, onOrderUpdated, onAuthFailure }: { contex
   const [paymentQuerying, setPaymentQuerying] = useState(false)
   const [paymentRefreshToken, setPaymentRefreshToken] = useState(0)
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false)
+  const paymentOrderIdempotencyKeyRef = useRef<string | null>(null)
+  const paymentStartIdempotencyKeyRef = useRef<string | null>(null)
+  const pendingPaymentOrderIDRef = useRef<string | null>(null)
   const agreementAccepted = true
   const [paymentMethod, setPaymentMethod] = useState<'alipay' | 'wechat'>('alipay')
   const [realNameDialogOpen, setRealNameDialogOpen] = useState(false)
@@ -586,7 +617,8 @@ export function RechargeTab({ context, onOrderUpdated, onAuthFailure }: { contex
     setPaymentFormError(getBillingErrorMessage(error))
   }, [])
 
-  function closePaymentDialog(): void {
+  async function closePaymentDialog(): Promise<void> {
+    const orderToClose = paymentOrder
     // 中文：关闭二维码弹窗即结束本次支付会话，避免后台继续查单或复用旧二维码。
     setPaymentDialogOpen(false)
     setPaymentOrder(null)
@@ -595,32 +627,64 @@ export function RechargeTab({ context, onOrderUpdated, onAuthFailure }: { contex
     setPaymentFormError('')
     setPaymentQueryError('')
     setPaymentQuerying(false)
+    if (!orderToClose || !isPaymentActive(orderToClose.status)) return
+    // 中文：关单完成前暂时锁住充值按钮，避免用户立即创建第二个未确认订单。
+    setSubmitting(true)
+    try {
+      await closeBillingPaymentOrder(orderToClose.id, {}, context)
+      paymentOrderIdempotencyKeyRef.current = null
+      paymentStartIdempotencyKeyRef.current = null
+      pendingPaymentOrderIDRef.current = null
+      onOrderUpdated()
+    } catch (error) {
+      if (isAuthenticationFailure(error)) {
+        onAuthFailure()
+        return
+      }
+      // 中文：关单失败不阻塞用户继续操作，但保留错误提示，便于用户重新查询订单状态。
+      Toast.warning(getBillingErrorMessage(error))
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   useEffect(() => {
-    if (!paymentDialogOpen || !paymentOrder || !isPaymentActive(paymentOrder.status)) return
+    if (!paymentDialogOpen || !paymentOrder || !isPaymentOrderPollable(paymentOrder)) return
     const controller = new AbortController()
     let disposed = false
     let timer: number | undefined
+    const startedAt = Date.now()
+    let failureCount = 0
 
     // 中文：前置模式没有可靠的跨域支付回跳，持续通过服务端查单确认最终状态。
     const poll = async (): Promise<void> => {
       if (disposed) return
+      if (Date.now() - startedAt >= PAYMENT_STATUS_POLL_TIMEOUT_MS) {
+        setPaymentQueryError(i18n.t('console.billing.paymentStatusUnknown'))
+        setPaymentQuerying(false)
+        return
+      }
       setPaymentQuerying(true)
       try {
         const latestOrder = await getBillingPaymentOrder(paymentOrder.id, { signal: controller.signal }, context)
         if (disposed) return
+        failureCount = 0
         setPaymentQueryError('')
         setPaymentOrder(latestOrder)
-        if (!isPaymentActive(latestOrder.status)) {
+        if (!isPaymentOrderPollable(latestOrder)) {
+          paymentOrderIdempotencyKeyRef.current = null
+          paymentStartIdempotencyKeyRef.current = null
+          pendingPaymentOrderIDRef.current = null
           onOrderUpdated()
           return
         }
         timer = window.setTimeout(() => void poll(), PAYMENT_STATUS_POLL_INTERVAL_MS)
       } catch (error) {
         if (disposed || controller.signal.aborted) return
+        failureCount += 1
         setPaymentQueryError(getBillingErrorMessage(error))
-        timer = window.setTimeout(() => void poll(), PAYMENT_STATUS_POLL_INTERVAL_MS)
+        const retryDelay = Math.min(PAYMENT_STATUS_POLL_MAX_INTERVAL_MS, PAYMENT_STATUS_POLL_INTERVAL_MS * (2 ** Math.min(failureCount - 1, 3)))
+        timer = window.setTimeout(() => void poll(), retryDelay)
       } finally {
         if (!disposed) setPaymentQuerying(false)
       }
@@ -635,6 +699,9 @@ export function RechargeTab({ context, onOrderUpdated, onAuthFailure }: { contex
   }, [context.account_type, context.enterprise_id, onOrderUpdated, paymentDialogOpen, paymentOrder?.id, paymentOrder?.status, paymentRefreshToken])
 
   function choose(value: number): void {
+    paymentOrderIdempotencyKeyRef.current = null
+    paymentStartIdempotencyKeyRef.current = null
+    pendingPaymentOrderIDRef.current = null
     setSelected(value)
     setAmount(String(value))
   }
@@ -659,15 +726,30 @@ export function RechargeTab({ context, onOrderUpdated, onAuthFailure }: { contex
     setPaymentFormError('')
     setPaymentQueryError('')
     try {
-      const order = await createBillingPaymentOrder(context, { amount_yuan: amount.trim() }, createIdempotencyKey('payment-order'))
+      const orderIdempotencyKey = paymentOrderIdempotencyKeyRef.current ?? createIdempotencyKey('payment-order')
+      paymentOrderIdempotencyKeyRef.current = orderIdempotencyKey
+      const order = pendingPaymentOrderIDRef.current
+        ? await getBillingPaymentOrder(pendingPaymentOrderIDRef.current, {}, context)
+        : await createBillingPaymentOrder(context, { amount_yuan: amount.trim() }, orderIdempotencyKey)
+      pendingPaymentOrderIDRef.current = order.id
       // 中文：支付、查单接口同样需要携带当前账务主体，否则企业订单会被路由到个人接口。
-      const payment = await startBillingPayment(order.id, createIdempotencyKey('payment-start'), {}, context)
+      const startIdempotencyKey = paymentStartIdempotencyKeyRef.current ?? createIdempotencyKey('payment-start')
+      paymentStartIdempotencyKeyRef.current = startIdempotencyKey
+      const payment = await startBillingPayment(order.id, startIdempotencyKey, {}, context)
       setPaymentOrder(payment.order)
+      if (!isPaymentOrderPollable(payment.order)) {
+        paymentOrderIdempotencyKeyRef.current = null
+        paymentStartIdempotencyKeyRef.current = null
+        pendingPaymentOrderIDRef.current = null
+      }
       const qrCodeValue = extractPaymentQRCodeValue(payment)
       const formHTML = payment.form_html?.trim() ?? ''
       setPaymentQRCodeValue(qrCodeValue)
       if (!formHTML && !qrCodeValue) {
-        if (payment.order.status === 'paid') {
+        if (isPaymentSettled(payment.order)) {
+          paymentOrderIdempotencyKeyRef.current = null
+          paymentStartIdempotencyKeyRef.current = null
+          pendingPaymentOrderIDRef.current = null
           onOrderUpdated()
           Toast.success(i18n.t('console.billing.paymentStatusPaid'))
           return
@@ -692,8 +774,8 @@ export function RechargeTab({ context, onOrderUpdated, onAuthFailure }: { contex
     }
   }
 
-  const paymentCopy = paymentOrder ? paymentStatusCopy(paymentOrder.status) : null
-  const paymentActive = paymentOrder ? isPaymentActive(paymentOrder.status) : false
+  const paymentCopy = paymentOrder ? paymentOrderStatusCopy(paymentOrder) : null
+  const paymentActive = paymentOrder ? isPaymentOrderPollable(paymentOrder) : false
   const rechargeAmount = parseAmount(amount)
   const amountValidation = selected === null ? validateRechargeAmount(amount) : null
   const amountValidationMessage = amountValidation === 'required' ? i18n.t('console.billing.amountRequired') : amountValidation === 'minimum' ? i18n.t('console.billing.amountMinimum') : amountValidation === 'invalid' ? i18n.t('console.billing.amountInvalid') : ''
@@ -708,7 +790,7 @@ export function RechargeTab({ context, onOrderUpdated, onAuthFailure }: { contex
           <div className="recharge-amount-content">
             <div className="recharge-options" id="rechargeOptions">
               {RECHARGE_OPTIONS.map((value) => <button type="button" className={`recharge-option${selected === value ? ' active' : ''}`} aria-pressed={selected === value} key={value} onClick={() => choose(value)}><span className="recharge-amount">{value} {i18n.t('console.billing.amountUnit')}</span><span className="recharge-selected-corner" aria-hidden="true">✓</span></button>)}
-              <label className={`recharge-option recharge-option-other${customAmountSelected ? ' active' : ''}`} htmlFor="rechargeCustomAmount"><input id="rechargeCustomAmount" aria-label={i18n.t('console.billing.otherAmount')} aria-describedby="rechargeAmountValidation" aria-invalid={amountValidation !== null} inputMode="decimal" type="text" value={selected === null ? amount : ''} onFocus={() => { if (selected !== null) { setSelected(null); setAmount('') } }} onChange={(event) => { setSelected(null); setAmount(sanitizeRechargeAmountInput(event.target.value)) }} placeholder={i18n.t('console.billing.otherAmountPlaceholder')} /><span className="recharge-selected-corner" aria-hidden="true">✓</span></label>
+              <label className={`recharge-option recharge-option-other${customAmountSelected ? ' active' : ''}`} htmlFor="rechargeCustomAmount"><input id="rechargeCustomAmount" aria-label={i18n.t('console.billing.otherAmount')} aria-describedby="rechargeAmountValidation" aria-invalid={amountValidation !== null} inputMode="decimal" type="text" value={selected === null ? amount : ''} onFocus={() => { if (selected !== null) { paymentOrderIdempotencyKeyRef.current = null; paymentStartIdempotencyKeyRef.current = null; pendingPaymentOrderIDRef.current = null; setSelected(null); setAmount('') } }} onChange={(event) => { paymentOrderIdempotencyKeyRef.current = null; paymentStartIdempotencyKeyRef.current = null; pendingPaymentOrderIDRef.current = null; setSelected(null); setAmount(sanitizeRechargeAmountInput(event.target.value)) }} placeholder={i18n.t('console.billing.otherAmountPlaceholder')} /><span className="recharge-selected-corner" aria-hidden="true">✓</span></label>
             </div>
             {amountValidationMessage ? <p className="recharge-amount-validation" id="rechargeAmountValidation" role="alert">{amountValidationMessage}</p> : null}
           </div>
@@ -795,6 +877,7 @@ export function BillingPage() {
   const [invoiceForm, setInvoiceForm] = useState<InvoiceForm>(() => createInvoiceForm(null, 'personal'))
   const [invoiceFormErrors, setInvoiceFormErrors] = useState<InvoiceFormErrors>({})
   const [submittingInvoice, setSubmittingInvoice] = useState(false)
+  const invoiceIdempotencyKeyRef = useRef<string | null>(null)
   const [downloadingInvoiceID, setDownloadingInvoiceID] = useState<string | null>(null)
   const invoiceDownloadLockRef = useRef(false)
   const [exportingLedger, setExportingLedger] = useState(false)
@@ -892,8 +975,7 @@ export function BillingPage() {
   useEffect(() => {
     const controller = new AbortController()
     setAnalysisState((previous) => ({ ...resourceState('loading'), data: previous.data }))
-    const startAt = dateRange[0]?.getTime()
-    const endAt = dateRange[1] ? dateRange[1].getTime() + 1 : undefined
+    const { startAt, endAt } = billingDateRangeToUtcMilliseconds(dateRange)
     void getBillingAnalysis(context, { start_at: startAt, end_at: endAt, api_key_id: apiKeyID || undefined, model: model || undefined, billing_type: billingType || undefined, department_id: departmentID || undefined, member_id: memberID || undefined, signal: controller.signal }).then((data) => {
       if (controller.signal.aborted) return
       setAnalysisState({ status: 'success', data, error: '', requestId: null })
@@ -1008,6 +1090,7 @@ export function BillingPage() {
     setInvoiceForm(createInvoiceForm(invoiceState.data, activeWorkspace.type))
     setInvoiceFormErrors({})
     setDialogStep(1)
+    invoiceIdempotencyKeyRef.current = null
     setDialogOpen(true)
   }
 
@@ -1019,6 +1102,8 @@ export function BillingPage() {
   }
 
   function updateInvoiceForm(key: keyof InvoiceForm, value: string): void {
+    // 中文：修改申请内容后必须使用新的幂等键，避免服务端把不同申请误判为同一次请求。
+    if (!submittingInvoice) invoiceIdempotencyKeyRef.current = null
     setInvoiceForm((previous) => ({ ...previous, [key]: value }))
     setInvoiceFormErrors((previous) => {
       if (!previous[key]) return previous
@@ -1051,7 +1136,10 @@ export function BillingPage() {
       invoice_type: invoiceType,
     }
     try {
-      await submitBillingInvoice(context, input, createIdempotencyKey())
+      const idempotencyKey = invoiceIdempotencyKeyRef.current ?? createIdempotencyKey('billing-invoice')
+      invoiceIdempotencyKeyRef.current = idempotencyKey
+      await submitBillingInvoice(context, input, idempotencyKey)
+      invoiceIdempotencyKeyRef.current = null
       setDialogStep(3)
       setReloadToken((value) => value + 1)
       Toast.success(t('console.billing.invoiceSubmitted'))

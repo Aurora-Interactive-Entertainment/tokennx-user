@@ -7,7 +7,7 @@ import { clearAuthTokens, getAccessToken, saveAuthTokens } from '@/auth/token-st
 import type { AuthResult } from '@/api/auth'
 import { AppStoreProvider, useAppStore } from '@/data/app-state'
 import { createAppStore } from '@/store'
-import { ApiKeysPage } from './console-account'
+import { ApiKeysPage, updateSelectedKeyIDs } from './console-account'
 
 const KEY_ID = 'key_demo_default'
 
@@ -203,6 +203,11 @@ describe('密钥管理页面', () => {
     clearAuthTokens()
     window.localStorage.clear()
     saveAuthTokens(authResult())
+  })
+
+  it('分页全选只修改当前页的选择状态', () => {
+    expect(updateSelectedKeyIDs(['page-one-key'], ['page-two-key'], true)).toEqual(['page-one-key', 'page-two-key'])
+    expect(updateSelectedKeyIDs(['page-one-key', 'page-two-key'], ['page-two-key'], false)).toEqual(['page-one-key'])
   })
 
   it('加载真实密钥列表并展示参考页核心结构', async () => {

@@ -78,6 +78,18 @@ describe('模型运行时请求', () => {
     expect(onDelta).toHaveBeenCalledWith('模型结果')
   })
 
+  it('忽略没有 data 的 SSE 保活事件，继续读取后续模型内容', async () => {
+    const onDelta = vi.fn()
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(sseResponse([
+      ': keep-alive\n\n',
+      'data: {"choices":[{"delta":{"content":"继续输出"}}]}\n\n',
+      'data: [DONE]\n\n',
+    ]))
+
+    await expect(streamChatCompletion({ ...DEFAULT_INPUT, onDelta })).resolves.toMatchObject({ content: '继续输出' })
+    expect(onDelta).toHaveBeenCalledWith('继续输出')
+  })
+
   it('从内容块中分离 thinking，并且不把思考内容混入模型回复', async () => {
     const onReasoningDelta = vi.fn()
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({

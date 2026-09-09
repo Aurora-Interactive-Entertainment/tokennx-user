@@ -57,7 +57,9 @@
     </script>
     <script>
       (() => {
-        if (window.location.pathname !== '/' && window.location.pathname !== '/home') return
+        // 中文：中英文首页都提前请求内容；文档、控制台等页面不额外请求首页接口。
+        const pathname = window.location.pathname
+        if (!/^\/(?:en\/?|home\/?)?$/.test(pathname)) return
 
         const configuredApiBase = '%VITE_API_BASE_URL%'
         const apiBase = configuredApiBase.startsWith('%') ? '' : configuredApiBase.trim().replace(/\/+$/, '')
@@ -77,10 +79,11 @@
 
           const firstCard = Array.isArray(payload.data.cards) ? payload.data.cards[0] : undefined
           const translations = firstCard?.data?.translations
-          let language = 'zh-CN'
+          const englishHomepage = /^\/en\/?$/.test(pathname)
+          let language = englishHomepage ? 'en-US' : 'zh-CN'
           try {
             const storedLanguage = window.localStorage.getItem('token-nx:locale')
-            if (storedLanguage === 'en-US') language = storedLanguage
+            if (!englishHomepage && storedLanguage === 'en-US') language = storedLanguage
           } catch {
             // Storage may be unavailable in privacy-restricted WebViews.
           }

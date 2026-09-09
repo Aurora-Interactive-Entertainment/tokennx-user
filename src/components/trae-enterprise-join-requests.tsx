@@ -18,7 +18,7 @@ import {
   type EnterpriseRequestError,
 } from "@/pages/enterprise-console-shared";
 import { formatApiTime } from "@/utils/format";
-import { deferTraeDialogClose, TraeDialog } from "./trae-dialog";
+import { TraeDialog } from "./trae-dialog";
 import { TraePagination } from "./trae-pagination";
 import { TraeTableEmpty } from "./trae-table-empty";
 import "./trae-enterprise-join-requests.css";
@@ -133,7 +133,7 @@ export function TraeEnterpriseJoinRequests({
     setReviewDialog({ mode, request });
   }
 
-  async function submitReview(input: { action: "approve" | "reject"; rejection_reason?: string }) {
+  async function submitReview(input: { action: "approve" | "reject"; rejection_reason?: string }, close: () => void) {
     if (!reviewDialog) return;
     setReviewing(true);
     setReviewError(null);
@@ -149,10 +149,10 @@ export function TraeEnterpriseJoinRequests({
           : input,
         { accessToken: getAccessToken() ?? undefined },
       );
-      setReviewDialog(null);
       setReloadToken((value) => value + 1);
       onReviewed();
       Toast.success(t(`traeEnterprise.joinRequests.${input.action}Success`));
+      close();
     } catch (reason: unknown) {
       const handled = handleError(reason);
       if (handled) setReviewError(handled);
@@ -311,11 +311,10 @@ export function TraeEnterpriseJoinRequests({
         <TraeDialog
           className="trae-confirm-dialog trae-request-review-dialog"
           title={t("traeEnterprise.joinRequests.approveTitle")}
-          onClose={() => {
-            if (!reviewing) setReviewDialog(null);
-          }}
+          closable={!reviewing}
+          onClose={() => setReviewDialog(null)}
         >
-          <div className="trae-confirm-dialog-content">
+          {(close) => <div className="trae-confirm-dialog-content">
             <p>
               {t("traeEnterprise.joinRequests.approveHint", {
                 name: reviewDialog.request.applicant_name || reviewDialog.request.applicant_user_id,
@@ -324,14 +323,14 @@ export function TraeEnterpriseJoinRequests({
             </p>
             {reviewError ? <p className="trae-request-review-error">{reviewError.message}</p> : null}
             <div className="trae-dialog-actions">
-              <button className="trae-secondary-button" type="button" disabled={reviewing} onClick={() => deferTraeDialogClose(() => setReviewDialog(null))}>
+              <button className="trae-secondary-button" type="button" disabled={reviewing} onClick={close}>
                 {t("traeEnterprise.common.cancel")}
               </button>
-              <button className="trae-primary-button" type="button" disabled={reviewing} onClick={() => void submitReview({ action: "approve" })}>
+              <button className="trae-primary-button" type="button" disabled={reviewing} onClick={() => void submitReview({ action: "approve" }, close)}>
                 {reviewing ? t("traeEnterprise.joinRequests.reviewing") : t("traeEnterprise.common.confirm")}
               </button>
             </div>
-          </div>
+          </div>}
         </TraeDialog>
       ) : null}
 
@@ -339,17 +338,16 @@ export function TraeEnterpriseJoinRequests({
         <TraeDialog
           className="trae-request-review-dialog"
           title={t("traeEnterprise.joinRequests.rejectTitle")}
-          onClose={() => {
-            if (!reviewing) setReviewDialog(null);
-          }}
+          closable={!reviewing}
+          onClose={() => setReviewDialog(null)}
         >
-          <Form<{ rejectionReason: string }>
+          {(close) => <Form<{ rejectionReason: string }>
             className="trae-dialog-form trae-request-reject-form"
             labelPosition="top"
             initValues={{ rejectionReason: "" }}
             autoScrollToError
             showValidateIcon={false}
-            onSubmit={(values) => void submitReview({ action: "reject", rejection_reason: values.rejectionReason.trim() })}
+              onSubmit={(values) => void submitReview({ action: "reject", rejection_reason: values.rejectionReason.trim() }, close)}
           >
             <p>
               {t("traeEnterprise.joinRequests.rejectHint", {
@@ -366,14 +364,14 @@ export function TraeEnterpriseJoinRequests({
             />
             {reviewError ? <p className="trae-request-review-error">{reviewError.message}</p> : null}
             <div className="trae-dialog-actions">
-              <button className="trae-secondary-button" type="button" disabled={reviewing} onClick={() => deferTraeDialogClose(() => setReviewDialog(null))}>
+              <button className="trae-secondary-button" type="button" disabled={reviewing} onClick={close}>
                 {t("traeEnterprise.common.cancel")}
               </button>
               <button className="trae-danger-button" type="submit" disabled={reviewing}>
                 {reviewing ? t("traeEnterprise.joinRequests.reviewing") : t("traeEnterprise.common.confirm")}
               </button>
             </div>
-          </Form>
+          </Form>}
         </TraeDialog>
       ) : null}
     </section>

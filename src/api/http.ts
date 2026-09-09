@@ -6,13 +6,35 @@ const REQUEST_TIMEOUT_MS = 15000
 export const AUTH_UNAUTHORIZED_STATUS = 401
 export const AUTH_INVALID_CODE = 160001
 
-export function resolveBackendBaseUrl(apiBaseUrl: string | undefined, proxyTarget: string | undefined, fallback = DEFAULT_API_BASE_URL): string {
+export function resolveBackendBaseUrl(
+  apiBaseUrl: string | undefined,
+  proxyTarget: string | undefined,
+  fallback = DEFAULT_API_BASE_URL,
+  requireHttps = false,
+): string {
   const configuredBaseUrl = apiBaseUrl?.trim() || proxyTarget?.trim() || fallback
-  return normalizeBaseUrl(configuredBaseUrl)
+  const normalized = normalizeBaseUrl(configuredBaseUrl)
+  if (requireHttps) {
+    let parsed: URL
+    try {
+      parsed = new URL(normalized)
+    } catch {
+      throw new Error('生产环境 API 地址必须是 HTTPS 绝对地址')
+    }
+    if (parsed.protocol !== 'https:' || !parsed.hostname || parsed.username || parsed.password) {
+      throw new Error('生产环境 API 地址必须使用 HTTPS，且不能包含用户名或密码')
+    }
+  }
+  return normalized
 }
 
 // 中文：开发环境允许通过代理目标配置后端地址，模型直连请求必须复用这个真实地址。
-export const BACKEND_BASE_URL = resolveBackendBaseUrl(import.meta.env.VITE_API_BASE_URL, import.meta.env.VITE_API_PROXY_TARGET)
+export const BACKEND_BASE_URL = resolveBackendBaseUrl(
+  import.meta.env.VITE_API_BASE_URL,
+  import.meta.env.VITE_API_PROXY_TARGET,
+  DEFAULT_API_BASE_URL,
+  import.meta.env.PROD,
+)
 
 // 开发环境固定使用同源请求，避免已有的绝对地址配置绕过 Vite 代理。
 export const API_BASE_URL = normalizeBaseUrl(import.meta.env.DEV ? '' : BACKEND_BASE_URL)

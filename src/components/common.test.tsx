@@ -425,7 +425,8 @@ describe('公共 Header 布局', () => {
     )
 
     appStore.dispatch({ type: 'auth/loginWithPhone/fulfilled', payload: { id: 'email-onboarding-user', display_name: '测试用户', avatar_url: '', locale: 'zh-CN', timezone: 'Asia/Shanghai', status: 'active', promt_required: true } })
-    expect(await screen.findByRole('dialog', { name: '绑定邮箱' })).toBeInTheDocument()
+    // 中文：首次打开会异步加载邮箱表单，等待真实弹窗后继续验证校验和关闭行为。
+    expect(await screen.findByRole('dialog', { name: '绑定邮箱' }, { timeout: 5000 })).toBeInTheDocument()
     const bindDialog = screen.getByRole('dialog', { name: '绑定邮箱' })
     expect(within(bindDialog).getByText('邮箱').closest('.semi-form-field-label')).toHaveClass('semi-form-field-label-required')
     expect(within(bindDialog).getByText('验证码').closest('.semi-form-field-label')).toHaveClass('semi-form-field-label-required')
@@ -689,7 +690,7 @@ describe('公共 Header 布局', () => {
     await user.click(within(supportDialog).getByRole('tab', { name: /通知/ }))
 
     expect(within(supportDialog).getByRole('heading', { name: '首次登录成功' })).toBeInTheDocument()
-    expect(within(supportDialog).getByText('这是你第一次登录 Token NX，欢迎回来。')).toBeInTheDocument()
+    expect(await within(supportDialog).findByText('这是你第一次登录 Token NX，欢迎回来。')).toBeInTheDocument()
   })
 
   it('关闭客服面板后会同步收起悬浮入口', async () => {

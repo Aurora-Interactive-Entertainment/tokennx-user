@@ -162,10 +162,8 @@ import "./account-settings-modal.css";
 import "./support-widget.css";
 import { appToast } from "./app-toast";
 import { AccountDeletionFlow } from "./account-deletion-flow";
-import { BindEmailDialog } from "./bind-email-dialog";
 import { workspaceContextFor } from "@/utils/workspace";
 import { apiTimeToDate, formatApiTime } from "@/utils/format";
-import { MarkdownContent } from "./markdown-content";
 import { VideoPricingPopover } from "./video-pricing-popover";
 import {
   publishProfileUpdate,
@@ -175,6 +173,17 @@ import {
 const LazyProfileContactDialog = lazy(() =>
   import("./profile-contact-dialog").then((module) => ({
     default: module.ProfileContactDialog,
+  })),
+);
+// 中文：邮箱引导和通知正文仅在打开时加载，避免首页预先引入表单与 Markdown 依赖。
+const LazyBindEmailDialog = lazy(() =>
+  import("./bind-email-dialog").then((module) => ({
+    default: module.BindEmailDialog,
+  })),
+);
+const LazyNotificationMarkdown = lazy(() =>
+  import("./markdown-content").then((module) => ({
+    default: module.MarkdownContent,
   })),
 );
 import manuscriptCustomerQr from "@/assets/figma-home/footer-qr-customer.png";
@@ -2122,6 +2131,7 @@ export function PublicHeader({
     useState<AccountOverviewResponse | null>(null);
   const [accountSettingsOpen, setAccountSettingsOpen] = useState(false);
   const [bindEmailOpen, setBindEmailOpen] = useState(false);
+  const [bindEmailRequested, setBindEmailRequested] = useState(false);
   const headerRef = useRef<HTMLElement | null>(null);
   const billingOverviewCacheRef = useRef(
     new Map<string, BillingOverviewCacheEntry>(),
@@ -2187,6 +2197,7 @@ export function PublicHeader({
       return;
     shownLoginSequenceRef.current = auth.loginSequence;
     if (hasSeenEmailOnboarding(user.id)) return;
+    setBindEmailRequested(true);
     setBindEmailOpen(true);
   }, [auth.loginSequence, auth.status, auth.user, currentPath]);
   const closeBindEmailDialog = (): void => {
@@ -2639,16 +2650,21 @@ export function PublicHeader({
         visible={accountSettingsOpen}
         onClose={() => setAccountSettingsOpen(false)}
       />
-      <BindEmailDialog
-        visible={bindEmailOpen}
-        onClose={closeBindEmailDialog}
-        onAuthFailure={() => {
-          closeBindEmailDialog();
-          dispatch(invalidateAuth());
-          navigate("/", { replace: true });
-        }}
-        onBound={closeBindEmailDialog}
-      />
+      {/* 中文：首次打开后保留挂载，让原有关闭动画和表单重置生命周期继续生效。 */}
+      {bindEmailRequested ? (
+        <Suspense fallback={null}>
+          <LazyBindEmailDialog
+            visible={bindEmailOpen}
+            onClose={closeBindEmailDialog}
+            onAuthFailure={() => {
+              closeBindEmailDialog();
+              dispatch(invalidateAuth());
+              navigate("/", { replace: true });
+            }}
+            onBound={closeBindEmailDialog}
+          />
+        </Suspense>
+      ) : null}
     </>
   );
 }
@@ -5057,11 +5073,19 @@ export function ManuscriptSupportWidget() {
                     </time>
                   </header>
                   <h2>{selectedNotification.title}</h2>
-                  <MarkdownContent
-                    content={selectedNotification.content || ""}
-                    className="manuscript-support-notification-markdown"
-                    enhancedCodeBlocks
-                  />
+                  <Suspense
+                    fallback={
+                      <div className="manuscript-support-notifications-state" role="status">
+                        {t("support.notificationsLoading")}
+                      </div>
+                    }
+                  >
+                    <LazyNotificationMarkdown
+                      content={selectedNotification.content || ""}
+                      className="manuscript-support-notification-markdown"
+                      enhancedCodeBlocks
+                    />
+                  </Suspense>
                 </article>
               ) : notificationLoading ? (
                 <div className="manuscript-support-notifications-state">

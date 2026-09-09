@@ -11,6 +11,7 @@ import { normalizeQuickstartLanguage, normalizeQuickstartProtocol, QUICKSTART_AP
 import openAiIcon from '@/assets/svg/OpenAl.svg'
 import claudeIcon from '@/assets/svg/Claudecode.svg'
 import geminiIcon from '@/assets/svg/gemini.svg'
+import './quickstart-guide.css'
 
 type QuickstartStep = 0 | 1 | 2 | 3
 type QuickstartApiMode = 'chat' | 'responses'

@@ -1,0 +1,948 @@
+/* 中文：快速接入页样式跟随组件加载，避免页面专属规则进入全局样式。 */
+/* PDF quick-start guide: isolated styles keep the redesigned flow independent from the legacy guide. */
+.quickstart-pdf-page {
+  width: 100%;
+  margin: 0;
+  padding: 32px 0;
+  /* 中文：快速接入页使用黑白灰中性色，避免与全局主题色混用。 */
+  --quickstart-neutral-accent: var(--text-primary);
+  --quickstart-neutral-border: var(--border-strong);
+  --quickstart-neutral-soft: color-mix(
+    in srgb,
+    var(--text-primary) 8%,
+    transparent
+  );
+}
+.quickstart-pdf-intro {
+  margin: 4px 0 20px;
+}
+.quickstart-pdf-intro strong {
+  color: var(--text-primary);
+  font-size: 22px;
+  line-height: 1.3;
+}
+.quickstart-pdf-intro p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+.quickstart-pdf-intro a {
+  color: var(--quickstart-neutral-accent);
+  font-weight: 600;
+}
+.quickstart-pdf-intro a:hover,
+.quickstart-pdf-intro a:focus-visible,
+.quickstart-pdf-intro a:active {
+  color: var(--quickstart-neutral-accent);
+}
+.quickstart-pdf-steps {
+  display: grid;
+  gap: 12px;
+}
+.quickstart-pdf-step {
+  overflow: hidden;
+  border: 1px solid var(--border-default);
+  border-radius: 9px;
+  background: var(--bg-panel);
+  box-shadow: 0 3px 14px rgb(0 0 0 / 10%);
+  transition:
+    border-color 0.24s ease,
+    box-shadow 0.24s ease;
+}
+.quickstart-pdf-step.is-open {
+  border-color: var(--quickstart-neutral-border);
+  box-shadow: 0 8px 26px rgb(0 0 0 / 14%);
+}
+.quickstart-pdf-step-header {
+  display: flex;
+  align-items: center;
+  min-height: 66px;
+  padding: 0 22px;
+  gap: 14px;
+}
+.quickstart-pdf-step-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex: 1;
+  min-width: 0;
+  height: 66px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+.quickstart-pdf-step-accordion-button {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 11px;
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--bg-base-soft) 86%, var(--text-primary));
+  cursor: pointer;
+  transition:
+    background 0.2s ease,
+    color 0.2s ease,
+    transform 0.2s ease;
+}
+/* A smaller, softly weighted indicator keeps the accordion control calm beside the title. */
+.quickstart-pdf-step-accordion-button::before {
+  width: 10px;
+  height: 7px;
+  background: currentColor;
+  border-radius: 2px;
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+  content: "";
+  filter: drop-shadow(0 0 0.2px currentColor);
+  transition: transform 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.quickstart-pdf-step-header.is-open
+  .quickstart-pdf-step-accordion-button::before {
+  transform: scaleY(-1);
+}
+.quickstart-pdf-step-accordion-button:hover {
+  background: color-mix(in srgb, var(--bg-base-soft) 72%, var(--text-primary));
+  transform: translateY(-1px);
+}
+.quickstart-pdf-step-accordion-button:focus-visible {
+  outline: 2px solid var(--quickstart-neutral-border);
+  outline-offset: 2px;
+}
+.quickstart-pdf-step-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.quickstart-pdf-step-title em {
+  flex: 0 0 48px;
+  color: var(--text-primary);
+  font-size: 16px;
+  font-style: normal;
+  font-weight: 700;
+  white-space: nowrap;
+  transition: color 0.2s ease;
+}
+.quickstart-pdf-step-title strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: color 0.2s ease;
+}
+.quickstart-pdf-step-header.is-open .quickstart-pdf-step-title em {
+  color: var(--quickstart-neutral-accent);
+  font-size: 18px;
+}
+.quickstart-pdf-step-header.is-open .quickstart-pdf-step-title strong {
+  color: var(--quickstart-neutral-accent);
+  font-size: 18px;
+}
+.quickstart-pdf-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 4px;
+  color: var(--text-tertiary);
+  font-size: 12px;
+  font-weight: 400;
+  white-space: nowrap;
+}
+.quickstart-pdf-status i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #9ba1ad;
+}
+.quickstart-pdf-status i.is-complete {
+  background: #53c78b;
+}
+.quickstart-pdf-step-help {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--text-tertiary);
+  font-size: 13px;
+  white-space: nowrap;
+}
+.quickstart-pdf-step-help a {
+  color: var(--quickstart-neutral-accent);
+  font-weight: 600;
+  text-underline-offset: 3px;
+}
+.quickstart-pdf-step-help a:hover,
+.quickstart-pdf-step-help a:focus-visible,
+.quickstart-pdf-step-help a:active {
+  color: var(--quickstart-neutral-accent);
+}
+.quickstart-pdf-step-panel {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    grid-template-rows 0.42s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.24s ease;
+}
+.quickstart-pdf-step-panel.is-open {
+  grid-template-rows: 1fr;
+  opacity: 1;
+  pointer-events: auto;
+}
+.quickstart-pdf-step-panel > div {
+  min-height: 0;
+  overflow: hidden;
+  border-top: 1px solid transparent;
+  padding: 0 22px;
+  transition: border-color 0.25s ease;
+}
+.quickstart-pdf-step-panel.is-open > div {
+  border-top-color: var(--border-subtle);
+  padding-top: 22px;
+  padding-bottom: 24px;
+}
+.quickstart-pdf-description {
+  max-width: 760px;
+  margin: 0 0 16px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.65;
+}
+.quickstart-pdf-search.semi-input-wrapper {
+  width: min(340px, 100%) !important;
+  max-width: 100%;
+  min-width: 0;
+  flex: 0 1 460px;
+  margin-bottom: 14px;
+}
+.quickstart-pdf-key-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border-subtle);
+  border-radius: 7px;
+  background: var(--bg-panel);
+}
+.quickstart-pdf-key-table {
+  width: 100%;
+  min-width: 620px;
+  border-collapse: collapse;
+  color: var(--text-default);
+  font-size: 13px;
+}
+.quickstart-pdf-key-table th {
+  padding: 11px 14px;
+  background: var(--bg-base-soft);
+  color: var(--table-header-color);
+  font-size: 13px;
+  font-weight: 500;
+  text-align: left;
+}
+.quickstart-pdf-key-table td {
+  padding: 13px 14px;
+  border-top: 1px solid var(--border-subtle);
+  vertical-align: middle;
+}
+.quickstart-pdf-key-table td:nth-child(1) {
+  width: 23%;
+}
+.quickstart-pdf-key-table td:nth-child(2) {
+  width: 32%;
+}
+.quickstart-pdf-key-table td:nth-child(3) {
+  width: 31%;
+}
+.quickstart-pdf-key-table td:last-child,
+.quickstart-pdf-key-table th:last-child {
+  width: 14%;
+  text-align: right;
+}
+.quickstart-pdf-key-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+}
+/* 中文：应用、复制按钮使用与用量明细一致的纯文字链接样式。 */
+.quickstart-pdf-key-actions .semi-button:not(.semi-button-disabled) {
+  border: 0;
+  color: var(--quickstart-neutral-accent);
+  background: transparent;
+  box-shadow: none;
+  font-weight: 400;
+}
+.quickstart-pdf-key-actions .semi-button:hover:not(.semi-button-disabled),
+.quickstart-pdf-key-actions
+  .semi-button:focus-visible:not(.semi-button-disabled),
+.quickstart-pdf-key-actions .semi-button:active:not(.semi-button-disabled) {
+  color: var(--quickstart-neutral-accent);
+  background: transparent;
+}
+.quickstart-pdf-key-actions .semi-button.semi-button-disabled {
+  color: var(--text-tertiary);
+}
+.quickstart-pdf-key-table code {
+  color: var(--text-secondary);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+}
+.quickstart-pdf-table-state {
+  height: 240px;
+  padding: 0 !important;
+  background: var(--bg-panel);
+  text-align: center;
+}
+.quickstart-pdf-empty {
+  display: grid;
+  place-items: center;
+  gap: 7px;
+  color: var(--text-secondary);
+}
+.quickstart-pdf-empty strong {
+  color: var(--text-primary);
+  font-size: 14px;
+}
+.quickstart-pdf-empty-icon {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  margin-bottom: 3px;
+  border-radius: 50%;
+  background: var(--quickstart-neutral-soft);
+  color: var(--quickstart-neutral-accent);
+}
+.quickstart-pdf-outline-button,
+.quickstart-pdf-cancel-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 0 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.2s ease;
+  cursor: pointer;
+}
+.quickstart-pdf-outline-button {
+  margin-top: 8px;
+  border: 1px solid var(--quickstart-neutral-border);
+  color: var(--text-primary);
+}
+/* 中文：立即创建按钮按主题反转黑白，确保两种主题下都有足够对比度。 */
+html[data-theme="light"] .quickstart-pdf-outline-button,
+html[data-theme="light"] .quickstart-pdf-outline-button:visited {
+  border-color: #17181b;
+  color: #fff;
+  background: #17181b;
+}
+html[data-theme="light"] .quickstart-pdf-outline-button:hover,
+html[data-theme="light"] .quickstart-pdf-outline-button:focus-visible,
+html[data-theme="light"] .quickstart-pdf-outline-button:active {
+  border-color: #303238;
+  color: #fff;
+  background: #303238;
+}
+html[data-theme="dark"] .quickstart-pdf-outline-button,
+html[data-theme="dark"] .quickstart-pdf-outline-button:visited {
+  border-color: #fff;
+  color: #17181b;
+  background: #fff;
+}
+html[data-theme="dark"] .quickstart-pdf-outline-button:hover,
+html[data-theme="dark"] .quickstart-pdf-outline-button:focus-visible,
+html[data-theme="dark"] .quickstart-pdf-outline-button:active {
+  border-color: #f2f2f2;
+  color: #17181b;
+  background: #f2f2f2;
+}
+.quickstart-pdf-cancel-button {
+  /* 中文：下一步按钮按主题使用高对比度配色，确保文字清晰可读。 */
+  width: auto;
+  min-width: 76px;
+  height: 34px;
+  min-height: 34px;
+  margin-top: 30px;
+  padding: 0 14px;
+  border: 1px solid var(--color-border-neutral-l2);
+  border-radius: var(--radius-6, 6px);
+  background: var(--color-bg-base-tertiary);
+  color: var(--color-text-default);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 20px;
+}
+html[data-theme="light"] .quickstart-pdf-cancel-button {
+  border-color: #17181b;
+  background: #17181b;
+  color: #fff;
+}
+html[data-theme="light"] .quickstart-pdf-cancel-button:hover:not(:disabled),
+html[data-theme="light"] .quickstart-pdf-cancel-button:focus-visible:not(:disabled) {
+  border-color: #303238;
+  background: #303238;
+  color: #fff;
+}
+html[data-theme="dark"] .quickstart-pdf-cancel-button {
+  border-color: #fff;
+  background: #fff;
+  color: #17181b;
+}
+html[data-theme="dark"] .quickstart-pdf-cancel-button:hover:not(:disabled),
+html[data-theme="dark"] .quickstart-pdf-cancel-button:focus-visible:not(:disabled) {
+  border-color: #f2f2f2;
+  background: #f2f2f2;
+  color: #17181b;
+}
+.quickstart-pdf-cancel-button:hover:not(:disabled),
+.quickstart-pdf-cancel-button:focus-visible:not(:disabled) {
+  border-color: var(--color-border-neutral-l3);
+  background: var(--color-bg-overlay-l3);
+  color: var(--color-text-default-hover);
+}
+.quickstart-pdf-model-grid {
+  display: grid;
+  height: 372px;
+  max-height: 372px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-rows: max-content;
+  align-content: start;
+  gap: 12px;
+  overflow-y: auto;
+  padding-right: 6px;
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
+}
+.quickstart-pdf-model-card {
+  position: relative;
+  display: block;
+  min-width: 0;
+  min-height: 116px;
+  padding: 20px 24px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  background: var(--bg-base-soft);
+  color: var(--text-default);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease;
+}
+.quickstart-pdf-model-card:hover {
+  border-color: var(--quickstart-neutral-border);
+  transform: none;
+}
+.quickstart-pdf-model-card.is-selected {
+  border-color: var(--quickstart-neutral-border);
+  background: var(--quickstart-neutral-soft);
+}
+.quickstart-pdf-model-icon {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border-radius: 9px;
+  background: #344dce;
+  color: #fff;
+  font-size: 17px;
+  font-weight: 700;
+}
+.quickstart-pdf-model-icon.tone-1 {
+  background: #0b8c82;
+}
+.quickstart-pdf-model-icon.tone-2 {
+  background: #b45a30;
+}
+.quickstart-pdf-model-icon.tone-3 {
+  background: #626873;
+}
+.quickstart-pdf-model-copy {
+  display: grid;
+  min-width: 0;
+  gap: 6px;
+  padding-top: 1px;
+}
+.quickstart-pdf-model-heading {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 14px;
+  padding-right: 110px;
+}
+.quickstart-pdf-model-copy strong {
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: 17px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.quickstart-pdf-model-copy small {
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.quickstart-pdf-model-copy > span:not(.quickstart-pdf-model-heading) {
+  color: var(--text-tertiary);
+  font-size: 13px;
+}
+.quickstart-pdf-model-card > b {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  max-width: 100px;
+  overflow: hidden;
+  padding: 2px 10px;
+  border-radius: 999px;
+  color: #c67a1f;
+  background: #fff7e6;
+  font-size: 13px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.quickstart-pdf-selected-model {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr);
+  align-items: center;
+  min-height: 76px;
+  margin-top: 22px;
+  padding: 0 34px;
+  border: 0;
+  border-radius: 0;
+  background: var(--bg-base-soft);
+  font-size: 14px;
+}
+.quickstart-pdf-selected-model-label {
+  color: var(--text-secondary);
+}
+.quickstart-pdf-selected-model-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.quickstart-pdf-selected-model-icon {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  place-items: center;
+  border-radius: 6px;
+  background: #202124;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+}
+.quickstart-pdf-selected-model-value strong {
+  color: var(--text-primary);
+  font-size: 17px;
+}
+.quickstart-pdf-selected-model-value > span:last-child {
+  overflow: hidden;
+  color: var(--text-tertiary);
+  font-family: ui-monospace, monospace;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.quickstart-pdf-tabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.quickstart-pdf-tabs button {
+  min-height: 32px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+  transition:
+    color 0.2s ease,
+    background 0.2s ease;
+}
+.quickstart-pdf-tabs button:hover {
+  color: var(--text-primary);
+}
+.quickstart-pdf-tabs button.is-active {
+  background: var(--quickstart-neutral-soft);
+  color: var(--quickstart-neutral-accent);
+  font-weight: 600;
+}
+.quickstart-pdf-mode-tabs {
+  gap: 8px;
+}
+.quickstart-pdf-mode-tabs button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  min-width: 146px;
+  min-height: 44px;
+  padding: 0 18px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  background: var(--bg-base-soft);
+  color: var(--text-secondary);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.quickstart-pdf-protocol-button {
+  position: static;
+  padding-inline: 18px !important;
+}
+.quickstart-pdf-protocol-button > span {
+  display: block;
+  width: auto;
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* 中文：第三步选项选中态改为实底反色（浅色黑底白字、深色白底黑字），选中更醒目。 */
+.quickstart-pdf-mode-tabs button.is-active {
+  border-color: var(--text-primary);
+  background: var(--text-primary);
+  color: var(--bg-base-soft);
+}
+.quickstart-pdf-api-selector {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 50px;
+  margin-bottom: 18px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+.quickstart-pdf-protocol-tabs,
+.quickstart-pdf-api-mode-tabs {
+  flex: 0 0 auto;
+  min-width: 0;
+  max-width: 100%;
+  overflow: visible;
+}
+.quickstart-pdf-protocol-tabs button {
+  flex: 0 0 auto;
+  min-width: max-content;
+}
+.quickstart-pdf-api-mode-tabs button {
+  flex: 0 0 auto;
+  min-width: max-content;
+}
+.quickstart-pdf-protocol-icon {
+  position: static;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  margin-right: 9px;
+  object-fit: contain;
+  transform: none;
+}
+.quickstart-pdf-protocol-button.protocol-openai .quickstart-pdf-protocol-icon {
+  filter: brightness(0) invert(1);
+}
+html[data-theme="light"] .quickstart-pdf-protocol-button.protocol-openai .quickstart-pdf-protocol-icon {
+  filter: none;
+}
+/* 中文：选中后背景反色，OpenAI 黑白图标需对应反转，保证在实底上可见。 */
+html[data-theme="light"] .quickstart-pdf-protocol-button.protocol-openai.is-active .quickstart-pdf-protocol-icon {
+  filter: brightness(0) invert(1);
+}
+html[data-theme="dark"] .quickstart-pdf-protocol-button.protocol-openai.is-active .quickstart-pdf-protocol-icon {
+  filter: none;
+}
+html[data-theme="dark"] .quickstart-pdf-protocol-button:not(.is-active) {
+  border-color: #3b3d45;
+  background: #202126;
+  color: #d6d8e0;
+}
+html[data-theme="dark"] .quickstart-pdf-protocol-button:not(.is-active):hover,
+html[data-theme="dark"] .quickstart-pdf-api-mode-tabs button:not(.is-active):hover {
+  border-color: #686b78;
+  background: #292b33;
+  color: #fff;
+}
+html[data-theme="dark"] .quickstart-pdf-api-mode-tabs button:not(.is-active) {
+  border-color: #3b3d45;
+  background: #202126;
+  color: #d6d8e0;
+}
+.quickstart-pdf-language-tabs button {
+  border-radius: 0;
+  background: transparent !important;
+  color: var(--text-secondary);
+}
+.quickstart-pdf-language-tabs button.is-active {
+  position: relative;
+  color: var(--text-primary);
+}
+.quickstart-pdf-language-tabs button.is-active::after {
+  position: absolute;
+  right: 8px;
+  bottom: 0;
+  left: 8px;
+  height: 2px;
+  background: var(--text-primary);
+  content: "";
+}
+.quickstart-pdf-code-hint {
+  margin: 0 0 10px;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+.quickstart-pdf-code-hint code {
+  color: #4264c7;
+  background: #e8efff;
+  padding: 3px 8px;
+  border-radius: 3px;
+}
+.quickstart-pdf-code-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 10px;
+}
+.quickstart-pdf-code-heading .quickstart-pdf-code-hint {
+  margin-bottom: 0;
+}
+.quickstart-pdf-doc-link {
+  flex: 0 0 auto;
+  color: var(--quickstart-neutral-accent);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  text-underline-offset: 3px;
+}
+.quickstart-pdf-doc-link:hover,
+.quickstart-pdf-doc-link:focus-visible,
+.quickstart-pdf-doc-link:active {
+  color: var(--quickstart-neutral-accent);
+  text-decoration: underline;
+}
+.quickstart-pdf-code-shell {
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+  border-radius: 7px;
+  background: var(--bg-base-soft);
+}
+.quickstart-pdf-code-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 46px;
+  padding: 6px 10px 6px 12px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.quickstart-pdf-language-tabs button {
+  min-width: 78px;
+  min-height: 28px;
+  padding: 0 10px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.quickstart-pdf-code-toolbar .semi-button {
+  min-height: 36px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 5px;
+  color: var(--text-secondary);
+  background: transparent;
+  /* 中文：复制按钮文字与代码工具栏保持紧凑一致。 */
+  font-size: 13px;
+}
+.quickstart-pdf-code-toolbar .semi-button:hover {
+  color: var(--text-secondary);
+  background: var(--bg-panel-hover);
+}
+.quickstart-pdf-code-toolbar .semi-button .semi-icon {
+  color: currentColor;
+}
+.quickstart-pdf-code-shell pre {
+  overflow: auto;
+  min-height: 220px;
+  margin: 0;
+  padding: 18px;
+  color: #ccd3e5;
+  font:
+    13px/1.75 ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+  white-space: pre;
+}
+.quickstart-code-line {
+  display: block;
+  min-height: 1.75em;
+}
+.quickstart-code-token.is-url {
+  color: #b8c1cf;
+}
+.quickstart-code-token.is-string {
+  color: #7ed89d;
+}
+.quickstart-code-token.is-flag {
+  color: #7ed89d;
+}
+.quickstart-code-token.is-keyword {
+  color: #a7b8ff;
+  font-weight: 600;
+}
+.quickstart-code-token.is-number {
+  color: #f2b477;
+}
+html[data-theme="light"] .quickstart-pdf-step {
+  background: #fff;
+  border-color: #e5e7eb;
+  box-shadow: 0 3px 12px rgb(31 35 41 / 5%);
+}
+html[data-theme="light"] .quickstart-pdf-step.is-open {
+  border-color: var(--quickstart-neutral-border);
+  box-shadow: 0 8px 26px rgb(31 35 41 / 9%);
+}
+html[data-theme="light"] .quickstart-pdf-key-table th,
+html[data-theme="light"] .quickstart-pdf-model-card,
+html[data-theme="light"] .quickstart-pdf-selected-model,
+html[data-theme="light"] .quickstart-pdf-code-shell {
+  background: #f7f8fa;
+}
+html[data-theme="light"] .quickstart-pdf-step-accordion-button {
+  background: #f1f2f5;
+}
+html[data-theme="light"] .quickstart-pdf-code-toolbar .semi-button,
+html[data-theme="light"] .quickstart-pdf-code-toolbar .semi-button:hover {
+  color: #555b65;
+}
+html[data-theme="light"] .quickstart-pdf-code-toolbar .semi-button:hover {
+  background: #f0f1f3;
+}
+html[data-theme="light"] .quickstart-pdf-code-shell pre {
+  color: #252a34;
+}
+html[data-theme="light"] .quickstart-code-token.is-url {
+  color: #5c6675;
+}
+html[data-theme="light"] .quickstart-code-token.is-string,
+html[data-theme="light"] .quickstart-code-token.is-flag {
+  color: #3f9c62;
+}
+html[data-theme="light"] .quickstart-code-token.is-keyword {
+  color: #3b54bd;
+}
+html[data-theme="light"] .quickstart-code-token.is-number {
+  color: #c57935;
+}
+@media (max-width: 720px) {
+  .quickstart-pdf-page {
+    padding: 32px;
+  }
+  .quickstart-pdf-intro {
+    display: block;
+    margin-top: 0;
+  }
+  .quickstart-pdf-intro p {
+    margin-top: 8px;
+  }
+  .quickstart-pdf-step-header {
+    min-height: 58px;
+    padding-inline: 14px;
+  }
+  .quickstart-pdf-step-toggle {
+    height: 58px;
+  }
+  .quickstart-pdf-step-title {
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .quickstart-pdf-step-title em {
+    flex-basis: auto;
+    font-size: 14px;
+  }
+  .quickstart-pdf-step-title strong {
+    max-width: min(48vw, 220px);
+    font-size: 14px;
+  }
+  .quickstart-pdf-step-header.is-open .quickstart-pdf-step-title em {
+    font-size: 16px;
+  }
+  .quickstart-pdf-step-header.is-open .quickstart-pdf-step-title strong {
+    font-size: 16px;
+  }
+  .quickstart-pdf-status {
+    flex-basis: 100%;
+    margin-left: 0;
+    font-size: 11px;
+  }
+  .quickstart-pdf-step-help {
+    display: inline-flex;
+    font-size: 12px;
+  }
+  .quickstart-pdf-step-panel > div {
+    padding-inline: 14px;
+  }
+  .quickstart-pdf-step-panel.is-open > div {
+    padding-top: 16px;
+    padding-bottom: 18px;
+  }
+  .quickstart-pdf-model-grid {
+    grid-template-columns: 1fr;
+  }
+  .quickstart-pdf-code-shell pre {
+    min-height: 180px;
+    padding: 14px;
+  }
+  .quickstart-pdf-api-selector {
+    align-items: center;
+    gap: 8px;
+  }
+  .quickstart-pdf-protocol-tabs,
+  .quickstart-pdf-api-mode-tabs {
+    width: max-content;
+  }
+  .quickstart-pdf-protocol-tabs {
+    flex: 0 0 auto;
+  }
+  .quickstart-pdf-protocol-tabs button {
+    flex: 0 0 auto;
+    min-width: max-content;
+  }
+  .quickstart-pdf-api-mode-tabs {
+    flex: 0 0 auto;
+  }
+  .quickstart-pdf-api-mode-tabs button {
+    flex: 0 0 auto;
+    min-width: max-content;
+  }
+  .quickstart-pdf-code-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+}
+
+/* 中文：第三步 API 选择器在中等宽度下允许换行，避免三组卡片挤压代码区域。 */
+@media (min-width: 721px) and (max-width: 980px) {
+  .quickstart-pdf-api-selector {
+    align-items: stretch;
+    flex-direction: row;
+  }
+  .quickstart-pdf-protocol-tabs,
+  .quickstart-pdf-api-mode-tabs {
+    width: max-content;
+  }
+}
+

@@ -21,7 +21,7 @@ import {
 } from "@/pages/enterprise-console-shared";
 import { formatApiTime } from "@/utils/format";
 import { startOfLocalDay } from "@/utils/date-range";
-import { deferTraeDialogClose, TraeDialog } from "./trae-dialog";
+import { TraeDialog } from "./trae-dialog";
 import { TraePagination } from "./trae-pagination";
 import { TraeTableEmpty } from "./trae-table-empty";
 import "./trae-date-picker.css";
@@ -169,7 +169,7 @@ export function TraeEnterpriseInvitations({
     return invitation.role_name || roles.find((role) => role.code === invitation.role)?.name || invitation.role || "--";
   }
 
-  async function submitCreate(values: CreateInvitationValues) {
+  async function submitCreate(values: CreateInvitationValues, close: () => void) {
     if (!roles.some((role) => role.code === values.role)) {
       setCreateError({ message: t("traeEnterprise.inviteList.roleUnavailable"), requestId: null });
       return;
@@ -190,11 +190,11 @@ export function TraeEnterpriseInvitations({
         { role: values.role || defaultRole, max_uses: maxUses, expires_at: expiresAt, department_id: values.departmentId },
         { accessToken: getAccessToken() ?? undefined },
       );
-      onCreateOpenChange(false);
       setPage(1);
       setStatus("all");
       setReloadToken((value) => value + 1);
       Toast.success(t("traeEnterprise.inviteList.createSuccess"));
+      close();
     } catch (reason: unknown) {
       const handled = handleError(reason);
       if (handled) setCreateError(handled);
@@ -330,15 +330,16 @@ export function TraeEnterpriseInvitations({
         <TraeDialog
           className="trae-invitation-create-dialog"
           title={t("traeEnterprise.inviteList.createTitle")}
-          onClose={() => { if (!creating) onCreateOpenChange(false); }}
+          closable={!creating}
+          onClose={() => onCreateOpenChange(false)}
         >
-          <Form<CreateInvitationValues>
+          {(close) => <Form<CreateInvitationValues>
             className="trae-dialog-form trae-invitation-create-form"
             labelPosition="top"
             initValues={{ role: defaultRole, maxUses: 10, expiresAt: undefined, departmentId: "" }}
             autoScrollToError
             showValidateIcon={false}
-            onSubmit={(values) => void submitCreate(values)}
+            onSubmit={(values) => void submitCreate(values, close)}
           >
             <div className="trae-invitation-intro">
               <strong>{t("traeEnterprise.inviteList.createHeading")}</strong>
@@ -380,10 +381,10 @@ export function TraeEnterpriseInvitations({
             <p className="trae-invitation-form-hint">{t("traeEnterprise.inviteList.roleHint")}</p>
             {createError ? <p className="trae-request-review-error">{createError.message}</p> : null}
             <div className="trae-dialog-actions">
-              <button className="trae-secondary-button" type="button" disabled={creating} onClick={() => deferTraeDialogClose(() => onCreateOpenChange(false))}>{t("traeEnterprise.common.cancel")}</button>
+              <button className="trae-secondary-button" type="button" disabled={creating} onClick={close}>{t("traeEnterprise.common.cancel")}</button>
               <button className="trae-primary-button" type="submit" disabled={creating || roles.length === 0}>{creating ? t("traeEnterprise.inviteList.creating") : t("traeEnterprise.inviteList.createButton")}</button>
             </div>
-          </Form>
+          </Form>}
         </TraeDialog>
       ) : null}
 
@@ -393,14 +394,14 @@ export function TraeEnterpriseInvitations({
           title={t("traeEnterprise.inviteList.usageTitle")}
           onClose={() => setDetailInvitation(null)}
         >
-          <div className="trae-invitation-usage-content">
+          {(close) => <div className="trae-invitation-usage-content">
             <div className="trae-invitation-usage-summary">
               <div><span>{t("traeEnterprise.inviteList.used")}</span><strong>{invitationUsed(detailInvitation)}</strong></div>
               <div><span>{t("traeEnterprise.inviteList.available")}</span><strong>{Math.max(0, detailInvitation.max_uses - detailInvitation.used_count)}</strong></div>
             </div>
             {usageLoading ? <div className="trae-request-state"><span className="console-loading-spinner" />{t("traeEnterprise.inviteList.loading")}</div> : usageError ? <EnterpriseError message={usageError.message} requestId={usageError.requestId} onRetry={() => setDetailInvitation({ ...detailInvitation })} /> : usages.length === 0 ? <div className="trae-invitation-no-usage"><strong>{t("traeEnterprise.inviteList.noUsage")}</strong><span>{t("traeEnterprise.inviteList.noUsageHint")}</span></div> : <div className="trae-invitation-usage-list">{usages.map((usage) => <div key={usage.member_id ?? usage.user_id}><span><strong>{usage.user_name || usage.user_id}</strong><small>{usage.user_id}</small></span><time>{formatApiTime(usage.joined_at)}</time></div>)}</div>}
-            <div className="trae-dialog-actions"><button className="trae-primary-button" type="button" onClick={() => deferTraeDialogClose(() => setDetailInvitation(null))}>{t("traeEnterprise.common.confirm")}</button></div>
-          </div>
+            <div className="trae-dialog-actions"><button className="trae-primary-button" type="button" onClick={close}>{t("traeEnterprise.common.confirm")}</button></div>
+          </div>}
         </TraeDialog>
       ) : null}
     </section>

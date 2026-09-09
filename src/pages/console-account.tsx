@@ -136,6 +136,19 @@ const API_KEY_USAGE_WARNING_THRESHOLD = 80;
 const API_KEY_PAGE_SIZE = 10;
 const PERSONAL_USAGE_MANAGEMENT_PATH = "/console/usage?tab=management";
 
+// 中文：分页批量选择只增删当前页，保留用户在其他页面已经选中的密钥。
+export function updateSelectedKeyIDs(
+  selectedIDs: string[],
+  pageIDs: string[],
+  checked: boolean,
+): string[] {
+  const pageIDSet = new Set(pageIDs);
+  if (checked) {
+    return Array.from(new Set([...selectedIDs, ...pageIDs]));
+  }
+  return selectedIDs.filter((id) => !pageIDSet.has(id));
+}
+
 const EMPTY_SUBSCRIPTION_MODELS: SubscriptionModelsState = {
   loading: false,
   error: "",
@@ -1209,7 +1222,13 @@ export function ApiKeysPage({
   }
 
   function toggleAllRows(checked: boolean): void {
-    setSelectedKeyIDs(checked ? rows.map((row) => row.id) : []);
+    setSelectedKeyIDs((previous) =>
+      updateSelectedKeyIDs(
+        previous,
+        rows.map((row) => row.id),
+        checked,
+      ),
+    );
   }
 
   function openBulkAction(type: ApiKeyBulkAction["type"]): void {

@@ -11,7 +11,8 @@ import i18n from '@/i18n'
 import { setThemeMode } from '@/theme'
 import { AppLoadingScreen, LoginDialog, LoginRequiredAction } from '@/components/common'
 import { MOCK_SUPPORT_REPLY_DELAY_MS } from '@/components/support-chat'
-import { HomePage, LoginPage, ModelsPublicPage } from './public'
+import { LoginPage, ModelsPublicPage } from './public'
+import { HomePage } from './home'
 
 function apiResponse(data: unknown, status = 200, code = 0, msg = 'success'): Response {
   return new Response(JSON.stringify({ code, msg, data }), {

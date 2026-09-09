@@ -1,5 +1,5 @@
 import { fetchAuthenticatedJson, fetchAuthenticatedResponse } from './authenticated'
-import { ApiError, isApiError, type FetchJsonOptions } from './http'
+import { API_BASE_URL, BACKEND_BASE_URL, ApiError, isApiError, type FetchJsonOptions } from './http'
 import type { ApiTimestamp } from '@/utils/format'
 import i18n from '@/i18n'
 
@@ -620,7 +620,45 @@ export function closeBillingPaymentOrder(orderID: string, options: Pick<BillingR
 }
 
 export function downloadBillingInvoice(url: string, options: Pick<BillingRequestOptions, 'accessToken' | 'signal'> = {}): Promise<Response> {
-	return fetchAuthenticatedResponse(url, options)
+	const normalizedURL = url.trim()
+	if (!isTrustedBillingInvoiceDownloadUrl(normalizedURL)) {
+    return Promise.reject(new ApiError(i18n.t('api.billing.requestFailed'), 400, 0, null))
+  }
+	return fetchAuthenticatedResponse(normalizedURL, options)
+}
+
+// 中文：发票下载地址只允许当前站点或配置的后端地址，并限制到发票下载接口，避免把 Bearer Token 发送到外域。
+export function isTrustedBillingInvoiceDownloadUrl(value: string): boolean {
+  const normalized = value.trim()
+  if (!normalized || normalized.startsWith('//')) return false
+  const isAbsolute = /^[A-Za-z][A-Za-z0-9+.-]*:/.test(normalized)
+  let parsed: URL
+  try {
+    const base = typeof window !== 'undefined' ? window.location.origin : BACKEND_BASE_URL
+    parsed = new URL(normalized, base)
+  } catch {
+    return false
+  }
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return false
+  if (parsed.username || parsed.password || parsed.hash) return false
+  if (isAbsolute) {
+    const allowedOrigins = new Set<string>()
+    if (typeof window !== 'undefined') allowedOrigins.add(window.location.origin)
+    try {
+      allowedOrigins.add(new URL(BACKEND_BASE_URL).origin)
+    } catch {
+      return false
+    }
+    if (API_BASE_URL) {
+      try {
+        allowedOrigins.add(new URL(API_BASE_URL).origin)
+      } catch {
+        return false
+      }
+    }
+    if (!allowedOrigins.has(parsed.origin)) return false
+  }
+  return /^\/api\/user\/billing\/invoices\/[^/]+\/download$/.test(parsed.pathname)
 }
 
 const BILLING_ERROR_KEYS: Record<number, string> = {

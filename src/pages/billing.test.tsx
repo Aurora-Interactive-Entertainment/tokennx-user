@@ -221,7 +221,8 @@ function renderBilling(config: { analysisError?: boolean; invoiceError?: boolean
       return apiResponse({ order: { id: 'payment-order-1', order_no: 'PAY-202608040001', status: 'paying' }, transaction: { id: 'payment-transaction-1' }, form_html: config.paymentFormHTML ?? '<form action="https://openapi.alipay.com/gateway.do" method="POST"><input name="sign" value="payment-signature"></form>' })
     }
     if (url.pathname === '/api/user/payment/orders/payment-order-1') {
-      return apiResponse({ id: 'payment-order-1', order_no: 'PAY-202608040001', status: config.paymentStatus ?? 'paid' })
+      const status = config.paymentStatus ?? 'paid'
+      return apiResponse({ id: 'payment-order-1', order_no: 'PAY-202608040001', status, paid_at: status === 'paid' ? Date.parse('2026-08-04T08:00:00Z') : null })
     }
     if (url.pathname === '/api/user/billing/invoices' && requestOptions?.method === 'POST') {
       postInput = { body: String(requestOptions.body), headers: new Headers(requestOptions.headers) }

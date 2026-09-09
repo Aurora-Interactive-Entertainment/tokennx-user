@@ -1,5 +1,5 @@
 import { useEffect, useId, useState } from 'react'
-import { Toast } from '@douyinfe/semi-ui'
+import Toast from '@douyinfe/semi-ui/lib/es/toast'
 import { Highlight, type Language, type PrismTheme } from 'prism-react-renderer'
 import { useTranslation } from 'react-i18next'
 import { useResolvedTheme } from '@/theme'

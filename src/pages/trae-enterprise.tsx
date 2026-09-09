@@ -29,7 +29,7 @@ import {
   IconUserGroup,
   IconUserListStroked,
 } from "@douyinfe/semi-icons";
-import { deferTraeDialogClose, TraeDialog } from "@/components/trae-dialog";
+import { TraeDialog } from "@/components/trae-dialog";
 import { TraeEnterpriseInvitations } from "@/components/trae-enterprise-invitations";
 import { TraeEnterpriseJoinRequests } from "@/components/trae-enterprise-join-requests";
 import { TraeTableEmpty } from "@/components/trae-table-empty";
@@ -1187,7 +1187,7 @@ function TraeDepartmentDialog({
   nodes: TraeDepartmentNode[];
   t: Translate;
   onClose: () => void;
-  onSubmit: (name: string, parentID: string, nodeID?: string) => void;
+  onSubmit: (name: string, parentID: string, nodeID?: string) => Promise<boolean>;
 }) {
   const [name, setName] = useState(state.node?.name ?? "");
   const disabledParentDepartmentIDs =
@@ -1205,10 +1205,9 @@ function TraeDepartmentDialog({
     state.mode === "edit"
       ? t("traeEnterprise.members.editDepartmentTitle")
       : t("traeEnterprise.members.newDepartmentTitle");
-  const close = useCallback(() => deferTraeDialogClose(onClose), [onClose]);
   return (
     <TraeDialog title={title} onClose={onClose}>
-      <Form<{ name: string }>
+      {(close) => <Form<{ name: string }>
         className="trae-dialog-form trae-department-dialog-form"
         labelPosition="top"
         initValues={{ name }}
@@ -1217,9 +1216,9 @@ function TraeDepartmentDialog({
         onValueChange={(values) => {
           if (typeof values.name === "string") setName(values.name);
         }}
-        onSubmit={(values) => {
+        onSubmit={async (values) => {
           if (disabledParentDepartmentIDs?.has(parentID)) return;
-          onSubmit(values.name.trim(), parentID, state.node?.id);
+          if (await onSubmit(values.name.trim(), parentID, state.node?.id)) close();
         }}
       >
         <Form.Input
@@ -1267,7 +1266,7 @@ function TraeDepartmentDialog({
             {t("traeEnterprise.common.confirm")}
           </button>
         </div>
-      </Form>
+      </Form>}
     </TraeDialog>
   );
 }
@@ -1296,17 +1295,16 @@ function TraeMemberActionDialog({
     member?.role === "member" ? "member" : "admin",
   );
   const title = t(`traeEnterprise.members.${action}`);
-  const close = useCallback(() => deferTraeDialogClose(onClose), [onClose]);
-  const complete = async () => {
+  const complete = async (close: () => void) => {
     await onComplete(action === "changeDepartment" ? { departmentID } : action === "changeRole" ? { role } : {});
     close();
   };
-  const actions = (
+  const actions = (close: () => void) => (
     <div className="trae-dialog-actions">
       <button className="trae-secondary-button" type="button" onClick={close}>
         {t("traeEnterprise.common.cancel")}
       </button>
-      <button className="trae-primary-button" type="button" onClick={complete}>
+      <button className="trae-primary-button" type="button" onClick={() => void complete(close)}>
         {t("traeEnterprise.common.confirm")}
       </button>
     </div>
@@ -1315,7 +1313,7 @@ function TraeMemberActionDialog({
   if (action === "changeDepartment") {
     return (
       <TraeDialog className="trae-member-action-dialog trae-member-action-dialog--department" title={title} onClose={onClose}>
-        <div className="trae-member-action-content">
+        {(close) => <div className="trae-member-action-content">
           <p>{t("traeEnterprise.memberDialogs.changeDepartmentHint", { count: memberCount })}</p>
           <label className="trae-member-action-field">
             <span><b>*</b>{t("traeEnterprise.memberDialogs.department")}</span>
@@ -1326,8 +1324,8 @@ function TraeMemberActionDialog({
               label={t("traeEnterprise.memberDialogs.department")}
             />
           </label>
-          {actions}
-        </div>
+          {actions(close)}
+        </div>}
       </TraeDialog>
     );
   }
@@ -1339,7 +1337,7 @@ function TraeMemberActionDialog({
         title={<span className="trae-dialog-title-with-icon"><IconInfoCircle aria-hidden="true" />{title}</span>}
         onClose={onClose}
       >
-        <div className="trae-member-action-content">
+        {(close) => <div className="trae-member-action-content">
           <p>
             {t("traeEnterprise.memberDialogs.removeHint", { count: memberCount })}{" "}
             <button className="trae-member-action-link" type="button" onClick={() => showTraeToast(t("traeEnterprise.memberDialogs.learnMore"))}>
@@ -1355,18 +1353,18 @@ function TraeMemberActionDialog({
             <button className="trae-secondary-button" type="button" onClick={close}>
               {t("traeEnterprise.common.cancel")}
             </button>
-            <button className="trae-primary-button trae-danger-button" type="button" onClick={complete}>
+            <button className="trae-primary-button trae-danger-button" type="button" onClick={() => void complete(close)}>
               {t("traeEnterprise.members.removeMember")}
             </button>
           </div>
-        </div>
+        </div>}
       </TraeDialog>
     );
   }
 
   return (
     <TraeDialog className="trae-member-action-dialog trae-member-action-dialog--role" title={title} onClose={onClose}>
-      <div className="trae-member-action-content">
+      {(close) => <div className="trae-member-action-content">
         <p>
           {memberCount === 1
             ? t("traeEnterprise.memberDialogs.roleHint", { name: member.name })
@@ -1388,8 +1386,8 @@ function TraeMemberActionDialog({
             </span>
           </label>
         </div>
-        {actions}
-      </div>
+        {actions(close)}
+      </div>}
     </TraeDialog>
   );
 }
@@ -1408,14 +1406,13 @@ function TraeDepartmentDetailDialog({
   onEdit: () => void;
 }) {
   const parentID = findTraeParentDepartmentID(nodes, node.id);
-  const close = useCallback(() => deferTraeDialogClose(onClose), [onClose]);
   return (
     <TraeDialog
       className="trae-department-detail-dialog"
       title={t("traeEnterprise.departmentTable.detailTitle")}
       onClose={onClose}
     >
-      <div className="trae-department-detail-content">
+      {(close) => <div className="trae-department-detail-content">
         <dl>
           <div>
             <dt>{t("traeEnterprise.members.departmentName")}</dt>
@@ -1434,12 +1431,19 @@ function TraeDepartmentDetailDialog({
           <button className="trae-secondary-button" type="button" onClick={close}>
             {t("traeEnterprise.common.confirm")}
           </button>
-          <button className="trae-primary-button" type="button" onClick={onEdit}>
+          <button
+            className="trae-primary-button"
+            type="button"
+            onClick={() => {
+              close();
+              window.setTimeout(onEdit, 180);
+            }}
+          >
             <IconEditStroked aria-hidden="true" />
             {t("traeEnterprise.members.editDepartment")}
           </button>
         </div>
-      </div>
+      </div>}
     </TraeDialog>
   );
 }
@@ -1590,8 +1594,8 @@ function TraeEnterpriseMembersContent({ context }: { context: EnterpriseContext 
       members.filter((member) => selectedMemberIDs.includes(member.id)),
     [members, selectedMemberIDs],
   );
-  function submitMember(_values: { email: string; role: string }) {
-    setDialog(null);
+  function submitMember(_values: { email: string; role: string }, close: () => void) {
+    close();
     showTraeToast(t("traeEnterprise.members.addSuccess"));
   }
   function handleBulkMemberAction(action: TraeMemberBulkAction) {
@@ -1606,12 +1610,12 @@ function TraeEnterpriseMembersContent({ context }: { context: EnterpriseContext 
     showTraeToast(t(`traeEnterprise.members.${action}`));
     setSelectedMemberIDs([]);
   }
-  async function saveDepartment(name: string, parentID: string, nodeID?: string) {
+  async function saveDepartment(name: string, parentID: string, nodeID?: string): Promise<boolean> {
     setLoadError(null);
     try {
       if (nodeID) {
         const node = findTraeDepartmentNode(departments, nodeID);
-        if (!node?.version) return;
+        if (!node?.version) return false;
         await updateEnterpriseDepartment(
           { enterprise_id: context.id },
           nodeID,
@@ -1633,12 +1637,13 @@ function TraeEnterpriseMembersContent({ context }: { context: EnterpriseContext 
           { name, parent_id: parentID === "company" ? null : parentID },
         );
       }
-      setDepartmentDialog(null);
       setReloadToken((value) => value + 1);
       showTraeToast(t("traeEnterprise.common.success"));
+      return true;
     } catch (reason: unknown) {
       const handled = handleError(reason);
       if (handled) setLoadError(handled);
+      return false;
     }
   }
   const treeProps = {
@@ -1674,14 +1679,14 @@ function TraeEnterpriseMembersContent({ context }: { context: EnterpriseContext 
       showTraeToast(t("traeEnterprise.departmentTable.moveDown"));
     },
   };
-  async function confirmDeleteDepartment() {
+  async function confirmDeleteDepartment(close: () => void) {
     if (!departmentDeleteNode) return;
     try {
       await deleteEnterpriseDepartment({ enterprise_id: context.id }, departmentDeleteNode.id, departmentDeleteNode.version ?? 0);
       if (selectedDepartmentID === departmentDeleteNode.id) setSelectedDepartmentID("company");
-      setDepartmentDeleteNode(null);
       setReloadToken((value) => value + 1);
       showTraeToast(t("traeEnterprise.members.deleteDepartmentSuccess"));
+      close();
     } catch (reason: unknown) {
       const handled = handleError(reason);
       if (handled) setLoadError(handled);
@@ -2036,13 +2041,13 @@ function TraeEnterpriseMembersContent({ context }: { context: EnterpriseContext 
           title={t("traeEnterprise.members.addTitle")}
           onClose={() => setDialog(null)}
         >
-          <Form<{ email: string; role: string }>
+          {(close) => <Form<{ email: string; role: string }>
             className="trae-dialog-form"
             labelPosition="top"
             initValues={{ email: "", role: "member" }}
             autoScrollToError
             showValidateIcon={false}
-            onSubmit={submitMember}
+            onSubmit={(values) => submitMember(values, close)}
           >
             <Form.Input
               field="email"
@@ -2075,7 +2080,7 @@ function TraeEnterpriseMembersContent({ context }: { context: EnterpriseContext 
           <button
             className="trae-secondary-button"
             type="button"
-            onClick={() => deferTraeDialogClose(() => setDialog(null))}
+            onClick={close}
               >
                 {t("traeEnterprise.common.cancel")}
               </button>
@@ -2083,7 +2088,7 @@ function TraeEnterpriseMembersContent({ context }: { context: EnterpriseContext 
                 {t("traeEnterprise.common.confirm")}
               </button>
             </div>
-          </Form>
+          </Form>}
         </TraeDialog>
       ) : null}
       {dialog === "rules" ? (
@@ -2169,10 +2174,8 @@ function TraeEnterpriseMembersContent({ context }: { context: EnterpriseContext 
           onClose={() => setDepartmentDetailNode(null)}
           onEdit={() => {
             const node = departmentDetailNode;
-            deferTraeDialogClose(() => {
-              setDepartmentDetailNode(null);
-              setDepartmentDialog({ mode: "edit", node });
-            });
+            setDepartmentDetailNode(null);
+            setDepartmentDialog({ mode: "edit", node });
           }}
         />
       ) : null}
@@ -2182,18 +2185,18 @@ function TraeEnterpriseMembersContent({ context }: { context: EnterpriseContext 
           title={t("traeEnterprise.departmentTable.deleteBlockedTitle")}
           onClose={() => setDepartmentDeleteBlockedNode(null)}
         >
-          <div className="trae-confirm-dialog-content">
+          {(close) => <div className="trae-confirm-dialog-content">
             <p>{t("traeEnterprise.departmentTable.deleteBlockedHint")}</p>
             <div className="trae-dialog-actions">
               <button
                 className="trae-primary-button"
                 type="button"
-                onClick={() => deferTraeDialogClose(() => setDepartmentDeleteBlockedNode(null))}
+                onClick={close}
               >
                 {t("traeEnterprise.common.confirm")}
               </button>
             </div>
-          </div>
+          </div>}
         </TraeDialog>
       ) : null}
       {departmentDeleteNode ? (
@@ -2202,25 +2205,25 @@ function TraeEnterpriseMembersContent({ context }: { context: EnterpriseContext 
           title={t("traeEnterprise.memberDialogs.deleteDepartmentConfirmTitle")}
           onClose={() => setDepartmentDeleteNode(null)}
         >
-          <div className="trae-confirm-dialog-content">
+          {(close) => <div className="trae-confirm-dialog-content">
             <p>{t("traeEnterprise.memberDialogs.deleteDepartmentConfirmHint")}</p>
             <div className="trae-dialog-actions">
               <button
                 className="trae-secondary-button"
                 type="button"
-                onClick={() => deferTraeDialogClose(() => setDepartmentDeleteNode(null))}
+                onClick={close}
               >
                 {t("traeEnterprise.common.cancel")}
               </button>
               <button
                 className="trae-primary-button trae-danger-button"
                 type="button"
-                onClick={confirmDeleteDepartment}
+                onClick={() => void confirmDeleteDepartment(close)}
               >
                 {t("traeEnterprise.common.confirm")}
               </button>
             </div>
-          </div>
+          </div>}
         </TraeDialog>
       ) : null}
     </div>

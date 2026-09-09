@@ -273,6 +273,7 @@ describe("充值管理页面", () => {
     );
     let orderSequence = 0;
     let queryCount = 0;
+    let closeCount = 0;
     const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input, options) => {
       const url = new URL(String(input), window.location.origin);
       const orderMatch = url.pathname.match(/^\/api\/user\/payment\/orders\/(recharge-order-\d+)\/pay$/);
@@ -281,7 +282,11 @@ describe("充值管理页面", () => {
         return apiResponse({ id: `recharge-order-${orderSequence}`, order_no: `RECHARGE-${orderSequence}`, status: "pending", amount_yuan: "50.00" });
       }
       if (orderMatch && options?.method === "POST") {
-        return apiResponse({ order: { id: orderMatch[1], order_no: `RECHARGE-${orderMatch[1].split("-").at(-1)}`, status: "paying", amount_yuan: "50.00" }, transaction: { id: `transaction-${orderMatch[1]}` }, qr_code: `https://pay.example.test/${orderMatch[1]}`, form_html: "" });
+        return apiResponse({ order: { id: orderMatch[1], order_no: `RECHARGE-${orderMatch[1].split("-").at(-1)}`, status: "paying", amount_yuan: "50.00" }, transaction: { id: `transaction-${orderMatch[1]}` }, qr_code: `https://openapi.alipay.com/gateway.do?order=${orderMatch[1]}`, form_html: "" });
+      }
+      if (url.pathname.match(/^\/api\/user\/payment\/orders\/recharge-order-\d+\/close$/) && options?.method === "POST") {
+        closeCount += 1;
+        return apiResponse({ id: url.pathname.split("/").at(-2), order_no: `RECHARGE-${closeCount}`, status: "closed", amount_yuan: "50.00" });
       }
       if (url.pathname.match(/^\/api\/user\/payment\/orders\/recharge-order-\d+$/)) {
         queryCount += 1;
@@ -313,6 +318,7 @@ describe("充值管理页面", () => {
     expect(closeButton).not.toBeNull();
     fireEvent.click(closeButton as HTMLElement);
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    await waitFor(() => expect(closeCount).toBe(1));
     await new Promise((resolve) => window.setTimeout(resolve, 50));
     expect(queryCount).toBe(1);
 

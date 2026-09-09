@@ -5,6 +5,26 @@ const PAYMENT_FORM_ERROR_CODE = 140002
 const PAYMENT_FORM_TARGET_PATTERN = /^[A-Za-z][A-Za-z0-9_-]{0,127}$/
 const PAYMENT_FORM_RESERVED_TARGETS = new Set(['_self', '_blank', '_parent', '_top'])
 
+// 中文：支付表单只能提交到支付宝官方网关，禁止服务端配置错误或篡改后把签名字段发送到外部站点。
+const ALIPAY_PAYMENT_HOSTS = new Set([
+  'openapi.alipay.com',
+  'mapi.alipay.com',
+  'openapi.alipaydev.com',
+  'mapi.alipaydev.com',
+  'qr.alipay.com',
+])
+
+export function isAllowedAlipayPaymentUrl(value: string): boolean {
+  const normalized = value.trim()
+  if (!normalized) return false
+  try {
+    const url = new URL(normalized)
+    return url.protocol === 'https:' && ALIPAY_PAYMENT_HOSTS.has(url.hostname.toLowerCase()) && !url.username && !url.password
+  } catch {
+    return false
+  }
+}
+
 export interface PaymentFormSubmitOptions {
   target: string
 }
@@ -30,7 +50,7 @@ export function submitPaymentFormHTML(formHTML: string, options: PaymentFormSubm
   } catch {
     throw new ApiError(i18n.t('api.billing.paymentFormInvalid'), 502, PAYMENT_FORM_ERROR_CODE, null)
   }
-  if (method !== 'POST' || (actionURL.protocol !== 'https:' && actionURL.protocol !== 'http:')) {
+  if (method !== 'POST' || !isAllowedAlipayPaymentUrl(actionURL.toString())) {
     throw new ApiError(i18n.t('api.billing.paymentFormInvalid'), 502, PAYMENT_FORM_ERROR_CODE, null)
   }
 

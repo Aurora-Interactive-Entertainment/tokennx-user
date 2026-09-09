@@ -14,6 +14,14 @@ const CODE_SPLITTING_GROUPS = [
     priority: 30,
   },
   {
+    // 中文：Semi 的主题与结构样式按实际入口拆分，保持全局样式包体积稳定。
+    name: 'semi-styles',
+    test: /node_modules[\\/]@douyinfe[\\/]semi-(?:ui|foundation|icons)[\\/].*\.css$/,
+    priority: 25,
+    entriesAware: true,
+    minSize: 0,
+  },
+  {
     // 中文：Semi 组件按目录拆分，避免将全部控件和图标聚合到单个超大文件。
     name: (moduleId: string) => {
       const match = moduleId.match(/node_modules[\\/]@douyinfe[\\/]semi-ui[\\/]lib[\\/]es[\\/]([^\\/]+)/)
@@ -21,6 +29,8 @@ const CODE_SPLITTING_GROUPS = [
     },
     test: /node_modules[\\/]@douyinfe[\\/]semi-ui[\\/]/,
     priority: 20,
+    // 中文：按实际入口区分共用控件，避免首页因 Button/Modal 的共享依赖下载整套 Form。
+    entriesAware: true,
     minSize: 10 * 1024,
   },
   {
@@ -115,6 +125,8 @@ export default defineConfig(({ mode }) => {
     },
     build: {
       target: 'es2022',
+      // 中文：构建清单供首屏依赖预算检查使用，不包含源码或 Source Map。
+      manifest: true,
       // 中文：仅发布任务生成隐藏 Source Map，并在成功上传后删除本地产物。
       sourcemap: uploadSourceMaps ? 'hidden' : false,
       // 中文：页面通过路由和运行时依赖分块，单个产物控制在 600KB 警戒线以内。
