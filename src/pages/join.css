@@ -90,17 +90,6 @@
   opacity: 0.68;
 }
 
-.enterprise-join-error {
-  display: grid;
-  width: min(376px, 100%);
-  gap: 3px;
-  margin-top: 14px;
-  color: var(--color-danger, #d66b73);
-  font-size: 13px;
-  line-height: 1.6;
-}
-
-.enterprise-join-error small,
 .enterprise-join-result > small {
   color: var(--color-text-tertiary);
   font-size: 11px;

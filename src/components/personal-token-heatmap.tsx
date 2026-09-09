@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { IconRefresh } from "@douyinfe/semi-icons";
+import { appToast } from "@/components/app-toast";
 import {
   getDailyTokenUsage,
   getDailyTokenUsageErrorMessage,
@@ -42,7 +42,6 @@ export function PersonalTokenHeatmap({
   const [items, setItems] = useState<DailyTokenUsageItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [reloadKey, setReloadKey] = useState(0);
   const heatmapScrollRef = useRef<HTMLDivElement>(null);
   const heatmapTrackRef = useRef<HTMLDivElement>(null);
 
@@ -60,7 +59,11 @@ export function PersonalTokenHeatmap({
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [context, reloadKey]);
+  }, [context]);
+
+  useEffect(() => {
+    if (!loading && error) appToast.error(error);
+  }, [error, loading]);
 
   const formatTokens = useCallback(
     (value: number) => new Intl.NumberFormat(i18n.language).format(value),
@@ -235,18 +238,7 @@ export function PersonalTokenHeatmap({
             <span className="console-loading-spinner" />
             {t("console.personalUsage.tokenHeatmap.loading")}
           </div>
-        ) : error ? (
-          <div className="personal-token-heatmap-status" role="alert">
-            <span>{error}</span>
-            <button
-              type="button"
-              onClick={() => setReloadKey((value) => value + 1)}
-            >
-              <IconRefresh aria-hidden="true" />
-              {t("console.personalUsage.tokenHeatmap.retry")}
-            </button>
-          </div>
-        ) : (
+        ) : error ? null : (
           <div className="personal-token-heatmap-scroll" ref={heatmapScrollRef}>
             <div
               className="personal-token-heatmap-track"

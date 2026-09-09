@@ -495,7 +495,7 @@ describe('公开模型页面', () => {
     expect(adImage).not.toHaveAttribute('src', '/src/assets/figma-home/promo-banner.png')
   })
 
-  it('首页内容接口失败时停止骨架并允许重新加载', async () => {
+  it('首页内容接口失败时停止骨架并通过 Toast 提示', async () => {
     vi.mocked(globalThis.fetch).mockRejectedValueOnce(new Error('offline'))
     renderPage(<HomePage />, '/')
 
@@ -504,7 +504,7 @@ describe('公开模型页面', () => {
     expect(document.querySelector('.manuscript-feature-grid')).not.toHaveAttribute('aria-busy')
     expect(document.querySelectorAll('.manuscript-feature-card.manuscript-skeleton-card')).toHaveLength(0)
     expect(document.querySelectorAll('.semi-skeleton-active')).toHaveLength(0)
-    expect(screen.getByRole('button', { name: '重新加载' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '重新加载' })).toBeNull()
     expect(screen.queryByText('一个账户，统一访问所有顶级AI模型')).toBeNull()
     expect(screen.queryByText('后台能力卡片')).toBeNull()
   })

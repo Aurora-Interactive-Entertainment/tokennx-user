@@ -617,6 +617,14 @@ export function RechargeTab({ context, onOrderUpdated, onAuthFailure }: { contex
     setPaymentFormError(getBillingErrorMessage(error))
   }, [])
 
+  useEffect(() => {
+    if (paymentFormError) appToast.error(paymentFormError)
+  }, [paymentFormError])
+
+  useEffect(() => {
+    if (paymentQueryError) appToast.error(paymentQueryError)
+  }, [paymentQueryError])
+
   async function closePaymentDialog(): Promise<void> {
     const orderToClose = paymentOrder
     // 中文：关闭二维码弹窗即结束本次支付会话，避免后台继续查单或复用旧二维码。
@@ -808,8 +816,6 @@ export function RechargeTab({ context, onOrderUpdated, onAuthFailure }: { contex
         <div className="payment-qr-dialog-content">
           <div className="payment-qr-dialog-order"><p>{i18n.t('console.billing.paymentReturnOrder', { orderNo: paymentOrder.order_no })}</p><span>{paymentCopy.label}</span></div>
           <strong className="payment-qr-dialog-amount">{formatYuan(paymentOrder.amount_yuan, 2)}</strong>
-          {paymentQueryError ? <BannerNotice tone="warning"><span>{paymentQueryError}</span></BannerNotice> : null}
-          {paymentFormError ? <BannerNotice tone="warning"><span>{paymentFormError}</span></BannerNotice> : null}
           {paymentActive && (paymentQRCodeValue || paymentFormHTML) ? <><p className="payment-qr-hint">{i18n.t('console.billing.paymentFrameHint')}</p>{paymentQRCodeValue ? <PaymentQRCode value={paymentQRCodeValue} title={i18n.t('console.billing.paymentFrameTitle')} errorMessage={i18n.t('api.billing.paymentFormInvalid')} onError={handlePaymentFormError} /> : <PaymentQRCodeFrame formHTML={paymentFormHTML} title={i18n.t('console.billing.paymentFrameTitle')} errorMessage={i18n.t('api.billing.paymentFormInvalid')} onError={handlePaymentFormError} />}<Button className="payment-qr-refresh-button" theme="outline" size="small" icon={<IconRefresh />} loading={paymentQuerying} disabled={!paymentActive || paymentQuerying} onClick={() => { setPaymentQueryError(''); setPaymentRefreshToken((value) => value + 1) }}>{i18n.t('console.billing.paymentRefresh')}</Button></> : null}
         </div>
       </Modal> : null}

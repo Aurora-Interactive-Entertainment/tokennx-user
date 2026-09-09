@@ -104,6 +104,7 @@ function ActivityTicker() {
               false,
             )}
           </span>
+          <span className="purchase-activity-separator" aria-hidden="true" />
           <em>{t("console.purchasePage.activity.time")}</em>
         </div>
       ))}
@@ -185,7 +186,7 @@ function PlanSection() {
             onClick={() => setActiveTab(tab)}
           >
             {tab === "all"
-              ? `${t("console.purchasePage.tabs.all")} 8`
+              ? `${t("console.purchasePage.tabs.all")} ${PLAN_KEYS.length}`
               : t(`console.purchasePage.tabs.${tab}`)}
           </button>
         ))}
@@ -347,39 +348,41 @@ function FrequentlyAskedQuestions() {
 export function PurchasePage() {
   const { t } = useTranslation();
   return (
-    <div className="purchase-page">
-      <header className="purchase-hero">
-        <h1>
-          {t("console.purchasePage.title").replace(
-            t("console.purchasePage.titleAccent"),
-            "",
-          )}
-          <span>{t("console.purchasePage.titleAccent")}</span>
-        </h1>
-        <p>
-          {t("console.purchasePage.subtitle")
-            .split("\n")
-            .map((line, index) => (
-              <span key={line}>
-                {renderEmphasizedLine(
-                  line,
-                  index === 0
-                    ? [
-                        t("console.purchasePage.subtitleEmphasis.models"),
-                        t("console.purchasePage.subtitleEmphasis.quota"),
-                      ]
-                    : [],
-                  false,
-                )}
-              </span>
-            ))}
-        </p>
-        <ActivityTicker />
-      </header>
-      <PlanSection />
-      <PurchaseNotice />
-      <SupportedTools />
-      <FrequentlyAskedQuestions />
-    </div>
+    <>
+      <div className="purchase-page">
+        <header className="purchase-hero">
+          <h1>
+            {t("console.purchasePage.title").replace(
+              t("console.purchasePage.titleAccent"),
+              "",
+            )}
+            <span>{t("console.purchasePage.titleAccent")}</span>
+          </h1>
+          <p>
+            {t("console.purchasePage.subtitle")
+              .split("\n")
+              .map((line, index) => (
+                <span key={line}>
+                  {renderEmphasizedLine(
+                    line,
+                    index === 0
+                      ? [
+                          t("console.purchasePage.subtitleEmphasis.models"),
+                          t("console.purchasePage.subtitleEmphasis.quota"),
+                        ]
+                      : [],
+                    false,
+                  )}
+                </span>
+              ))}
+          </p>
+          <ActivityTicker />
+        </header>
+        <PlanSection />
+        <PurchaseNotice />
+        <SupportedTools />
+        <FrequentlyAskedQuestions />
+      </div>
+    </>
   );
 }

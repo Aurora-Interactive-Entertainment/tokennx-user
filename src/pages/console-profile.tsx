@@ -17,7 +17,7 @@ import {
 } from '@/api/profile'
 import { getAccessToken } from '@/auth/token-storage'
 import { isAuthenticationFailure } from '@/api/http'
-import { AccountSettingsModal, BannerNotice, PageTitle } from '@/components/common'
+import { AccountSettingsModal, PageTitle } from '@/components/common'
 import { SettingsAnchorLayout, type SettingsAnchorItem } from '@/components/settings-anchor-layout'
 import { NEW_ENTERPRISE_CREATE_PATH } from '@/api/enterprise-certification'
 import { useAppStore } from '@/data/app-state'
@@ -136,6 +136,10 @@ export function SettingsPage() {
     void loadProfile()
   }, [loadProfile])
 
+  useEffect(() => {
+    if (error) Toast.error(error)
+  }, [error])
+
   const preferenceItems = useMemo(() => {
     if (!preferences) return []
     // 中文：按接口返回顺序展示固定白名单中的全部通知分类，兼容后端新增字段。
@@ -209,17 +213,6 @@ export function SettingsPage() {
     )
   }
 
-  if (error && !profile) {
-    return (
-      <div className="page-stack settings-console-page settings-redesign-page settings-redesign-page--error">
-        <PageTitle title={t('profile.title')} description={t('profile.description')} />
-        <div className="settings-page-inner">
-          <BannerNotice tone="warning" compact><div className="profile-error-content"><strong>{t('profile.loadFailed')}</strong><span>{error}</span><Button className="settings-secondary-button" theme="outline" size="small" loading={loading} disabled={loading} onClick={() => { void loadProfile() }}>{t('profile.retry')}</Button></div></BannerNotice>
-        </div>
-      </div>
-    )
-  }
-
   if (!profile || (!enterpriseWorkspace && !preferences) || (enterpriseWorkspace && !enterpriseContext)) return null
 
   return (
@@ -227,7 +220,6 @@ export function SettingsPage() {
       {/* 中文：个人设置按空间保留对应的账户、通知与工作空间内容。 */}
       <PageTitle title={t('profile.title')} description={t('profile.description')} />
       <div className="settings-page-inner">
-        {error ? <BannerNotice tone="warning" compact><div className="profile-error-content"><span>{error}</span><Button className="settings-secondary-button" theme="outline" size="small" loading={loading} disabled={loading} onClick={() => { void loadProfile() }}>{t('profile.retry')}</Button></div></BannerNotice> : null}
         <SettingsAnchorLayout items={anchorItems} navigationLabel={t('profile.navigation.label')}>
           <section id="settings-account" className="settings-section settings-anchor-section" aria-labelledby="profile-account-title">
             <header className="settings-section-head">

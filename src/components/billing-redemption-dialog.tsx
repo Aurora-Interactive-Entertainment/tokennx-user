@@ -27,6 +27,10 @@ export function BillingRedemptionDialog({ visible, onClose, onSuccess, onAuthFai
     }
   }, [visible])
 
+  useEffect(() => {
+    if (error) Toast.error(error)
+  }, [error])
+
   async function submit(): Promise<void> {
     if (submitting) return
     const normalized = code.trim()
@@ -75,7 +79,7 @@ export function BillingRedemptionDialog({ visible, onClose, onSuccess, onAuthFai
           autoComplete="off"
           inputMode="text"
           aria-invalid={Boolean(error)}
-          aria-describedby="billing-redemption-hint billing-redemption-error"
+          aria-describedby="billing-redemption-hint"
           placeholder={i18n.t('console.billing.redeemCodePlaceholder')}
           onChange={(event) => {
             setCode(event.target.value.replace(/[^A-Za-z0-9]/g, '').slice(0, 12))
@@ -91,7 +95,6 @@ export function BillingRedemptionDialog({ visible, onClose, onSuccess, onAuthFai
         <p className="billing-redemption-hint" id="billing-redemption-hint">
           {i18n.t('console.billing.redeemCodeHint')}
         </p>
-        {error ? <p className="billing-redemption-error" id="billing-redemption-error" role="alert">{error}</p> : null}
       </div>
     </Modal>
   )

@@ -12,6 +12,7 @@ import {
 } from "@/api/enterprise-console";
 import { isApiError } from "@/api/http";
 import { getAccessToken } from "@/auth/token-storage";
+import { appToast } from "@/components/app-toast";
 import {
   EnterpriseError,
   useEnterpriseErrorHandler,
@@ -78,6 +79,10 @@ export function TraeEnterpriseJoinRequests({
     }, REQUEST_SEARCH_DELAY);
     return () => window.clearTimeout(timer);
   }, [query]);
+
+  useEffect(() => {
+    if (reviewError) appToast.error(reviewError.message);
+  }, [reviewError]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -321,7 +326,6 @@ export function TraeEnterpriseJoinRequests({
                 role: getRoleName(approvalRole(context, reviewDialog.request)),
               })}
             </p>
-            {reviewError ? <p className="trae-request-review-error">{reviewError.message}</p> : null}
             <div className="trae-dialog-actions">
               <button className="trae-secondary-button" type="button" disabled={reviewing} onClick={close}>
                 {t("traeEnterprise.common.cancel")}
@@ -362,7 +366,6 @@ export function TraeEnterpriseJoinRequests({
               autosize={{ minRows: 3, maxRows: 5 }}
               rules={[{ required: true, message: t("traeEnterprise.joinRequests.rejectionReasonRequired") }]}
             />
-            {reviewError ? <p className="trae-request-review-error">{reviewError.message}</p> : null}
             <div className="trae-dialog-actions">
               <button className="trae-secondary-button" type="button" disabled={reviewing} onClick={close}>
                 {t("traeEnterprise.common.cancel")}

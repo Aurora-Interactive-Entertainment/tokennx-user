@@ -4,6 +4,7 @@ import Toast from "@douyinfe/semi-ui/lib/es/toast";
 import { Form } from "@douyinfe/semi-ui/lib/es/form";
 import Select from "@douyinfe/semi-ui/lib/es/select";
 import { IconCopy, IconLink, IconRefresh } from "@douyinfe/semi-icons";
+import { appToast } from "@/components/app-toast";
 import {
   createEnterpriseInvitation,
   getEnterpriseInvitationUsages,
@@ -99,6 +100,16 @@ export function TraeEnterpriseInvitations({
   const [usageLoading, setUsageLoading] = useState(false);
   const [usageError, setUsageError] = useState<EnterpriseRequestError | null>(null);
   const [updatingInvitationID, setUpdatingInvitationID] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (createOpen && roles.length === 0) {
+      appToast.error(t("traeEnterprise.inviteList.roleUnavailable"));
+    }
+  }, [createOpen, roles.length, t]);
+
+  useEffect(() => {
+    if (createError) appToast.error(createError.message);
+  }, [createError]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -367,7 +378,6 @@ export function TraeEnterpriseInvitations({
             >
               {roleItems.map((role) => <Form.Select.Option key={role.code} value={role.code}>{role.name}</Form.Select.Option>)}
             </Form.Select>
-            {roles.length === 0 ? <p className="trae-request-review-error" role="alert">{t("traeEnterprise.inviteList.roleUnavailable")}</p> : null}
             <Form.Select
               field="departmentId"
               label={t("traeEnterprise.inviteList.department")}
@@ -379,7 +389,6 @@ export function TraeEnterpriseInvitations({
               {departments.map((department) => <Form.Select.Option key={department.id} value={department.id}>{department.name}</Form.Select.Option>)}
             </Form.Select>
             <p className="trae-invitation-form-hint">{t("traeEnterprise.inviteList.roleHint")}</p>
-            {createError ? <p className="trae-request-review-error">{createError.message}</p> : null}
             <div className="trae-dialog-actions">
               <button className="trae-secondary-button" type="button" disabled={creating} onClick={close}>{t("traeEnterprise.common.cancel")}</button>
               <button className="trae-primary-button" type="submit" disabled={creating || roles.length === 0}>{creating ? t("traeEnterprise.inviteList.creating") : t("traeEnterprise.inviteList.createButton")}</button>

@@ -102,6 +102,36 @@ afterEach(() => {
   clearAuthTokens()
 })
 
+it('未登录购买套餐先打开登录弹窗，关闭登录不会显示支付弹窗', async () => {
+  await i18n.changeLanguage('zh-CN')
+  const user = userEvent.setup()
+  render(<MemoryRouter><Provider store={createAppStore()}><AppStoreProvider><PublicHeader /></AppStoreProvider></Provider></MemoryRouter>)
+
+  await user.click(screen.getByRole('button', { name: '订阅' }))
+  fireEvent.click(screen.getByRole('button', { name: /Deepseek V4 Pro/ }))
+  await user.click(await screen.findByRole('button', { name: /DeepSeek套餐包/ }))
+
+  const login = await screen.findByRole('dialog', { name: i18n.t('login.dialogLabel') })
+  expect(screen.queryByRole('heading', { name: '支付' })).not.toBeInTheDocument()
+  await user.click(within(login).getByRole('button', { name: i18n.t('login.close') }))
+  await waitFor(() => expect(screen.queryByRole('dialog', { name: i18n.t('login.dialogLabel') })).not.toBeInTheDocument())
+  expect(screen.queryByRole('heading', { name: '支付' })).not.toBeInTheDocument()
+})
+
+it('已登录购买套餐直接展示支付弹窗', async () => {
+  await i18n.changeLanguage('zh-CN')
+  const appStore = createAppStore()
+  appStore.dispatch({ type: 'auth/loginWithEmail/fulfilled', payload: { id: 'purchase-user', display_name: '测试用户', avatar_url: '', locale: 'zh-CN', timezone: 'Asia/Shanghai', status: 'active' } })
+  render(<MemoryRouter><Provider store={appStore}><AppStoreProvider><PublicHeader /></AppStoreProvider></Provider></MemoryRouter>)
+
+  fireEvent.click(screen.getByRole('button', { name: '订阅' }))
+  fireEvent.click(screen.getByRole('button', { name: /Deepseek V4 Pro/ }))
+  fireEvent.click(await screen.findByRole('button', { name: /DeepSeek套餐包/ }))
+
+  expect(await screen.findByRole('heading', { name: '支付' })).toBeInTheDocument()
+  expect(screen.queryByRole('dialog', { name: i18n.t('login.dialogLabel') })).not.toBeInTheDocument()
+})
+
 it('uses the shared mobile header host in public and console layouts', async () => {
   const publicView = render(
     <MemoryRouter initialEntries={['/models']}>
@@ -258,7 +288,7 @@ describe('控制台导航路径匹配', () => {
       const settings = sections.find((section) => section.querySelector('.console-nav-section-title')?.textContent === '企业设置')
       expect(management).not.toBeUndefined()
       expect(settings).not.toBeUndefined()
-      expect(within(management as HTMLElement).getAllByRole('link').map((link) => link.textContent)).toEqual(['人员管理', '用量管理', '操作日志', '数据分析', '费用管理', '订阅管理', '购买菜单', '密钥管理', '充值管理'])
+      expect(within(management as HTMLElement).getAllByRole('link').map((link) => link.textContent)).toEqual(['人员管理', '用量管理', '操作日志', '数据分析', '费用管理', '订阅管理', '套餐购买', '密钥管理', '充值管理'])
       expect(within(management as HTMLElement).queryByRole('link', { name: '权限与标签' })).toBeNull()
       expect(within(settings as HTMLElement).getAllByRole('link').map((link) => link.textContent)).toEqual(['企业设置', '模型管理', '权限管理'])
     } finally {
@@ -324,7 +354,7 @@ describe('控制台导航路径匹配', () => {
     expect(consoleNavGroupsFor({ type: 'enterprise', role: 'member' }).flatMap((group) => group.items).map((item) => item.label)).toEqual(['快速接入', '模型广场', '智能对话', '视频生成', '个人用量', '个人设置', '我的密钥'])
     expect(consoleNavGroupsFor({ type: 'enterprise', role: 'member' }, ['usage.detail']).flatMap((group) => group.items).map((item) => item.label)).toContain('用量管理')
     expect(consoleNavGroupsFor({ type: 'enterprise', role: 'member' }, ['billing.view']).flatMap((group) => group.items).map((item) => item.label)).toContain('费用管理')
-    expect(consoleNavGroupsFor({ type: 'enterprise', role: 'member' }, ['billing.view']).find((group) => group.key === 'enterprise-management')?.items.map((item) => item.label)).toEqual(['费用管理', '订阅管理', '购买菜单', '充值管理'])
+    expect(consoleNavGroupsFor({ type: 'enterprise', role: 'member' }, ['billing.view']).find((group) => group.key === 'enterprise-management')?.items.map((item) => item.label)).toEqual(['费用管理', '订阅管理', '套餐购买', '充值管理'])
     expect(consoleNavGroupsFor({ type: 'enterprise', role: 'member' }, ['billing.view']).find((group) => group.key === 'account')?.items.map((item) => item.label)).not.toEqual(expect.arrayContaining(['费用管理', '充值管理']))
     expect(consoleNavGroupsFor({ type: 'enterprise', role: 'member' }, ['tags.edit']).flatMap((group) => group.items).map((item) => item.label)).toContain('权限管理')
     expect(consoleNavGroupsFor({ type: 'enterprise', role: 'owner' }).flatMap((group) => group.items).map((item) => item.label)).toContain('费用管理')

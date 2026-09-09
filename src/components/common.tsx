@@ -152,8 +152,7 @@ import {
 export { isEnterpriseOwner } from "./enterprise-menu-access";
 import tokenNxLogo from "@/token-nx-logo.png";
 import headerLogo from "@/assets/figma-header/token-nx-header-logo.png";
-import headerTrialPill from "@/assets/figma-header/trial-pill.png";
-import headerTrialFreeTag from "@/assets/figma-header/trial-free-tag.svg";
+import { PurchaseHoverMenu } from "./purchase-hover-menu";
 import "@/public-mobile-nav.css";
 import "@/public-footer.css";
 import accountBadge from "@/assets/figma-account-badge.png";
@@ -166,6 +165,8 @@ import { AccountDeletionFlow } from "./account-deletion-flow";
 import { workspaceContextFor } from "@/utils/workspace";
 import { apiTimeToDate, formatApiTime } from "@/utils/format";
 import { VideoPricingPopover } from "./video-pricing-popover";
+import { PurchaseSubscriptionModal } from "./purchase-subscription-modal";
+import { PurchasePaymentModal } from "./purchase-payment-modal";
 import {
   publishProfileUpdate,
   subscribeProfileUpdates,
@@ -2131,6 +2132,9 @@ export function PublicHeader({
   const [billingOverview, setBillingOverview] =
     useState<AccountOverviewResponse | null>(null);
   const [accountSettingsOpen, setAccountSettingsOpen] = useState(false);
+  const [purchaseSubscriptionOpen, setPurchaseSubscriptionOpen] = useState(false);
+  const [purchasePaymentPlan, setPurchasePaymentPlan] = useState<string | null>(null);
+  const [purchaseLoginPlan, setPurchaseLoginPlan] = useState<string | null>(null);
   const [bindEmailOpen, setBindEmailOpen] = useState(false);
   const [bindEmailRequested, setBindEmailRequested] = useState(false);
   const headerRef = useRef<HTMLElement | null>(null);
@@ -2525,23 +2529,7 @@ export function PublicHeader({
               aria-hidden="true"
             />
           </Link>
-          <span className="header-trial-badge">
-            <img
-              className="header-trial-pill"
-              src={headerTrialPill}
-              alt=""
-              aria-hidden="true"
-            />
-            <span className="header-trial-glass" aria-hidden="true" />
-            <strong>{t("console.common.trial")}</strong>
-            <span className="header-trial-subscription" aria-hidden="true">
-              {t("console.common.subscription")}
-            </span>
-            <span className="header-trial-free">
-              <img src={headerTrialFreeTag} alt="" aria-hidden="true" />
-              <em>{t("console.models.free")}</em>
-            </span>
-          </span>
+          <PurchaseHoverMenu onSelect={() => setPurchaseSubscriptionOpen(true)} />
           <nav
             className="header-nav public-nav"
             aria-label={t("console.common.publicNav")}
@@ -2651,6 +2639,30 @@ export function PublicHeader({
         visible={accountSettingsOpen}
         onClose={() => setAccountSettingsOpen(false)}
       />
+      <PurchaseSubscriptionModal
+        open={purchaseSubscriptionOpen}
+        onClose={() => setPurchaseSubscriptionOpen(false)}
+        onPlanSelect={(planKey) => {
+          setPurchaseSubscriptionOpen(false);
+          // 未登录时复用登录弹窗，并保留所选套餐，登录成功后继续购买。
+          if (auth.status !== "authenticated") {
+            setPurchaseLoginPlan(planKey);
+            return;
+          }
+          setPurchasePaymentPlan(planKey);
+        }}
+      />
+      <LoginDialog
+        open={purchaseLoginPlan !== null}
+        dialogId="purchase-login-dialog"
+        inviteCode={inviteCode}
+        onClose={() => setPurchaseLoginPlan(null)}
+        onSuccess={() => {
+          setPurchasePaymentPlan(purchaseLoginPlan);
+          setPurchaseLoginPlan(null);
+        }}
+      />
+      <PurchasePaymentModal open={Boolean(purchasePaymentPlan)} planName={purchasePaymentPlan ?? "套餐"} onClose={() => setPurchasePaymentPlan(null)} />
       {/* 中文：首次打开后保留挂载，让原有关闭动画和表单重置生命周期继续生效。 */}
       {bindEmailRequested ? (
         <Suspense fallback={null}>
@@ -2796,7 +2808,7 @@ const personalNavGroups: ConsoleNavGroup[] = [
         label: "订阅管理",
         icon: "subscription",
       },
-      { key: "/console/purchase", label: "购买菜单", icon: "purchase" },
+      { key: "/console/purchase", label: "套餐购买", icon: "purchase" },
       { key: "/console/settings", label: "个人设置", icon: "account" },
       { key: "/console/billing", label: "费用管理", icon: "billing" },
       { key: "/console/recharge", label: "充值管理", icon: "recharge" },
@@ -2891,7 +2903,7 @@ const enterpriseNavGroups: ConsoleNavGroup[] = [
       },
       {
         key: "/console/purchase",
-        label: "购买菜单",
+        label: "套餐购买",
         icon: "purchase",
         permissionScope: "billing",
       },
@@ -2982,7 +2994,7 @@ const CONSOLE_NAV_LABEL_KEYS: Record<string, string> = {
   个人用量: "console.nav.personalUsage",
   "企业管理（新版）": "traeEnterprise.nav.group",
   订阅管理: "traeEnterprise.nav.subscription",
-  购买菜单: "console.nav.purchase",
+  套餐购买: "console.nav.purchase",
   企业设置: "console.nav.enterpriseSettings",
   模型管理: "console.nav.enterpriseModels",
   权限与标签: "console.nav.governance",
@@ -3321,11 +3333,8 @@ function UserMenu({
   }
 
   function switchWorkspace(workspace: Workspace): void {
-    const workspaceName =
-      workspace.type === "personal" ? displayName : workspace.name;
-    if (workspace.id === activeWorkspace.id) {
-      Toast.info(t("console.common.alreadyHere", { name: workspaceName }));
-    } else {
+    // 中文：重复选择当前空间时仅关闭选择菜单，不再弹出无效提示。
+    if (workspace.id !== activeWorkspace.id) {
       store.switchWorkspace(workspace.id);
     }
     setWorkspaceOpen(false);
@@ -3706,6 +3715,10 @@ export function AccountSettingsModal({
   }, [visible]);
 
   useEffect(() => {
+    if (loadError) appToast.error(loadError);
+  }, [loadError]);
+
+  useEffect(() => {
       if (!visible) return undefined;
       return subscribeProfileUpdates((nextProfile) =>
         applyProfile(nextProfile, false),
@@ -3998,11 +4011,6 @@ export function AccountSettingsModal({
                   {t("profile.deleteAccount")}
                 </button>
               </div>
-              {loadError ? (
-                <p className="account-settings-load-error" role="alert">
-                  {loadError}
-                </p>
-              ) : null}
             </div>
           </main>
         </section>

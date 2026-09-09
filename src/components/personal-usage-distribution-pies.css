@@ -18,6 +18,5 @@
 /* 中文：限制环形图画布宽度并居中，宽屏不放大、窄屏不溢出。 */
 .personal-usage-pie-chart { width: 100%; max-width: 292px; height: 298px; min-width: 0; justify-self: center; }
 .personal-usage-pie-status { display: grid; grid-column: 1 / -1; min-height: 180px; place-items: center; color: var(--color-text-tertiary); font-size: 13px; }
-.personal-usage-pie-retry { grid-column: 1 / -1; justify-self: center; height: 28px; padding: 0 10px; border: 1px solid var(--color-border-neutral-l1); border-radius: 4px; color: var(--color-text-default); background: var(--color-bg-base-tertiary); cursor: pointer; font-size: 12px; }
 @media (max-width: 820px) { .personal-usage-pie-grid { grid-template-columns: 1fr; } }
 @media (max-width: 560px) { .personal-usage-pie-content { height: auto; min-height: 360px; grid-template-columns: 1fr; } .personal-usage-pie-legend { max-height: 200px; padding: 8px 4px 0; } .personal-usage-pie-legend-header, .personal-usage-pie-legend-item { grid-template-columns: minmax(0, 1fr) 54px 62px; } .personal-usage-pie-chart { height: 240px; } }

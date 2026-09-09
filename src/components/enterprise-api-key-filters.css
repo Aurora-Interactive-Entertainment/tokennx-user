@@ -96,5 +96,21 @@
   .enterprise-api-key-filter-select.semi-select,
   .enterprise-api-key-member-filter.semi-select {
     width: 100%;
+    height: 40px !important;
+    min-height: 40px;
+  }
+
+  /* 中文：移动端下拉框与状态筛选、创建按钮统一 40px 触控高度，并保持文字垂直居中。 */
+  .enterprise-api-key-filter-select .semi-select-selection {
+    height: 38px !important;
+  }
+
+  .enterprise-api-key-filter-select .semi-select-arrow {
+    height: 38px;
+  }
+
+  .enterprise-api-key-filter-select .semi-select-selection-text,
+  .enterprise-api-key-filter-select .semi-select-selection-placeholder {
+    line-height: 38px;
   }
 }

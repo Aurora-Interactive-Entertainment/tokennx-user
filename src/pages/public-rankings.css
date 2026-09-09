@@ -371,9 +371,6 @@ html[data-theme="light"]
   font-size: 16px;
   text-align: center;
 }
-.ranking-data-state.is-error {
-  color: #df626c;
-}
 .ranking-show-more {
   min-height: 48px;
   display: flex;
@@ -412,9 +409,6 @@ html[data-theme="light"] .chart-hover-legend time {
 }
 html[data-theme="light"] .ranking-data-state {
   color: #737984;
-}
-html[data-theme="light"] .ranking-data-state.is-error {
-  color: #c32834;
 }
 html[data-theme="light"] .ranking-sidebar a.is-active {
   color: #fff;

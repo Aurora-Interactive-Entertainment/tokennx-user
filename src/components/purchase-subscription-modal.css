@@ -1,0 +1,461 @@
+/* 中文：弹窗沿用 Figma 的 1000px 宽布局，并压缩标题区留白后的紧凑高度。 */
+.purchase-subscription-modal .semi-modal {
+  width: min(1000px, calc(100vw - 24px)) !important;
+  max-width: none;
+}
+
+.purchase-subscription-modal .semi-modal-content.app-modal-content {
+  width: 100%;
+  height: 490px;
+  max-height: calc(100dvh - 24px);
+  padding: 0;
+  border: 0;
+  border-radius: 15px;
+  color: #f7f8fb;
+  background: #0f1117;
+  box-shadow: 0 24px 80px rgb(0 0 0 / 42%);
+  overflow: hidden;
+}
+
+/* 关闭按钮使用圆形底板，业务选择器覆盖 AppModal 的默认圆角。 */
+.purchase-subscription-modal.app-modal .semi-modal-content.app-modal-content .semi-modal-close {
+  top: 24px;
+  right: 22px;
+  width: 34px !important;
+  height: 34px !important;
+  border-radius: 50%;
+  color: #17181b;
+  background: #eceef1 !important;
+  opacity: 1;
+  transition: background 180ms ease, transform 240ms cubic-bezier(.22,1,.36,1);
+}
+.purchase-subscription-modal .semi-modal-close:hover { color: #17181b !important; background: #fff !important; transform: rotate(90deg); }
+.purchase-subscription-modal .semi-modal-close .semi-icon { font-size: 19px; }
+html[data-theme="dark"] .purchase-subscription-modal .semi-modal-close { color: #f4f5f7; background: #2a2d38 !important; }
+html[data-theme="dark"] .purchase-subscription-modal .semi-modal-close:hover { color: #17181b; background: #fff !important; }
+
+.purchase-subscription-modal .semi-modal-content > .semi-modal-body,
+.purchase-subscription-modal .semi-modal-content > .semi-modal-body-wrapper,
+.purchase-subscription-modal
+  .semi-modal-content
+  > .semi-modal-body-wrapper
+  > .semi-modal-body {
+  height: 100%;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0 !important;
+  overflow: hidden;
+}
+
+.purchase-subscription-modal-content {
+  --purchase-subscription-text: #f7f8fb;
+  --purchase-subscription-muted: #8b8f99;
+  position: relative;
+  width: 100%;
+  /* 中文：压缩标题、说明与筛选区的留白，同时保持卡片与底部的间距。 */
+  height: 490px;
+  overflow: hidden;
+  border-radius: 15px;
+  background: #0f1117;
+}
+
+.purchase-subscription-modal-content h2 {
+  position: absolute;
+  top: 27px;
+  left: 34px;
+  margin: 0;
+  color: var(--purchase-subscription-text);
+  font-size: 42px;
+  font-weight: 700;
+  line-height: 58px;
+  letter-spacing: -1px;
+}
+
+.purchase-subscription-modal-subtitle {
+  position: absolute;
+  top: 106px;
+  left: 34px;
+  margin: 0;
+  color: var(--purchase-subscription-muted);
+  font-size: 14px;
+  line-height: 18px;
+}
+
+.purchase-subscription-plan-price:focus-visible,
+.purchase-subscription-tabs button:focus-visible {
+  outline: 2px solid #bf98ee;
+  outline-offset: 2px;
+}
+
+.purchase-subscription-tabs {
+  position: absolute;
+  top: 146px;
+  left: 34px;
+  display: grid;
+  width: 931px;
+  height: 44px;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  box-sizing: border-box;
+  padding: 6px;
+  border: 1px solid #30333b;
+  border-radius: 22px;
+  background: #25272e;
+  isolation: isolate;
+}
+
+.purchase-subscription-tabs::before {
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  left: 6px;
+  width: calc((100% - 12px) / 6);
+  border-radius: 16px;
+  background: linear-gradient(100deg, #dbf1f9 0%, #bf98ee 100%);
+  content: "";
+  transform: translateX(calc(var(--purchase-subscription-tab-index, 0) * 100%));
+  transition: transform 260ms ease;
+  z-index: -1;
+}
+
+.purchase-subscription-tabs button {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+  min-height: 30px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 16px;
+  color: #878b95;
+  background: transparent;
+  font: inherit;
+  font-size: 14px;
+  line-height: 30px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 180ms ease;
+}
+
+.purchase-subscription-tabs button.is-active {
+  color: #17181b;
+}
+
+.purchase-subscription-plans {
+  position: absolute;
+  top: 216px;
+  left: 34px;
+  display: grid;
+  width: 931px;
+  grid-template-columns: repeat(5, 170px);
+  gap: 20px;
+}
+
+@keyframes purchase-subscription-plan-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.purchase-subscription-plan {
+  --purchase-subscription-card-border: #e8b7ca;
+  --purchase-subscription-card-hover-border: #f080b4;
+  position: relative;
+  width: 170px;
+  height: 238px;
+  box-sizing: border-box;
+  overflow: hidden;
+  /* 中文：用内描边覆盖在图片上，确保卡片边框与图片边缘连续。 */
+  border: 0;
+  border-radius: 20px;
+  background-position: center;
+  background-size: cover;
+  background-clip: border-box;
+  box-shadow:
+    inset 0 0 0 2px var(--purchase-subscription-card-border),
+    inset 0 1px 0 rgb(255 255 255 / 75%);
+  /* 中文：动画结束后释放 transform，避免覆盖卡片的 hover 位移。 */
+  animation: purchase-subscription-plan-in 220ms ease backwards;
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease;
+  will-change: transform;
+}
+
+.purchase-subscription-plan:hover {
+  transform: translateY(-4px);
+  box-shadow:
+    inset 0 0 0 2px var(--purchase-subscription-card-hover-border),
+    inset 0 1px 0 rgb(255 255 255 / 75%),
+    0 12px 24px rgb(0 0 0 / 24%);
+}
+
+.purchase-subscription-plan--deepSeek {
+  --purchase-subscription-card-border: #91c9ff;
+  --purchase-subscription-card-hover-border: #5eabff;
+}
+
+.purchase-subscription-plan--seedance {
+  --purchase-subscription-card-border: #8dded4;
+  --purchase-subscription-card-hover-border: #4ccdc0;
+}
+
+.purchase-subscription-plan--kimi {
+  --purchase-subscription-card-border: #acc5e8;
+  --purchase-subscription-card-hover-border: #76a6e1;
+}
+
+.purchase-subscription-plan--glm {
+  --purchase-subscription-card-border: #c4b4ff;
+  --purchase-subscription-card-hover-border: #9e83f5;
+}
+
+.purchase-subscription-plan:nth-child(2) {
+  animation-delay: 30ms;
+}
+
+.purchase-subscription-plan:nth-child(3) {
+  animation-delay: 60ms;
+}
+
+.purchase-subscription-plan:nth-child(4) {
+  animation-delay: 90ms;
+}
+
+.purchase-subscription-plan:nth-child(5) {
+  animation-delay: 120ms;
+}
+
+.purchase-subscription-plan-badge {
+  --purchase-badge-right: #ff4f8e;
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  z-index: 2;
+  display: flex;
+  height: 22px;
+  align-items: center;
+  padding: 0 16px 0 7px;
+  border-radius: 0 11px 0 11px;
+  color: #fff;
+  background: linear-gradient(
+    90deg,
+    #9d6be1 0%,
+    #c86fdf 32%,
+    #eb66c3 66%,
+    var(--purchase-badge-right) 100%
+  );
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+/* 中文：角标右下角沿用套餐购买页的圆弧折角，避免两个入口出现不同的收口。 */
+.purchase-subscription-plan-badge::after {
+  position: absolute;
+  top: calc(100% - 1px);
+  right: 0;
+  width: 14px;
+  height: 12px;
+  background: var(--purchase-badge-right);
+  content: "";
+  -webkit-mask: radial-gradient(
+    ellipse 14px 12px at 0 100%,
+    transparent 0 97%,
+    #000 98.5%
+  );
+  mask: radial-gradient(
+    ellipse 14px 12px at 0 100%,
+    transparent 0 97%,
+    #000 98.5%
+  );
+}
+
+.purchase-subscription-plan-content {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  box-sizing: border-box;
+  padding: 30px 9px 0;
+  color: #17181b;
+}
+
+.purchase-subscription-plan-content h3 {
+  max-width: 145px;
+  margin: 0 0 7px;
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 18px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.purchase-subscription-plan-content > strong {
+  display: block;
+  margin: 0;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 15px;
+}
+
+.purchase-subscription-plan-info {
+  position: absolute;
+  /* 中文：固定底边并保持自适应高度，权益内容增加时向上扩展。 */
+  left: 9px;
+  width: 130px;
+  bottom: 43px;
+  right: auto;
+  height: auto;
+  box-sizing: border-box;
+  min-height: 55px;
+  padding: 6px 6px 7px;
+  border: 1px solid #fff;
+  border-radius: 4px;
+  background: rgb(255 255 255 / 70%);
+}
+
+.purchase-subscription-plan-info > span {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 10px;
+  line-height: 13px;
+}
+
+.purchase-subscription-plan-info ul {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 7px;
+  line-height: 11px;
+}
+
+.purchase-subscription-plan-info li {
+  display: flex;
+  align-items: flex-start;
+  overflow-wrap: anywhere;
+}
+
+.purchase-subscription-plan-info li::before {
+  width: 4px;
+  height: 4px;
+  flex: 0 0 4px;
+  margin: 3px 4px 0 0;
+  border-radius: 50%;
+  background: var(--purchase-subscription-card-border);
+  content: "";
+}
+
+.purchase-subscription-plan-price {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  left: 8px;
+  z-index: 3;
+  height: 28px;
+  min-height: 28px;
+  padding: 0;
+  border: 1px solid #fff;
+  border-radius: 16px;
+  color: #17181b;
+  background: linear-gradient(90deg, #aef3ff 0%, #f8b1ee 46%, #d7a1f9 100%);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 26px;
+  cursor: pointer;
+}
+
+html[data-theme="light"]
+  .purchase-subscription-modal
+  .semi-modal-content.app-modal-content,
+html[data-theme="light"] .purchase-subscription-modal-content {
+  color: #17181b;
+  background: #f5f6f8;
+}
+
+html[data-theme="light"] .purchase-subscription-modal-content {
+  --purchase-subscription-text: #17181b;
+  --purchase-subscription-muted: #686b73;
+}
+
+html[data-theme="light"] .purchase-subscription-tabs {
+  border-color: #dedfe2;
+  background: #e9e9e9;
+}
+
+html[data-theme="light"] .purchase-subscription-tabs button {
+  color: #777a82;
+}
+
+html[data-theme="light"] .purchase-subscription-tabs button.is-active {
+  color: #17181b;
+}
+
+@media (max-width: 760px) {
+  .purchase-subscription-modal .semi-modal-content.app-modal-content {
+    height: min(490px, calc(100dvh - 24px));
+  }
+
+  .purchase-subscription-modal .semi-modal-content > .semi-modal-body,
+  .purchase-subscription-modal .semi-modal-content > .semi-modal-body-wrapper,
+  .purchase-subscription-modal
+    .semi-modal-content
+    > .semi-modal-body-wrapper
+    > .semi-modal-body,
+  .purchase-subscription-modal-content {
+    height: min(490px, calc(100dvh - 24px));
+  }
+
+  .purchase-subscription-modal-content {
+    overflow: auto;
+  }
+
+  .purchase-subscription-modal-content h2,
+  .purchase-subscription-modal-subtitle,
+  .purchase-subscription-tabs,
+  .purchase-subscription-plans {
+    position: relative;
+    top: auto;
+    left: auto;
+  }
+
+  .purchase-subscription-modal-content h2 {
+    width: max-content;
+    padding: 24px 16px 0;
+    font-size: clamp(28px, 8vw, 42px);
+    line-height: 48px;
+  }
+
+  .purchase-subscription-modal-subtitle {
+    width: max-content;
+    max-width: calc(100% - 32px);
+    padding: 12px 16px 0;
+    font-size: 12px;
+  }
+
+  .purchase-subscription-tabs {
+    width: 931px;
+    margin: 24px 16px 0;
+  }
+
+  .purchase-subscription-plans {
+    width: max-content;
+    margin: 27px 16px 35px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .purchase-subscription-tabs::before,
+  .purchase-subscription-tabs button,
+  .purchase-subscription-plan {
+    animation: none;
+    transition: none;
+  }
+}

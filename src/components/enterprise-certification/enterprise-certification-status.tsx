@@ -11,6 +11,7 @@ import { useTranslation } from "react-i18next";
 import QRCode from "qrcode";
 import type { EnterpriseCertification } from "@/api/enterprise-certification";
 import Modal from "@/components/app-modal";
+import { appToast } from "@/components/app-toast";
 import "./enterprise-certification-status.css";
 
 export interface FaceConfirmationNotice {
@@ -157,6 +158,9 @@ export function EnterpriseFaceModal({
   const { t } = useTranslation();
   const qrCanvas = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
+    if (notice) appToast.error(`${notice.title}: ${notice.message}`);
+  }, [notice]);
+  useEffect(() => {
     if (!visible || !faceUrl || !qrCanvas.current || isMobileDevice()) return;
     void QRCode.toCanvas(qrCanvas.current, faceUrl, {
       width: 210,
@@ -222,12 +226,6 @@ export function EnterpriseFaceModal({
           <div className="enterprise-face-waiting">
             <span className="console-loading-spinner" aria-hidden="true" />
             {t("console.enterpriseCreate.awaitingFace")}
-          </div>
-        ) : null}
-        {notice ? (
-          <div className="enterprise-face-confirm-error" role="alert">
-            <strong>{notice.title}</strong>
-            <span>{notice.message}</span>
           </div>
         ) : null}
         <div className="enterprise-face-dialog-actions">

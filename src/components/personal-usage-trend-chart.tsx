@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { IconRefresh } from "@douyinfe/semi-icons";
 import * as echarts from "echarts/core";
 import { LineChart } from "echarts/charts";
 import {
@@ -19,6 +18,7 @@ import {
 import { dateRangeToTrendQuery } from "./personal-usage-date-picker";
 import { useResolvedTheme } from "@/theme";
 import { getChartRenderer } from "@/components/chart-renderer";
+import { appToast } from "@/components/app-toast";
 
 echarts.use([
   LineChart,
@@ -49,7 +49,6 @@ export function PersonalUsageTrendChart({
   const [data, setData] = useState<UsageTrendResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [reloadKey, setReloadKey] = useState(0);
   const query = useMemo(() => dateRangeToTrendQuery(dateRange), [dateRange]);
 
   useEffect(() => {
@@ -66,7 +65,11 @@ export function PersonalUsageTrendChart({
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [context, query, reloadKey]);
+  }, [context, query]);
+
+  useEffect(() => {
+    if (!loading && error) appToast.error(error);
+  }, [error, loading]);
 
   const seriesMeta = useMemo(
     () =>
@@ -237,17 +240,6 @@ export function PersonalUsageTrendChart({
           <div className="personal-usage-chart-status" role="status">
             <span className="console-loading-spinner" />
             {t("console.personalUsage.trendLoading")}
-          </div>
-        ) : error ? (
-          <div className="personal-usage-chart-status" role="alert">
-            <span>{error}</span>
-            <button
-              type="button"
-              onClick={() => setReloadKey((value) => value + 1)}
-            >
-              <IconRefresh aria-hidden="true" />
-              {t("console.personalUsage.retry")}
-            </button>
           </div>
         ) : null}
         <div

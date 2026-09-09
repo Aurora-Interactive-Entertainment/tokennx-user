@@ -1,0 +1,219 @@
+.purchase-payment-modal.app-modal {
+  --payment-text: #080808;
+  --payment-muted: #929292;
+  --payment-surface: #f5f6f8;
+  --payment-placeholder: #ededee;
+  --payment-line: #e5e6e8;
+  --app-modal-radius: 15px;
+}
+.purchase-payment-modal .semi-modal {
+  width: min(410px, calc(100vw - 24px)) !important;
+  max-width: calc(100vw - 24px);
+}
+.purchase-payment-modal .semi-modal-content.app-modal-content {
+  border: 0;
+  color: var(--payment-text);
+  background: var(--payment-surface);
+}
+.purchase-payment-modal
+  .semi-modal-content.app-modal-content
+  > .semi-modal-body-wrapper,
+.purchase-payment-modal
+  .semi-modal-content.app-modal-content
+  > .semi-modal-body {
+  padding: 0;
+}
+.purchase-payment-content {
+  box-sizing: border-box;
+  min-height: 370px;
+  padding: 24px 16px 30px 30px;
+}
+.purchase-payment-content h2 {
+  margin: 0;
+  padding: 0 42px 12px 0;
+  border-bottom: 1px solid var(--payment-line);
+  color: var(--payment-text);
+  font-size: 22px;
+  line-height: 28px;
+  font-weight: 700;
+}
+.purchase-payment-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 144px) minmax(0, 184px);
+  gap: 36px;
+  margin-top: 12px;
+}
+.purchase-payment-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+  min-width: 0;
+  margin: 0;
+  padding-right: 16px;
+  border-right: 1px solid var(--payment-line);
+}
+.purchase-payment-summary dt {
+  color: var(--payment-muted);
+  font-size: 14px;
+  line-height: 20px;
+}
+.purchase-payment-summary dd {
+  margin: 2px 0 0;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 20px;
+  overflow-wrap: anywhere;
+}
+.purchase-payment-summary .purchase-payment-total {
+  margin-top: auto;
+}
+.purchase-payment-total dd {
+  font-size: 20px;
+  line-height: 26px;
+}
+.purchase-payment-methods {
+  min-width: 0;
+}
+.purchase-payment-scan-title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  height: 22px;
+}
+.purchase-payment-scan-title strong {
+  font-size: 14px;
+  line-height: 20px;
+  white-space: nowrap;
+}
+.purchase-payment-scan-title img {
+  width: 22px;
+  height: 22px;
+}
+.purchase-payment-qr {
+  width: 126px;
+  height: 126px;
+  box-sizing: border-box;
+  margin: 10px auto 12px;
+  border: 1px solid var(--payment-line);
+  border-radius: 5px;
+  background: var(--payment-placeholder);
+}
+.purchase-payment-options {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.purchase-payment-options label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 30px;
+  padding: 3px 8px;
+  box-sizing: border-box;
+  border: 1px solid var(--payment-line);
+  border-radius: 4px;
+  background: var(--payment-placeholder);
+  cursor: pointer;
+}
+.purchase-payment-options label.is-selected {
+  border-color: var(--payment-text);
+}
+.purchase-payment-options input {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  accent-color: var(--payment-text);
+}
+.purchase-payment-options img {
+  width: 14px;
+  height: 14px;
+}
+.purchase-payment-options strong {
+  font-size: 12px;
+  line-height: 16px;
+}
+.purchase-payment-options small {
+  margin-left: auto;
+  color: var(--payment-muted);
+  font-size: 10px;
+}
+.purchase-payment-agreement {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  margin-top: 10px;
+  font-size: 10px;
+  line-height: 14px;
+}
+.purchase-payment-agreement label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--payment-muted);
+  cursor: pointer;
+}
+.purchase-payment-agreement input {
+  width: 12px;
+  height: 12px;
+  margin: 0;
+  accent-color: var(--payment-text);
+}
+.purchase-payment-agreement a {
+  color: var(--payment-text);
+  text-decoration: none;
+}
+/* 仅覆盖本业务弹窗，保留 AppModal 的居中、遮罩与焦点管理。 */
+.purchase-payment-modal.app-modal
+  .semi-modal-content.app-modal-content
+  .semi-modal-close {
+  top: 20px;
+  right: 16px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--payment-placeholder);
+  color: var(--payment-muted);
+}
+.purchase-payment-modal .semi-modal-close .semi-icon {
+  transition: transform 240ms ease;
+}
+.purchase-payment-modal .semi-modal-close:hover .semi-icon {
+  transform: rotate(90deg);
+}
+html[data-theme="dark"] .purchase-payment-modal {
+  --payment-text: #f4f5f7;
+  --payment-muted: #a0a4ad;
+  --payment-surface: #20232a;
+  --payment-placeholder: #292d35;
+  --payment-line: #383d47;
+}
+@media (max-width: 440px) {
+  .purchase-payment-content {
+    padding: 20px 16px 24px;
+  }
+  .purchase-payment-columns {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
+    gap: 18px;
+  }
+  .purchase-payment-scan-title {
+    gap: 6px;
+  }
+  .purchase-payment-scan-title img {
+    width: 18px;
+    height: 18px;
+  }
+  .purchase-payment-options label {
+    padding-inline: 4px;
+    gap: 3px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .purchase-payment-modal .semi-modal-close .semi-icon {
+    transition: none;
+  }
+}

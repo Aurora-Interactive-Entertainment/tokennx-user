@@ -25,6 +25,7 @@ import { formatRankingTokens, RankingRecentUsageChart } from '@/components/ranki
 import { formatToolUsageTokens, ToolUsageClientsChart } from '@/components/tool-usage-chart'
 import { apiTimeToDate } from '@/utils/format'
 import { ModelsShowcase, type ModelsShowcaseGroup } from '@/components/public-models-showcase'
+import { appToast } from '@/components/app-toast'
 
 function formatPublicPrice(price: ModelPrice): ReactNode {
   return <ModelPriceSummary price={price} />
@@ -240,6 +241,14 @@ export function RankingsPage() {
   }, [t])
 
   useEffect(() => {
+    if (leaderboardError) appToast.error(leaderboardError)
+  }, [leaderboardError])
+
+  useEffect(() => {
+    if (recentError) appToast.error(recentError)
+  }, [recentError])
+
+  useEffect(() => {
     const controller = new AbortController()
     setRecentLoading(true)
     setRecentError('')
@@ -270,13 +279,13 @@ export function RankingsPage() {
         <main className="ranking-content">
           <section id="top-models" className="ranking-top-section">
             <header><h1>{t('public.rankings.topTitle')}</h1><p>{t('public.rankings.topDescription')}</p></header>
-            <div className="ranking-chart-layout">{recentLoading && !recentUsage ? <div className="ranking-data-state" role="status">{t('public.rankings.loading')}</div> : recentError && !recentUsage ? <div className="ranking-data-state is-error" role="alert">{recentError}</div> : recentUsage && recentUsage.weeks.length && recentUsage.items.length ? <RankingRecentUsageChart data={recentUsage} /> : <div className="ranking-data-state">{t('public.rankings.empty')}</div>}</div>
+            <div className="ranking-chart-layout">{recentLoading && !recentUsage ? <div className="ranking-data-state" role="status">{t('public.rankings.loading')}</div> : recentUsage && recentUsage.weeks.length && recentUsage.items.length ? <RankingRecentUsageChart data={recentUsage} /> : <div className="ranking-data-state">{t('public.rankings.empty')}</div>}</div>
           </section>
 
           <section id="model-ranking" className="ranking-list-section">
             <div className="ranking-list-head"><div><h2>{t('public.rankings.leaderboardTitle')}</h2><p>{t('public.rankings.leaderboardDescription')}</p></div></div>
 
-            <div className="ranking-model-list" aria-live="polite">{leaderboardLoading && !leaderboard ? <div className="ranking-data-state" role="status">{t('public.rankings.loading')}</div> : leaderboardError && !leaderboard ? <div className="ranking-data-state is-error" role="alert">{leaderboardError}</div> : leaderboard?.items.length ? leaderboard.items.map((model) => <article className="ranking-model-row" key={model.code}>
+            <div className="ranking-model-list" aria-live="polite">{leaderboardLoading && !leaderboard ? <div className="ranking-data-state" role="status">{t('public.rankings.loading')}</div> : leaderboard?.items.length ? leaderboard.items.map((model) => <article className="ranking-model-row" key={model.code}>
               <span className="ranking-model-number">{model.rank}.</span>
               <RankingModelLogo code={model.code} name={model.name} />
               <div className="ranking-model-name"><strong>{model.name}</strong><span>{t('public.rankings.architectureHint')}</span></div>
@@ -319,6 +328,10 @@ export function AppsPage() {
     return () => controller.abort()
   }, [t])
 
+  useEffect(() => {
+    if (loadError) appToast.error(loadError)
+  }, [loadError])
+
   const popularItems = (yearLeaderboard?.items ?? []).slice(0, 4)
   const rankingItems = (leaderboard?.items ?? []).slice(0, 20)
 
@@ -336,12 +349,12 @@ export function AppsPage() {
             <p>{item.description}</p>
             <strong>{t('public.apps.tokenCount', { count: formatToolUsageTokens(item.total_tokens) })}</strong>
           </article>)}
-          {!yearLeaderboard ? <div className="apps-grid-state" role="status">{loadError || t('public.apps.loading')}</div> : !popularItems.length ? <div className="apps-grid-state">{t('public.apps.empty')}</div> : null}
+          {!yearLeaderboard ? (loadError ? null : <div className="apps-grid-state" role="status">{t('public.apps.loading')}</div>) : !popularItems.length ? <div className="apps-grid-state">{t('public.apps.empty')}</div> : null}
         </section>
 
         <section className="apps-chart-panel" aria-labelledby="appsChartTitle">
           <div className="apps-chart-heading"><h2 id="appsChartTitle">{t('public.apps.chartTitle')}</h2><span>{t('public.apps.pastSixMonths')}</span></div>
-          {clients?.weeks.length && clients.items.length ? <ToolUsageClientsChart data={clients} /> : <div className="apps-chart-state" role="status">{clients ? t('public.apps.empty') : loadError || t('public.apps.loading')}</div>}
+          {clients?.weeks.length && clients.items.length ? <ToolUsageClientsChart data={clients} /> : clients ? <div className="apps-chart-state" role="status">{t('public.apps.empty')}</div> : loadError ? null : <div className="apps-chart-state" role="status">{t('public.apps.loading')}</div>}
         </section>
 
         <div className="apps-ranking-filter">
@@ -358,7 +371,7 @@ export function AppsPage() {
             <div><h2>{item.name}</h2><p>{item.description}</p></div>
             <strong>{t('public.apps.tokenCount', { count: formatToolUsageTokens(item.total_tokens) })}</strong>
           </article>)}
-          {!leaderboard ? <div className="apps-list-state" role="status">{loadError || t('public.apps.loading')}</div> : !rankingItems.length ? <div className="apps-list-state">{t('public.apps.empty')}</div> : null}
+          {!leaderboard ? (loadError ? null : <div className="apps-list-state" role="status">{t('public.apps.loading')}</div>) : !rankingItems.length ? <div className="apps-list-state">{t('public.apps.empty')}</div> : null}
         </section>
       </div>
     </PublicLayout>
@@ -725,6 +738,10 @@ export function DocsPage() {
   }, [locale, t])
 
   useEffect(() => {
+    if (error) appToast.error(error.message)
+  }, [error])
+
+  useEffect(() => {
     if (treeLoading || error || !tree.length) return
     if (!publicId) {
       const firstDocument = rootNodes.flatMap((root) => documentDescendants(root.id, tree))[0]
@@ -876,7 +893,6 @@ export function DocsPage() {
           {currentDocument ? <div className="docs-article-toolbar docs-article-toolbar--desktop-copy"><button className="docs-copy-page" type="button" onClick={() => void copyMarkdown()}><IconCopyStroked aria-hidden="true" />{t('public.docs.manuscript.copyPage')}</button></div> : null}
           {currentDocument ? <div className="docs-article-toolbar docs-article-toolbar--mobile-copy"><button className="docs-copy-page" type="button" onClick={() => void copyMarkdown()}><IconCopyStroked aria-hidden="true" />{t('public.docs.manuscript.copyPage')}</button></div> : null}
           {loading && !currentDocument ? <div className="docs-state" role="status"><Skeleton placeholder={<><Skeleton.Title /><Skeleton.Paragraph rows={8} /></>} loading /></div> : null}
-          {!loading && error ? <div className="docs-state docs-state--error" role="alert"><h1>{t('public.docs.manuscript.loadFailed')}</h1><p>{error.message}</p>{error.requestId ? <code>{t('public.docs.manuscript.requestIdPrefix')}{error.requestId}</code> : null}</div> : null}
           {!loading && !error && !currentDocument && !tree.length ? <div className="docs-state"><h1>{t('public.docs.manuscript.noDocuments')}</h1></div> : null}
           {currentDocument ? <MarkdownContent className="docs-markdown" content={currentDocument.content_markdown} enhancedCodeBlocks resolveImageUrl={resolveDocsImageUrl} /> : null}
         </article>

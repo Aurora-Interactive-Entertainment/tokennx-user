@@ -16,6 +16,7 @@ import {
 import { isApiError } from "@/api/http";
 import { getAccessToken } from "@/auth/token-storage";
 import { LoginDialog, PublicLayout } from "@/components/common";
+import { appToast } from "@/components/app-toast";
 import { useAppSelector } from "@/store/hooks";
 import i18n from "@/i18n";
 import { invitationStatusLabel } from "./enterprise-console-shared";
@@ -123,6 +124,14 @@ function InvitationPrompt({
     void applyToJoin();
   }, [authenticated, submitAfterLogin, submitting]);
 
+  useEffect(() => {
+    if (!error) return;
+    const requestHint = error.requestId
+      ? ` ${t("console.common.requestIdValue", { requestId: error.requestId })}`
+      : "";
+    appToast.error(`${error.message}${requestHint}`);
+  }, [error, t]);
+
   async function applyToJoin(): Promise<void> {
     if (!authenticated) {
       setSubmitAfterLogin(true);
@@ -176,18 +185,6 @@ function InvitationPrompt({
       >
         {submitting ? t("console.join.submitting") : t("console.join.submit")}
       </button>
-      {error ? (
-        <div className="enterprise-join-error" role="alert">
-          <span>{error.message}</span>
-          {error.requestId ? (
-            <small>
-              {t("console.common.requestIdValue", {
-                requestId: error.requestId,
-              })}
-            </small>
-          ) : null}
-        </div>
-      ) : null}
     </section>
   );
 }

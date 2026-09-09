@@ -16,6 +16,7 @@ import {
   DEFAULT_CONSOLE_PATH,
   PublicLayout,
 } from "@/components/common";
+import { ActivityCampaignModal } from "@/components/activity-campaign-modal";
 import { AppStoreProvider } from "@/data/app-state";
 import {
   hydrateAuth,
@@ -352,10 +353,13 @@ export default function App({ onBootReady }: { onBootReady: () => void }) {
       <SeoManager />
       <ScrollToTop />
       <AuthBootstrap>
-        <AuthScopedStoreProvider>
-          <BootReadyWatcher onBootReady={onBootReady} />
-          <Suspense fallback={<AppLoadingFallback />}>
-            <Routes>
+        <>
+          {/* 中文：活动弹窗挂在应用入口而非购买页，后续可由接口通过 shouldDisplay/campaign 控制。 */}
+          <ActivityCampaignModal />
+          <AuthScopedStoreProvider>
+            <BootReadyWatcher onBootReady={onBootReady} />
+            <Suspense fallback={<AppLoadingFallback />}>
+              <Routes>
               <Route
                 path="/"
                 element={<HomePage onInitialScoreboardReady={onBootReady} />}
@@ -470,9 +474,10 @@ export default function App({ onBootReady }: { onBootReady: () => void }) {
                 <Route path="/__sentry-test" element={<SentryTestPage />} />
               ) : null}
               <Route path="*" element={<NotFoundPage />} />
-            </Routes>
-          </Suspense>
-        </AuthScopedStoreProvider>
+              </Routes>
+            </Suspense>
+          </AuthScopedStoreProvider>
+        </>
       </AuthBootstrap>
     </BrowserRouter>
   );

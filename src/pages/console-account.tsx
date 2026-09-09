@@ -35,6 +35,7 @@ import {
 } from "@/components/common";
 import { TraeTableEmpty } from "@/components/trae-table-empty";
 import { TraePagination } from "@/components/trae-pagination";
+import { appToast } from "@/components/app-toast";
 import { BackofficeMoneyText as MoneyText } from "@/components/money";
 import {
   CompatCard as Card,
@@ -546,6 +547,10 @@ export function ApiKeysPage({
       controller.abort();
     };
   }, [dispatch, form.billingSource, handleAuthFailure, modalVisible, navigate, workspaceContext]);
+
+  useEffect(() => {
+    if (subscriptionModels.error) appToast.error(subscriptionModels.error);
+  }, [subscriptionModels.error]);
 
   useEffect(() => {
     let active = true;
@@ -1920,19 +1925,17 @@ export function ApiKeysPage({
                     <span>{t("console.account.selectedModel")}</span>
                   </label>
                 </div>
-                {form.billingSource === "subscription" ? (
-                  <BannerNotice tone={subscriptionModels.error ? "warning" : "info"}>
+                {form.billingSource === "subscription" && !subscriptionModels.error ? (
+                  <BannerNotice tone="info">
                     {subscriptionModels.loading
                       ? t("console.account.subscriptionModelsLoading")
-                      : subscriptionModels.error
-                        ? t("console.account.subscriptionModelsLoadFailed")
-                        : !subscriptionModels.hasSubscription
-                          ? t("console.account.subscriptionModelsUnavailable")
-                          : !subscriptionModels.models.length
-                            ? t("console.account.subscriptionModelsEmpty")
-                            : form.modelIds.length > 256
-                              ? t("console.account.subscriptionModelLimit")
-                              : t("console.account.selectedCount", { count: subscriptionModels.models.length })}
+                      : !subscriptionModels.hasSubscription
+                        ? t("console.account.subscriptionModelsUnavailable")
+                        : !subscriptionModels.models.length
+                          ? t("console.account.subscriptionModelsEmpty")
+                          : form.modelIds.length > 256
+                            ? t("console.account.subscriptionModelLimit")
+                            : t("console.account.selectedCount", { count: subscriptionModels.models.length })}
                   </BannerNotice>
                 ) : null}
                 <div className="api-key-model-picker">
@@ -2512,6 +2515,10 @@ export function InvitationsPage() {
     return () => controller.abort();
   }, [handleAuthFailure, navigate, t]);
 
+  useEffect(() => {
+    if (error) appToast.error(error);
+  }, [error]);
+
   function copyLink(): void {
     navigator.clipboard
       .writeText(inviteLink)
@@ -2543,9 +2550,6 @@ export function InvitationsPage() {
           title={t("console.invitations.title")}
           description={t("console.invitations.description")}
         />
-        <div className="public-invitation-empty" role="alert">
-          <strong>{error || t("console.invitations.loadFailed")}</strong>
-        </div>
       </div>
     );
 

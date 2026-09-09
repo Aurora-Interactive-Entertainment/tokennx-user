@@ -10,6 +10,5 @@
 .bind-email-code-row .semi-form-field { min-width: 0; }
 .bind-email-code-row .semi-button { min-width: 128px; height: 32px; }
 .bind-email-send-code { margin-top: 36px; }
-.bind-email-error { margin: 0; color: var(--color-danger, #df4545); font-size: 13px; }
 .bind-email-footer { display: flex; gap: 8px; }
 @media (max-width: 560px) { .bind-email-code-row { grid-template-columns: 1fr; } .bind-email-code-row .semi-button { width: 100%; margin-top: 0; } }

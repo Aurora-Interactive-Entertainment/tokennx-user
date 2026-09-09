@@ -1,0 +1,363 @@
+/* 中文：活动弹窗覆盖 AppModal 的通用正文留白，让视觉图与底部区域无缝衔接。 */
+.activity-campaign-modal .semi-modal-content.app-modal-content {
+  width: 480px;
+  height: 478px;
+  max-width: calc(100vw - 24px);
+  border: 0;
+  border-radius: 15px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.activity-campaign-modal .semi-modal-body {
+  padding: 0 !important;
+}
+
+/* 中文：Semi 在部分版本会额外包一层 body-wrapper，图片型弹窗必须同时清除该层留白。 */
+.activity-campaign-modal .semi-modal-content > .semi-modal-body-wrapper {
+  padding: 0 !important;
+  overflow: hidden;
+}
+
+.activity-campaign-modal
+  .semi-modal-content
+  > .semi-modal-body-wrapper
+  > .semi-modal-body {
+  padding: 0 !important;
+}
+
+.activity-campaign-content {
+  width: 100%;
+  height: 478px;
+  border-radius: 15px;
+  overflow: hidden;
+}
+
+.activity-campaign-visual {
+  position: relative;
+  height: 264px;
+  overflow: hidden;
+  /* 中文：图片区域四角与弹窗外壳保持一致，避免移动端两侧出现直角切口。 */
+  border-radius: 15px;
+  background: linear-gradient(145deg, #8f1ed7 0%, #4c1b9d 48%, #261366 100%);
+}
+
+.activity-campaign-visual > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.activity-campaign-visual-fallback {
+  position: relative;
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+  align-items: center;
+  box-sizing: border-box;
+  padding: 35px 32px 26px;
+  color: #fff;
+  text-align: center;
+  overflow: hidden;
+}
+
+.activity-campaign-visual-fallback::after,
+.activity-campaign-visual-fallback::before {
+  position: absolute;
+  right: -10%;
+  bottom: -42px;
+  left: -10%;
+  height: 100px;
+  border: 3px solid rgb(180 149 255 / 70%);
+  border-radius: 50%;
+  box-shadow:
+    0 -13px 0 -5px rgb(102 70 224 / 55%),
+    0 -27px 0 -10px rgb(225 170 255 / 55%);
+  content: "";
+  transform: rotate(-7deg);
+}
+
+.activity-campaign-visual-fallback::before {
+  bottom: -70px;
+  transform: rotate(7deg);
+  opacity: 0.75;
+}
+
+.activity-campaign-stars {
+  position: absolute;
+  inset: 0;
+  opacity: 0.45;
+  background-image: radial-gradient(circle, #fff 0 1px, transparent 1.5px);
+  background-size: 47px 38px;
+  mask-image: linear-gradient(to bottom, #000 30%, transparent 78%);
+}
+
+.activity-campaign-visual-fallback p,
+.activity-campaign-visual-subline,
+.activity-campaign-visual-fallback strong,
+.activity-campaign-visual-fallback span {
+  position: relative;
+  z-index: 1;
+  margin: 0;
+  text-shadow: 0 2px 5px rgb(29 6 77 / 36%);
+}
+
+.activity-campaign-visual-fallback p {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.activity-campaign-coupon-value {
+  margin: 0 4px;
+  color: #fff4a4;
+  font-size: 1.95em;
+  font-weight: 800;
+  line-height: 0.85;
+}
+
+.activity-campaign-coupon-label {
+  font-size: 0.95em;
+}
+
+.activity-campaign-visual-fallback strong {
+  margin-top: 21px;
+  color: #fff4a4;
+  font-size: 47px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.activity-campaign-highlight-number {
+  color: #fff4a4;
+  font-size: 1em;
+  font-weight: 800;
+}
+
+.activity-campaign-highlight-prefix,
+.activity-campaign-highlight-label {
+  color: #fff;
+  font-size: 0.46em;
+  font-weight: 700;
+  vertical-align: 0.22em;
+}
+
+.activity-campaign-highlight-prefix {
+  margin-right: 7px;
+}
+
+.activity-campaign-highlight-label {
+  margin-left: 7px;
+}
+
+.activity-campaign-visual-subline {
+  margin-top: 21px;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.activity-campaign-visual-fallback span {
+  margin-top: auto;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.activity-campaign-close {
+  position: absolute;
+  top: 20px;
+  right: 17px;
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border: 1px solid rgb(255 255 255 / 92%);
+  border-radius: 50%;
+  color: #fef1c4;
+  background: rgb(41 18 89 / 18%);
+  cursor: pointer;
+}
+
+.activity-campaign-close span,
+.activity-campaign-close span::after {
+  width: 21px;
+  height: 1.5px;
+  background: currentColor;
+  content: "";
+  transform: rotate(45deg);
+}
+
+.activity-campaign-close span::after {
+  display: block;
+  transform: rotate(90deg);
+}
+
+.activity-campaign-body {
+  height: 214px;
+  box-sizing: border-box;
+  padding: 27px 0;
+  background: #fff;
+  text-align: center;
+}
+
+.activity-campaign-body h2 {
+  margin: 0;
+  color: #4a4a4a;
+  font-size: 22px;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+.activity-campaign-countdown {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 13px;
+}
+
+.activity-campaign-time-group {
+  display: flex;
+  align-items: center;
+}
+
+.activity-campaign-time-group strong {
+  display: grid;
+  width: 45px;
+  height: 42px;
+  place-items: center;
+  border: 1px solid #e4e4e4;
+  border-radius: 10px;
+  color: #373737;
+  background: #f6f6f6;
+  box-shadow: inset 0 1px 2px rgb(0 0 0 / 2%);
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.activity-campaign-time-group i {
+  margin: 0 9px;
+  color: #777;
+  font-size: 20px;
+  font-style: normal;
+}
+
+.activity-campaign-actions {
+  display: grid;
+  grid-template-columns: repeat(2, 171px);
+  justify-content: center;
+  gap: 35px;
+  margin-top: 25px;
+}
+
+.activity-campaign-button {
+  width: 171px;
+  height: 41px;
+  border: 0;
+  border-radius: 24px;
+  font: inherit;
+  font-size: 18px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.activity-campaign-button--secondary {
+  color: #222;
+  background: #eeeeee;
+}
+
+.activity-campaign-button--primary {
+  color: #fff;
+  background: #000;
+}
+
+html[data-theme="dark"]
+  .activity-campaign-modal
+  .semi-modal-content.app-modal-content,
+html[data-theme="dark"] .activity-campaign-body {
+  background: #fff;
+}
+
+@media (max-width: 560px) {
+  .activity-campaign-modal .semi-modal-content.app-modal-content,
+  .activity-campaign-content {
+    height: auto;
+  }
+
+  .activity-campaign-visual {
+    height: auto;
+    aspect-ratio: 480 / 264;
+    min-height: 0;
+  }
+
+  .activity-campaign-visual-fallback {
+    padding: 14px 12px 10px;
+  }
+
+  .activity-campaign-visual-fallback p {
+    font-size: clamp(14px, 5vw, 22px);
+  }
+
+  .activity-campaign-coupon-value {
+    font-size: 1.55em;
+  }
+
+  .activity-campaign-visual-subline {
+    margin-top: 8px;
+    font-size: clamp(14px, 5vw, 22px);
+  }
+
+  .activity-campaign-visual-fallback strong {
+    margin-top: 8px;
+    font-size: clamp(30px, 11vw, 47px);
+  }
+
+  .activity-campaign-visual-fallback > span {
+    font-size: clamp(10px, 2.8vw, 13px);
+  }
+
+  .activity-campaign-close {
+    top: 10px;
+    right: 10px;
+    width: 34px;
+    height: 34px;
+  }
+
+  .activity-campaign-close span,
+  .activity-campaign-close span::after {
+    width: 18px;
+  }
+
+  .activity-campaign-body {
+    height: auto;
+    min-height: 195px;
+    padding: 23px 22px 24px;
+  }
+
+  .activity-campaign-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    margin-top: 23px;
+  }
+
+  .activity-campaign-button {
+    width: 100%;
+    font-size: 16px;
+  }
+
+  .activity-campaign-body h2 {
+    font-size: 20px;
+  }
+
+  .activity-campaign-time-group strong {
+    width: clamp(38px, 12vw, 45px);
+    height: 40px;
+    font-size: 18px;
+  }
+
+  .activity-campaign-time-group i {
+    margin-inline: clamp(4px, 2vw, 9px);
+    font-size: 18px;
+  }
+}

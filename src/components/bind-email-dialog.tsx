@@ -24,6 +24,7 @@ export function BindEmailDialog({ visible, onClose, onAuthFailure, onBound }: Bi
 
   useEffect(() => { if (visible) { formApiRef.current?.reset(); setRetryAfter(0); setSending(false); setSaving(false); setError('') } }, [visible])
   useEffect(() => { if (!visible || retryAfter <= 0) return; const timer = window.setInterval(() => setRetryAfter((value) => Math.max(0, value - 1)), 1000); return () => window.clearInterval(timer) }, [retryAfter, visible])
+  useEffect(() => { if (error) appToast.error(error) }, [error])
 
   async function readEmail(): Promise<string | null> {
     const formApi = formApiRef.current
@@ -63,7 +64,6 @@ export function BindEmailDialog({ visible, onClose, onAuthFailure, onBound }: Bi
       <p>{t('bindEmail.description')}</p>
       <Form.Input field="email" label={t('bindEmail.email')} type="email" autoComplete="email" placeholder={t('bindEmail.emailPlaceholder')} rules={[{ required: true, message: t('bindEmail.emailInvalid') }, { validator: (_rule, value) => !String(value ?? '').trim() || isValidContactDestination('email', String(value)) ? true : new Error(t('bindEmail.emailInvalid')) }]} disabled={saving} />
       <div className="bind-email-code-row"><Form.Input field="code" label={t('bindEmail.code')} placeholder={t('bindEmail.codePlaceholder')} inputMode="numeric" maxLength={PROFILE_VERIFICATION_CODE_LENGTH} rules={[{ required: true, message: t('bindEmail.codeInvalid') }, { pattern: new RegExp(`^[0-9]{${PROFILE_VERIFICATION_CODE_LENGTH}}$`), message: t('bindEmail.codeInvalid') }]} disabled={saving} /><Button className="bind-email-send-code" theme="outline" loading={sending} disabled={sending || saving || retryAfter > 0} onClick={() => { void sendCode() }}>{retryAfter > 0 ? t('bindEmail.retryAfter', { seconds: retryAfter }) : t('bindEmail.sendCode')}</Button></div>
-      {error ? <p className="bind-email-error" role="alert">{error}</p> : null}
     </Form>
   </AppModal>
 }

@@ -1719,6 +1719,10 @@ html[data-theme="light"]
   flex-direction: column;
   padding: 14px 12px;
 }
+/* 中文：生产环境的 Semi CSS 可能在全局样式之后加载，提升优先级避免覆盖固定侧栏定位。 */
+.console-frame .console-sider {
+  position: fixed;
+}
 .console-nav {
   flex: 1;
   min-height: 0;
@@ -9561,19 +9565,35 @@ html[data-theme="dark"] .generation-send-button.send-btn.is-running.semi-button:
   /* 中文：状态筛选与创建按钮保持同一行，避免状态文案被压缩后换行。 */
   .api-keys-toolbar-actions {
     display: grid;
-    grid-template-columns: max-content minmax(0, 1fr);
+    grid-template-columns: clamp(180px, 44%, 220px) minmax(0, 1fr);
     align-items: center;
   }
   .api-keys-toolbar-actions .status-filters {
-    width: max-content;
+    width: 100%;
+    height: 40px;
+    min-height: 40px;
+    box-sizing: border-box;
+    align-items: center;
+    gap: 2px;
+    padding: 3px;
+    border-radius: var(--radius-8);
   }
   .api-keys-toolbar-actions .status-filter-btn {
-    flex: 0 0 auto;
+    flex: 1 1 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 32px;
+    min-height: 32px;
+    line-height: 1.25;
+    padding-inline: 0;
     white-space: nowrap;
   }
   .api-keys-toolbar-actions > .semi-button {
     width: auto;
     min-width: 0;
+    height: 40px;
+    min-height: 40px;
   }
 }
 
@@ -11639,16 +11659,6 @@ html[data-theme="dark"] .settings-console-page .settings-card--workspace .semi-b
   color: var(--color-text-secondary);
   font-size: 13px;
 }
-.profile-error-content {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--spacing-8);
-  flex-wrap: wrap;
-}
-.profile-error-content span {
-  min-width: 0;
-}
 .profile-contact-dialog {
   display: flex;
   flex-direction: column;
@@ -13422,8 +13432,12 @@ html[data-theme="light"] .app-loading-screen__logo-shell .brand-logo-image {
   flex: 0 0 112px;
   place-items: center;
   margin-left: 23px;
+  padding: 0;
   border-radius: 14px;
+  border: 0;
   color: transparent;
+  background: transparent;
+  font: inherit;
   white-space: nowrap;
   cursor: pointer;
   transition:
@@ -14435,45 +14449,6 @@ html[data-theme="light"] .public-header--home .header-notification-dot {
   width: 100%;
   height: 100%;
   opacity: 0.94;
-}
-.manuscript-home-error {
-  display: flex;
-  width: min(1280px, calc(100% - 48px));
-  min-height: 48px;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
-  box-sizing: border-box;
-  margin: 24px auto 0;
-  padding: 10px 16px;
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: 4px;
-  color: #cfcfcf;
-  background: #191919;
-  font-size: 16px;
-}
-.manuscript-home-error button {
-  min-height: 30px;
-  padding: 0 14px;
-  border: 1px solid #555;
-  border-radius: 3px;
-  color: #fff;
-  background: #292929;
-  cursor: pointer;
-}
-.manuscript-home-error button:hover {
-  border-color: #777;
-  background: #353535;
-}
-html[data-theme="light"] .manuscript-home-error {
-  border-color: rgba(23, 24, 27, 0.18);
-  color: #343434;
-  background: #f5f5f5;
-}
-html[data-theme="light"] .manuscript-home-error button {
-  border-color: #bbb;
-  color: #17181b;
-  background: #fff;
 }
 .manuscript-feature-grid {
   position: relative;

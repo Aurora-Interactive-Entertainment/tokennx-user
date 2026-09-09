@@ -121,7 +121,7 @@
 .trae-table-action-cell { position: relative; width: 42px; text-align: right; }
 .trae-table-action-cell > button { display: inline-grid; width: 28px; height: 28px; place-items: center; border: 0; border-radius: 5px; color: var(--color-text-tertiary); background: transparent; cursor: pointer; }
 .trae-table-action-cell > button:hover { color: var(--color-text-default-hover); background: var(--color-bg-overlay-l3); }
-.trae-row-menu { position: absolute; top: 35px; right: 8px; z-index: 12; display: grid; box-sizing: border-box; width: 180px; padding: 4px 6px; border: 1px solid var(--color-border-neutral-l2); border-radius: 6px; background: var(--color-bg-menu); }
+.trae-row-menu { position: absolute; top: 35px; right: 8px; z-index: 12; display: grid; box-sizing: border-box; width: min(180px, calc(100vw - 16px)); max-height: calc(100dvh - 16px); overflow-y: auto; padding: 4px 6px; border: 1px solid var(--color-border-neutral-l2); border-radius: 6px; background: var(--color-bg-menu); box-shadow: var(--shadow); }
 .trae-row-menu--portal { position: fixed; top: auto; right: auto; z-index: 100; }
 .trae-row-menu button { display: flex; align-items: center; min-height: 28px; padding: 0 6px; border: 0; border-radius: 4px; color: var(--color-text-default); background: transparent; font: inherit; font-size: 13px; text-align: left; cursor: pointer; }
 .trae-row-menu button:hover { color: var(--color-text-default-hover); background: var(--color-bg-overlay-l3); }
@@ -178,14 +178,14 @@
 .trae-usage-person-values { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; color: var(--color-text-tertiary); font-size: 10px; }
 .trae-usage-person-values b { display: block; margin-top: 3px; color: var(--color-text-default-hover); font-size: 12px; font-weight: 550; }
 .app-modal.trae-dialog.trae-confirm-dialog .semi-modal { width: min(360px, calc(100vw - 32px)); }
-.trae-confirm-dialog-content { padding: 0 12px 12px; }
+.trae-confirm-dialog-content { padding: 0; }
 .trae-confirm-dialog-content p { margin: 0 0 14px; color: var(--color-text-secondary); font-size: 13px; line-height: 1.5; }
 .trae-confirm-dialog-content .trae-dialog-actions { margin: 0; padding: 0; }
 .trae-confirm-dialog-content .trae-dialog-actions button { min-height: 30px; font-size: 13px; }
 .app-modal.trae-dialog.trae-member-action-dialog .semi-modal { width: min(480px, calc(100vw - 32px)); }
 .trae-dialog-title-with-icon { display: inline-flex; align-items: center; gap: 7px; }
 .trae-dialog-title-with-icon > svg { width: 16px; height: 16px; color: var(--color-text-tertiary); }
-.trae-member-action-content { padding: 0 12px 12px; }
+.trae-member-action-content { padding: 0; }
 .trae-member-action-content > p { margin: 0 0 14px; color: var(--color-text-secondary); font-size: 13px; line-height: 1.55; }
 .trae-member-action-field { display: grid; gap: 7px; color: var(--color-text-secondary); font-size: 13px; }
 .trae-member-action-field > span { color: var(--color-text-default-hover); font-weight: 600; }
@@ -209,7 +209,7 @@
 .trae-role-option strong { color: var(--color-text-default-hover); font-size: 13px; font-weight: 550; }
 .trae-role-option small { color: var(--color-text-tertiary); font-size: 11px; line-height: 1.45; }
 .trae-department-detail-dialog { width: min(480px, 100%); }
-.trae-department-detail-content { padding: 0 12px 12px; }
+.trae-department-detail-content { padding: 0; }
 .trae-department-detail-content dl { display: grid; gap: 14px; margin: 0; padding: 0 0 18px; }
 .trae-department-detail-content dl > div { display: grid; gap: 6px; }
 .trae-department-detail-content dt { color: var(--color-text-tertiary); font-size: 13px; }
@@ -218,7 +218,7 @@
 .trae-department-detail-content .trae-dialog-actions button { min-height: 30px; font-size: 13px; }
 .trae-danger-button { border-color: #f65a5a; color: #ffffff; background: #f65a5a; }
 .trae-danger-button:hover { border-color: #e34d4d; background: #e34d4d; }
-.trae-dialog-form { display: grid; gap: 16px; padding: 12px; }
+.trae-dialog-form { display: grid; gap: 16px; padding: 0; }
 .trae-dialog-form > p { color: var(--color-text-secondary); font-size: 12px; }
 .trae-dialog-form > label { display: grid; gap: 7px; color: var(--color-text-secondary); font-size: 12px; }
 .trae-dialog-form > label > input,
@@ -236,7 +236,7 @@
 }
 .trae-dialog-form .semi-form-field-error-message { margin-top: 4px; color: #f65a5a; font-size: 11px; line-height: 16px; }
 .trae-dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
-.trae-rule-list { display: grid; gap: 16px; padding: 12px; }
+.trae-rule-list { display: grid; gap: 16px; padding: 0; }
 .trae-rule-list > div { display: grid; gap: 7px; padding-bottom: 14px; border-bottom: 1px solid var(--color-border-neutral-l1); }
 .trae-rule-list > div:last-child { padding-bottom: 0; border-bottom: 0; }
 .trae-rule-list p { color: var(--color-text-secondary); font-size: 12px; }
@@ -276,13 +276,13 @@
 .trae-members-page .trae-department-tree { position: relative; min-width: 0; min-height: 0; padding: 16px 0 0; overflow: visible; isolation: isolate; background: transparent; }
 .trae-members-page .trae-department-tree.is-collapsed { padding: 0; overflow: hidden; }
 .trae-department-toolbar { display: flex; align-items: center; gap: 8px; padding: 0 0px 16px 0px; }
-.trae-department-toolbar > button:first-child { display: inline-grid; width: 28px; height: 28px; flex: 0 0 28px; place-items: center; padding: 0; border: 0; border-radius: 4px; color: var(--color-text-secondary); background: transparent; cursor: pointer; }
+.trae-department-toolbar > button:first-child { display: inline-grid; width: 28px; height: 28px; min-height: 28px; max-height: 28px; flex: 0 0 28px; place-items: center; padding: 0; border: 0; border-radius: 4px; color: var(--color-text-secondary); background: transparent; cursor: pointer; }
 .trae-department-toolbar > button:first-child svg { transition: transform .18s ease; }
 .trae-department-toolbar > button:first-child svg.is-rotated { transform: rotate(180deg); }
 .trae-department-toolbar .trae-inline-search { position: relative; width: 190px; min-width: 0; height: 28px; flex: 1 1 190px; gap: 0; padding: 0; }
 .trae-department-toolbar .trae-inline-search svg { position: absolute; top: 50%; left: 8px; z-index: 1; width: 16px; height: 16px; pointer-events: none; transform: translateY(-50%); }
-.trae-department-toolbar .trae-inline-search input { box-sizing: border-box; height: 26px; padding: 3px 8px 3px 28px; font-size: 12px; }
-.trae-department-add { display: inline-grid; width: 28px; height: 28px; flex: 0 0 28px; place-items: center; padding: 0; border: 0; border-radius: 4px; color: var(--color-text-default-hover); background: var(--color-bg-overlay-l3); cursor: pointer; }
+.trae-department-toolbar .trae-inline-search input { box-sizing: border-box; height: 26px; min-height: 26px; padding: 3px 8px 3px 28px; font-size: 12px; }
+.trae-department-add { display: inline-grid; width: 28px; height: 28px; min-height: 28px; max-height: 28px; flex: 0 0 28px; place-items: center; padding: 0; border: 0; border-radius: 4px; color: var(--color-text-default-hover); background: var(--color-bg-overlay-l3); cursor: pointer; }
 .trae-department-add svg { width: 10px; height: 10px; }
 .trae-department-add:hover { background: var(--color-bg-overlay-l3); }
 .trae-department-list { min-height: 0; flex: 1 1 auto; overflow-x: hidden; overflow-y: auto; padding-right: 0; scrollbar-color: var(--color-border-neutral-l2) transparent; scrollbar-width: thin; }
@@ -302,7 +302,7 @@
 .trae-department-node:hover .trae-department-node-actions, .trae-department-node:focus-within .trae-department-node-actions, .trae-department-node-actions.is-menu-open { opacity: 1; pointer-events: auto; }
 .trae-department-node-actions > button { display: inline-grid; width: 28px; height: 28px; place-items: center; border: 0; border-radius: 4px; color: var(--color-text-tertiary); background: transparent; cursor: pointer; }
 .trae-department-node-actions > button:hover { color: var(--color-text-default-hover); background: var(--color-bg-base-tertiary); }
-.trae-department-menu { position: absolute; z-index: 20; display: grid; box-sizing: border-box; width: 158px; padding: 4px 6px; border: 1px solid var(--color-border-neutral-l2); border-radius: 6px; background: var(--color-bg-menu); }
+.trae-department-menu { position: fixed; z-index: 100; display: grid; box-sizing: border-box; width: min(158px, calc(100vw - 16px)); max-height: calc(100dvh - 16px); overflow-y: auto; padding: 4px 6px; border: 1px solid var(--color-border-neutral-l2); border-radius: 6px; background: var(--color-bg-menu); box-shadow: var(--shadow); }
 .trae-department-menu button { display: flex; align-items: center; gap: 8px; min-height: 28px; padding: 0 6px; border: 0; border-radius: 4px; color: var(--color-text-default); background: transparent; font: inherit; font-size: 13px; text-align: left; cursor: pointer; }
 .trae-department-menu button:hover { color: var(--color-text-default-hover); background: var(--color-bg-overlay-l3); }
 .trae-department-menu button.is-danger { color: #F65A5A; }
@@ -333,7 +333,7 @@
 .trae-department-picker-label svg { width: 14px; height: 14px; margin-left: auto; color: var(--color-brand); }
 .trae-department-dialog-form { gap: 16px; }
 .app-modal.trae-dialog:has(.trae-department-dialog-form) .semi-modal { width: min(480px, calc(100vw - 32px)); }
-.trae-department-dialog-form { padding: 0 12px 12px; }
+.trae-department-dialog-form { padding: 0; }
 .trae-department-dialog-form label { gap: 6px; color: var(--color-text-secondary); font-size: 13px; }
 .trae-department-dialog-form label > span { color: var(--color-text-default-hover); font-size: 13px; font-weight: 600; }
 .trae-department-dialog-form label > span b { margin-right: 4px; color: #F65A5A; }
@@ -504,13 +504,16 @@
   .trae-members-header-main { align-items: flex-start; flex-direction: column; gap: 12px; }
   .trae-members-header-stats { flex-wrap: wrap; white-space: normal; }
   .trae-members-page > .trae-tabs { padding: 18px var(--trae-members-page-gutter) 0; overflow-x: auto; }
-  .trae-members-page > .console-tabs { margin: 0 var(--trae-members-page-gutter) 24px; }
+  /* 中文：移动端页签与组织树连续排列，避免页签下边距和树顶部留白叠加造成大块空白。 */
+  .trae-members-page > .console-tabs { margin: 0 var(--trae-members-page-gutter) 12px; }
   .trae-members-page > .console-tabs .semi-tabs-tab { font-size: 14px; }
   .trae-members-page > .trae-tabs::after { right: var(--trae-members-page-gutter); left: var(--trae-members-page-gutter); }
   .trae-members-page > .trae-members-workspace, .trae-members-page > .trae-department-editor { margin: 0 var(--trae-members-page-gutter) 24px; grid-template-columns: 1fr; }
   .trae-departments-management { margin: 16px var(--trae-members-page-gutter) 24px; }
   .trae-members-page > .trae-members-workspace { column-gap: 0; }
-  .trae-members-page .trae-department-tree { padding-top: 20px; border-right: 0; border-bottom: 1px solid var(--color-border-neutral-l1); }
+  .trae-members-page .trae-department-tree { padding-top: 0; border-right: 0; border-bottom: 1px solid var(--color-border-neutral-l1); }
+  /* 中文：根部门在窄屏占满可用宽度，避免仍保留桌面端 240px 的窄点击区域。 */
+  .trae-members-page .trae-department-node.is-root { width: 100%; max-width: none; }
   .trae-members-page .trae-department-tree.is-collapsed { width: auto; }
   /* 中文：移动端组织树是独立的栅格行，收起后移除内容，避免留下空白高度。 */
   .trae-members-page .trae-department-tree.is-collapsed .trae-department-expanded-content { display: none; }
@@ -536,7 +539,14 @@
   .trae-members-page > .trae-tabs button { margin-right: 24px; font-size: 14px; }
   .trae-departments-toolbar { align-items: stretch; flex-direction: column; }
   .trae-departments-toolbar .trae-inline-search { width: 100%; }
-  .trae-department-toolbar { padding-right: 8px; }
+  /* 中文：移动端工具栏控件统一高度，避免加号按钮被全局 button 样式拉高。 */
+  .trae-members-page .trae-department-toolbar { align-items: center; padding-right: 0; }
+  .trae-members-page .trae-department-toolbar > button:first-child,
+  .trae-members-page .trae-department-add { width: 32px; height: 32px; min-height: 32px; max-height: 32px; flex-basis: 32px; }
+  .trae-members-page .trae-department-toolbar .trae-inline-search,
+  .trae-members-page .trae-department-toolbar .trae-inline-search input { height: 32px; min-height: 32px; }
+  /* 中文：企业根节点保持固定行高并居中图标与名称，避免移动端出现上下偏移。 */
+  .trae-members-page .trae-department-node.is-root { min-height: 40px; height: 40px; margin-bottom: 4px; padding-right: 8px; align-items: center; }
 }
 
 /* 官方用量管理页：三张用量卡、人员/部门数据表及明细筛选。 */

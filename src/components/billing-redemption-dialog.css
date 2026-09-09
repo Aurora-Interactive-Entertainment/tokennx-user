@@ -54,8 +54,7 @@
   border-color: var(--color-danger, #df4545);
 }
 
-.billing-redemption-hint,
-.billing-redemption-error {
+.billing-redemption-hint {
   margin: 0;
   font-size: 12px;
   line-height: 18px;
@@ -63,10 +62,6 @@
 
 .billing-redemption-hint {
   color: var(--color-text-secondary);
-}
-
-.billing-redemption-error {
-  color: var(--color-danger, #df4545);
 }
 
 @media (max-width: 560px) {

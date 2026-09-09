@@ -137,12 +137,6 @@
   font-size: 13px;
 }
 
-.trae-request-review-error {
-  margin: 0;
-  color: #f65a5a !important;
-  font-size: 11px !important;
-}
-
 .trae-request-review-dialog .trae-danger-button {
   min-height: 30px;
   padding: 0 14px;

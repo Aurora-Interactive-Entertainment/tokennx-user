@@ -179,21 +179,6 @@
   font-size: 12px;
 }
 
-.enterprise-face-confirm-error {
-  width: min(100%, 520px);
-  display: grid;
-  gap: 3px;
-  margin-top: 3px;
-  padding: 10px 12px;
-  border: 1px solid color-mix(in srgb, var(--danger) 32%, transparent);
-  border-radius: 4px;
-  background: var(--danger-soft);
-  color: var(--danger);
-  font-size: 12px;
-  line-height: 1.5;
-  text-align: left;
-}
-
 .enterprise-face-dialog-actions {
   display: flex;
   gap: 10px;

@@ -581,6 +581,25 @@ function updateDepartmentNodes(
   );
 }
 
+// 中文：所有操作菜单统一按视口定位，窄屏靠近底部时自动翻到触发按钮上方，避免被屏幕裁切。
+function getFloatingMenuPosition(
+  anchor: DOMRect,
+  width: number,
+  estimatedHeight = 180,
+): { top: number; left: number } {
+  const viewportGap = 8;
+  const menuWidth = Math.min(width, Math.max(0, window.innerWidth - viewportGap * 2));
+  const left = Math.max(
+    viewportGap,
+    Math.min(anchor.right - menuWidth, window.innerWidth - menuWidth - viewportGap),
+  );
+  const canOpenBelow = anchor.bottom + 4 + estimatedHeight <= window.innerHeight - viewportGap;
+  const top = canOpenBelow
+    ? anchor.bottom + 4
+    : Math.max(viewportGap, anchor.top - estimatedHeight - 4);
+  return { top, left };
+}
+
 function DepartmentTree({
   collapsed,
   selectedID,
@@ -613,7 +632,7 @@ function DepartmentTree({
   const [menuID, setMenuID] = useState<string | null>(null);
   const [menuPosition, setMenuPosition] = useState<{
     top: number;
-    right: number;
+    left: number;
   } | null>(null);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({
     company: true,
@@ -626,9 +645,15 @@ function DepartmentTree({
       if (!departmentMenuRef.current?.contains(event.target as Node))
         closeDepartmentMenu();
     };
+    const handleViewportChange = () => closeDepartmentMenu();
     document.addEventListener("pointerdown", handleOutsidePointer);
-    return () =>
+    window.addEventListener("resize", handleViewportChange);
+    window.addEventListener("scroll", handleViewportChange, true);
+    return () => {
       document.removeEventListener("pointerdown", handleOutsidePointer);
+      window.removeEventListener("resize", handleViewportChange);
+      window.removeEventListener("scroll", handleViewportChange, true);
+    };
   }, [menuID]);
 
   function toggleDepartmentMenu(nodeID: string, target: HTMLButtonElement) {
@@ -636,15 +661,8 @@ function DepartmentTree({
       setMenuID(null);
       return;
     }
-    const tree = target.closest<HTMLElement>(".trae-department-tree");
-    if (!tree) return;
     const targetRect = target.getBoundingClientRect();
-    const treeRect = tree.getBoundingClientRect();
-    // Keep the menu outside the scrolling list so it is never clipped at the list edge.
-    setMenuPosition({
-      top: targetRect.bottom - treeRect.top + 4,
-      right: treeRect.right - targetRect.right,
-    });
+    setMenuPosition(getFloatingMenuPosition(targetRect, 158));
     setMenuID(nodeID);
   }
 
@@ -756,70 +774,73 @@ function DepartmentTree({
           </button>
         </div>
         <div className="trae-department-list">{renderNodes(nodes)}</div>
-        {menuNode && menuPosition ? (
-          <div
-            ref={departmentMenuRef}
-            className="trae-department-menu"
-            role="menu"
-            style={menuPosition}
-          >
-            <button
-              type="button"
-              onClick={() => {
-                closeDepartmentMenu();
-                onEditDepartment(menuNode);
-              }}
-            >
-              <IconEditStroked aria-hidden="true" />
-              {t("traeEnterprise.members.editDepartmentAction")}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                closeDepartmentMenu();
-                onAddChildDepartment(menuNode.id);
-              }}
-            >
-              <IconPlus aria-hidden="true" />
-              {t("traeEnterprise.members.addChildDepartment")}
-            </button>
-            {hasPreviousSibling(nodes, menuNode.id) ? (
-              <button
-                type="button"
-                onClick={() => {
-                  closeDepartmentMenu();
-                  onMoveUp(menuNode);
-                }}
+        {menuNode && menuPosition
+          ? createPortal(
+              <div
+                ref={departmentMenuRef}
+                className="trae-department-menu"
+                role="menu"
+                style={menuPosition}
               >
-                <IconChevronUp aria-hidden="true" />
-                {t("traeEnterprise.departmentTable.moveUp")}
-              </button>
-            ) : null}
-            {hasNextSibling(nodes, menuNode.id) ? (
-              <button
-                type="button"
-                onClick={() => {
-                  closeDepartmentMenu();
-                  onMoveDown(menuNode);
-                }}
-              >
-                <IconChevronDown aria-hidden="true" />
-                {t("traeEnterprise.departmentTable.moveDown")}
-              </button>
-            ) : null}
-            <button
-              className="is-danger"
-              type="button"
-              onClick={() => {
-                closeDepartmentMenu();
-                onDeleteDepartment(menuNode);
-              }}
-            >
-              <IconFile aria-hidden="true" />
-              {t("traeEnterprise.members.deleteDepartment")}
-            </button>
-          </div>
-        ) : null}
+                <button
+                  type="button"
+                  onClick={() => {
+                    closeDepartmentMenu();
+                    onEditDepartment(menuNode);
+                  }}
+                >
+                  <IconEditStroked aria-hidden="true" />
+                  {t("traeEnterprise.members.editDepartmentAction")}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    closeDepartmentMenu();
+                    onAddChildDepartment(menuNode.id);
+                  }}
+                >
+                  <IconPlus aria-hidden="true" />
+                  {t("traeEnterprise.members.addChildDepartment")}
+                </button>
+                {hasPreviousSibling(nodes, menuNode.id) ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      closeDepartmentMenu();
+                      onMoveUp(menuNode);
+                    }}
+                  >
+                    <IconChevronUp aria-hidden="true" />
+                    {t("traeEnterprise.departmentTable.moveUp")}
+                  </button>
+                ) : null}
+                {hasNextSibling(nodes, menuNode.id) ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      closeDepartmentMenu();
+                      onMoveDown(menuNode);
+                    }}
+                  >
+                    <IconChevronDown aria-hidden="true" />
+                    {t("traeEnterprise.departmentTable.moveDown")}
+                  </button>
+                ) : null}
+                <button
+                  className="is-danger"
+                  type="button"
+                  onClick={() => {
+                    closeDepartmentMenu();
+                    onDeleteDepartment(menuNode);
+                  }}
+                >
+                  <IconFile aria-hidden="true" />
+                  {t("traeEnterprise.members.deleteDepartment")}
+                </button>
+              </div>,
+              document.body,
+            )
+          : null}
       </div>
     </aside>
   );
@@ -1565,9 +1586,18 @@ function TraeEnterpriseMembersContent({ context }: { context: EnterpriseContext 
         setMemberMenuPosition(null);
       }
     };
+    const handleViewportChange = () => {
+      setMemberMenu(null);
+      setMemberMenuPosition(null);
+    };
     document.addEventListener("pointerdown", handleOutsidePointer);
-    return () =>
+    window.addEventListener("resize", handleViewportChange);
+    window.addEventListener("scroll", handleViewportChange, true);
+    return () => {
       document.removeEventListener("pointerdown", handleOutsidePointer);
+      window.removeEventListener("resize", handleViewportChange);
+      window.removeEventListener("scroll", handleViewportChange, true);
+    };
   }, [memberMenu]);
   const filtered = useMemo(
     () =>
@@ -1901,13 +1931,7 @@ function TraeEnterpriseMembersContent({ context }: { context: EnterpriseContext 
                               return;
                             }
                             const anchor = event.currentTarget.getBoundingClientRect();
-                            setMemberMenuPosition({
-                              top: anchor.bottom + 4,
-                              left: Math.max(
-                                8,
-                                Math.min(anchor.right - 180, window.innerWidth - 188),
-                              ),
-                            });
+                            setMemberMenuPosition(getFloatingMenuPosition(anchor, 180));
                             setMemberMenu(member.id);
                           }}
                         >

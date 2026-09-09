@@ -266,26 +266,6 @@
   border-color: var(--color-border-neutral-l3);
 }
 
-.enterprise-models-action-error {
-  display: flex;
-  min-height: 40px;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  border: 1px solid rgba(223, 123, 131, 0.3);
-  border-radius: 6px;
-  background: var(--color-error-surface);
-  color: var(--color-error-text);
-  font-size: 12px;
-}
-.enterprise-models-action-error small {
-  color: var(--color-text-tertiary);
-  font-family: var(--font-mono);
-}
-.enterprise-models-action-error .semi-button {
-  margin-left: auto;
-}
-
 .enterprise-models-empty {
   min-height: 120px;
   padding: 32px 16px;

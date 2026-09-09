@@ -16,6 +16,7 @@ import { useAppSelector } from '@/store/hooks'
 import { apiTimeToDate } from '@/utils/format'
 import { HomeRewardStat } from '@/components/home-reward-stat'
 import { HomeLiquidMetalQuickstartAction } from '@/components/home-liquid-metal-quickstart-action'
+import { appToast } from '@/components/app-toast'
 
 // 中文：首页独立为路由入口，避免首屏下载文档 Markdown、排行榜图表及其他公开页面依赖。
 // 中文：公开页面的模型链接只使用面向用户的别名，旧模型 code 仅由查找逻辑兼容。
@@ -868,6 +869,10 @@ export function HomePage({ onInitialScoreboardReady }: { onInitialScoreboardRead
     if (homeMetrics.apiCalls === 0) handleApiScoreboardReady()
   }, [handleApiScoreboardReady, handleTokenScoreboardReady, homeMetrics.apiCalls, homeMetrics.initialRequestFinished, homeMetrics.tokenVolume])
 
+  useEffect(() => {
+    if (isHomepageError) appToast.error(t('home.rebuild.loadFailed'))
+  }, [isHomepageError, t])
+
   return (
     <PublicLayout mainClassName="home-page home-page--manuscript">
       <div className="manuscript-home-shell">
@@ -884,11 +889,6 @@ export function HomePage({ onInitialScoreboardReady }: { onInitialScoreboardRead
             </div>
           </div>
         </section>
-
-        {isHomepageError ? <div className="manuscript-home-error" role="alert">
-          <span>{t('home.rebuild.loadFailed')}</span>
-          <button type="button" onClick={() => refreshHomepage(authStatus === 'authenticated' ? getAccessToken() ?? undefined : undefined)}>{t('home.rebuild.retry')}</button>
-        </div> : null}
 
         <section className="manuscript-section manuscript-features" aria-labelledby="homeFeaturesTitle">
           <div className="manuscript-wave-field" aria-hidden="true"><HomeSilkCanvas /></div>

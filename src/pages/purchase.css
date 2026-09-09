@@ -5,7 +5,6 @@
   --purchase-line: #dedfe2;
   width: min(1280px, 100%);
   margin: 0 auto;
-  padding: clamp(46px, 7.15vw, 138px) 0 232px;
   color: var(--purchase-ink);
   overflow: visible;
 }
@@ -45,8 +44,8 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   width: min(1012px, 100%);
-  min-height: 78px;
-  margin: 118px auto 0;
+  min-height: 50px;
+  margin: 40px auto 0;
   border: 1px solid #e2e2e2;
   border-radius: 40px;
   background: #e9e9e9;
@@ -70,7 +69,7 @@
   height: 10px;
   flex: 0 0 10px;
   border-radius: 50%;
-  background: #35a172;
+  background: #A3E92C;
 }
 .purchase-activity-item strong {
   font-weight: 700;
@@ -82,13 +81,20 @@
   color: #d5a1fb;
   font-weight: 500;
 }
+.purchase-activity-separator {
+  width: 6px;
+  height: 6px;
+  flex: 0 0 6px;
+  border-radius: 50%;
+  background: #898b91;
+}
 .purchase-activity-item em {
   color: #898b91;
   font-style: normal;
 }
 
 .purchase-plans {
-  margin-top: 110px;
+  margin-top: 50px;
 }
 .purchase-plan-tabs {
   position: relative;
@@ -153,16 +159,19 @@
 }
 .purchase-plan-card {
   --purchase-card-border: #e8b7ca;
+  --purchase-card-hover-border: #f080b4;
   position: relative;
   isolation: isolate;
   width: 237px;
   flex: 0 0 237px;
   min-height: 332px;
   padding: 25px 20px 18px;
-  border: 1px solid var(--purchase-card-border);
+  /* 中文：边框改为内描边，让背景图完整铺到卡片边缘，消除顶部接缝。 */
+  border: 0;
   border-radius: 28px;
+  background-clip: border-box;
   box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 75%),
+    inset 0 0 0 2px var(--purchase-card-border),
     0 12px 28px rgb(53 61 91 / 10%);
   overflow: hidden;
   animation: purchase-plan-card-in 280ms ease both;
@@ -174,20 +183,24 @@
 .purchase-plan-card:hover {
   transform: translateY(-7px);
   box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 75%),
+    inset 0 0 0 2px var(--purchase-card-hover-border),
     0 24px 42px rgb(53 61 91 / 25%);
 }
 .purchase-plan-card--deepSeek {
   --purchase-card-border: #91c9ff;
+  --purchase-card-hover-border: #5eabff;
 }
 .purchase-plan-card--seedance {
   --purchase-card-border: #8dded4;
+  --purchase-card-hover-border: #4ccdc0;
 }
 .purchase-plan-card--kimi {
   --purchase-card-border: #acc5e8;
+  --purchase-card-hover-border: #76a6e1;
 }
 .purchase-plan-card--glm {
   --purchase-card-border: #c4b4ff;
+  --purchase-card-hover-border: #9e83f5;
 }
 .purchase-plan-card:nth-child(2) {
   animation-delay: 35ms;
@@ -204,8 +217,8 @@
 .purchase-plan-badge {
   --purchase-badge-right: #ff4f8e;
   position: absolute;
-  top: 0;
-  right: 0;
+  top: -2px;
+  right: -2px;
   z-index: 2;
   display: flex;
   align-items: center;
@@ -214,7 +227,7 @@
   min-width: 0;
   max-width: 100%;
   height: 28px;
-  padding: 0 12px;
+  padding: 0 18px 0 12px;
   border-radius: 0 13px 0 13px;
   color: #fff;
   background: linear-gradient(
@@ -274,17 +287,15 @@
   position: absolute;
   bottom: 84px;
   left: 14px;
+  right: 14px;
   z-index: 2;
-  width: 137px;
   box-sizing: border-box;
   margin: 0;
   padding: 10px 9px 11px;
   border: 1px solid rgb(255 255 255 / 100%);
   border-radius: 5px;
-  background: rgb(255 255 255 / 36%);
+  background: rgb(255 255 255 / 70%);
   box-shadow: 0 8px 28px rgb(120 55 76 / 5%);
-  -webkit-backdrop-filter: blur(4px);
-  backdrop-filter: blur(4px);
 }
 .purchase-plan-quota {
   display: block;
@@ -329,6 +340,10 @@
   font-size: 16px;
   font-weight: 700;
   cursor: pointer;
+}
+.purchase-plan-price:hover,
+.purchase-plan-price:focus-visible {
+  background: linear-gradient(90deg, #8feaf8 0%, #f0a0ea 46%, #c692f3 100%);
 }
 
 .purchase-notice,
@@ -550,8 +565,11 @@ html[data-theme="dark"] .purchase-faq-item + .purchase-faq-item {
     padding: 40px 16px 100px;
   }
   .purchase-hero h1 {
-    font-size: clamp(36px, 10vw, 56px);
-    line-height: 1.2;
+    /* 中文：移动端压缩标题字号并启用平衡换行，避免最后一个字单独掉到下一行。 */
+    font-size: clamp(32px, 8.8vw, 42px);
+    letter-spacing: -0.08em;
+    line-height: 1.25;
+    text-wrap: balance;
   }
   .purchase-hero > p {
     font-size: 14px;
@@ -563,27 +581,49 @@ html[data-theme="dark"] .purchase-faq-item + .purchase-faq-item {
   }
   .purchase-activity-item {
     justify-content: flex-start;
+    min-width: 0;
+    padding-inline: 14px;
     font-size: 13px;
     overflow: hidden;
+  }
+  .purchase-activity-item strong,
+  .purchase-activity-plan,
+  .purchase-activity-item em {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .purchase-activity-item + .purchase-activity-item {
     border-top: 1px solid #e2e2e2;
     border-left: 0;
   }
   .purchase-plan-tabs {
-    margin-inline: -2px;
-    padding-inline: 8px;
-    grid-template-columns: repeat(6, minmax(110px, 1fr));
-    min-width: 676px;
+    display: flex;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    gap: 2px;
+    min-height: 62px;
+    padding: 6px;
+    border-radius: 32px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .purchase-plan-tabs::-webkit-scrollbar {
+    display: none;
   }
   .purchase-plan-tabs::before {
-    left: 8px;
-    width: 110px;
+    display: none;
   }
   .purchase-plan-tabs button {
+    flex: 0 0 auto;
+    min-width: 94px;
     min-height: 48px;
-    padding-inline: 17px;
+    padding-inline: 14px;
     font-size: 14px;
+  }
+  .purchase-plan-tabs button.is-active {
+    background: linear-gradient(100deg, #dbf1f9 0%, #bf98ee 100%);
   }
   .purchase-plans,
   .purchase-notice,
@@ -636,6 +676,7 @@ html[data-theme="dark"] .purchase-faq-item + .purchase-faq-item {
   .purchase-plan-content h3 {
     margin-bottom: 12px;
     font-size: 16px;
+    overflow-wrap: anywhere;
   }
   .purchase-plan-content strong {
     font-size: 18px;
@@ -646,6 +687,14 @@ html[data-theme="dark"] .purchase-faq-item + .purchase-faq-item {
     left: 14px;
     min-height: 36px;
     font-size: 13px;
+  }
+  .purchase-plan-info {
+    width: calc(100% - 28px);
+    max-width: calc(100% - 28px);
+    font-size: 12px;
+  }
+  .purchase-plan-content ul {
+    font-size: 9px;
   }
   .purchase-section-heading h2 {
     font-size: 30px;
@@ -669,6 +718,7 @@ html[data-theme="dark"] .purchase-faq-item + .purchase-faq-item {
   }
   .purchase-notice-copy p {
     font-size: 13px;
+    overflow-wrap: anywhere;
   }
   .purchase-tool-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -693,9 +743,39 @@ html[data-theme="dark"] .purchase-faq-item + .purchase-faq-item {
     padding: 18px 20px;
     font-size: 15px;
   }
+  .purchase-faq-item button > span {
+    min-width: 0;
+    padding-right: 12px;
+    overflow-wrap: anywhere;
+  }
   .purchase-faq-item p {
     margin: -2px 20px 20px;
     font-size: 13px;
+    overflow-wrap: anywhere;
+  }
+}
+
+/* 中文：窄屏下两列套餐卡的可用宽度过小，改为单列保证套餐名称、额度和权益可读。 */
+@media (max-width: 360px) {
+  .purchase-plan-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .purchase-plan-card,
+  .purchase-plan-grid--1 .purchase-plan-card {
+    width: 100%;
+    flex: 0 0 auto;
+    min-height: 332px;
+  }
+
+  .purchase-plan-content h3 {
+    font-size: 18px;
+  }
+
+  .purchase-plan-content ul {
+    font-size: 10px;
   }
 }
 

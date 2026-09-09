@@ -192,7 +192,3 @@
   background: var(--color-bg-base-tertiary);
   font-size: 12px;
 }
-
-.model-detail-load-state.is-error {
-  color: var(--color-danger, #e5484d);
-}

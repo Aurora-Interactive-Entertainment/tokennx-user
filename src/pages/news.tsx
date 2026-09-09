@@ -6,6 +6,7 @@ import Skeleton from '@douyinfe/semi-ui/lib/es/skeleton'
 import Spin from '@douyinfe/semi-ui/lib/es/spin'
 import { PublicLayout } from '@/components/common'
 import { MarkdownContent } from '@/components/markdown-content'
+import { appToast } from '@/components/app-toast'
 import { getNewsList, getNewsDetail, resolveNewsContentImageUrl, type NewsArticle, type NewsDetail } from '@/api/news'
 import { apiTimeToDate, apiTimeToISOString, type ApiTimeValue } from '@/utils/format'
 import { isApiError } from '@/api/http'
@@ -103,6 +104,10 @@ export function NewsListPage() {
     void loadNews(1)
   }, [loadNews])
 
+  useEffect(() => {
+    if (error) appToast.error(error)
+  }, [error])
+
   const handleLoadMore = useCallback(() => {
     if (!loadingMore && hasMore) void loadNews(page + 1, true)
   }, [hasMore, loadNews, loadingMore, page])
@@ -115,9 +120,7 @@ export function NewsListPage() {
           <p className="news-list-subtitle">{t('news.subtitle')}</p>
         </header>
 
-        {loading && !articles.length ? <NewsListSkeleton /> : error && !articles.length ? (
-          <div className="news-list-state news-list-error" role="alert"><p>{error}</p><button type="button" onClick={() => void loadNews(1)}>{t('news.retry')}</button></div>
-        ) : articles.length ? (
+        {loading && !articles.length ? <NewsListSkeleton /> : articles.length ? (
           <>
             <div className="news-list-grid">{articles.map((article, index) => <NewsCard key={article.id} article={article} language={i18n.language} index={index} localizedNewsLabel={localizedNewsLabel} />)}</div>
             <div className="news-list-load-more">

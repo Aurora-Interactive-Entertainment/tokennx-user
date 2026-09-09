@@ -35,11 +35,11 @@ import {
   EnterpriseError,
   EnterpriseLoading,
   EnterprisePageShell,
-  EnterpriseRefreshButton,
   useEnterpriseErrorHandler,
   type EnterpriseRequestError,
 } from './enterprise-console-shared';
 import AppModal from '@/components/app-modal';
+import { appToast } from '@/components/app-toast';
 import './enterprise-models.css';
 
 type DirectoryModel = EnterpriseModel & {
@@ -891,9 +891,6 @@ function ModelsContent({ context }: { context: EnterpriseContext }) {
   const [data, setData] = useState<EnterpriseModelPage | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<EnterpriseRequestError | null>(null);
-  const [actionError, setActionError] = useState<EnterpriseRequestError | null>(
-    null,
-  );
   const [savingModelID, setSavingModelID] = useState('');
   const [reloadToken, setReloadToken] = useState(0);
   const [openModel, setOpenModel] = useState<DirectoryModel | null>(null);
@@ -901,6 +898,14 @@ function ModelsContent({ context }: { context: EnterpriseContext }) {
   const [selections, setSelections] = useState<Record<string, VisibilitySelection>>({});
   const [visibilityDepartments, setVisibilityDepartments] = useState<Department[]>([]);
   const [visibilityPeople, setVisibilityPeople] = useState<VisibilityPerson[]>([]);
+
+  // 中文：错误只通过顶部 Toast 提示，避免错误内容进入页面流导致目录布局跳动。
+  function notifyError(nextError: EnterpriseRequestError): void {
+    const requestHint = nextError.requestId
+      ? ` ${t('console.common.requestIdValue', { requestId: nextError.requestId })}`
+      : '';
+    appToast.error(`${nextError.message}${requestHint}`);
+  }
 
   useEffect(() => {
     const controller = new AbortController();
@@ -954,7 +959,7 @@ function ModelsContent({ context }: { context: EnterpriseContext }) {
       .catch((reason: unknown) => {
         if (!active || controller.signal.aborted) return;
         const handled = handleError(reason);
-        if (handled) setActionError(handled);
+        if (handled) notifyError(handled);
         // 目录失败时清空选择项，避免继续提交无法校验的本地演示 ID。
         setVisibilityDepartments([]);
         setVisibilityPeople([]);
@@ -968,7 +973,6 @@ function ModelsContent({ context }: { context: EnterpriseContext }) {
   async function toggleModel(model: DirectoryModel): Promise<void> {
     if (!canManage || savingModelID) return;
     setSavingModelID(model.id);
-    setActionError(null);
     try {
       const updated = await updateEnterpriseModel(
         { enterprise_id: context.id },
@@ -994,10 +998,11 @@ function ModelsContent({ context }: { context: EnterpriseContext }) {
       );
     } catch (reason: unknown) {
       const handled = handleError(reason);
-      if (handled) setActionError(handled);
       if (isApiError(reason) && reason.code === 140004) {
         Toast.warning(handled?.message ?? t('console.enterprise.model.conflict'));
         setReloadToken((value) => value + 1);
+      } else if (handled) {
+        notifyError(handled);
       }
     } finally {
       setSavingModelID('');
@@ -1010,7 +1015,6 @@ function ModelsContent({ context }: { context: EnterpriseContext }) {
     if (!openModel) return false;
     const currentModel = data?.items.find((item) => item.id === openModel.id) ?? openModel;
     setSavingModelID(currentModel.id);
-    setActionError(null);
     try {
       const updated = await updateEnterpriseModel(
         { enterprise_id: context.id },
@@ -1033,10 +1037,11 @@ function ModelsContent({ context }: { context: EnterpriseContext }) {
       return true;
     } catch (reason: unknown) {
       const handled = handleError(reason);
-      if (handled) setActionError(handled);
       if (isApiError(reason) && reason.code === 140004) {
         Toast.warning(handled?.message ?? t('console.enterprise.model.conflict'));
         setReloadToken((value) => value + 1);
+      } else if (handled) {
+        notifyError(handled);
       }
       return false;
     } finally {
@@ -1052,22 +1057,6 @@ function ModelsContent({ context }: { context: EnterpriseContext }) {
       className="enterprise-models-directory"
       aria-label={t('console.enterprise.model.systemModels')}
     >
-      {actionError ? (
-        <div className="enterprise-models-action-error" role="alert">
-          <span>{actionError.message}</span>
-          {actionError.requestId ? (
-            <small>
-              {t('console.common.requestIdValue', {
-                requestId: actionError.requestId,
-              })}
-            </small>
-          ) : null}
-          <EnterpriseRefreshButton
-            onClick={() => setReloadToken((value) => value + 1)}
-            label={t('console.enterprise.model.refreshDirectory')}
-          />
-        </div>
-      ) : null}
       {error && !data ? (
         <EnterpriseError
           message={error.message}

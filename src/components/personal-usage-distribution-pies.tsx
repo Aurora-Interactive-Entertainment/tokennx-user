@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { appToast } from "@/components/app-toast";
 import * as echarts from "echarts/core";
 import { PieChart } from "echarts/charts";
 import { TooltipComponent } from "echarts/components";
@@ -308,11 +309,7 @@ function DistributionPie({
           <div className="personal-usage-pie-status" role="status">
             {t("console.personalUsage.loading")}
           </div>
-        ) : error ? (
-          <div className="personal-usage-pie-status" role="alert">
-            {error}
-          </div>
-        ) : data.length === 0 ? (
+        ) : error ? null : data.length === 0 ? (
           <div className="personal-usage-pie-status">
             {t("console.personalUsage.noDistribution")}
           </div>
@@ -370,7 +367,6 @@ export function PersonalUsageDistributionPies({
   } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [reloadKey, setReloadKey] = useState(0);
   const query = useMemo(() => dateRangeToTrendQuery(dateRange), [dateRange]);
 
   useEffect(() => {
@@ -391,7 +387,11 @@ export function PersonalUsageDistributionPies({
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [context, query, reloadKey]);
+  }, [context, query]);
+
+  useEffect(() => {
+    if (!loading && error) appToast.error(error);
+  }, [error, loading]);
 
   const modelDistribution = useMemo(
     () => mergeDistributionEntries(
@@ -407,8 +407,6 @@ export function PersonalUsageDistributionPies({
     ),
     [data?.requests.tool_distribution, data?.tokens.tool_distribution],
   );
-  const retry = () => setReloadKey((value) => value + 1);
-
   return (
     <div className="personal-usage-pie-grid">
       <DistributionPie
@@ -431,15 +429,6 @@ export function PersonalUsageDistributionPies({
         requestLabel={t("console.personalUsage.pie.requests")}
         tokenLabel={t("console.personalUsage.pie.tokens")}
       />
-      {error ? (
-        <button
-          className="personal-usage-pie-retry"
-          type="button"
-          onClick={retry}
-        >
-          {t("console.personalUsage.retry")}
-        </button>
-      ) : null}
     </div>
   );
 }

@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useNavigate } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import type { CSSProperties, ReactNode } from 'react'
@@ -12,6 +13,7 @@ import './model-detail-drawer.css'
 import type { UserModelDetail, UserModelMetricPoint, UserModelPrice, UserModelTag } from '@/api/user-models'
 import { modelAlias, modelRouteKey, type ModelPrice, type ModelRecord } from '@/data/models'
 import { formatCount, formatNumber } from '@/utils/format'
+import { appToast } from '@/components/app-toast'
 
 const MODEL_UNAVAILABLE_LABEL = '__model_unavailable__'
 const TOKEN_QUANTITY = 1_000_000
@@ -200,6 +202,9 @@ type ModelDetailDrawerProps = {
 export function ModelDetailDrawer({ model, detail, loading, error, visible, onClose }: ModelDetailDrawerProps) {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  useEffect(() => {
+    if (error) appToast.error(t('console.modelDetail.detailLoadFailed', { message: error }))
+  }, [error, t])
   const detailModel = detail?.model
   const publicAlias = detailModel?.alias?.trim() || (model ? modelAlias(model) : '')
   const displayAlias = publicAlias || t('console.common.modelAliasUnset')
@@ -277,7 +282,6 @@ export function ModelDetailDrawer({ model, detail, loading, error, visible, onCl
           </div>
 
           {loading ? <p className="model-detail-load-state" role="status">{t('console.modelDetail.detailLoading')}</p> : null}
-          {error ? <p className="model-detail-load-state is-error" role="alert">{t('console.modelDetail.detailLoadFailed', { message: error })}</p> : null}
 
           <section className="model-detail-section" aria-labelledby="modelDetailDescriptionTitle">
             <div className="model-detail-section-heading"><h3 id="modelDetailDescriptionTitle">{t('console.modelDetail.descriptionTitle')}</h3></div>

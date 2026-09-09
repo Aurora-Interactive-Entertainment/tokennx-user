@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Select from "@douyinfe/semi-ui/lib/es/select";
 import Toast from "@douyinfe/semi-ui/lib/es/toast";
-import { IconDownload, IconRefresh } from "@douyinfe/semi-icons";
+import { IconDownload } from "@douyinfe/semi-icons";
+import { appToast } from "@/components/app-toast";
 import {
   getPersonalUsageErrorMessage,
   getUsageFilters,
@@ -49,13 +50,14 @@ function formatPersonalUsageYuan(value: string): string {
 function ResourceStatus({
   loading,
   error,
-  onRetry,
 }: {
   loading: boolean;
   error: string;
-  onRetry: () => void;
 }) {
   const { t } = useTranslation();
+  useEffect(() => {
+    if (!loading && error) appToast.error(error);
+  }, [error, loading]);
   if (loading)
     return (
       <div className="personal-usage-resource-status" role="status">
@@ -63,16 +65,7 @@ function ResourceStatus({
         {t("console.personalUsage.loading")}
       </div>
     );
-  if (error)
-    return (
-      <div className="personal-usage-resource-status" role="alert">
-        <span>{error}</span>
-        <button type="button" onClick={onRetry}>
-          <IconRefresh aria-hidden="true" />
-          {t("console.personalUsage.retry")}
-        </button>
-      </div>
-    );
+  if (error) return null;
   return null;
 }
 
@@ -88,7 +81,6 @@ function PersonalUsageOverview({
   const [models, setModels] = useState<UsageModelsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -119,7 +111,7 @@ function PersonalUsageOverview({
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [apiKeyID, context, reloadKey]);
+  }, [apiKeyID, context]);
 
   const metrics = summary?.metrics;
   return (
@@ -134,7 +126,6 @@ function PersonalUsageOverview({
         <ResourceStatus
           loading={loading}
           error={error}
-          onRetry={() => setReloadKey((value) => value + 1)}
         />
       ) : models?.items.length ? (
         <div className="personal-usage-model-list">
@@ -187,7 +178,6 @@ function PersonalUsageRecords({
   const [exporting, setExporting] = useState(false);
   const exportLockRef = useRef(false);
   const [error, setError] = useState("");
-  const [reloadKey, setReloadKey] = useState(0);
   const selectedRange = useMemo(
     () => rangeDates(range, customRange),
     [customRange, range],
@@ -231,7 +221,6 @@ function PersonalUsageRecords({
     context,
     page,
     pageSize,
-    reloadKey,
   ]);
 
   function selectRange(nextRange: CueRange) {
@@ -373,7 +362,6 @@ function PersonalUsageRecords({
           <ResourceStatus
             loading={loading}
             error={error}
-            onRetry={() => setReloadKey((value) => value + 1)}
           />
         ) : rows.length === 0 ? (
           <div className="personal-usage-cue-empty">
@@ -416,7 +404,6 @@ export function PersonalUsageManagement({
   const [filters, setFilters] = useState<UsageFiltersResponse | null>(null);
   const [filtersLoading, setFiltersLoading] = useState(true);
   const [filtersError, setFiltersError] = useState("");
-  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -433,7 +420,7 @@ export function PersonalUsageManagement({
         if (!controller.signal.aborted) setFiltersLoading(false);
       });
     return () => controller.abort();
-  }, [context, reloadKey]);
+  }, [context]);
 
   const keyOptions = [
     { value: "all", label: t("console.personalUsage.cue.allKeys") },
@@ -470,7 +457,6 @@ export function PersonalUsageManagement({
         <ResourceStatus
           loading={false}
           error={filtersError}
-          onRetry={() => setReloadKey((value) => value + 1)}
         />
       ) : (
         <>

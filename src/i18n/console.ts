@@ -18,7 +18,7 @@ export const consoleResources = {
         profile: "个人设置",
         billing: "费用管理",
         recharge: "充值管理",
-        purchase: "购买菜单",
+        purchase: "套餐购买",
         apiKeys: "密钥管理",
         myApiKeys: "我的密钥",
         enterpriseCenter: "企业中心",
@@ -135,7 +135,6 @@ export const consoleResources = {
         enterpriseWorkspace: "企业空间",
         startEnterpriseVerification: "发起企业认证",
         createWorkspace: "创建企业",
-        alreadyHere: "已在{{name}}",
         comingSoon: "{{name}}即将上线",
         comingSoonShort: "即将上线",
         actionReceived: "该入口已收到操作",
@@ -1163,6 +1162,21 @@ export const consoleResources = {
       },
       purchasePage: {
         title: "自由选择，即买即用",
+        paymentModal: {
+          title: "支付", plan: "套餐", validity: "有效期", days: "{{count}}天",
+          amount: "实付金额", scan: "扫码支付", method: "支付方式",
+          wechat: "微信支付", alipay: "支付宝支付", recommended: "推荐",
+          readAgreement: "我已阅读并同意", agreement: "《算力服务协议》",
+          qrUnavailable: "支付二维码待生成",
+        },
+        hoverMenu: {
+          label: "订阅套餐",
+          limited: "限量",
+          quota: "1500万 Tokens",
+          videoRate: "低至≈0.28元/秒",
+          enterprise: "企业会员客户",
+          contact: "请联系我们",
+        },
         titleAccent: "即买即用",
         subtitle:
           "自由选购国内顶级大模型，按周期额度随用随买\n一个套餐，驱动你的全部AI编程工具",
@@ -1172,6 +1186,15 @@ export const consoleResources = {
           plan: "开通了 Kimi k3 ¥1.00套餐",
           highlight: "Kimi k3 ¥1.00",
           time: "5分钟前",
+        },
+        activityModal: {
+          title: "限时活动",
+          copy: "新用户注册即领 ¥20 现金券；首次完成企业认证即送；1000 成员席位",
+          countdown: "活动倒计时",
+          later: "再想想",
+          confirm: "立即领取",
+          close: "关闭活动弹窗",
+          autoIssued: "以上均自动发放至注册账号",
         },
         tabs: {
           all: "全部",
@@ -1223,6 +1246,12 @@ export const consoleResources = {
           },
         },
         firstPurchase: "首购赠9999万额度",
+        subscriptionModal: {
+          title: "按需购买，即买即用",
+          subtitle:
+            "首购任意套餐即赠9999万额度 · 支持20+主流Agent 高并发调用",
+          all: "全部 {{count}}",
+        },
         notice: {
           title: "购买须知",
           subtitle: "套餐包使用说明",
@@ -2312,7 +2341,7 @@ export const consoleResources = {
         profile: "Personal settings",
         billing: "Billing",
         recharge: "Top-up management",
-        purchase: "Purchase menu",
+        purchase: "Plan purchase",
         apiKeys: "Key management",
         myApiKeys: "My API keys",
         enterpriseCenter: "Enterprise",
@@ -2430,7 +2459,6 @@ export const consoleResources = {
         enterpriseWorkspace: "Enterprise workspace",
         startEnterpriseVerification: "Start verification",
         createWorkspace: "Create enterprise",
-        alreadyHere: "Already in {{name}}",
         comingSoon: "{{name}} is coming soon",
         comingSoonShort: "Soon",
         actionReceived: "This action has been recorded",
@@ -3510,6 +3538,21 @@ export const consoleResources = {
       },
       purchasePage: {
         title: "Choose freely, use instantly",
+        paymentModal: {
+          title: "Payment", plan: "Plan", validity: "Validity", days: "{{count}} days",
+          amount: "Amount due", scan: "Scan to pay", method: "Payment method",
+          wechat: "WeChat Pay", alipay: "Alipay", recommended: "Preferred",
+          readAgreement: "I have read and agree to", agreement: "the service agreement",
+          qrUnavailable: "Payment QR code pending",
+        },
+        hoverMenu: {
+          label: "Subscription plans",
+          limited: "Limited",
+          quota: "15M Tokens",
+          videoRate: "From ≈¥0.28/sec",
+          enterprise: "Enterprise",
+          contact: "Contact us",
+        },
         titleAccent: "use instantly",
         subtitle:
           "Choose top domestic models freely. Buy the quota you need for each cycle.\nOne plan powers all your AI coding tools",
@@ -3522,6 +3565,15 @@ export const consoleResources = {
           plan: "activated Kimi k3 ¥1.00 plan",
           highlight: "Kimi k3 ¥1.00",
           time: "5 minutes ago",
+        },
+        activityModal: {
+          title: "Limited-time event",
+          copy: "New users get a ¥20 cash coupon; complete enterprise verification; receive 1,000 member seats",
+          countdown: "Event countdown",
+          later: "Maybe later",
+          confirm: "Claim now",
+          close: "Close activity dialog",
+          autoIssued: "Automatically issued to your registered account",
         },
         tabs: {
           all: "All",
@@ -3581,6 +3633,12 @@ export const consoleResources = {
           },
         },
         firstPurchase: "99.99M bonus quota for first purchase",
+        subscriptionModal: {
+          title: "Buy as needed, use instantly",
+          subtitle:
+            "Get 99.99M bonus quota on your first pack · High-concurrency access to 20+ mainstream Agents",
+          all: "All {{count}}",
+        },
         notice: {
           title: "Purchase notes",
           subtitle: "How to use plan packs",
