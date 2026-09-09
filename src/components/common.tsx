@@ -55,6 +55,7 @@ import {
   IconShieldStroked,
   IconCrownStroked,
   IconServerStroked,
+  IconShoppingBagStroked,
   IconSettingStroked,
   IconSend,
   IconSunStroked,
@@ -2681,6 +2682,7 @@ type ConsoleNavIconName =
   | "records"
   | "billing"
   | "subscription"
+  | "purchase"
   | "recharge"
   | "real-name"
   | "settings"
@@ -2728,6 +2730,8 @@ const CONSOLE_NAV_ICONS: Record<
   records: (props) => <IconFile {...props} />,
   billing: (props) => <IconNoteMoneyStroked {...props} />,
   subscription: (props) => <IconCrownStroked {...props} />,
+  // 中文：购买菜单使用购物袋图标，避免与订阅管理的皇冠图标混淆。
+  purchase: (props) => <IconShoppingBagStroked {...props} />,
   recharge: (props) => <IconCoinMoneyStroked {...props} />,
   invitation: (props) => <IconInviteStroked {...props} />,
   reward: (props) => <IconTicketCodeStroked {...props} />,
@@ -2792,6 +2796,7 @@ const personalNavGroups: ConsoleNavGroup[] = [
         label: "订阅管理",
         icon: "subscription",
       },
+      { key: "/console/purchase", label: "购买菜单", icon: "purchase" },
       { key: "/console/settings", label: "个人设置", icon: "account" },
       { key: "/console/billing", label: "费用管理", icon: "billing" },
       { key: "/console/recharge", label: "充值管理", icon: "recharge" },
@@ -2885,6 +2890,12 @@ const enterpriseNavGroups: ConsoleNavGroup[] = [
         permissionScope: "billing",
       },
       {
+        key: "/console/purchase",
+        label: "购买菜单",
+        icon: "purchase",
+        permissionScope: "billing",
+      },
+      {
         key: "/console/enterprise-api-keys",
         label: "密钥管理",
         icon: "api-keys",
@@ -2938,6 +2949,12 @@ const enterpriseNavGroups: ConsoleNavGroup[] = [
   },
 ];
 
+// 临时隐藏入口但保留页面、路由和菜单定义，后续只需移除对应路径即可恢复。
+const TEMPORARILY_HIDDEN_CONSOLE_NAV_PATHS = new Set([
+  "/console/image",
+  "/console/real-name-reward",
+]);
+
 const CONSOLE_NAV_LABEL_KEYS: Record<string, string> = {
   模型使用: "console.nav.modelUse",
   快速接入: "console.nav.quickstart",
@@ -2965,6 +2982,7 @@ const CONSOLE_NAV_LABEL_KEYS: Record<string, string> = {
   个人用量: "console.nav.personalUsage",
   "企业管理（新版）": "traeEnterprise.nav.group",
   订阅管理: "traeEnterprise.nav.subscription",
+  购买菜单: "console.nav.purchase",
   企业设置: "console.nav.enterpriseSettings",
   模型管理: "console.nav.enterpriseModels",
   权限与标签: "console.nav.governance",
@@ -2994,9 +3012,10 @@ export function consoleNavGroupsFor(
       ...group,
       items: group.items.filter(
         (item) =>
-          !item.permissionScope ||
-          owner ||
-          hasEnterpriseMenuPermission(permissions, item.permissionScope),
+          !TEMPORARILY_HIDDEN_CONSOLE_NAV_PATHS.has(item.path ?? item.key) &&
+          (!item.permissionScope ||
+            owner ||
+            hasEnterpriseMenuPermission(permissions, item.permissionScope)),
       ),
     }))
     .filter((group) => group.items.length > 0);

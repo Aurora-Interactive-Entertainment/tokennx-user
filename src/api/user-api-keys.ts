@@ -467,6 +467,7 @@ export function getUserApiKeyActivity(
 
 export function getUserApiKeyErrorMessage(error: unknown): string {
   if (!isApiError(error)) return i18n.t("api.apiKeys.requestFailed");
+  if (error.apiMessage) return error.apiMessage;
   const messageKeys: Record<number, string> = {
     100001: "api.apiKeys.invalidInput",
     100004: "api.apiKeys.missing",
@@ -479,7 +480,7 @@ export function getUserApiKeyErrorMessage(error: unknown): string {
   };
   return messageKeys[error.code]
     ? i18n.t(messageKeys[error.code])
-    : error.message;
+    : error.message || i18n.t("api.apiKeys.requestFailed");
 }
 
 export function isUserApiKeyValidationError(error: unknown): boolean {

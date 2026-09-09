@@ -329,6 +329,7 @@ export function confirmEnterpriseFaceVerification(
 export function getEnterpriseCertificationErrorMessage(error: unknown): string {
   if (!isApiError(error))
     return i18n.t("console.enterpriseCreate.requestFailed");
+  if (error.apiMessage) return error.apiMessage;
   const messages: Record<number, string> = {
     100001: i18n.t("console.enterpriseCreate.invalidInput"),
     100002: i18n.t("console.enterpriseCreate.serviceUnavailable"),
@@ -337,5 +338,5 @@ export function getEnterpriseCertificationErrorMessage(error: unknown): string {
     160001: i18n.t("console.enterpriseCreate.loginExpired"),
     110001: i18n.t("console.enterpriseCreate.loginExpired"),
   };
-  return messages[error.code] ?? error.message;
+  return messages[error.code] ?? (error.message || i18n.t("console.enterpriseCreate.requestFailed"));
 }

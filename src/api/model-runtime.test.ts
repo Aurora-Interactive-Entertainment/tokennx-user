@@ -121,6 +121,40 @@ describe('模型运行时请求', () => {
     })
   })
 
+  it('错误响应包含顶层 msg 时优先展示 msg', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({
+      msg: '完成实名认证后才能调用模型',
+      error: { message: 'fallback message', code: 'insufficient_balance' },
+    }), {
+      status: 403,
+      headers: { 'Content-Type': 'application/json' },
+    }))
+
+    await expect(streamChatCompletion(DEFAULT_INPUT)).rejects.toMatchObject({
+      name: 'ModelRuntimeError',
+      message: '完成实名认证后才能调用模型',
+      code: 'insufficient_balance',
+    })
+  })
+
+  it('兼容成功 HTTP 状态下返回的标准业务错误体', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({
+      code: 170008,
+      msg: '完成实名认证后才能调用模型',
+      data: {},
+    }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    }))
+
+    await expect(streamChatCompletion(DEFAULT_INPUT)).rejects.toMatchObject({
+      name: 'ModelRuntimeError',
+      status: 200,
+      code: '170008',
+      message: '完成实名认证后才能调用模型',
+    })
+  })
+
   it('拒绝缺少登录令牌或请求内容的调用而不发起网络请求', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch')
 

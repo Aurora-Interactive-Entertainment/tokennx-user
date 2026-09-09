@@ -77,6 +77,11 @@ function readText(value: unknown): string {
   return typeof value === 'string' ? value.trim() : ''
 }
 
+function readMeaningfulMessage(value: unknown): string {
+  const message = readText(value)
+  return ['success', 'ok'].includes(message.toLowerCase()) ? '' : message
+}
+
 function readFirstText(record: RecordValue, keys: string[]): string {
   for (const key of keys) {
     const value = readText(record[key])
@@ -159,9 +164,15 @@ function readStatus(payload: RecordValue, fallback: VideoTaskStatus = 'pending')
 
 function readErrorMessage(payload: RecordValue): string | null {
   const errorValue = isRecord(payload.error) ? payload.error : undefined
-  const errorMessage = errorValue ? readFirstText(errorValue, ['message', 'detail', 'reason']) : ''
-  const message = readFirstText(payload, ['message', 'detail', 'reason', 'error_message'])
-  return errorMessage || message || null
+  const nestedMessage = candidateRecords(payload).slice(1)
+    .map((record) => readMeaningfulMessage(record.msg) || readFirstText(record, ['message', 'detail', 'reason', 'error_message']))
+    .find(Boolean) ?? ''
+  const message = readMeaningfulMessage(payload.msg)
+    || (errorValue ? readFirstText(errorValue, ['msg']) : '')
+    || (errorValue ? readFirstText(errorValue, ['message', 'detail', 'reason']) : '')
+    || readFirstText(payload, ['message', 'detail', 'reason', 'error_message'])
+    || nestedMessage
+  return message || null
 }
 
 function parsePayload(body: string): RecordValue {
@@ -176,10 +187,18 @@ function parsePayload(body: string): RecordValue {
 
 function errorPayloadMessage(payload: RecordValue): { message: string; code: string | null } {
   const error = isRecord(payload.error) ? payload.error : payload
-  const message = readFirstText(error, ['message', 'detail', 'reason']) || i18n.t('api.videoRuntime.requestFailed')
+  const message = readFirstText(payload, ['msg'])
+    || readFirstText(error, ['msg', 'message', 'detail', 'reason', 'error_message'])
+    || readFirstText(payload, ['message', 'detail', 'reason', 'error_message'])
+    || i18n.t('api.videoRuntime.requestFailed')
   const codeValue = error.code
   const code = typeof codeValue === 'string' ? codeValue : typeof codeValue === 'number' ? String(codeValue) : null
   return { message, code }
+}
+
+function hasBusinessError(payload: RecordValue): boolean {
+  if (typeof payload.code === 'number') return payload.code !== 0
+  return typeof payload.code === 'string' && payload.code.trim() !== '' && payload.code.trim() !== '0'
 }
 
 async function requestVideoTask(path: string, options: RequestInit, requestId: string, fallbackTaskId = ''): Promise<VideoTask> {
@@ -187,7 +206,7 @@ async function requestVideoTask(path: string, options: RequestInit, requestId: s
   const responseRequestId = response.headers.get('X-Request-ID') ?? requestId
   const body = (await response.text()).slice(0, MAX_ERROR_BODY_LENGTH)
   const payload = parsePayload(body)
-  if (!response.ok) {
+  if (!response.ok || hasBusinessError(payload)) {
     const error = errorPayloadMessage(payload)
     throw new VideoRuntimeError(error.message, response.status, error.code, responseRequestId)
   }

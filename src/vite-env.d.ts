@@ -1,5 +1,7 @@
 /// <reference types="vite/client" />
 
+declare const __SENTRY_RELEASE__: string;
+
 interface ImportMetaEnv {
   readonly VITE_API_BASE_URL?: string;
   readonly VITE_API_PROXY_TARGET?: string;

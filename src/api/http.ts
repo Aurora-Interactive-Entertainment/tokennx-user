@@ -55,13 +55,16 @@ export class ApiError extends Error {
   readonly status: number
   readonly code: number
   readonly requestId: string | null
+  /** 服务端返回的原始 msg；为空时才允许业务层使用错误码兜底文案。 */
+  readonly apiMessage: string | null
 
-  constructor(message: string, status: number, code: number, requestId: string | null) {
+  constructor(message: string, status: number, code: number, requestId: string | null, apiMessage: string | null = null) {
     super(message)
     this.name = 'ApiError'
     this.status = status
     this.code = code
     this.requestId = requestId
+    this.apiMessage = apiMessage
   }
 }
 
@@ -72,8 +75,9 @@ function createApiError(
   status: number,
   code: number,
   requestId: string | null,
+  apiMessage: string | null = null,
 ): ApiError {
-  const error = new ApiError(message, status, code, requestId)
+  const error = new ApiError(message, status, code, requestId, apiMessage)
 
   reportCriticalApiFailure({
     error,
@@ -108,10 +112,16 @@ function withApiVersionPath(value: string): string {
 // 中文：模型调用和接入样例共用前端配置的后端地址，避免开发环境只请求到前端代理地址。
 export const MODEL_API_BASE_URL = withApiVersionPath(BACKEND_BASE_URL)
 
-function errorMessage(payload: Partial<ApiEnvelope<unknown>> | null, response: Response): string {
-  if (payload?.msg) return payload.msg
-  if (response.status >= 500) return i18n.t('api.http.serviceUnavailable')
-  return i18n.t('api.http.requestFailed')
+function readApiMessage(payload: Partial<ApiEnvelope<unknown>> | null): string | null {
+  const message = typeof payload?.msg === 'string' ? payload.msg.trim() : ''
+  return message || null
+}
+
+function errorMessage(payload: Partial<ApiEnvelope<unknown>> | null, response: Response): { message: string; apiMessage: string | null } {
+  const apiMessage = readApiMessage(payload)
+  if (apiMessage) return { message: apiMessage, apiMessage }
+  if (response.status >= 500) return { message: i18n.t('api.http.serviceUnavailable'), apiMessage: null }
+  return { message: i18n.t('api.http.requestFailed'), apiMessage: null }
 }
 
 export async function fetchJson<T>(path: string, options: FetchJsonOptions = {}): Promise<T> {
@@ -126,7 +136,8 @@ export async function fetchJson<T>(path: string, options: FetchJsonOptions = {})
 
 	if (!payload) throw createApiError(path, options, i18n.t('api.http.unreadableResponse'), response.status, 0, requestId)
 	if (payload.code !== 0) {
-		throw createApiError(path, options, errorMessage(payload, response), response.status, payload.code ?? 0, requestId)
+		const error = errorMessage(payload, response)
+		throw createApiError(path, options, error.message, response.status, payload.code ?? 0, requestId, error.apiMessage)
 	}
 	return payload.data as T
 }
@@ -202,7 +213,8 @@ export async function fetchResponse(path: string, options: FetchJsonOptions = {}
 
 	if (!payload) throw createApiError(path, options, i18n.t('api.http.unreadableResponse'), response.status, 0, response.headers.get('X-Request-ID') ?? requestId)
 	const responseRequestId = response.headers.get('X-Request-ID') ?? requestId
-	throw createApiError(path, options, errorMessage(payload, response), response.status, payload.code ?? 0, responseRequestId)
+	const error = errorMessage(payload, response)
+	throw createApiError(path, options, error.message, response.status, payload.code ?? 0, responseRequestId, error.apiMessage)
 }
 
 export function isApiError(error: unknown): error is ApiError {

@@ -59,6 +59,7 @@ export function isRealNameConflict(error: unknown): boolean {
 
 export function getRealNameErrorMessage(error: unknown): string {
 	if (!isApiError(error)) return i18n.t('api.realName.requestFailed')
+	if (error.apiMessage) return error.apiMessage
 	const serverMessage = error.message.trim()
 	if (serverMessage && serverMessage.toLowerCase() !== 'server') return serverMessage
 	const messageKeys: Record<number, string> = {

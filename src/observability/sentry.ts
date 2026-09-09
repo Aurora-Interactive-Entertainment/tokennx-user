@@ -32,6 +32,10 @@ const CRITICAL_API_PREFIXES = [
 const sentryDsn = import.meta.env.VITE_SENTRY_DSN?.trim() || "";
 const sentryEnvironment =
   import.meta.env.VITE_SENTRY_ENVIRONMENT?.trim() || import.meta.env.MODE;
+const sentryRelease =
+  typeof __SENTRY_RELEASE__ === "string"
+    ? __SENTRY_RELEASE__.trim() || undefined
+    : undefined;
 const apiErrorSampleRate = normalizeSampleRate(
   import.meta.env.VITE_SENTRY_API_ERROR_SAMPLE_RATE,
   sentryEnvironment === "production" ? 0.1 : 0,
@@ -100,6 +104,7 @@ export function initSentry(): void {
   Sentry.init({
     dsn: sentryDsn,
     environment: sentryEnvironment,
+    release: sentryRelease,
     sampleRate: 1,
     enableLogs: false,
     sendClientReports: false,

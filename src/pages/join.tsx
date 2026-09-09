@@ -43,6 +43,12 @@ function invitationStatusDescription(status: string): string {
 }
 
 function invitationError(reason: unknown): InvitationPageError {
+  if (isApiError(reason) && reason.apiMessage) {
+    return {
+      message: reason.apiMessage,
+      requestId: reason.requestId,
+    };
+  }
   if (isApiError(reason) && reason.code === INVITATION_INVALID_ERROR_CODE) {
     return {
       message: i18n.t("console.join.invalid"),

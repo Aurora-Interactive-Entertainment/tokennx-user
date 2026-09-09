@@ -102,7 +102,7 @@ html[data-theme="dark"] .video-console-page .video-composer-box {
   position: relative;
 }
 .video-console-page .video-history-panel {
-  display: none;
+  display: block;
   position: absolute;
   top: 58px;
   left: 16px;
@@ -115,9 +115,24 @@ html[data-theme="dark"] .video-console-page .video-composer-box {
   border-radius: 12px;
   background: var(--color-bg-base-default);
   box-shadow: 0 18px 42px rgb(0 0 0 / 12%);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-8px) scale(0.98);
+  transform-origin: top left;
+  pointer-events: none;
+  transition: opacity 180ms ease, transform 180ms ease, visibility 0s linear 180ms;
 }
 .video-console-page .video-history-panel.is-open {
-  display: block;
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+  transition-delay: 0s;
+}
+@media (prefers-reduced-motion: reduce) {
+  .video-console-page .video-history-panel {
+    transition: none;
+  }
 }
 .video-reference-picker,
 .video-model-picker,

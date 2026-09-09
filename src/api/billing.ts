@@ -699,11 +699,12 @@ const BILLING_ERROR_KEYS: Record<number, string> = {
 
 export function getBillingErrorMessage(error: unknown): string {
   if (!isApiError(error)) return i18n.t('api.billing.requestFailed')
+  if (error.apiMessage) return error.apiMessage
   // 中文：实名认证业务码可能使用 403 HTTP 状态，必须优先展示服务端返回的真实提示。
   if (error.code === 140008) return error.message.trim() || i18n.t('api.billing.errors.140008')
   if (error.status === 403 || error.code === 120001) return i18n.t('api.billing.forbidden')
   const messageKey = BILLING_ERROR_KEYS[error.code]
-  return messageKey ? i18n.t(messageKey) : error.message
+  return messageKey ? i18n.t(messageKey) : error.message || i18n.t('api.billing.requestFailed')
 }
 
 export function getBillingRequestId(error: unknown): string | null {

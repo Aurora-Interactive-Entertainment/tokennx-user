@@ -162,6 +162,7 @@ export function isNotificationPreferenceCode(value: string): value is Notificati
 
 export function getProfileErrorMessage(error: unknown): string {
 	if (!isApiError(error)) return i18n.t('api.profile.requestFailed')
+	if (error.apiMessage) return error.apiMessage
 	const messageKeys: Record<number, string> = {
 		100001: 'api.profile.invalidInput',
 		100004: 'api.profile.missing',
@@ -181,7 +182,7 @@ export function getProfileErrorMessage(error: unknown): string {
 		110032: 'api.profile.accountDeletionUnavailable',
 		100008: 'api.profile.contactUnchanged',
 	}
-	return messageKeys[error.code] ? i18n.t(messageKeys[error.code]) : error.message
+	return messageKeys[error.code] ? i18n.t(messageKeys[error.code]) : error.message || i18n.t('api.profile.requestFailed')
 }
 
 export function getUserProfile(accessToken: string): Promise<UserProfile> {

@@ -18,13 +18,6 @@
   font-variant-numeric: tabular-nums;
 }
 
-.billing-redeem-button.semi-button {
-  flex: 0 0 auto;
-  padding-inline: 0;
-  color: var(--color-action-primary);
-  font-size: 12px;
-}
-
 .billing-redemption-form {
   display: grid;
   gap: 8px;

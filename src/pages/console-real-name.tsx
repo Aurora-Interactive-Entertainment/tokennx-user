@@ -608,11 +608,12 @@ export function RealNamePage() {
       ) {
         closeVerification();
         Toast.error(
-          t(
-            requestError.code === 110022
-              ? "console.realName.expired"
-              : "console.realName.sessionMissing",
-          ),
+          requestError.apiMessage ||
+            t(
+              requestError.code === 110022
+                ? "console.realName.expired"
+                : "console.realName.sessionMissing",
+            ),
         );
       } else if (isRealNameConflict(requestError)) {
         try {

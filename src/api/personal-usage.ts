@@ -1017,6 +1017,7 @@ export function getPersonalUsageErrorMessage(error: unknown): string {
     return error instanceof Error && error.message
       ? error.message
       : i18n.t("api.personalUsage.loadFailed");
+  if (error.apiMessage) return error.apiMessage;
   if (error.status === 403) return i18n.t("api.personalUsage.forbidden");
   return error.message || i18n.t("api.personalUsage.loadFailed");
 }

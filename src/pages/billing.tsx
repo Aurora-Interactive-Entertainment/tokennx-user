@@ -449,7 +449,7 @@ function AccountBalanceSection({ wallet, metrics, onRecharge, onBalanceAlert, on
         <div className="billing-balance-card-heading"><span>{i18n.t('console.billing.rewardBalance')}</span><BillingSectionInfo content={i18n.t('console.billing.rewardBalanceHint')} /></div>
         <div className="billing-reward-card-footer">
           <strong><PlainMoney value={wallet.bonus_available_yuan} /></strong>
-          {onRedeem ? <Button className="billing-redeem-button" theme="borderless" size="small" onClick={onRedeem}>{i18n.t('console.billing.redeemCode')}</Button> : null}
+          {onRedeem ? <Button className="billing-balance-recharge-button" theme="solid" size="small" onClick={onRedeem}>{i18n.t('console.billing.redeemCode')}</Button> : null}
         </div>
       </article>
       <PointsBalanceCard metrics={metrics} />

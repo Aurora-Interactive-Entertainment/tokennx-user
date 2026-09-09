@@ -44,7 +44,7 @@ describe('认证 HTTP 客户端', () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(response(null, 401, 110001, '验证码错误'))
 
     const request = fetchJson('/api/auth/phone/login', { method: 'POST', body: {} })
-    await expect(request).rejects.toMatchObject({ name: 'ApiError', status: 401, code: 110001, message: '验证码错误', requestId: 'server-request-id' })
+		await expect(request).rejects.toMatchObject({ name: 'ApiError', status: 401, code: 110001, message: '验证码错误', apiMessage: '验证码错误', requestId: 'server-request-id' })
 	})
 
 	it('保留二进制成功响应并发送认证请求头', async () => {

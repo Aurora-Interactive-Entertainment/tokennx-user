@@ -227,6 +227,7 @@
   border: 1px solid var(--border-subtle);
   border-radius: 7px;
   background: var(--bg-panel);
+  padding: 20px;
 }
 .quickstart-pdf-key-table {
   width: 100%;

@@ -48,6 +48,7 @@ const ENTERPRISE_MENU_PATH_SCOPES: readonly {
   { path: "/console/trae-enterprise/operation-log", scope: "audit" },
   { path: "/console/trae-enterprise/data-analysis", scope: "analytics" },
   { path: "/console/trae-enterprise/subscription", scope: "billing" },
+  { path: "/console/purchase", scope: "billing" },
   { path: "/console/enterprise-api-keys", scope: "keys" },
 ];
 

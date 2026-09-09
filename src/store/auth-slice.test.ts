@@ -132,8 +132,8 @@ describe('认证 Redux 状态', () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(apiResponse(null, 401, 110001, '验证码错误'))
     const appStore = createAppStore()
 
-    await expect(appStore.dispatch(loginWithPhone({ destination: '13800138000', code: '000000' })).unwrap()).rejects.toMatchObject({ message: '邮箱、手机号或验证码错误，请重新确认', code: 110001 })
-    expect(appStore.getState().auth).toMatchObject({ status: 'unauthenticated', error: { message: '邮箱、手机号或验证码错误，请重新确认', code: 110001 } })
+    await expect(appStore.dispatch(loginWithPhone({ destination: '13800138000', code: '000000' })).unwrap()).rejects.toMatchObject({ message: '验证码错误', code: 110001 })
+    expect(appStore.getState().auth).toMatchObject({ status: 'unauthenticated', error: { message: '验证码错误', code: 110001 } })
   })
 
   it('退出登录即使服务端失败也会清理本地令牌', async () => {

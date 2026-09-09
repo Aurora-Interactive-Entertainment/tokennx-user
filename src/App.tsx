@@ -178,6 +178,11 @@ const SubscriptionPage = lazy(() =>
     default: SubscriptionPage,
   })),
 );
+const PurchasePage = lazy(() =>
+  import("@/pages/purchase").then(({ PurchasePage }) => ({
+    default: PurchasePage,
+  })),
+);
 const ImagePage = lazy(() =>
   import("@/pages/image-generation").then(({ ImagePage }) => ({
     default: ImagePage,
@@ -418,6 +423,7 @@ export default function App({ onBootReady }: { onBootReady: () => void }) {
                 <Route path="usage" element={<PersonalUsagePage />} />
                 <Route path="billing" element={<BillingPage />} />
                 <Route path="subscription" element={<SubscriptionPage />} />
+                <Route path="purchase" element={<PurchasePage />} />
                 <Route path="recharge" element={<RechargePage />} />
                 <Route path="real-name" element={<RealNamePage />} />
                 <Route path="settings" element={<SettingsPage />} />

@@ -993,9 +993,10 @@ const ENTERPRISE_ERROR_KEYS: Record<number, string> = {
 
 export function getEnterpriseErrorMessage(error: unknown): string {
   if (!isApiError(error)) return i18n.t('api.enterprise.requestFailed')
+  if (error.apiMessage) return error.apiMessage
   if (error.status === 403 || error.code === 140002) return i18n.t('api.enterprise.forbidden')
   const messageKey = ENTERPRISE_ERROR_KEYS[error.code]
-  return messageKey ? i18n.t(messageKey) : error.message
+  return messageKey ? i18n.t(messageKey) : error.message || i18n.t('api.enterprise.requestFailed')
 }
 
 export function getEnterpriseRequestId(error: unknown): string | null {

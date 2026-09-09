@@ -30,6 +30,7 @@ type ThunkConfig = { rejectValue: AuthOperationError }
 
 export function authError(error: unknown): AuthOperationError {
   if (!isApiError(error)) return { message: i18n.t('api.auth.requestFailed'), code: 0, status: 0 }
+  if (error.apiMessage) return { message: error.apiMessage, code: error.code, status: error.status }
   const messages: Record<number, string> = {
     100001: i18n.t('api.auth.invalidInput'),
     100004: i18n.t('api.auth.sessionExpired'),
@@ -45,7 +46,7 @@ export function authError(error: unknown): AuthOperationError {
     110003: i18n.t('api.auth.phoneAlreadyBound'),
     110004: i18n.t('api.auth.codeTooFrequent'),
   }
-  return { message: messages[error.code] ?? error.message, code: error.code, status: error.status }
+  return { message: messages[error.code] ?? (error.message || i18n.t('api.auth.requestFailed')), code: error.code, status: error.status }
 }
 
 function completeAuth(result: AuthResult): AuthUser {

@@ -162,6 +162,8 @@ npm run format:check
 
 以下内容会在发送前移除：请求和响应正文、请求头、Cookie、查询参数、邮箱、手机号、证件号、Token、API Key、控制台日志、点击元素信息以及任意 `extra` 数据。登录用户只关联内部用户 ID，`X-Request-ID` 仅作为低基数排查上下文，不作为标签。
 
+正式发布构建应在 CI 中提供唯一的 `SENTRY_RELEASE`（推荐 Git SHA）。Vite 会把它注入浏览器包，使运行时错误事件带上版本号；上传 Source Map 时也复用同一个值，避免事件与映射版本不一致。
+
 发布构建上传 Source Map 时，在 CI 中提供以下非 `VITE_` 环境变量：
 
 ```dotenv

@@ -146,9 +146,25 @@ function parseCompletionPayload(value: unknown): ParsedCompletionPayload {
 function completionErrorMessage(value: unknown): { message: string; code: string | null } {
   if (!isRecord(value)) return { message: i18n.t('api.modelRuntime.unknownError'), code: null }
   const error = isRecord(value.error) ? value.error : value
-  const message = typeof error.message === 'string' ? error.message : typeof value.msg === 'string' ? value.msg : ''
+  // 中文：无论错误对象是否嵌套，都优先使用响应顶层的 msg。
+  const message = readFirstText([
+    value.msg,
+    error.msg,
+    error.message,
+    error.detail,
+    error.reason,
+    value.message,
+    value.detail,
+    value.reason,
+  ])
   const code = typeof error.code === 'string' ? error.code : typeof error.code === 'number' ? String(error.code) : null
   return { message: message || i18n.t('api.modelRuntime.requestFailed'), code }
+}
+
+function hasBusinessError(value: unknown): value is RecordValue {
+  if (!isRecord(value)) return false
+  if (typeof value.code === 'number') return value.code !== 0
+  return typeof value.code === 'string' && value.code.trim() !== '' && value.code.trim() !== '0'
 }
 
 async function readErrorResponse(response: Response, requestId: string): Promise<ModelRuntimeError> {
@@ -284,9 +300,17 @@ export async function streamChatCompletion(input: StreamChatCompletionInput): Pr
     if (!response.ok) throw await readErrorResponse(response, requestId)
 
     const isEventStream = response.headers.get('Content-Type')?.toLowerCase().includes('text/event-stream')
-    const payload = isEventStream
-      ? await readStreamResponse(response, input.onDelta, input.onReasoningDelta)
-      : parseCompletionPayload(await response.json() as unknown)
+    let payload: ParsedCompletionPayload
+    if (isEventStream) {
+      payload = await readStreamResponse(response, input.onDelta, input.onReasoningDelta)
+    } else {
+      const rawPayload: unknown = await response.json()
+      if (hasBusinessError(rawPayload)) {
+        const error = completionErrorMessage(rawPayload)
+        throw new ModelRuntimeError(error.message, response.status, error.code, response.headers.get('X-Request-ID') ?? requestId)
+      }
+      payload = parseCompletionPayload(rawPayload)
+    }
     if (!isEventStream) {
       input.onDelta?.(payload.content)
       input.onReasoningDelta?.(payload.reasoning)

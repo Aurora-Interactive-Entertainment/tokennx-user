@@ -78,6 +78,10 @@ export default defineConfig(({ mode }) => {
   }
 
   return {
+    // 将 CI 发布版本注入浏览器包，确保运行时事件与 Source Map 使用同一 release。
+    define: {
+      __SENTRY_RELEASE__: JSON.stringify(sentryBuildEnv.release),
+    },
     plugins: [
       // 中文：使用 Semi 官方 Vite 插件提供主题编译入口，结构型 token 保持官方默认值。
       semiTheming({

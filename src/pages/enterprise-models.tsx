@@ -996,7 +996,7 @@ function ModelsContent({ context }: { context: EnterpriseContext }) {
       const handled = handleError(reason);
       if (handled) setActionError(handled);
       if (isApiError(reason) && reason.code === 140004) {
-        Toast.warning(t('console.enterprise.model.conflict'));
+        Toast.warning(handled?.message ?? t('console.enterprise.model.conflict'));
         setReloadToken((value) => value + 1);
       }
     } finally {
@@ -1035,7 +1035,7 @@ function ModelsContent({ context }: { context: EnterpriseContext }) {
       const handled = handleError(reason);
       if (handled) setActionError(handled);
       if (isApiError(reason) && reason.code === 140004) {
-        Toast.warning(t('console.enterprise.model.conflict'));
+        Toast.warning(handled?.message ?? t('console.enterprise.model.conflict'));
         setReloadToken((value) => value + 1);
       }
       return false;

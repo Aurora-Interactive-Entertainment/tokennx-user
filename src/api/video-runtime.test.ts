@@ -58,6 +58,7 @@ describe('视频任务运行时请求', () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse({
       id: 'task_local_2',
       status: 'completed',
+      msg: 'success',
       progress: '100%',
       metadata: { url: 'https://cdn.example.com/video.mp4' },
     }, 200, { 'X-Request-ID': 'server-request-2' }))
@@ -67,6 +68,7 @@ describe('视频任务运行时请求', () => {
       status: 'succeeded',
       progress: 100,
       resultUrl: 'https://cdn.example.com/video.mp4',
+      errorMessage: null,
       requestId: 'server-request-2',
     })
     expect(String(fetchMock.mock.calls[0]?.[0])).toBe(`${MODEL_API_BASE_URL}/videos/task%2Flocal%202`)
@@ -97,6 +99,29 @@ describe('视频任务运行时请求', () => {
       code: 'insufficient_balance',
       message: '余额不足',
       requestId: 'billing-request-1',
+    })
+
+    vi.mocked(globalThis.fetch).mockResolvedValue(jsonResponse({
+      msg: '完成实名认证后才能生成视频',
+      error: { message: 'fallback message', code: 'real_name_required' },
+    }, 403))
+    await expect(submitVideoGeneration(DEFAULT_INPUT)).rejects.toMatchObject({
+      name: 'VideoRuntimeError',
+      status: 403,
+      code: 'real_name_required',
+      message: '完成实名认证后才能生成视频',
+    })
+
+    vi.mocked(globalThis.fetch).mockResolvedValue(jsonResponse({
+      code: 170008,
+      msg: '完成实名认证后才能生成视频',
+      data: {},
+    }, 200))
+    await expect(submitVideoGeneration(DEFAULT_INPUT)).rejects.toMatchObject({
+      name: 'VideoRuntimeError',
+      status: 200,
+      code: '170008',
+      message: '完成实名认证后才能生成视频',
     })
   })
 

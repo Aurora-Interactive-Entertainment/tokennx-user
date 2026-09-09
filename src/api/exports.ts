@@ -266,6 +266,7 @@ export function getExportErrorMessage(error: unknown): string {
       ? error.message
       : i18n.t("api.exports.requestFailed");
   }
+  if (error.apiMessage) return error.apiMessage;
   const keys: Record<number, string> = {
     150001: "api.exports.invalidInput",
     150002: "api.exports.forbidden",

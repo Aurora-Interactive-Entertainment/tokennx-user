@@ -27,4 +27,16 @@ describe('API 错误提示语言', () => {
     expect(getProfileErrorMessage(new ApiError('server', 409, 100006, null))).toBe('资料状态已变化，请刷新后重试')
     expect(getEnterpriseErrorMessage(new ApiError('server', 409, 140004, null))).toBe('企业资源已被其他操作更新，请刷新后重试')
   })
+
+  it('服务端返回 msg 时优先使用原文而不是错误码翻译', () => {
+    const serverMessage = '完成实名认证后才能充值'
+    const apiError = (code: number) => new ApiError('fallback', 403, code, 'request-msg', serverMessage)
+
+    expect(getBillingErrorMessage(apiError(170008))).toBe(serverMessage)
+    expect(getEnterpriseErrorMessage(apiError(140004))).toBe(serverMessage)
+    expect(getProfileErrorMessage(apiError(100006))).toBe(serverMessage)
+    expect(getRealNameErrorMessage(apiError(100002))).toBe(serverMessage)
+    expect(getUserApiKeyErrorMessage(apiError(100009))).toBe(serverMessage)
+    expect(getUserModelsErrorMessage(apiError(120003))).toBe(serverMessage)
+  })
 })

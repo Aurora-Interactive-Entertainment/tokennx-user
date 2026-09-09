@@ -201,6 +201,7 @@ export function getUserModelDetail(model: string, query: UserModelsQuery, signal
 
 export function getUserModelsErrorMessage(error: unknown): string {
   if (!isApiError(error)) return i18n.t('api.models.loadFailed')
+  if (error.apiMessage) return error.apiMessage
   const messageKeys: Record<number, string> = {
     100001: 'api.models.invalidQuery',
     100002: 'api.models.invalidResponse',
@@ -208,5 +209,5 @@ export function getUserModelsErrorMessage(error: unknown): string {
     160001: 'api.models.sessionExpired',
     120003: 'api.models.forbidden',
   }
-  return messageKeys[error.code] ? i18n.t(messageKeys[error.code]) : error.message
+  return messageKeys[error.code] ? i18n.t(messageKeys[error.code]) : error.message || i18n.t('api.models.loadFailed')
 }
