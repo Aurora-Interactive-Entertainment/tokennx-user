@@ -56,11 +56,12 @@ npm ci
 
 项目已经提供以下环境文件：
 
-| 文件               | 使用场景        | 说明                           |
-| ------------------ | --------------- | ------------------------------ |
-| `.env.example`     | 配置参考        | 仅为模板，不会被 Vite 自动加载 |
-| `.env.development` | `npm run dev`   | 开发模式配置                   |
-| `.env.production`  | `npm run build` | 生产构建配置                   |
+| 文件               | 使用场景                         | 说明                           |
+| ------------------ | -------------------------------- | ------------------------------ |
+| `.env.example`     | 配置参考                         | 仅为模板，不会被 Vite 自动加载 |
+| `.env.development` | `npm run dev`                    | 本地开发配置                   |
+| `.env.staging`     | `npm run build:test`             | 测试服构建配置                 |
+| `.env.production`  | `npm run build` / `npm run build:prod` | 正式服构建配置                 |
 
 可配置变量如下：
 
@@ -114,13 +115,23 @@ npm run typecheck
 
 该命令执行 `tsc --noEmit`，只检查 `src` 和 Vite 配置涉及的 TypeScript 类型，不生成文件。`npm run build` 内部也会先执行 TypeScript 项目构建检查。
 
-### 生产构建
+### 测试服构建
+
+```bash
+npm run build:test
+```
+
+该命令使用 Vite `staging` mode，读取 `.env.staging`，当前请求地址为 `https://api.firebulls.cn:8443`。
+
+### 正式服构建
 
 ```bash
 npm run build
+# 或显式使用
+npm run build:prod
 ```
 
-构建流程是 `tsc -b && vite build`，输出目录为 `dist/`。Vite 默认使用 production mode，并读取 `.env.production`。构建目标为 `es2022`，页面和公共依赖会进行代码分块。普通构建不生成 source map；只有发布环境显式开启 Sentry 上传时才生成隐藏映射，上传成功后从 `dist/` 删除。
+正式构建读取 `.env.production`，当前请求地址为 `https://api.tokennx.cn`。两种构建都会先执行 TypeScript 检查，并将结果输出到 `dist/`；后一次构建会覆盖前一次的产物，部署前请确认使用了对应命令。构建目标为 `es2022`，页面和公共依赖会进行代码分块。普通构建不生成 source map；只有发布环境显式开启 Sentry 上传时才生成隐藏映射，上传成功后从 `dist/` 删除。
 
 ### 本地预览构建结果
 
