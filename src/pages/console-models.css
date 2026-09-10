@@ -2,7 +2,8 @@
 
 .models-console-page .model-card-grid {
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 400px), 1fr));
-  justify-content: center;
+  /* 轨道整体靠左，卡片从左往右依次排列。 */
+  justify-content: start;
   gap: 16px;
 }
 
@@ -23,7 +24,8 @@
   width: 100%;
   max-width: 595px;
   min-width: min(400px, 100%);
-  justify-self: center;
+  /* 卡片在轨道内靠左排列，从左往右依次铺开。 */
+  justify-self: start;
   height: 340px;
   min-height: 340px;
   isolation: isolate;

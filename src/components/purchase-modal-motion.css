@@ -1,0 +1,70 @@
+/* 关闭按钮固定底板和点击区域，仅旋转图标，避免悬停改变按钮边界造成抖动。 */
+:is(.purchase-payment-modal, .purchase-subscription-modal).app-modal .semi-modal-content.app-modal-content .semi-modal-close {
+  top: 24px;
+  right: 22px;
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  min-height: 34px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  color: #17181b;
+  background: #eceef1;
+  opacity: 1;
+  transform: none;
+}
+:is(.purchase-payment-modal, .purchase-subscription-modal).app-modal .semi-modal-content.app-modal-content .semi-modal-close .semi-icon {
+  display: inline-flex;
+  width: 19px;
+  height: 19px;
+  font-size: 19px;
+  transform: rotate(0deg);
+  transform-origin: center;
+  transition: transform 280ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+html[data-theme="dark"] :is(.purchase-payment-modal, .purchase-subscription-modal).app-modal .semi-modal-content.app-modal-content .semi-modal-close {
+  color: #f4f5f7;
+  background: #2a2d38;
+}
+@media (hover: hover) {
+  /* 悬停仅保留图标旋转；显式写回基础配色以覆盖 app-modal 的通用悬停变色。 */
+  :is(.purchase-payment-modal, .purchase-subscription-modal).app-modal .semi-modal-content.app-modal-content .semi-modal-close:hover {
+    color: #17181b;
+    background: #eceef1;
+    transform: none;
+  }
+  html[data-theme="dark"] :is(.purchase-payment-modal, .purchase-subscription-modal).app-modal .semi-modal-content.app-modal-content .semi-modal-close:hover {
+    color: #f4f5f7;
+    background: #2a2d38;
+  }
+  :is(.purchase-payment-modal, .purchase-subscription-modal).app-modal .semi-modal-content.app-modal-content .semi-modal-close:hover .semi-icon {
+    transform: rotate(90deg);
+  }
+}
+/* 两层购买弹窗共用过渡；保留 Semi 的动画结束事件管理遮罩与焦点。 */
+:is(.purchase-payment-modal, .purchase-subscription-modal) .semi-modal-content-animate-show {
+  animation: purchase-modal-enter 240ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+:is(.purchase-payment-modal, .purchase-subscription-modal) .semi-modal-content-animate-hide {
+  animation: purchase-modal-leave 240ms ease both;
+}
+:is(.purchase-payment-modal, .purchase-subscription-modal) :is(.semi-modal-mask-animate-show, .semi-modal-mask-animate-hide) {
+  animation-duration: 240ms;
+}
+@keyframes purchase-modal-enter {
+  from { opacity: 0; transform: translateY(12px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes purchase-modal-leave {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to { opacity: 0; transform: translateY(8px) scale(0.97); }
+}
+@media (prefers-reduced-motion: reduce) {
+  :is(.purchase-payment-modal, .purchase-subscription-modal).app-modal .semi-modal-content.app-modal-content .semi-modal-close .semi-icon {
+    transition: none;
+  }
+  :is(.purchase-payment-modal, .purchase-subscription-modal) :is(.semi-modal-content-animate-show, .semi-modal-content-animate-hide, .semi-modal-mask-animate-show, .semi-modal-mask-animate-hide) {
+    animation-duration: 1ms;
+  }
+}

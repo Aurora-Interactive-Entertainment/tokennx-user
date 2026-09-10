@@ -1,5 +1,6 @@
 .purchase-payment-modal.app-modal {
   --payment-text: #080808;
+  --payment-accent: var(--semi-color-info, #1677ff);
   --payment-muted: #929292;
   --payment-surface: #f5f6f8;
   --payment-placeholder: #ededee;
@@ -7,7 +8,7 @@
   --app-modal-radius: 15px;
 }
 .purchase-payment-modal .semi-modal {
-  width: min(410px, calc(100vw - 24px)) !important;
+  width: min(520px, calc(100vw - 24px)) !important;
   max-width: calc(100vw - 24px);
 }
 .purchase-payment-modal .semi-modal-content.app-modal-content {
@@ -25,28 +26,28 @@
 }
 .purchase-payment-content {
   box-sizing: border-box;
-  min-height: 370px;
-  padding: 24px 16px 30px 30px;
+  min-height: 445px;
+  padding: 28px 24px 32px 32px;
 }
 .purchase-payment-content h2 {
   margin: 0;
   padding: 0 42px 12px 0;
   border-bottom: 1px solid var(--payment-line);
   color: var(--payment-text);
-  font-size: 22px;
-  line-height: 28px;
+  font-size: 26px;
+  line-height: 36px;
   font-weight: 700;
 }
 .purchase-payment-columns {
   display: grid;
-  grid-template-columns: minmax(0, 144px) minmax(0, 184px);
-  gap: 36px;
-  margin-top: 12px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+  gap: 40px;
+  margin-top: 16px;
 }
 .purchase-payment-summary {
   display: flex;
   flex-direction: column;
-  gap: 30px;
+  gap: 36px;
   min-width: 0;
   margin: 0;
   padding-right: 16px;
@@ -54,12 +55,12 @@
 }
 .purchase-payment-summary dt {
   color: var(--payment-muted);
-  font-size: 14px;
+  font-size: 16px;
   line-height: 20px;
 }
 .purchase-payment-summary dd {
   margin: 2px 0 0;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 700;
   line-height: 20px;
   overflow-wrap: anywhere;
@@ -68,8 +69,8 @@
   margin-top: auto;
 }
 .purchase-payment-total dd {
-  font-size: 20px;
-  line-height: 26px;
+  font-size: 26px;
+  line-height: 32px;
 }
 .purchase-payment-methods {
   min-width: 0;
@@ -79,25 +80,56 @@
   align-items: center;
   justify-content: center;
   gap: 10px;
-  height: 22px;
+  height: 26px;
 }
 .purchase-payment-scan-title strong {
-  font-size: 14px;
+  font-size: 16px;
   line-height: 20px;
   white-space: nowrap;
 }
 .purchase-payment-scan-title img {
-  width: 22px;
-  height: 22px;
+  width: 26px;
+  height: 26px;
 }
 .purchase-payment-qr {
-  width: 126px;
-  height: 126px;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  color: var(--payment-muted);
+  font-size: 12px;
+  width: min(160px, 100%);
+  aspect-ratio: 1;
   box-sizing: border-box;
-  margin: 10px auto 12px;
+  margin: 12px auto 16px;
   border: 1px solid var(--payment-line);
   border-radius: 5px;
   background: var(--payment-placeholder);
+}
+.purchase-payment-qr > span {
+  padding: 8px;
+}
+.purchase-payment-qr .payment-qr-code-shell,
+.purchase-payment-qr .payment-qr-frame-shell {
+  width: 100%;
+  max-width: 100%;
+}
+/* 支付 iframe 的原始尺寸由渠道决定，缩放后仍限定在正方形容器内。 */
+.purchase-payment-qr .payment-qr-frame-shell {
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+}
+.purchase-payment-qr .payment-qr-frame {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: top left;
+}
+.purchase-payment-status {
+  margin: 12px 0 0;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+  color: var(--payment-muted);
 }
 .purchase-payment-options {
   display: grid;
@@ -111,7 +143,7 @@
   display: flex;
   align-items: center;
   gap: 5px;
-  min-height: 30px;
+  min-height: 36px;
   padding: 3px 8px;
   box-sizing: border-box;
   border: 1px solid var(--payment-line);
@@ -120,21 +152,21 @@
   cursor: pointer;
 }
 .purchase-payment-options label.is-selected {
-  border-color: var(--payment-text);
+  border-color: #0064FA;
 }
 .purchase-payment-options input {
   width: 14px;
   height: 14px;
   margin: 0;
-  accent-color: var(--payment-text);
+  accent-color: var(--payment-accent);
 }
 .purchase-payment-options img {
   width: 14px;
   height: 14px;
 }
 .purchase-payment-options strong {
-  font-size: 12px;
-  line-height: 16px;
+  font-size: 14px;
+  line-height: 20px;
 }
 .purchase-payment-options small {
   margin-left: auto;
@@ -147,7 +179,7 @@
   align-items: center;
   justify-content: center;
   margin-top: 10px;
-  font-size: 10px;
+  font-size: 11px;
   line-height: 14px;
 }
 .purchase-payment-agreement label {
@@ -161,29 +193,11 @@
   width: 12px;
   height: 12px;
   margin: 0;
-  accent-color: var(--payment-text);
+  accent-color: var(--payment-accent);
 }
 .purchase-payment-agreement a {
   color: var(--payment-text);
   text-decoration: none;
-}
-/* 仅覆盖本业务弹窗，保留 AppModal 的居中、遮罩与焦点管理。 */
-.purchase-payment-modal.app-modal
-  .semi-modal-content.app-modal-content
-  .semi-modal-close {
-  top: 20px;
-  right: 16px;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: var(--payment-placeholder);
-  color: var(--payment-muted);
-}
-.purchase-payment-modal .semi-modal-close .semi-icon {
-  transition: transform 240ms ease;
-}
-.purchase-payment-modal .semi-modal-close:hover .semi-icon {
-  transform: rotate(90deg);
 }
 html[data-theme="dark"] .purchase-payment-modal {
   --payment-text: #f4f5f7;
@@ -194,7 +208,8 @@ html[data-theme="dark"] .purchase-payment-modal {
 }
 @media (max-width: 440px) {
   .purchase-payment-content {
-    padding: 20px 16px 24px;
+    padding: 24px 16px;
+    min-height: 390px;
   }
   .purchase-payment-columns {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
@@ -210,10 +225,5 @@ html[data-theme="dark"] .purchase-payment-modal {
   .purchase-payment-options label {
     padding-inline: 4px;
     gap: 3px;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .purchase-payment-modal .semi-modal-close .semi-icon {
-    transition: none;
   }
 }

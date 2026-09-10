@@ -384,7 +384,7 @@ describe('个人设置页面', () => {
     const newCode = await getContactInput('profile-phone-newCode')
     await user.type(currentCode, '123456')
     await user.type(newCode, '654321')
-    await user.click(screen.getByRole('button', { name: '保存联系方式' }))
+    await user.click(screen.getByRole('button', { name: '确定' }))
 
     await waitFor(() => expect(fetchMock.mock.calls.some(([url, options]) => String(url).endsWith('/api/user/profile/phone') && options?.method === 'PUT')).toBe(true))
     const codeRequests = fetchMock.mock.calls.filter(([url]) => String(url).endsWith('/api/user/profile/contact/code'))
@@ -439,7 +439,7 @@ describe('个人设置页面', () => {
     expect(currentDestination).toHaveValue('13812345678')
     await user.type(newDestination, '13812345678')
     await user.click(screen.getByRole('button', { name: '发送新验证码' }))
-    await user.click(screen.getByRole('button', { name: '保存联系方式' }))
+    await user.click(screen.getByRole('button', { name: '确定' }))
 
     expect(await screen.findByText('新联系方式不能与当前联系方式相同')).toBeInTheDocument()
     expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith('/api/user/profile/contact/code'))).toBe(false)
@@ -493,7 +493,7 @@ describe('个人设置页面', () => {
     await user.type(currentCode, '123456')
     await user.type(newDestination, '13912345678')
     await user.type(newCode, '654321')
-    await user.click(screen.getByRole('button', { name: '保存联系方式' }))
+    await user.click(screen.getByRole('button', { name: '确定' }))
 
     await waitFor(() => expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith('/api/user/profile/phone'))).toHaveLength(1))
     expect(document.querySelector('.profile-contact-modal [role="dialog"]')).toBeInTheDocument()
@@ -502,7 +502,7 @@ describe('个人设置页面', () => {
     expect(newDestination).toHaveValue('13912345678')
     expect(newCode).toHaveValue('654321')
 
-    await user.click(screen.getByRole('button', { name: '保存联系方式' }))
+    await user.click(screen.getByRole('button', { name: '确定' }))
     await waitFor(() => expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith('/api/user/profile/phone'))).toHaveLength(2))
     expect(await screen.findByText('139****5678')).toBeInTheDocument()
   })
@@ -521,7 +521,7 @@ describe('个人设置页面', () => {
     await user.type(newDestination, 'new@example.com')
     await user.click(screen.getByRole('button', { name: '发送新验证码' }))
     await user.type(newCode, '654321')
-    await user.click(screen.getByRole('button', { name: '保存联系方式' }))
+    await user.click(screen.getByRole('button', { name: '确定' }))
 
     await waitFor(() => expect(fetchMock.mock.calls.some(([url, options]) => String(url).endsWith('/api/user/profile/email') && options?.method === 'PUT')).toBe(true))
     const codeRequest = fetchMock.mock.calls.find(([url]) => String(url).endsWith('/api/user/profile/contact/code'))
@@ -551,7 +551,7 @@ describe('个人设置页面', () => {
     await user.type(newDestination, 'new@example.com')
     await user.click(screen.getByRole('button', { name: '发送新验证码' }))
     await user.type(newCode, '654321')
-    await user.click(screen.getByRole('button', { name: '保存联系方式' }))
+    await user.click(screen.getByRole('button', { name: '确定' }))
 
     await waitFor(() => expect(fetchMock.mock.calls.some(([url, options]) => String(url).endsWith('/api/user/profile/email') && options?.method === 'PUT')).toBe(true))
     const codeRequests = fetchMock.mock.calls.filter(([url]) => String(url).endsWith('/api/user/profile/contact/code'))
@@ -577,7 +577,7 @@ describe('个人设置页面', () => {
     await user.type(currentCode, '123456')
     await user.type(newDestination, 'new@example.com')
     await user.type(newCode, '654321')
-    const saveButton = screen.getByRole('button', { name: '保存联系方式' })
+    const saveButton = screen.getByRole('button', { name: '确定' })
     await user.click(saveButton)
 
     await waitFor(() => expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith('/api/user/profile/email'))).toHaveLength(1))

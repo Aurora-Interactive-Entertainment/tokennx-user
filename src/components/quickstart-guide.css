@@ -16,6 +16,24 @@
 .quickstart-pdf-intro {
   margin: 4px 0 20px;
 }
+/* 复用统一空状态，并让内容区在深浅主题及窄屏下都有稳定的可见范围。 */
+.quickstart-resource-state {
+  display: grid;
+  min-height: clamp(300px, 48vh, 480px);
+  place-items: center;
+  padding: 24px 16px;
+  border: 1px solid var(--border-color, var(--color-border-neutral-l2));
+  border-radius: 12px;
+  background: var(--color-bg-base-secondary);
+}
+.quickstart-resource-state .empty-panel {
+  width: 100%;
+  max-width: 560px;
+  box-sizing: border-box;
+  margin: 0;
+  border: 0;
+  background: transparent;
+}
 .quickstart-pdf-intro strong {
   color: var(--text-primary);
   font-size: 22px;
@@ -946,4 +964,3 @@ html[data-theme="light"] .quickstart-code-token.is-number {
     width: max-content;
   }
 }
-

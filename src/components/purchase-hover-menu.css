@@ -12,6 +12,11 @@
   width: 285px;
   padding-top: 12px;
   transform: translateX(-50%);
+  /* 隐藏时不断开命中，透明桥仍会挡住下方内容。 */
+  pointer-events: none;
+}
+.purchase-hover-bridge.is-open {
+  pointer-events: auto;
 }
 
 .purchase-hover-panel {
@@ -26,20 +31,26 @@
   max-height: calc(100dvh - 90px);
   overflow-y: auto;
   border-radius: 16px;
-  background:
-    radial-gradient(ellipse at 0 50%, #063579, transparent 70%),
-    linear-gradient(140deg, #041127, #09245a 65%, #000815);
-  box-shadow:
-    inset 0 0 0 2px #284d78,
-    inset 0 0 12px #367ee966,
-    0 12px 32px #0004;
-  animation: purchase-hover-panel-in 180ms cubic-bezier(.22,1,.36,1) both;
+  /* 毛玻璃质感：降低底色不透明度让下层内容隐约透出，配合高模糊+提亮饱和呈现通透玻璃感。 */
+  background: linear-gradient(140deg, rgb(9 32 78 / 80%), rgb(6 22 56 /80%));
+  -webkit-backdrop-filter: blur(24px) saturate(200%);
+  backdrop-filter: blur(24px) saturate(160%);
+  box-shadow: 0 12px 32px #0004;
+  /* 渐显渐隐：visibility 延迟切换保证淡出动画完整播放。 */
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-8px) scale(0.97);
+  transition:
+    opacity 300ms ease,
+    transform 300ms cubic-bezier(0.22, 1, 0.36, 1),
+    visibility 0s linear 200ms;
   scrollbar-width: thin;
 }
-
-@keyframes purchase-hover-panel-in {
-  from { opacity: 0; transform: translateY(-8px) scale(.97); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+.purchase-hover-bridge.is-open .purchase-hover-panel {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0) scale(1);
+  transition-delay: 0s;
 }
 
 .purchase-hover-panel::before {
@@ -56,6 +67,8 @@
 
 .purchase-hover-card {
   position: relative;
+  /* 抬到面板噪点纹理层（z-index:1）之上，避免颗粒覆盖导致卡片发糊。 */
+  z-index: 2;
   display: flex;
   flex-direction: column;
   flex: 0 0 84px;
@@ -76,25 +89,15 @@
 
 .purchase-hover-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 5px 12px rgb(0 0 0 / 25%), inset 0 0 0 2px #fff;
+  /* 白色描边改为 1px，降低hover时的边框存在感。 */
+  box-shadow: 0 5px 12px rgb(0 0 0 / 25%), inset 0 0 0 1px #fff;
 }
 
-.purchase-hover-card--glm {
-  background: linear-gradient(110deg, #ada5ee, #bacbf6);
-}
-.purchase-hover-card--kimi {
-  background: linear-gradient(110deg, #a3a5a7, #cdcdcb);
-}
 .purchase-hover-card--seedance {
   padding-block: 8px;
-  background: linear-gradient(110deg, #51ccc7, #a0e4dd);
-}
-.purchase-hover-card--miniMax {
-  background: linear-gradient(110deg, #f797c0, #ffc9e1);
 }
 .purchase-hover-card--enterprise {
   flex-basis: 72px;
-  background: linear-gradient(110deg, #a38adc, #8c98df);
 }
 
 .purchase-hover-card > strong {

@@ -35,6 +35,15 @@ const ENTERPRISE_CONTEXT: BillingContext = { account_type: 'enterprise', enterpr
 describe('用户账务 API 客户端', () => {
   beforeEach(() => vi.restoreAllMocks())
 
+  it('套餐购买发送商品公开 ID 和数量，不提交客户端金额', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(apiResponse({ id: 'plan-order' }))
+    await createBillingPaymentOrder(ENTERPRISE_CONTEXT, { plan_id: 'plan-public-id', quantity: 1 }, 'plan-order-key', { accessToken: 'billing-token' })
+    const [url, options] = fetchMock.mock.calls[0]
+    expect(String(url)).toContain('/api/user/payment/orders?account_type=enterprise&enterprise_id=01K0ENTERPRISEPUBLICIDEX01')
+    expect(JSON.parse(String(options?.body))).toEqual({ plan_id: 'plan-public-id', quantity: 1 })
+    expect(new Headers(options?.headers).get('Idempotency-Key')).toBe('plan-order-key')
+  })
+
   it('按账户类型生成隔离查询参数，并拒绝缺少企业 ID 的上下文', () => {
     expect(createBillingQuery(PERSONAL_CONTEXT)).toBe('account_type=personal')
     expect(createBillingQuery(ENTERPRISE_CONTEXT, { page: 2, page_size: BILLING_PAGE_SIZE })).toBe('account_type=enterprise&enterprise_id=01K0ENTERPRISEPUBLICIDEX01&page=2&page_size=20')

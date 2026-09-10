@@ -185,12 +185,26 @@
   height: 1.5px;
   background: currentColor;
   content: "";
+  transition: transform 240ms cubic-bezier(.22, 1, .36, 1);
   transform: rotate(45deg);
 }
 
 .activity-campaign-close span::after {
   display: block;
   transform: rotate(90deg);
+}
+
+/* 悬停时只旋转叉号，保留外层圆形关闭按钮的位置与边框稳定。 */
+.activity-campaign-close:hover span,
+.activity-campaign-close:focus-visible span {
+  transform: rotate(135deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .activity-campaign-close span,
+  .activity-campaign-close span::after {
+    transition: none;
+  }
 }
 
 .activity-campaign-body {

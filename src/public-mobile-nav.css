@@ -46,12 +46,15 @@
   .public-header-host .public-header--home .header-brand-image { width: 98px; height: 24px; filter: none; }
   .public-header-host .public-header--home .header-trial-badge {
     display: grid;
-    order: 2;
     width: 112px;
     height: 28px;
     flex: 0 0 112px;
     margin-left: 34px;
     border-radius: 14px;
+  }
+  /* 包裹层才是头部 flex 子项，order 需设在它上面，否则订阅按钮会跑到 logo 前面。 */
+  .public-header-host .public-header--home .header-trial-entry {
+    order: 2;
   }
   .public-header-host .public-header--home .header-trial-pill { width: 112px; height: 28px; }
   .public-header-host .public-header--home .header-nav,
@@ -316,9 +319,11 @@
   .public-header-host .public-header--home .header-trial-badge {
     width: 100px;
     height: 26px;
+    /* 覆盖全局移动端 44px 触控高度，保持药丸形状。 */
+    min-height: 26px;
     flex-basis: 100px;
     margin-left: 14px;
-    border-radius: 13px;
+    border-radius: 999px;
   }
   .public-header-host .public-header--home .header-trial-pill { width: 100%; height: 100%; }
   .public-header-host .public-header--home .header-trial-glass {

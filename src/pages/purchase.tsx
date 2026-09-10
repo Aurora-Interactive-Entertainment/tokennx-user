@@ -1,24 +1,18 @@
-import { useMemo, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Link } from "react-router";
-import miniMaxBackground from "@/assets/figma-combo/minimax.png";
-import deepSeekBackground from "@/assets/figma-combo/ds.png";
-import seedanceBackground from "@/assets/figma-combo/seedance.png";
-import kimiBackground from "@/assets/figma-combo/kimi.png";
-import glmBackground from "@/assets/figma-combo/GLM.png";
+import { Link, useNavigate } from "react-router";
+import { getBillingErrorMessage } from "@/api/billing";
+import { isAuthenticationFailure } from "@/api/http";
+import { getProductPlanDetail, getProductPlans, type ProductPlanDetail, type ProductPlanSummary } from "@/api/product-plans";
+import ActivityTicker from "@/components/activity-ticker";
+import { appToast } from "@/components/app-toast";
+import PurchasePlanSection from "@/components/purchase-plan-section";
+import { PurchasePaymentModal } from "@/components/purchase-payment-modal";
+import { useAppStore } from "@/data/app-state";
+import { invalidateAuth } from "@/store/auth-slice";
+import { useAppDispatch } from "@/store/hooks";
+import { billingContextForWorkspace } from "./billing";
 import "./purchase.css";
-
-type PlanKey = "miniMax" | "deepSeek" | "seedance" | "kimi" | "glm";
-type TabKey = "all" | PlanKey;
-
-const PLAN_KEYS: PlanKey[] = ["miniMax", "deepSeek", "seedance", "kimi", "glm"];
-const BACKGROUNDS: Record<PlanKey, string> = {
-  miniMax: miniMaxBackground,
-  deepSeek: deepSeekBackground,
-  seedance: seedanceBackground,
-  kimi: kimiBackground,
-  glm: glmBackground,
-};
 
 function listTranslation(
   t: (key: string, options?: Record<string, unknown>) => unknown,
@@ -86,120 +80,33 @@ function SectionHeading({
   );
 }
 
-function ActivityTicker() {
-  const { t } = useTranslation();
-  return (
-    <div
-      className="purchase-activity"
-      aria-label={t("console.purchasePage.activity.plan")}
-    >
-      {[0, 1].map((item) => (
-        <div className="purchase-activity-item" key={item}>
-          <span className="purchase-activity-dot" aria-hidden="true" />
-          <strong>{t("console.purchasePage.activity.user")}</strong>
-          <span className="purchase-activity-plan">
-            {renderEmphasizedLine(
-              t("console.purchasePage.activity.plan"),
-              [t("console.purchasePage.activity.highlight")],
-              false,
-            )}
-          </span>
-          <span className="purchase-activity-separator" aria-hidden="true" />
-          <em>{t("console.purchasePage.activity.time")}</em>
-        </div>
-      ))}
-    </div>
-  );
-}
+export type PurchaseActivityMessage = { user: string; plan: string; highlight?: string; time: string };
 
-function PlanCard({ planKey }: { planKey: PlanKey }) {
+function PurchaseActivityTicker({ messages }: { messages?: PurchaseActivityMessage[] }) {
   const { t } = useTranslation();
-  const features = listTranslation(
-    t,
-    `console.purchasePage.plans.${planKey}.features`,
-  );
-  const badgeText = String(t("console.purchasePage.firstPurchase")).trim();
+  // 保留现有演示内容；传入空数组时直接隐藏，后续可由接口消息列表驱动。
+  const items = messages ?? Array.from({ length: 2 }, () => ({
+    user: t("console.purchasePage.activity.user"),
+    plan: t("console.purchasePage.activity.plan"),
+    highlight: t("console.purchasePage.activity.highlight"),
+    time: t("console.purchasePage.activity.time"),
+  }));
   return (
-    <article
-      className={`purchase-plan-card purchase-plan-card--${planKey}`}
-      style={{
-        background: `url(${BACKGROUNDS[planKey]}) center / cover no-repeat`,
-      }}
-    >
-      {badgeText ? (
-        <span className="purchase-plan-badge">{badgeText}</span>
-      ) : null}
-      <div className="purchase-plan-content">
-        <h3>{t(`console.purchasePage.plans.${planKey}.name`)}</h3>
-        <strong>{t(`console.purchasePage.plans.${planKey}.model`)}</strong>
-        <div className="purchase-plan-info">
-          <span className="purchase-plan-quota">
-            {t(`console.purchasePage.plans.${planKey}.quota`)}
+    <ActivityTicker label={t("console.purchasePage.activity.plan")} messages={items.map((item, index) => (
+          <span className="purchase-activity-message" key={index}>
+            <span className="purchase-activity-dot" aria-hidden="true" />
+            <strong>{item.user}</strong>
+            <span className="purchase-activity-plan">
+              {renderEmphasizedLine(
+                item.plan,
+                [item.highlight ?? ""],
+                false,
+              )}
+            </span>
+            <span className="purchase-activity-separator" aria-hidden="true" />
+            <em>{item.time}</em>
           </span>
-          <ul>
-            {features.map((feature) => (
-              <li key={feature}>{feature}</li>
-            ))}
-          </ul>
-        </div>
-      </div>
-      <button
-        className="purchase-plan-price"
-        type="button"
-        aria-label={`${t(`console.purchasePage.plans.${planKey}.name`)} ${t(`console.purchasePage.plans.${planKey}.price`)}`}
-      >
-        {t(`console.purchasePage.plans.${planKey}.price`)}
-      </button>
-    </article>
-  );
-}
-
-function PlanSection() {
-  const { t } = useTranslation();
-  const [activeTab, setActiveTab] = useState<TabKey>("all");
-  const tabs: TabKey[] = ["all", ...PLAN_KEYS];
-  const cards = useMemo(
-    () => (activeTab === "all" ? PLAN_KEYS : [activeTab]),
-    [activeTab],
-  );
-  return (
-    <section
-      className="purchase-plans"
-      aria-label={t("console.purchasePage.tabs.all")}
-    >
-      <div
-        className="purchase-plan-tabs"
-        role="tablist"
-        style={
-          {
-            "--purchase-tab-index": tabs.indexOf(activeTab),
-          } as CSSProperties
-        }
-      >
-        {tabs.map((tab) => (
-          <button
-            className={activeTab === tab ? "is-active" : ""}
-            key={tab}
-            type="button"
-            role="tab"
-            aria-selected={activeTab === tab}
-            onClick={() => setActiveTab(tab)}
-          >
-            {tab === "all"
-              ? `${t("console.purchasePage.tabs.all")} ${PLAN_KEYS.length}`
-              : t(`console.purchasePage.tabs.${tab}`)}
-          </button>
-        ))}
-      </div>
-      <div
-        className={`purchase-plan-grid purchase-plan-grid--${cards.length}`}
-        key={activeTab}
-      >
-        {cards.map((planKey) => (
-          <PlanCard key={planKey} planKey={planKey} />
-        ))}
-      </div>
-    </section>
+        ))} />
   );
 }
 
@@ -345,8 +252,94 @@ function FrequentlyAskedQuestions() {
   );
 }
 
-export function PurchasePage() {
+export function PurchasePage({ activityMessages }: { activityMessages?: PurchaseActivityMessage[] } = {}) {
   const { t } = useTranslation();
+  const store = useAppStore();
+  const dispatch = useAppDispatch();
+  const navigate = useNavigate();
+  const context = useMemo(
+    () => billingContextForWorkspace(store.activeWorkspace),
+    [store.activeWorkspace.id, store.activeWorkspace.type],
+  );
+  const [plans, setPlans] = useState<ProductPlanSummary[]>([]);
+  const [plansLoading, setPlansLoading] = useState(true);
+  const [plansError, setPlansError] = useState("");
+  const [retryToken, setRetryToken] = useState(0);
+  const [selectingPlanID, setSelectingPlanID] = useState<string | null>(null);
+  const [selectedPlan, setSelectedPlan] = useState<ProductPlanDetail | null>(null);
+  const selectionRequest = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    setSelectedPlan(null);
+    setSelectingPlanID(null);
+    return () => selectionRequest.current?.abort();
+  }, [context]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setPlansLoading(true);
+    setPlansError("");
+    void getProductPlans(context, { page: 1, page_size: 100, signal: controller.signal })
+      .then((response) => {
+        if (controller.signal.aborted) return;
+        const items = Array.isArray(response?.items) ? response.items : [];
+        setPlans([...items].sort((left, right) =>
+          left.group_sort_order - right.group_sort_order || left.name.localeCompare(right.name),
+        ));
+        setPlansLoading(false);
+      })
+      .catch((reason: unknown) => {
+        if (controller.signal.aborted) return;
+        if (isAuthenticationFailure(reason)) {
+          dispatch(invalidateAuth());
+          navigate("/", { replace: true });
+          return;
+        }
+        setPlans([]);
+        setPlansError(getBillingErrorMessage(reason));
+        setPlansLoading(false);
+      });
+    return () => controller.abort();
+  }, [context, dispatch, navigate, retryToken]);
+
+  const selectPlan = useCallback((plan: ProductPlanSummary) => {
+    if (!plan.can_purchase || selectingPlanID) return;
+    const controller = new AbortController();
+    selectionRequest.current = controller;
+    setSelectingPlanID(plan.id);
+    void getProductPlanDetail(context, plan.id, { signal: controller.signal })
+      .then((detail) => {
+        if (controller.signal.aborted) return;
+        if (!detail.can_purchase) {
+          // 详情接口是购买前的最终状态，库存或限购变化时同步刷新卡片状态。
+          setPlans((current) => current.map((item) => item.id === detail.id
+            ? {
+              ...item,
+              can_purchase: false,
+              stock_remaining: detail.stock_remaining,
+              purchase_limit: detail.purchase_limit,
+              purchased_count: detail.purchased_count,
+            }
+            : item));
+          appToast.warning(t("console.purchasePage.api.unavailable"));
+          return;
+        }
+        setSelectedPlan(detail);
+      })
+      .catch((reason: unknown) => {
+        if (controller.signal.aborted) return;
+        if (isAuthenticationFailure(reason)) {
+          dispatch(invalidateAuth());
+          navigate("/", { replace: true });
+          return;
+        }
+        appToast.error(getBillingErrorMessage(reason));
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setSelectingPlanID(null);
+      });
+  }, [context, dispatch, navigate, selectingPlanID, t]);
+
   return (
     <>
       <div className="purchase-page">
@@ -376,13 +369,34 @@ export function PurchasePage() {
                 </span>
               ))}
           </p>
-          <ActivityTicker />
+          <PurchaseActivityTicker messages={activityMessages} />
         </header>
-        <PlanSection />
+        <PurchasePlanSection
+          plans={plans}
+          loading={plansLoading}
+          error={plansError}
+          selectingPlanID={selectingPlanID}
+          onRetry={() => setRetryToken((value) => value + 1)}
+          onSelect={selectPlan}
+        />
         <PurchaseNotice />
         <SupportedTools />
         <FrequentlyAskedQuestions />
       </div>
+      <PurchasePaymentModal
+        open={selectedPlan !== null}
+        context={context}
+        planID={selectedPlan?.id}
+        onPaid={() => setRetryToken((value) => value + 1)}
+        onAuthFailure={() => {
+          dispatch(invalidateAuth());
+          navigate("/", { replace: true });
+        }}
+        planName={selectedPlan?.name ?? ""}
+        priceCent={selectedPlan?.price.price_cent}
+        validitySeconds={selectedPlan?.price.validity_seconds}
+        onClose={() => setSelectedPlan(null)}
+      />
     </>
   );
 }

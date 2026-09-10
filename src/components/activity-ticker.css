@@ -1,0 +1,27 @@
+.activity-ticker-track,
+.activity-ticker-group {
+  display: flex;
+  width: max-content;
+  flex: 0 0 auto;
+}
+
+/* 以完整消息组的实测宽度循环，短消息也能紧密衔接且不露白。 */
+.activity-ticker-group {
+  /* 组内与组间（padding-right）保持一致，每条消息间隔均为 200px。 */
+  gap: 150px;
+  padding-right: 150px;
+}
+
+.activity-ticker-track.is-scrolling {
+  animation: activity-ticker-scroll var(--ticker-duration) linear infinite;
+}
+
+@keyframes activity-ticker-scroll {
+  to { transform: translateX(var(--ticker-distance)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .activity-ticker-track.is-scrolling { animation: none; }
+  .activity-ticker-group[aria-hidden="true"] { display: none; }
+  .purchase-activity { overflow-x: auto; }
+}

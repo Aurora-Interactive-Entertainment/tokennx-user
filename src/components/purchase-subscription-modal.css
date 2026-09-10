@@ -17,23 +17,6 @@
   overflow: hidden;
 }
 
-/* 关闭按钮使用圆形底板，业务选择器覆盖 AppModal 的默认圆角。 */
-.purchase-subscription-modal.app-modal .semi-modal-content.app-modal-content .semi-modal-close {
-  top: 24px;
-  right: 22px;
-  width: 34px !important;
-  height: 34px !important;
-  border-radius: 50%;
-  color: #17181b;
-  background: #eceef1 !important;
-  opacity: 1;
-  transition: background 180ms ease, transform 240ms cubic-bezier(.22,1,.36,1);
-}
-.purchase-subscription-modal .semi-modal-close:hover { color: #17181b !important; background: #fff !important; transform: rotate(90deg); }
-.purchase-subscription-modal .semi-modal-close .semi-icon { font-size: 19px; }
-html[data-theme="dark"] .purchase-subscription-modal .semi-modal-close { color: #f4f5f7; background: #2a2d38 !important; }
-html[data-theme="dark"] .purchase-subscription-modal .semi-modal-close:hover { color: #17181b; background: #fff !important; }
-
 .purchase-subscription-modal .semi-modal-content > .semi-modal-body,
 .purchase-subscription-modal .semi-modal-content > .semi-modal-body-wrapper,
 .purchase-subscription-modal
@@ -180,17 +163,18 @@ html[data-theme="dark"] .purchase-subscription-modal .semi-modal-close:hover { c
   /* 动画结束后释放 transform，避免覆盖卡片的 hover 位移。 */
   animation: purchase-subscription-plan-in 220ms ease backwards;
   transition:
-    transform 180ms ease,
-    box-shadow 180ms ease;
+    transform 260ms cubic-bezier(.22, 1, .36, 1),
+    box-shadow 260ms cubic-bezier(.22, 1, .36, 1);
   will-change: transform;
 }
 
 .purchase-subscription-plan:hover {
-  transform: translateY(-4px);
+  /* 保留轻微的悬浮反馈，避免卡片跳动感过强。 */
+  transform: translateY(-2px);
   box-shadow:
     inset 0 0 0 2px var(--purchase-subscription-card-hover-border),
     inset 0 1px 0 rgb(255 255 255 / 75%),
-    0 12px 24px rgb(0 0 0 / 24%);
+    0 8px 18px rgb(0 0 0 / 18%);
 }
 
 .purchase-subscription-plan--deepSeek {
@@ -285,13 +269,34 @@ html[data-theme="dark"] .purchase-subscription-modal .semi-modal-close:hover { c
 }
 
 .purchase-subscription-plan-content h3 {
-  max-width: 145px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
   margin: 0 0 7px;
-  overflow: hidden;
   font-size: 14px;
   font-weight: 700;
   line-height: 18px;
+}
+
+/* 套餐名单行截断，把右侧空间让给限购标签。 */
+.purchase-subscription-plan-name {
+  min-width: 0;
+  overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 限购标签：粉橙渐变胶囊，紧跟套餐名靠右展示，后续由接口字段控制显隐。 */
+.purchase-subscription-limit-tag {
+  flex: 0 0 auto;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 9px;
+  background: linear-gradient(90deg, #df5075 0%, #ef964a 100%);
+  color: #fff;
+  font-size: 7px;
+  font-weight: 600;
+  line-height: 18px;
   white-space: nowrap;
 }
 
@@ -372,6 +377,32 @@ html[data-theme="dark"] .purchase-subscription-modal .semi-modal-close:hover { c
   cursor: pointer;
 }
 
+/* 深色弹窗使用更明亮的独立表面和细边界，避免与页面背景融在一起。 */
+html[data-theme="dark"] .purchase-subscription-modal .semi-modal-content.app-modal-content {
+  background: #242731;
+  box-shadow: 0 24px 80px rgb(0 0 0 / 55%), 0 0 0 1px #484d5b;
+}
+html[data-theme="dark"] .purchase-subscription-modal-content {
+  --purchase-subscription-text: #f5f6fa;
+  --purchase-subscription-muted: #b9becb;
+  background: #242731;
+}
+html[data-theme="dark"] .purchase-subscription-tabs {
+  background: #323644;
+  border-color: #505667;
+}
+html[data-theme="dark"] .purchase-subscription-tabs button {
+  color: #cbd0dd;
+}
+html[data-theme="dark"] .purchase-subscription-tabs button.is-active {
+  color: #20202a;
+}
+html[data-theme="dark"] .purchase-subscription-plan-info {
+  /* 卡片插画维持亮色，权益区域提高不透明度以保证小字清晰。 */
+  background: rgb(255 255 255 / 92%);
+  color: #17181b;
+}
+
 html[data-theme="light"]
   .purchase-subscription-modal
   .semi-modal-content.app-modal-content,
@@ -440,14 +471,69 @@ html[data-theme="light"] .purchase-subscription-tabs button.is-active {
     font-size: 12px;
   }
 
+  /* 移动端筛选条改为横向滚动：隐藏滑块，选中项直接铺渐变底。 */
   .purchase-subscription-tabs {
-    width: 931px;
+    display: flex;
+    width: auto;
+    height: auto;
+    gap: 2px;
     margin: 24px 16px 0;
+    padding: 4px;
+    border-radius: 999px;
+    overflow-x: auto;
+    scrollbar-width: none;
   }
 
+  .purchase-subscription-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .purchase-subscription-tabs::before {
+    display: none;
+  }
+
+  .purchase-subscription-tabs button {
+    flex: 0 0 auto;
+    min-width: 72px;
+    padding-inline: 10px;
+    font-size: 13px;
+  }
+
+  .purchase-subscription-tabs button.is-active {
+    background: linear-gradient(100deg, #dbf1f9 0%, #bf98ee 100%);
+  }
+
+  /* 覆盖全局移动端 44px 触控高度：筛选条整体压缩，选项改为药丸形。 */
+  body .purchase-subscription-modal .purchase-subscription-tabs button {
+    min-height: 28px;
+    line-height: 28px;
+    border-radius: 999px;
+  }
+
+  /* 套餐卡改为横向滑动列表：占满一行并预留右侧滑出空间，不挤压卡片尺寸。 */
   .purchase-subscription-plans {
-    width: max-content;
-    margin: 27px 16px 35px;
+    display: flex;
+    width: auto;
+    gap: 12px;
+    margin: 24px 0 0;
+    padding: 4px 16px 30px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .purchase-subscription-plans::-webkit-scrollbar {
+    display: none;
+  }
+
+  .purchase-subscription-plan {
+    flex: 0 0 170px;
+  }
+
+  /* 覆盖全局移动端 44px 触控高度（body button 选择器优先级更高，这里用 body 前缀提升优先级），恢复 28px 药丸按钮，避免与权益面板重叠。 */
+  body .purchase-subscription-modal .purchase-subscription-plan-price {
+    height: 28px;
+    min-height: 28px;
+    border-radius: 999px;
   }
 }
 

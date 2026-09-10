@@ -1,3 +1,4 @@
+import { PUBLIC_PURCHASE_GUEST_DEBUG, PUBLIC_PURCHASE_DEBUG_PLAN_IDS } from "@/api/purchase-request";
 import {
   lazy,
   Suspense,
@@ -2135,6 +2136,7 @@ export function PublicHeader({
   const [purchaseSubscriptionOpen, setPurchaseSubscriptionOpen] = useState(false);
   const [purchasePaymentPlan, setPurchasePaymentPlan] = useState<string | null>(null);
   const [purchaseLoginPlan, setPurchaseLoginPlan] = useState<string | null>(null);
+  const [purchaseLoginOpen, setPurchaseLoginOpen] = useState(false);
   const [bindEmailOpen, setBindEmailOpen] = useState(false);
   const [bindEmailRequested, setBindEmailRequested] = useState(false);
   const headerRef = useRef<HTMLElement | null>(null);
@@ -2529,7 +2531,10 @@ export function PublicHeader({
               aria-hidden="true"
             />
           </Link>
-          <PurchaseHoverMenu onSelect={() => setPurchaseSubscriptionOpen(true)} />
+          <PurchaseHoverMenu onSelect={() => {
+            if (!PUBLIC_PURCHASE_GUEST_DEBUG && auth.status !== "authenticated") setPurchaseLoginOpen(true);
+            else setPurchaseSubscriptionOpen(true);
+          }} />
           <nav
             className="header-nav public-nav"
             aria-label={t("console.common.publicNav")}
@@ -2641,11 +2646,11 @@ export function PublicHeader({
       />
       <PurchaseSubscriptionModal
         open={purchaseSubscriptionOpen}
+        covered={Boolean(purchasePaymentPlan) || purchaseLoginOpen || purchaseLoginPlan !== null}
         onClose={() => setPurchaseSubscriptionOpen(false)}
         onPlanSelect={(planKey) => {
-          setPurchaseSubscriptionOpen(false);
           // 未登录时复用登录弹窗，并保留所选套餐，登录成功后继续购买。
-          if (auth.status !== "authenticated") {
+          if (!PUBLIC_PURCHASE_GUEST_DEBUG && auth.status !== "authenticated") {
             setPurchaseLoginPlan(planKey);
             return;
           }
@@ -2653,16 +2658,18 @@ export function PublicHeader({
         }}
       />
       <LoginDialog
-        open={purchaseLoginPlan !== null}
+        open={purchaseLoginOpen || purchaseLoginPlan !== null}
         dialogId="purchase-login-dialog"
         inviteCode={inviteCode}
-        onClose={() => setPurchaseLoginPlan(null)}
+        onClose={() => { setPurchaseLoginPlan(null); setPurchaseLoginOpen(false); }}
         onSuccess={() => {
           setPurchasePaymentPlan(purchaseLoginPlan);
+          if (!purchaseLoginPlan) setPurchaseSubscriptionOpen(true);
           setPurchaseLoginPlan(null);
+          setPurchaseLoginOpen(false);
         }}
       />
-      <PurchasePaymentModal open={Boolean(purchasePaymentPlan)} planName={purchasePaymentPlan ?? "套餐"} onClose={() => setPurchasePaymentPlan(null)} />
+      <PurchasePaymentModal open={Boolean(purchasePaymentPlan)} planID={purchasePaymentPlan && PUBLIC_PURCHASE_GUEST_DEBUG ? PUBLIC_PURCHASE_DEBUG_PLAN_IDS[purchasePaymentPlan] : undefined} planName={purchasePaymentPlan ?? ""} guestDebug={PUBLIC_PURCHASE_GUEST_DEBUG} onClose={() => setPurchasePaymentPlan(null)} onAuthFailure={() => { setPurchaseLoginPlan(purchasePaymentPlan); setPurchasePaymentPlan(null); }} onCloseAll={() => { setPurchasePaymentPlan(null); setPurchaseSubscriptionOpen(false); }} />
       {/* 首次打开后保留挂载，让原有关闭动画和表单重置生命周期继续生效。 */}
       {bindEmailRequested ? (
         <Suspense fallback={null}>

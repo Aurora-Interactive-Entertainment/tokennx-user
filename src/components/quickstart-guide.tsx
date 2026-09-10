@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import Button from '@douyinfe/semi-ui/lib/es/button'
 import Toast from '@douyinfe/semi-ui/lib/es/toast'
 import { appToast } from '@/components/app-toast'
+import { QuickstartResourceState } from './quickstart-resource-state'
 import { IconCopy, IconFile } from '@douyinfe/semi-icons'
 import { findModelInList, modelAlias, type ModelRecord } from '@/data/models'
 import { useUserModels } from '@/data/user-models'
@@ -170,7 +171,7 @@ function AgentStep({ model, language, protocol, setLanguage, setProtocol, t, onC
 export function QuickstartGuide() {
   const { t } = useTranslation()
   const [searchParams, setSearchParams] = useSearchParams()
-  const { models, loading: modelsLoading, error: modelsError } = useUserModels()
+  const { models, loading: modelsLoading, error: modelsError, refresh } = useUserModels()
   const textModels = models.filter((item) => item.modality === 'text' && modelAlias(item))
   const requestedModelAlias = searchParams.get('model')
   const requestedProtocol = searchParams.get('protocol')
@@ -195,9 +196,7 @@ export function QuickstartGuide() {
     void navigator.clipboard.writeText(value).then(() => Toast.success(t('console.quickstart.copySuccess'))).catch(() => Toast.error(t('console.common.copyFailed')))
   }
 
-  if (modelsLoading) return <div className="quickstart-page quickstart-pdf-page"><p>{t('console.common.readingModels')}</p></div>
-  if (modelsError) return <div className="quickstart-page quickstart-pdf-page" />
-  if (!model) return <div className="quickstart-page quickstart-pdf-page"><p>{t('console.quickstart.noModelsHint')}</p></div>
+  if (modelsLoading || modelsError || !model) return <QuickstartResourceState loading={modelsLoading} error={modelsError} onRetry={refresh} />
   const contextQuery = `model=${encodeURIComponent(modelAlias(model))}&protocol=${protocol}&language=${language}`
   const toggle = (step: QuickstartStep) => setOpenStep(openStep === step ? 0 : step)
   return <div className="quickstart-page quickstart-pdf-page">

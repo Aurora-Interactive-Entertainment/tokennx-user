@@ -91,7 +91,10 @@
 .manuscript-support-panel:has(.manuscript-support-notifications)
   .manuscript-support-notification-list {
   gap: 10px;
-  padding: 2px;
+  /* 阴影缓冲：列表外扩容器给阴影留出渲染空间；横向受面板 overflow:hidden 限制，
+     阴影模糊半径需保持在不大于列表内边距与面板内边距之和的范围内。 */
+  padding: 28px;
+  margin: -26px;
   scrollbar-color: rgba(255, 255, 255, 0.24) transparent;
 }
 
@@ -105,7 +108,7 @@
   border-radius: 12px;
   color: rgba(255, 255, 255, 0.76);
   background: rgba(255, 255, 255, 0.075);
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 5px 14px rgba(0, 0, 0, 0.14);
   transition:
     border-color 0.18s ease,
     background-color 0.18s ease,
@@ -272,16 +275,14 @@
     rgba(116, 167, 255, 0.13),
     rgba(255, 255, 255, 0.075) 42%
   );
-  box-shadow:
-    inset 3px 0 0 #74a7ff,
-    0 4px 14px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 5px 14px rgba(0, 0, 0, 0.14);
 }
 
 .manuscript-support-panel:has(.manuscript-support-notifications)
   .manuscript-support-notification-item:hover {
   border-color: rgba(255, 255, 255, 0.28);
   background: rgba(255, 255, 255, 0.12);
-  box-shadow: 0 7px 18px rgba(0, 0, 0, 0.18);
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.16);
   transform: translateY(-1px);
 }
 
@@ -394,7 +395,7 @@ html[data-theme="light"]
   border-color: rgba(23, 24, 27, 0.11);
   color: #30343b;
   background: #f8f9fa;
-  box-shadow: 0 4px 14px rgba(23, 24, 27, 0.06);
+  box-shadow: 0 5px 14px rgba(23, 24, 27, 0.05);
 }
 
 html[data-theme="light"]
@@ -402,9 +403,7 @@ html[data-theme="light"]
   .manuscript-support-notification-item.is-unread {
   border-color: rgba(79, 132, 222, 0.36);
   background: linear-gradient(110deg, #f0f5ff, #f8f9fa 46%);
-  box-shadow:
-    inset 3px 0 0 #4f84de,
-    0 4px 14px rgba(23, 24, 27, 0.06);
+  box-shadow: 0 5px 14px rgba(23, 24, 27, 0.05);
 }
 
 html[data-theme="light"]
@@ -412,7 +411,7 @@ html[data-theme="light"]
   .manuscript-support-notification-item:hover {
   border-color: rgba(23, 24, 27, 0.2);
   background: #f3f4f6;
-  box-shadow: 0 7px 18px rgba(23, 24, 27, 0.1);
+  box-shadow: 0 6px 15px rgba(23, 24, 27, 0.08);
 }
 
 html[data-theme="light"]

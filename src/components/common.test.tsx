@@ -118,8 +118,15 @@ it('未登录购买套餐先打开登录弹窗，关闭登录不会显示支付�
   expect(screen.queryByRole('heading', { name: '支付' })).not.toBeInTheDocument()
 })
 
-it('已登录购买套餐直接展示支付弹窗', async () => {
+it.each(['verified', 'unverified'])('公开购买入口先校验实名状态 %s，再决定是否展示支付弹窗', async (status) => {
   await i18n.changeLanguage('zh-CN')
+  const { fetchMock } = mockAccountProfileApi()
+  const profileRequest = fetchMock.getMockImplementation()!
+  fetchMock.mockImplementation(async (input, options) => {
+    if (String(input).endsWith('/api/user/real-name')) return profileApiResponse({ status })
+    if (String(input).includes('/payment/orders')) return profileApiResponse({ id: 'test-order', status: 'paid', paid_at: 1, amount_yuan: '1.00' })
+    return profileRequest(input, options)
+  })
   const appStore = createAppStore()
   appStore.dispatch({ type: 'auth/loginWithEmail/fulfilled', payload: { id: 'purchase-user', display_name: '测试用户', avatar_url: '', locale: 'zh-CN', timezone: 'Asia/Shanghai', status: 'active' } })
   render(<MemoryRouter><Provider store={appStore}><AppStoreProvider><PublicHeader /></AppStoreProvider></Provider></MemoryRouter>)
@@ -128,7 +135,13 @@ it('已登录购买套餐直接展示支付弹窗', async () => {
   fireEvent.click(screen.getByRole('button', { name: /Deepseek V4 Pro/ }))
   fireEvent.click(await screen.findByRole('button', { name: /DeepSeek套餐包/ }))
 
-  expect(await screen.findByRole('heading', { name: '支付' })).toBeInTheDocument()
+  if (status === 'verified') {
+    expect(await screen.findByRole('heading', { name: '支付' })).toBeInTheDocument()
+  } else {
+    expect(await screen.findByRole('heading', { name: '实名认证', level: 2 })).toBeInTheDocument()
+    expect(document.querySelector('.purchase-payment-modal')).toBeNull()
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/payment/orders'))).toBe(false)
+  }
   expect(screen.queryByRole('dialog', { name: i18n.t('login.dialogLabel') })).not.toBeInTheDocument()
 })
 
@@ -1019,7 +1032,7 @@ describe('已登录用户菜单', () => {
     await user.type(newEmail, 'new@example.com')
     await user.click(within(emailDialog).getByRole('button', { name: '发送新验证码' }))
     await user.type(newCode, '654321')
-    await user.click(within(emailDialog).getByRole('button', { name: '保存联系方式' }))
+    await user.click(within(emailDialog).getByRole('button', { name: '确定' }))
 
     await waitFor(() => expect(screen.queryByRole('dialog', { name: '绑定邮箱' })).not.toBeInTheDocument())
     expect(within(dialog).getByText('n***@example.com')).toBeInTheDocument()

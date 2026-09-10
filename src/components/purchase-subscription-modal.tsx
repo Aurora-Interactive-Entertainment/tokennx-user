@@ -1,4 +1,4 @@
-import { useMemo, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useTranslation } from "react-i18next";
 import AppModal from "@/components/app-modal";
 import miniMaxBackground from "@/assets/figma-combo/minimax.png";
@@ -7,6 +7,7 @@ import seedanceBackground from "@/assets/figma-combo/seedance.png";
 import kimiBackground from "@/assets/figma-combo/kimi.png";
 import glmBackground from "@/assets/figma-combo/GLM.png";
 import "./purchase-subscription-modal.css";
+import "./purchase-modal-motion.css";
 
 type PlanKey = "miniMax" | "deepSeek" | "seedance" | "kimi" | "glm";
 type TabKey = "all" | PlanKey;
@@ -51,7 +52,13 @@ function SubscriptionPlanCard({ planKey, onSelect }: { planKey: PlanKey; onSelec
         {t("console.purchasePage.firstPurchase")}
       </span>
       <div className="purchase-subscription-plan-content">
-        <h3>{name}</h3>
+        <h3>
+          <span className="purchase-subscription-plan-name">{name}</span>
+          {/* 限购标签：先渲染样式，后续由接口字段控制是否显示。 */}
+          <span className="purchase-subscription-limit-tag">
+            {t("console.purchasePage.api.limitOne")}
+          </span>
+        </h3>
         <strong>{t(`${prefix}.model`)}</strong>
         <div className="purchase-subscription-plan-info">
           <span>{t(`${prefix}.quota`)}</span>
@@ -78,42 +85,63 @@ export function PurchaseSubscriptionModal({
   open,
   onClose,
   onPlanSelect,
+  covered = false,
 }: {
   open: boolean;
   onClose: () => void;
   onPlanSelect?: (planKey: PlanKey) => void;
+  covered?: boolean;
 }) {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<TabKey>("all");
+  const tabsRef = useRef<HTMLDivElement>(null);
   const tabs: TabKey[] = ["all", ...TAB_PLAN_KEYS];
   const cards = useMemo(
     () => (activeTab === "all" ? PLAN_KEYS : [activeTab]),
     [activeTab],
   );
 
+  // 切换筛选后把选中项平滑滚到筛选条水平中心，避免选中项在边缘被截断。
+  useEffect(() => {
+    const container = tabsRef.current;
+    const active = container?.querySelector<HTMLButtonElement>(
+      "button.is-active",
+    );
+    if (!container || !active) return;
+    container.scrollTo({
+      left: active.offsetLeft - (container.clientWidth - active.offsetWidth) / 2,
+      behavior: "smooth",
+    });
+  }, [activeTab]);
+
   function handleClose(): void {
-    setActiveTab("all");
-    onClose();
+    if (!covered) onClose();
   }
 
   return (
     <AppModal
       className="purchase-subscription-modal"
       visible={open}
+      motion
+      zIndex={999}
+      closeOnEsc={!covered}
+      maskClosable={!covered}
+      afterClose={() => setActiveTab("all")}
       title={null}
-      closable
+      closable={!covered}
       footer={null}
       width={1000}
       aria-label={t("console.purchasePage.subscriptionModal.title")}
       onCancel={handleClose}
     >
-      <div className="purchase-subscription-modal-content">
+      <div className="purchase-subscription-modal-content" inert={covered}>
         <h2>{t("console.purchasePage.subscriptionModal.title")}</h2>
         <p className="purchase-subscription-modal-subtitle">
           {t("console.purchasePage.subscriptionModal.subtitle")}
         </p>
         <div
           className="purchase-subscription-tabs"
+          ref={tabsRef}
           role="tablist"
           aria-label={t("console.purchasePage.tabs.all")}
           style={

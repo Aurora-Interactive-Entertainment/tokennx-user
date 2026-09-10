@@ -1,3 +1,4 @@
+import { fetchPurchaseJson, type PurchaseRequestOptions } from './purchase-request'
 import { fetchAuthenticatedJson, fetchAuthenticatedResponse } from './authenticated'
 import { API_BASE_URL, BACKEND_BASE_URL, ApiError, isApiError, type FetchJsonOptions } from './http'
 import type { ApiTimestamp } from '@/utils/format'
@@ -371,10 +372,10 @@ export interface BillingPaymentOrder {
   transactions?: BillingPaymentTransaction[]
 }
 
-export interface BillingPaymentCreateInput {
-  amount_yuan: string
+// 充值与套餐购买互斥，套餐金额必须由服务端根据商品价格计算。
+export type BillingPaymentCreateInput = {
   description?: string
-}
+} & ({ amount_yuan: string; plan_id?: never; quantity?: never } | { plan_id: string; quantity?: number; amount_yuan?: never })
 
 export interface BillingPaymentStartResult {
   order: BillingPaymentOrder
@@ -387,7 +388,7 @@ export interface BillingPaymentStartResult {
   qr_url?: string
 }
 
-export interface BillingPaymentRequestOptions extends Pick<BillingRequestOptions, 'accessToken' | 'signal'> {
+export interface BillingPaymentRequestOptions extends Pick<PurchaseRequestOptions, 'accessToken' | 'signal' | 'guestDebug'> {
   /** 支付场景，默认电脑网站；移动端可传 h5。 */
   scene?: BillingPaymentScene
   channel?: 'alipay' | string
@@ -577,7 +578,7 @@ export function submitBillingInvoice(context: BillingContext, input: BillingInvo
 
 const PAYMENT_ORDER_PATH = '/api/user/payment/orders'
 
-function paymentIdempotencyOptions(idempotencyKey: string, options: Pick<BillingRequestOptions, 'accessToken' | 'signal'>): FetchJsonOptions {
+function paymentIdempotencyOptions(idempotencyKey: string, options: Pick<PurchaseRequestOptions, 'accessToken' | 'signal' | 'guestDebug'>): PurchaseRequestOptions {
   const normalizedKey = idempotencyKey.trim()
   if (!normalizedKey) throw new ApiError(i18n.t('api.billing.paymentIdempotencyRequired'), 400, 170001, null)
   return { ...options, method: 'POST', headers: { 'Idempotency-Key': normalizedKey } }
@@ -590,29 +591,29 @@ function paymentOrderPath(orderID: string, suffix = '', context: BillingContext 
   return `${path}?${createBillingQuery(context)}`
 }
 
-export function createBillingPaymentOrder(context: BillingContext, input: BillingPaymentCreateInput, idempotencyKey: string, options: Pick<BillingRequestOptions, 'accessToken' | 'signal'> = {}): Promise<BillingPaymentOrder> {
+export function createBillingPaymentOrder(context: BillingContext, input: BillingPaymentCreateInput, idempotencyKey: string, options: Pick<PurchaseRequestOptions, 'accessToken' | 'signal' | 'guestDebug'> = {}): Promise<BillingPaymentOrder> {
   // 订单创建时发送当前账务主体，企业充值因此直接进入对应企业钱包。
   const query = createBillingQuery(context)
-  return fetchAuthenticatedJson<BillingPaymentOrder>(`${PAYMENT_ORDER_PATH}?${query}`, {
+  return fetchPurchaseJson<BillingPaymentOrder>(`${PAYMENT_ORDER_PATH}?${query}`, {
     ...paymentIdempotencyOptions(idempotencyKey, options),
     body: input,
   })
 }
 
 export function startBillingPayment(orderID: string, idempotencyKey: string, options: BillingPaymentRequestOptions = {}, context?: BillingContext): Promise<BillingPaymentStartResult> {
-  const { scene = BILLING_PAYMENT_SCENE_PC, channel, accessToken, signal } = options
-  return fetchAuthenticatedJson<BillingPaymentStartResult>(paymentOrderPath(orderID, '/pay', context), {
-    ...paymentIdempotencyOptions(idempotencyKey, { accessToken, signal }),
+  const { scene = BILLING_PAYMENT_SCENE_PC, channel, accessToken, signal, guestDebug } = options
+  return fetchPurchaseJson<BillingPaymentStartResult>(paymentOrderPath(orderID, '/pay', context), {
+    ...paymentIdempotencyOptions(idempotencyKey, { accessToken, signal, guestDebug }),
     body: { scene, ...(channel ? { channel } : {}) },
   })
 }
 
-export function getBillingPaymentOrder(orderID: string, options: Pick<BillingRequestOptions, 'accessToken' | 'signal'> = {}, context?: BillingContext): Promise<BillingPaymentOrder> {
-  return fetchAuthenticatedJson<BillingPaymentOrder>(paymentOrderPath(orderID, '', context), options)
+export function getBillingPaymentOrder(orderID: string, options: Pick<PurchaseRequestOptions, 'accessToken' | 'signal' | 'guestDebug'> = {}, context?: BillingContext): Promise<BillingPaymentOrder> {
+  return fetchPurchaseJson<BillingPaymentOrder>(paymentOrderPath(orderID, '', context), options)
 }
 
-export function closeBillingPaymentOrder(orderID: string, options: Pick<BillingRequestOptions, 'accessToken' | 'signal'> = {}, context?: BillingContext): Promise<BillingPaymentOrder> {
-  return fetchAuthenticatedJson<BillingPaymentOrder>(paymentOrderPath(orderID, '/close', context), {
+export function closeBillingPaymentOrder(orderID: string, options: Pick<PurchaseRequestOptions, 'accessToken' | 'signal' | 'guestDebug'> = {}, context?: BillingContext): Promise<BillingPaymentOrder> {
+  return fetchPurchaseJson<BillingPaymentOrder>(paymentOrderPath(orderID, '/close', context), {
     ...paymentIdempotencyOptions(`close-${orderID}`, options),
     // 关单接口要求显式空 JSON 对象，不能省略请求体。
     body: {},

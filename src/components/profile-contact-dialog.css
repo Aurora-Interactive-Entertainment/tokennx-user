@@ -202,7 +202,6 @@
 
 .profile-contact-dialog .profile-code-button {
   min-width: 120px;
-  min-height: 32px;
   padding-inline: 14px;
   white-space: nowrap;
 }
@@ -243,6 +242,30 @@
   border-color: var(--profile-contact-line-strong);
   color: var(--color-text-default-hover);
   background: var(--color-bg-overlay-l2);
+}
+
+/* 发送验证码按钮：固定 32px 高；配色复用主按钮 token，深色下白底黑字、浅色下自动反转为黑底白字。
+   需置于 profile-secondary-button 之后，同权重下靠后规则才能覆盖其透明底配色。 */
+.profile-contact-modal .semi-button.profile-code-button {
+  height: 32px;
+  min-height: 32px;
+  border-color: transparent;
+  color: var(--color-action-on-primary);
+  background: var(--color-action-primary);
+}
+
+.profile-contact-modal .semi-button.profile-code-button:hover:not(:disabled),
+.profile-contact-modal .semi-button.profile-code-button:focus-visible {
+  border-color: transparent;
+  color: var(--color-action-on-primary);
+  background: var(--color-action-primary-hover);
+}
+
+/* 倒计时禁用态保持同色系并降低不透明度，避免被 Semi 默认禁用样式盖掉反色配色。 */
+.profile-contact-modal .semi-button.profile-code-button:disabled {
+  color: var(--color-action-on-primary);
+  background: var(--color-action-primary);
+  opacity: .55;
 }
 
 .profile-contact-modal .semi-button.profile-primary-button {

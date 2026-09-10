@@ -9,10 +9,11 @@ interface RealNameRequiredDialogProps {
   onCancel: () => void
   onVerify: () => void
   onCompleted: () => void
+  checking?: boolean
 }
 
 // 充值前实名提示独立成组件，保证充值表单只负责支付流程状态。
-export function RealNameRequiredDialog({ visible, onCancel, onVerify, onCompleted }: RealNameRequiredDialogProps) {
+export function RealNameRequiredDialog({ visible, onCancel, onVerify, onCompleted, checking = false }: RealNameRequiredDialogProps) {
   const { t } = useTranslation()
   return (
     <Modal
@@ -29,7 +30,7 @@ export function RealNameRequiredDialog({ visible, onCancel, onVerify, onComplete
         <h2>{t('console.realNameRequired.title')}</h2>
         <p>{t('console.realNameRequired.description')}</p>
         <div className="real-name-required-actions">
-          <Button theme="outline" onClick={onCompleted}>{t('console.realNameRequired.completed')}</Button>
+          <Button theme="outline" loading={checking} disabled={checking} onClick={onCompleted}>{t('console.realNameRequired.completed')}</Button>
           <Button className="real-name-required-primary" theme="solid" type="primary" onClick={onVerify}>{t('console.realNameRequired.verify')}</Button>
         </div>
       </div>

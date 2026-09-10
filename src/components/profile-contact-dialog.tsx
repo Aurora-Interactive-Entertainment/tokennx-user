@@ -89,7 +89,10 @@ export function ProfileContactDialog(props: ProfileContactDialogProps) {
   const savingContact = useRef(false)
 
   const isBound = props.currentContact.bound
-  const providerLabel = props.provider === 'phone' ? t('profile.contact.phone') : t('profile.contact.email')
+  // 新值标签按渠道和绑定状态区分：邮箱首次绑定为"邮箱地址"，换绑时为"新邮箱地址"；手机号沿用通用文案。
+  const newDestinationLabel = props.provider === 'email'
+    ? t(isBound ? 'profile.contact.newEmailAddress' : 'profile.contact.emailAddress')
+    : t('profile.contact.newDestination')
   const title = props.provider === 'phone'
     ? t(isBound ? 'profile.contact.dialogPhoneChange' : 'profile.contact.dialogPhoneBind')
     : t(isBound ? 'profile.contact.dialogEmailChange' : 'profile.contact.dialogEmailBind')
@@ -277,6 +280,7 @@ export function ProfileContactDialog(props: ProfileContactDialogProps) {
       onCancel={props.onCancel}
     >
       <div className={`profile-contact-dialog profile-contact-dialog--${props.provider} ${isBound ? 'is-bound' : 'is-unbound'}`}>
+        {/* 首次绑定时没有原联系方式可展示，仅换绑（已绑定）才渲染当前值区块。 */}
         {isBound ? (
           <section className="profile-dialog-group profile-dialog-group--current">
             <label className="profile-field" htmlFor={`profile-${props.provider}-current-destination`}>
@@ -290,25 +294,14 @@ export function ProfileContactDialog(props: ProfileContactDialogProps) {
                 aria-invalid={Boolean(errors.currentDestination)}
                 aria-describedby={errors.currentDestination ? `profile-${props.provider}-current-destination-error` : undefined}
               />
-              {errors.currentDestination ? <small className="profile-field-error" id={`profile-${props.provider}-current-destination-error`}>{errors.currentDestination}</small> : <small>{t('profile.contact.currentDestinationHint')}</small>}
+              {errors.currentDestination ? <small className="profile-field-error" id={`profile-${props.provider}-current-destination-error`}>{errors.currentDestination}</small> : null}
             </label>
             {renderCodeControl('current')}
           </section>
-        ) : (
-          <section className="profile-dialog-group profile-dialog-group--status">
-            <label className="profile-field" htmlFor={`profile-${props.provider}-unbound-status`}>
-              <span>{providerLabel}</span>
-              <Input
-                id={`profile-${props.provider}-unbound-status`}
-                value={t(props.provider === 'email' ? 'profile.contact.unboundEmail' : 'profile.contact.unbound')}
-                readonly
-              />
-            </label>
-          </section>
-        )}
+        ) : null}
         <section className="profile-dialog-group profile-dialog-group--new">
           <label className="profile-field" htmlFor={`profile-${props.provider}-new-destination`}>
-            <span>{t('profile.contact.newDestination')}</span>
+            <span>{newDestinationLabel}</span>
             <Input
               id={`profile-${props.provider}-new-destination`}
               value={values.newDestination}
