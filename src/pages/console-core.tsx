@@ -76,7 +76,7 @@ export function ConsoleModelsPage() {
     const start = apiTotal === 0 ? 0 : (currentPage - 1) * currentPageSize + 1
     return { items: filteredModels, page: currentPage, pageSize: currentPageSize, total: apiTotal, totalPages: apiTotal === 0 ? 0 : Math.ceil(apiTotal / currentPageSize), start, end: Math.min(currentPage * currentPageSize, apiTotal) }
   }, [apiPage, apiPageSize, apiTotal, filteredModels, page, pageSize])
-  // 中文：单卡页面限制卡片宽度，多卡页面继续由网格平均分配可用空间。
+  // 单卡页面限制卡片宽度，多卡页面继续由网格平均分配可用空间。
   const modelGridClassName = pageResult.items.length === 1 ? 'model-card-grid model-card-grid--single' : 'model-card-grid'
 
   useEffect(() => {
@@ -208,13 +208,13 @@ function lastUserMessage(session: { messages: PlaygroundMessage[]; prompt: strin
   return [...session.messages].reverse().find((message) => message.role === 'user')?.content ?? session.prompt
 }
 
-// 中文：消息时间只展示月日和时分，保持气泡下方信息紧凑。
+// 消息时间只展示月日和时分，保持气泡下方信息紧凑。
 function formatMessageTime(value: string): string {
   const match = value.match(/\d{4}[-/](\d{1,2})[-/](\d{1,2})[ T](\d{2}:\d{2})/)
   return match ? `${match[1].padStart(2, '0')}-${match[2].padStart(2, '0')} ${match[3]}` : value
 }
 
-// 中文：分段之前的消息只用于展示，不再进入后续模型请求。
+// 分段之前的消息只用于展示，不再进入后续模型请求。
 function sessionContextStart(session: PlaygroundSession): number {
   return session.contextBreaks?.at(-1) ?? 0
 }
@@ -223,7 +223,7 @@ function sessionContextMessages(session: PlaygroundSession): PlaygroundMessage[]
   return session.messages.slice(sessionContextStart(session))
 }
 
-// 中文：分割线属于当前会话时间线，不创建新的左侧历史记录。
+// 分割线属于当前会话时间线，不创建新的左侧历史记录。
 function PlaygroundMessageTimeline({ session, hiddenAttemptId, dividerLabel, renderMessage }: { session: PlaygroundSession; hiddenAttemptId: string; dividerLabel: string; renderMessage: (message: PlaygroundMessage) => ReactNode }) {
   const contextBreaks = new Set(session.contextBreaks ?? [])
   return <>
@@ -244,7 +244,7 @@ function PlaygroundWorkspaceNotice({ message, description, action, tone = 'error
   </div>
 }
 
-// 中文：回复区操作统一使用 Semi 图标按钮，固定尺寸以避免图标切换或加载时布局抖动。
+// 回复区操作统一使用 Semi 图标按钮，固定尺寸以避免图标切换或加载时布局抖动。
 function PlaygroundMessageIconButton({ label, icon, disabled = false, onClick }: { label: string; icon: ReactNode; disabled?: boolean; onClick: () => void }) {
   return <Button className="message-icon-action" theme="borderless" size="small" icon={icon} aria-label={label} title={label} disabled={disabled} onClick={onClick} />
 }
@@ -332,7 +332,7 @@ export function PlaygroundPage() {
   }, [workspaceKey])
 
   useEffect(() => {
-    // 中文：从模型广场跳转时，接口加载期间先保留 URL 指定的模型，避免被首个模型抢先覆盖。
+    // 从模型广场跳转时，接口加载期间先保留 URL 指定的模型，避免被首个模型抢先覆盖。
     if (modelsLoading) return
     if (selectableModels.some((model) => modelAlias(model) === modelId)) {
       if (store.selectedModelId !== modelId) store.setSelectedModelId(modelId)
@@ -556,7 +556,7 @@ export function PlaygroundPage() {
     void navigator.clipboard.writeText(value).then(() => Toast.success(successMessage)).catch(() => Toast.error(t('console.common.copyFailed')))
   }
 
-  // 中文：透明操作项仍支持键盘回车和空格，避免仅依赖鼠标悬浮交互。
+  // 透明操作项仍支持键盘回车和空格，避免仅依赖鼠标悬浮交互。
   function activateAction(event: React.KeyboardEvent<HTMLElement>, action: () => void): void {
     if (event.key !== 'Enter' && event.key !== ' ') return
     event.preventDefault()
@@ -572,7 +572,7 @@ export function PlaygroundPage() {
     setPrompt(failedUserMessage.content)
   }
 
-  // 中文：普通用户消息在原位置进入编辑态，提交后替换该轮并重新请求模型。
+  // 普通用户消息在原位置进入编辑态，提交后替换该轮并重新请求模型。
   function editUserAttempt(attemptId: string): void {
     if (running) return
     const userMessage = selectedSession?.messages.find((message) => message.attemptId === attemptId && message.role === 'user' && message.status === 'complete')
@@ -587,7 +587,7 @@ export function PlaygroundPage() {
     setEditingUserPrompt('')
   }
 
-  // 中文：重试沿用当前会话上下文；失败尝试可被同一条消息替换，成功尝试则追加一轮新响应。
+  // 重试沿用当前会话上下文；失败尝试可被同一条消息替换，成功尝试则追加一轮新响应。
   function retryAttempt(attemptId: string): void {
     const userMessage = selectedSession?.messages.find((message) => message.attemptId === attemptId && message.role === 'user')
     if (!userMessage || running) return

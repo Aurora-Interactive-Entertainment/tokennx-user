@@ -65,7 +65,7 @@ function createIdentifier(prefix: string): string {
   try {
     if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return `${prefix}-${crypto.randomUUID()}`
   } catch {
-    // 中文：随机标识不可用时使用时间和随机数，保证同一页面实例仍有独立所有者标识。
+    // 随机标识不可用时使用时间和随机数，保证同一页面实例仍有独立所有者标识。
   }
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}`
 }
@@ -263,7 +263,7 @@ function handleStorageChange(event: StorageEvent): void {
     const change = parseAuthTokenChange(JSON.parse(event.newValue))
     if (change) applyRemoteChange(change)
   } catch {
-    // 中文：跨标签页通知损坏时忽略，不影响当前标签页已有的认证状态。
+    // 跨标签页通知损坏时忽略，不影响当前标签页已有的认证状态。
   }
 }
 
@@ -291,7 +291,7 @@ function publishChange(change: AuthTokenChange): void {
   try {
     authChannel?.postMessage(change)
   } catch {
-    // 中文：BroadcastChannel 不可用时继续使用 localStorage 事件通知其他标签页。
+    // BroadcastChannel 不可用时继续使用 localStorage 事件通知其他标签页。
   }
   const saved = storage()
   if (!saved) return
@@ -300,7 +300,7 @@ function publishChange(change: AuthTokenChange): void {
     saved.setItem(AUTH_SYNC_STORAGE_KEY, serialized)
     saved.removeItem(AUTH_SYNC_STORAGE_KEY)
   } catch {
-    // 中文：存储不可用时保留内存认证状态，跨标签页同步由 BroadcastChannel 尽力完成。
+    // 存储不可用时保留内存认证状态，跨标签页同步由 BroadcastChannel 尽力完成。
   }
 }
 

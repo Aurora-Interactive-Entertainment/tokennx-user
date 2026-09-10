@@ -36,7 +36,7 @@ interface InvoiceFillStepProps {
   onChange: (key: keyof InvoiceForm, value: string) => void
 }
 
-// 中文：填写步只暴露邮箱和两个下拉的交互，接口字段均保持只读。
+// 填写步只暴露邮箱和两个下拉的交互，接口字段均保持只读。
 function InvoiceFillStep({
   form,
   options,
@@ -176,7 +176,7 @@ function InvoiceFillStep({
   )
 }
 
-// 中文：确认步按当前空间类型展示已选信息，个人空间不渲染税号。
+// 确认步按当前空间类型展示已选信息，个人空间不渲染税号。
 function InvoiceConfirmStep({
   form,
   options,
@@ -214,7 +214,7 @@ function InvoiceConfirmStep({
   )
 }
 
-// 中文：完成步仅展示服务端已接收申请的结果。
+// 完成步仅展示服务端已接收申请的结果。
 function InvoiceSuccessStep() {
   return (
     <div className="invoice-dialog-body invoice-success">
@@ -245,7 +245,7 @@ interface BillingInvoiceDialogProps {
   onSubmit: () => void
 }
 
-// 中文：操作区统一交给 AppModal footer 渲染，复用项目标准按钮规格与间距。
+// 操作区统一交给 AppModal footer 渲染，复用项目标准按钮规格与间距。
 function InvoiceDialogFooter({
   step,
   submitting,
@@ -302,7 +302,7 @@ function InvoiceDialogFooter({
   )
 }
 
-// 中文：开票流程独立成组件，避免费用页继续承担弹窗的表单与布局细节。
+// 开票流程独立成组件，避免费用页继续承担弹窗的表单与布局细节。
 export function BillingInvoiceDialog({
   open,
   form,
@@ -340,7 +340,7 @@ export function BillingInvoiceDialog({
       }
       className="invoice-dialog"
     >
-      {/* 中文：使用 Semi 步骤器保持开票流程与认证流程一致，并让当前步骤自动呈现状态。 */}
+      {/* 使用 Semi 步骤器保持开票流程与认证流程一致，并让当前步骤自动呈现状态。 */}
       <Steps
         className="invoice-steps"
         type="basic"

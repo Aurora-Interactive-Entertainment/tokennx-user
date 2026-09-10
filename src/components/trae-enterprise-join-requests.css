@@ -1,5 +1,5 @@
 .trae-request-table {
-  /* 中文：申请列表列数较少，优先完整利用容器宽度，长内容由单元格省略。 */
+  /* 申请列表列数较少，优先完整利用容器宽度，长内容由单元格省略。 */
   width: 100%;
   min-width: 0;
   table-layout: fixed;

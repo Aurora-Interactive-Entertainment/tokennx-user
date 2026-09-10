@@ -74,7 +74,7 @@
   line-height: 32px;
 }
 
-/* 中文：筛选下拉框采用操作日志的无勾选列表样式。 */
+/* 筛选下拉框采用操作日志的无勾选列表样式。 */
 .enterprise-api-key-filter-dropdown .semi-select-option-icon {
   display: none;
 }
@@ -100,7 +100,7 @@
     min-height: 40px;
   }
 
-  /* 中文：移动端下拉框与状态筛选、创建按钮统一 40px 触控高度，并保持文字垂直居中。 */
+  /* 移动端下拉框与状态筛选、创建按钮统一 40px 触控高度，并保持文字垂直居中。 */
   .enterprise-api-key-filter-select .semi-select-selection {
     height: 38px !important;
   }

@@ -28,7 +28,7 @@ export function resolveBackendBaseUrl(
   return normalized
 }
 
-// 中文：开发环境允许通过代理目标配置后端地址，模型直连请求必须复用这个真实地址。
+// 开发环境允许通过代理目标配置后端地址，模型直连请求必须复用这个真实地址。
 export const BACKEND_BASE_URL = resolveBackendBaseUrl(
   import.meta.env.VITE_API_BASE_URL,
   import.meta.env.VITE_API_PROXY_TARGET,
@@ -109,7 +109,7 @@ function withApiVersionPath(value: string): string {
   return /\/v1$/i.test(value) ? value : `${value}/v1`
 }
 
-// 中文：模型调用和接入样例共用前端配置的后端地址，避免开发环境只请求到前端代理地址。
+// 模型调用和接入样例共用前端配置的后端地址，避免开发环境只请求到前端代理地址。
 export const MODEL_API_BASE_URL = withApiVersionPath(BACKEND_BASE_URL)
 
 function readApiMessage(payload: Partial<ApiEnvelope<unknown>> | null): string | null {
@@ -163,14 +163,14 @@ export async function fetchResponse(path: string, options: FetchJsonOptions = {}
   const headers = new Headers(options.headers)
   const isFormDataBody = typeof FormData !== 'undefined' && options.body instanceof FormData
   const requestId = createRequestId()
-  // 中文：允许文件流请求覆盖默认 JSON 协商头，普通接口仍默认接受 JSON。
+  // 允许文件流请求覆盖默认 JSON 协商头，普通接口仍默认接受 JSON。
   if (!headers.has('Accept')) headers.set('Accept', 'application/json')
-  // 中文：调用方可复用同一个请求编号进行幂等重试；未显式提供时才生成新编号。
+  // 调用方可复用同一个请求编号进行幂等重试；未显式提供时才生成新编号。
   if (!headers.has('X-Request-ID')) headers.set('X-Request-ID', requestId)
   const activeLanguage = getActiveLanguage()
-  // 中文：调用方显式指定语言时必须优先于当前全局语言，公开新闻/模型接口依赖该优先级。
+  // 调用方显式指定语言时必须优先于当前全局语言，公开新闻/模型接口依赖该优先级。
   if (!headers.has('X-App-Lang')) headers.set('X-App-Lang', activeLanguage)
-  // 中文：公开模型展示接口按 Accept-Language 返回单语言字段，同时保留业务接口使用的 X-App-Lang。
+  // 公开模型展示接口按 Accept-Language 返回单语言字段，同时保留业务接口使用的 X-App-Lang。
   if (!headers.has('Accept-Language')) headers.set('Accept-Language', activeLanguage)
   if (isFormDataBody) headers.delete('Content-Type')
   else if (options.body !== undefined) headers.set('Content-Type', 'application/json')
@@ -192,7 +192,7 @@ export async function fetchResponse(path: string, options: FetchJsonOptions = {}
       signal: controller.signal,
     })
   } catch (error) {
-    // 中文：调用方主动取消不应被误报为网络故障，页面卸载和用户点击停止都依赖该语义。
+    // 调用方主动取消不应被误报为网络故障，页面卸载和用户点击停止都依赖该语义。
     if (options.signal?.aborted) throw error
     if (timedOut && error instanceof DOMException && error.name === 'AbortError') {
       throw createApiError(path, options, i18n.t('api.http.timeout'), 408, 0, requestId)

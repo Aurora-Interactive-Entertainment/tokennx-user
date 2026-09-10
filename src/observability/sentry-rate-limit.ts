@@ -68,7 +68,7 @@ function getStorage(
   }
 }
 
-// 中文：哈希只用于浏览器本地限流键，不会作为业务或用户标识上传。
+// 哈希只用于浏览器本地限流键，不会作为业务或用户标识上传。
 function hashSignature(signature: string): string {
   let hash = 0x811c9dc5;
 
@@ -161,6 +161,6 @@ export function clearSentryRateLimitStateForTests(): void {
     window.localStorage.removeItem(LOCAL_STORAGE_KEY);
     window.sessionStorage.removeItem(SESSION_STORAGE_KEY);
   } catch {
-    // 中文：无存储权限时仅清理内存状态，保持测试和隐私模式兼容。
+    // 无存储权限时仅清理内存状态，保持测试和隐私模式兼容。
   }
 }

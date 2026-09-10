@@ -813,7 +813,7 @@ export function removeEnterpriseMember(context: EnterpriseRequestContext, member
   return mutate<EnterpriseMember>(memberPath(context, memberID), 'DELETE', { expected_version: expectedVersion }, options)
 }
 
-// 中文：成员批量角色/状态修改必须一次性提交，服务端保证整批事务性和版本校验。
+// 成员批量角色/状态修改必须一次性提交，服务端保证整批事务性和版本校验。
 export function batchUpdateEnterpriseMembers(context: EnterpriseRequestContext, input: EnterpriseMemberBatchRequest, options: EnterpriseListOptions = {}): Promise<EnterpriseMemberBatchResponse> {
   const { accessToken: _inputAccessToken, signal: _inputSignal, ...body } = input
   return mutate<EnterpriseMemberBatchResponse>(`${enterpriseBasePath(context)}/members/batch`, 'POST', body, { ...options, accessToken: options.accessToken ?? _inputAccessToken, signal: options.signal ?? _inputSignal })
@@ -822,7 +822,7 @@ export function batchUpdateEnterpriseMembers(context: EnterpriseRequestContext, 
 // 兼容旧调用方可能采用的动词后置命名；两者共享同一请求实现。
 export const updateEnterpriseMembersBatch = batchUpdateEnterpriseMembers
 
-// 中文：治理页面需要完整成员目录，按服务端允许的分页大小逐页读取，避免请求超出后端分页上限。
+// 治理页面需要完整成员目录，按服务端允许的分页大小逐页读取，避免请求超出后端分页上限。
 export async function getAllEnterpriseMembers(context: EnterpriseRequestContext, options: EnterpriseListOptions = {}): Promise<EnterpriseMember[]> {
   const members: EnterpriseMember[] = []
   let page = ENTERPRISE_FIRST_PAGE
@@ -863,7 +863,7 @@ export function getEnterpriseInvitationUsages(context: EnterpriseRequestContext,
     }))
 }
 
-// 中文：公开邀请解析允许匿名访问；携带已有登录态时由服务端补充当前用户状态。
+// 公开邀请解析允许匿名访问；携带已有登录态时由服务端补充当前用户状态。
 export function getInvitationPreview(token: string, options: EnterpriseListOptions = {}): Promise<EnterpriseInvitationPreview> {
   const query = new URLSearchParams({ token: token.trim() })
   return fetchJson<EnterpriseInvitationPreview>(`/api/user/invitations?${query.toString()}`, requestOptions(options))
@@ -898,7 +898,7 @@ export function getEnterpriseUsage(context: EnterpriseRequestContext, options: E
 
 export function getEnterpriseAnalytics(context: EnterpriseRequestContext, options: EnterpriseAnalyticsRequest = {}): Promise<EnterpriseAnalyticsResponse> {
   return fetchAuthenticatedJson<EnterpriseAnalyticsResponse>(`${enterpriseBasePath(context)}/analytics?${createAnalyticsQuery(options)}`, requestOptions(options))
-    // 中文：分析接口的列表均非分页字段，暂无用量时统一归一为空数组，避免图表和表格读取 undefined。
+    // 分析接口的列表均非分页字段，暂无用量时统一归一为空数组，避免图表和表格读取 undefined。
     .then((response) => ({
       ...response,
       tools: response.tools ?? [],

@@ -354,7 +354,7 @@ export function TraeUsageDetail({ context, memberID, onMemberChange }: UsageDeta
       { signal: controller.signal },
     ).then((members) => {
       if (!active) return
-      // 中文：用量接口的筛选成员可能不含联系方式，按成员 ID 和用户 ID 合并成员目录中的脱敏手机号。
+      // 用量接口的筛选成员可能不含联系方式，按成员 ID 和用户 ID 合并成员目录中的脱敏手机号。
       const contacts: Record<string, string> = {}
       members.forEach((member) => {
         const contact = member.masked_contact?.trim()
@@ -418,12 +418,12 @@ export function TraeUsageDetail({ context, memberID, onMemberChange }: UsageDeta
   }
 
   async function exportDetail(): Promise<void> {
-    // 中文：ref 锁避免用量明细导出按钮快速连点创建重复任务。
+    // ref 锁避免用量明细导出按钮快速连点创建重复任务。
     if (exportLockRef.current || exporting || data.items.length === 0) return
     exportLockRef.current = true
     setExporting(true)
     try {
-      // 中文：企业用量导出使用后端的成员聚合定义；模型和状态筛选仅属于明细查询接口，不能发送给导出接口。
+      // 企业用量导出使用后端的成员聚合定义；模型和状态筛选仅属于明细查询接口，不能发送给导出接口。
       const filters: Record<string, string> = { range }
       if (range === 'custom' && customRange.length === 2) {
         const start = Date.UTC(customRange[0].getFullYear(), customRange[0].getMonth(), customRange[0].getDate())

@@ -2,7 +2,7 @@ import { fetchAuthenticatedJson, fetchAuthenticatedResponse } from "./authentica
 import { ApiError, isApiError, type FetchJsonOptions } from "./http";
 import i18n from "@/i18n";
 
-/** 中文：统一异步导出的数据集编码，必须与后端导出定义保持一致。 */
+/** 统一异步导出的数据集编码，必须与后端导出定义保持一致。 */
 export type ExportCode =
   | "user.usage.records"
   | "enterprise.members"
@@ -154,7 +154,7 @@ export function cancelExportTask(
   exportID: string,
   options: ExportRequestOptions = {},
 ): Promise<ExportTask> {
-  // 中文：取消接口按文档要求不携带请求体，避免服务端将空对象误判为非法参数。
+  // 取消接口按文档要求不携带请求体，避免服务端将空对象误判为非法参数。
   return fetchAuthenticatedJson<ExportTask>(taskPath(exportID, "/cancel"), {
     ...requestOptions(options),
     method: "POST",
@@ -199,7 +199,7 @@ function abortableDelay(delayMs: number, signal?: AbortSignal | null): Promise<v
   });
 }
 
-/** 中文：轮询只在任务未结束时继续，避免任务失败后继续请求下载接口。 */
+/** 轮询只在任务未结束时继续，避免任务失败后继续请求下载接口。 */
 export async function waitForExportTask(
   exportID: string,
   options: WaitForExportOptions = {},
@@ -239,7 +239,7 @@ export class ExportTaskError extends Error {
   }
 }
 
-/** 中文：用服务端文件名触发下载，避免前端自行猜测 CSV/XLSX 后缀。 */
+/** 用服务端文件名触发下载，避免前端自行猜测 CSV/XLSX 后缀。 */
 export async function saveExportResponse(
   response: Response,
   fileName: string,

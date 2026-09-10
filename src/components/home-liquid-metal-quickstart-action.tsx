@@ -28,7 +28,7 @@ export function HomeLiquidMetalQuickstartAction({ children, returnPath }: HomeLi
   }, [post])
 
   useEffect(() => {
-    // 中文：指针移出按钮后仍监听释放，避免按压状态因事件落在窗口外而卡住。
+    // 指针移出按钮后仍监听释放，避免按压状态因事件落在窗口外而卡住。
     const releaseFromWindow = () => {
       if (!stateRef.current.press) return
       stateRef.current.press = false

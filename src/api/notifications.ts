@@ -14,7 +14,7 @@ export interface UserNotification {
   content: string
   action_url?: string
   read: boolean
-  // 中文：新接口返回 Unix 毫秒；保留字符串类型以兼容灰度期间旧通知记录。
+  // 新接口返回 Unix 毫秒；保留字符串类型以兼容灰度期间旧通知记录。
   created_at: ApiTimeValue
   read_at?: ApiTimeValue
 }

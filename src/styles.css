@@ -68,7 +68,7 @@ body {
   color: var(--text-default);
   font-size: 14px;
   line-height: 1.55;
-  /* 中文：覆盖 Semi UI 运行时注入的 body 字体，统一使用项目基础字体。 */
+  /* 覆盖 Semi UI 运行时注入的 body 字体，统一使用项目基础字体。 */
   font-family: var(--font-family-base) !important;
 }
 
@@ -146,7 +146,7 @@ pre {
   overflow-wrap: anywhere;
 }
 
-/* 中文：所有原生表格统一使用行级入场动效，新表格无需额外 class 即可继承。 */
+/* 所有原生表格统一使用行级入场动效，新表格无需额外 class 即可继承。 */
 table:not(.no-row-enter-animation) tbody > tr {
   --table-row-enter-delay: 0ms;
   animation: table-row-enter 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
@@ -174,9 +174,9 @@ table:not(.no-row-enter-animation) tbody > tr:nth-child(17) { --table-row-enter-
 table:not(.no-row-enter-animation) tbody > tr:nth-child(18) { --table-row-enter-delay: 765ms; }
 table:not(.no-row-enter-animation) tbody > tr:nth-child(19) { --table-row-enter-delay: 810ms; }
 table:not(.no-row-enter-animation) tbody > tr:nth-child(20) { --table-row-enter-delay: 855ms; }
-/* 中文：超过 20 行时沿用末行节奏，避免后续行突然无延迟出现。 */
+/* 超过 20 行时沿用末行节奏，避免后续行突然无延迟出现。 */
 table:not(.no-row-enter-animation) tbody > tr:nth-child(n + 21) { --table-row-enter-delay: 855ms; }
-/* 中文：加载中、错误和空状态通常使用 colspan 占位，不参与数据行入场动效。 */
+/* 加载中、错误和空状态通常使用 colspan 占位，不参与数据行入场动效。 */
 table:not(.no-row-enter-animation) tbody > tr:has(td[colspan]) {
   animation: none;
   transform: none;
@@ -325,10 +325,10 @@ html[data-theme="light"]
 }
 .semi-table-thead > .semi-table-row > .semi-table-row-head {
   background: rgba(255, 255, 255, 0.025);
-  /* 中文：深色主题表头使用浅色文字，确保与深色背景保持足够对比度。 */
+  /* 深色主题表头使用浅色文字，确保与深色背景保持足够对比度。 */
   color: var(--table-header-color, var(--text-primary));
   border-bottom-color: var(--border-subtle);
-  /* 中文：统一 Semi Table 表头字号和字重，保持各页面视觉一致。 */
+  /* 统一 Semi Table 表头字号和字重，保持各页面视觉一致。 */
   font-size: 13px;
   font-weight: 500;
 }
@@ -699,7 +699,7 @@ html[data-theme="light"]
 }
 .video-console-page .video-toolbar-actions {
   gap: 8px;
-  /* 中文：历史生成入口固定在工作区工具栏左侧，便于快速打开记录。 */
+  /* 历史生成入口固定在工作区工具栏左侧，便于快速打开记录。 */
   justify-content: flex-start;
 }
 .video-console-page .video-toolbar-workspace,
@@ -1719,7 +1719,7 @@ html[data-theme="light"]
   flex-direction: column;
   padding: 14px 12px;
 }
-/* 中文：生产环境的 Semi CSS 可能在全局样式之后加载，提升优先级避免覆盖固定侧栏定位。 */
+/* 生产环境的 Semi CSS 可能在全局样式之后加载，提升优先级避免覆盖固定侧栏定位。 */
 .console-frame .console-sider {
   position: fixed;
 }
@@ -1773,7 +1773,7 @@ html[data-theme="light"]
   color: var(--text-tertiary);
   font-size: 10px;
 }
-/* 中文：头部实际高度为 72px，min-height 需与之匹配，避免页面溢出视口产生滚动条。 */
+/* 头部实际高度为 72px，min-height 需与之匹配，避免页面溢出视口产生滚动条。 */
 .console-main-layout {
   min-height: calc(100vh - 72px);
   min-height: calc(100dvh - 72px);
@@ -1783,7 +1783,7 @@ html[data-theme="light"]
 .console-content {
   min-width: 0;
 }
-/* 中文：控制台所有页面共用 16px 的面包屑上下留白，标题从同一条基线开始。 */
+/* 控制台所有页面共用 16px 的面包屑上下留白，标题从同一条基线开始。 */
 .console-top-breadcrumb {
   display: flex;
   box-sizing: border-box;
@@ -2974,14 +2974,14 @@ html[data-theme="light"]
   }
 }
 
-/* 中文：平板横屏也使用抽屉导航，为表格、图表和生成工作区保留完整内容宽度。 */
+/* 平板横屏也使用抽屉导航，为表格、图表和生成工作区保留完整内容宽度。 */
 @media (max-width: 1024px) {
   :root {
     --console-page-gutter: 20px;
   }
   .console-sider {
     width: min(var(--sider-width), calc(100vw - 56px));
-    /* 中文：工作台页面自身可能建立更高层级，抽屉必须位于内容层之上才能接收点击。 */
+    /* 工作台页面自身可能建立更高层级，抽屉必须位于内容层之上才能接收点击。 */
     z-index: 60;
     padding-left: env(safe-area-inset-left);
     transform: translateX(-100%);
@@ -2994,7 +2994,7 @@ html[data-theme="light"]
   .console-main-layout {
     margin-left: 0;
   }
-  /* 中文：Semi 横向布局默认的 overflow-x:hidden 会把主层变成滚动容器，导致移动工具栏吸顶失效。clip 只裁剪横向溢出，不抢占页面滚动参照。 */
+  /* Semi 横向布局默认的 overflow-x:hidden 会把主层变成滚动容器，导致移动工具栏吸顶失效。clip 只裁剪横向溢出，不抢占页面滚动参照。 */
   .semi-layout-has-sider > .console-main-layout {
     overflow-x: clip;
     overflow-y: visible;
@@ -3008,7 +3008,7 @@ html[data-theme="light"]
     margin-left: max(var(--console-page-gutter), env(safe-area-inset-left));
   }
   .console-mobile-toolbar {
-    /* 中文：移动端二级导航从首帧就固定在全局顶栏下方，避免 sticky 到达边界时产生位移。 */
+    /* 移动端二级导航从首帧就固定在全局顶栏下方，避免 sticky 到达边界时产生位移。 */
     position: fixed;
     top: var(--public-mobile-header-height, 72px);
     right: 0;
@@ -3026,7 +3026,7 @@ html[data-theme="light"]
     color: var(--text-primary);
     font-size: 12px;
   }
-  /* 中文：工具栏脱离文档流后补回占位，面包屑和正文不会被固定导航遮住。 */
+  /* 工具栏脱离文档流后补回占位，面包屑和正文不会被固定导航遮住。 */
   .console-content {
     padding-top: 58px;
   }
@@ -3522,7 +3522,7 @@ html[data-theme="light"]
   --color-text-default-hover: #f5f9fe;
   --color-text-secondary: #9599a6;
   --color-text-tertiary: #8f949e;
-  /* 中文：表格表头使用主题自适应颜色，浅色主题为黑色，深色主题保持清晰对比。 */
+  /* 表格表头使用主题自适应颜色，浅色主题为黑色，深色主题保持清晰对比。 */
   --table-header-color: #f5f7fb;
   --color-border-neutral-l1: rgba(224, 226, 242, 0.09);
   --color-border-neutral-l2: rgba(224, 226, 242, 0.13);
@@ -3532,7 +3532,7 @@ html[data-theme="light"]
   --color-action-on-primary: #0c0c0d;
   --color-brand: #7d9cff;
   --color-success: #65b994;
-  /* 中文：所有人员身份头像统一引用此变量，后续只需修改一处。 */
+  /* 所有人员身份头像统一引用此变量，后续只需修改一处。 */
   --color-avatar: #2f8d68;
   --semi-color-focus-border: var(--color-border-neutral-l3);
   --spacing-4: 4px;
@@ -3561,7 +3561,7 @@ html {
   -webkit-font-smoothing: antialiased;
 }
 
-/* 中文：全项目可见滚动条统一为 6px；局部 scrollbar-width: none 仍可保持隐藏。 */
+/* 全项目可见滚动条统一为 6px；局部 scrollbar-width: none 仍可保持隐藏。 */
 * {
   scrollbar-width: thin;
 }
@@ -3570,12 +3570,12 @@ html {
   scrollbar-color: var(--scrollbar-thumb) transparent;
 }
 
-/* 中文：阻止 Firefox 的继承色进入组件内部滚动容器。 */
+/* 阻止 Firefox 的继承色进入组件内部滚动容器。 */
 body {
   scrollbar-color: auto;
 }
 
-/* 中文：Chromium 新版的 thin 会启用带方向按钮的系统滚动条，改回 auto 后交给 WebKit 伪元素统一绘制。 */
+/* Chromium 新版的 thin 会启用带方向按钮的系统滚动条，改回 auto 后交给 WebKit 伪元素统一绘制。 */
 @supports selector(::-webkit-scrollbar) {
   * {
     scrollbar-color: auto !important;
@@ -3603,7 +3603,7 @@ body {
   background: var(--scrollbar-thumb-hover);
 }
 
-/* 中文：显式匹配所有元素的滚动条按钮，隐藏 Chromium/Windows 的上下左右箭头。 */
+/* 显式匹配所有元素的滚动条按钮，隐藏 Chromium/Windows 的上下左右箭头。 */
 *::-webkit-scrollbar-button {
   display: none !important;
   width: 0 !important;
@@ -3629,7 +3629,7 @@ body {
   min-width: 320px;
   background: var(--color-bg-base-default);
   color: var(--color-text-default);
-  /* 中文：覆盖 Semi UI 运行时注入的 body 字体，统一使用项目基础字体。 */
+  /* 覆盖 Semi UI 运行时注入的 body 字体，统一使用项目基础字体。 */
   font-family: var(--font-family-base) !important;
   font-size: 16px;
   line-height: 1.6;
@@ -3943,7 +3943,7 @@ body textarea {
   top: calc(100% + 8px);
   right: 0;
   z-index: 120;
-  /* 中文：保留下拉节点，通过透明度与位移实现平滑展开，避免 display 切换造成生硬闪现。 */
+  /* 保留下拉节点，通过透明度与位移实现平滑展开，避免 display 切换造成生硬闪现。 */
   visibility: hidden;
   opacity: 0;
   pointer-events: none;
@@ -4076,7 +4076,7 @@ body textarea {
   border-radius: 6px;
   background: var(--color-bg-menu);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-  /* 中文：工作空间菜单挂载到 body 后使用同样的轻微上移/缩放入场。 */
+  /* 工作空间菜单挂载到 body 后使用同样的轻微上移/缩放入场。 */
   animation: workspace-menu-enter 0.18s ease-out both;
 }
 
@@ -4533,10 +4533,10 @@ body[theme-mode] {
 }
 .semi-table-thead > .semi-table-row > .semi-table-row-head {
   background: var(--color-bg-overlay-l1);
-  /* 中文：浅色主题表头使用黑色文字，与项目要求保持一致。 */
+  /* 浅色主题表头使用黑色文字，与项目要求保持一致。 */
   color: var(--table-header-color, #000);
   border-bottom-color: var(--color-border-neutral-l1);
-  /* 中文：浅色主题同样沿用统一的表头文字规格。 */
+  /* 浅色主题同样沿用统一的表头文字规格。 */
   font-size: 13px;
   font-weight: 500;
 }
@@ -5849,7 +5849,7 @@ body[theme-mode] {
   width: 100%;
   min-height: 30px;
   padding: var(--spacing-32) 0 var(--spacing-24);
-  /* 中文：快速接入标题区与用量管理保持同一基线，不使用额外横线。 */
+  /* 快速接入标题区与用量管理保持同一基线，不使用额外横线。 */
   border-bottom: 0;
 }
 
@@ -6119,7 +6119,7 @@ body[theme-mode] {
   background: var(--color-bg-base-default);
 }
 
-/* 中文：桌面端快速接入页不需要重复显示移动端抽屉入口；平板和手机必须保留该入口。 */
+/* 桌面端快速接入页不需要重复显示移动端抽屉入口；平板和手机必须保留该入口。 */
 @media (min-width: 1025px) {
   .console-frame--quickstart .console-mobile-toolbar {
     display: none;
@@ -6551,11 +6551,11 @@ html[data-theme="light"] .real-name-qr-expired-overlay span {
   color: #fff !important;
 }
 
-/* 中文：普通后台页与“用量管理”使用同一条标题、内容基线，避免额外标题带造成纵向留白不一致。 */
+/* 普通后台页与“用量管理”使用同一条标题、内容基线，避免额外标题带造成纵向留白不一致。 */
 .console-page > .page-stack {
   width: calc(100% + (var(--console-page-gutter) * 2));
   margin-left: calc(var(--console-page-gutter) * -1);
-  /* 中文：后台页面标题与正文保持紧凑统一的垂直节奏。 */
+  /* 后台页面标题与正文保持紧凑统一的垂直节奏。 */
   /* gap: var(--spacing-24); */
   padding-top: 0;
 }
@@ -6563,7 +6563,7 @@ html[data-theme="light"] .real-name-qr-expired-overlay span {
 .console-page > .page-stack > .page-title-row {
   min-height: 30px;
   padding: var(--console-page-gutter);
-  /* 中文：标题说明与正文之间只保留必要留白，避免后台页面首屏过松。 */
+  /* 标题说明与正文之间只保留必要留白，避免后台页面首屏过松。 */
   padding-bottom: var(--spacing-16);
   border-bottom: 0;
 }
@@ -6580,7 +6580,7 @@ html[data-theme="light"] .real-name-qr-expired-overlay span {
   margin-inline: 0;
 }
 
-/* 中文：Semi 的后台 Tab 与自定义页签保持同一规则，保留活动项而移除整条底线。 */
+/* Semi 的后台 Tab 与自定义页签保持同一规则，保留活动项而移除整条底线。 */
 .console-page .semi-tabs-bar,
 .enterprise-governance-tabs {
   border-bottom-color: transparent;
@@ -6611,7 +6611,7 @@ html[data-theme="light"] .real-name-qr-expired-overlay span {
   }
 
   .console-page > .page-stack > .page-title-row {
-    /* 中文：移动端同样沿用紧凑标题区，避免空白标题带重新出现。 */
+    /* 移动端同样沿用紧凑标题区，避免空白标题带重新出现。 */
     min-height: 30px;
     padding: var(--console-page-gutter);
   }
@@ -7281,7 +7281,7 @@ html[data-theme="light"] .real-name-qr-expired-overlay span {
   gap: var(--spacing-8);
   flex-wrap: wrap;
 }
-/* 中文：工作区提示按钮默认黑底白字（浅色主题），深色主题反转为白底黑字。 */
+/* 工作区提示按钮默认黑底白字（浅色主题），深色主题反转为白底黑字。 */
 .workspace-notice-link {
   display: inline-flex;
   min-height: 32px;
@@ -7300,7 +7300,7 @@ html[data-theme="dark"] .workspace-notice-link {
   color: #1f2329;
   background: #fff;
 }
-/* 中文：hover 只轻微压暗/压亮背景，文字颜色保持不变（避免被全局链接 hover 色覆盖）。 */
+/* hover 只轻微压暗/压亮背景，文字颜色保持不变（避免被全局链接 hover 色覆盖）。 */
 html[data-theme="light"] .workspace-notice-link:hover {
   color: #fff;
   background: #17191c;
@@ -7571,7 +7571,7 @@ html[data-theme="dark"] .workspace-notice-link:hover {
   border-radius: var(--radius-6);
 }
 
-/* 中文：三类生成输入区使用同一发送按钮色值；悬浮保持原色，禁用仅降低不透明度。 */
+/* 三类生成输入区使用同一发送按钮色值；悬浮保持原色，禁用仅降低不透明度。 */
 .generation-send-button.semi-button,
 .generation-send-button.semi-button:hover,
 .generation-send-button.semi-button:focus,
@@ -8786,7 +8786,7 @@ html[data-theme="dark"] .generation-send-button.send-btn.is-running.semi-button:
   font-weight: 400;
 }
 .api-key-create-button.semi-button:hover:not(:disabled) {
-  /* 中文：创建按钮悬停时保持原背景，不产生额外的颜色变化。 */
+  /* 创建按钮悬停时保持原背景，不产生额外的颜色变化。 */
   background: var(--color-action-primary) !important;
   border-color: var(--color-action-primary) !important;
   color: var(--color-action-on-primary) !important;
@@ -8794,7 +8794,7 @@ html[data-theme="dark"] .generation-send-button.send-btn.is-running.semi-button:
 .api-keys-console-page > .source-table-scroll {
   margin-top: 0;
 }
-/* 中文：密钥表格与分页属于同一组内容，收紧两者之间的留白。 */
+/* 密钥表格与分页属于同一组内容，收紧两者之间的留白。 */
 .api-keys-console-page > .source-table-scroll + .trae-usage-pagination {
   margin-top: calc(-1 * var(--spacing-32));
 }
@@ -8900,7 +8900,7 @@ html[data-theme="dark"] .generation-send-button.send-btn.is-running.semi-button:
   overflow: hidden;
 }
 .api-keys-console-page--compact .api-keys-table {
-  /* 中文：个人和企业页均使用精简列，避免隐藏字段留下横向空白。 */
+  /* 个人和企业页均使用精简列，避免隐藏字段留下横向空白。 */
   min-width: 860px;
 }
 .api-keys-table td {
@@ -8913,7 +8913,7 @@ html[data-theme="dark"] .generation-send-button.send-btn.is-running.semi-button:
   text-align: center;
 }
 .api-keys-table tbody tr:has(.api-keys-empty-cell):hover td {
-  /* 中文：空数据占位行悬停时保持表格原背景，不额外变色。 */
+  /* 空数据占位行悬停时保持表格原背景，不额外变色。 */
   background: var(--color-bg-base-secondary);
 }
 .api-keys-table .key-name-cell {
@@ -9168,7 +9168,7 @@ html[data-theme="dark"] .generation-send-button.send-btn.is-running.semi-button:
   border-radius: 50%;
   animation: api-key-spinner-rotate 0.72s linear infinite;
 }
-/* 中文：切换状态筛选时保留表格旧数据，仅在表格容器内叠加轻量加载态，避免整表闪烁。 */
+/* 切换状态筛选时保留表格旧数据，仅在表格容器内叠加轻量加载态，避免整表闪烁。 */
 .api-keys-console-page .source-table-scroll {
   position: relative;
 }
@@ -9194,7 +9194,7 @@ html[data-theme="dark"] .generation-send-button.send-btn.is-running.semi-button:
   animation: api-key-spinner-rotate 0.72s linear infinite;
   pointer-events: none;
 }
-/* 中文：刷新后暂无数据时复用整块加载样式，去掉边框和底色以贴合表格内部展示。 */
+/* 刷新后暂无数据时复用整块加载样式，去掉边框和底色以贴合表格内部展示。 */
 .api-keys-loading--inline {
   min-height: 220px;
   border: 0;
@@ -9562,7 +9562,7 @@ html[data-theme="dark"] .generation-send-button.send-btn.is-running.semi-button:
     grid-column: 1;
   }
 
-  /* 中文：状态筛选与创建按钮保持同一行，避免状态文案被压缩后换行。 */
+  /* 状态筛选与创建按钮保持同一行，避免状态文案被压缩后换行。 */
   .api-keys-toolbar-actions {
     display: grid;
     grid-template-columns: clamp(180px, 44%, 220px) minmax(0, 1fr);
@@ -9601,7 +9601,7 @@ html[data-theme="dark"] .generation-send-button.send-btn.is-running.semi-button:
   .api-keys-loading-spinner {
     animation: none;
   }
-  /* 中文：减少动效时表格内遮罩加载不旋转。 */
+  /* 减少动效时表格内遮罩加载不旋转。 */
   .api-keys-console-page .source-table-scroll.is-refreshing::after {
     animation: none;
   }
@@ -9619,7 +9619,7 @@ html[data-theme="dark"] .generation-send-button.send-btn.is-running.semi-button:
   align-items: center;
   gap: var(--spacing-24);
   min-height: 44px;
-  /* 中文：后台页签仅显示当前项指示线，不再绘制横贯内容区的分隔线。 */
+  /* 后台页签仅显示当前项指示线，不再绘制横贯内容区的分隔线。 */
   border-bottom: 0;
 }
 .billing-tabs button,
@@ -9715,7 +9715,7 @@ html[data-theme="dark"] .generation-send-button.send-btn.is-running.semi-button:
   clip: rect(0 0 0 0);
 }
 .ledger-table {
-  /* 中文：账单仅 5 列，优先在账单内容区完整展示。 */
+  /* 账单仅 5 列，优先在账单内容区完整展示。 */
   width: 100%;
   min-width: 0;
   table-layout: fixed;
@@ -10015,7 +10015,7 @@ html[data-theme="dark"] .generation-send-button.send-btn.is-running.semi-button:
   font-size: 16px;
   font-weight: 650;
 }
-/* 中文：账户余额四张卡片等宽平分；中等宽度先降为两列，窄屏再降为单列。 */
+/* 账户余额四张卡片等宽平分；中等宽度先降为两列，窄屏再降为单列。 */
 .billing-balance-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -10111,7 +10111,7 @@ html[data-theme="dark"] .generation-send-button.send-btn.is-running.semi-button:
 }
 .billing-balance-card-total .billing-balance-total-value {
   font-size: 26px;
-  /* 中文：总余额字号更大，向下微调以和右侧余额数字的视觉高度对齐。 */
+  /* 总余额字号更大，向下微调以和右侧余额数字的视觉高度对齐。 */
   transform: translateY(10px);
 }
 .billing-balance-recharge-button.semi-button {
@@ -10168,7 +10168,7 @@ html[data-theme="dark"] .billing-balance-recharge-button.semi-button:active:not(
   font-weight: 550;
 }
 
-/* 中文：费用管理中的账本导出按钮在深色主题保持白底黑字，避免描边按钮与背景混淆。 */
+/* 费用管理中的账本导出按钮在深色主题保持白底黑字，避免描边按钮与背景混淆。 */
 html[data-theme="dark"] .billing-export-button.semi-button {
   border-color: #fff;
   color: #17181b;
@@ -10317,7 +10317,7 @@ html[data-theme="dark"] .billing-export-button.semi-button:active {
   width: 100%;
   min-width: 0;
 }
-/* 中文：费用页下拉列表与操作日志保持一致，不显示选项右侧勾选图标。弹层挂载在 body 下，使用 :has 限定费用页范围。 */
+/* 费用页下拉列表与操作日志保持一致，不显示选项右侧勾选图标。弹层挂载在 body 下，使用 :has 限定费用页范围。 */
 body:has(.billing-console-page) .billing-filter-dropdown .semi-select-option-icon,
 body:has(.billing-console-page) .semi-select-option-icon {
   display: none !important;
@@ -10366,7 +10366,7 @@ body:has(.billing-console-page) .semi-select-option-icon {
   font-variant-numeric: tabular-nums;
 }
 .billing-metric-card--tooltip .metric-value {
-  /* 中文：说明移入标题提示后，价格统一贴近卡片底部，保持同排基线一致。 */
+  /* 说明移入标题提示后，价格统一贴近卡片底部，保持同排基线一致。 */
   margin-top: auto;
   padding-top: var(--spacing-16);
 }
@@ -10630,14 +10630,14 @@ body:has(.billing-console-page) .semi-select-option-icon {
   text-align: center;
 }
 
-/* 中文：充值管理页按设计稿拆分金额、支付方式和确认区域，避免影响费用页其它页签。 */
+/* 充值管理页按设计稿拆分金额、支付方式和确认区域，避免影响费用页其它页签。 */
 .recharge-console-page .billing-recharge-page {
   width: min(640px, calc(100% - (var(--console-page-gutter) * 2)));
   max-width: 640px;
   gap: 0;
 }
 .recharge-form-panel {
-  /* 中文：输入区、支付方式和确认按钮共用同一内容宽度。 */
+  /* 输入区、支付方式和确认按钮共用同一内容宽度。 */
   --recharge-control-width: 100%;
   display: grid;
   margin-top: 24px;
@@ -10765,7 +10765,7 @@ body:has(.billing-console-page) .semi-select-option-icon {
   font-size: 13px;
 }
 .billing-recharge-page .recharge-custom-input-wrap .input[type="number"] {
-  /* 中文：金额输入保留数字键盘能力，但隐藏浏览器默认上下箭头。 */
+  /* 金额输入保留数字键盘能力，但隐藏浏览器默认上下箭头。 */
   appearance: textfield;
   -moz-appearance: textfield;
 }
@@ -10884,7 +10884,7 @@ html[data-theme="light"] .recharge-confirm-button.semi-button-primary:not(.semi-
   background: #F8FAFC;
   font-size: 12px;
 }
-/* 中文：深色模式使用深色提示底，避免浅色块与页面反差过强导致文字难以辨识。 */
+/* 深色模式使用深色提示底，避免浅色块与页面反差过强导致文字难以辨识。 */
 html[data-theme="dark"] .recharge-console-page .billing-demo-note {
   color: var(--color-text-default);
   background: var(--color-bg-base-tertiary);
@@ -11093,7 +11093,7 @@ html[data-theme="dark"] .recharge-console-page .billing-demo-note {
 }
 .invoice-history-table {
   width: 100%;
-  /* 中文：发票列数固定且字段可省略，避免在宽屏内容区产生额外滚动。 */
+  /* 发票列数固定且字段可省略，避免在宽屏内容区产生额外滚动。 */
   min-width: 0;
   table-layout: fixed;
   border-collapse: collapse;
@@ -11356,7 +11356,7 @@ html[data-theme="dark"] .recharge-console-page .billing-demo-note {
   background: var(--color-bg-overlay-l3);
   color: var(--color-text-default);
 }
-/* 中文：工作空间创建按钮按主题反转黑白，浅色黑底白字，深色白底黑字。 */
+/* 工作空间创建按钮按主题反转黑白，浅色黑底白字，深色白底黑字。 */
 .settings-console-page .settings-card--workspace .semi-button.settings-secondary-button {
   border-color: #17181b;
   background: #17181b;
@@ -12082,7 +12082,7 @@ html[data-theme="light"] .profile-security-modal .semi-modal-close {
   transform: none;
 }
 .invite-table {
-  /* 中文：邀请记录只有 4 列，使用比例列宽避免不必要的滚动条。 */
+  /* 邀请记录只有 4 列，使用比例列宽避免不必要的滚动条。 */
   width: 100%;
   min-width: 0;
   table-layout: fixed;
@@ -12312,7 +12312,7 @@ html[data-theme="light"] .invite-table th {
 .enterprise-models-table .semi-switch {
   margin-left: var(--spacing-8);
 }
-/* 中文：企业模型管理复用参考页的高密度目录结构，状态开关仍保留可触摸的操作尺寸。 */
+/* 企业模型管理复用参考页的高密度目录结构，状态开关仍保留可触摸的操作尺寸。 */
 .enterprise-models-config {
   margin-top: var(--spacing-24);
 }
@@ -12944,7 +12944,7 @@ html[data-theme="light"] .invite-table th {
   }
 }
 
-/* 中文：主题状态只切换语义色，Semi 组件和自定义页面共享同一套变量。 */
+/* 主题状态只切换语义色，Semi 组件和自定义页面共享同一套变量。 */
 html[data-theme="light"] {
   color-scheme: light;
   --bg-base: #f5f6f8;
@@ -13044,7 +13044,7 @@ html[data-theme="light"] .home-access-action::after {
   transform-origin: center;
 }
 
-/* 中文：logo 源图比例约 5.45:1，宽 220px 时高约 40px，与设计稿高度一致且完整显示；窄屏限宽兜底 */
+/* logo 源图比例约 5.45:1，宽 220px 时高约 40px，与设计稿高度一致且完整显示；窄屏限宽兜底 */
 .app-loading-screen__logo-shell .brand-logo-image {
   width: 220px;
   max-width: calc(100vw - 96px);
@@ -13102,7 +13102,7 @@ html[data-theme="light"] .app-loading-screen__logo-shell .brand-logo-image {
   text-decoration: underline;
 }
 
-/* 中文：登录层复刻参考站点的右上悬浮玻璃面板和右侧入场动效。 */
+/* 登录层复刻参考站点的右上悬浮玻璃面板和右侧入场动效。 */
 .login-drawer-backdrop {
   position: fixed;
   inset: 0;
@@ -13340,7 +13340,7 @@ html[data-theme="light"] .app-loading-screen__logo-shell .brand-logo-image {
   box-shadow: none;
   backdrop-filter: none;
 }
-/* 中文：首页与其他页面共用全宽 Header 内层，并按 Figma 的 1920px 画板保留两侧 23px 边距。 */
+/* 首页与其他页面共用全宽 Header 内层，并按 Figma 的 1920px 画板保留两侧 23px 边距。 */
 .public-header-inner {
   width: 100%;
   max-width: none;
@@ -13456,7 +13456,7 @@ html[data-theme="light"] .app-loading-screen__logo-shell .brand-logo-image {
   height: 28px;
 }
 
-/* 中文：宽屏首页按设计稿放大品牌区，移动端尺寸由 public-mobile-nav.css 独立控制。 */
+/* 宽屏首页按设计稿放大品牌区，移动端尺寸由 public-mobile-nav.css 独立控制。 */
 @media (min-width: 1281px) {
   .public-header--home .public-header-inner {
     padding-inline: 20px;
@@ -13652,7 +13652,7 @@ html[data-theme="light"] .app-loading-screen__logo-shell .brand-logo-image {
   }
 }
 .public-header .header-nav {
-  /* 中文：收紧顶部公开导航项目间距，保持文字和右侧工具区的布局不变。 */
+  /* 收紧顶部公开导航项目间距，保持文字和右侧工具区的布局不变。 */
   gap: 0px;
 }
 .public-header .header-nav .public-nav-link {
@@ -13908,7 +13908,7 @@ html[data-theme="light"] .public-header .console-entry:focus-visible { color: #1
   display: none;
 }
 
-/* 中文：首页在浅色主题下保留相同几何结构，只切换中性色和交互对比。 */
+/* 首页在浅色主题下保留相同几何结构，只切换中性色和交互对比。 */
 html[data-theme="light"] .public-header--home {
   border-bottom-color: #d8dadd;
   background: #fff;
@@ -14008,8 +14008,8 @@ html[data-theme="light"] .public-header--home .header-notification-dot {
   }
 }
 
-/* 中文：首页严格对应设计手稿的七段结构，卡片内部只承载真实模型和业务文案。 */
-/* 中文：首页公共根节点只保留兼容层，具体布局由 manuscript-* 页面样式负责。 */
+/* 首页严格对应设计手稿的七段结构，卡片内部只承载真实模型和业务文案。 */
+/* 首页公共根节点只保留兼容层，具体布局由 manuscript-* 页面样式负责。 */
 .home-page {
   position: relative;
   overflow: clip;
@@ -14135,9 +14135,9 @@ html[data-theme="light"] .public-header--home .header-notification-dot {
 .manuscript-hero-actions .btn {
   position: relative;
   isolation: isolate;
-  /* 中文：统一按钮本体与外扩彩色描边的圆角基准，避免四角曲率错位。 */
+  /* 统一按钮本体与外扩彩色描边的圆角基准，避免四角曲率错位。 */
   --manuscript-model-button-radius: 23.505px;
-  /* 中文：在当前 1px 基础上增加 0.5px，保持描边清晰但不过粗。 */
+  /* 在当前 1px 基础上增加 0.5px，保持描边清晰但不过粗。 */
   --manuscript-model-rim-width: 1.5px;
   width: 212.3px;
   min-width: 212.3px;
@@ -14169,7 +14169,7 @@ html[data-theme="light"] .public-header--home .header-notification-dot {
 }
 .manuscript-hero-actions .manuscript-model-button:hover,
 .manuscript-hero-actions .manuscript-model-button:focus-visible {
-  /* 中文：hover 只做轻微提亮和光晕变化，不改变按钮位置。 */
+  /* hover 只做轻微提亮和光晕变化，不改变按钮位置。 */
   border-color: transparent;
   color: #fff;
   background:
@@ -14183,7 +14183,7 @@ html[data-theme="light"] .public-header--home .header-notification-dot {
 }
 
 .manuscript-hero-actions .manuscript-model-button:active {
-  /* 中文：按下时恢复基准玻璃层，保持按钮位置稳定。 */
+  /* 按下时恢复基准玻璃层，保持按钮位置稳定。 */
   border-color: transparent;
   color: #fff;
   background: var(--manuscript-model-glass-background);
@@ -14192,7 +14192,7 @@ html[data-theme="light"] .public-header--home .header-notification-dot {
   transform: none;
 }
 
-/* 中文：查看模型按钮复用液态金属按钮的彩色流动描边，颜色只绘制在外边框。 */
+/* 查看模型按钮复用液态金属按钮的彩色流动描边，颜色只绘制在外边框。 */
 @property --manuscript-model-rim-angle {
   syntax: "<angle>";
   inherits: false;
@@ -14200,7 +14200,7 @@ html[data-theme="light"] .public-header--home .header-notification-dot {
 }
 
 .manuscript-hero-actions .manuscript-model-button {
-  /* 中文：右侧按钮同步左侧的半透明玻璃底，背景模糊只作用于按钮内部。 */
+  /* 右侧按钮同步左侧的半透明玻璃底，背景模糊只作用于按钮内部。 */
   --manuscript-model-glass-background:
     linear-gradient(180deg, rgba(255, 255, 255, .085), rgba(255, 255, 255, .014) 44%, rgba(255, 255, 255, 0) 64%),
     rgba(10, 12, 10, .42);
@@ -14219,12 +14219,12 @@ html[data-theme="light"] .public-header--home .header-notification-dot {
 
 .manuscript-hero-actions .manuscript-model-button::before {
   position: absolute;
-  /* 中文：外扩渐变描边使用统一盒模型，确保上边缘与按钮本体同心对齐。 */
+  /* 外扩渐变描边使用统一盒模型，确保上边缘与按钮本体同心对齐。 */
   box-sizing: border-box;
-  /* 中文：右侧按钮使用 1.5px 单层描边，和左侧 shader 边缘保持同一视觉重量。 */
+  /* 右侧按钮使用 1.5px 单层描边，和左侧 shader 边缘保持同一视觉重量。 */
   inset: calc(-1 * var(--manuscript-model-rim-width));
   z-index: 0;
-  /* 中文：伪元素向外扩展后同步增加圆角半径，使外圈和按钮内圈保持同心。 */
+  /* 伪元素向外扩展后同步增加圆角半径，使外圈和按钮内圈保持同心。 */
   border-radius: calc(var(--manuscript-model-button-radius) + var(--manuscript-model-rim-width));
   background: conic-gradient(
     from var(--manuscript-model-rim-angle),
@@ -14235,7 +14235,7 @@ html[data-theme="light"] .public-header--home .header-notification-dot {
     rgba(255, 164, 77, .9)
   );
   content: "";
-  /* 中文：只保留极轻柔化，避免模糊把 1px 描边视觉放大成厚边。 */
+  /* 只保留极轻柔化，避免模糊把 1px 描边视觉放大成厚边。 */
   opacity: .82;
   filter: blur(.12px);
   pointer-events: none;
@@ -15234,7 +15234,7 @@ html[data-theme="light"] .public-header--home .header-notification-dot {
 .manuscript-partners {
   padding-bottom: 56px;
 }
-/* 中文：轨道宽度由两份同序列内容组成，动画移动半程后可无缝回到起点。 */
+/* 轨道宽度由两份同序列内容组成，动画移动半程后可无缝回到起点。 */
 .manuscript-partner-grid {
   --partner-item-width: clamp(128px, 19vw, 216px);
   display: grid;
@@ -15286,7 +15286,7 @@ html[data-theme="light"] .public-header--home .header-notification-dot {
   transform: translateX(-50%);
   animation: manuscript-partner-marquee-right 30s linear infinite;
 }
-/* 中文：hover 时暂停跑马灯滚动，方便用户查看和点击合作伙伴；移开后继续滚动 */
+/* hover 时暂停跑马灯滚动，方便用户查看和点击合作伙伴；移开后继续滚动 */
 .manuscript-partner-grid:hover .manuscript-partner-track {
   animation-play-state: paused;
 }
@@ -15642,7 +15642,7 @@ html[data-theme="light"] .manuscript-hero::before {
   }
 }
 
-/* 中文：手稿内容保持窄幅居中，页面外框和背景必须铺满整个视口。 */
+/* 手稿内容保持窄幅居中，页面外框和背景必须铺满整个视口。 */
 .public-layout--manuscript-home {
   --manuscript-content-width: 1080px;
   width: 100%;
@@ -15657,7 +15657,7 @@ html[data-theme="light"] .manuscript-hero::before {
   width: 100%;
   max-width: none;
 }
-/* 中文：客服入口使用参考图中的竖向胶囊，宽度固定、高度随内容自适应，避免响应式布局抖动。 */
+/* 客服入口使用参考图中的竖向胶囊，宽度固定、高度随内容自适应，避免响应式布局抖动。 */
 .manuscript-support-widget {
   position: fixed;
   right: 24px;
@@ -15667,7 +15667,7 @@ html[data-theme="light"] .manuscript-hero::before {
   height: auto;
   pointer-events: none;
 }
-/* 中文：触发层改为文档流内元素，让胶囊高度由内容撑开；弹窗关闭后按钮延迟淡入，等待面板退场动画接近完成。 */
+/* 触发层改为文档流内元素，让胶囊高度由内容撑开；弹窗关闭后按钮延迟淡入，等待面板退场动画接近完成。 */
 .manuscript-support-trigger {
   position: relative;
   pointer-events: auto;
@@ -15678,7 +15678,7 @@ html[data-theme="light"] .manuscript-hero::before {
     transform 0.26s cubic-bezier(0.16, 1, 0.3, 1) 0.22s,
     visibility 0s linear 0.22s;
 }
-/* 中文：弹窗展开时按钮立即向右下角缩小淡出，与面板入场方向一致。 */
+/* 弹窗展开时按钮立即向右下角缩小淡出，与面板入场方向一致。 */
 .manuscript-support-trigger.is-hidden {
   opacity: 0;
   pointer-events: none;
@@ -15705,10 +15705,10 @@ html[data-theme="light"] .manuscript-hero::before {
   box-shadow: 0 6px 16px rgba(40, 31, 56, 0.14);
   cursor: pointer;
   line-height: 1;
-  /* 中文：hover 只过渡边框颜色，不产生位移。 */
+  /* hover 只过渡边框颜色，不产生位移。 */
   transition: border-color 0.2s ease;
 }
-/* 中文：hover 只改变边框颜色（渐变描边），按钮保持静止。 */
+/* hover 只改变边框颜色（渐变描边），按钮保持静止。 */
 .manuscript-support-assistant-button:hover {
   border-color: transparent;
   background:
@@ -15719,7 +15719,7 @@ html[data-theme="light"] .manuscript-hero::before {
   outline: 2px solid #8d63e8;
   outline-offset: 3px;
 }
-/* 中文：图标占位固定 47x47，图形在占位内居中。 */
+/* 图标占位固定 47x47，图形在占位内居中。 */
 .manuscript-support-assistant-image {
   display: grid;
   width: 47px;
@@ -15729,7 +15729,7 @@ html[data-theme="light"] .manuscript-hero::before {
   margin: 0;
   object-fit: contain;
 }
-/* 中文：客服入口现在由参考 EmotionBall 引擎绘制 SVG；保留透明 img 作为异步加载占位。 */
+/* 客服入口现在由参考 EmotionBall 引擎绘制 SVG；保留透明 img 作为异步加载占位。 */
 .manuscript-support-assistant-canvas {
   position: relative;
   display: block;
@@ -15743,7 +15743,7 @@ html[data-theme="light"] .manuscript-hero::before {
   width: 100%;
   height: 100%;
   overflow: visible;
-  /* 中文：保留 47px 点击区域，只缩小内部 SVG 的视觉尺寸。 */
+  /* 保留 47px 点击区域，只缩小内部 SVG 的视觉尺寸。 */
   transform: scale(0.88);
   transform-origin: center;
 }
@@ -15758,7 +15758,7 @@ html[data-theme="light"] .manuscript-hero::before {
 .manuscript-support-assistant-canvas.is-ready > .manuscript-support-assistant-image {
   opacity: 0;
 }
-/* 中文：引擎接管后只保留一个真实表情，防止异步切换瞬间出现双球。 */
+/* 引擎接管后只保留一个真实表情，防止异步切换瞬间出现双球。 */
 .manuscript-support-assistant-canvas.is-ready > .manuscript-support-assistant-fallback {
   display: none;
 }
@@ -15768,11 +15768,11 @@ html[data-theme="light"] .manuscript-hero::before {
   white-space: nowrap;
   font-size: 14px;
   font-weight: 500;
-  /* 中文：竖排文字之间增加间距。 */
+  /* 竖排文字之间增加间距。 */
   letter-spacing: 4px;
   line-height: 1;
 }
-/* 中文：英文保持竖向胶囊，仅将整段拉丁文横置，避免按单字符堆叠撑高入口。 */
+/* 英文保持竖向胶囊，仅将整段拉丁文横置，避免按单字符堆叠撑高入口。 */
 html[lang="en"] .manuscript-support-assistant-label {
   writing-mode: vertical-rl;
   text-orientation: sideways;
@@ -15990,7 +15990,7 @@ html[lang="en"] .manuscript-support-assistant-label {
     animation: none;
     transition: none;
   }
-  /* 中文：减少动效时按钮仅做瞬时显隐，不做缩放位移过渡。 */
+  /* 减少动效时按钮仅做瞬时显隐，不做缩放位移过渡。 */
   .manuscript-support-trigger,
   .manuscript-support-trigger.is-hidden {
     transition: none;
@@ -16421,7 +16421,7 @@ body:has(.public-layout--manuscript-home) {
   background: #121212;
 }
 
-/* 中文：浅色主题使用完整的中性色表面，避免只切换根节点而首页视觉不变。 */
+/* 浅色主题使用完整的中性色表面，避免只切换根节点而首页视觉不变。 */
 html[data-theme="light"]:has(.public-layout--manuscript-home) {
   color-scheme: light;
 }
@@ -16522,7 +16522,7 @@ html[data-theme="light"]
   .public-layout--manuscript-home
   .manuscript-hero-actions
   .manuscript-model-button {
-  /* 中文：浅色模式下查看模型按钮同步为浅色玻璃底，文字使用深色。 */
+  /* 浅色模式下查看模型按钮同步为浅色玻璃底，文字使用深色。 */
   border-color: transparent;
   color: #1f2329;
   background:
@@ -16542,7 +16542,7 @@ html[data-theme="light"]
   .public-layout--manuscript-home
   .manuscript-hero-actions
   .manuscript-model-button:focus-visible {
-  /* 中文：白色背景下仅保留浅浅的底色和边缘反馈，避免 hover 显得生硬。 */
+  /* 白色背景下仅保留浅浅的底色和边缘反馈，避免 hover 显得生硬。 */
   border-color: transparent;
   color: #1f2329;
   background:
@@ -16558,7 +16558,7 @@ html[data-theme="light"]
   .public-layout--manuscript-home
   .manuscript-hero-actions
   .manuscript-model-button:active {
-  /* 中文：按下时恢复浅色主题基准玻璃层，保持按钮位置稳定。 */
+  /* 按下时恢复浅色主题基准玻璃层，保持按钮位置稳定。 */
   border-color: transparent;
   color: #1f2329;
   background:
@@ -16993,7 +16993,7 @@ html[data-theme="light"] .public-layout--manuscript-home .manuscript-ad-slot {
   display: block;
 }
 
-/* 中文：首页统一提升基础字号，保证标题、正文和辅助信息保持可读的层级。 */
+/* 首页统一提升基础字号，保证标题、正文和辅助信息保持可读的层级。 */
 .public-layout--manuscript-home {
   --ui-header-nav-size: 14px;
   --ui-header-label-size: 14px;
@@ -17048,7 +17048,7 @@ html[data-theme="light"] .public-layout--manuscript-home .manuscript-ad-slot {
   font-size: var(--ui-header-micro-size);
 }
 
-/* 中文：首页计分板按新版 Figma 的独立翻牌尺寸呈现，保留原有动态翻页逻辑。 */
+/* 首页计分板按新版 Figma 的独立翻牌尺寸呈现，保留原有动态翻页逻辑。 */
 .public-layout--manuscript-home .manuscript-digital-stats {
   grid-template-columns: repeat(
     2,
@@ -17179,7 +17179,7 @@ html[data-theme="light"] .public-layout--manuscript-home .manuscript-ad-slot {
   font-size: var(--home-font-subtitle);
 }
 
-/* 中文：优惠模型与推广资讯使用独立的可读字号层级，避免放大时影响首页其他区块。 */
+/* 优惠模型与推广资讯使用独立的可读字号层级，避免放大时影响首页其他区块。 */
 .public-layout--manuscript-home
   .manuscript-pricing
   .manuscript-section-heading
@@ -17474,7 +17474,7 @@ html[data-theme="light"] .public-layout--manuscript-home .manuscript-ad-slot {
   box-shadow: none;
 }
 
-/* 中文：首页客服浮层的正文同步放大，避免主页面和交互面板出现明显字号落差。 */
+/* 首页客服浮层的正文同步放大，避免主页面和交互面板出现明显字号落差。 */
 .public-layout--manuscript-home .manuscript-support-tab {
   font-size: 15px;
 }
@@ -17600,7 +17600,7 @@ html[data-theme="light"] .public-layout--manuscript-home .manuscript-ad-slot {
 }
 
 @media (max-width: 480px) {
-  /* 中文：窄屏仅保留 47px 圆形表情入口，避免竖排标签遮挡正文、表格和发送按钮。 */
+  /* 窄屏仅保留 47px 圆形表情入口，避免竖排标签遮挡正文、表格和发送按钮。 */
   .manuscript-support-assistant-button {
     width: 47px;
     height: 47px;
@@ -17612,7 +17612,7 @@ html[data-theme="light"] .public-layout--manuscript-home .manuscript-ad-slot {
 }
 
 @media (max-width: 480px) and (orientation: portrait) {
-  /* 中文：生成页把客服入口停在输入区上方，不遮挡发送、模型和附件操作。 */
+  /* 生成页把客服入口停在输入区上方，不遮挡发送、模型和附件操作。 */
   .console-frame:has(.playground-console-page) > .manuscript-support-widget,
   .console-frame:has(.image-console-page) > .manuscript-support-widget {
     bottom: calc(175px + env(safe-area-inset-bottom));
@@ -17623,7 +17623,7 @@ html[data-theme="light"] .public-layout--manuscript-home .manuscript-ad-slot {
 }
 
 @media (max-width: 1024px) and (max-height: 480px) and (orientation: landscape) {
-  /* 中文：手机横屏纵向空间有限，生成页客服入口缩成圆球并移到工作区顶部。 */
+  /* 手机横屏纵向空间有限，生成页客服入口缩成圆球并移到工作区顶部。 */
   .console-frame:has(.playground-console-page) > .manuscript-support-widget,
   .console-frame:has(.image-console-page) > .manuscript-support-widget,
   .console-frame:has(.video-console-page) > .manuscript-support-widget {
@@ -17670,7 +17670,7 @@ html[data-theme="light"] .login-popover {
   background: rgba(18, 19, 21, 0.88);
 }
 
-/* 中文：Portal 弹窗不在首页布局树内，浅色主题必须单独覆盖其玻璃表面和内容颜色。 */
+/* Portal 弹窗不在首页布局树内，浅色主题必须单独覆盖其玻璃表面和内容颜色。 */
 html[data-theme="light"] .login-drawer-backdrop {
   background: rgba(23, 24, 27, 0.22);
 }
@@ -17819,7 +17819,7 @@ html[data-theme="light"] .login-popover .login-tab.active {
   a:focus-visible::before {
   opacity: 1;
 }
-/* 中文：列宽用 minmax(0, 1fr)，收益位数变长时只缩字号，不撑开卡片宽度 */
+/* 列宽用 minmax(0, 1fr)，收益位数变长时只缩字号，不撑开卡片宽度 */
 .public-layout--manuscript-home .manuscript-reward-stats {
   position: absolute;
   top: 341px;
@@ -18700,7 +18700,7 @@ html[data-theme="light"] .login-popover .wechat-qr-remote {
   color: #626975;
 }
 
-/* 中文：客服面板沿用浅色玻璃层，触发按钮仍保持深色以维持右下角识别度。 */
+/* 客服面板沿用浅色玻璃层，触发按钮仍保持深色以维持右下角识别度。 */
 html[data-theme="light"] .manuscript-support-panel {
   border-color: rgba(23, 24, 27, 0.14);
   color: #17181b;
@@ -18714,7 +18714,7 @@ html[data-theme="dark"] .manuscript-support-assistant-button {
   background: #fff;
   box-shadow: 0 6px 16px rgba(40, 31, 56, 0.14);
 }
-/* 中文：深浅主题的 hover 与基础规则一致，仅切换为渐变描边。 */
+/* 深浅主题的 hover 与基础规则一致，仅切换为渐变描边。 */
 html[data-theme="light"] .manuscript-support-assistant-button:hover,
 html[data-theme="dark"] .manuscript-support-assistant-button:hover {
   border-color: transparent;
@@ -19012,7 +19012,7 @@ html[data-theme="light"] .manuscript-support-notification-copy time {
   background: var(--color-action-primary);
 }
 
-/* 中文：治理页复用后台统一页面边距，并为角色名称保留更充足的目录宽度。 */
+/* 治理页复用后台统一页面边距，并为角色名称保留更充足的目录宽度。 */
 .enterprise-governance-content {
   display: grid;
   gap: 0;
@@ -19020,7 +19020,7 @@ html[data-theme="light"] .manuscript-support-notification-copy time {
   min-width: 0;
   padding-inline: var(--console-page-gutter);
 }
-/* 中文：让角色栏相对页面滚动吸顶，避免控制台外层 overflow 阻断 sticky。 */
+/* 让角色栏相对页面滚动吸顶，避免控制台外层 overflow 阻断 sticky。 */
 .console-main-layout:has(.enterprise-governance-content) {
   overflow: visible;
 }
@@ -19162,7 +19162,7 @@ html[data-theme="light"] .manuscript-support-notification-copy time {
 }
 .enterprise-governance-main {
   display: grid;
-  /* 中文：权限标题与下方矩阵内容采用设置页同样的紧凑间距。 */
+  /* 权限标题与下方矩阵内容采用设置页同样的紧凑间距。 */
   gap: var(--spacing-12);
   min-width: 0;
 }
@@ -19411,7 +19411,7 @@ html[data-theme="light"] .manuscript-support-notification-copy time {
   }
 }
 
-/* 中文：移动端降低高斯模糊采样成本，保留弹层的层次感。 */
+/* 移动端降低高斯模糊采样成本，保留弹层的层次感。 */
 @media (max-width: 720px) {
   .public-layout--manuscript-home {
     background-attachment: scroll;
@@ -19427,7 +19427,7 @@ html[data-theme="light"] .manuscript-support-notification-copy time {
   }
 }
 
-/* 中文：全局尊重系统减弱动效设置，覆盖路由页面和组件的过渡动画。 */
+/* 全局尊重系统减弱动效设置，覆盖路由页面和组件的过渡动画。 */
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
@@ -19443,7 +19443,7 @@ html[data-theme="light"] .manuscript-support-notification-copy time {
   }
 }
 
-/* 中文：时间范围弹层沿用目标页的双月日历交互，桌面端快捷项与日历并排。 */
+/* 时间范围弹层沿用目标页的双月日历交互，桌面端快捷项与日历并排。 */
 .analytics-time-range-picker {
   position: relative;
   min-width: 220px;
@@ -19764,7 +19764,7 @@ html[data-theme="light"] .manuscript-support-notification-copy time {
   justify-content: center;
   margin: 0;
 }
-/* 中文：logo 源图比例约 5.45:1，容器按同比例取 267x49 并用 contain 完整显示，避免 cover 裁切左右两侧 */
+/* logo 源图比例约 5.45:1，容器按同比例取 267x49 并用 contain 完整显示，避免 cover 裁切左右两侧 */
 :is(.login-popover, .login-card) .login-panel-logo .brand-logo-image {
   width: 267px;
   max-width: 100%;
@@ -19854,7 +19854,7 @@ html[data-theme="light"] .manuscript-support-notification-copy time {
   pointer-events: none;
 }
 
-/* 中文：微信 WebView 和低性能触控设备优先保证滚动稳定，保留内容与交互，仅降级装饰动画。 */
+/* 微信 WebView 和低性能触控设备优先保证滚动稳定，保留内容与交互，仅降级装饰动画。 */
 html[data-performance="lite"]
   .public-layout--manuscript-home
   .manuscript-partner-track.is-forward,
@@ -21275,7 +21275,7 @@ html[data-theme="light"] .account-settings-sidebar {
   background: #fff;
 }
 
-/* 中文：对话与视频输入栏和所在工作区使用同一背景层级，避免底部出现额外色块。 */
+/* 对话与视频输入栏和所在工作区使用同一背景层级，避免底部出现额外色块。 */
 .playground-console-page .composer-box,
 .video-console-page .video-composer-box {
   background: var(--color-bg-base-default) !important;
@@ -21289,7 +21289,7 @@ html[data-theme="dark"] .video-console-page .video-composer-box {
   background: var(--color-bg-base-tertiary);
   color: var(--color-text-default);
 }
-/* 中文：浅色主题下控制台侧栏与顶部导航统一使用纯白背景，避免被灰色主题层次稀释。 */
+/* 浅色主题下控制台侧栏与顶部导航统一使用纯白背景，避免被灰色主题层次稀释。 */
 html[data-theme="light"] .console-sider,
 html[data-theme="light"] .console-sidebar {
   background: #fff;
@@ -21499,7 +21499,7 @@ html[data-theme="light"]
   .manuscript-partner-item {
   color: #17181b;
 }
-/* 中文：浅色主题下合作伙伴 hover/focus 仅放大图标，不再绘制整块背景。 */
+/* 浅色主题下合作伙伴 hover/focus 仅放大图标，不再绘制整块背景。 */
 html[data-theme="light"]
   .public-layout--manuscript-home
   .manuscript-partner-grid
@@ -21554,9 +21554,9 @@ html[data-theme="light"]
   );
 }
 
-/* 中文：网格级遮罩统一覆盖两行轨道，并硬裁掉最边缘的动画合成像素。 */
+/* 网格级遮罩统一覆盖两行轨道，并硬裁掉最边缘的动画合成像素。 */
 @media (min-width: 721px) {
-  /* 中文：桌面端只使用网格级遮罩，避免逐行遮罩叠加后产生边缘色差。 */
+  /* 桌面端只使用网格级遮罩，避免逐行遮罩叠加后产生边缘色差。 */
   .public-layout--manuscript-home .manuscript-partner-row.is-scrolling::before,
   .public-layout--manuscript-home .manuscript-partner-row.is-scrolling::after {
     content: none;
@@ -21783,7 +21783,7 @@ html[data-theme="light"]
   }
 }
 
-/* 中文：控制台入口沿用语言切换器的胶囊几何，但主题颜色按需求反转。 */
+/* 控制台入口沿用语言切换器的胶囊几何，但主题颜色按需求反转。 */
 .public-header.public-header--home .console-entry,
 .public-header.public-header--home .console-entry:hover,
 .public-header.public-header--home .console-entry:focus-visible {
@@ -21801,17 +21801,17 @@ html[data-theme="light"] .public-header.public-header--home .console-entry:focus
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
 }
 
-/* 中文：指定的登录、二维码重试和充值按钮统一为查看模型的黑白毛玻璃胶囊。 */
+/* 指定的登录、二维码重试和充值按钮统一为查看模型的黑白毛玻璃胶囊。 */
 :is(.login-capsule-action, .login-capsule-soft, .header-login-capsule) {
   position: relative;
   isolation: isolate;
-  /* 中文：公共胶囊按钮也使用查看模型的描边参数，确保遮罩不会因变量缺失而裁空。 */
+  /* 公共胶囊按钮也使用查看模型的描边参数，确保遮罩不会因变量缺失而裁空。 */
   --manuscript-model-button-radius: 999px;
   --manuscript-model-rim-width: 2px;
   overflow: visible;
   border: 2px solid transparent !important;
   border-radius: var(--manuscript-model-button-radius) !important;
-  /* 中文：深色模式使用白底黑字，浅色模式在下方反转为黑底白字。 */
+  /* 深色模式使用白底黑字，浅色模式在下方反转为黑底白字。 */
   color: #1f2329 !important;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, .96), rgba(255, 255, 255, .84) 46%, rgba(255, 255, 255, .94)),
@@ -21822,7 +21822,7 @@ html[data-theme="light"] .public-header.public-header--home .console-entry:focus
     inset 0 1px 0 rgba(255, 255, 255, .72),
     inset 0 -1px 3px rgba(0, 0, 0, .06) !important;
   transform: none !important;
-  /* 中文：只过渡颜色与阴影，hover 不改变按钮位置。 */
+  /* 只过渡颜色与阴影，hover 不改变按钮位置。 */
   transition:
     background .2s ease,
     box-shadow .2s ease,
@@ -21833,7 +21833,7 @@ html[data-theme="light"] .public-header.public-header--home .console-entry:focus
   position: absolute;
   inset: calc(-1 * var(--manuscript-model-rim-width));
   z-index: 0;
-  /* 中文：外扩描边增加同等圆角半径，使四角与按钮本体保持同心。 */
+  /* 外扩描边增加同等圆角半径，使四角与按钮本体保持同心。 */
   border-radius: calc(var(--manuscript-model-button-radius) + var(--manuscript-model-rim-width));
   background: conic-gradient(
     from var(--manuscript-model-rim-angle),
@@ -21863,14 +21863,14 @@ html[data-theme="light"] .public-header.public-header--home .console-entry:focus
 
 html[data-theme="light"]
   :is(.login-capsule-action, .login-capsule-soft, .header-login-capsule) {
-  /* 中文：浅色模式保持与查看模型一致的黑色实体玻璃底。 */
+  /* 浅色模式保持与查看模型一致的黑色实体玻璃底。 */
   background:
     linear-gradient(180deg, rgba(255, 255, 255, .085), rgba(255, 255, 255, .014) 44%, rgba(255, 255, 255, 0) 64%),
     rgba(10, 12, 10, .92) !important;
   color: #fff !important;
 }
 
-/* 中文：图二至图四的浅色模式统一使用黑底白字，并保留现有的黑色与阴影参数。 */
+/* 图二至图四的浅色模式统一使用黑底白字，并保留现有的黑色与阴影参数。 */
 html[data-theme="light"]
   :is(.login-capsule-soft, .header-login-capsule) {
   background:
@@ -21884,12 +21884,12 @@ html[data-theme="light"]
     inset 0 -1px 3px rgba(255, 255, 255, .05) !important;
 }
 
-/* 中文：深色主题下的白底黑字按钮只做轻微压灰，不放大也不上浮。 */
+/* 深色主题下的白底黑字按钮只做轻微压灰，不放大也不上浮。 */
 html[data-theme="dark"]
   :is(.login-capsule-action, .login-capsule-soft, .header-login-capsule):hover:not(:disabled):not(.semi-button-disabled),
 html[data-theme="dark"]
   :is(.login-capsule-action, .login-capsule-soft, .header-login-capsule):focus-visible:not(:disabled):not(.semi-button-disabled) {
-  /* 中文：白底黑字状态只轻微压低亮度，给出柔和但可感知的 hover。 */
+  /* 白底黑字状态只轻微压低亮度，给出柔和但可感知的 hover。 */
   background:
     linear-gradient(180deg, rgba(255, 255, 255, .94), rgba(255, 255, 255, .82) 46%, rgba(255, 255, 255, .92)),
     #f7f7f7 !important;
@@ -21900,7 +21900,7 @@ html[data-theme="dark"]
     inset 0 -1px 3px rgba(0, 0, 0, .055) !important;
 }
 
-/* 中文：浅色主题下当前黑色按钮只做轻微压暗，保持文字和布局稳定。 */
+/* 浅色主题下当前黑色按钮只做轻微压暗，保持文字和布局稳定。 */
 html[data-theme="light"]
   :is(.login-capsule-action, .login-capsule-soft, .header-login-capsule):hover:not(:disabled):not(.semi-button-disabled),
 html[data-theme="light"]
@@ -21915,7 +21915,7 @@ html[data-theme="light"]
     inset 0 -1px 3px rgba(0, 0, 0, .16) !important;
 }
 
-/* 中文：费用下拉链接的文字规则优先级较高，单独同步深浅主题的反转颜色。 */
+/* 费用下拉链接的文字规则优先级较高，单独同步深浅主题的反转颜色。 */
 .public-header .header-nav a.billing-hover-recharge.login-capsule-soft,
 .public-header .header-nav a.billing-hover-recharge.login-capsule-soft > span {
   color: #1f2329 !important;
@@ -21929,7 +21929,7 @@ html[data-theme="light"]
   -webkit-text-fill-color: #fff !important;
 }
 
-/* 中文：图五控制台入口按主题反转黑白，浅色黑底白字，深色白底黑字。 */
+/* 图五控制台入口按主题反转黑白，浅色黑底白字，深色白底黑字。 */
 .public-header.public-header--home .console-entry {
   border-color: #fff;
   color: #1f2329;
@@ -21945,7 +21945,7 @@ html[data-theme="dark"]
   .public-header.public-header--home .console-entry:hover,
 html[data-theme="dark"]
   .public-header.public-header--home .console-entry:focus-visible {
-  /* 中文：白底黑字的控制台入口只轻微压灰并增强阴影，不改变尺寸和位置。 */
+  /* 白底黑字的控制台入口只轻微压灰并增强阴影，不改变尺寸和位置。 */
   border-color: #fff;
   color: #1f2329;
   background: #f7f7f7;
@@ -21963,13 +21963,13 @@ html[data-theme="light"]
   .public-header.public-header--home .console-entry:hover,
 html[data-theme="light"]
   .public-header.public-header--home .console-entry:focus-visible {
-  /* 中文：浅色主题当前黑底轻微压暗，保持文字对比度和按钮位置稳定。 */
+  /* 浅色主题当前黑底轻微压暗，保持文字对比度和按钮位置稳定。 */
   border-color: #17191c;
   color: #fff;
   background: #17191c;
   box-shadow: 0 3px 8px rgba(0, 0, 0, .28);
 }
-/* 中文：控制台入口不使用全局按钮的位移动效。 */
+/* 控制台入口不使用全局按钮的位移动效。 */
 .public-header.public-header--home .console-entry:hover,
 .public-header.public-header--home .console-entry:focus-visible {
   transform: none;
@@ -21979,7 +21979,7 @@ html[data-theme="light"]
   opacity: .52;
 }
 
-/* 中文：费用下拉的“立即充值”不需要彩色 conic 描边，隐藏胶囊外圈并去掉预留的透明边框。 */
+/* 费用下拉的“立即充值”不需要彩色 conic 描边，隐藏胶囊外圈并去掉预留的透明边框。 */
 .billing-hover-recharge.login-capsule-soft {
   border-width: 0 !important;
 }

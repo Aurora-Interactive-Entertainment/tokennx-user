@@ -13,7 +13,7 @@ export interface BillingRedemptionDialogProps {
   onAuthFailure?: () => void
 }
 
-/** 中文：兑换码弹窗只负责输入与提交，余额刷新由账单页在成功后统一触发。 */
+/** 兑换码弹窗只负责输入与提交，余额刷新由账单页在成功后统一触发。 */
 export function BillingRedemptionDialog({ visible, onClose, onSuccess, onAuthFailure }: BillingRedemptionDialogProps) {
   const [code, setCode] = useState('')
   const [error, setError] = useState('')

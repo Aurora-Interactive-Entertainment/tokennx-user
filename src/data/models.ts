@@ -59,7 +59,7 @@ export interface ModelRecord {
   throughput: ModelThroughput
   maxOutput?: string
   params?: Record<string, string[] | number[]>
-  // 中文：保留后端原始价格明细，视频价格示例可据此展示不同计费场景。
+  // 保留后端原始价格明细，视频价格示例可据此展示不同计费场景。
   prices?: UserModelPrice[]
 }
 
@@ -78,7 +78,7 @@ export function modelRouteKey(model: Pick<ModelRecord, 'id' | 'alias'>): string 
   return alias || undefined
 }
 
-// 中文：权限接口仍兼容历史模型编码，但页面模型对象优先使用公开 ID。
+// 权限接口仍兼容历史模型编码，但页面模型对象优先使用公开 ID。
 export function modelPermissionKey(model: Pick<ModelRecord, 'id' | 'code'>): string {
   return model.code?.trim() || model.id.trim()
 }
@@ -124,7 +124,7 @@ function formatUserModelThroughput(totalTokens: string | number | undefined): Mo
     : totalTokens?.trim() ?? ''
   if (!/^\d+$/.test(raw)) return { value: USER_MODEL_UNKNOWN_THROUGHPUT, unit: USER_MODEL_UNKNOWN_DATA_LABEL }
 
-  // 中文：累计值在接口中保持整数，页面仅在展示层换算单位，不改变服务端原始统计口径。
+  // 累计值在接口中保持整数，页面仅在展示层换算单位，不改变服务端原始统计口径。
   const value = Number(raw)
   if (!Number.isFinite(value)) return { value: USER_MODEL_UNKNOWN_THROUGHPUT, unit: USER_MODEL_UNKNOWN_DATA_LABEL }
   if (value >= USER_MODEL_TOKEN_BILLION) return { value: Number((value / USER_MODEL_TOKEN_BILLION).toFixed(2)), unit: 'B tokens' }

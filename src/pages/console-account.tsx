@@ -137,7 +137,7 @@ const API_KEY_USAGE_WARNING_THRESHOLD = 80;
 const API_KEY_PAGE_SIZE = 10;
 const PERSONAL_USAGE_MANAGEMENT_PATH = "/console/usage?tab=management";
 
-// 中文：分页批量选择只增删当前页，保留用户在其他页面已经选中的密钥。
+// 分页批量选择只增删当前页，保留用户在其他页面已经选中的密钥。
 export function updateSelectedKeyIDs(
   selectedIDs: string[],
   pageIDs: string[],
@@ -166,7 +166,7 @@ function emptyApiKeyForm(): ApiKeyFormState {
     scope: "all",
     modelIds: [],
     billingSource: "balance",
-    // 中文：默认仅展示基础信息，限制配置由用户主动开启后再展开。
+    // 默认仅展示基础信息，限制配置由用户主动开启后再展开。
     limitsEnabled: false,
     costLimitYuan: "",
     rpm: "",
@@ -175,7 +175,7 @@ function emptyApiKeyForm(): ApiKeyFormState {
   };
 }
 
-// 中文：白名单暂未接入后端，先按常见的 IPv4/IPv6 地址及 CIDR 格式做前端校验。
+// 白名单暂未接入后端，先按常见的 IPv4/IPv6 地址及 CIDR 格式做前端校验。
 function isValidIPv4(value: string): boolean {
   const parts = value.split(".");
   return parts.length === 4 && parts.every((part) =>
@@ -240,7 +240,7 @@ function apiDateLabel(value: ApiTimeValue | null): string {
 function expiryToRFC3339(value: number | null): string | null {
   if (value === null) return null;
   const date = new Date(value);
-  // 中文：接口要求 RFC3339 UTC 字符串；无效日期按未设置处理，避免提交数字时间戳触发 400。
+  // 接口要求 RFC3339 UTC 字符串；无效日期按未设置处理，避免提交数字时间戳触发 400。
   return Number.isNaN(date.getTime()) ? null : date.toISOString();
 }
 
@@ -255,7 +255,7 @@ function numberLabel(value: number | null): string {
     : value.toLocaleString(getActiveLocale());
 }
 
-// 中文：用户只通过模型名称、厂商和别名识别模型，内部模型 id 只用于提交权限关联。
+// 用户只通过模型名称、厂商和别名识别模型，内部模型 id 只用于提交权限关联。
 function apiKeyModelLabel(
   model: { id: string; name: string; company: string; alias?: string },
   t: TFunction,
@@ -267,7 +267,7 @@ function apiKeyModelLabel(
   });
 }
 
-// 中文：部门接口按父级分页返回，筛选栏需要递归加载并展平完整部门目录。
+// 部门接口按父级分页返回，筛选栏需要递归加载并展平完整部门目录。
 async function loadEnterpriseApiKeyDepartments(
   enterpriseID: string,
   signal: AbortSignal,
@@ -307,7 +307,7 @@ export function ApiKeysPage({
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const authFailureHandled = useRef(false);
-  // 中文：页面会并行读取多个资源；同一轮 401 只清理一次会话并跳转登录页。
+  // 页面会并行读取多个资源；同一轮 401 只清理一次会话并跳转登录页。
   const handleAuthFailure = useCallback((error: unknown): boolean => {
     if (!isAuthenticationFailure(error)) return false;
     if (!authFailureHandled.current) {
@@ -321,7 +321,7 @@ export function ApiKeysPage({
   const store = useAppStore();
   const currentUserID = useAppSelector((state) => state.auth.user?.id ?? "");
   const [modalVisible, setModalVisible] = useState(false);
-  // 中文：创建成功后仅在结果弹窗生命周期内保留完整密钥，关闭后立即从页面状态清除。
+  // 创建成功后仅在结果弹窗生命周期内保留完整密钥，关闭后立即从页面状态清除。
   const [createdSecret, setCreatedSecret] = useState<string | null>(null);
   const [editingKey, setEditingKey] = useState<UserApiKey | null>(null);
   const [form, setForm] = useState<ApiKeyFormState>(emptyApiKeyForm);
@@ -365,7 +365,7 @@ export function ApiKeysPage({
     [store.activeWorkspace.id, store.activeWorkspace.type],
   );
   const workspaceKey = workspaceContextKey(workspaceContext);
-  // 中文：企业批量更新接口只支持模型、费用来源和限制配置；本人密钥仍可走完整 PUT。
+  // 企业批量更新接口只支持模型、费用来源和限制配置；本人密钥仍可走完整 PUT。
   const enterpriseOwnKeyEditing = Boolean(
     mode === "enterprise" &&
       editingKey &&
@@ -456,7 +456,7 @@ export function ApiKeysPage({
     let active = true;
     setMembersLoading(true);
     setMembersError("");
-    // 中文：企业 API Key 可分配给在职或停用成员；省略状态参数以使用接口默认的两类合集。
+    // 企业 API Key 可分配给在职或停用成员；省略状态参数以使用接口默认的两类合集。
     getEnterpriseMembers(
       { enterprise_id: workspaceContext.enterprise_id },
       {
@@ -499,7 +499,7 @@ export function ApiKeysPage({
     }
     const controller = new AbortController();
     let active = true;
-    // 中文：切换订阅计费后必须重新读取当前空间权益，不能复用余额模型目录或旧表单选择。
+    // 切换订阅计费后必须重新读取当前空间权益，不能复用余额模型目录或旧表单选择。
     setSubscriptionModels({
       loading: true,
       error: "",
@@ -516,7 +516,7 @@ export function ApiKeysPage({
           hasSubscription: value.has_subscription,
           models,
         });
-        // 中文：查询成功后自动全选订阅模型；用户随后可以在下拉框中取消部分模型。
+        // 查询成功后自动全选订阅模型；用户随后可以在下拉框中取消部分模型。
         setForm((previous) =>
           previous.billingSource === "subscription"
             ? {
@@ -605,7 +605,7 @@ export function ApiKeysPage({
   }
 
   function changeBillingSource(source: ApiKeyFormState["billingSource"]): void {
-    // 中文：余额与订阅模型目录相互独立，切回余额时清空订阅选择，防止跨来源提交旧模型。
+    // 余额与订阅模型目录相互独立，切回余额时清空订阅选择，防止跨来源提交旧模型。
     if (source === "balance") {
       setSubscriptionModels(EMPTY_SUBSCRIPTION_MODELS);
       updateForm({ billingSource: source, scope: "all", modelIds: [] });
@@ -651,7 +651,7 @@ export function ApiKeysPage({
     setForm({
       name: key.name,
       tagsText: key.tags.join(", "),
-      // 中文：白名单尚未由接口返回，编辑旧密钥时保持为空，后续接入字段后再回填。
+      // 白名单尚未由接口返回，编辑旧密钥时保持为空，后续接入字段后再回填。
       whitelistText: "",
       memberID: "",
       expiresAt: key.expires_at,
@@ -714,7 +714,7 @@ export function ApiKeysPage({
       updateForm({ expiresAt: null });
       return;
     }
-    // 中文：编辑时允许恢复到打开表单时的原始到期日。
+    // 编辑时允许恢复到打开表单时的原始到期日。
     if (value === "current") {
       setExpiryPreset("current");
       updateForm({ expiresAt: editingKey?.expires_at ?? null });
@@ -747,7 +747,7 @@ export function ApiKeysPage({
       nextRequiredErrors.memberID = t("console.account.memberRequired");
     }
     if (nextRequiredErrors.name || nextRequiredErrors.memberID) {
-      // 中文：必填项使用字段内错误反馈，和企业人员管理弹窗保持一致。
+      // 必填项使用字段内错误反馈，和企业人员管理弹窗保持一致。
       setRequiredErrors(nextRequiredErrors);
       return null;
     }
@@ -801,7 +801,7 @@ export function ApiKeysPage({
       }
       const allowedModelIDs = new Set(subscriptionModels.models.map((model) => model.id));
       if (selectedModelIds.some((modelID) => !allowedModelIDs.has(modelID))) {
-        // 中文：只允许提交本次订阅查询返回的模型，避免旧目录或篡改值绕过服务端校验。
+        // 只允许提交本次订阅查询返回的模型，避免旧目录或篡改值绕过服务端校验。
         selectedModelIds = selectedModelIds.filter((modelID) => allowedModelIDs.has(modelID));
       }
       if (!selectedModelIds.length) {
@@ -809,7 +809,7 @@ export function ApiKeysPage({
         return null;
       }
     }
-    // 中文：余额来源不选任何模型时按全部模型提交；订阅来源始终提交非空模型子集。
+    // 余额来源不选任何模型时按全部模型提交；订阅来源始终提交非空模型子集。
     const scope: ApiKeyScope = form.billingSource === "subscription"
       ? "selected"
       : selectedModelIds.length > 0
@@ -850,7 +850,7 @@ export function ApiKeysPage({
       rpm,
       tpm,
       concurrency,
-      // 中文：白名单仅完成前端采集和校验，接口字段就绪后再补入请求体。
+      // 白名单仅完成前端采集和校验，接口字段就绪后再补入请求体。
     };
   }
 
@@ -885,7 +885,7 @@ export function ApiKeysPage({
               }
             : previous,
         );
-        // 中文：保存成功后直接关闭，避免 saving 状态拦截 closeModal。
+        // 保存成功后直接关闭，避免 saving 状态拦截 closeModal。
         setModalVisible(false);
         setEditingKey(null);
         Toast.success(t("console.account.updateSuccess"));
@@ -903,7 +903,7 @@ export function ApiKeysPage({
         setEditingKey(null);
         const secret = (created.secret || created.item.secret || "").trim();
         if (secret) {
-          // 中文：完整密钥只在创建完成后展示一次，避免用户离开弹窗后再次暴露。
+          // 完整密钥只在创建完成后展示一次，避免用户离开弹窗后再次暴露。
           setCreatedSecret(secret);
         } else {
           Toast.success(t("console.account.createSuccess"));
@@ -938,7 +938,7 @@ export function ApiKeysPage({
       selected.map((key) =>
         updateUserApiKey(workspaceContext, key.id, {
           ...input,
-          // 中文：批量编辑只覆盖配置项，保留每条密钥原有的名称和标签。
+          // 批量编辑只覆盖配置项，保留每条密钥原有的名称和标签。
           name: key.name,
           tags: key.tags,
           expires_at:
@@ -1136,10 +1136,10 @@ export function ApiKeysPage({
         return;
       }
     } catch {
-      // 中文：部分内嵌浏览器会拒绝 Clipboard API，继续尝试传统复制方式。
+      // 部分内嵌浏览器会拒绝 Clipboard API，继续尝试传统复制方式。
     }
 
-    // 中文：使用临时文本域兼容非安全上下文和不支持 Clipboard API 的环境。
+    // 使用临时文本域兼容非安全上下文和不支持 Clipboard API 的环境。
     let fallbackSucceeded = false;
     let textarea: HTMLTextAreaElement | null = null;
     try {
@@ -1176,7 +1176,7 @@ export function ApiKeysPage({
   }
 
   const items = result?.items ?? [];
-  // 中文：测试或旧会话没有用户 ID 时保留服务端列表，真实登录会按当前用户收窄企业“我的密钥”。
+  // 测试或旧会话没有用户 ID 时保留服务端列表，真实登录会按当前用户收窄企业“我的密钥”。
   const departmentMemberUserIDs = new Set(
     filterMembers
       .filter((member) => member.department?.id === departmentFilter)
@@ -1196,7 +1196,7 @@ export function ApiKeysPage({
   const totalRows = filteredRows.length;
   const pageCount = Math.max(1, Math.ceil(totalRows / pageSize));
   const currentPage = Math.min(page, pageCount);
-  // 中文：筛选结果变少时自动回到最后一页，避免表格出现空页。
+  // 筛选结果变少时自动回到最后一页，避免表格出现空页。
   useEffect(() => {
     if (page !== currentPage) setPage(currentPage);
   }, [currentPage, page]);
@@ -1205,7 +1205,7 @@ export function ApiKeysPage({
     currentPage * pageSize,
   );
   const enterpriseSelectionEnabled = mode === "enterprise";
-  // 中文：个人和企业密钥页统一只展示核心字段，批量勾选列仍仅在企业页保留。
+  // 个人和企业密钥页统一只展示核心字段，批量勾选列仍仅在企业页保留。
   const showExtendedColumns = false;
   const selectedRows = filteredRows.filter((row) => selectedKeyIDs.includes(row.id));
   const selectedPageRows = rows.filter((row) => selectedKeyIDs.includes(row.id));
@@ -1263,10 +1263,10 @@ export function ApiKeysPage({
     form.modelIds.length === 0 ||
     form.modelIds.length > 256
   );
-  // 中文：所有限制相关配置统一跟随开关展开，避免默认表单过长。
+  // 所有限制相关配置统一跟随开关展开，避免默认表单过长。
   const advancedVisible = form.limitsEnabled;
   const availableModelsLoading = loading && result === null;
-  // 中文：仅首次无数据时整块加载；切换筛选时保留旧数据在表格内叠加加载态，避免整表闪烁。
+  // 仅首次无数据时整块加载；切换筛选时保留旧数据在表格内叠加加载态，避免整表闪烁。
   const initialTableLoading = availableModelsLoading;
   const workspaceLabel =
     store.activeWorkspace.type === "enterprise"
@@ -1283,14 +1283,14 @@ export function ApiKeysPage({
     mode === "enterprise"
       ? t("console.account.enterpriseApiKeysDescription")
       : t("console.account.apiKeysDescription");
-  // 中文：空状态也沿用完整表头，列数随企业选择列和扩展字段保持一致。
+  // 空状态也沿用完整表头，列数随企业选择列和扩展字段保持一致。
   const apiKeyTableColumnCount =
     6 + (showExtendedColumns ? 6 : 0) + (enterpriseSelectionEnabled ? 1 : 0);
   const normalizedFilterMemberSearch = filterMemberSearch
     .trim()
     .toLocaleLowerCase();
   const visibleFilterMembers = filterMembers.filter((member) => {
-    // 中文：部门匹配保留历史成员，但企业密钥接口只允许按在职或暂停成员查询。
+    // 部门匹配保留历史成员，但企业密钥接口只允许按在职或暂停成员查询。
     if (!["active", "suspended"].includes(member.status)) return false;
     const inDepartment =
       departmentFilter === "all" ||
@@ -1428,7 +1428,7 @@ export function ApiKeysPage({
             <tbody>
               {rows.length === 0 ? (
                 loading ? (
-                  // 中文：刷新后暂无数据时在表格内展示加载行，避免空态与加载态来回闪烁。
+                  // 刷新后暂无数据时在表格内展示加载行，避免空态与加载态来回闪烁。
                   <tr>
                     <td colSpan={apiKeyTableColumnCount}>
                       <div className="api-keys-loading api-keys-loading--inline" role="status">
@@ -1868,7 +1868,7 @@ export function ApiKeysPage({
                   </Select.Option>
                 </Select>
               </div>
-              {/* 中文：费用来源与可用模型位置对调，费用来源在上。 */}
+              {/* 费用来源与可用模型位置对调，费用来源在上。 */}
               <fieldset
                 className="api-key-form-field api-key-fieldset api-key-billing-field api-key-advanced-inline-field"
               >
@@ -1902,7 +1902,7 @@ export function ApiKeysPage({
                 <label className="field-label" htmlFor="key-models">
                   {t("console.account.availableModels")}
                 </label>
-                {/* 中文：保留范围单选的无障碍与旧测试入口，视觉交互以 Semi 多选下拉框为准。 */}
+                {/* 保留范围单选的无障碍与旧测试入口，视觉交互以 Semi 多选下拉框为准。 */}
                 <div className="api-key-scope-options">
                   <label className="api-key-scope-radio">
                     <input
@@ -2477,7 +2477,7 @@ export function InvitationsPage() {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const authFailureHandled = useRef(false);
-  // 中文：邀请概览失败时也只触发一次会话失效跳转。
+  // 邀请概览失败时也只触发一次会话失效跳转。
   const handleAuthFailure = useCallback((error: unknown): boolean => {
     if (!isAuthenticationFailure(error)) return false;
     if (!authFailureHandled.current) {
@@ -2555,7 +2555,7 @@ export function InvitationsPage() {
 
   return (
     <div className="page-stack invite-page">
-      {/* 中文：邀请页恢复后台统一标题，不再展示与活动数据无关的用户资料。 */}
+      {/* 邀请页恢复后台统一标题，不再展示与活动数据无关的用户资料。 */}
       <PageTitle
         title={t("console.invitations.title")}
         description={t("console.invitations.description")}

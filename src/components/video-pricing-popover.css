@@ -1,4 +1,4 @@
-/* 中文：弹层挂到 body，避免模型卡片的 overflow 和层叠上下文裁剪内容。 */
+/* 弹层挂到 body，避免模型卡片的 overflow 和层叠上下文裁剪内容。 */
 .video-pricing-popover-portal {
   position: fixed;
   z-index: 2000;
@@ -15,7 +15,7 @@
   border: 1px solid var(--color-border-neutral-l2);
   border-radius: 18px;
   color: var(--color-text-default);
-  /* 中文：使用次级表面色和双层阴影增强弹层与页面背景的层次。 */
+  /* 使用次级表面色和双层阴影增强弹层与页面背景的层次。 */
   background: color-mix(
     in srgb,
     var(--color-bg-base-secondary) 88%,

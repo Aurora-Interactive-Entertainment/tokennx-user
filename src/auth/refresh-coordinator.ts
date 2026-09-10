@@ -49,7 +49,7 @@ function createNonce(): string {
   try {
     if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID()
   } catch {
-    // 中文：随机数不可用时退回时间值，锁仍会通过 owner 和过期时间校验。
+    // 随机数不可用时退回时间值，锁仍会通过 owner 和过期时间校验。
   }
   return `${Date.now()}-${Math.random().toString(36).slice(2)}`
 }
@@ -88,7 +88,7 @@ async function withLocalStorageLock<T>(work: () => Promise<T>): Promise<T> {
   let lock: RefreshLockRecord | null = null
   while (!lock) {
     const current = parseLockRecord(saved.getItem(REFRESH_LOCK_STORAGE_KEY))
-    // 中文：同一标签页的并发认证操作也必须等待当前锁释放，避免退出和刷新同时修改会话。
+    // 同一标签页的并发认证操作也必须等待当前锁释放，避免退出和刷新同时修改会话。
     if (!current || current.expiresAt <= Date.now()) {
       const candidate = {
         owner,
@@ -135,7 +135,7 @@ async function withRefreshLock<T>(work: () => Promise<T>): Promise<T> {
   return withLocalStorageLock(work)
 }
 
-// 中文：退出登录与刷新令牌共用一把锁，避免退出请求和轮换请求交错执行。
+// 退出登录与刷新令牌共用一把锁，避免退出请求和轮换请求交错执行。
 export function withAuthSessionLock<T>(work: () => Promise<T>): Promise<T> {
   return withRefreshLock(work)
 }

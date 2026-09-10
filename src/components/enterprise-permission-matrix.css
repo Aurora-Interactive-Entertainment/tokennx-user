@@ -1,4 +1,4 @@
-/* 中文：权限矩阵保持企业后台的紧凑信息密度，状态列固定为滑块。 */
+/* 权限矩阵保持企业后台的紧凑信息密度，状态列固定为滑块。 */
 .enterprise-governance-permission-matrix {
   display: grid;
   box-sizing: border-box;
@@ -60,7 +60,7 @@
   min-width: 0;
 }
 
-/* 中文：分组标题上下不加分隔线，权限行之间仍保留原有层次。 */
+/* 分组标题上下不加分隔线，权限行之间仍保留原有层次。 */
 .enterprise-governance-permission-row {
   display: grid;
   grid-template-columns: minmax(160px, 0.9fr) minmax(240px, 1.5fr) 48px;
@@ -71,7 +71,7 @@
   border-block: 1px solid var(--color-border-neutral-l1);
 }
 
-/* 中文：相邻内容项共享分隔线，保持上下边框的视觉效果但不产生双线。 */
+/* 相邻内容项共享分隔线，保持上下边框的视觉效果但不产生双线。 */
 .enterprise-governance-permission-row + .enterprise-governance-permission-row {
   border-top: 0;
 }
@@ -108,7 +108,7 @@
   background: var(--color-border-neutral-l3);
 }
 
-/* 中文：权限开关选中态与模型页开关绿色（#33c192）保持一致。 */
+/* 权限开关选中态与模型页开关绿色（#33c192）保持一致。 */
 .enterprise-governance-permission-control .semi-switch-checked,
 .enterprise-governance-permission-control .semi-switch-checked:hover {
   background: #33c192;

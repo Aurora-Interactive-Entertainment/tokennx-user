@@ -287,7 +287,7 @@ function AppLoadingFallback() {
   return <AppLoadingScreen label={t("console.common.loadingPage")} />;
 }
 
-// 中文：每次切换路由后把页面滚动位置复位，避免新页面沿用上一个页面的阅读位置。
+// 每次切换路由后把页面滚动位置复位，避免新页面沿用上一个页面的阅读位置。
 function ScrollToTop() {
   const { pathname, search } = useLocation();
 
@@ -334,7 +334,7 @@ function AuthScopedStoreProvider({ children }: { children: ReactNode }) {
         ? 'personal'
         : 'public'
 
-    // 中文：只同步内部用户 ID 和低敏页面范围，不上传邮箱、手机号或路由查询参数。
+    // 只同步内部用户 ID 和低敏页面范围，不上传邮箱、手机号或路由查询参数。
     syncSentryIdentity({
       userId: userId || null,
       locale: i18n.language.startsWith('en') ? 'en-US' : 'zh-CN',
@@ -342,7 +342,7 @@ function AuthScopedStoreProvider({ children }: { children: ReactNode }) {
     })
   }, [i18n.language, pathname, userId])
 
-  // 中文：账号作用域变化时重新挂载，避免 effect 刷新前短暂渲染上一个账号的历史。
+  // 账号作用域变化时重新挂载，避免 effect 刷新前短暂渲染上一个账号的历史。
   const scopeKey = `${auth.status}:${auth.user?.id ?? ''}`
   return <AppStoreProvider key={scopeKey} userId={userId}>{children}</AppStoreProvider>
 }
@@ -354,7 +354,7 @@ export default function App({ onBootReady }: { onBootReady: () => void }) {
       <ScrollToTop />
       <AuthBootstrap>
         <>
-          {/* 中文：活动弹窗挂在应用入口而非购买页，后续可由接口通过 shouldDisplay/campaign 控制。 */}
+          {/* 活动弹窗挂在应用入口而非购买页，后续可由接口通过 shouldDisplay/campaign 控制。 */}
           <ActivityCampaignModal />
           <AuthScopedStoreProvider>
             <BootReadyWatcher onBootReady={onBootReady} />

@@ -1,9 +1,9 @@
-/* 中文：注销确认弹窗沿用 AppModal 的边框、间距和按钮规范，仅补充正文布局。 */
+/* 注销确认弹窗沿用 AppModal 的边框、间距和按钮规范，仅补充正文布局。 */
 .account-deletion-dialog .semi-modal {
   width: min(600px, calc(100vw - 32px));
 }
 
-/* 中文：账户资料弹窗使用独立遮罩，注销确认层需显式抬高 mask 和内容层级。 */
+/* 账户资料弹窗使用独立遮罩，注销确认层需显式抬高 mask 和内容层级。 */
 .account-deletion-dialog .semi-modal-mask {
   z-index: 2000 !important;
 }
@@ -57,12 +57,12 @@
 
 .account-deletion-confirmation-input:focus,
 .account-deletion-confirmation-input:focus-visible {
-  /* 中文：选中输入框时不使用深色高亮边框，保留低对比度焦点提示。 */
+  /* 选中输入框时不使用深色高亮边框，保留低对比度焦点提示。 */
   border-color: var(--color-border-neutral-l2);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-border-neutral-l3) 22%, transparent);
 }
 
-/* 中文：取消和危险确认按钮统一复用 AppModal footer 的尺寸与交互规范。 */
+/* 取消和危险确认按钮统一复用 AppModal footer 的尺寸与交互规范。 */
 .account-deletion-dialog .account-deletion-cancel-button {
   min-width: 76px !important;
   height: 34px !important;

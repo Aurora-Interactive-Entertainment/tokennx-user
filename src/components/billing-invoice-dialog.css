@@ -1,4 +1,4 @@
-/* 中文：开票弹窗样式独立维护，弹窗外壳、正文滚动和按钮区统一复用 AppModal 规范。 */
+/* 开票弹窗样式独立维护，弹窗外壳、正文滚动和按钮区统一复用 AppModal 规范。 */
 
 .invoice-steps {
   display: flex;
@@ -124,7 +124,7 @@
   min-width: 0;
 }
 
-/* 中文：开票选项直接复用费用 Tab 的下拉控件，并保持表单栅格内可安全收缩。 */
+/* 开票选项直接复用费用 Tab 的下拉控件，并保持表单栅格内可安全收缩。 */
 .invoice-field .billing-filter {
   width: 100%;
   min-width: 0;
@@ -167,7 +167,7 @@
   cursor: default;
 }
 
-/* 中文：固定项目名称使用文案展示，保留与其他只读字段一致的尺寸和边框。 */
+/* 固定项目名称使用文案展示，保留与其他只读字段一致的尺寸和边框。 */
 .invoice-readonly-text {
   display: flex;
   box-sizing: border-box;
@@ -286,7 +286,7 @@
     flex-wrap: wrap;
   }
 
-  /* 中文：窄屏时链接独占一行，避免中英文长文案挤压底部操作按钮。 */
+  /* 窄屏时链接独占一行，避免中英文长文案挤压底部操作按钮。 */
   .invoice-dialog-footer .invoice-enterprise-link {
     min-width: 100%;
     margin-bottom: var(--spacing-4);

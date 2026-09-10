@@ -1,10 +1,10 @@
 import { fetchJson } from './http'
 import { isApiTimestamp, type ApiTimeValue, type ApiTimestamp } from '@/utils/format'
 
-// 中文：认证接口统一使用 Unix 毫秒时间戳表示访问令牌和刷新令牌的过期时间。
+// 认证接口统一使用 Unix 毫秒时间戳表示访问令牌和刷新令牌的过期时间。
 export type AuthTimestamp = number
 
-// 中文：只接受安全整数时间戳，避免非法数值进入令牌续期流程。
+// 只接受安全整数时间戳，避免非法数值进入令牌续期流程。
 export function isAuthTimestamp(value: unknown): value is AuthTimestamp {
   return isApiTimestamp(value)
 }
@@ -23,7 +23,7 @@ export interface AuthUser {
 }
 
 export interface VerificationCodeResult {
-  // 中文：新验证码接口成功体固定为空对象；这些字段仅用于兼容灰度期间的旧后端。
+  // 新验证码接口成功体固定为空对象；这些字段仅用于兼容灰度期间的旧后端。
   destination_masked?: string
   expires_at?: ApiTimeValue
   retry_after_seconds?: number
@@ -67,7 +67,7 @@ export function loginByEmail(destination: string, code: string, inviteCode?: str
   const query = inviteCode?.trim() ? `?invite_code=${encodeURIComponent(inviteCode.trim())}` : ''
   return fetchJson<AuthResult>(`/api/auth/email/login${query}`, {
     method: 'POST',
-    // 中文：设备信息和语言由请求头推断，邀请码只允许放在查询参数中。
+    // 设备信息和语言由请求头推断，邀请码只允许放在查询参数中。
     body: { destination, code },
   })
 }
@@ -106,7 +106,7 @@ export function bindWechatPhone(bindingTicket: string, phone: string, code: stri
   const query = inviteCode?.trim() ? `?invite_code=${encodeURIComponent(inviteCode.trim())}` : ''
   return fetchJson<AuthResult>(`/api/auth/bind-phone${query}`, {
     method: 'POST',
-    // 中文：设备信息和语言通过请求头由服务端推断，绑定接口请求体只保留业务字段。
+    // 设备信息和语言通过请求头由服务端推断，绑定接口请求体只保留业务字段。
     body: { binding_ticket: bindingTicket, phone, code },
   })
 }
@@ -117,7 +117,7 @@ export function refreshSession(refreshToken: string): Promise<AuthResult> {
   if (!refreshPromise) {
     refreshPromise = fetchJson<AuthResult>('/api/auth/refresh', {
       method: 'POST',
-      // 中文：刷新接口只接收刷新令牌，设备信息由服务端从浏览器请求头生成。
+      // 刷新接口只接收刷新令牌，设备信息由服务端从浏览器请求头生成。
       body: { refresh_token: refreshToken },
     }).finally(() => {
       refreshPromise = null

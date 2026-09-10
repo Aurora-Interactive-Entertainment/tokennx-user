@@ -221,7 +221,7 @@ export function reportCriticalApiFailure({
   const normalizedMethod = method.toUpperCase();
   reportedApiErrors.add(error);
 
-  // 中文：不上传后端错误文案或响应体，只用固定异常和低敏结构化信息定位问题。
+  // 不上传后端错误文案或响应体，只用固定异常和低敏结构化信息定位问题。
   const safeError = new Error("Critical API request failed");
   safeError.name = "CriticalApiError";
 

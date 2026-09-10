@@ -296,7 +296,7 @@ function PeopleTrendChart({
       tooltip: {
         trigger: "axis",
         confine: true,
-        // 中文：关闭 tooltip 的默认过渡，避免快速移动时浮层出现拖尾。
+        // 关闭 tooltip 的默认过渡，避免快速移动时浮层出现拖尾。
         transitionDuration: 0,
         axisPointer: {
           type: "cross",

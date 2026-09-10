@@ -1,11 +1,11 @@
-/* 中文：统一标准弹窗的外观基线；业务弹窗只负责宽高和正文内部布局。 */
+/* 统一标准弹窗的外观基线；业务弹窗只负责宽高和正文内部布局。 */
 .app-modal {
   --app-modal-inline-padding: 24px;
   --app-modal-radius: var(--radius-8, 8px);
   --app-modal-button-radius: var(--radius-6, 6px);
 }
 
-/* 中文：className 实际挂载在 portal 外层，尺寸约束必须作用到内部的 Semi 弹窗节点。 */
+/* className 实际挂载在 portal 外层，尺寸约束必须作用到内部的 Semi 弹窗节点。 */
 .app-modal .semi-modal {
   max-width: calc(100vw - 32px);
   max-height: calc(100dvh - 32px);
@@ -26,7 +26,7 @@
   box-shadow: 0 20px 56px rgb(0 0 0 / 28%);
 }
 
-/* 中文：标题、正文和底部操作使用同一组内边距，避免不同弹窗出现跳变。 */
+/* 标题、正文和底部操作使用同一组内边距，避免不同弹窗出现跳变。 */
 .app-modal .semi-modal-content.app-modal-content .semi-modal-header {
   position: relative;
   box-sizing: border-box;
@@ -118,7 +118,7 @@
   min-width: 0;
 }
 
-/* 中文：统一右下角按钮的高度、圆角、文字规格和主题颜色。 */
+/* 统一右下角按钮的高度、圆角、文字规格和主题颜色。 */
 .app-modal .semi-modal-content.app-modal-content .semi-modal-footer .semi-button {
   box-sizing: border-box;
   width: auto;
@@ -171,7 +171,7 @@
   transform: none;
 }
 
-/* 中文：无标题弹窗的关闭按钮仍相对内容层定位；全屏弹窗保留 Semi 的无圆角表现。 */
+/* 无标题弹窗的关闭按钮仍相对内容层定位；全屏弹窗保留 Semi 的无圆角表现。 */
 .app-modal .semi-modal-content.app-modal-content > .semi-modal-body-wrapper .semi-modal-close {
   position: absolute;
 }

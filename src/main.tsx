@@ -15,7 +15,7 @@ import './console-custom-typography.css'
 import './theme/semi-theme-tokens.css'
 import './components/dropdown-options.css'
 
-// 中文：监控必须先于 React 挂载初始化，才能捕获首屏和懒加载阶段的致命异常。
+// 监控必须先于 React 挂载初始化，才能捕获首屏和懒加载阶段的致命异常。
 initSentry()
 
 function applyInitialPerformanceMode(): void {
@@ -37,7 +37,7 @@ applyInitialPerformanceMode()
 function AppRoot() {
   const releaseBootLoader = useCallback(() => document.documentElement.classList.add('app-ready'), [])
 
-  // 中文：所有路由在首帧释放静态加载层，首页计分板动画在页面可见后继续完成。
+  // 所有路由在首帧释放静态加载层，首页计分板动画在页面可见后继续完成。
   return <Provider store={store}><App onBootReady={releaseBootLoader} /></Provider>
 }
 
@@ -45,7 +45,7 @@ const appMount = document.getElementById('app-mount')
 
 if (!appMount) throw new Error('应用挂载节点不存在')
 
-// 中文：静态加载层独立于 React 根节点，由 App 首帧通知决定淡出时机。
+// 静态加载层独立于 React 根节点，由 App 首帧通知决定淡出时机。
 const rootErrorHandler = createReactRootErrorHandler()
 ReactDOM.createRoot(appMount, rootErrorHandler ? { onUncaughtError: rootErrorHandler } : undefined).render(
   <AppErrorBoundary>

@@ -53,7 +53,7 @@
   background: var(--color-bg-base-secondary);
   font-size: 14px;
 }
-/* 中文：箭头为 SVG 图标，固定 14px 并随网格居中，避免文本字形基线导致的偏下问题。 */
+/* 箭头为 SVG 图标，固定 14px 并随网格居中，避免文本字形基线导致的偏下问题。 */
 .trae-usage-pagination .semi-page-prev svg,
 .trae-usage-pagination .semi-page-next svg { width: 14px; height: 14px; }
 .trae-usage-pagination .semi-page-prev.semi-page-item-disabled,
@@ -131,7 +131,7 @@ html[data-theme="light"] .trae-usage-pagination .semi-page-item-active:hover {
     justify-content: flex-start;
     flex-wrap: wrap;
   }
-  /* 中文：手机端扩大分页与每页条数选择器的可点击区域，同时保持单行可容纳。 */
+  /* 手机端扩大分页与每页条数选择器的可点击区域，同时保持单行可容纳。 */
   .trae-usage-pagination .semi-page-item,
   .trae-usage-pagination .semi-page-prev,
   .trae-usage-pagination .semi-page-next {

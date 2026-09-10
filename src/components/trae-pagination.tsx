@@ -70,7 +70,7 @@ export function TraePagination({
             pageSizeOpts={pageSizeOpts}
             showSizeChanger
             hideOnSinglePage={false}
-            // 中文：改用 SVG 箭头图标替代文本字符，文本字形受基线影响会偏下，SVG 可被网格精确居中。
+            // 改用 SVG 箭头图标替代文本字符，文本字形受基线影响会偏下，SVG 可被网格精确居中。
             prevText={<IconChevronLeft size="small" />}
             nextText={<IconChevronRight size="small" />}
             disabled={disabled}

@@ -46,7 +46,7 @@ export function updatePermissionSelection(
   );
   const next = new Set(current);
 
-  // 中文：开启权限时自动补齐依赖，关闭时同步移除依赖它的权限。
+  // 开启权限时自动补齐依赖，关闭时同步移除依赖它的权限。
   if (selected) {
     const add = (permissionCode: string): void => {
       if (next.has(permissionCode)) return;

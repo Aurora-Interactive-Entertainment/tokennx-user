@@ -1,13 +1,13 @@
-/* 中文：图片生成页与智能对话页共享同一套视口内工作区边界。 */
+/* 图片生成页与智能对话页共享同一套视口内工作区边界。 */
 .console-content:has(.image-console-page) {
-  /* 中文：头部实际高度为 72px，修正此前 64px 导致的 8px 溢出滚动条。 */
+  /* 头部实际高度为 72px，修正此前 64px 导致的 8px 溢出滚动条。 */
   min-height: calc(100vh - 72px);
   min-height: calc(100dvh - 72px);
   position: relative;
   z-index: 45;
 }
 
-/* 中文：工作台仅在桌面端隐藏移动端导航工具栏，移动端需要通过它打开控制台菜单。 */
+/* 工作台仅在桌面端隐藏移动端导航工具栏，移动端需要通过它打开控制台菜单。 */
 @media (min-width: 1025px) {
   .console-content:has(.image-console-page) .console-mobile-toolbar {
     display: none;
@@ -23,7 +23,7 @@
 }
 .image-shell {
   display: grid;
-  /* 中文：展开态历史栏与智能对话页保持同宽，折叠态仍统一为 56px。 */
+  /* 展开态历史栏与智能对话页保持同宽，折叠态仍统一为 56px。 */
   grid-template-columns: 252px minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr);
   height: 100%;
@@ -146,7 +146,7 @@
   margin-top: 12px;
   overflow-y: auto;
 }
-/* 中文：图片生成历史条目的尺寸、交互态和文本截断与智能对话页保持一致。 */
+/* 图片生成历史条目的尺寸、交互态和文本截断与智能对话页保持一致。 */
 .image-history-item {
   display: grid;
   gap: 4px;
@@ -181,7 +181,7 @@
   white-space: nowrap;
 }
 
-/* 中文：历史记录按设计稿保留标题和时间两行，提示词作为辅助信息隐藏。 */
+/* 历史记录按设计稿保留标题和时间两行，提示词作为辅助信息隐藏。 */
 .image-history-item small {
   display: none;
 }
@@ -617,7 +617,7 @@
   transition: opacity 120ms ease, transform 120ms ease, visibility 0s linear 120ms;
   visibility: hidden;
 }
-/* 中文：连接触发按钮与悬浮卡片的透明桥，避免鼠标经过间隙时 Hover 中断。 */
+/* 连接触发按钮与悬浮卡片的透明桥，避免鼠标经过间隙时 Hover 中断。 */
 .image-model-hover-card::before {
   content: "";
   position: absolute;
@@ -936,7 +936,7 @@
   box-shadow: none;
 }
 
-/* 中文：图片生成模型选择弹窗在深色模式使用白底黑字，确保确认按钮醒目但不沉闷。 */
+/* 图片生成模型选择弹窗在深色模式使用白底黑字，确保确认按钮醒目但不沉闷。 */
 html[data-theme="dark"] .image-picker-footer .semi-button:last-child:not(:disabled):not(.semi-button-disabled) {
   color: #17181b;
   background: #fff !important;
@@ -1139,7 +1139,7 @@ html[data-theme="dark"] .image-picker-footer .semi-button:last-child:not(:disabl
   border-radius: 12px;
   background: var(--color-bg-overlay-l1);
 }
-/* 中文：比例选项增加纵向点击空间，选中与未选中状态保持相同尺寸。 */
+/* 比例选项增加纵向点击空间，选中与未选中状态保持相同尺寸。 */
 .image-ratio-grid label {
   box-sizing: border-box;
   padding-block: 10px;
@@ -1225,7 +1225,7 @@ html[data-theme="dark"] .image-picker-footer .semi-button:last-child:not(:disabl
 
 html[data-theme="dark"] .image-shell,
 html[data-theme="dark"] .image-workspace {
-  /* 中文：右侧内容区与智能对话页使用同一层深色背景。 */
+  /* 右侧内容区与智能对话页使用同一层深色背景。 */
   background: var(--color-bg-base-default);
 }
 
@@ -1256,7 +1256,7 @@ html[data-theme="dark"]
   color: var(--color-text-default);
 }
 
-/* 中文：图片生成历史记录与智能对话使用相同的深色悬浮高亮。 */
+/* 图片生成历史记录与智能对话使用相同的深色悬浮高亮。 */
 html[data-theme="dark"] .image-history-item:hover,
 html[data-theme="dark"] .image-history-item:focus-visible {
   background: var(--color-bg-base-tertiary);
@@ -1370,7 +1370,7 @@ html[data-theme="dark"] .image-history-item:focus-visible {
   }
 }
 
-/* 中文：矮视口下底部操作菜单向上展开，避免被输入框遮挡。 */
+/* 矮视口下底部操作菜单向上展开，避免被输入框遮挡。 */
 @media (max-height: 760px) and (min-width: 761px) {
   .image-result-more-menu {
     top: auto;

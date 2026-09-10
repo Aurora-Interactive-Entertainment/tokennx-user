@@ -34,7 +34,7 @@ const MAX_TAX_IDENTIFIER_LENGTH = 128
 const MAX_EMAIL_LENGTH = 320
 const MAX_PROJECT_NAME_LENGTH = 255
 
-// 中文：发票项目名称按税务申报要求固定展示，接口返回的可选项目不参与编辑。
+// 发票项目名称按税务申报要求固定展示，接口返回的可选项目不参与编辑。
 export function getInvoiceDialogOptions(
   response: BillingInvoiceResponse | null,
 ): InvoiceDialogOptions {
@@ -57,7 +57,7 @@ export function getInvoiceDialogOptions(
   }
 }
 
-// 中文：只读字段及下拉初始值均来自当前账务主体的接口响应。
+// 只读字段及下拉初始值均来自当前账务主体的接口响应。
 export function createInvoiceForm(
   response: BillingInvoiceResponse | null,
   workspaceType: Workspace['type'],
@@ -82,7 +82,7 @@ function parseAmount(value: string): number | null {
   return Number.isFinite(amount) && amount > 0 ? amount : null
 }
 
-// 中文：邮箱为选填，其余字段仍在提交前校验接口数据的完整性。
+// 邮箱为选填，其余字段仍在提交前校验接口数据的完整性。
 export function validateInvoiceForm(
   form: InvoiceForm,
   available: string,

@@ -3,17 +3,17 @@ import { readdir, readFile } from 'node:fs/promises'
 import { extname, join, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-// 中文：允许检查隔离的生产产物，不覆盖其他开发窗口正在使用的 dist。
+// 允许检查隔离的生产产物，不覆盖其他开发窗口正在使用的 dist。
 const DIST_DIR = process.argv[2] ? resolve(process.argv[2]) : fileURLToPath(new URL('../dist/', import.meta.url))
 const KIB = 1024
 const budgets = {
   '.js': { raw: 610 * KIB, gzip: 200 * KIB },
-  // 中文：公共页面样式包含首页、文档和排名的响应式主题，代码分块后保留少量共享样式余量。
-  // 中文：企业管理新版页面引入独立的用量/成员/部门布局样式，生产包增加少量 CSS 体积。
+  // 公共页面样式包含首页、文档和排名的响应式主题，代码分块后保留少量共享样式余量。
+  // 企业管理新版页面引入独立的用量/成员/部门布局样式，生产包增加少量 CSS 体积。
   '.css': { raw: 590 * KIB, gzip: 90 * KIB },
 }
 
-// 中文：单文件预算无法防止多个重依赖同时进入首页，额外限制首屏完整静态依赖链。
+// 单文件预算无法防止多个重依赖同时进入首页，额外限制首屏完整静态依赖链。
 const homepageBudgets = {
   '.js': { raw: 1400 * KIB, gzip: 440 * KIB },
   '.css': { raw: 800 * KIB, gzip: 120 * KIB },
@@ -58,7 +58,7 @@ function visitChunk(key) {
   visitedChunks.add(key)
   homepageAssets.add(chunk.file)
   for (const css of chunk.css ?? []) homepageAssets.add(css)
-  // 中文：仅追踪静态导入；用户打开弹窗或跳转页面时才需要的动态模块不计入首屏。
+  // 仅追踪静态导入；用户打开弹窗或跳转页面时才需要的动态模块不计入首屏。
   for (const dependency of chunk.imports ?? []) visitChunk(dependency)
 }
 visitChunk('index.html')

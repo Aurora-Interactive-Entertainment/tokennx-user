@@ -32,7 +32,7 @@ function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-// 中文：购买须知的强调词由翻译资源提供，保证中英文文案保持相同的视觉层级。
+// 购买须知的强调词由翻译资源提供，保证中英文文案保持相同的视觉层级。
 function renderEmphasizedLine(
   line: string,
   emphasis: string[],

@@ -144,7 +144,7 @@ export function EnterpriseRefreshButton({ onClick, label }: { onClick: () => voi
 export function EnterpriseExportButton({ onClick, disabled = false, label }: { onClick: () => void; disabled?: boolean; label?: string }) {
   const { t } = useTranslation()
   const resolvedLabel = label ?? t('console.enterprise.exportCurrent')
-  // 中文：图标组件自带的 aria-label 不能覆盖业务动作名称，按钮统一暴露当前导出动作。
+  // 图标组件自带的 aria-label 不能覆盖业务动作名称，按钮统一暴露当前导出动作。
   return <Button theme="outline" icon={<IconDownload />} aria-label={resolvedLabel} title={resolvedLabel} disabled={disabled} onClick={onClick}>{resolvedLabel}</Button>
 }
 
@@ -229,7 +229,7 @@ export function exportEnterpriseCsv(filename: string, headers: string[], rows: A
   const link = document.createElement('a')
   link.href = url
   link.download = filename
-  // 中文：先让浏览器完成下载触发，再释放 Object URL，兼容部分异步读取下载内容的浏览器。
+  // 先让浏览器完成下载触发，再释放 Object URL，兼容部分异步读取下载内容的浏览器。
   document.body.append(link)
   link.click()
   link.remove()

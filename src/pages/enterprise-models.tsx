@@ -58,7 +58,7 @@ type VisibilitySelection = { departments: string[]; people: string[] };
 
 const PAGE_SIZE = 10;
 
-// 中文：模型目录为分页接口；页面需要完整目录来避免隐藏可管理模型。
+// 模型目录为分页接口；页面需要完整目录来避免隐藏可管理模型。
 async function loadAllEnterpriseModels(
   context: EnterpriseContext,
   signal: AbortSignal,
@@ -105,7 +105,7 @@ function modelIconKey(model: EnterpriseModel): string | undefined {
 }
 
 function normalizeDirectory(data: EnterpriseModelPage): EnterpriseModelPage {
-  // 中文：目录为空时如实展示空状态，不能注入本地演示模型覆盖后端结果。
+  // 目录为空时如实展示空状态，不能注入本地演示模型覆盖后端结果。
   const items = (Array.isArray(data.items) ? data.items : []).map((item) => ({
     ...item,
     iconKey: modelIconKey(item),
@@ -472,7 +472,7 @@ function ModelVisibilityDialog({
     'level-9',
     'level-10',
   ]);
-  // 中文：先切换 visible 触发 AppModal 的退出动画，动画结束后再卸载业务节点。
+  // 先切换 visible 触发 AppModal 的退出动画，动画结束后再卸载业务节点。
   function closeDialog(): void {
     setVisible(false);
   }
@@ -733,7 +733,7 @@ function ModelStateControl({
       const trigger = triggerRef.current;
       if (!trigger) return;
       const rect = trigger.getBoundingClientRect();
-      // 中文：菜单挂到 body 后按按钮右侧对齐，并固定显示在按钮下方。
+      // 菜单挂到 body 后按按钮右侧对齐，并固定显示在按钮下方。
       setMenuPosition({
         top: rect.bottom + 4,
         right: Math.max(8, window.innerWidth - rect.right),
@@ -899,7 +899,7 @@ function ModelsContent({ context }: { context: EnterpriseContext }) {
   const [visibilityDepartments, setVisibilityDepartments] = useState<Department[]>([]);
   const [visibilityPeople, setVisibilityPeople] = useState<VisibilityPerson[]>([]);
 
-  // 中文：错误只通过顶部 Toast 提示，避免错误内容进入页面流导致目录布局跳动。
+  // 错误只通过顶部 Toast 提示，避免错误内容进入页面流导致目录布局跳动。
   function notifyError(nextError: EnterpriseRequestError): void {
     const requestHint = nextError.requestId
       ? ` ${t('console.common.requestIdValue', { requestId: nextError.requestId })}`
@@ -917,7 +917,7 @@ function ModelsContent({ context }: { context: EnterpriseContext }) {
         if (!active) return;
         const normalized = normalizeDirectory(result);
         setData(normalized);
-        // 中文：可见范围以服务端目录为准；旧响应缺失 visibility 时按全员可见兼容。
+        // 可见范围以服务端目录为准；旧响应缺失 visibility 时按全员可见兼容。
         const nextScopes: Record<string, VisibilityScope> = {};
         const nextSelections: Record<string, VisibilitySelection> = {};
         normalized.items.forEach((model) => {
@@ -946,7 +946,7 @@ function ModelsContent({ context }: { context: EnterpriseContext }) {
     if (!openModel) return;
     const controller = new AbortController();
     let active = true;
-    // 中文：只在打开可见范围弹窗时读取目录，避免模型列表页额外发起成员/部门请求。
+    // 只在打开可见范围弹窗时读取目录，避免模型列表页额外发起成员/部门请求。
     void Promise.all([
       loadVisibilityDepartments(context, controller.signal),
       loadVisibilityPeople(context, controller.signal),

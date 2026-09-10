@@ -1,17 +1,17 @@
-/* 中文：设置页只在内容实际溢出时显示页面滚动条，避免空页面长期保留右侧槽位。 */
+/* 设置页只在内容实际溢出时显示页面滚动条，避免空页面长期保留右侧槽位。 */
 html:has(.settings-console-page) {
   scrollbar-gutter: auto;
 }
 
-/* 中文：此页使用文档滚动，避免控制台外层的 overflow 阻断左侧导航吸顶。 */
+/* 此页使用文档滚动，避免控制台外层的 overflow 阻断左侧导航吸顶。 */
 .console-main-layout:has(.settings-redesign-page) {
   overflow: visible;
-  /* 中文：桌面顶栏为 72px，避免沿用 64px 基线造成空页面额外溢出。 */
+  /* 桌面顶栏为 72px，避免沿用 64px 基线造成空页面额外溢出。 */
   min-height: calc(100vh - var(--public-mobile-header-height, 72px));
   min-height: calc(100dvh - var(--public-mobile-header-height, 72px));
 }
 
-/* 中文：个人设置页沿用控制台色彩变量，确保浅色与深色模式保持一致。 */
+/* 个人设置页沿用控制台色彩变量，确保浅色与深色模式保持一致。 */
 .settings-redesign-page {
   --settings-card-bg: var(--color-bg-base-secondary);
   --settings-row-line: var(--color-border-neutral-l1);
@@ -20,7 +20,7 @@ html:has(.settings-console-page) {
   gap: 24px;
 }
 
-/* 中文：标题和内容都贴齐控制台左边界，不再使用设置页的居中宽度。 */
+/* 标题和内容都贴齐控制台左边界，不再使用设置页的居中宽度。 */
 .settings-redesign-page > .page-title-row {
   box-sizing: border-box;
   width: 100%;

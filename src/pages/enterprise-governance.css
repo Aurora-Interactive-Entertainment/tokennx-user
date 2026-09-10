@@ -1,4 +1,4 @@
-/* 中文：角色删除确认弹窗只补充业务宽度和正文布局，外壳、按钮和响应式间距统一复用 AppModal。 */
+/* 角色删除确认弹窗只补充业务宽度和正文布局，外壳、按钮和响应式间距统一复用 AppModal。 */
 .app-modal.enterprise-governance-delete-dialog .semi-modal {
   width: min(440px, calc(100vw - 32px));
 }
@@ -17,7 +17,7 @@
   margin: 0;
 }
 
-/* 中文：删除按钮保留危险色反馈，但不在 hover、focus 或按下时产生位移。 */
+/* 删除按钮保留危险色反馈，但不在 hover、focus 或按下时产生位移。 */
 .enterprise-governance-panel-actions .enterprise-governance-delete-button {
   transform: none;
 }

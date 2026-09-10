@@ -92,7 +92,7 @@ function isGenericLanguage(language: string): boolean {
   return ['', 'plain', 'text'].includes(language.trim().toLowerCase())
 }
 
-// 中文：后端有时只返回 Text 代码块，根据内容推断语法；无法归类时使用通用配置高亮，避免整块单色。
+// 后端有时只返回 Text 代码块，根据内容推断语法；无法归类时使用通用配置高亮，避免整块单色。
 function inferredHighlightLanguage(language: string, code: string): Language {
   if (!isGenericLanguage(language)) return normalizedLanguage(language)
 
@@ -102,7 +102,7 @@ function inferredHighlightLanguage(language: string, code: string): Language {
       JSON.parse(trimmed)
       return 'json'
     } catch {
-      // 中文：不是合法 JSON 时继续检查其他语言特征，避免错误高亮。
+      // 不是合法 JSON 时继续检查其他语言特征，避免错误高亮。
     }
   }
   if (/^(?:\$\s*)?(?:curl|wget|git|npm|pnpm|yarn|pip|docker|kubectl)\b/m.test(trimmed)) return 'bash'

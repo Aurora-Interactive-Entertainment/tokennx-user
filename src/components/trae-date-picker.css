@@ -1,4 +1,4 @@
-/* 中文：统一日期范围输入框尺寸，保证筛选栏在不同页面中保持一致。 */
+/* 统一日期范围输入框尺寸，保证筛选栏在不同页面中保持一致。 */
 .trae-date-picker.semi-datepicker {
   width: 255px;
   min-width: 0;
@@ -27,7 +27,7 @@
   font-size: 13px;
 }
 
-/* 中文：为传送到 body 的日期弹层提供固定布局，避免路由懒加载顺序影响首次测量。 */
+/* 为传送到 body 的日期弹层提供固定布局，避免路由懒加载顺序影响首次测量。 */
 .trae-date-picker-dropdown {
   box-sizing: border-box;
   width: 610px;
@@ -328,7 +328,7 @@ html[data-theme="dark"]
   color: var(--color-text-tertiary);
 }
 
-/* 中文：窄屏允许弹层纵向滚动，同时收紧日期单元，避免超出视口。 */
+/* 窄屏允许弹层纵向滚动，同时收紧日期单元，避免超出视口。 */
 @media (max-width: 560px) {
   .trae-date-picker.semi-datepicker {
     width: 100%;
@@ -353,7 +353,7 @@ html[data-theme="dark"]
     min-height: 320px;
   }
 
-  /* 中文：手机宽度只展示一个完整月份，避免双月面板被裁成无法操作的窄列。 */
+  /* 手机宽度只展示一个完整月份，避免双月面板被裁成无法操作的窄列。 */
   .trae-date-picker-dropdown .semi-datepicker-month-grid-left {
     flex: 1 1 auto;
   }

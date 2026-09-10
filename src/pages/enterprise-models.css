@@ -11,7 +11,7 @@
   margin-left: auto !important;
 }
 
-/* 中文：标题与下方模型列表共用左边界，覆盖后台页面通用标题的水平内边距。 */
+/* 标题与下方模型列表共用左边界，覆盖后台页面通用标题的水平内边距。 */
 .enterprise-console-page.enterprise-models-page > .page-title-row {
   margin-bottom: 16px;
   padding-right: 0 !important;
@@ -194,14 +194,14 @@
   display: inline-flex;
 }
 .enterprise-model-menu {
-  /* 中文：菜单通过 Portal 脱离表格裁切，并始终定位在触发按钮下方。 */
+  /* 菜单通过 Portal 脱离表格裁切，并始终定位在触发按钮下方。 */
   position: fixed;
   z-index: 100;
   min-width: 96px;
   padding: 4px;
   border: 1px solid var(--color-border-neutral-l1);
   border-radius: 6px;
-  /* 中文：使用实色菜单背景，避免与相邻模型行透叠。 */
+  /* 使用实色菜单背景，避免与相邻模型行透叠。 */
   background: var(--color-bg-menu, var(--color-bg-base-secondary));
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.24);
 }
@@ -277,7 +277,7 @@
   text-align: center;
 }
 
-/* 中文：可见范围弹窗复用 AppModal 外壳，业务样式只约束内容布局。 */
+/* 可见范围弹窗复用 AppModal 外壳，业务样式只约束内容布局。 */
 .app-modal.model-visibility-modal .semi-modal {
   width: min(800px, calc(100vw - 32px));
 }

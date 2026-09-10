@@ -7,7 +7,7 @@ import { invalidateAuth } from "@/store/auth-slice";
 import { useNavigate } from "react-router";
 import type { Workspace } from "@/data/app-state";
 
-// 中文：菜单只关心资源前缀，具体动作由企业角色权限矩阵继续控制。
+// 菜单只关心资源前缀，具体动作由企业角色权限矩阵继续控制。
 export const ENTERPRISE_MENU_PERMISSION_PREFIXES = {
   members: ["members."],
   usage: ["usage."],
@@ -151,7 +151,7 @@ export function useEnterpriseMenuAccess(
           navigate("/", { replace: true });
           return;
         }
-        // 中文：权限上下文不可用时只保留基础入口，避免错误状态扩大可见范围。
+        // 权限上下文不可用时只保留基础入口，避免错误状态扩大可见范围。
         setState({ enterpriseID, loading: false, permissions: [] });
       });
     return () => {

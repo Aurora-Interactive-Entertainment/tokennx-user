@@ -32,7 +32,7 @@
   background: transparent;
 }
 
-/* 中文：logo 源图比例约 5.45:1，高度随宽度自适应（height: auto）完整显示，避免 cover 裁切左右两侧 */
+/* logo 源图比例约 5.45:1，高度随宽度自适应（height: auto）完整显示，避免 cover 裁切左右两侧 */
 .public-footer--manuscript .manuscript-footer-logo img {
   display: block;
   width: 100%;
@@ -305,7 +305,7 @@ html[data-theme="light"] .public-footer--manuscript .manuscript-footer-filing-it
     width: 119px;
   }
 
-  /* 中文：移动端同桌面端，高度自适应保证 logo 完整 */
+  /* 移动端同桌面端，高度自适应保证 logo 完整 */
   .public-footer--manuscript .manuscript-footer-logo img {
     width: 100%;
     height: auto;

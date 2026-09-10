@@ -164,7 +164,7 @@ describe('工作空间本地状态', () => {
     expect(store?.playgroundSessions[0]).toMatchObject({ id: sessionId, rounds: 0, contextBreaks: [2] })
     expect(store?.playgroundSessions[0]?.messages).toHaveLength(2)
 
-    // 中文：没有新增消息时重复清除，不应生成连续的空分割线。
+    // 没有新增消息时重复清除，不应生成连续的空分割线。
     act(() => { store?.clearPlaygroundContext(sessionId) })
     expect(store?.playgroundSessions[0]?.contextBreaks).toEqual([2])
   })

@@ -233,7 +233,7 @@ export function RankingRecentUsageChart({ data }: { data: RecentModelUsage }) {
     color: RANKING_SERIES_COLORS[index % RANKING_SERIES_COLORS.length],
   }))
   const total = selectedValues.reduce((sum, item) => sum + item.value, 0)
-  // 中文：悬浮信息框只展示有用量的模型；整周无数据时隐藏整个信息框。
+  // 悬浮信息框只展示有用量的模型；整周无数据时隐藏整个信息框。
   const nonZeroSelectedValues = selectedValues.filter((item) => item.value > 0)
 
   return <>

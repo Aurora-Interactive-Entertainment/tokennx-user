@@ -31,7 +31,7 @@
   gap: 10px;
 }
 
-/* 中文：人员数据四个盒子等宽平分、不设最大宽度；窄屏降为两列保证可读性。 */
+/* 人员数据四个盒子等宽平分、不设最大宽度；窄屏降为两列保证可读性。 */
 .trae-analysis-metric-grid {
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 16px;
@@ -46,12 +46,12 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
-/* 中文：卡片撑满所在网格列，不再限制最大宽度。 */
+/* 卡片撑满所在网格列，不再限制最大宽度。 */
 .trae-analysis-metric-grid .trae-metric-card {
   width: 100%;
 }
 
-/* 中文：窄屏时人员数据降为两列，避免卡片过窄。 */
+/* 窄屏时人员数据降为两列，避免卡片过窄。 */
 @media (max-width: 820px) {
   .trae-analysis-metric-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -248,7 +248,7 @@
   line-height: 1;
 }
 
-/* 中文：浅色模式使用灰白底，降低排行榜序号块与页面背景的黑白反差。 */
+/* 浅色模式使用灰白底，降低排行榜序号块与页面背景的黑白反差。 */
 html[data-theme="light"] .trae-analysis-ranking-rank {
   color: #20b96a;
   background: #f1f2f4;

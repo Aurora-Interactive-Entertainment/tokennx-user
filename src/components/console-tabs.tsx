@@ -16,7 +16,7 @@ interface ConsoleTabsProps {
   ariaLabel?: string
 }
 
-/** 中文：后台页面统一使用 Semi Tabs，保证新增页签沿用同一套交互和视觉规范。 */
+/** 后台页面统一使用 Semi Tabs，保证新增页签沿用同一套交互和视觉规范。 */
 export function ConsoleTabs({ items, activeKey, onChange, className = '', ariaLabel }: ConsoleTabsProps) {
   return (
     <Tabs
@@ -24,7 +24,7 @@ export function ConsoleTabs({ items, activeKey, onChange, className = '', ariaLa
       size="medium"
       activeKey={activeKey}
       onChange={onChange}
-      // 中文：Semi Tabs 的类型要求可变数组，这里复制一份避免修改调用方的只读配置。
+      // Semi Tabs 的类型要求可变数组，这里复制一份避免修改调用方的只读配置。
       tabList={items.map((item) => ({ ...item }))}
       className={`console-tabs${className ? ` ${className}` : ''}`}
       aria-label={ariaLabel}

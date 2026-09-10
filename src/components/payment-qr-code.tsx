@@ -9,7 +9,7 @@ interface PaymentQRCodeProps {
   onError: (error: unknown) => void
 }
 
-// 中文：支付接口返回二维码内容后在当前页面生成 canvas，避免跨域支付页内部尺寸不可控。
+// 支付接口返回二维码内容后在当前页面生成 canvas，避免跨域支付页内部尺寸不可控。
 export function PaymentQRCode({ value, title, errorMessage, onError }: PaymentQRCodeProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [generationFailed, setGenerationFailed] = useState(false)

@@ -33,7 +33,7 @@ describe('站内通知 API 封装', () => {
   })
 
   it('使用 PATCH 标记单条通知已读，使用 POST 标记全部已读', async () => {
-    // 中文：每次请求都返回新的 Response，避免前一次读取响应体后被二次消费。
+    // 每次请求都返回新的 Response，避免前一次读取响应体后被二次消费。
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => response({ read: true }))
     await markNotificationRead('notice/1')
     expect(lastRequest(fetchMock).url).toBe('/api/user/notifications/notice%2F1/read')

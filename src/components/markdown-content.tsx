@@ -137,7 +137,7 @@ function normalizeHtmlCodeBlocks(content: string): string {
     const language = code.className.match(/(?:^|\s)language-([^\s]+)/)?.[1] ?? 'text'
     const value = (code.textContent ?? '').replace(/\r\n?/g, '\n').replace(/^\n|\n$/g, '')
     const fence = value.includes('~~~') ? '````' : '~~~'
-    // 中文：富文本 HTML 中带空行的 pre/code 会被 Markdown 拆段，先恢复为一个标准围栏代码块。
+    // 富文本 HTML 中带空行的 pre/code 会被 Markdown 拆段，先恢复为一个标准围栏代码块。
     pre.replaceWith(parsed.createTextNode(`\n\n${fence}${language}\n${value}\n${fence}\n\n`))
     changed = true
   }
@@ -153,7 +153,7 @@ function normalizeHtmlWrappedMarkdownTables(content: string): string {
   for (const paragraph of parsed.body.querySelectorAll('p')) {
     const value = paragraph.textContent?.trim() ?? ''
     if (!isGfmTable(value)) continue
-    // 中文：富文本接口可能把 Markdown 表格包进 p 标签，拆回文本后交给 GFM 正常生成 table。
+    // 富文本接口可能把 Markdown 表格包进 p 标签，拆回文本后交给 GFM 正常生成 table。
     paragraph.replaceWith(parsed.createTextNode(`\n\n${value}\n\n`))
     changed = true
   }
@@ -188,13 +188,13 @@ function MarkdownImage({ src, alt, resolveImageUrl }: { src?: string; alt?: stri
 export const MarkdownContent = memo(function MarkdownContent({ content, className, enhancedCodeBlocks = false, allowHtml = false, resolveImageUrl }: MarkdownContentProps) {
   const rootClassName = className ? `markdown-content ${className}` : 'markdown-content'
   const normalizedContent = normalizeMalformedTableImages(allowHtml ? normalizeHtmlWrappedMarkdownTables(normalizeHtmlCodeBlocks(content)) : content)
-  // 中文：兼容 React Markdown 与 unified 不同版本的 AST 类型定义。
+  // 兼容 React Markdown 与 unified 不同版本的 AST 类型定义。
   const components: any = {
     img: ({ src, alt }: { src?: string; alt?: string }) => <MarkdownImage src={src} alt={alt} resolveImageUrl={resolveImageUrl} />,
     ...(enhancedCodeBlocks ? {
       pre: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
       code: ({ className: codeClassName, children, node }: { className?: string; children?: React.ReactNode; node?: MarkdownAstNode }) => {
-        // 中文：从 Markdown AST 读取原始文本，避免多段 HTML 代码被转成逗号和 [object Object]。
+        // 从 Markdown AST 读取原始文本，避免多段 HTML 代码被转成逗号和 [object Object]。
         const rawCode = readMarkdownNodeText(node) || String(children ?? '')
         const language = codeClassName?.match(/language-([^\s]+)/)?.[1] ?? 'text'
         const isBlock = Boolean(codeClassName) || rawCode.endsWith('\n')

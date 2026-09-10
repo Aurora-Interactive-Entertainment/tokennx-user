@@ -6,7 +6,7 @@ import "./enterprise-certification-progress.css";
 interface EnterpriseCertificationProgressProps {
   applicantType: EnterpriseApplicantType;
   step: number;
-  // 中文：认证通过时给进度条加 is-verified，用于把已完成/当前步骤渲染为绿色。
+  // 认证通过时给进度条加 is-verified，用于把已完成/当前步骤渲染为绿色。
   verified?: boolean;
 }
 

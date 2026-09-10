@@ -15,7 +15,7 @@ interface MockSupportReply {
 
 export const MOCK_SUPPORT_REPLY_DELAY_MS = 650
 
-// 中文：回复规则集中在 mock 适配层，后续接入真实客服服务时只替换这一层。
+// 回复规则集中在 mock 适配层，后续接入真实客服服务时只替换这一层。
 const MOCK_SUPPORT_REPLIES: Record<SupportLocale, readonly MockSupportReply[]> = {
   'zh-CN': [
     { keywords: ['价格', '收费', '计费'], response: '你可以在价格页查看模型的输入、输出价格和可用率；如果需要，我也可以帮你定位具体模型。' },

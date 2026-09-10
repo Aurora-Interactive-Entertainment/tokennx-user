@@ -5,7 +5,7 @@
 }
 
 .real-name-workspace {
-  /* 中文：page-stack 会统一注入左右边距，使用 auto 避免 width:100% 叠加边距产生横向溢出。 */
+  /* page-stack 会统一注入左右边距，使用 auto 避免 width:100% 叠加边距产生横向溢出。 */
   width: auto;
   max-width: 100%;
   min-width: 0;
@@ -102,7 +102,7 @@
   background: var(--color-action-primary);
 }
 
-/* 中文：认证通过（全部完成）时，当前步骤圆圈也使用绿色成功色。 */
+/* 认证通过（全部完成）时，当前步骤圆圈也使用绿色成功色。 */
 .real-name-stepper.is-verified li.is-current .real-name-step-marker {
   color: #fff;
   background: var(--color-success);
@@ -116,14 +116,14 @@
   color: var(--color-text-default);
 }
 
-/* 中文：已完成步骤同样使用绿色，白勾。 */
+/* 已完成步骤同样使用绿色，白勾。 */
 .real-name-stepper li.is-complete .real-name-step-marker {
   border: 0;
   color: #fff;
   background: var(--color-success);
 }
 
-/* 中文：已完成步骤之间的连接线同步改为绿色。 */
+/* 已完成步骤之间的连接线同步改为绿色。 */
 .real-name-stepper li.is-complete .real-name-step-line {
   background: var(--color-success);
 }
@@ -178,7 +178,7 @@
   font-weight: 400;
 }
 
-/* 中文：统一输入框与下拉框内容的垂直对齐，避免提示文字在控件内偏上或偏下。 */
+/* 统一输入框与下拉框内容的垂直对齐，避免提示文字在控件内偏上或偏下。 */
 .real-name-control > .semi-select .semi-select-selection {
   display: flex;
   align-items: center;
@@ -287,7 +287,7 @@
   text-align: center;
 }
 
-/* 中文：认证完成的大图标同样使用绿色成功色。 */
+/* 认证完成的大图标同样使用绿色成功色。 */
 .real-name-complete-icon {
   display: grid;
   width: 56px;
@@ -366,7 +366,7 @@
 }
 
 .personal-real-name-verification-modal .semi-modal {
-  /* 中文：个人认证弹窗保持紧凑，避免二维码流程占据整块工作区。 */
+  /* 个人认证弹窗保持紧凑，避免二维码流程占据整块工作区。 */
   width: min(720px, calc(100vw - 48px)) !important;
   max-width: none;
   max-height: calc(100dvh - 48px);
@@ -397,7 +397,7 @@
   border: 0;
 }
 
-/* 中文：关闭按钮随弹窗同步缩小，同时保留清晰的键盘焦点反馈。 */
+/* 关闭按钮随弹窗同步缩小，同时保留清晰的键盘焦点反馈。 */
 .personal-real-name-verification-modal .semi-button.semi-modal-close {
   top: 10px;
   right: 10px;
@@ -431,7 +431,7 @@
 
 .personal-real-name-qr-frame {
   position: relative;
-  /* 中文：二维码按容器等比缩放，给浏览器缩放和窄视口预留完整显示空间。 */
+  /* 二维码按容器等比缩放，给浏览器缩放和窄视口预留完整显示空间。 */
   width: min(220px, calc(100vw - 96px));
   aspect-ratio: 1;
   min-width: 0;
@@ -524,7 +524,7 @@
   transform: none;
 }
 
-/* 中文：主按钮过期后仍保留深色底和白字，避免 disabled/hover 状态出现低对比度。 */
+/* 主按钮过期后仍保留深色底和白字，避免 disabled/hover 状态出现低对比度。 */
 .personal-real-name-dialog-actions
   .personal-real-name-dialog-primary-action.semi-button:disabled,
 .personal-real-name-dialog-actions
@@ -576,7 +576,7 @@ html[data-theme="light"] .real-name-step-marker {
   background: #f4f6fa;
 }
 
-/* 中文：浅色模式已完成步骤与默认规则一致，使用绿色成功色。 */
+/* 浅色模式已完成步骤与默认规则一致，使用绿色成功色。 */
 html[data-theme="light"]
   .real-name-stepper
   li.is-complete

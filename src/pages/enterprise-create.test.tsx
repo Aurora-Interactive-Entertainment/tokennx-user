@@ -434,7 +434,7 @@ describe("enterprise verification page", () => {
     getCertificationMock.mockResolvedValue(FACE_REQUIRED);
     confirmFaceMock.mockResolvedValue(FACE_ACTIVE);
     renderPage();
-    // 中文：法人进入核验阶段后会自动发起刷脸并打开二维码弹窗。
+    // 法人进入核验阶段后会自动发起刷脸并打开二维码弹窗。
     expect(await screen.findByRole("dialog")).toBeInTheDocument();
     expect(startFaceMock).toHaveBeenCalledTimes(1);
     await user.click(

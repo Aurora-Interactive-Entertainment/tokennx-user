@@ -1,7 +1,7 @@
 /* Trae-style enterprise workspace. The old enterprise pages keep their own classes and routes. */
 .trae-page { width: 100%; min-width: 0; padding: var(--console-page-gutter, 32px); color: var(--color-text-default); }
 .console-page:has(> .trae-page) { padding-inline: 0; }
-/* 中文：新版企业页标题统一为 30px 行高，并与首个内容块保持 32px 间距。 */
+/* 新版企业页标题统一为 30px 行高，并与首个内容块保持 32px 间距。 */
 .trae-page-heading { display: flex; align-items: center; justify-content: space-between; gap: 20px; min-height: 30px; margin-bottom: 32px; }
 .trae-page-heading h1 { color: var(--color-text-default-hover); font-size: 22px; font-weight: 650; line-height: 30px; }
 .trae-page-heading-action { display: flex; align-items: center; gap: 8px; }
@@ -52,7 +52,7 @@
 .trae-secondary-button { border: 1px solid var(--color-border-neutral-l2); color: var(--color-text-default); background: var(--color-bg-base-tertiary); }
 .trae-secondary-button:hover { border-color: var(--color-border-neutral-l3); background: var(--color-bg-overlay-l3); }
 .trae-primary-button--small, .trae-secondary-button--small { min-height: 30px; padding-inline: 10px; font-size: 11px; }
-/* 中文：用量明细操作链接使用固定蓝色，悬停和键盘聚焦时保持颜色一致。 */
+/* 用量明细操作链接使用固定蓝色，悬停和键盘聚焦时保持颜色一致。 */
 .trae-text-button { min-height: 28px; padding: 0 4px; border: 0; color: #3B7BFF; background: transparent; }
 .trae-text-button:hover, .trae-text-button:focus-visible { color: #3B7BFF; }
 .trae-section { min-width: 0; margin-top: 28px; }
@@ -113,7 +113,7 @@
 .trae-status-badge.is-active i, .trae-status-badge.is-success i { background: var(--color-success); }
 .trae-status-badge.is-pending i { background: #b798e6; }
 .trae-status-badge.is-suspended i, .trae-status-badge.is-failed i { background: #df7b83; }
-/* 中文：人员管理状态徽章，外形与操作日志状态徽章一致（带边框圆角小标签），颜色沿用成员状态语义。 */
+/* 人员管理状态徽章，外形与操作日志状态徽章一致（带边框圆角小标签），颜色沿用成员状态语义。 */
 .trae-member-status-pill { display: inline-flex; width: fit-content; align-items: center; min-height: 20px; padding: 0 7px; border: 1px solid var(--color-border-neutral-l2); border-radius: 4px; color: var(--color-text-secondary); background: var(--color-bg-base-tertiary); font-size: 11px; line-height: 18px; white-space: nowrap; }
 .trae-member-status-pill.is-active { border-color: color-mix(in srgb, var(--color-success) 32%, transparent); color: var(--color-success); }
 .trae-member-status-pill.is-pending { border-color: color-mix(in srgb, #b798e6 34%, transparent); color: #b798e6; }
@@ -261,11 +261,11 @@
 .trae-members-header .trae-secondary-button { color: var(--color-text-default); background: var(--color-bg-overlay-l2); }
 .trae-members-header .trae-primary-button > svg:last-child { width: 14px; height: 14px; }
 .trae-members-page > .trae-tabs { position: relative; gap: 24px; margin: 0; padding: 0 var(--trae-members-page-gutter); border-bottom: 0; }
-/* 中文：Semi Tabs 替换旧手写页签后，沿用人员管理页内容区的左右边距。 */
+/* Semi Tabs 替换旧手写页签后，沿用人员管理页内容区的左右边距。 */
 .trae-members-page > .console-tabs { margin: 0 var(--trae-members-page-gutter) 30px; }
 .trae-members-page > .console-tabs .semi-tabs-tab { margin-right: 24px; padding-inline: 0; font-size: 13px; }
 .trae-members-page > .console-tabs .semi-tabs-tab:last-of-type { margin-right: 0; }
-/* 中文：人员管理页与用量管理页统一，不保留页签容器的整条底线。 */
+/* 人员管理页与用量管理页统一，不保留页签容器的整条底线。 */
 .trae-members-page > .trae-tabs::after { content: none; }
 .trae-members-page > .trae-tabs button { z-index: 1; min-height: 44px; padding-inline: 0; margin-right: 0; font-size: 13px; font-weight: 600; }
 .trae-members-page > .trae-tabs button::after { right: 0; left: 0; }
@@ -307,7 +307,7 @@
 .trae-department-menu button:hover { color: var(--color-text-default-hover); background: var(--color-bg-overlay-l3); }
 .trae-department-menu button.is-danger { color: #F65A5A; }
 .trae-department-expanded-content { display: flex; width: 100%; min-width: 0; min-height: 0; flex-direction: column; overflow: visible; transition: opacity .16s ease; }
-/* 中文：收起时立即隐藏树内容，避免网格收缩期间出现半透明残影或内容透出。 */
+/* 收起时立即隐藏树内容，避免网格收缩期间出现半透明残影或内容透出。 */
 .trae-department-tree.is-collapsed .trae-department-expanded-content { visibility: hidden; opacity: 0; pointer-events: none; }
 
 /* 桌面端由右侧列表决定整行高度，组织树只跟随宽度变化，不参与撑高页面。 */
@@ -369,16 +369,16 @@
 .trae-members-page .trae-semi-member-table .semi-table-tbody > .semi-table-row:nth-child(even) > .semi-table-row-cell { background: var(--color-bg-overlay-l1); }
 .trae-members-page .trae-semi-member-table .semi-table-tbody > .semi-table-row:hover > .semi-table-row-cell { background: var(--color-bg-overlay-l2); }
 .trae-members-page .trae-semi-member-table .semi-table-row-head button { display: inline-flex; border: 0; color: inherit; background: transparent; cursor: pointer; }
-/* 中文：状态列的信息按钮按文字基线对齐，并固定按钮盒尺寸，避免图标向上或向下偏移。 */
+/* 状态列的信息按钮按文字基线对齐，并固定按钮盒尺寸，避免图标向上或向下偏移。 */
 .trae-members-page .trae-semi-member-table .semi-table-row-head .app-info-icon-trigger { display: inline-flex; width: 18px; height: 18px; align-items: center; justify-content: center; padding: 0; vertical-align: middle; line-height: 1; }
 .trae-members-page .trae-semi-member-table .semi-table-row-head .app-info-icon-trigger .app-info-icon { display: block; width: 14px; height: 18px; margin: 0; }
 .trae-members-page .trae-semi-member-table .semi-table-row-head .semi-table-column-sorter { color: var(--color-text-tertiary); }
-/* 中文：表格宽度不足时由 Semi Table body 承载横向滚动，外层只负责布局和边框。 */
+/* 表格宽度不足时由 Semi Table body 承载横向滚动，外层只负责布局和边框。 */
 .trae-members-page .trae-table-scroll:has(.trae-semi-member-table) { overflow-x: auto; overflow-y: hidden; border: 0; scrollbar-color: var(--color-border-neutral-l2) transparent; scrollbar-width: thin; }
 .trae-members-page .trae-table-scroll:has(.trae-semi-member-table)::-webkit-scrollbar { width: 6px; height: 6px; }
 .trae-members-page .trae-table-scroll:has(.trae-semi-member-table)::-webkit-scrollbar-track { background: transparent; }
 .trae-members-page .trae-table-scroll:has(.trae-semi-member-table)::-webkit-scrollbar-thumb { border-radius: 3px; background: var(--color-border-neutral-l2); }
-/* 中文：人员表格统一由 Semi Table 内部承载横向滚动，避免英文列名变长时外层再生成一条滚动条。 */
+/* 人员表格统一由 Semi Table 内部承载横向滚动，避免英文列名变长时外层再生成一条滚动条。 */
 .trae-members-page .trae-member-table-frame { position: relative; min-width: 0; }
 .trae-members-page .trae-member-table-loading { position: absolute; top: 43px; right: 0; bottom: 0; left: 0; z-index: 2; display: flex; min-height: 120px; align-items: center; justify-content: center; gap: 8px; color: var(--color-text-secondary); background: color-mix(in srgb, var(--color-bg-base-secondary) 78%, transparent); font-size: 13px; pointer-events: none; }
 .trae-members-page .trae-semi-member-table .semi-table-body { overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; scrollbar-color: var(--color-border-neutral-l2) transparent; }
@@ -485,7 +485,7 @@
 .trae-subscription-page .trae-payg-row > div { align-self: stretch; align-content: space-between; }
 .trae-subscription-page .trae-page-hint { margin-top: 14px; }
 
-/* 中文：中等宽度下保持内容紧凑，避免新版页面横向空间不足。 */
+/* 中等宽度下保持内容紧凑，避免新版页面横向空间不足。 */
 @media (max-width: 1120px) {
   .trae-usage-person-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
@@ -504,7 +504,7 @@
   .trae-members-header-main { align-items: flex-start; flex-direction: column; gap: 12px; }
   .trae-members-header-stats { flex-wrap: wrap; white-space: normal; }
   .trae-members-page > .trae-tabs { padding: 18px var(--trae-members-page-gutter) 0; overflow-x: auto; }
-  /* 中文：移动端页签与组织树连续排列，避免页签下边距和树顶部留白叠加造成大块空白。 */
+  /* 移动端页签与组织树连续排列，避免页签下边距和树顶部留白叠加造成大块空白。 */
   .trae-members-page > .console-tabs { margin: 0 var(--trae-members-page-gutter) 12px; }
   .trae-members-page > .console-tabs .semi-tabs-tab { font-size: 14px; }
   .trae-members-page > .trae-tabs::after { right: var(--trae-members-page-gutter); left: var(--trae-members-page-gutter); }
@@ -512,10 +512,10 @@
   .trae-departments-management { margin: 16px var(--trae-members-page-gutter) 24px; }
   .trae-members-page > .trae-members-workspace { column-gap: 0; }
   .trae-members-page .trae-department-tree { padding-top: 0; border-right: 0; border-bottom: 1px solid var(--color-border-neutral-l1); }
-  /* 中文：根部门在窄屏占满可用宽度，避免仍保留桌面端 240px 的窄点击区域。 */
+  /* 根部门在窄屏占满可用宽度，避免仍保留桌面端 240px 的窄点击区域。 */
   .trae-members-page .trae-department-node.is-root { width: 100%; max-width: none; }
   .trae-members-page .trae-department-tree.is-collapsed { width: auto; }
-  /* 中文：移动端组织树是独立的栅格行，收起后移除内容，避免留下空白高度。 */
+  /* 移动端组织树是独立的栅格行，收起后移除内容，避免留下空白高度。 */
   .trae-members-page .trae-department-tree.is-collapsed .trae-department-expanded-content { display: none; }
   .trae-members-page .trae-members-table-panel { padding: 20px 0; }
   .trae-members-page .trae-members-table-panel::before { display: none; }
@@ -539,13 +539,13 @@
   .trae-members-page > .trae-tabs button { margin-right: 24px; font-size: 14px; }
   .trae-departments-toolbar { align-items: stretch; flex-direction: column; }
   .trae-departments-toolbar .trae-inline-search { width: 100%; }
-  /* 中文：移动端工具栏控件统一高度，避免加号按钮被全局 button 样式拉高。 */
+  /* 移动端工具栏控件统一高度，避免加号按钮被全局 button 样式拉高。 */
   .trae-members-page .trae-department-toolbar { align-items: center; padding-right: 0; }
   .trae-members-page .trae-department-toolbar > button:first-child,
   .trae-members-page .trae-department-add { width: 32px; height: 32px; min-height: 32px; max-height: 32px; flex-basis: 32px; }
   .trae-members-page .trae-department-toolbar .trae-inline-search,
   .trae-members-page .trae-department-toolbar .trae-inline-search input { height: 32px; min-height: 32px; }
-  /* 中文：企业根节点保持固定行高并居中图标与名称，避免移动端出现上下偏移。 */
+  /* 企业根节点保持固定行高并居中图标与名称，避免移动端出现上下偏移。 */
   .trae-members-page .trae-department-node.is-root { min-height: 40px; height: 40px; margin-bottom: 4px; padding-right: 8px; align-items: center; }
 }
 
@@ -642,7 +642,7 @@
   .trae-usage-detail-download { margin-left: 0; align-self: flex-end; }
   .trae-usage-page-official .trae-toolbar .trae-inline-search--wide, .trae-usage-page-official .trae-toolbar .trae-select.semi-select { width: 100%; }
 }
-/* 中文：企业管理与其它控制台页面统一使用 72px 顶部导航基准。 */
+/* 企业管理与其它控制台页面统一使用 72px 顶部导航基准。 */
 .console-frame:has(.trae-page) .console-sider {
   top: 72px;
 }
@@ -654,7 +654,7 @@
 }
 
 @media (max-width: 1070px) {
-  /* 中文：移动/平板顶栏为响应式高度，企业侧栏必须紧贴顶栏，不能继续使用桌面 72px 偏移。 */
+  /* 移动/平板顶栏为响应式高度，企业侧栏必须紧贴顶栏，不能继续使用桌面 72px 偏移。 */
   .public-header-host.console-frame:has(.trae-page) .console-sider {
     top: var(--public-mobile-header-height, 58px);
   }

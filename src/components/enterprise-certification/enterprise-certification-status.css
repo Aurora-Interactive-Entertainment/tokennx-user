@@ -197,7 +197,7 @@
   color: var(--color-text-default);
 }
 
-/* 中文：弹窗左侧为浅色修改按钮，右侧主操作保持黑白高对比。 */
+/* 弹窗左侧为浅色修改按钮，右侧主操作保持黑白高对比。 */
 html[data-theme="light"] .enterprise-face-dialog-actions .semi-button-solid {
   border-color: #17181b;
   background: #17181b;

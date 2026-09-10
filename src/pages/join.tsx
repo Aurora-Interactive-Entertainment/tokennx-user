@@ -119,7 +119,7 @@ function InvitationPrompt({
 
   useEffect(() => {
     if (!authenticated || !submitAfterLogin || submitting) return;
-    // 中文：登录成功后自动继续提交刚才发起的加入申请，避免用户再次点击。
+    // 登录成功后自动继续提交刚才发起的加入申请，避免用户再次点击。
     setSubmitAfterLogin(false);
     void applyToJoin();
   }, [authenticated, submitAfterLogin, submitting]);
@@ -143,7 +143,7 @@ function InvitationPrompt({
     setSubmitting(true);
     setError(null);
     try {
-      // 中文：新版邀请页不再收集申请说明，登录用户点击后直接提交加入申请。
+      // 新版邀请页不再收集申请说明，登录用户点击后直接提交加入申请。
       await submitInvitationJoin(
         { token, request_message: "" },
         { accessToken: getAccessToken() ?? undefined },
@@ -222,7 +222,7 @@ export function JoinPage() {
     })
       .then((result) => {
         if (active) {
-          // 中文：登录后预览接口可能仍返回旧的 pending 状态，保留本页刚提交的乐观结果。
+          // 登录后预览接口可能仍返回旧的 pending 状态，保留本页刚提交的乐观结果。
           setPreview((current) =>
             current?.pending_request && !result.pending_request
               ? { ...result, pending_request: true }

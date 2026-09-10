@@ -50,7 +50,7 @@ type SubscriptionSummaryWithModels = BillingSummaryResponse & {
   subscriptions?: SubscriptionModelSource[];
 };
 
-// 中文：当前接口尚未统一返回订阅模型字段，保留演示模型作为接口为空时的展示兜底。
+// 当前接口尚未统一返回订阅模型字段，保留演示模型作为接口为空时的展示兜底。
 const DEFAULT_SUBSCRIPTION_MODELS: SubscriptionModel[] = [{ name: "DeepSeek-V4 Flash" }];
 
 function fallbackPlanData(t: (key: string) => string): SubscriptionPlan[] {
@@ -105,7 +105,7 @@ function formatPlanValidity(seconds: number | undefined, language: string): stri
 }
 
 function formatPlanPrice(priceCent: string | number | undefined): { free: boolean; label: string } {
-  // 中文：price_cent 是服务端精确金额字符串，展示时按字符串拆分，避免大整数转 number 丢精度。
+  // price_cent 是服务端精确金额字符串，展示时按字符串拆分，避免大整数转 number 丢精度。
   const raw = String(priceCent ?? '').trim()
   if (!/^\d+$/.test(raw)) return { free: false, label: '¥0.00' }
   const normalized = raw.replace(/^0+(?=\d)/, '')
@@ -217,7 +217,7 @@ function UpgradePlanModal({
   onConfirm: () => void;
 }) {
   const { t } = useTranslation();
-  // 中文：当前免费计划不属于升级目标，只展示三个可购买套餐。
+  // 当前免费计划不属于升级目标，只展示三个可购买套餐。
   const upgradePlans = plans.filter((plan) => !plan.current);
   return (
     <Modal
@@ -288,7 +288,7 @@ export function SubscriptionPage() {
     return models.length > 0 ? models : DEFAULT_SUBSCRIPTION_MODELS;
   }, [summary]);
 
-  // 中文：订阅页沿用账务 summary，保证个人空间和企业空间展示同一套余额上下文。
+  // 订阅页沿用账务 summary，保证个人空间和企业空间展示同一套余额上下文。
   const loadSummary = useCallback(() => {
     if (!context) return;
     const controller = new AbortController();
@@ -337,7 +337,7 @@ export function SubscriptionPage() {
       setPlansLoading(false);
     }).catch((reason: unknown) => {
       if (controller.signal.aborted) return;
-      // 中文：套餐列表失败时保留本地兜底卡片，避免订阅页因辅助接口异常无法使用。
+      // 套餐列表失败时保留本地兜底卡片，避免订阅页因辅助接口异常无法使用。
       setUsingFallbackPlans(true);
       setPlans(fallbackPlans);
       setPlansLoading(false);

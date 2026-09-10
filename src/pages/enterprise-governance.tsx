@@ -42,7 +42,7 @@ type RoleDraft = {
 const MAX_ROLE_COUNT = 50;
 const MAX_ROLE_NAME_LENGTH = 40;
 const MAX_ROLE_DESCRIPTION_LENGTH = 160;
-// 中文：标签服务已下线，权限矩阵只保留仍然可配置的企业资源。
+// 标签服务已下线，权限矩阵只保留仍然可配置的企业资源。
 const ENTERPRISE_GOVERNANCE_RESOURCES = new Set([
   "members",
   "usage",
@@ -548,7 +548,7 @@ function GovernanceContent({ context }: { context: EnterpriseContext }) {
     }
   }
   function requestRemoveRole(): void {
-    // 中文：初次选择角色时编辑器使用派生 draft，不能依赖 roleDraft 判断当前角色是否可删除。
+    // 初次选择角色时编辑器使用派生 draft，不能依赖 roleDraft 判断当前角色是否可删除。
     if (!selectedRole) return;
     if (selectedRole.built_in || selectedRole.owner_role) {
       Toast.warning(t("console.enterprise.governance.cannotDelete"));

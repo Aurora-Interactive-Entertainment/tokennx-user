@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import html from '../../index.html?raw'
 
-// 中文：直接执行 HTML 中的预加载脚本，避免测试实现与真实首屏入口脱节。
+// 直接执行 HTML 中的预加载脚本，避免测试实现与真实首屏入口脱节。
 const preloadScript = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)]
   .map((match) => match[1])
   .find((source) => source.includes('window.__TOKEN_NX_HOMEPAGE_REQUEST__'))

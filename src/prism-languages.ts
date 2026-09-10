@@ -1,6 +1,6 @@
 import { Prism } from 'prism-react-renderer'
 
-// 中文：项目内置轻量 Shell 语法，避免动态 Prism 扩展与 Vite 依赖预构建互相影响。
+// 项目内置轻量 Shell 语法，避免动态 Prism 扩展与 Vite 依赖预构建互相影响。
 Prism.languages.bash = {
   comment: { pattern: /(^|[^\\])#.*/, lookbehind: true },
   string: [
@@ -18,7 +18,7 @@ Prism.languages.bash = {
 Prism.languages.shell = Prism.languages.bash
 Prism.languages.sh = Prism.languages.bash
 
-// 中文：纯文本配置也按 URL、请求头、变量和值着色，保证所有代码示例都有清晰层次。
+// 纯文本配置也按 URL、请求头、变量和值着色，保证所有代码示例都有清晰层次。
 Prism.languages.nxconfig = {
   comment: /(^|\s)#[^\r\n]*/,
   url: { pattern: /https?:\/\/[^\s"']+/, greedy: true },

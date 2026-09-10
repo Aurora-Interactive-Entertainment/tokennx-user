@@ -172,7 +172,7 @@ function renderPage(observeLocation = false, initialEntry = '/console/api-keys',
   }
 }
 
-// 中文：企业编辑测试覆盖专用接口与当前成员通用 PUT 的分流，避免误把不可编辑字段静默丢弃。
+// 企业编辑测试覆盖专用接口与当前成员通用 PUT 的分流，避免误把不可编辑字段静默丢弃。
 function mockEnterpriseKeyEditApi(key: typeof KEY_ITEM) {
   const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, requestOptions) => {
     const url = new URL(String(input), 'https://saas.example.com')
@@ -250,7 +250,7 @@ describe('密钥管理页面', () => {
     expect(screen.getByText('接口用户')).toBeInTheDocument()
   })
 
-  // 中文：创建接口发起前，必填项应在字段内显示 Semi 错误状态，而非仅显示全局提示。
+  // 创建接口发起前，必填项应在字段内显示 Semi 错误状态，而非仅显示全局提示。
   it('创建企业密钥时在密钥名称和操作人字段显示必填提示', async () => {
     const user = userEvent.setup()
     window.localStorage.setItem('token-nx:user-front:v1', JSON.stringify({
@@ -276,7 +276,7 @@ describe('密钥管理页面', () => {
     expect(document.querySelector('#key-member')).toHaveClass('semi-select-error')
   })
 
-  // 中文：密钥管理页的部门筛选在前端按成员目录过滤，人员筛选则使用企业密钥接口参数。
+  // 密钥管理页的部门筛选在前端按成员目录过滤，人员筛选则使用企业密钥接口参数。
   it('企业密钥管理支持按部门和可搜索人员筛选', async () => {
     const user = userEvent.setup()
     window.localStorage.setItem('token-nx:user-front:v1', JSON.stringify({
@@ -367,7 +367,7 @@ describe('密钥管理页面', () => {
     expect(within(row).queryByText('未选择')).not.toBeInTheDocument()
   })
 
-  // 中文：模型权限表单使用别名识别模型，并排除没有可用别名的模型。
+  // 模型权限表单使用别名识别模型，并排除没有可用别名的模型。
   it('模型选择项显示别名并兼容旧 code 深链', async () => {
     const user = userEvent.setup()
     mockApiKeyApi()
@@ -376,7 +376,7 @@ describe('密钥管理页面', () => {
     await screen.findByText('默认密钥')
     await user.click(screen.getAllByRole('button', { name: /创建 API 密钥/ })[0])
 
-    // 中文：限制开关关闭时高级配置收起，打开后再验证模型多选内容。
+    // 限制开关关闭时高级配置收起，打开后再验证模型多选内容。
     await user.click(screen.getByRole('switch', { name: '启用限制' }))
     fireEvent.click(document.querySelector('#key-models') as HTMLElement)
 
@@ -385,7 +385,7 @@ describe('密钥管理页面', () => {
     expect(screen.queryByText('gpt-4o')).toBeNull()
   })
 
-  // 中文：企业空间模型选择必须以服务端按企业权限过滤后的 API Key 模型列表为准。
+  // 企业空间模型选择必须以服务端按企业权限过滤后的 API Key 模型列表为准。
   it('企业空间只显示企业已启用的模型', async () => {
     const user = userEvent.setup()
     const { fetchMock } = mockApiKeyApi({
@@ -462,7 +462,7 @@ describe('密钥管理页面', () => {
     expect(fetchMock.mock.calls.some(([url, options]) => String(url).includes('/api/user/api-keys/') && options?.method === 'PUT')).toBe(false)
   })
 
-  // 中文：订阅计费必须以订阅模型接口返回的集合为准，并在成功后自动全选。
+  // 订阅计费必须以订阅模型接口返回的集合为准，并在成功后自动全选。
   it('切换订阅计费时加载并全选订阅模型，提交非空模型子集', async () => {
     const user = userEvent.setup()
     const subscriptionModels = [

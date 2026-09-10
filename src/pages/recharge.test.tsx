@@ -173,7 +173,7 @@ describe("充值管理页面", () => {
     expect(screen.getByText("¥0.0000")).toBeInTheDocument();
 
     const user = userEvent.setup();
-    // 中文：兼容其他工作区窗口同步的历史“预警”文案，测试只关注按钮可打开标准弹窗。
+    // 兼容其他工作区窗口同步的历史“预警”文案，测试只关注按钮可打开标准弹窗。
     await user.click(screen.getByRole("button", { name: /设置余额(?:提醒|预警)/ }));
     const dialog = await screen.findByRole("dialog");
     expect(dialog).toHaveTextContent("t***@example.com");
@@ -215,7 +215,7 @@ describe("充值管理页面", () => {
 
     const dialog = await screen.findByRole("dialog");
     expect(dialog.querySelector("h2")).toHaveTextContent("实名认证");
-    // 中文：后端错误文案不应再以 Toast 与实名引导弹窗重复展示。
+    // 后端错误文案不应再以 Toast 与实名引导弹窗重复展示。
     expect(screen.queryByText("完成实名认证后才能充值")).toBeNull();
     expect(document.querySelector(".semi-toast")).toBeNull();
   });

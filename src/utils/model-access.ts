@@ -1,7 +1,7 @@
 import type { UserApiKey } from '@/api/user-api-keys'
 import { modelPermissionKey, type ModelRecord } from '@/data/models'
 
-// 中文：模型目录和 API Key 权限都可能使用公开 ID、内部编码或别名，统一在这里收敛比较口径。
+// 模型目录和 API Key 权限都可能使用公开 ID、内部编码或别名，统一在这里收敛比较口径。
 export function apiKeySupportsModel(apiKey: Pick<UserApiKey, 'scope' | 'model_ids' | 'models'> | undefined, model: Pick<ModelRecord, 'id' | 'code' | 'alias'>): boolean {
   if (!apiKey) return false
   if (apiKey.scope === 'all') return true

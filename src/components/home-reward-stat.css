@@ -1,4 +1,4 @@
-/* 中文：固定数字行和标签行，数字缩放时不会带动下方标签上下移动。 */
+/* 固定数字行和标签行，数字缩放时不会带动下方标签上下移动。 */
 .public-layout--manuscript-home .manuscript-promotion .manuscript-reward-stats .home-reward-stat {
   grid-template-rows: 86px 27px;
 }

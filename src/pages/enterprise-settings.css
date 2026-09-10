@@ -1,4 +1,4 @@
-/* 中文：企业设置页单独维护资料卡片的视觉密度，避免影响其他设置页面。 */
+/* 企业设置页单独维护资料卡片的视觉密度，避免影响其他设置页面。 */
 .enterprise-settings-page {
   --enterprise-success-bg: #dcf8e7;
   --enterprise-success-text: #168a4a;

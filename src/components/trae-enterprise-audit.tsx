@@ -250,12 +250,12 @@ export function TraeEnterpriseAudit({ context }: { context: EnterpriseContext })
   }, [action, context.id, dateRange, handleError, operator, page, pageSize, reloadToken]);
 
   async function exportData(): Promise<void> {
-    // 中文：ref 锁在状态更新前生效，避免操作日志导出重复提交。
+    // ref 锁在状态更新前生效，避免操作日志导出重复提交。
     if (exportLockRef.current || exporting || rows.length === 0) return;
     exportLockRef.current = true;
     setExporting(true);
     try {
-      // 中文：审计导出提交当前动作、操作人和完整日期区间，服务端生成全部匹配事件而不是当前分页。
+      // 审计导出提交当前动作、操作人和完整日期区间，服务端生成全部匹配事件而不是当前分页。
       const filters: Record<string, string> = {
         start_at: startOfDay(dateRange[0]).toISOString(),
         end_at: new Date(endOfDay(dateRange[1]).getTime() + 1).toISOString(),

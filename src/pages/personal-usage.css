@@ -1,5 +1,5 @@
 .personal-usage-page { --personal-usage-date-picker-width: 255px; --personal-usage-date-input-padding: 8px; --personal-usage-date-text-padding: 4px; min-height: 100%; }
-/* 中文：个人用量页沿用企业页标题基线，统一标题与内容的 32px 间距。 */
+/* 个人用量页沿用企业页标题基线，统一标题与内容的 32px 间距。 */
 .personal-usage-page .trae-page-heading { margin-bottom: 32px; }
 .personal-usage-tabs { margin-bottom: 30px; }
 .personal-usage-board { min-width: 0; }

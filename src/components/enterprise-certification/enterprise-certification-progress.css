@@ -1,5 +1,5 @@
 .enterprise-certification-progress {
-  /* 中文：步进器沿用实名认证页的自适应左右留白，让步骤组在工作区内保持视觉居中。 */
+  /* 步进器沿用实名认证页的自适应左右留白，让步骤组在工作区内保持视觉居中。 */
   width: auto;
   display: flex;
   margin: 0 clamp(0px, 8vw, 128px);
@@ -16,7 +16,7 @@
   color: var(--color-text-tertiary);
 }
 
-/* 中文：只有带连接线的步骤扩展占位，末步按内容宽度收缩，消除右侧多余空白。 */
+/* 只有带连接线的步骤扩展占位，末步按内容宽度收缩，消除右侧多余空白。 */
 .enterprise-certification-progress li:not(:last-child) {
   flex: 1;
 }
@@ -73,19 +73,19 @@
   color: var(--color-action-on-primary);
 }
 
-/* 中文：已通过步骤的圆圈始终使用绿色成功色、白勾，与实名认证页保持一致。 */
+/* 已通过步骤的圆圈始终使用绿色成功色、白勾，与实名认证页保持一致。 */
 .enterprise-certification-progress li.is-completed .enterprise-progress-marker {
   border: 1px solid var(--color-success);
   background: var(--color-success);
   color: #fff;
 }
 
-/* 中文：已通过步骤之后的连接线同步变绿。 */
+/* 已通过步骤之后的连接线同步变绿。 */
 .enterprise-certification-progress li.is-completed:not(:last-child)::after {
   background: var(--color-success);
 }
 
-/* 中文：认证成功时，当前（最终）步骤圆圈同样使用绿色，与实名认证页保持一致。 */
+/* 认证成功时，当前（最终）步骤圆圈同样使用绿色，与实名认证页保持一致。 */
 .enterprise-certification-progress.is-verified li.is-current .enterprise-progress-marker {
   background: var(--color-success);
   color: #fff;
@@ -120,7 +120,7 @@
 }
 
 @media (max-width: 900px) {
-  /* 中文：中小屏取消大幅侧边留白，避免步骤标签和连接线被压缩。 */
+  /* 中小屏取消大幅侧边留白，避免步骤标签和连接线被压缩。 */
   .enterprise-certification-progress {
     margin-inline: 0;
   }

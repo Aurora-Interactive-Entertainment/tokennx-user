@@ -11,7 +11,7 @@ src\api\video-runtime.test.ts:90:    vi.mocked(globalThis.fetch).mockResolvedVal
 src\api\video-runtime.test.ts:95:      message: '余额不足',
 src\api\video-runtime.test.ts:100:  it('只把明确的终态作为轮询结束条件，并保留错误实例类型', () => {
 src\api\user-models.ts:15:  // 搜索关键词，由后端对模型目录做服务端检索。
-src\utils\quickstart.ts:9:// 中文：代码样例与控制台请求使用同一个后端 Base URL，复制后可以直接复用当前网关。
+src\utils\quickstart.ts:9:// 代码样例与控制台请求使用同一个后端 Base URL，复制后可以直接复用当前网关。
 src\utils\quickstart.ts:46:      '    messages=[{"role": "user", "content": "你好"}]',
 src\utils\quickstart.ts:63:      '  messages: [{ role: "user", content: "你好" }]',
 src\utils\quickstart.ts:74:      '  -d \'{"model":"' + modelAlias + '","messages":[{"role":"user","content":"你好"}]}\'',
@@ -48,7 +48,7 @@ src\api\user-api-keys.test.ts:112:    expect(getUserApiKeyErrorMessage(new ApiEr
 src\api\user-api-keys.test.ts:113:    expect(getUserApiKeyErrorMessage(new ApiError('服务错误', 409, 100009, 'req-3'))).toBe('API 密钥已过期，无法重新启用')
 src\api\user-api-keys.test.ts:114:    expect(getUserApiKeyErrorMessage(new Error('offline'))).toBe('API 密钥请求失败，请稍后重试')
 src\api\user-api-keys.test.ts:117:  it('企业密钥管理使用企业专用列表、创建和批量接口', async () => {
-src\utils\playground.ts:20:// 中文：只按用户消息统计轮次，流式生成中的临时回复不会提前占用下一轮。
+src\utils\playground.ts:20:// 只按用户消息统计轮次，流式生成中的临时回复不会提前占用下一轮。
 src\utils\playground.test.ts:4:describe('智能对话输入限制', () => {
 src\utils\playground.test.ts:5:  it('按 Unicode 字符统计并限制输入长度', () => {
 src\utils\playground.test.ts:6:    const value = '字'.repeat(PLAYGROUND_MAX_INPUT_CHARACTERS + 1)
@@ -88,8 +88,8 @@ src\utils\model-filters.test.ts:63:      model({ id: 'no-price', tokenNxPrice: {
 src\utils\model-filters.test.ts:72:  it('在当前搜索、公司和价格条件下计算分类数量', () => {
 src\utils\model-filters.test.ts:82:  it('分页会修正非法页码、非法页大小并返回展示范围', () => {
 src\api\public-model-market.ts:90:  // 轮播配置允许不绑定模型；兼容接口当前返回的 model_name 字段，避免整条数据被过滤。
-src\utils\model-access.ts:4:// 中文：模型目录和 API Key 权限都可能使用公开 ID、内部编码或别名，统一在这里收敛比较口径。
-src\utils\invitation.ts:7:// 中文：接口历史版本可能只返回站内路径，展示和复制前统一解析为可直接分享的完整地址。
+src\utils\model-access.ts:4:// 模型目录和 API Key 权限都可能使用公开 ID、内部编码或别名，统一在这里收敛比较口径。
+src\utils\invitation.ts:7:// 接口历史版本可能只返回站内路径，展示和复制前统一解析为可直接分享的完整地址。
 src\api\public-docs.test.ts:15:        { id: DIRECTORY_ID, parent_id: '', type: 'directory', slug: 'guide', title: '使用指南' },
 src\api\public-docs.test.ts:16:        { id: DOCUMENT_ID, parent_id: DIRECTORY_ID, type: 'document', slug: 'quick-start', title: '快速开始' },
 src\api\public-docs.test.ts:29:      data: { id: DOCUMENT_ID, slug: 'quick-start', title: '快速开始', content_markdown: '# 快速开始', updated_at: 1786406400000 },
@@ -98,7 +98,7 @@ src\utils\invitation.test.ts:4:describe('邀请链接地址', () => {
 src\utils\invitation.test.ts:5:  it('将接口返回的站内路径补全为当前站点的完整链接', () => {
 src\utils\invitation.test.ts:9:  it('保留已经是完整链接的邀请地址', () => {
 src\utils\invitation.test.ts:13:  it('拒绝空值、非法协议和包含认证信息的地址', () => {
-src\utils\format.ts:6:// 中文：后台费用展示统一保留四位小数；公开页面继续使用通用默认值。
+src\utils\format.ts:6:// 后台费用展示统一保留四位小数；公开页面继续使用通用默认值。
 src\utils\format.ts:120:// 兼容旧缓存和测试数据的字符串时间；后端接口字段应使用 ApiTimestamp。
 src\utils\format.ts:162:  // 日期输入代表用户本地自然日。Date#getTime 直接返回对应 UTC 时刻的毫秒值，禁止额外加减时区偏移。
 src\utils\format.ts:175:  // 兼容历史接口的无时区时间，并按后端 UTC 约定解释，避免被浏览器误当成本地时间。
@@ -139,10 +139,10 @@ src\utils\format.test.ts:90:  it('按协议、语言和模型生成快速接入�
 src\api\notifications.test.ts:16:describe('站内通知 API 封装', () => {
 src\api\notifications.test.ts:29:  it('按文档查询通知列表并规范化查询参数', async () => {
 src\api\notifications.test.ts:35:  it('使用 PATCH 标记单条通知已读，使用 POST 标记全部已读', async () => {
-src\api\notifications.test.ts:36:    // 中文：每次请求都返回新的 Response，避免前一次读取响应体后被二次消费。
+src\api\notifications.test.ts:36:    // 每次请求都返回新的 Response，避免前一次读取响应体后被二次消费。
 src\utils\date-range.ts:1:/** 返回当前时区的自然日零点，避免日期选择器和接口边界出现跨日偏差。 */
 src\utils\date-range.ts:8:/** 在本地自然日上移动日期，使用 setDate 正确处理夏令时切换。 */
-src\api\product-plans.ts:38:/** 中文：查询当前账务主体可用的套餐摘要，完整模型权益由套餐详情接口提供。 */
+src\api\product-plans.ts:38:/** 查询当前账务主体可用的套餐摘要，完整模型权益由套餐详情接口提供。 */
 src\api\homepage.test.ts:11:describe('公开首页内容 API', () => {
 src\api\homepage.test.ts:15:  it('只为合法公开对象 ID生成首页媒体地址', () => {
 src\api\homepage.test.ts:21:  it('使用当前环境的 API Base URL 补全首页媒体地址', () => {
@@ -158,19 +158,19 @@ src\api\homepage.test.ts:140:  it('首页累计统计字段无效时拒绝更新
 src\api\invitation.test.ts:9:describe('邀请返现接口', () => {
 src\api\invitation.test.ts:12:  it('读取邀请概览时携带访问令牌', async () => {
 src\api\invitation.test.ts:20:  it('公开访问接口提交邀请码且不携带令牌', async () => {
-src\api\http.ts:13:// 中文：开发环境允许通过代理目标配置后端地址，模型直连请求必须复用这个真实地址。
+src\api\http.ts:13:// 开发环境允许通过代理目标配置后端地址，模型直连请求必须复用这个真实地址。
 src\api\http.ts:16:// 开发环境固定使用同源请求，避免已有的绝对地址配置绕过 Vite 代理。
-src\api\http.ts:63:// 中文：模型调用和接入样例共用前端配置的后端地址，避免开发环境只请求到前端代理地址。
+src\api\http.ts:63:// 模型调用和接入样例共用前端配置的后端地址，避免开发环境只请求到前端代理地址。
 src\api\http.ts:89:// fetchResponse 保留认证请求的原始响应，供文件下载等非 JSON 接口复用统一超时和错误处理。
-src\api\billing.ts:178:/** 中文：费用分析接口返回的 ECharts 趋势图结构。日期轴使用 UTC 日桶时间戳，序列值单位为元。 */
-src\api\billing.ts:239:  // 中文：兼容新版 ECharts 结构和旧版数组/分页结构，便于灰度期间平滑切换。
-src\api\billing.ts:411:  // 中文：费用分析接口使用时间范围，period 仅作为旧调用方的兼容输入。
-src\api\news.ts:83:    // 中文：开发环境沿用当前站点代理，正式环境沿用配置的 API Base URL，并统一输出绝对地址。
+src\api\billing.ts:178:/** 费用分析接口返回的 ECharts 趋势图结构。日期轴使用 UTC 日桶时间戳，序列值单位为元。 */
+src\api\billing.ts:239:  // 兼容新版 ECharts 结构和旧版数组/分页结构，便于灰度期间平滑切换。
+src\api\billing.ts:411:  // 费用分析接口使用时间范围，period 仅作为旧调用方的兼容输入。
+src\api\news.ts:83:    // 开发环境沿用当前站点代理，正式环境沿用配置的 API Base URL，并统一输出绝对地址。
 src\api\i18n-errors.test.ts:11:describe('API 错误提示语言', () => {
 src\api\i18n-errors.test.ts:16:  it('按调用时的语言返回各业务错误回退文案', async () => {
 src\api\i18n-errors.test.ts:27:    expect(getProfileErrorMessage(new ApiError('server', 409, 100006, null))).toBe('资料状态已变化，请刷新后重试')
 src\api\i18n-errors.test.ts:28:    expect(getEnterpriseErrorMessage(new ApiError('server', 409, 140004, null))).toBe('企业资源已被其他操作更新，请刷新后重试')
-src\api\personal-usage.ts:104:  /** 中文：按 API 密钥筛选明细，后端字段稳定后只需在此处对齐。 */
+src\api\personal-usage.ts:104:  /** 按 API 密钥筛选明细，后端字段稳定后只需在此处对齐。 */
 src\api\enterprise-usage.test.ts:11:  // 每次请求创建独立 Response，避免前一次读取后复用已消费的响应体。
 src\api\enterprise-usage.test.ts:17:describe('企业用量 API', () => {
 src\api\enterprise-usage.test.ts:33:  it('请求摘要、人员和部门聚合接口', async () => {
@@ -216,9 +216,9 @@ src\api\billing.test.ts:135:    expect(getBillingErrorMessage(new ApiError('invo
 src\api\billing.test.ts:136:    expect(getBillingErrorMessage(new ApiError('payment unavailable', 503, 140007, 'req-140007'))).toBe('支付宝渠道暂不可用，请稍后重试')
 src\api\billing.test.ts:137:    expect(getBillingErrorMessage(new Error('offline'))).toBe('账务请求失败，请稍后重试')
 src\api\billing.test.ts:141:  it('接入账户总览并按个人或企业账务主体传递查询参数', async () => {
-src\mobile-home.css:464:/* 中文：资讯卡保持固定高度，超出内容以省略号收尾，悬浮时由 title 属性展示全文。 */
+src\mobile-home.css:464:/* 资讯卡保持固定高度，超出内容以省略号收尾，悬浮时由 title 属性展示全文。 */
 src\mobile-home.css:1488:  /* flex:1 让文案区填满卡片高度，配合按钮 margin-top:auto 使按钮始终贴底，不随内容长短变化 */
-src\mobile-home.css:1590:/* 中文：资讯卡最终规则，覆盖旧版自适应样式，确保正文截断、图片居中。 */
+src\mobile-home.css:1590:/* 资讯卡最终规则，覆盖旧版自适应样式，确保正文截断、图片居中。 */
 src\mobile-home.css:1664:/* 广告图铺满广告位：cover 裁切填充，避免图片比例与盒子不符时出现黑边。 */
 src\api\http.test.ts:12:describe('认证 HTTP 客户端', () => {
 src\api\http.test.ts:16:  it('优先使用后端 Base URL，未设置时使用开发代理目标', () => {
@@ -231,27 +231,27 @@ src\api\http.test.ts:61:	it('处理网络失败和不可解析响应', async () 
 src\api\http.test.ts:63:    await expect(fetchJson('/api/test')).rejects.toMatchObject({ name: 'ApiError', status: 0, message: '网络连接失败，请检查服务地址和网络状态' })
 src\api\http.test.ts:71:    await expect(fetchJson('/api/test')).rejects.toMatchObject({ name: 'ApiError', message: '服务返回了无法识别的响应' })
 src\api\http.test.ts:74:  it('语言切换后同步请求头和通用网络错误', async () => {
-src\trae-enterprise.css:4:/* 中文：新版企业页标题统一为 30px 行高，并与首个内容块保持 32px 间距。 */
+src\trae-enterprise.css:4:/* 新版企业页标题统一为 30px 行高，并与首个内容块保持 32px 间距。 */
 src\trae-enterprise.css:289:/* 人员管理页沿用 Trae 的深色顶部栏和组织树布局。 */
 src\trae-enterprise.css:291:/* page-stack 已扩展到控制台内容边缘，这里移除其默认子项边距，避免形成双重留白。 */
-src\trae-enterprise.css:308:/* 中文：Semi Tabs 替换旧手写页签后，沿用人员管理页内容区的左右边距。 */
-src\trae-enterprise.css:312:/* 中文：人员管理页与用量管理页统一，不保留页签容器的整条底线。 */
+src\trae-enterprise.css:308:/* Semi Tabs 替换旧手写页签后，沿用人员管理页内容区的左右边距。 */
+src\trae-enterprise.css:312:/* 人员管理页与用量管理页统一，不保留页签容器的整条底线。 */
 src\trae-enterprise.css:354:/* 收起时左侧组织树直接移除，避免出现淡出或横向移动的过渡效果。 */
 src\trae-enterprise.css:357:/* 桌面端由右侧列表决定整行高度，组织树只跟随宽度变化，不参与撑高页面。 */
 src\trae-enterprise.css:397:/* 分隔线位于两个 24px 栅格间距的正中，始终与左右内容保持等距。 */
 src\trae-enterprise.css:409:/* 人员表格自身承载边框，保留 Semi 内部横向滚动并统一裁切圆角。 */
 src\trae-enterprise.css:440:/* 部门管理使用整页树形表格，操作仅在行悬浮时出现。 */
 src\trae-enterprise.css:488:/* 订阅页保持截图中的窄内容列，避免宽屏下卡片被拉得过宽。 */
-src\trae-enterprise.css:525:/* 中文：中等宽度下保持内容紧凑，避免新版页面横向空间不足。 */
+src\trae-enterprise.css:525:/* 中等宽度下保持内容紧凑，避免新版页面横向空间不足。 */
 src\trae-enterprise.css:584:/* 官方用量管理页：三张用量卡、人员/部门数据表及明细筛选。 */
 src\trae-enterprise.css:652:/* 新版企业管理五个页面的输入框聚焦时不额外绘制外边框，保持与设计稿一致。 */
 src\trae-enterprise.css:676:/* 新版企业管理使用 72px 顶部导航，避免旧的 64px 布局基准产生 8px 页面溢出。 */
 src\api\payment-form.ts:12:// 仅复制支付宝服务端返回的表单字段，避免通过 innerHTML 执行未知脚本。
-src\api\auth.ts:4:// 中文：认证接口统一使用 Unix 毫秒时间戳表示访问令牌和刷新令牌的过期时间。
-src\api\auth.ts:7:// 中文：只接受安全整数时间戳，避免非法数值进入令牌续期流程。
-src\main.tsx:34:  // 中文：所有路由在首帧释放静态加载层，首页计分板动画在页面可见后继续完成。
+src\api\auth.ts:4:// 认证接口统一使用 Unix 毫秒时间戳表示访问令牌和刷新令牌的过期时间。
+src\api\auth.ts:7:// 只接受安全整数时间戳，避免非法数值进入令牌续期流程。
+src\main.tsx:34:  // 所有路由在首帧释放静态加载层，首页计分板动画在页面可见后继续完成。
 src\main.tsx:40:if (!appMount) throw new Error('应用挂载节点不存在')
-src\main.tsx:42:// 中文：静态加载层独立于 React 根节点，由 App 首帧通知决定淡出时机。
+src\main.tsx:42:// 静态加载层独立于 React 根节点，由 App 首帧通知决定淡出时机。
 src\api\news.test.ts:44:        items: [{ id: 'news-1', title: '产品更新', summary: '摘要', cover_url: 'https://cdn.example/cover.png', tags: ['产品动态'], published_at: '2026-08-19T00:00:00Z', pinned: true }],
 src\api\news.test.ts:51:    await expect(getNewsList(2, 20, 'en-US', undefined, { keyword: '更新', tag: '产品动态' })).resolves.toMatchObject({
 src\api\news.test.ts:56:      items: [{ id: 'news-1', category: '产品动态', description: '摘要', cover_image: 'https://cdn.example/cover.png', publish_date: '2026-08-19T00:00:00Z' }],
@@ -259,28 +259,28 @@ src\api\news.test.ts:65:      data: { id: 'news-1', title: '产品更新', summa
 src\api\news.test.ts:68:    await expect(getNewsDetail('news-1', 'zh-CN')).resolves.toMatchObject({ content: '# 正文', category: '产品动态' })
 src\api\news.test.ts:82:      data: { id: 'news-2', title: '兼容正文', summary: '', tags: ['新闻'], published_at: '2026-08-19T00:00:00Z', content_markdown: '<h2>正文</h2>' },
 src\api\news.test.ts:85:    await expect(getNewsDetail('news-2', 'zh-CN')).resolves.toMatchObject({ content: '', content_markdown: '<h2>正文</h2>' })
-src\api\authenticated.ts:7:  // 中文：刷新协调器同时负责当前标签页合并和跨标签页互斥，避免轮换令牌被重复消费。
-src\api\authenticated.ts:23:    // 中文：其他标签页可能已经完成刷新，先重试同步到内存中的新访问令牌，避免再次轮换刷新令牌。
-src\api\authenticated.ts:39:    // 中文：认证失败只自动刷新一次，刷新失败或重试仍认证失败才清理会话。
-src\api\authenticated.ts:64:// 中文：二进制接口复用同一套令牌刷新和并发刷新控制。
+src\api\authenticated.ts:7:  // 刷新协调器同时负责当前标签页合并和跨标签页互斥，避免轮换令牌被重复消费。
+src\api\authenticated.ts:23:    // 其他标签页可能已经完成刷新，先重试同步到内存中的新访问令牌，避免再次轮换刷新令牌。
+src\api\authenticated.ts:39:    // 认证失败只自动刷新一次，刷新失败或重试仍认证失败才清理会话。
+src\api\authenticated.ts:64:// 二进制接口复用同一套令牌刷新和并发刷新控制。
 src\api\enterprise-console.ts:27:  // 部门接口使用的细粒度能力；旧服务端可能省略，故保持可选兼容。
-src\api\enterprise-console.ts:683:// 中文：治理页面需要完整成员目录，按服务端允许的分页大小逐页读取，避免请求超出后端分页上限。
-src\api\enterprise-console.ts:720:// 中文：公开邀请解析允许匿名访问；携带已有登录态时由服务端补充当前用户状态。
-src\api\enterprise-console.ts:744:    // 中文：分析接口的列表均非分页字段，暂无用量时统一归一为空数组，避免图表和表格读取 undefined。
+src\api\enterprise-console.ts:683:// 治理页面需要完整成员目录，按服务端允许的分页大小逐页读取，避免请求超出后端分页上限。
+src\api\enterprise-console.ts:720:// 公开邀请解析允许匿名访问；携带已有登录态时由服务端补充当前用户状态。
+src\api\enterprise-console.ts:744:    // 分析接口的列表均非分页字段，暂无用量时统一归一为空数组，避免图表和表格读取 undefined。
 src\console-custom-typography.test.ts:7:describe('后台自研字体样式作用域', () => {
 src\console-custom-typography.test.ts:8:  it('通过独立入口加载，并且不覆盖 Semi UI 或公开页面', () => {
 src\api\model-runtime.ts:14:  /** 兼容旧调用方，新的智能会话请求应传递完整 messages。 */
-src\docs-page.css:21:/* 中文：页面复制操作归入右侧页内工具区，避免覆盖正文首段。 */
+src\docs-page.css:21:/* 页面复制操作归入右侧页内工具区，避免覆盖正文首段。 */
 src\docs-page.css:39:/* 标题缩进 = 24px（18px 折叠箭头列 + 6px 列间距）+ 层级缩进，与下方 TOC 首行导航文字对齐 */
 src\api\auth.test.ts:11:describe('认证接口封装', () => {
 src\api\auth.test.ts:14:  it('按后端契约发送邮箱验证码和登录设备信息', async () => {
 src\api\auth.test.ts:27:  it('按后端契约发送手机号验证码和设备信息', async () => {
 src\api\auth.test.ts:46:  it('正确编码微信状态并合并并发 refresh 请求', async () => {
-src\theme.ts:48:  // 中文：把解析后的主题桥接给 Semi UI。Semi 只识别 body[theme-mode="dark"]，
+src\theme.ts:48:  // 把解析后的主题桥接给 Semi UI。Semi 只识别 body[theme-mode="dark"]，
 src\theme.ts:49:  // 否则未被手工重写的 Semi 组件（Toast、Switch、Pagination 等）会停留在亮色默认调色板，暗色下显示近黑文字。
-src\theme.ts:69:    // 中文：主题切换仍在当前页面生效，持久化失败不影响用户继续操作。
-src\api\homepage.ts:96:// 中文：只为后端签发的公开对象 ID 生成媒体地址，避免把未校验的内容字段拼接进 URL。
-src\api\homepage.ts:103:// 中文：接口可能返回相对封面地址，统一使用当前环境的 API Base URL 补全。
+src\theme.ts:69:    // 主题切换仍在当前页面生效，持久化失败不影响用户继续操作。
+src\api\homepage.ts:96:// 只为后端签发的公开对象 ID 生成媒体地址，避免把未校验的内容字段拼接进 URL。
+src\api\homepage.ts:103:// 接口可能返回相对封面地址，统一使用当前环境的 API Base URL 补全。
 src\data\user-models.ts:37:  // 搜索关键词：有值时直接发起服务端检索请求，不走本地全量目录缓存。
 src\data\user-models.ts:62:    // 关键词检索结果不是全量目录，既不能命中缓存，也不能写回缓存。
 src\data\user-models.ts:69:    // 重新请求时保留已有列表数据、仅首次请求进入 loading 态（后台静默刷新），
@@ -296,12 +296,12 @@ src\api\enterprise-certification.test.ts:29:      enterprise_name: '测试企业
 src\api\enterprise-certification.test.ts:30:      contact_name: '李四', contact_phone: '0571-12345678', applicant_type: 'legal_representative' as const,
 src\api\enterprise-certification.test.ts:63:      enterpriseName: '请输入企业名称', creditCode: '请输入统一社会信用代码', legalRepresentative: '请输入法定代表人', legalRepresentativeId: '请输入法定代表人身份证号', contactName: '请输入企业联系人', contactPhone: '请输入联系电话', licenseUrl: '请先上传营业执照', consent: '请先确认企业信息并同意认证信息处理声明',
 src\api\enterprise-certification.test.ts:65:    expect(validateEnterpriseCertificationForm({ enterpriseName: '测试企业', creditCode: '91330100MA1FL0AB2C', legalRepresentative: '张三', legalRepresentativeId: '110101199001011234', contactName: '李四', contactPhone: '0571-12345678', licenseUrl: '/material', consent: true })).toEqual({})
-src\api\enterprise-certification.ts:11:// 中文：所有创建企业入口统一使用新建模式，避免历史认证记录覆盖新的企业申请表单。
-src\console-custom-typography.css:1:/* 中文：仅为登录后的自研控制台文字提供接近 Trae 的系统字体观感。
+src\api\enterprise-certification.ts:11:// 所有创建企业入口统一使用新建模式，避免历史认证记录覆盖新的企业申请表单。
+src\console-custom-typography.css:1:/* 仅为登录后的自研控制台文字提供接近 Trae 的系统字体观感。
 src\console-custom-typography.css:2: * Trae 实测使用 ui-sans-serif/system-ui；表格数据使用 SF Pro Text 系统回退。
 src\console-custom-typography.css:3: * 不引入 Trae 私有字体，也不设置后台父节点字体，避免影响 Semi UI 组件。 */
-src\console-custom-typography.css:62:/* 中文：新版企业页的自研标题、正文、表格文字单独指定叶子节点，不向 Semi 容器传递字体。 */
-src\console-custom-typography.css:107:/* 中文：Trae 的 AG Grid 使用 SF Pro Text；本项目采用合法系统回退，保持数字与表格的紧凑观感。 */
+src\console-custom-typography.css:62:/* 新版企业页的自研标题、正文、表格文字单独指定叶子节点，不向 Semi 容器传递字体。 */
+src\console-custom-typography.css:107:/* Trae 的 AG Grid 使用 SF Pro Text；本项目采用合法系统回退，保持数字与表格的紧凑观感。 */
 src\console-custom-typography.css:127:/* Semi UI 自带字体保持原样：本文件不声明任何 .semi-* 的 font-family 规则。 */
 src\api\enterprise-console.test.ts:51:describe('企业控制台 API 客户端', () => {
 src\api\enterprise-console.test.ts:54:  it('生成稳定查询参数并过滤空值和全部筛选项', () => {
@@ -477,17 +477,17 @@ src\data\app-state.tsx:119:    name: '本地演示密钥',
 src\data\app-state.tsx:122:    expiresAt: '长期有效',
 src\data\app-state.tsx:126:    limit: '未设置',
 src\data\app-state.tsx:131:    name: '旧版测试密钥',
-src\data\app-state.tsx:197:      // 中文：智能会话只存在当前页面内，刷新后必须从空会话开始。
-src\data\app-state.tsx:207:    // 中文：持久化快照只保存账号配置，绝不把智能会话正文或请求元数据写入浏览器存储。
+src\data\app-state.tsx:197:      // 智能会话只存在当前页面内，刷新后必须从空会话开始。
+src\data\app-state.tsx:207:    // 持久化快照只保存账号配置，绝不把智能会话正文或请求元数据写入浏览器存储。
 src\data\app-state.tsx:210:    // 本地演示环境可能关闭存储，内存状态仍可继续使用。
 src\data\app-state.tsx:271:      lastUsedAt: '尚未使用',
 src\data\app-state.tsx:291:      throw new Error(`智能会话最多支持 ${PLAYGROUND_MAX_ROUNDS} 轮对话`)
 src\data\app-state.tsx:297:      throw new Error('待替换的失败尝试不存在')
 src\data\app-state.tsx:315:      id: createId('message'), attemptId, role: 'assistant', status: 'complete', content: input.response ?? '模型未返回文本内容。', reasoning, requestId, error: null, createdAt,
-src\data\app-state.tsx:333:    // 中文：会话正文只进入 React 内存状态，避免刷新后残留，也避免写入持久化快照。
+src\data\app-state.tsx:333:    // 会话正文只进入 React 内存状态，避免刷新后残留，也避免写入持久化快照。
 src\data\app-state.tsx:341:      throw new Error(`智能会话最多支持 ${PLAYGROUND_MAX_ROUNDS} 轮对话`)
 src\data\app-state.tsx:347:      throw new Error('待替换的失败尝试不存在')
-src\data\app-state.tsx:378:    // 中文：失败尝试保留在会话中供编辑，但轮次和下一次模型上下文都不包含它。
+src\data\app-state.tsx:378:    // 失败尝试保留在会话中供编辑，但轮次和下一次模型上下文都不包含它。
 src\data\app-state.tsx:409:  if (!value) throw new Error('useAppStore 必须在 AppStoreProvider 内使用')
 src\api\model-rankings.test.ts:8:describe('公开模型用量排名接口', () => {
 src\api\model-rankings.test.ts:11:  it('按指定周期查询排行榜并保留空的对比涨跌率', async () => {
@@ -497,15 +497,15 @@ src\api\model-rankings.test.ts:34:      items: [{ rank: 1, code: 'model-1', name
 src\api\model-rankings.test.ts:43:  it('将后端省略的涨跌率视为暂无对比', async () => {
 src\api\model-rankings.test.ts:65:  it('读取最近周及逐周模型用量', async () => {
 src\api\model-rankings.test.ts:68:      items: [{ rank: 1, code: 'gpt-test', name: '测试模型', total_tokens: 120000, request_count: 320, weekly_usage: [{ week_start: 1772409600000, total_tokens: 50000, request_count: 120 }] }],
-src\subscription.css:8:  /* 中文：订阅管理沿用后台统一标题区，不额外绘制底部分隔线。 */
-src\subscription.css:140:  /* 中文：卡片按可用内容区自适应收缩，避免右侧套餐被视口裁切。 */
-src\subscription.css:159:/* 中文：卡片 hover 仅做轻微上浮，保持网格尺寸和背景颜色稳定。 */
-src\subscription.css:233:  /* 中文：为套餐说明预留统一的四行空间，让四张卡片的按钮处于同一高度。 */
-src\subscription.css:255:/* 中文：按钮只做轻微放大和扫光，不改变原有背景色或文字颜色。 */
-src\subscription.css:316:  /* 中文：滚动容器会裁切溢出，为卡片阴影预留内部缓冲区。 */
-src\subscription.css:331:  /* 中文：升级计划卡片保持常态阴影，避免只有悬停时才有浮层层次。 */
-src\subscription.css:442:/* 中文：四列需要较宽的内容区，空间不足时固定降为两列，避免卡片压缩到不可读。 */
-src\public-mobile-nav.css:14:    /* 中文：标准 backdrop-filter 置后，防止压缩器去重丢失。 */
+src\subscription.css:8:  /* 订阅管理沿用后台统一标题区，不额外绘制底部分隔线。 */
+src\subscription.css:140:  /* 卡片按可用内容区自适应收缩，避免右侧套餐被视口裁切。 */
+src\subscription.css:159:/* 卡片 hover 仅做轻微上浮，保持网格尺寸和背景颜色稳定。 */
+src\subscription.css:233:  /* 为套餐说明预留统一的四行空间，让四张卡片的按钮处于同一高度。 */
+src\subscription.css:255:/* 按钮只做轻微放大和扫光，不改变原有背景色或文字颜色。 */
+src\subscription.css:316:  /* 滚动容器会裁切溢出，为卡片阴影预留内部缓冲区。 */
+src\subscription.css:331:  /* 升级计划卡片保持常态阴影，避免只有悬停时才有浮层层次。 */
+src\subscription.css:442:/* 四列需要较宽的内容区，空间不足时固定降为两列，避免卡片压缩到不可读。 */
+src\public-mobile-nav.css:14:    /* 标准 backdrop-filter 置后，防止压缩器去重丢失。 */
 src\i18n\enterprise-governance.ts:5:        members: '成员管理',
 src\i18n\enterprise-governance.ts:6:        tags: '员工标签',
 src\i18n\enterprise-governance.ts:7:        models: '模型资源',
@@ -559,7 +559,7 @@ src\i18n\enterprise-governance.ts:56:        'settings.edit': { name: '编辑企
 src\i18n\enterprise-governance.ts:57:        'roles.view': { name: '查看角色权限', description: '查看企业角色和权限矩阵' },
 src\i18n\enterprise-governance.ts:58:        'roles.edit': { name: '管理角色权限', description: '创建、编辑、删除角色并维护授权' },
 src\data\models.ts:64:export const MODEL_ALIAS_UNSET_LABEL = '未设置别名'
-src\data\models.ts:79:// 中文：权限接口仍兼容历史模型编码，但页面模型对象优先使用公开 ID。
+src\data\models.ts:79:// 权限接口仍兼容历史模型编码，但页面模型对象优先使用公开 ID。
 src\data\models.ts:85:  multimodal: '多模态',
 src\data\models.ts:86:  text: '文本',
 src\data\models.ts:87:  image: '图像',
@@ -571,7 +571,7 @@ src\data\models.ts:92:  speech: '语音',
 src\data\models.ts:93:  transcription: '语音转写',
 src\data\models.ts:94:  other: '其他',
 src\data\models.ts:103:const USER_MODEL_UNKNOWN_DATA_LABEL = '暂无数据'
-src\data\models.ts:125:  // 中文：累计值在接口中保持整数，页面仅在展示层换算单位，不改变服务端原始统计口径。
+src\data\models.ts:125:  // 累计值在接口中保持整数，页面仅在展示层换算单位，不改变服务端原始统计口径。
 src\data\models.ts:138:  const unit = price.unit.trim() || '单位'
 src\data\models.ts:261:    capabilities: ['对话', '代码', '推理'],
 src\data\models.ts:264:    description: '面向日常对话、代码生成与复杂推理的通用文本模型，适合快速验证高频开发任务。',
@@ -677,9 +677,9 @@ src\theme\semi-theme-tokens.css:2: * 项目主题颜色契约：自研页面优�
 src\theme\semi-theme-tokens.css:3: * 所有值都引用现有颜色变量，主题切换时无需维护第二份固定色值。
 src\theme\semi-theme-tokens.css:27: * 与现有 Semi 覆盖保持同值。仅映射颜色，不定义字体、尺寸、圆角或间距，
 src\theme\semi-theme-tokens.css:28: * Portal 挂载的弹窗、下拉框和提示也能通过 body 获得一致主题。
-src\test\setup.ts:1:// 中文：测试环境与生产入口一样先注入 Semi Design 的 React 19 适配层。
-src\test\setup.ts:10:  // 中文：命令式 Toast 不属于 React 树，测试结束时需要显式销毁，避免污染下一个用例。
-src\test\setup.ts:40:// 中文：Node 新版在 jsdom worker 中可能不提供存储对象，测试使用内存实现保持页面状态隔离。
+src\test\setup.ts:1:// 测试环境与生产入口一样先注入 Semi Design 的 React 19 适配层。
+src\test\setup.ts:10:  // 命令式 Toast 不属于 React 树，测试结束时需要显式销毁，避免污染下一个用例。
+src\test\setup.ts:40:// Node 新版在 jsdom worker 中可能不提供存储对象，测试使用内存实现保持页面状态隔离。
 src\test\setup.ts:54:// jsdom 不实现滚动 API；补充空实现，避免路由滚动复位逻辑污染测试输出。
 src\i18n\trae-enterprise.ts:4:      nav: { group: '企业管理（新版）', analysis: '数据分析', members: '人员管理', subscription: '订阅管理', usage: '用量管理', audit: '操作日志' },
 src\i18n\trae-enterprise.ts:5:      common: { breadcrumb: '企业管理', select: '请选择', search: '搜索', export: '导出', noData: '暂无数据', noDataHint: '当前筛选范围内没有可展示的数据', all: '全部', close: '关闭', confirm: '确定', cancel: '取消', save: '保存', success: '操作成功', loading: '加载中...', today: '今天', refresh: '刷新' },
@@ -731,9 +731,9 @@ src\data\app-state.test.tsx:148:  it('管理指定模型密钥、资料与未知
 src\data\app-state.test.tsx:151:    act(() => { store?.switchWorkspace('missing'); store?.updateProfile({ nickname: '新昵称', phone: '139****0000', avatar: '新' }) })
 src\data\app-state.test.tsx:154:    act(() => { store?.createApiKey({ name: '范围密钥', expiresAt: '2026-08-16', scope: 'selected', modelIds: ['gpt-4o'], limit: '¥ 50.00' }) })
 src\data\app-state.test.tsx:165:  it('在 Provider 外使用状态钩子会抛出明确错误', () => {
-src\public-footer.css:35:/* 中文：logo 源图比例约 5.45:1，高度随宽度自适应（height: auto）完整显示，避免 cover 裁切左右两侧 */
+src\public-footer.css:35:/* logo 源图比例约 5.45:1，高度随宽度自适应（height: auto）完整显示，避免 cover 裁切左右两侧 */
 src\public-footer.css:267:/* 浅色模式下“售前咨询/商务合作”前缀与同行链接同色，避免继承页脚浅灰显得过淡。 */
-src\public-footer.css:308:  /* 中文：移动端同桌面端，高度自适应保证 logo 完整 */
+src\public-footer.css:308:  /* 移动端同桌面端，高度自适应保证 logo 完整 */
 src\i18n\enterprise-create.ts:3:    title: '企业认证',
 src\i18n\enterprise-create.ts:4:    description: '完成企业主体核验后创建企业工作空间，认证申请可随时回来继续。',
 src\i18n\enterprise-create.ts:5:    loading: '正在查询企业认证状态...', reload: '重新加载',
@@ -782,24 +782,24 @@ src\data\models.test.ts:79:  it('映射模型图标、标签、活动、输出�
 src\data\models.test.ts:83:      tags: [{ label: '推荐', color: '#2563EB' }],
 src\data\models.test.ts:84:      activities: [{ id: 'activity-summer', name: '夏季活动', status: 'active', sort_order: 10 }],
 src\data\models.test.ts:90:    expect(model.tags).toEqual([{ label: '推荐', color: '#2563EB' }])
-src\auth\refresh-coordinator.ts:52:    // 中文：随机数不可用时退回时间值，锁仍会通过 owner 和过期时间校验。
-src\auth\refresh-coordinator.ts:91:    // 中文：同一标签页的并发认证操作也必须等待当前锁释放，避免退出和刷新同时修改会话。
+src\auth\refresh-coordinator.ts:52:    // 随机数不可用时退回时间值，锁仍会通过 owner 和过期时间校验。
+src\auth\refresh-coordinator.ts:91:    // 同一标签页的并发认证操作也必须等待当前锁释放，避免退出和刷新同时修改会话。
 src\auth\refresh-coordinator.ts:103:    if (Date.now() >= deadline) throw new Error('跨标签页刷新令牌锁等待超时')
-src\auth\refresh-coordinator.ts:138:// 中文：退出登录与刷新令牌共用一把锁，避免退出请求和轮换请求交错执行。
+src\auth\refresh-coordinator.ts:138:// 退出登录与刷新令牌共用一把锁，避免退出请求和轮换请求交错执行。
 src\auth\refresh-coordinator.ts:186:  if (!current) throw new Error('刷新令牌不存在')
 src\auth\refresh-coordinator.ts:194:    if (!latest) throw new Error('刷新令牌不存在')
 src\auth\refresh-coordinator.ts:204:  if (!isAuthenticatedSession(refreshed)) throw new Error('刷新会话未完成')
 src\auth\refresh-coordinator.ts:205:  if (!saveAuthTokens(refreshed, { expectedRefreshToken, expectedRevision })) throw new Error('认证会话在刷新期间发生变化')
-src\auth\token-storage.ts:68:    // 中文：随机标识不可用时使用时间和随机数，保证同一页面实例仍有独立所有者标识。
-src\auth\token-storage.ts:266:    // 中文：跨标签页通知损坏时忽略，不影响当前标签页已有的认证状态。
-src\auth\token-storage.ts:294:    // 中文：BroadcastChannel 不可用时继续使用 localStorage 事件通知其他标签页。
-src\auth\token-storage.ts:303:    // 中文：存储不可用时保留内存认证状态，跨标签页同步由 BroadcastChannel 尽力完成。
+src\auth\token-storage.ts:68:    // 随机标识不可用时使用时间和随机数，保证同一页面实例仍有独立所有者标识。
+src\auth\token-storage.ts:266:    // 跨标签页通知损坏时忽略，不影响当前标签页已有的认证状态。
+src\auth\token-storage.ts:294:    // BroadcastChannel 不可用时继续使用 localStorage 事件通知其他标签页。
+src\auth\token-storage.ts:303:    // 存储不可用时保留内存认证状态，跨标签页同步由 BroadcastChannel 尽力完成。
 src\auth\token-storage.ts:340:  if (!result.access_token || !result.refresh_token || !isAuthTimestamp(result.refresh_expires_at)) throw new Error('认证响应缺少有效令牌')
-src\prism-languages.ts:3:// 中文：项目内置轻量 Shell 语法，避免动态 Prism 扩展与 Vite 依赖预构建互相影响。
-src\prism-languages.ts:21:// 中文：纯文本配置也按 URL、请求头、变量和值着色，保证所有代码示例都有清晰层次。
+src\prism-languages.ts:3:// 项目内置轻量 Shell 语法，避免动态 Prism 扩展与 Vite 依赖预构建互相影响。
+src\prism-languages.ts:21:// 纯文本配置也按 URL、请求头、变量和值着色，保证所有代码示例都有清晰层次。
 src\prism-languages.ts:28:  variable: /\$[A-Z_][A-Z0-9_]*|\bnx-(?:\.\.\.|[\w-]+)|你的API密钥/g,
-src\App.tsx:274:// 中文：每次切换路由后把页面滚动位置复位，避免新页面沿用上一个页面的阅读位置。
-src\components\console-tabs.tsx:19:/** 中文：后台页面统一使用 Semi Tabs，保证新增页签沿用同一套交互和视觉规范。 */
+src\App.tsx:274:// 每次切换路由后把页面滚动位置复位，避免新页面沿用上一个页面的阅读位置。
+src\components\console-tabs.tsx:19:/** 后台页面统一使用 Semi Tabs，保证新增页签沿用同一套交互和视觉规范。 */
 src\i18n\console.test.ts:9:describe('控制台多语言资源', () => {
 src\i18n\console.test.ts:10:  it('中英文资源保持相同的叶子键集合', () => {
 src\i18n\console.test.ts:18:  it('个人用量文案归属正确的语言资源', () => {
@@ -846,10 +846,10 @@ src\components\analytics-time-range-picker.test.tsx:99:  it("操作日志只禁�
 src\components\console-form-controls.css:1:/* 后台表单控件统一沿用新版企业管理页的输入框和下拉框样式。 */
 src\components\console-form-controls.css:163:/* 原生后台输入框仅在明确的控制台表单范围内复用共享外观。 */
 src\components\billing-cost-charts.tsx:37:  if (language.toLowerCase().startsWith('zh')) return `${date.getUTCMonth() + 1}月${date.getUTCDate()}日`
-src\components\billing-cost-charts.tsx:67:// 中文：旧版接口按天返回明细数组，转换为与新版 ECharts 结构相同的多序列数据。
-src\components\billing-cost-charts.tsx:90:// 中文：日期较多时只展示有限数量的刻度，避免横轴文本互相遮挡；数据点和 tooltip 仍保留完整日期。
-src\components\billing-cost-charts.tsx:140:        // 中文：同一日期的不同模型费用使用同一堆叠组，呈现累计柱状图。
-src\components\billing-cost-charts.tsx:145:        // 中文：堆叠柱悬浮时不单独强调某个色块，只保留整列的坐标轴选中效果。
+src\components\billing-cost-charts.tsx:67:// 旧版接口按天返回明细数组，转换为与新版 ECharts 结构相同的多序列数据。
+src\components\billing-cost-charts.tsx:90:// 日期较多时只展示有限数量的刻度，避免横轴文本互相遮挡；数据点和 tooltip 仍保留完整日期。
+src\components\billing-cost-charts.tsx:140:        // 同一日期的不同模型费用使用同一堆叠组，呈现累计柱状图。
+src\components\billing-cost-charts.tsx:145:        // 堆叠柱悬浮时不单独强调某个色块，只保留整列的坐标轴选中效果。
 src\i18n\public.ts:5:        navigation: '页脚导航',
 src\i18n\public.ts:8:        // 货币符号已移到价格数字前单独渲染，这里只保留计量单位
 src\i18n\public.ts:10:        discountHalf: '5折',
@@ -1154,7 +1154,7 @@ src\i18n\public.ts:381:        output: '输出',
 src\i18n\public.ts:382:        standard: '标准',
 src\i18n\public.ts:383:        hd: '高清',
 src\i18n\public.ts:384:        pending: '价格待公布',
-src\components\common.test.tsx:23:// 中文：测试默认返回完整企业上下文，避免权限 mock 逃逸为不完整对象。
+src\components\common.test.tsx:23:// 测试默认返回完整企业上下文，避免权限 mock 逃逸为不完整对象。
 src\components\common.test.tsx:26:  name: '测试企业',
 src\components\common.test.tsx:47:  display_name: '测试用户',
 src\components\common.test.tsx:143:describe('控制台导航路径匹配', () => {
@@ -1863,10 +1863,10 @@ src\i18n\index.ts:552:        news: '资讯',
 src\i18n\index.ts:553:        filing: '备案号 1293232-12',
 src\i18n\index.ts:554:        businessLicense: '营业执照',
 src\i18n\index.ts:555:        license: '许可证',
-src\i18n\index.ts:780:  // 中文：产品默认使用中文，只有用户主动切换后才持久化其他语言。
-src\i18n\index.ts:786:    // 中文：存储不可用时回退默认语言，不能让初始化阶段卡住加载层。
-src\i18n\index.ts:807:    // 中文：语言切换仍在当前会话生效，持久化失败不影响页面使用。
-src\components\home-reward-stat.tsx:18:  // 中文：两位以内保持设计稿字号，超过两位后随可见字符数连续缩小。
+src\i18n\index.ts:780:  // 产品默认使用中文，只有用户主动切换后才持久化其他语言。
+src\i18n\index.ts:786:    // 存储不可用时回退默认语言，不能让初始化阶段卡住加载层。
+src\i18n\index.ts:807:    // 语言切换仍在当前会话生效，持久化失败不影响页面使用。
+src\components\home-reward-stat.tsx:18:  // 两位以内保持设计稿字号，超过两位后随可见字符数连续缩小。
 src\seo\site-seo.tsx:7:export const SITE_DESCRIPTION = '合规的企业级大型 AI 算力聚合平台'
 src\seo\site-seo.tsx:42:      title: 'Token NX - 合规的企业级 AI 算力聚合平台',
 src\seo\site-seo.tsx:43:      description: 'Token NX 是合规的企业级大型 AI 算力聚合平台，聚合多家大模型算力，提供优质、低价的 API 接入与企业管理能力。',
@@ -1933,7 +1933,7 @@ src\pages\console-account.test.tsx:192:  it('企业空间保留创建人信息',
 src\pages\console-account.test.tsx:195:      workspaces: [{ id: 'enterprise-1', name: '示例企业', type: 'enterprise', role: 'owner' }],
 src\pages\console-account.test.tsx:200:    expect(await screen.findByRole('columnheader', { name: '创建人' })).toBeInTheDocument()
 src\pages\console-account.test.tsx:202:    expect(screen.getByText('接口用户')).toBeInTheDocument()
-src\pages\console-account.test.tsx:205:  // 中文：密钥管理页的部门筛选在前端按成员目录过滤，人员筛选则使用企业密钥接口参数。
+src\pages\console-account.test.tsx:205:  // 密钥管理页的部门筛选在前端按成员目录过滤，人员筛选则使用企业密钥接口参数。
 src\pages\console-account.test.tsx:206:  it('企业密钥管理支持按部门和可搜索人员筛选', async () => {
 src\pages\console-account.test.tsx:210:      workspaces: [{ id: 'enterprise-1', name: '示例企业', type: 'enterprise', role: 'owner' }],
 src\pages\console-account.test.tsx:212:    const salesKey = { ...structuredClone(KEY_ITEM), creator: { ...KEY_ITEM.creator, id: 'user-sales', display_name: '销售成员' } }
@@ -1963,12 +1963,12 @@ src\pages\console-account.test.tsx:287:  it('我的密钥不渲染限制和模�
 src\pages\console-account.test.tsx:291:    const row = (await screen.findByText('默认密钥')).closest('tr') as HTMLElement
 src\pages\console-account.test.tsx:292:    expect(within(row).queryByText('已关闭')).not.toBeInTheDocument()
 src\pages\console-account.test.tsx:293:    expect(within(row).queryByText('未选择')).not.toBeInTheDocument()
-src\pages\console-account.test.tsx:296:  // 中文：模型权限表单使用别名识别模型，并排除没有可用别名的模型。
+src\pages\console-account.test.tsx:296:  // 模型权限表单使用别名识别模型，并排除没有可用别名的模型。
 src\pages\console-account.test.tsx:297:  it('模型选择项显示别名并兼容旧 code 深链', async () => {
 src\pages\console-account.test.tsx:302:    await screen.findByText('默认密钥')
 src\pages\console-account.test.tsx:303:    await user.click(screen.getAllByRole('button', { name: /创建 API 密钥/ })[0])
 src\pages\console-account.test.tsx:306:    expect(screen.queryByText('内部模型')).toBeNull()
-src\pages\console-account.test.tsx:311:  // 中文：企业空间模型选择必须以服务端按企业权限过滤后的 API Key 模型列表为准。
+src\pages\console-account.test.tsx:311:  // 企业空间模型选择必须以服务端按企业权限过滤后的 API Key 模型列表为准。
 src\pages\console-account.test.tsx:312:  it('企业空间只显示企业已启用的模型', async () => {
 src\pages\console-account.test.tsx:315:      availableModels: [{ id: 'enterprise-enabled-model', alias: 'enterprise-enabled-public', name: '企业已启用模型', company: '企业厂商' }],
 src\pages\console-account.test.tsx:320:        { id: 'personal', name: '个人空间', type: 'personal', role: 'owner' },
@@ -2007,8 +2007,8 @@ src\components\common.tsx:199:  月之暗面: moonshotLogo,
 src\components\common.tsx:200:  零一万物: yiLogo,
 src\components\common.tsx:201:  百川智能: baichuanLogo,
 src\components\common.tsx:202:  字节跳动: doubaoLogo,
-src\components\common.tsx:218:  // 中文：私有化入口暂不对外展示，后续开放时再加入此列表。
-src\components\common.tsx:284:// 中文：登录后的默认工作页改为快速接入，控制台根路径不再承载总览页面。
+src\components\common.tsx:218:  // 私有化入口暂不对外展示，后续开放时再加入此列表。
+src\components\common.tsx:284:// 登录后的默认工作页改为快速接入，控制台根路径不再承载总览页面。
 src\components\common.tsx:440:  if (/免费|free/.test(label)) return MODEL_TAG_NAMED_COLORS.green;
 src\components\common.tsx:441:  if (/折扣|特价|discount|sale/.test(label))
 src\components\common.tsx:443:  if (/推荐|recommend/.test(label)) return MODEL_TAG_NAMED_COLORS.blue;
@@ -2071,11 +2071,11 @@ src\components\common.tsx:649:        "向量维度",
 src\components\common.tsx:653:      outputLabel: "输出限制",
 src\components\common.tsx:658:    contextLabel: "模型规格",
 src\components\common.tsx:660:    outputLabel: "输出限制",
-src\components\common.tsx:1862:      // 中文：打开时立即挂载弹层，避免入场动画前先渲染一帧退出状态。
-src\components\common.tsx:2013:      {/* 中文：已登录用户直接进入目标页面，仅未登录时挂载登录弹窗。 */}
+src\components\common.tsx:1862:      // 打开时立即挂载弹层，避免入场动画前先渲染一帧退出状态。
+src\components\common.tsx:2013:      {/* 已登录用户直接进入目标页面，仅未登录时挂载登录弹窗。 */}
 src\components\common.tsx:2078:          中
-src\components\common.tsx:2308:    // 中文：充值管理属于费用中心，进入新页面时仍保持顶部费用入口的选中态。
-src\components\common.tsx:2639:// 中文：侧栏图标统一使用 Semi Icons，图标语义与菜单名称保持一致。
+src\components\common.tsx:2308:    // 充值管理属于费用中心，进入新页面时仍保持顶部费用入口的选中态。
+src\components\common.tsx:2639:// 侧栏图标统一使用 Semi Icons，图标语义与菜单名称保持一致。
 src\components\common.tsx:2683:    label: "模型使用",
 src\components\common.tsx:2685:      { key: "/console/quickstart", label: "快速接入", icon: "quickstart" },
 src\components\common.tsx:2686:      { key: "/console/models", label: "模型广场", icon: "models" },
@@ -2153,122 +2153,122 @@ src\components\common.tsx:2881:  账号信息: "console.nav.accountInfo",
 src\components\common.tsx:2882:  活动中心: "console.nav.activityCenter",
 src\components\common.tsx:2883:  邀请返现: "console.nav.invitationReward",
 src\components\common.tsx:2884:  认证返现: "console.nav.realNameReward",
-src\components\common.tsx:2892:// 中文：视频生成已开放；个人和企业空间共用同一组体验中心入口。
-src\components\common.tsx:2893:// 中文：企业所有者入口同时驱动侧栏和用户菜单，避免两个导航面板出现权限差异。
+src\components\common.tsx:2892:// 视频生成已开放；个人和企业空间共用同一组体验中心入口。
+src\components\common.tsx:2893:// 企业所有者入口同时驱动侧栏和用户菜单，避免两个导航面板出现权限差异。
 src\components\common.tsx:2927:      label: "体验中心",
 src\components\common.tsx:2932:      label: "数据与费用",
 src\components\common.tsx:2944:      label: "账户管理",
 src\components\common.tsx:2998:// 临时调试开关：固定为点击展开，样式调整完成后改为 false 即可恢复 hover 交互。
-src\components\common.tsx:3001:// 中文：登录后的用户菜单与参考站保持同一层级，空间切换和控制台入口共用当前工作空间状态。
+src\components\common.tsx:3001:// 登录后的用户菜单与参考站保持同一层级，空间切换和控制台入口共用当前工作空间状态。
 src\components\common.tsx:3031:  const initial = (displayName || store.avatar || "用")
-src\components\common.tsx:3075:    // 中文：先保留本地快照，服务端成功返回后再同步企业列表，避免刷新时丢失当前空间。
-src\components\common.tsx:3090:        // 中文：同步失败时保留已有空间和激活状态，避免网络波动导致页面回到个人空间。
+src\components\common.tsx:3075:    // 先保留本地快照，服务端成功返回后再同步企业列表，避免刷新时丢失当前空间。
+src\components\common.tsx:3090:        // 同步失败时保留已有空间和激活状态，避免网络波动导致页面回到个人空间。
 src\components\common.tsx:3477:  const accountLabel = t("console.nav.account").replace(/管理$/, "");
 src\components\common.tsx:3850:  // 按路径长度优先匹配，确保企业管理子页面高亮到对应菜单项。
-src\components\common.tsx:3913:  // 中文：受控企业页面先等待权限上下文，再决定渲染页面或回到基础工作页。
+src\components\common.tsx:3913:  // 受控企业页面先等待权限上下文，再决定渲染页面或回到基础工作页。
 src\components\common.tsx:4115:  name: "安顺佳云灵犀智能科技有限公司",
 src\components\common.tsx:4116:  filing: "京ICP备20011824号-24",
 src\components\common.tsx:4117:  securityFiling: "北京公安备 11010802041394号",
 src\components\common.tsx:4122:  // 直接跳转到 API 文档中的第二项“接入概览”。
-src\components\common.tsx:4184:// 中文：统一由页面头部和客服按钮发送打开请求，保证客服浮层只维护一份交互状态。
-src\components\common.tsx:4424:    // 中文：尊重用户的减弱动效偏好，客服消息定位不强制平滑滚动。
-src\components\common.tsx:4496:    // 中文：先展示客服输入状态，再追加 mock 回复，模拟真实客服响应节奏。
-src\components\common.tsx:4513:      // 中文：先在本地即时切换已读状态，让用户无需等待接口返回即可看到反馈。
-src\components\common.tsx:4523:        // 中文：已读请求失败时恢复未读状态，但保留弹窗和当前浏览位置。
-src\components\common.tsx:4532:    // 中文：通知面板内的已读操作不关闭弹窗；仅在通知有目标地址时执行页面跳转。
-src\components\common.tsx:4539:    // 中文：批量已读同样采用乐观更新，避免按钮点击后列表状态延迟变化。
+src\components\common.tsx:4184:// 统一由页面头部和客服按钮发送打开请求，保证客服浮层只维护一份交互状态。
+src\components\common.tsx:4424:    // 尊重用户的减弱动效偏好，客服消息定位不强制平滑滚动。
+src\components\common.tsx:4496:    // 先展示客服输入状态，再追加 mock 回复，模拟真实客服响应节奏。
+src\components\common.tsx:4513:      // 先在本地即时切换已读状态，让用户无需等待接口返回即可看到反馈。
+src\components\common.tsx:4523:        // 已读请求失败时恢复未读状态，但保留弹窗和当前浏览位置。
+src\components\common.tsx:4532:    // 通知面板内的已读操作不关闭弹窗；仅在通知有目标地址时执行页面跳转。
+src\components\common.tsx:4539:    // 批量已读同样采用乐观更新，避免按钮点击后列表状态延迟变化。
 src\pages\console-core.tsx:38:  // 搜索词初始值取 URL 的 keyword 参数（模型广场“立即体验”跳转时携带）。
 src\pages\console-core.tsx:43:  // 防抖后的搜索关键词：作为 keyword 参数交给后端做服务端搜索，避免每次按键都发请求。
 src\pages\console-core.tsx:54:  // 关键词搜索由后端完成，此时不能启用服务端分页参数（结果集已被检索过滤）。
 src\pages\console-core.tsx:62:  // 关键词搜索已由服务端 keyword 参数完成，本地不再按 query 二次过滤，避免匹配字段差异造成误过滤。
-src\pages\console-core.tsx:73:  // 中文：单卡页面限制卡片宽度，多卡页面继续由网格平均分配可用空间。
+src\pages\console-core.tsx:73:  // 单卡页面限制卡片宽度，多卡页面继续由网格平均分配可用空间。
 src\pages\console-core.tsx:83:    // 当前列表里找不到时，用接口详情兜底构造一条本地记录打开抽屉。
 src\pages\console-core.tsx:91:  // keyword 跳转（模型广场“立即体验”）：搜索结果返回后自动打开对应模型的详情侧边栏。
 src\pages\console-core.tsx:95:    // URL keyword 被清除（如关闭抽屉）时重置标记，保证下次带参跳转仍能自动打开。
 src\pages\console-core.tsx:100:    // model 参数优先定位详情；同一 keyword 只自动打开一次，避免用户输入时反复弹抽屉。
 src\pages\console-core.tsx:140:    // 关闭抽屉时清掉 model 定位参数和 keyword 搜索词（原 model_name 定位语义已迁移到 keyword）。
-src\pages\video-generation.tsx:122:    // 中文：历史记录只影响本地展示，浏览器存储不可用时不阻断真实任务提交。
+src\pages\video-generation.tsx:122:    // 历史记录只影响本地展示，浏览器存储不可用时不阻断真实任务提交。
 src\pages\video-generation.tsx:194:      reject(new DOMException('视频任务轮询已取消', 'AbortError'))
 src\seo\site-seo.test.ts:14:    expect(seo.copy.title).toContain('合规')
 src\seo\site-seo.test.ts:33:    expect(seo.copy.description).not.toMatch(/¥|\$|价格\s*\d|price\s*\d/i)
 src\seo\site-seo.test.ts:34:    expect(seo.copy.description).toContain('页面显示')
-src\components\invitation-trend-chart.tsx:68:    // 中文：使用 SVG 渲染，确保深浅色切换和高分屏下的折线图保持清晰。
-src\styles.css:1638:/* 中文：控制台所有页面共用 16px 的面包屑上下留白，标题从同一条基线开始。 */
+src\components\invitation-trend-chart.tsx:68:    // 使用 SVG 渲染，确保深浅色切换和高分屏下的折线图保持清晰。
+src\styles.css:1638:/* 控制台所有页面共用 16px 的面包屑上下留白，标题从同一条基线开始。 */
 src\styles.css:3027:/* 三步折叠式快速接入工作区，内容区域沿用现有接口和代码控件。 */
 src\styles.css:3366:/* 公开页视觉令牌与布局按真实设计页面对齐。 */
-src\styles.css:3416:/* 中文：只美化页面根滚动条，组件内部滚动区域继续使用各自的局部规则。 */
-src\styles.css:3422:/* 中文：阻止 Firefox 的继承色进入组件内部滚动容器。 */
-src\styles.css:3447:/* 中文：使用无前缀伪元素覆盖页面和组件滚动条，统一隐藏 Chromium 的方向按钮。 */
+src\styles.css:3416:/* 只美化页面根滚动条，组件内部滚动区域继续使用各自的局部规则。 */
+src\styles.css:3422:/* 阻止 Firefox 的继承色进入组件内部滚动容器。 */
+src\styles.css:3447:/* 使用无前缀伪元素覆盖页面和组件滚动条，统一隐藏 Chromium 的方向按钮。 */
 src\styles.css:3500:/* Semi 会在锁定滚动时缩窄 body；页面已预留稳定滚动条槽，无需重复补偿。 */
 src\styles.css:4340:/* Semi 组件沿用公开页的黑白灰色阶，品牌色只用于品牌和状态表达。 */
 src\styles.css:4509:/* 登录浮层的尺寸、表单节奏和授权状态保持与目标页面一致。 */
 src\styles.css:4727:/* 公开页面沿用参考站的内容宽度、分隔线和响应式节奏。 */
 src\styles.css:5653:/* 登录落地页与顶部登录浮层共用同一套面板尺寸。 */
 src\styles.css:5758:/* 快速接入页按参考站的三步路径、控制区和代码工作区对齐。 */
-src\styles.css:5771:  /* 中文：快速接入标题区与用量管理保持同一基线，不使用额外横线。 */
+src\styles.css:5771:  /* 快速接入标题区与用量管理保持同一基线，不使用额外横线。 */
 src\styles.css:6030:/* 控制台壳层与参考站共享同一组黑白灰背景层次。 */
 src\styles.css:6150:/* 控制台侧栏复用参考站的原生导航层级，并覆盖 Semi 的默认蓝白状态。 */
-src\styles.css:6602:/* 中文：普通后台页与“用量管理”使用同一条标题、内容基线，避免额外标题带造成纵向留白不一致。 */
-src\styles.css:6606:  /* 中文：后台页面标题与正文保持紧凑统一的垂直节奏。 */
-src\styles.css:6614:  /* 中文：标题说明与正文之间只保留必要留白，避免后台页面首屏过松。 */
-src\styles.css:6631:/* 中文：Semi 的后台 Tab 与自定义页签保持同一规则，保留活动项而移除整条底线。 */
-src\styles.css:6662:    /* 中文：移动端同样沿用紧凑标题区，避免空白标题带重新出现。 */
+src\styles.css:6602:/* 普通后台页与“用量管理”使用同一条标题、内容基线，避免额外标题带造成纵向留白不一致。 */
+src\styles.css:6606:  /* 后台页面标题与正文保持紧凑统一的垂直节奏。 */
+src\styles.css:6614:  /* 标题说明与正文之间只保留必要留白，避免后台页面首屏过松。 */
+src\styles.css:6631:/* Semi 的后台 Tab 与自定义页签保持同一规则，保留活动项而移除整条底线。 */
+src\styles.css:6662:    /* 移动端同样沿用紧凑标题区，避免空白标题带重新出现。 */
 src\styles.css:6721:/* 模型广场沿用源站的筛选层级、卡片密度和灰阶交互。 */
 src\styles.css:7102:/* 智能对话与视频生成使用源站的工作区骨架，输入区固定在底部。 */
 src\styles.css:7618:  /* 将对话工作台固定在当前视口，消息区承担超出内容的滚动。 */
 src\styles.css:7632:/* 视频生成页复用设计稿的工作台结构：240px 历史栏、顶部工具栏、预览区和底部 composer。 */
 src\styles.css:8312:/* 模型广场详情抽屉：对齐设计稿 model-detail-* 结构，右侧滑入。 */
 src\styles.css:8558:/* 账户与企业菜单页复用源站的筛选、指标、表格和黑白灰交互层级。 */
-src\styles.css:8872:  /* 中文：个人和企业页均使用精简列，避免隐藏字段留下横向空白。 */
+src\styles.css:8872:  /* 个人和企业页均使用精简列，避免隐藏字段留下横向空白。 */
 src\styles.css:9108:/* API Key 页面沿用参考页的黑白灰表格、表单分组和安全操作层级。 */
-src\styles.css:9511:  /* 中文：后台页签仅显示当前项指示线，不再绘制横贯内容区的分隔线。 */
+src\styles.css:9511:  /* 后台页签仅显示当前项指示线，不再绘制横贯内容区的分隔线。 */
 src\styles.css:9847:/* 费用页沿用参考页面的内容顺序、表格层级和开票流程视觉规范。 */
-src\styles.css:9975:/* 中文：费用页下拉列表与操作日志保持一致，不显示选项右侧勾选图标。弹层挂载在 body 下，使用 :has 限定费用页范围。 */
-src\styles.css:10542:  /* 中文：充值快捷金额在手机端改为两列，避免金额按钮被横向裁切。 */
-src\styles.css:11656:/* 中文：企业模型管理复用参考页的高密度目录结构，状态开关仍保留可触摸的操作尺寸。 */
+src\styles.css:9975:/* 费用页下拉列表与操作日志保持一致，不显示选项右侧勾选图标。弹层挂载在 body 下，使用 :has 限定费用页范围。 */
+src\styles.css:10542:  /* 充值快捷金额在手机端改为两列，避免金额按钮被横向裁切。 */
+src\styles.css:11656:/* 企业模型管理复用参考页的高密度目录结构，状态开关仍保留可触摸的操作尺寸。 */
 src\styles.css:12288:/* 首页是产品门面：用请求流、模型状态和清晰的使用分层承载动效。 */
 src\styles.css:13398:/* 首页用真实接入界面承载信息，动效只绑定请求、响应和状态反馈。 */
-src\styles.css:14888:/* 中文：主题状态只切换语义色，Semi 组件和自定义页面共享同一套变量。 */
-src\styles.css:15003:/* 中文：logo 源图比例约 5.45:1，宽 220px 时高约 40px，与设计稿高度一致且完整显示；窄屏限宽兜底 */
-src\styles.css:15068:/* 中文：登录层复刻参考站点的右上悬浮玻璃面板和右侧入场动效。 */
-src\styles.css:15312:/* 中文：首页与其他页面共用全宽 Header 内层，并按 Figma 的 1920px 画板保留两侧 23px 边距。 */
-src\styles.css:15838:/* 中文：首页在浅色主题下保留相同几何结构，只切换中性色和交互对比。 */
-src\styles.css:15952:/* 中文：首页严格对应设计手稿的七段结构，卡片内部只承载真实模型和业务文案。 */
+src\styles.css:14888:/* 主题状态只切换语义色，Semi 组件和自定义页面共享同一套变量。 */
+src\styles.css:15003:/* logo 源图比例约 5.45:1，宽 220px 时高约 40px，与设计稿高度一致且完整显示；窄屏限宽兜底 */
+src\styles.css:15068:/* 登录层复刻参考站点的右上悬浮玻璃面板和右侧入场动效。 */
+src\styles.css:15312:/* 首页与其他页面共用全宽 Header 内层，并按 Figma 的 1920px 画板保留两侧 23px 边距。 */
+src\styles.css:15838:/* 首页在浅色主题下保留相同几何结构，只切换中性色和交互对比。 */
+src\styles.css:15952:/* 首页严格对应设计手稿的七段结构，卡片内部只承载真实模型和业务文案。 */
 src\styles.css:16678:/* 货币符号位于价格数字前：去掉左侧间距，与数字保持 1px 间隔 */
-src\styles.css:17113:/* 中文：轨道宽度由两份同序列内容组成，动画移动半程后可无缝回到起点。 */
-src\styles.css:17165:/* 中文：hover 时暂停跑马灯滚动，方便用户查看和点击合作伙伴；移开后继续滚动 */
-src\styles.css:17521:/* 中文：手稿内容保持窄幅居中，页面外框和背景必须铺满整个视口。 */
-src\styles.css:17536:/* 中文：客服入口使用独立的固定图标盒，避免图标按按钮文本基线布局而产生视觉偏移。 */
-src\styles.css:18127:/* 中文：浅色主题使用完整的中性色表面，避免只切换根节点而首页视觉不变。 */
+src\styles.css:17113:/* 轨道宽度由两份同序列内容组成，动画移动半程后可无缝回到起点。 */
+src\styles.css:17165:/* hover 时暂停跑马灯滚动，方便用户查看和点击合作伙伴；移开后继续滚动 */
+src\styles.css:17521:/* 手稿内容保持窄幅居中，页面外框和背景必须铺满整个视口。 */
+src\styles.css:17536:/* 客服入口使用独立的固定图标盒，避免图标按按钮文本基线布局而产生视觉偏移。 */
+src\styles.css:18127:/* 浅色主题使用完整的中性色表面，避免只切换根节点而首页视觉不变。 */
 src\styles.css:18867:/* 内容区居中展示，不再为右侧悬浮信息框预留固定空位。 */
 src\styles.css:19016:/* 跟随鼠标模式下取消固定停靠位与入场位移，位置完全由内联坐标控制。 */
-src\styles.css:20242:/* 中文：首页统一提升基础字号，保证标题、正文和辅助信息保持可读的层级。 */
-src\styles.css:20300:/* 中文：首页计分板按新版 Figma 的独立翻牌尺寸呈现，保留原有动态翻页逻辑。 */
-src\styles.css:20431:/* 中文：优惠模型与推广资讯使用独立的可读字号层级，避免放大时影响首页其他区块。 */
-src\styles.css:20726:/* 中文：首页客服浮层的正文同步放大，避免主页面和交互面板出现明显字号落差。 */
-src\styles.css:20875:/* 中文：Portal 弹窗不在首页布局树内，浅色主题必须单独覆盖其玻璃表面和内容颜色。 */
-src\styles.css:21024:/* 中文：列宽用 minmax(0, 1fr)，收益位数变长时只缩字号，不撑开卡片宽度 */
+src\styles.css:20242:/* 首页统一提升基础字号，保证标题、正文和辅助信息保持可读的层级。 */
+src\styles.css:20300:/* 首页计分板按新版 Figma 的独立翻牌尺寸呈现，保留原有动态翻页逻辑。 */
+src\styles.css:20431:/* 优惠模型与推广资讯使用独立的可读字号层级，避免放大时影响首页其他区块。 */
+src\styles.css:20726:/* 首页客服浮层的正文同步放大，避免主页面和交互面板出现明显字号落差。 */
+src\styles.css:20875:/* Portal 弹窗不在首页布局树内，浅色主题必须单独覆盖其玻璃表面和内容颜色。 */
+src\styles.css:21024:/* 列宽用 minmax(0, 1fr)，收益位数变长时只缩字号，不撑开卡片宽度 */
 src\styles.css:21145:/* 广告图铺满广告位，避免比例不符时出现大黑边 */
-src\styles.css:21911:/* 中文：客服面板沿用浅色玻璃层，触发按钮仍保持深色以维持右下角识别度。 */
-src\styles.css:22239:/* 中文：治理页复用后台统一页面边距，并为角色名称保留更充足的目录宽度。 */
-src\styles.css:22247:/* 中文：让角色栏相对页面滚动吸顶，避免控制台外层 overflow 阻断 sticky。 */
-src\styles.css:22389:  /* 中文：权限标题与下方矩阵内容采用设置页同样的紧凑间距。 */
-src\styles.css:22637:/* 中文：移动端降低高斯模糊采样成本，保留弹层的层次感。 */
-src\styles.css:22653:/* 中文：全局尊重系统减弱动效设置，覆盖路由页面和组件的过渡动画。 */
-src\styles.css:22669:/* 中文：时间范围弹层沿用目标页的双月日历交互，桌面端快捷项与日历并排。 */
+src\styles.css:21911:/* 客服面板沿用浅色玻璃层，触发按钮仍保持深色以维持右下角识别度。 */
+src\styles.css:22239:/* 治理页复用后台统一页面边距，并为角色名称保留更充足的目录宽度。 */
+src\styles.css:22247:/* 让角色栏相对页面滚动吸顶，避免控制台外层 overflow 阻断 sticky。 */
+src\styles.css:22389:  /* 权限标题与下方矩阵内容采用设置页同样的紧凑间距。 */
+src\styles.css:22637:/* 移动端降低高斯模糊采样成本，保留弹层的层次感。 */
+src\styles.css:22653:/* 全局尊重系统减弱动效设置，覆盖路由页面和组件的过渡动画。 */
+src\styles.css:22669:/* 时间范围弹层沿用目标页的双月日历交互，桌面端快捷项与日历并排。 */
 src\styles.css:22903:/* Figma 登录面板：418 × 953，内容宽 363，三种认证状态共用同一套控件。 */
-src\styles.css:22990:/* 中文：logo 源图比例约 5.45:1，容器按同比例取 267x49 并用 contain 完整显示，避免 cover 裁切左右两侧 */
-src\styles.css:23092:/* 中文：微信 WebView 和低性能触控设备优先保证滚动稳定，保留内容与交互，仅降级装饰动画。 */
+src\styles.css:22990:/* logo 源图比例约 5.45:1，容器按同比例取 267x49 并用 contain 完整显示，避免 cover 裁切左右两侧 */
+src\styles.css:23092:/* 微信 WebView 和低性能触控设备优先保证滚动稳定，保留内容与交互，仅降级装饰动画。 */
 src\styles.css:24477:/* 浅色模式同样保持广告图铺满 */
-src\styles.css:24767:/* 中文：浅色主题下合作伙伴 hover/focus 仅放大图标，不再绘制整块背景。 */
-src\styles.css:24822:/* 中文：网格级遮罩统一覆盖两行轨道，并硬裁掉最边缘的动画合成像素。 */
-src\styles.css:24824:  /* 中文：桌面端只使用网格级遮罩，避免逐行遮罩叠加后产生边缘色差。 */
-src\styles.css:25234:/* 中文：工具文档链接在交互状态下保持原有文字颜色。 */
-src\styles.css:25325:/* 中文：应用、复制按钮使用与用量明细一致的纯文字链接样式。 */
+src\styles.css:24767:/* 浅色主题下合作伙伴 hover/focus 仅放大图标，不再绘制整块背景。 */
+src\styles.css:24822:/* 网格级遮罩统一覆盖两行轨道，并硬裁掉最边缘的动画合成像素。 */
+src\styles.css:24824:  /* 桌面端只使用网格级遮罩，避免逐行遮罩叠加后产生边缘色差。 */
+src\styles.css:25234:/* 工具文档链接在交互状态下保持原有文字颜色。 */
+src\styles.css:25325:/* 应用、复制按钮使用与用量明细一致的纯文字链接样式。 */
 src\components\home-reward-stat.test.tsx:4:describe('首页奖励统计数字', () => {
 src\components\home-reward-stat.test.tsx:5:  it('两位以内保持原字号，超过两位后随位数增加持续缩小', () => {
-src\pages\billing.tsx:75:// 中文：费用页通过查询参数直达费用或发票页签，非法值统一回退到账务概览。
-src\pages\billing.tsx:135:// 中文：部门筛选需要包含多级部门，按父节点逐层拉取并展平目录。
+src\pages\billing.tsx:75:// 费用页通过查询参数直达费用或发票页签，非法值统一回退到账务概览。
+src\pages\billing.tsx:135:// 部门筛选需要包含多级部门，按父节点逐层拉取并展平目录。
 src\pages\billing.tsx:192:// 账本类型按服务端稳定标识展示，确保赠送记录不会落入模型消费的兜底分支。
 src\pages\billing.tsx:201:  if (source.includes('partial') || source.includes('部分')) return i18n.t('console.billing.statementPartialRevoke')
 src\pages\billing.tsx:202:  if (source.includes('revoke') || source.includes('撤销')) return i18n.t('console.billing.statementRevoke')
@@ -2276,13 +2276,13 @@ src\pages\billing.tsx:203:  if (source.includes('expire') || source.includes('�
 src\pages\billing.tsx:204:  if (source.includes('consume') || source.includes('usage') || source.includes('消费')) return i18n.t('console.billing.statementConsume')
 src\pages\billing.tsx:205:  if (source.includes('reward') || source.includes('grant') || source.includes('bonus') || source.includes('奖励') || source.includes('赠送')) return i18n.t('console.billing.statementRewardGranted')
 src\pages\billing.tsx:206:  if (source.includes('other') || source.includes('其他')) return i18n.t('console.billing.statementOther')
-src\pages\billing.tsx:337:  // 中文：后端在部分旧版本或权限受限场景下可能省略分析子对象，统一使用空数据渲染。
-src\pages\billing.tsx:340:  // 中文：费用筛选只暴露有别名的模型，旧 code 仅留在服务端兼容查询中。
-src\pages\billing.tsx:341:  // 中文：兼容旧版或权限受限接口未返回筛选项的情况，避免费用页因空数据白屏。
-src\pages\billing.tsx:442:// 中文：充值表单独立复用在充值管理页面，费用页仅保留费用概览和发票页签。
-src\pages\billing.tsx:465:    // 中文：前置模式没有可靠的跨域支付回跳，持续通过服务端查单确认最终状态。
-src\pages\billing.tsx:641:  // 中文：兼容旧版费用页充值链接，保留订单参数后转到新的充值管理页面。
-src\pages\billing.tsx:649:  // 中文：项目名称由当前语言资源决定且字段只读，语言切换时同步已有表单，避免提交旧语言的演示值。
+src\pages\billing.tsx:337:  // 后端在部分旧版本或权限受限场景下可能省略分析子对象，统一使用空数据渲染。
+src\pages\billing.tsx:340:  // 费用筛选只暴露有别名的模型，旧 code 仅留在服务端兼容查询中。
+src\pages\billing.tsx:341:  // 兼容旧版或权限受限接口未返回筛选项的情况，避免费用页因空数据白屏。
+src\pages\billing.tsx:442:// 充值表单独立复用在充值管理页面，费用页仅保留费用概览和发票页签。
+src\pages\billing.tsx:465:    // 前置模式没有可靠的跨域支付回跳，持续通过服务端查单确认最终状态。
+src\pages\billing.tsx:641:  // 兼容旧版费用页充值链接，保留订单参数后转到新的充值管理页面。
+src\pages\billing.tsx:649:  // 项目名称由当前语言资源决定且字段只读，语言切换时同步已有表单，避免提交旧语言的演示值。
 src\i18n\console.ts:7:        modelUse: "模型使用",
 src\i18n\console.ts:8:        quickstart: "快速接入",
 src\i18n\console.ts:9:        models: "模型广场",
@@ -4064,10 +4064,10 @@ src\pages\video-generation.test.tsx:174:    await user.click(screen.getByRole('b
 src\pages\video-generation.test.tsx:176:    expect(screen.getByLabelText('视频提示词')).toHaveValue('')
 src\pages\video-generation.test.tsx:177:    expect(screen.getByText('准备开始生成')).toBeInTheDocument()
 src\pages\video-generation.test.tsx:181:  it('工作区缺少可用密钥时在结果区内显示提示', async () => {
-src\components\markdown-code-block.tsx:95:// 中文：后端有时只返回 Text 代码块，根据内容推断语法；无法归类时使用通用配置高亮，避免整块单色。
-src\components\markdown-code-block.tsx:105:      // 中文：不是合法 JSON 时继续检查其他语言特征，避免错误高亮。
+src\components\markdown-code-block.tsx:95:// 后端有时只返回 Text 代码块，根据内容推断语法；无法归类时使用通用配置高亮，避免整块单色。
+src\components\markdown-code-block.tsx:105:      // 不是合法 JSON 时继续检查其他语言特征，避免错误高亮。
 src\pages\console-api-key-modal.css:1:/* 创建与编辑 API Key 弹窗：按业务分组保持双栏结构，避免样式外溢到其他弹窗。 */
-src\pages\console-api-key-modal.css:181:/* 中文：参考稿中的选中态使用清晰的绿色实心圆，深浅色下均保持辨识度。 */
+src\pages\console-api-key-modal.css:181:/* 参考稿中的选中态使用清晰的绿色实心圆，深浅色下均保持辨识度。 */
 src\components\markdown-content.test.tsx:7:describe('模型回复 Markdown 渲染', () => {
 src\components\markdown-content.test.tsx:8:  it('支持标题、列表和 GFM 表格', () => {
 src\components\markdown-content.test.tsx:9:    render(<MarkdownContent content={'# 结果\n\n- 第一项\n\n| 字段 | 值 |\n| --- | --- |\n| 状态 | 正常 |'} />)
@@ -4397,29 +4397,29 @@ src\pages\billing.test.tsx:476:  it('按账本类型展示赠送记录', () => {
 src\pages\billing.test.tsx:477:    expect(ledgerKindLabel('reward')).toBe('赠送')
 src\pages\billing.test.tsx:478:    expect(ledgerKindLabel('recharge')).toBe('充值')
 src\pages\billing.test.tsx:479:    expect(ledgerKindLabel('model_consume')).toBe('模型消费')
-src\components\home-reward-stat.css:1:/* 中文：固定数字行和标签行，数字缩放时不会带动下方标签上下移动。 */
-src\store\auth-slice.ts:166:    // 中文：令牌验证失败时清除前端认证状态，由调用方回到公开首页。
-src\store\auth-slice.ts:172:    // 中文：其他标签页完成登录或刷新后，及时同步当前页面的用户状态。
-src\store\auth-slice.ts:178:    // 中文：个人中心保存资料后立即同步 Header，避免刷新前继续展示旧账号信息。
-src\components\personal-usage-management.tsx:32:  // 中文：保留个人用量页原有的全角人民币符号，只统一金额精度和舍入规则。
-src\components\model-detail-drawer.css:33:/* 中文：柱状图提示同时支持鼠标悬停和键盘聚焦，避免依赖原生 title 的显示时机。 */
-src\pages\console-account.tsx:153:// 中文：用户只通过模型名称、厂商和别名识别模型，内部模型 id 只用于提交权限关联。
-src\pages\console-account.tsx:165:// 中文：部门接口按父级分页返回，筛选栏需要递归加载并展平完整部门目录。
-src\pages\console-account.tsx:516:    // 中文：编辑时允许恢复到打开表单时的原始到期日。
-src\pages\console-account.tsx:640:        // 中文：保存成功后直接关闭，避免 saving 状态拦截 closeModal。
-src\pages\console-account.tsx:691:          // 中文：批量编辑只覆盖配置项，保留每条密钥原有的名称和标签。
-src\pages\console-account.tsx:892:      // 中文：部分内嵌浏览器会拒绝 Clipboard API，继续尝试传统复制方式。
-src\pages\console-account.tsx:895:    // 中文：使用临时文本域兼容非安全上下文和不支持 Clipboard API 的环境。
-src\pages\console-account.tsx:928:  // 中文：测试或旧会话没有用户 ID 时保留服务端列表，真实登录会按当前用户收窄企业“我的密钥”。
-src\pages\console-account.tsx:946:  // 中文：个人和企业密钥页统一只展示核心字段，批量勾选列仍仅在企业页保留。
-src\pages\console-account.tsx:1011:    // 中文：部门匹配保留历史成员，但企业密钥接口只允许按在职或暂停成员查询。
-src\pages\console-account.tsx:2201:      {/* 中文：邀请页恢复后台统一标题，不再展示与活动数据无关的用户资料。 */}
+src\components\home-reward-stat.css:1:/* 固定数字行和标签行，数字缩放时不会带动下方标签上下移动。 */
+src\store\auth-slice.ts:166:    // 令牌验证失败时清除前端认证状态，由调用方回到公开首页。
+src\store\auth-slice.ts:172:    // 其他标签页完成登录或刷新后，及时同步当前页面的用户状态。
+src\store\auth-slice.ts:178:    // 个人中心保存资料后立即同步 Header，避免刷新前继续展示旧账号信息。
+src\components\personal-usage-management.tsx:32:  // 保留个人用量页原有的全角人民币符号，只统一金额精度和舍入规则。
+src\components\model-detail-drawer.css:33:/* 柱状图提示同时支持鼠标悬停和键盘聚焦，避免依赖原生 title 的显示时机。 */
+src\pages\console-account.tsx:153:// 用户只通过模型名称、厂商和别名识别模型，内部模型 id 只用于提交权限关联。
+src\pages\console-account.tsx:165:// 部门接口按父级分页返回，筛选栏需要递归加载并展平完整部门目录。
+src\pages\console-account.tsx:516:    // 编辑时允许恢复到打开表单时的原始到期日。
+src\pages\console-account.tsx:640:        // 保存成功后直接关闭，避免 saving 状态拦截 closeModal。
+src\pages\console-account.tsx:691:          // 批量编辑只覆盖配置项，保留每条密钥原有的名称和标签。
+src\pages\console-account.tsx:892:      // 部分内嵌浏览器会拒绝 Clipboard API，继续尝试传统复制方式。
+src\pages\console-account.tsx:895:    // 使用临时文本域兼容非安全上下文和不支持 Clipboard API 的环境。
+src\pages\console-account.tsx:928:  // 测试或旧会话没有用户 ID 时保留服务端列表，真实登录会按当前用户收窄企业“我的密钥”。
+src\pages\console-account.tsx:946:  // 个人和企业密钥页统一只展示核心字段，批量勾选列仍仅在企业页保留。
+src\pages\console-account.tsx:1011:    // 部门匹配保留历史成员，但企业密钥接口只允许按在职或暂停成员查询。
+src\pages\console-account.tsx:2201:      {/* 邀请页恢复后台统一标题，不再展示与活动数据无关的用户资料。 */}
 src\pages\console-account.tsx:2374:                  <strong>NX Labs 智能科技（上海）有限公司</strong>
-src\components\support-widget.css:1:/* 中文：客服通知面板使用独立层级，通知列表不复用聊天消息的气泡样式。 */
-src\components\support-widget.css:54:/* 中文：提高通知列表选择器权重，确保组件样式覆盖全局基础按钮样式。 */
-src\components\support-widget.css:215:/* 中文：浅色主题保持白色表面，但以冷灰边框和蓝色未读强调替代深色玻璃层。 */
+src\components\support-widget.css:1:/* 客服通知面板使用独立层级，通知列表不复用聊天消息的气泡样式。 */
+src\components\support-widget.css:54:/* 提高通知列表选择器权重，确保组件样式覆盖全局基础按钮样式。 */
+src\components\support-widget.css:215:/* 浅色主题保持白色表面，但以冷灰边框和蓝色未读强调替代深色玻璃层。 */
 src\pages\trae-enterprise.tsx:93:// 其他企业分析组件使用同一行模型；成员管理页本身只展示服务端返回的数据。
-src\pages\trae-enterprise.tsx:96:// 中文：当前企业上下文尚未返回订阅席位明细，先沿用订阅页的演示配额展示。
+src\pages\trae-enterprise.tsx:96:// 当前企业上下文尚未返回订阅席位明细，先沿用订阅页的演示配额展示。
 src\pages\trae-enterprise.tsx:112:    // 兼容旧接口的 invited 值，页面与新接口统一使用 pending。
 src\pages\trae-enterprise.tsx:224:    name: "极光互娱科技（深圳）有限公司",
 src\pages\trae-enterprise.tsx:228:        name: "运营",
@@ -4432,10 +4432,10 @@ src\pages\trae-enterprise.tsx:2292:              <span className="is-purple">Wor
 src\pages\trae-enterprise.tsx:2305:                全端账号 <b>4 / 10</b>
 src\pages\trae-enterprise.tsx:2310:                Work 专属账号 <b>0 / 20</b>
 src\components\semi-compat.test.tsx:18:    expect(screen.getByText('中文')).toBeInTheDocument()
-src\components\markdown-content.tsx:140:    // 中文：富文本 HTML 中带空行的 pre/code 会被 Markdown 拆段，先恢复为一个标准围栏代码块。
-src\components\markdown-content.tsx:156:    // 中文：富文本接口可能把 Markdown 表格包进 p 标签，拆回文本后交给 GFM 正常生成 table。
-src\components\markdown-content.tsx:191:  // 中文：兼容 React Markdown 与 unified 不同版本的 AST 类型定义。
-src\components\markdown-content.tsx:197:        // 中文：从 Markdown AST 读取原始文本，避免多段 HTML 代码被转成逗号和 [object Object]。
+src\components\markdown-content.tsx:140:    // 富文本 HTML 中带空行的 pre/code 会被 Markdown 拆段，先恢复为一个标准围栏代码块。
+src\components\markdown-content.tsx:156:    // 富文本接口可能把 Markdown 表格包进 p 标签，拆回文本后交给 GFM 正常生成 table。
+src\components\markdown-content.tsx:191:  // 兼容 React Markdown 与 unified 不同版本的 AST 类型定义。
+src\components\markdown-content.tsx:197:        // 从 Markdown AST 读取原始文本，避免多段 HTML 代码被转成逗号和 [object Object]。
 src\store\auth-slice.test.ts:24:      display_name: '测试用户',
 src\store\auth-slice.test.ts:33:describe('认证 Redux 状态', () => {
 src\store\auth-slice.test.ts:40:  it('没有 refresh token 时启动为未认证状态且不请求后端', async () => {
@@ -4455,30 +4455,30 @@ src\store\auth-slice.test.ts:116:  it('退出登录即使服务端失败也会�
 src\store\auth-slice.test.ts:121:    await expect(appStore.dispatch(logoutAuth()).unwrap()).rejects.toMatchObject({ message: '网络连接失败，请检查服务地址和网络状态' })
 src\pages\news.tsx:29:  // 接口历史数据仍可能返回“新闻”，页面统一展示新的“资讯”文案。
 src\pages\news.tsx:30:  return tags.map((tag) => tag === '新闻' ? localizedNewsLabel : tag)
-src\pages\enterprise-console-shared.tsx:143:  // 中文：图标组件自带的 aria-label 不能覆盖业务动作名称，按钮统一暴露当前导出动作。
+src\pages\enterprise-console-shared.tsx:143:  // 图标组件自带的 aria-label 不能覆盖业务动作名称，按钮统一暴露当前导出动作。
 src\components\personal-usage-date-picker.tsx:7:// 保留原导出路径，避免个人用量相关调用方发生无意义的导入变更。
 src\components\personal-usage-date-picker.tsx:14:// 日期选择器按自然日展示，接口则使用 UTC 左闭右开区间。
 src\components\personal-usage-date-picker.tsx:26:// 与今天对齐的完整自然日范围直接使用后端预设，其他选择才发送自定义边界。
 src\components\personal-usage-date-picker.tsx:78:  // 沿用 Semi DatePicker，仅在个人用量页覆盖布局和最近 90 天限制。
 src\components\ranking-usage-chart.tsx:114:        // 堆叠柱按整根柱子响应 hover，避免单独突出当前模型色块。
-src\components\enterprise-permission-matrix.tsx:49:  // 中文：开启权限时自动补齐依赖，关闭时同步移除依赖它的权限。
+src\components\enterprise-permission-matrix.tsx:49:  // 开启权限时自动补齐依赖，关闭时同步移除依赖它的权限。
 src\components\trae-table-empty.tsx:10:/** 新版企业管理表格共用的无数据状态，不额外创建卡片背景层。 */
 src\pages\invite.test.tsx:19:describe('邀请访问中间页', () => {
 src\pages\invite.test.tsx:25:  it('记录访问后回到首页并继续携带邀请码', async () => {
-src\pages\enterprise-models.css:14:/* 中文：标题与下方模型列表共用左边界，覆盖后台页面通用标题的水平内边距。 */
-src\components\support-chat.ts:18:// 中文：回复规则集中在 mock 适配层，后续接入真实客服服务时只替换这一层。
+src\pages\enterprise-models.css:14:/* 标题与下方模型列表共用左边界，覆盖后台页面通用标题的水平内边距。 */
+src\components\support-chat.ts:18:// 回复规则集中在 mock 适配层，后续接入真实客服服务时只替换这一层。
 src\components\support-chat.ts:21:    { keywords: ['价格', '收费', '计费'], response: '你可以在价格页查看模型的输入、输出价格和可用率；如果需要，我也可以帮你定位具体模型。' },
 src\components\support-chat.ts:22:    { keywords: ['余额', '充值', '套餐'], response: '余额和套餐入口都在控制台的费用中心，充值后通常会很快同步到当前工作空间。' },
 src\components\support-chat.ts:23:    { keywords: ['模型', 'api', '密钥'], response: '你可以先从模型目录选择能力，再到控制台创建 API Key；每把密钥都可以限制可访问的模型范围。' },
 src\components\support-chat.ts:24:    { keywords: ['故障', '异常', '状态', '打不开'], response: '我先帮你记录这个问题。你可以查看服务状态页；如果仍未恢复，请把发生时间和请求 ID 发给客服。' },
 src\components\support-chat.ts:25:    { keywords: ['退款', '发票', '账单'], response: '请提供订单号或账单记录，我会把信息转给人工客服继续核对。' },
 src\components\support-chat.ts:37:  'zh-CN': '收到你的消息了。我会先帮你整理问题，客服通常会在几分钟内回复；你也可以补充订单号、模型名称或请求 ID。',
-src\pages\enterprise-settings.css:1:/* 中文：企业设置页单独维护资料卡片的视觉密度，避免影响其他设置页面。 */
+src\pages\enterprise-settings.css:1:/* 企业设置页单独维护资料卡片的视觉密度，避免影响其他设置页面。 */
 src\components\personal-token-heatmap.tsx:109:    // 统一使用周一作为第一行，避免周日占据无标签的首行造成错位观感。
 src\components\personal-token-heatmap.tsx:139:    // 月份切换过近时优先保留后一个标签，避免年初跨月时出现月份断档。
-src\components\payment-qr-frame.tsx:24:      // 中文：支付宝前置模式要求商户页面用 iframe 请求其支付页面，不能让表单接管顶层窗口。
-src\components\enterprise-api-key-filters.css:77:/* 中文：筛选下拉框采用操作日志的无勾选列表样式。 */
-src\pages\subscription.tsx:52:// 中文：当前接口尚未统一返回订阅模型字段，保留演示模型作为接口为空时的展示兜底。
+src\components\payment-qr-frame.tsx:24:      // 支付宝前置模式要求商户页面用 iframe 请求其支付页面，不能让表单接管顶层窗口。
+src\components\enterprise-api-key-filters.css:77:/* 筛选下拉框采用操作日志的无勾选列表样式。 */
+src\pages\subscription.tsx:52:// 当前接口尚未统一返回订阅模型字段，保留演示模型作为接口为空时的展示兜底。
 src\pages\subscription.tsx:60:    description: "适合探索 AI 能力和上手基础模型。",
 src\pages\subscription.tsx:61:    features: ["访问基础 AI 模型", "仅限 Studio Chat", "约 5 次 AI 对话/5 小时", "无 API 请求权限"],
 src\pages\subscription.tsx:70:    description: "面向日常 Vibe Working 的首选方案，适合 PM、市场和运营。",
@@ -4495,9 +4495,9 @@ src\pages\subscription.tsx:118:  const featurePrefix = language.startsWith("zh")
 src\pages\subscription.tsx:120:    ? (language.startsWith("zh") ? "折扣套餐" : "Discount bundle")
 src\pages\subscription.tsx:121:    : (language.startsWith("zh") ? "额度套餐" : "Quota bundle");
 src\pages\subscription.tsx:150:      <small>已使用 0.00%</small>
-src\pages\subscription.tsx:206:  // 中文：当前免费计划不属于升级目标，只展示三个可购买套餐。
-src\pages\subscription.tsx:275:  // 中文：订阅页沿用账务 summary，保证个人空间和企业空间展示同一套余额上下文。
-src\pages\subscription.tsx:313:      // 中文：套餐列表失败时保留本地兜底卡片，避免订阅页因辅助接口异常无法使用。
+src\pages\subscription.tsx:206:  // 当前免费计划不属于升级目标，只展示三个可购买套餐。
+src\pages\subscription.tsx:275:  // 订阅页沿用账务 summary，保证个人空间和企业空间展示同一套余额上下文。
+src\pages\subscription.tsx:313:      // 套餐列表失败时保留本地兜底卡片，避免订阅页因辅助接口异常无法使用。
 src\components\trae-table-empty.css:30:/* Semi 的占位行只负责承载空状态，不能再绘制一层背景或内边距。 */
 src\pages\legal.test.tsx:22:describe('法律协议页', () => {
 src\pages\legal.test.tsx:24:    ['terms', 'Token NX 用户协议', '第一条 定义及协议范围'],
@@ -4513,7 +4513,7 @@ src\components\support-chat.test.ts:14:    expect(getMockSupportReply('我想咨
 src\components\public-models-showcase.css:8:/* 高度固定占满 hero，宽度按图片比例展开、超出视口部分居中裁切；超宽屏 min-width 兜底铺满 */
 src\components\public-models-showcase.css:27:/* 进度条贴近轮播底部，留出呼吸空间 */
 src\components\public-models-showcase.css:36:/* 目录轻微上移衔接轮播底部，不压住轮播内容；z-index 保证不被 hero 层叠上下文盖住 */
-src\components\public-models-showcase.css:51:/* 中文：logo 统一白色背景突出品牌图标；兜底图标用 currentColor，指定深色避免白底不可见 */
+src\components\public-models-showcase.css:51:/* logo 统一白色背景突出品牌图标；兜底图标用 currentColor，指定深色避免白底不可见 */
 src\components\public-models-showcase.css:90:/* 窄屏 hero 较矮，进度条与目录恢复常规间距，避免压住文案 */
 src\components\quickstart-guide.tsx:33:    'response = client.responses.create(', `    model="${alias}",`, '    input="你好"', ')',
 src\components\quickstart-guide.tsx:39:    'const response = await client.responses.create({', `  model: "${alias}",`, '  input: "你好"', '});',
@@ -4551,7 +4551,7 @@ src\pages\join.test.tsx:96:  it('已过期邀请显示失效原因且不提供�
 src\pages\join.test.tsx:100:    expect(await screen.findByText('已过期')).toBeInTheDocument()
 src\pages\join.test.tsx:101:    expect(screen.getByText('这条邀请链接已超过有效期，无法继续提交加入申请。')).toBeInTheDocument()
 src\pages\join.test.tsx:102:    expect(screen.queryByRole('button', { name: '提交加入申请' })).not.toBeInTheDocument()
-src\pages\enterprise-governance.tsx:43:// 中文：标签服务已下线，权限矩阵只保留仍然可配置的企业资源。
+src\pages\enterprise-governance.tsx:43:// 标签服务已下线，权限矩阵只保留仍然可配置的企业资源。
 src\pages\smoke.test.tsx:25:  display_name: '测试用户',
 src\pages\smoke.test.tsx:49:            <Route path="/" element={<div>首页</div>} />
 src\pages\smoke.test.tsx:50:            <Route path="/console" element={<div>控制台首页</div>} />
@@ -4708,9 +4708,9 @@ src\pages\smoke.test.tsx:521:    await user.type(screen.getByLabelText('验证�
 src\pages\smoke.test.tsx:522:    await user.click(screen.getByRole('checkbox', { name: /我已阅读并同意/ }))
 src\pages\smoke.test.tsx:523:    await user.click(screen.getByRole('button', { name: '绑定并登录' }))
 src\pages\smoke.test.tsx:524:    expect(await screen.findByText('控制台首页')).toBeInTheDocument()
-src\components\enterprise-permission-matrix.css:1:/* 中文：权限矩阵保持企业后台的紧凑信息密度，状态列固定为滑块。 */
-src\components\enterprise-permission-matrix.css:63:/* 中文：分组标题上下不加分隔线，权限行之间仍保留原有层次。 */
-src\components\enterprise-permission-matrix.css:74:/* 中文：相邻内容项共享分隔线，保持上下边框的视觉效果但不产生双线。 */
+src\components\enterprise-permission-matrix.css:1:/* 权限矩阵保持企业后台的紧凑信息密度，状态列固定为滑块。 */
+src\components\enterprise-permission-matrix.css:63:/* 分组标题上下不加分隔线，权限行之间仍保留原有层次。 */
+src\components\enterprise-permission-matrix.css:74:/* 相邻内容项共享分隔线，保持上下边框的视觉效果但不产生双线。 */
 src\pages\enterprise-models.tsx:55:  { id: '伍佰', name: '伍佰', email: 'ljingfind@126.com' },
 src\pages\enterprise-models.tsx:85:  ['glm-5.3', 'GLM-5.3', '智谱 AI', true, 'glm'],
 src\pages\enterprise-models.tsx:86:  ['glm-5.2', 'GLM-5.2', '智谱 AI', true, 'glm'],
@@ -4735,11 +4735,11 @@ src\pages\enterprise-models.tsx:163:      name: '测试子级别部门',
 src\pages\enterprise-models.tsx:164:      path: '极光互娱科技（深圳）有限公司/测试子级别部门',
 src\pages\enterprise-models.tsx:168:          name: '测试三级子部门',
 src\pages\enterprise-models.tsx:169:          path: '极光互娱科技（深圳）有限公司/测试子级别部门/测试三级子部门',
-src\pages\enterprise-models.tsx:188:  // 中文：接口有数据时完全遵循服务端返回的可用模型，不再人为注入或锁定默认模型。
+src\pages\enterprise-models.tsx:188:  // 接口有数据时完全遵循服务端返回的可用模型，不再人为注入或锁定默认模型。
 src\pages\enterprise-models.tsx:247:      path: person?.email ?? '极光互娱科技（深圳）有限公司',
 src\components\trae-pagination.tsx:39:        pageSize: isEnglish ? "${pageSize} items/page" : "${pageSize}行/页",
-src\components\settings-anchor-layout.tsx:37:      // 中文：内容不足一屏时不强制激活最后一项，避免点击锚点后被“页面底部”判断覆盖。
-src\components\settings-anchor-layout.tsx:53:    // 中文：以视口上部为当前阅读区，并在到达页面底部时激活最后一个区块。
+src\components\settings-anchor-layout.tsx:37:      // 内容不足一屏时不强制激活最后一项，避免点击锚点后被“页面底部”判断覆盖。
+src\components\settings-anchor-layout.tsx:53:    // 以视口上部为当前阅读区，并在到达页面底部时激活最后一个区块。
 src\pages\enterprise-create.test.tsx:44:  user: { id: '01K0USERPUBLICIDEXAMPLE01', display_name: '测试用户', avatar_url: '', locale: 'zh-CN', timezone: 'Asia/Shanghai', status: 'active' },
 src\pages\enterprise-create.test.tsx:47:const COMPLETED: EnterpriseCertification = { status: 'approved', current_stage: 'completed', enterprise_id: 'ent_test', enterprise_name: '测试企业', credit_code_masked: '9133**********AB2C', legal_representative_masked: '张*' }
 src\pages\enterprise-create.test.tsx:48:const FACE_REQUIRED: EnterpriseCertification = { status: 'checking', current_stage: 'face_verification_required', enterprise_name: '测试企业', credit_code_masked: '9133**********AB2C', applicant_type: 'legal_representative' }
@@ -4770,21 +4770,21 @@ src\pages\enterprise-create.test.tsx:124:    await user.click(screen.getByRole('
 src\pages\enterprise-create.test.tsx:125:    expect(await screen.findByRole('heading', { name: '企业认证已完成' })).toBeInTheDocument()
 src\pages\enterprise-create.test.tsx:133:    confirmFaceMock.mockRejectedValue(new ApiError('请求参数无效', 400, 100001, 'request-face-confirm'))
 src\pages\enterprise-create.test.tsx:142:    expect(screen.getByText('请求参数无效')).toBeInTheDocument()
-src\components\enterprise-menu-access.ts:10:// 中文：菜单只关心资源前缀，具体动作由企业角色权限矩阵继续控制。
-src\components\enterprise-menu-access.ts:152:        // 中文：权限上下文不可用时只保留基础入口，避免错误状态扩大可见范围。
+src\components\enterprise-menu-access.ts:10:// 菜单只关心资源前缀，具体动作由企业角色权限矩阵继续控制。
+src\components\enterprise-menu-access.ts:152:        // 权限上下文不可用时只保留基础入口，避免错误状态扩大可见范围。
 src\components\trae-pagination.css:1:/* 后台分页统一沿用企业用量页已确认的紧凑样式。 */
 src\components\trae-enterprise-audit.css:1:/* 企业审计日志页独立样式，颜色统一使用全局主题变量。 */
-src\pages\console-profile.tsx:58:// 中文：兼容历史资料接口返回的超长昵称，个人中心及工作空间展示统一使用前端上限。
-src\pages\console-profile.tsx:121:      // 中文：首次加载也同步认证状态，确保 Header 与个人中心展示一致。
-src\pages\console-profile.tsx:136:    // 中文：按接口返回顺序展示固定白名单中的全部通知分类，兼容后端新增字段。
-src\pages\console-profile.tsx:145:    // 中文：个人空间始终保留，企业空间使用个人中心接口返回的成员关系。
-src\pages\console-profile.tsx:222:      {/* 中文：个人设置按空间保留对应的账户、通知与工作空间内容。 */}
+src\pages\console-profile.tsx:58:// 兼容历史资料接口返回的超长昵称，个人中心及工作空间展示统一使用前端上限。
+src\pages\console-profile.tsx:121:      // 首次加载也同步认证状态，确保 Header 与个人中心展示一致。
+src\pages\console-profile.tsx:136:    // 按接口返回顺序展示固定白名单中的全部通知分类，兼容后端新增字段。
+src\pages\console-profile.tsx:145:    // 个人空间始终保留，企业空间使用个人中心接口返回的成员关系。
+src\pages\console-profile.tsx:222:      {/* 个人设置按空间保留对应的账户、通知与工作空间内容。 */}
 src\components\trae-enterprise-usage.css:1:/* 企业用量接口页的加载、空态和两列摘要布局。 */
 src\components\trae-enterprise-usage.css:8:/* 左右摘要卡使用相同的上、中、下三行节奏。 */
 src\components\trae-enterprise-invitations.tsx:29:/** 返回本地时区当天的日期值，供原生 date 输入框的最小日期使用。 */
 src\components\trae-enterprise-invitations.tsx:60:/** 新版人员管理的邀请链接列表、创建弹窗及使用情况详情。 */
 src\components\trae-enterprise-invitations.tsx:158:    // 原生日期输入框可被手动修改，因此提交时也要确保日期不早于今天。
-src\pages\personal-usage.css:2:/* 中文：个人用量页沿用企业页标题基线，统一标题与内容的 32px 间距。 */
+src\pages\personal-usage.css:2:/* 个人用量页沿用企业页标题基线，统一标题与内容的 32px 间距。 */
 src\pages\public.test.tsx:50:function mockPublicDocs(markdown = '# 快速开始\n\n## 使用 Token NX API\n\n正文'): void {
 src\pages\public.test.tsx:57:        { id: DOCS_ROOT_ID, parent_id: '', type: 'directory', slug: 'guide', title: '文档' },
 src\pages\public.test.tsx:58:        { id: DOCS_DOCUMENT_ID, parent_id: DOCS_ROOT_ID, type: 'document', slug: 'quick-start', title: '快速开始' },
@@ -5096,11 +5096,11 @@ src\pages\console-profile.test.tsx:631:    await user.type(nicknameInput, '企�
 src\pages\console-profile.test.tsx:633:    await waitFor(() => expect(fetchMock.mock.calls.some(([url, options]) => String(url).endsWith('/api/user/profile/nickname') && JSON.parse(String(options?.body)).display_name === '企业空间中的新昵称')).toBe(true))
 src\components\trae-enterprise-join-requests.tsx:53:/** 新版人员管理的加入申请列表，查询、分页和审核状态都限定在当前 Tab 内。 */
 src\components\trae-enterprise-join-requests.tsx:159:      // 审核冲突通常表示申请已变化，同时刷新列表以展示服务端最新状态。
-src\pages\console-profile.css:1:/* 中文：此页使用文档滚动，避免控制台外层的 overflow 阻断左侧导航吸顶。 */
-src\pages\console-profile.css:6:/* 中文：个人设置页沿用控制台色彩变量，确保浅色与深色模式保持一致。 */
-src\pages\console-profile.css:15:/* 中文：标题和内容都贴齐控制台左边界，不再使用设置页的居中宽度。 */
+src\pages\console-profile.css:1:/* 此页使用文档滚动，避免控制台外层的 overflow 阻断左侧导航吸顶。 */
+src\pages\console-profile.css:6:/* 个人设置页沿用控制台色彩变量，确保浅色与深色模式保持一致。 */
+src\pages\console-profile.css:15:/* 标题和内容都贴齐控制台左边界，不再使用设置页的居中宽度。 */
 src\components\trae-enterprise-join-requests.css:23:/* 筛选和翻页时保留当前行高，只弱化内容，避免整个页面上下跳动。 */
-src\pages\public.tsx:39:// 中文：公开页面的模型链接只使用面向用户的别名，旧模型 code 仅由查找逻辑兼容。
+src\pages\public.tsx:39:// 公开页面的模型链接只使用面向用户的别名，旧模型 code 仅由查找逻辑兼容。
 src\pages\public.tsx:54:  阿里云: 'aliyun',
 src\pages\public.tsx:55:  百川智能: 'baichuan',
 src\pages\public.tsx:56:  零一万物: 'yi',
@@ -5122,25 +5122,25 @@ src\pages\public.tsx:81:  语音合成: 'speechSynthesis',
 src\pages\public.tsx:82:  高清: 'hd',
 src\pages\public.tsx:89:  豆包大模型: 'doubao',
 src\pages\public.tsx:178:// 首页运营条目在不同版本接口中可能把图片放在翻译字段或条目根字段，统一从接口数据解析。
-src\pages\public.tsx:256:    // 中文：只在目标值落定时更新整组数字，按位翻页交给 CSS 延迟，避免每帧重挂载数字节点。
-src\pages\public.tsx:285:      // 中文：在浏览器绘制前锁定上一轮终值，确保每次都从旧数字翻到新数字。
-src\pages\public.tsx:549:// 中文：每条轨道复制一份品牌序列，循环位移到半程时正好衔接下一份内容，保证滚动不会跳帧。
-src\pages\public.tsx:625:  // 中文：有后台目标时走统一登录态动作；旧数据缺少链接时保留兼容入口。
-src\pages\public.tsx:643:  // 中文：资讯卡固定进入对应文章详情，忽略后台遗留的文档链接，避免离开文章阅读页。
-src\pages\public.tsx:650:    // 中文：封面失效时回退到本地默认图，避免卡片出现破图。
-src\pages\public.tsx:662:    // 中文：推广广告统一承接邀请活动，未登录时由公共登录弹窗完成后续跳转。
+src\pages\public.tsx:256:    // 只在目标值落定时更新整组数字，按位翻页交给 CSS 延迟，避免每帧重挂载数字节点。
+src\pages\public.tsx:285:      // 在浏览器绘制前锁定上一轮终值，确保每次都从旧数字翻到新数字。
+src\pages\public.tsx:549:// 每条轨道复制一份品牌序列，循环位移到半程时正好衔接下一份内容，保证滚动不会跳帧。
+src\pages\public.tsx:625:  // 有后台目标时走统一登录态动作；旧数据缺少链接时保留兼容入口。
+src\pages\public.tsx:643:  // 资讯卡固定进入对应文章详情，忽略后台遗留的文档链接，避免离开文章阅读页。
+src\pages\public.tsx:650:    // 封面失效时回退到本地默认图，避免卡片出现破图。
+src\pages\public.tsx:662:    // 推广广告统一承接邀请活动，未登录时由公共登录弹窗完成后续跳转。
 src\pages\public.tsx:693:        // 优惠模型卡片名称和厂商以接口嵌套 model 为准，避免被活动翻译标题覆盖。
 src\pages\public.tsx:839:  // 资讯文案为 i18n 固定内容、封面图来自接口条目；按接口翻译标题匹配文案槽位，
 src\pages\public.tsx:840:  // 避免接口排序与 i18n 顺序不一致时文案与封面错配；未匹配条目按顺序回填剩余槽位。
-src\pages\public.tsx:874:      // 中文：公开内容接口失败时保留已编排的默认首页，避免运营接口故障影响首页首屏。
+src\pages\public.tsx:874:      // 公开内容接口失败时保留已编排的默认首页，避免运营接口故障影响首页首屏。
 src\pages\public.tsx:986:    availability: { rate: 0, window: '暂无数据' },
 src\pages\public.tsx:988:    throughput: { value: 0, unit: '暂无数据' },
 src\pages\public.tsx:1002:  if (/文本|text/.test(topicName)) return 'public.models.groups.textTitle'
 src\pages\public.tsx:1003:  if (/图片|图像|image/.test(topicName)) return 'public.models.groups.imageTitle'
 src\pages\public.tsx:1004:  if (/视频|video/.test(topicName)) return 'public.models.groups.videoTitle'
-src\pages\public.tsx:1059:    // 中文：旧模型 code 仅用于兼容历史链接，进入页面后立即规范化为模型别名。
+src\pages\public.tsx:1059:    // 旧模型 code 仅用于兼容历史链接，进入页面后立即规范化为模型别名。
 src\pages\public.tsx:1153:              <div className="ranking-model-name"><strong>{model.name}</strong><span>全新的 CSA+HCA 混合注意力架构</span></div>
-src\pages\public.tsx:1828:  // 中文：登录页没有公共页脚，仍然需要保留全局客服入口。
+src\pages\public.tsx:1828:  // 登录页没有公共页脚，仍然需要保留全局客服入口。
 src\components\trae-enterprise-audit.test.tsx:25:  name: "测试企业",
 src\components\trae-enterprise-audit.test.tsx:47:  summary: "更新成员状态",
 src\components\trae-enterprise-audit.test.tsx:49:  actor_name: "管理员",

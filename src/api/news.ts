@@ -80,7 +80,7 @@ export function resolveNewsContentImageUrl(value: string, pageOrigin = typeof wi
   if (!normalized || (/^[a-z][a-z\d+.-]*:/i.test(normalized) && !/^https?:/i.test(normalized))) return undefined
 
   try {
-    // 中文：开发环境沿用当前站点代理，正式环境沿用配置的 API Base URL，并统一输出绝对地址。
+    // 开发环境沿用当前站点代理，正式环境沿用配置的 API Base URL，并统一输出绝对地址。
     const resolved = new URL(makeApiUrl(normalized), pageOrigin || undefined)
     return resolved.protocol === 'http:' || resolved.protocol === 'https:' ? resolved.toString() : undefined
   } catch {
@@ -139,7 +139,7 @@ export async function getNewsList(page = 1, pageSize = 20, signalOrLocale?: Abor
   if (filters?.tag?.trim()) params.set('tag', filters.tag.trim())
   const value = await fetchJson<unknown>(`${url}?${params.toString()}`, {
     signal: resolved.signal,
-    // 中文：接口按 X-App-Lang 优先于 locale 查询参数，显式语言需同步写入请求头。
+    // 接口按 X-App-Lang 优先于 locale 查询参数，显式语言需同步写入请求头。
     headers: { 'X-App-Lang': resolved.locale, 'Accept-Language': resolved.locale },
   })
   const payload = isRecord(value) ? value : {}

@@ -15,7 +15,7 @@ type RewardStatStyle = CSSProperties & {
 
 export function getHomeRewardStatScale(value: string): number {
   const characterCount = Array.from(value.trim().replace(/\s/g, '')).length
-  // 中文：两位以内保持设计稿字号，超过两位后随可见字符数连续缩小。
+  // 两位以内保持设计稿字号，超过两位后随可见字符数连续缩小。
   return characterCount <= 2 ? 1 : REWARD_STAT_SCALE_NUMERATOR / characterCount
 }
 

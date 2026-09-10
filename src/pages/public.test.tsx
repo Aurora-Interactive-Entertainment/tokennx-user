@@ -314,7 +314,7 @@ describe('公开模型页面', () => {
     expect(screen.getByRole('complementary', { name: 'Documentation navigation' })).toBeInTheDocument()
     expect(await screen.findByRole('heading', { name: 'Quickstart' })).toBeInTheDocument()
     expect(screen.getByRole('complementary', { name: 'On this page navigation' })).toBeInTheDocument()
-    // 中文：桌面端和移动端各保留一个复制入口，实际显隐由响应式样式控制。
+    // 桌面端和移动端各保留一个复制入口，实际显隐由响应式样式控制。
     expect(screen.getAllByRole('button', { name: 'Copy page' })).toHaveLength(2)
   })
 
@@ -425,14 +425,14 @@ describe('公开模型页面', () => {
     const modelsLink = screen.getByRole('link', { name: '浏览全部模型' }).getAttribute('href')
     const enterpriseLink = screen.getByRole('link', { name: '创建企业部门' }).getAttribute('href')
     const pricingLink = screen.getByRole('link', { name: '查看数据罗盘' }).getAttribute('href')
-    // 中文：模型目录可直接访问，需要登录的控制台入口则保留后台配置的回跳地址。
+    // 模型目录可直接访问，需要登录的控制台入口则保留后台配置的回跳地址。
     expect(new URL(modelsLink ?? '', window.location.origin).pathname).toBe('/models')
     expect(new URL(enterpriseLink ?? '', window.location.origin).pathname).toBe('/login')
     expect(new URL(enterpriseLink ?? '', window.location.origin).searchParams.get('return')).toBe('/models')
     expect(new URL(pricingLink ?? '', window.location.origin).pathname).toBe('/login')
     expect(new URL(pricingLink ?? '', window.location.origin).searchParams.get('return')).toBe('/pricing')
     expect(document.querySelector('.manuscript-skeleton-card')).toBeNull()
-    // 中文：优惠卡片的模型名称以接口嵌套 model 为准，活动翻译标题不能覆盖模型身份。
+    // 优惠卡片的模型名称以接口嵌套 model 为准，活动翻译标题不能覆盖模型身份。
     expect(screen.queryByText('后台优惠模型')).toBeNull()
     expect(screen.getByText('managed-model').closest('a')).toHaveAttribute('href', '/models/managed-model')
     const promotionCard = screen.getByText('managed-model').closest('.manuscript-price-card')

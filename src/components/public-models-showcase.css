@@ -48,7 +48,7 @@
 .models-showcase-card-head { position: relative; z-index: 1; padding-bottom: 30px; border-bottom: 1px solid rgba(255,255,255,.08); }
 .models-showcase-card-identity { display: flex; align-items: center; gap: 12px; min-width: 0; color: #fff; }
 .models-showcase-card-identity:hover { color: #fff; }
-/* 中文：logo 统一白色背景突出品牌图标；兜底图标用 currentColor，指定深色避免白底不可见 */
+/* logo 统一白色背景突出品牌图标；兜底图标用 currentColor，指定深色避免白底不可见 */
 .models-showcase-card-logo { width: 48px; height: 48px; display: grid; place-items: center; flex: 0 0 48px; border: 1px solid transparent; border-radius: 9px; background: #fff; color: #17181b; }
 .models-showcase-card-logo svg { width: 30px; height: 30px; }
 .models-showcase-card-identity > span:last-child { min-width: 0; display: grid; gap: 3px; }
@@ -107,7 +107,7 @@ html[data-theme="light"] .models-showcase-card-description { color: #727783; }
 html[data-theme="light"] .models-showcase-card-prices > div { background: #fff; }
 html[data-theme="light"] .models-showcase-card-prices dt { color: #353941; }
 html[data-theme="light"] .models-showcase-card-docs { color: #25262b !important; border-color: #d9dbe1; }
-/* 中文：深色模式下“立即体验”使用高对比白底黑字，避免按钮融入卡片背景。 */
+/* 深色模式下“立即体验”使用高对比白底黑字，避免按钮融入卡片背景。 */
 html:not([data-theme="light"]) .models-showcase-card-primary { border-color: #fff; color: #17181b; background: #fff; }
 html:not([data-theme="light"]) .models-showcase-card-primary:hover,
 html:not([data-theme="light"]) .models-showcase-card-primary:focus-visible { border-color: #f1f1f1; color: #17181b; background: #f1f1f1; }

@@ -66,7 +66,7 @@ export function InvitationTrendChart({
     const surface =
       getComputedStyle(node.closest(".invite-trend-card") ?? node)
         .backgroundColor || (dark ? "#202124" : "#fff");
-    // 中文：使用 SVG 渲染，确保深浅色切换和高分屏下的折线图保持清晰。
+    // 使用 SVG 渲染，确保深浅色切换和高分屏下的折线图保持清晰。
     chart.setOption({
       animationDuration: 260,
       grid: {
@@ -80,7 +80,7 @@ export function InvitationTrendChart({
       tooltip: {
         trigger: "axis",
         confine: true,
-        // 中文：关闭默认浮层过渡，避免鼠标快速移动时 tooltip 滞后。
+        // 关闭默认浮层过渡，避免鼠标快速移动时 tooltip 滞后。
         transitionDuration: 0,
         axisPointer: {
           type: "cross",

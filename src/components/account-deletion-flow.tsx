@@ -72,7 +72,7 @@ export function AccountDeletionFlow({ visible, profile, enterprises, onClose, on
       try {
         result = await getAccountDeletionPrecheck(accessToken)
       } catch (error) {
-        // 中文：部分旧版后端尚未发布 precheck 路由，使用企业关系接口完成同等阻断判断，避免用户被 404 卡死。
+        // 部分旧版后端尚未发布 precheck 路由，使用企业关系接口完成同等阻断判断，避免用户被 404 卡死。
         if (!isApiError(error) || error.status !== 404) throw error
         membershipResult = await getProfileEnterprises(accessToken).catch(() => enterprises)
         const ownerEnterprises = membershipResult.filter((item) => item.owner && item.member_status !== 'closed').map((item) => item.enterprise_name)
@@ -84,7 +84,7 @@ export function AccountDeletionFlow({ visible, profile, enterprises, onClose, on
         }
         setOwnerMemberships(membershipResult.filter((item) => item.owner))
       }
-      // 中文：检查通过后再读取企业关系，用于展示企业统一社会信用代码；失败时不阻断注销主流程。
+      // 检查通过后再读取企业关系，用于展示企业统一社会信用代码；失败时不阻断注销主流程。
       if (!membershipResult) membershipResult = await getProfileEnterprises(accessToken).catch(() => enterprises)
       setOwnerMemberships(membershipResult.filter((item) => item.owner))
       setPrecheck(result)
@@ -164,7 +164,7 @@ export function AccountDeletionFlow({ visible, profile, enterprises, onClose, on
     setSubmitting(true)
     try {
       await requestAccountDeletion(accessToken, { confirm: true, provider_code: provider, destination: destination.trim(), code: code.trim() })
-      // 中文：只有服务端返回成功后才清理令牌，避免网络超时造成不可重试的误判。
+      // 只有服务端返回成功后才清理令牌，避免网络超时造成不可重试的误判。
       clearAuthTokens({ force: true })
       appToast.success(t('profile.security.deleteSuccess'))
       onSuccess()
@@ -180,8 +180,8 @@ export function AccountDeletionFlow({ visible, profile, enterprises, onClose, on
   const contactLabel = provider === 'phone' ? t('profile.security.deleteContactProviderPhone') : t('profile.security.deleteContactProviderEmail')
   if (!visible) return null
 
-  // 中文：每次只挂载当前步骤的一个弹窗，避免旧弹窗退出动画与新弹窗进入动画叠加造成抖动。
-  // 中文：前置检查期间不再显示中间加载弹窗，避免从账户设置弹窗切换时产生闪烁。
+  // 每次只挂载当前步骤的一个弹窗，避免旧弹窗退出动画与新弹窗进入动画叠加造成抖动。
+  // 前置检查期间不再显示中间加载弹窗，避免从账户设置弹窗切换时产生闪烁。
   if (step === 'checking') return null
 
   if (step === 'confirm') return <AccountDeletionDialog

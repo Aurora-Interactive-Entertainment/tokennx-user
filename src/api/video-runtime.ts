@@ -259,7 +259,7 @@ export async function submitVideoGeneration(input: VideoGenerationInput): Promis
     }, requestId)
   } catch (error) {
     if (error instanceof VideoRuntimeError) throw error
-    // 中文：调用方主动取消与请求超时使用不同语义，避免停止生成后误报超时。
+    // 调用方主动取消与请求超时使用不同语义，避免停止生成后误报超时。
     if (input.signal?.aborted) throw error
     if (error instanceof DOMException && error.name === 'AbortError') {
       throw new VideoRuntimeError(i18n.t('api.videoRuntime.timeout'), 408, 'request_timeout', requestId)

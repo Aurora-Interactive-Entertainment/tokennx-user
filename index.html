@@ -31,7 +31,7 @@
     <link rel="icon" type="image/png" href="./src/assets/figma-header/X-16.png" />
     <script>
       (() => {
-        // 中文：在样式和 React 加载前应用已保存的主题，避免首屏出现主题闪烁。
+        // 在样式和 React 加载前应用已保存的主题，避免首屏出现主题闪烁。
         const themeStorageKey = 'token-nx:theme'
         const root = document.documentElement
         let mode = 'dark'
@@ -40,14 +40,14 @@
           const stored = window.localStorage.getItem(themeStorageKey)
           if (stored === 'light' || stored === 'dark' || stored === 'system') mode = stored
         } catch {
-          // 中文：浏览器禁用存储时继续使用系统主题，不能阻塞应用启动。
+          // 浏览器禁用存储时继续使用系统主题，不能阻塞应用启动。
         }
 
         let prefersLight = false
         try {
           prefersLight = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-color-scheme: light)').matches
         } catch {
-          // 中文：系统主题查询失败时按暗色启动，后续主题模块仍可继续接管。
+          // 系统主题查询失败时按暗色启动，后续主题模块仍可继续接管。
         }
         const theme = mode === 'system' ? (prefersLight ? 'light' : 'dark') : mode
         root.dataset.themeMode = mode
@@ -57,7 +57,7 @@
     </script>
     <script>
       (() => {
-        // 中文：中英文首页都提前请求内容；文档、控制台等页面不额外请求首页接口。
+        // 中英文首页都提前请求内容；文档、控制台等页面不额外请求首页接口。
         const pathname = window.location.pathname
         if (!/^\/(?:en\/?|home\/?)?$/.test(pathname)) return
 
@@ -141,7 +141,7 @@
         min-height: 100vh;
       }
 
-      /* 中文：静态 GEO 摘要供无 JS 爬虫读取，不改变正常首屏布局。 */
+      /* 静态 GEO 摘要供无 JS 爬虫读取，不改变正常首屏布局。 */
       .static-seo-summary {
         position: absolute;
         width: 1px;
@@ -152,7 +152,7 @@
         white-space: nowrap;
       }
 
-      /* 中文：静态首屏只展示品牌 Logo 呼吸灯，避免 React 接管前仍出现旧的进度条。 */
+      /* 静态首屏只展示品牌 Logo 呼吸灯，避免 React 接管前仍出现旧的进度条。 */
       .app-loading-shell {
         position: fixed;
         inset: 0;
@@ -193,7 +193,7 @@
         transform-origin: center;
       }
 
-      /* 中文：logo 源图比例约 5.45:1，高度自适应完整显示，与 React 接管后的加载页样式保持一致 */
+      /* logo 源图比例约 5.45:1，高度自适应完整显示，与 React 接管后的加载页样式保持一致 */
       .app-loading-shell__logo-shell .app-loading-shell__logo {
         display: block;
         width: 220px;
@@ -239,7 +239,7 @@
       }
     </style>
     <script>
-      // 中文：百度统计全站埋点，统一在页面 head 中加载。
+      // 百度统计全站埋点，统一在页面 head 中加载。
       var _hmt = _hmt || [];
       (function () {
         var hm = document.createElement('script');

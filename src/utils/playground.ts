@@ -17,7 +17,7 @@ export function limitPlaygroundPrompt(value: string): string {
     : Array.from(value).slice(0, PLAYGROUND_MAX_INPUT_CHARACTERS).join('')
 }
 
-// 中文：只按用户消息统计轮次，流式生成中的临时回复不会提前占用下一轮。
+// 只按用户消息统计轮次，流式生成中的临时回复不会提前占用下一轮。
 export function playgroundRoundCount(messages: readonly PlaygroundConversationMessage[]): number {
   return messages.reduce((count, message) => count + (message.role === 'user' ? 1 : 0), 0)
 }

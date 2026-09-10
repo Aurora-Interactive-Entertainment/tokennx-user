@@ -67,7 +67,7 @@
   height: 32px;
   min-height: 32px;
   border-radius: 4px;
-  /* 中文：输入框使用主题底色，避免深色模式出现突兀的白色区域。 */
+  /* 输入框使用主题底色，避免深色模式出现突兀的白色区域。 */
   background: var(--color-bg-base-secondary);
 }
 
@@ -525,7 +525,7 @@ html[data-theme="light"] .enterprise-form-control > .app-input .semi-input {
     flex-direction: column;
   }
 
-  /* 中文：列布局继续保留 flex-wrap 会把说明文字排到视口外的新列，手机端必须关闭换列。 */
+  /* 列布局继续保留 flex-wrap 会把说明文字排到视口外的新列，手机端必须关闭换列。 */
   .enterprise-material-layout.has-example {
     flex-wrap: nowrap;
   }

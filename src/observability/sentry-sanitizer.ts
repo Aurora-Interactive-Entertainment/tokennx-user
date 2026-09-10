@@ -137,7 +137,7 @@ export function sanitizeRequestUrl(value: unknown): string | undefined {
     const pathname = new URL(sanitized, base).pathname;
     const segments = pathname.split("/");
 
-    // 中文：资源 ID、邀请标识和用户自定义 slug 都统一模板化，避免出现在事件与面包屑中。
+    // 资源 ID、邀请标识和用户自定义 slug 都统一模板化，避免出现在事件与面包屑中。
     return segments
       .map((segment, index) => {
         if (!segment) return segment;

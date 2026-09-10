@@ -23,7 +23,7 @@ function thresholdYuanToNano(value: string): number | null {
   return Math.round(parsed * NOTIFICATION_THRESHOLD_SCALE)
 }
 
-// 中文：余额提醒弹窗在费用页和充值管理页共享同一份通知偏好读写逻辑。
+// 余额提醒弹窗在费用页和充值管理页共享同一份通知偏好读写逻辑。
 export function BalanceAlertDialog({ visible, onClose, onAuthFailure }: { visible: boolean; onClose: () => void; onAuthFailure: () => void }) {
   const { t } = useTranslation()
   const [preferences, setPreferences] = useState<NotificationPreferences | null>(null)

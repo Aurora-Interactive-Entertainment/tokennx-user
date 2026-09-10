@@ -5,7 +5,7 @@ import { ApiError, type FetchJsonOptions } from './http'
 const PRODUCT_PLANS_PATH = '/api/user/product-plans'
 
 export interface ProductPlanPrice {
-  // 中文：新接口用十进制整数字符串避免金额精度丢失，数字仅兼容灰度旧响应。
+  // 新接口用十进制整数字符串避免金额精度丢失，数字仅兼容灰度旧响应。
   price_cent: string | number
   currency: string
   validity_seconds: number
@@ -52,7 +52,7 @@ export interface ProductPlanListOptions extends Pick<FetchJsonOptions, 'accessTo
   page_size?: number
 }
 
-/** 中文：查询当前账务主体可用的套餐摘要，完整模型权益由套餐详情接口提供。 */
+/** 查询当前账务主体可用的套餐摘要，完整模型权益由套餐详情接口提供。 */
 export function getProductPlans(context: BillingContext, options: ProductPlanListOptions = {}): Promise<ProductPlanListResponse> {
   const params = new URLSearchParams({
     account_type: context.account_type,

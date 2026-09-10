@@ -15,7 +15,7 @@ export interface AuthState {
   status: 'unknown' | 'loading' | 'unauthenticated' | 'authenticated'
   user: AuthUser | null
   error: AuthOperationError | null
-  /** 中文：记录本标签页主动登录次数，用于区分登录成功与后台会话刷新。 */
+  /** 记录本标签页主动登录次数，用于区分登录成功与后台会话刷新。 */
   loginSequence: number
 }
 
@@ -37,7 +37,7 @@ export function authError(error: unknown): AuthOperationError {
     100006: i18n.t('api.auth.sessionConflict'),
     100007: i18n.t('api.auth.unavailable'),
     [AUTH_INVALID_CODE]: i18n.t('api.auth.invalidCode'),
-    // 中文：灰度期间兼容旧认证服务错误码，新部署统一使用 160xxx。
+    // 灰度期间兼容旧认证服务错误码，新部署统一使用 160xxx。
     110001: i18n.t('api.auth.invalidCode'),
     160002: i18n.t('api.auth.bindingRequired'),
     160003: i18n.t('api.auth.phoneAlreadyBound'),
@@ -51,7 +51,7 @@ export function authError(error: unknown): AuthOperationError {
 
 function completeAuth(result: AuthResult): AuthUser {
   if (result.status !== 'succeeded' || result.binding_required || !result.user) throw new Error(i18n.t('api.auth.incomplete'))
-  // 中文：首次登录标记位于认证响应顶层，登录成功后下沉到用户状态供控制台统一触发引导。
+  // 首次登录标记位于认证响应顶层，登录成功后下沉到用户状态供控制台统一触发引导。
   const user = result.promt_required === undefined ? result.user : { ...result.user, promt_required: result.promt_required }
   saveAuthTokens({ ...result, user })
   return user
@@ -63,7 +63,7 @@ export const hydrateAuth = createAsyncThunk<AuthUser | null>('auth/hydrate', asy
   try {
     const result = await refreshAuthSession(refreshToken)
     if (result.status !== 'succeeded' || result.binding_required || !result.user) throw new Error(i18n.t('api.auth.incomplete'))
-    // 中文：刷新会话也保留认证响应中的首次登录标记，避免恢复页面时丢失引导状态。
+    // 刷新会话也保留认证响应中的首次登录标记，避免恢复页面时丢失引导状态。
     const user = result.user
     const access = getAccessToken()
     const currentUser = access ? await getCurrentUser(access) : user
@@ -172,19 +172,19 @@ const authSlice = createSlice({
     clearAuthError(state) {
       state.error = null
     },
-    // 中文：令牌验证失败时清除前端认证状态，由调用方回到公开首页。
+    // 令牌验证失败时清除前端认证状态，由调用方回到公开首页。
     invalidateAuth(state) {
       state.status = 'unauthenticated'
       state.user = null
       state.error = null
     },
-    // 中文：其他标签页完成登录或刷新后，及时同步当前页面的用户状态。
+    // 其他标签页完成登录或刷新后，及时同步当前页面的用户状态。
     synchronizeAuthenticatedUser(state, action: PayloadAction<AuthUser>) {
       state.status = 'authenticated'
       state.user = action.payload
       state.error = null
     },
-    // 中文：个人中心保存资料后立即同步 Header，避免刷新前继续展示旧账号信息。
+    // 个人中心保存资料后立即同步 Header，避免刷新前继续展示旧账号信息。
     updateAuthenticatedUser(state, action: PayloadAction<AuthUser>) {
       if (state.status === 'authenticated') state.user = action.payload
     },

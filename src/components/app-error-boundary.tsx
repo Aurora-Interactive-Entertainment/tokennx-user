@@ -8,7 +8,7 @@ function AppErrorFallback({ resetError }: { resetError: () => void }) {
   const { t } = useTranslation();
 
   useEffect(() => {
-    // 中文：即使应用在首屏渲染阶段崩溃，也必须释放静态加载层以展示恢复入口。
+    // 即使应用在首屏渲染阶段崩溃，也必须释放静态加载层以展示恢复入口。
     document.documentElement.classList.add("app-ready");
   }, []);
 

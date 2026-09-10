@@ -36,7 +36,7 @@ export interface ProfileContact {
 export interface UserProfile {
   id: string
   display_name: string
-  // 中文：新版个人资料接口不再返回头像、语言和时区；保留可选字段兼容灰度中的旧响应。
+  // 新版个人资料接口不再返回头像、语言和时区；保留可选字段兼容灰度中的旧响应。
   avatar_url?: string
   locale?: string
   timezone?: string
@@ -230,7 +230,7 @@ export async function getProfileEnterprises(
       { accessToken, signal: options.signal },
     )
 
-    // 中文：灰度期间旧服务仍返回裸数组；新服务统一返回标准分页对象。
+    // 灰度期间旧服务仍返回裸数组；新服务统一返回标准分页对象。
     if (Array.isArray(result)) return result
     if (!result || !Array.isArray(result.items) || !Number.isInteger(result.page)
       || !Number.isInteger(result.page_size) || result.page_size <= 0
@@ -245,12 +245,12 @@ export async function getProfileEnterprises(
   }
 }
 
-// 中文：注销前置检查只读取状态，不会冻结账号或创建注销申请。
+// 注销前置检查只读取状态，不会冻结账号或创建注销申请。
 export function getAccountDeletionPrecheck(accessToken: string): Promise<AccountDeletionPrecheck> {
   return fetchAuthenticatedJson<AccountDeletionPrecheck>('/api/user/account-deletion/precheck', { accessToken })
 }
 
-// 中文：提交注销申请后服务端会冻结账号并撤销会话，成功响应返回后前端再清理本地令牌。
+// 提交注销申请后服务端会冻结账号并撤销会话，成功响应返回后前端再清理本地令牌。
 export function requestAccountDeletion(accessToken: string, request: AccountDeletionRequest): Promise<AccountDeletionResponse> {
   return fetchAuthenticatedJson<AccountDeletionResponse>('/api/user/account-deletion', { method: 'POST', body: request, accessToken })
 }

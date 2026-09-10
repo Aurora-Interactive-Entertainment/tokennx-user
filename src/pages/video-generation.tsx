@@ -345,7 +345,7 @@ export function VideoPage() {
   const historyHydratingRef = useRef(true)
 
   useEffect(() => {
-    // 中文：所有弹层都支持点击外部区域收起，避免遮挡工作区内容。
+    // 所有弹层都支持点击外部区域收起，避免遮挡工作区内容。
     const handlePointerDown = (event: PointerEvent): void => {
       const target = event.target as HTMLElement | null
       if (!target?.closest('.video-history-panel, .video-history-toggle')) setHistoryOpen(false)
@@ -354,14 +354,14 @@ export function VideoPage() {
     return () => document.removeEventListener('pointerdown', handlePointerDown)
   }, [])
 
-  // 中文：视频 Runtime 使用登录态隐藏试用额度，模型选择器仅展示当前空间目录中的视频模型。
+  // 视频 Runtime 使用登录态隐藏试用额度，模型选择器仅展示当前空间目录中的视频模型。
   const videoModels = useMemo(() => models.filter((model) => model.modality === 'video' && Boolean(modelAlias(model))), [models])
   const displayVideoModels = videoModels
   const selectedModel = findModelInList(displayVideoModels, modelID) ?? displayVideoModels[0]
   const selectedHistory = history.find((entry) => entry.id === selectedHistoryID)
   const operationBusy = submitting || polling || cancelling
   const canSubmit = Boolean(selectedModel && prompt.trim() && !operationBusy)
-  // 中文：生成中允许点击发送按钮取消任务；取消请求处理期间锁定按钮，空输入时禁止提交。
+  // 生成中允许点击发送按钮取消任务；取消请求处理期间锁定按钮，空输入时禁止提交。
   const canCancel = submitting || Boolean(currentTask && taskIsActive(currentTask))
   const sendDisabled = cancelling || (!canCancel && !canSubmit)
 
@@ -384,7 +384,7 @@ export function VideoPage() {
     try {
       window.localStorage.removeItem(LEGACY_VIDEO_HISTORY_KEY)
     } catch {
-      // 中文：迁移到账号隔离存储时清理旧的未隔离视频历史。
+      // 迁移到账号隔离存储时清理旧的未隔离视频历史。
     }
     setReferenceVisible(false)
   }, [requestedModel, userId, workspaceKey])
@@ -394,7 +394,7 @@ export function VideoPage() {
       historyHydratingRef.current = false
       return
     }
-    // 中文：页面只维护当前工作空间的列表，写回时合并同一用户的其他工作空间历史。
+    // 页面只维护当前工作空间的列表，写回时合并同一用户的其他工作空间历史。
     const otherWorkspaceEntries = readVideoHistory(userId).filter((entry) => entry.workspaceKey !== workspaceKey)
     writeVideoHistory(userId, [...history, ...otherWorkspaceEntries])
   }, [history, userId, workspaceKey])
@@ -444,7 +444,7 @@ export function VideoPage() {
   }
 
   function createSubmissionFailureTask(failure: VideoRequestFailure): VideoTask {
-    // 中文：提交阶段没有服务端 task_id 时也保留一张本地失败卡片，方便编辑和重试。
+    // 提交阶段没有服务端 task_id 时也保留一张本地失败卡片，方便编辑和重试。
     return {
       taskId: `local-failed-${Date.now()}`,
       status: 'failed',
@@ -469,7 +469,7 @@ export function VideoPage() {
         await waitForVideoPoll(attempt === 0 ? VIDEO_POLL_INITIAL_DELAY_MS : VIDEO_POLL_INTERVAL_MS, controller.signal)
         if (controller.signal.aborted) return
         attempt += 1
-        // 中文：每次轮询读取最新登录态令牌，兼容后台刷新令牌后的访问令牌轮换。
+        // 每次轮询读取最新登录态令牌，兼容后台刷新令牌后的访问令牌轮换。
         const accessToken = getAccessToken()?.trim()
         if (!accessToken) throw new VideoRuntimeError(t('api.modelRuntime.accessTokenRequired'), 401, 'invalid_user_session', null)
         task = await getVideoTask(accessToken, task.taskId, controller.signal)
@@ -605,7 +605,7 @@ export function VideoPage() {
     setReferenceName(entry.inputReference ? t('console.video.referenceImage') : '')
     setRequestFailure(null)
     setHistoryOpen(false)
-    // 中文：等待受控文本域回填后聚焦，便于直接修改提示词。
+    // 等待受控文本域回填后聚焦，便于直接修改提示词。
     window.setTimeout(() => document.querySelector<HTMLTextAreaElement>('.video-composer-input-row textarea')?.focus(), 0)
   }
 
@@ -732,7 +732,7 @@ export function VideoPage() {
   const workspaceNotices: VideoWorkspaceNoticeItem[] = []
   if (requestFailure) workspaceNotices.push({ id: 'request-failure', message: requestFailure.message, requestId: requestFailure.requestId, action: <Button theme="outline" size="small" onClick={() => setRequestFailure(null)}>{t('console.common.close')}</Button> })
   if (!videoModels.length) workspaceNotices.push({ id: 'no-video-models', message: t('console.video.noModelsHint') })
-  // 中文：已有任务时优先保留结果卡片，提交/轮询错误直接展示在卡片内，保证仍可编辑、重试和删除。
+  // 已有任务时优先保留结果卡片，提交/轮询错误直接展示在卡片内，保证仍可编辑、重试和删除。
   const showWorkspaceNotices = workspaceNotices.length > 0 && !submitting && !currentTask
 
   return <div className="page-stack video-console-page">
@@ -775,7 +775,7 @@ export function VideoPage() {
               <div className="video-control-group">
                 <div className="video-reference-picker">
                   <Select className={`video-control-button video-reference-trigger${referenceMode === 'first-last' ? ' video-reference-trigger--first-last' : ''}`} value={referenceMode} aria-label={t('console.video.referenceImage')} arrowIcon={<IconChevronDownStroked />} dropdownClassName="video-reference-select-dropdown" innerTopSlot={<div className="video-popover-title">{t('console.video.generationMode')}</div>} renderSelectedItem={renderReferenceSelectedItem} onChange={(value) => { const nextMode = String(value) as 'reference' | 'first-last'; setReferenceMode(nextMode); setReferenceVisible(false) }} disabled={operationBusy}>
-                    {/* 中文：生成模式选项不显示默认选中勾选，避免图标、勾选和文字错位。 */}
+                    {/* 生成模式选项不显示默认选中勾选，避免图标、勾选和文字错位。 */}
                     <Select.Option value="reference" showTick={false}><span className="video-reference-option-icon"><IconImage aria-hidden="true" /></span><span>{t('console.video.referenceMode')}</span></Select.Option>
                     <Select.Option value="first-last" showTick={false}><span className="video-reference-option-icon"><IconVideo aria-hidden="true" /></span><span>{t('console.video.firstLastFrame')}</span></Select.Option>
                   </Select>

@@ -66,7 +66,7 @@ function parseNodes(value: unknown): PublicDocsNode[] {
 }
 
 function parseTreePage(value: unknown): PublicDocsPage | PublicDocsNode[] {
-  // 中文：发布切换期间兼容旧服务返回的平铺数组，新服务使用统一分页对象。
+  // 发布切换期间兼容旧服务返回的平铺数组，新服务使用统一分页对象。
   if (Array.isArray(value)) return parseNodes(value)
   if (!isRecord(value) || typeof value.page !== 'number' || !Number.isInteger(value.page)
     || typeof value.page_size !== 'number' || !Number.isInteger(value.page_size) || value.page_size <= 0

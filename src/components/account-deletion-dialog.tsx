@@ -19,7 +19,7 @@ type AccountDeletionDialogProps = {
 }
 
 /**
- * 中文：注销接口接入前先复用统一确认弹窗，明确要求用户输入 DELETE，避免误触危险操作。
+ * 注销接口接入前先复用统一确认弹窗，明确要求用户输入 DELETE，避免误触危险操作。
  */
 export function AccountDeletionDialog({
   visible,
@@ -48,9 +48,9 @@ export function AccountDeletionDialog({
       title={title}
       aria-label={title}
       visible={visible}
-      // 中文：账户设置弹窗自身层级为 1200，注销流程必须使用更高层级，避免被父弹窗遮挡。
+      // 账户设置弹窗自身层级为 1200，注销流程必须使用更高层级，避免被父弹窗遮挡。
       zIndex={2000}
-      // 中文：账户设置弹窗使用 body 独立挂载，注销弹窗也挂到 body，避免被 app-mount 层叠上下文遮挡。
+      // 账户设置弹窗使用 body 独立挂载，注销弹窗也挂到 body，避免被 app-mount 层叠上下文遮挡。
       getPopupContainer={() => document.body}
       onCancel={onCancel}
       confirmLoading={loading}

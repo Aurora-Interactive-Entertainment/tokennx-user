@@ -22,7 +22,7 @@
   outline: none;
 }
 
-/* 中文：关闭时保留节点到动画结束，避免条件卸载直接截断退出过渡。 */
+/* 关闭时保留节点到动画结束，避免条件卸载直接截断退出过渡。 */
 .account-settings-overlay.is-closing {
   animation: account-settings-overlay-exit 0.2s ease-in both;
 }

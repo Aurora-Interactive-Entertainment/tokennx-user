@@ -122,7 +122,7 @@ export function PersonalUsageTrendChart({
     const surface =
       getComputedStyle(node.closest(".personal-usage-chart-panel") ?? node)
         .backgroundColor || (isDark ? "#202124" : "#ffffff");
-    // 中文：Token 数据以百万为单位展示，避免与请求数共用坐标轴时量级差距过大。
+    // Token 数据以百万为单位展示，避免与请求数共用坐标轴时量级差距过大。
     const values = new Map(
       data.series.map((series) => [
         series.name,
@@ -133,7 +133,7 @@ export function PersonalUsageTrendChart({
     );
     chart.setOption({
       animationDuration: 320,
-      // 中文：图表面板负责水平内边距，outerBounds 仅为坐标轴标签预留空间。
+      // 图表面板负责水平内边距，outerBounds 仅为坐标轴标签预留空间。
       grid: {
         left: 0,
         right: 0,
@@ -145,7 +145,7 @@ export function PersonalUsageTrendChart({
       tooltip: {
         trigger: "axis",
         confine: true,
-        // 中文：关闭默认浮层过渡，让 tooltip 与指针保持同步。
+        // 关闭默认浮层过渡，让 tooltip 与指针保持同步。
         transitionDuration: 0,
         axisPointer: {
           type: "cross",

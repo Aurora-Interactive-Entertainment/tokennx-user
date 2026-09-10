@@ -62,7 +62,7 @@ interface SupportEmotionBallProps {
 }
 
 const EMOTION_BALL_ASSET_VERSION = "support-gaze-v9";
-// 中文：感应半径取视口短边的 58%，并限制上下界，方便统一调整跟随区域大小。
+// 感应半径取视口短边的 58%，并限制上下界，方便统一调整跟随区域大小。
 const GAZE_RANGE_RATIO = 0.58;
 const GAZE_RANGE_MIN = 220;
 const GAZE_RANGE_MAX = 720;
@@ -92,7 +92,7 @@ function loadEmotionBall(): Promise<EmotionBallApi> {
     return promise.then(
       () =>
         new Promise<void>((resolve, reject) => {
-          // 中文：脚本按 rings → emotions → ball → engine 顺序加载，保证参考引擎的全局依赖已就绪。
+          // 脚本按 rings → emotions → ball → engine 顺序加载，保证参考引擎的全局依赖已就绪。
           const existing = document.querySelector<HTMLScriptElement>(
             `script[data-support-emotion-ball="${path}"]`,
           );
@@ -122,7 +122,7 @@ function loadEmotionBall(): Promise<EmotionBallApi> {
     );
   }, Promise.resolve()).then(() => {
     if (!window.EmotionBall) throw new Error("表情引擎初始化失败");
-    // 中文：记录独立脚本版本，开发热更新时不会继续复用旧的鼠标注视实现。
+    // 记录独立脚本版本，开发热更新时不会继续复用旧的鼠标注视实现。
     window.__supportEmotionBallVersion = EMOTION_BALL_ASSET_VERSION;
     return window.EmotionBall;
   });
@@ -198,18 +198,18 @@ export const SupportEmotionBall = forwardRef<
           emotion: initialEmotionRef.current,
           shape: "blob",
           label: "客服助手表情",
-          // 中文：入口尺寸较小，放大眼睛位移并快速平滑转向，保证 47px 区域内也能准确辨认方向。
+          // 入口尺寸较小，放大眼睛位移并快速平滑转向，保证 47px 区域内也能准确辨认方向。
           gazeScale: 1.8,
           gazeSpeed: 18,
-          // 中文：原眼型位置偏上，降低向上行程并增强向下行程，使上下视觉幅度更均衡。
+          // 原眼型位置偏上，降低向上行程并增强向下行程，使上下视觉幅度更均衡。
           gazeUpScale: 0.78,
           gazeDownScale: 1.6,
           gazeCenterY: 8,
-          // 中文：补偿眼睛移到球面边缘时的透视缩小，仅在鼠标接管期间轻微放大。
+          // 补偿眼睛移到球面边缘时的透视缩小，仅在鼠标接管期间轻微放大。
           gazeEyeScale: 1.12,
-          // 中文：按最终投影尺寸统一双眼，避免右眼因球面压缩显得更小。
+          // 按最终投影尺寸统一双眼，避免右眼因球面压缩显得更小。
           equalizeEyeSize: true,
-          // 中文：鼠标移动时完整接管眼神；停止 5 秒后再平滑恢复 02 的自主扫视。
+          // 鼠标移动时完整接管眼神；停止 5 秒后再平滑恢复 02 的自主扫视。
           gazeIdleDelay: 5000,
           gazeOverride: true,
         });
@@ -220,7 +220,7 @@ export const SupportEmotionBall = forwardRef<
         setReady(true);
       })
       .catch((error: unknown) => {
-        // 中文：资源加载失败时保留空容器，不影响客服面板和按钮本身的可用性。
+        // 资源加载失败时保留空容器，不影响客服面板和按钮本身的可用性。
         console.error("[SupportEmotionBall]", error);
       });
 
@@ -241,7 +241,7 @@ export const SupportEmotionBall = forwardRef<
       const dx = event.clientX - (rect.left + rect.width / 2);
       const dy = event.clientY - (rect.top + rect.height / 2);
       const distance = Math.hypot(dx, dy);
-      /* 中文：只在右下角助手周围的扇形区域接管眼神；半径随视口短边变化，兼容不同屏幕。 */
+      /* 只在右下角助手周围的扇形区域接管眼神；半径随视口短边变化，兼容不同屏幕。 */
       const followRadius = Math.min(
         GAZE_RANGE_MAX,
         Math.max(
@@ -257,10 +257,10 @@ export const SupportEmotionBall = forwardRef<
         return;
       }
       gazeInRangeRef.current = true;
-      /* 中文：引擎横纵最大位移分别为 24/15，预先反向校正椭圆比例；
+      /* 引擎横纵最大位移分别为 24/15，预先反向校正椭圆比例；
        * 这样 SVG 最终位移方向会严格平行于“图标中心 → 鼠标”的真实像素向量。 */
       const directionLength = Math.hypot(dx / 24, dy / 15);
-      // 中文：从中心到感应边界平滑增加注视幅度，边界内保持连续，不会突然跳动。
+      // 从中心到感应边界平滑增加注视幅度，边界内保持连续，不会突然跳动。
       const strength = Math.sin(
         (Math.min(distance, followRadius) / followRadius) * (Math.PI / 2),
       );
@@ -268,7 +268,7 @@ export const SupportEmotionBall = forwardRef<
         directionLength > 0 ? (dx / 24 / directionLength) * strength : 0;
       const ny =
         directionLength > 0 ? (dy / 15 / directionLength) * strength : 0;
-      // 中文：直接更新 SVG 引擎，避免 pointermove 触发 React 高频重渲染造成跟随卡顿。
+      // 直接更新 SVG 引擎，避免 pointermove 触发 React 高频重渲染造成跟随卡顿。
       engine.setGaze(nx, ny);
     };
     const handlePointerLeave = () => {
@@ -288,7 +288,7 @@ export const SupportEmotionBall = forwardRef<
     () => ({
       wake: () => {
         const engine = engineRef.current;
-        // 中文：兼容旧的点击唤醒调用，但入口始终保持用户要求的 02 待机放空。
+        // 兼容旧的点击唤醒调用，但入口始终保持用户要求的 02 待机放空。
         if (engine && engine.emotionId !== "02") engine.setEmotion("02");
         setEmotion("02");
       },
@@ -303,11 +303,11 @@ export const SupportEmotionBall = forwardRef<
       aria-hidden="true"
       data-emotion={emotion}
     >
-      {/* 中文：只在参考引擎尚未加载时显示回退表情，避免回退 SVG 与真实表情叠成两个球。 */}
+      {/* 只在参考引擎尚未加载时显示回退表情，避免回退 SVG 与真实表情叠成两个球。 */}
       {!ready ? (
         <FallbackEmotionBall emotion={emotion} gaze={{ x: 0, y: 0 }} />
       ) : null}
-      {/* 中文：引擎异步加载期间保留尺寸占位，兼容旧入口的图片尺寸和无闪烁布局。 */}
+      {/* 引擎异步加载期间保留尺寸占位，兼容旧入口的图片尺寸和无闪烁布局。 */}
       <img
         className="manuscript-support-assistant-image"
         src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs="

@@ -45,7 +45,7 @@ export function RechargePage() {
     }
     const controller = new AbortController()
     setPaymentReturnState((previous) => ({ status: 'loading', data: previous.data, error: '', requestId: null }))
-    // 中文：支付回跳查单沿用当前账务主体，企业订单不能落到个人接口。
+    // 支付回跳查单沿用当前账务主体，企业订单不能落到个人接口。
     void getBillingPaymentOrder(paymentReturnOrderID, { signal: controller.signal }, context).then((order) => {
       if (!controller.signal.aborted) setPaymentReturnState({ status: 'success', data: order, error: '', requestId: null })
     }).catch((error: unknown) => {
@@ -61,7 +61,7 @@ export function RechargePage() {
 
   useEffect(() => {
     const controller = new AbortController()
-    // 中文：余额卡片读取当前账务主体的钱包，支付到账后只刷新展示，不改变支付链路。
+    // 余额卡片读取当前账务主体的钱包，支付到账后只刷新展示，不改变支付链路。
     void getBillingWallet(context, { signal: controller.signal }).then((response) => {
       if (!controller.signal.aborted) setWallet(response.wallet)
     }).catch((error: unknown) => {
@@ -84,7 +84,7 @@ export function RechargePage() {
   )
 }
 
-// 中文：说明文字按设计稿拆成强调色与站内链接，避免把整句点击区域做得过大。
+// 说明文字按设计稿拆成强调色与站内链接，避免把整句点击区域做得过大。
 function RechargeNotice() {
   const { t } = useTranslation()
   return <section className="recharge-notice" aria-label={t('console.billing.rechargeNotice')}><span className="recharge-notice-icon" aria-hidden="true">i</span><div className="recharge-notice-body"><ol><li><span className="recharge-notice-emphasis">{t('console.billing.rechargeNoticeInvoiceWarning')}</span>{t('console.billing.rechargeNoticeInvoicePrefix')}<Link to="/console/billing?tab=invoice">{t('console.billing.rechargeNoticeInvoiceLink')}</Link>{t('console.billing.rechargeNoticeInvoiceSuffix')}</li><li>{t('console.billing.rechargeNoticeBalancePrefix')}<Link to="/console/billing#billingLedgerHeading">{t('console.billing.rechargeNoticeLedgerLink')}</Link>{t('console.billing.rechargeNoticeLedgerSuffix')}</li></ol></div></section>
@@ -93,7 +93,7 @@ function RechargeNotice() {
 function RechargeBalanceCard({ wallet }: { wallet: BillingWallet | null }) {
   const { t } = useTranslation()
   const displayAmount = (value: string | undefined): string => {
-    // 中文：充值余额卡与费用中心统一保留 4 位小数，同时维持原有无千位分隔的版式。
+    // 充值余额卡与费用中心统一保留 4 位小数，同时维持原有无千位分隔的版式。
     return formatYuan(value ?? '0', BACKOFFICE_MONEY_DISPLAY_DECIMAL_PLACES).replace(/^¥/, '').replaceAll(',', '')
   }
   return <section className="recharge-balance-card" aria-label={t('console.billing.availableBalance')}><div className="recharge-balance-label"><span className="recharge-balance-icon" aria-hidden="true">¥</span>{t('console.billing.availableBalance')}</div><div className="recharge-balance-summary"><div className="recharge-balance-value">¥{displayAmount(wallet?.total_available_yuan)}</div><div className="recharge-balance-facts"><span className="recharge-balance-fact"><span className="recharge-balance-fact-label">{t('console.billing.cashBalance')}<Tooltip className="app-info-tooltip" content={t('console.billing.rechargeBalanceHint')} position="top"><IconHelpCircleStroked className="recharge-balance-help" aria-label={t('console.billing.rechargeBalanceHint')} /></Tooltip>：</span><strong>¥{displayAmount(wallet?.paid_available_yuan)}</strong></span><span className="recharge-balance-separator" aria-hidden="true">−</span><span className="recharge-balance-fact"><span className="recharge-balance-fact-label">{t('console.billing.debtBalance')}：</span><strong>¥{displayAmount(wallet?.debt_yuan)}</strong></span></div></div></section>

@@ -83,7 +83,7 @@ function isAdult(birthDate: Date, now = new Date()): boolean {
   return adultDate <= now;
 }
 
-// 中文：大陆居民身份证需要同时校验出生日期与末位校验码，避免仅凭长度放行无效证件号。
+// 大陆居民身份证需要同时校验出生日期与末位校验码，避免仅凭长度放行无效证件号。
 export function isValidMainlandIdNumber(value: string): boolean {
   const idNumber = value.trim().toUpperCase();
   if (!/^\d{17}[\dX]$/.test(idNumber) || !mainlandIdBirthDate(idNumber))
@@ -184,7 +184,7 @@ function realNameVerificationLabel(profile: RealNameProfile): string {
 }
 function isMobileDevice(): boolean {
   if (typeof window === "undefined") return false;
-  // 中文：不能只按视口宽度判断，桌面浏览器缩放会把 CSS 视口缩小而误判为移动端。
+  // 不能只按视口宽度判断，桌面浏览器缩放会把 CSS 视口缩小而误判为移动端。
   const userAgent = window.navigator?.userAgent ?? "";
   const mobileUserAgent =
     /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
@@ -455,7 +455,7 @@ export function RealNamePage() {
       }, REAL_NAME_CONFIRM_POLL_INTERVAL_MS);
     };
 
-    // 中文：二维码展示期间直接轮询确认接口；后台失败由 confirmSilently 静默处理。
+    // 二维码展示期间直接轮询确认接口；后台失败由 confirmSilently 静默处理。
     timer = window.setTimeout(() => {
       void pollConfirmation();
     }, REAL_NAME_CONFIRM_POLL_INTERVAL_MS);
@@ -470,7 +470,7 @@ export function RealNamePage() {
     return () => window.clearInterval(timer);
   }, [clock, qrExpiresAt, receipt]);
   useEffect(() => {
-    // 中文：先缓存并校验二维码地址，避免异步绘制闭包中的可选字段无法完成类型收窄。
+    // 先缓存并校验二维码地址，避免异步绘制闭包中的可选字段无法完成类型收窄。
     const certifyUrl = receipt?.certify_url?.trim();
     if (
       !certifyUrl ||

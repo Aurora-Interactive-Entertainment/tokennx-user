@@ -287,7 +287,7 @@ export function ToolUsageClientsChart({ data }: { data: ToolUsageClients }) {
     color: MODEL_CHART_COLORS[index % MODEL_CHART_COLORS.length],
   }))
   const total = selectedValues.reduce((sum, item) => sum + item.value, 0)
-  // 中文：悬浮信息框只展示有用量的工具；整周无数据时隐藏整个信息框。
+  // 悬浮信息框只展示有用量的工具；整周无数据时隐藏整个信息框。
   const nonZeroSelectedValues = selectedValues.filter((item) => item.value > 0)
 
   return <>

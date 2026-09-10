@@ -27,7 +27,7 @@
   font-size: 11px;
 }
 
-/* 中文：Semi 的占位区域与原生表格空行统一使用表格表面色。 */
+/* Semi 的占位区域与原生表格空行统一使用表格表面色。 */
 .semi-table-placeholder:has(.trae-table-empty) {
   padding: 0;
   border-bottom: 0;

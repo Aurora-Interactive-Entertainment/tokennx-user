@@ -5,7 +5,7 @@
 
 .subscription-page > .page-title-row {
   padding-right: 150px;
-  /* 中文：订阅管理沿用后台统一标题区，不额外绘制底部分隔线。 */
+  /* 订阅管理沿用后台统一标题区，不额外绘制底部分隔线。 */
   border-bottom: 0;
   padding-bottom: 22px;
 }
@@ -30,7 +30,7 @@
 
 .subscription-overview-grid {
   display: grid;
-  /* 中文：当前计划占满剩余空间，每张模型卡保持固定宽度，接口返回多项时尺寸不跳变。 */
+  /* 当前计划占满剩余空间，每张模型卡保持固定宽度，接口返回多项时尺寸不跳变。 */
   grid-template-columns: minmax(480px, 1fr);
   grid-auto-columns: 420px;
   grid-auto-flow: column;
@@ -142,7 +142,7 @@
 .subscription-plan-grid {
   display: grid;
   align-items: stretch;
-  /* 中文：默认最多四列，实际列数由套餐数量覆盖，避免右侧出现空白列。 */
+  /* 默认最多四列，实际列数由套餐数量覆盖，避免右侧出现空白列。 */
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 14px;
 }
@@ -150,7 +150,7 @@
 .subscription-plan-grid:where([data-plan-count="2"]) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .subscription-plan-grid:where([data-plan-count="3"]) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 
-/* 中文：只有一个套餐时保持易读卡片宽度，不把单卡拉伸到整行。 */
+/* 只有一个套餐时保持易读卡片宽度，不把单卡拉伸到整行。 */
 .subscription-plan-grid:where([data-plan-count="1"]) {
   grid-template-columns: minmax(280px, 440px);
   justify-content: start;
@@ -170,7 +170,7 @@
   transition: transform 180ms ease, box-shadow 180ms ease;
 }
 
-/* 中文：卡片 hover 仅做轻微上浮，保持网格尺寸和背景颜色稳定。 */
+/* 卡片 hover 仅做轻微上浮，保持网格尺寸和背景颜色稳定。 */
 .subscription-plan-card:hover {
   transform: translateY(-4px);
   box-shadow: 0 18px 34px rgba(0, 0, 0, 0.2);
@@ -244,7 +244,7 @@
 .subscription-plan-card--ultra .subscription-plan-price small { color: rgba(255,255,255,.72); }
 
 .subscription-plan-description {
-  /* 中文：为套餐说明预留统一的四行空间，让四张卡片的按钮处于同一高度。 */
+  /* 为套餐说明预留统一的四行空间，让四张卡片的按钮处于同一高度。 */
   min-height: 96px;
   margin: 8px 0 18px;
   color: var(--text-secondary);
@@ -266,7 +266,7 @@
   transition: transform 160ms ease;
 }
 
-/* 中文：按钮只做轻微放大和扫光，不改变原有背景色或文字颜色。 */
+/* 按钮只做轻微放大和扫光，不改变原有背景色或文字颜色。 */
 .subscription-plan-action::after {
   position: absolute;
   top: -30%;
@@ -327,7 +327,7 @@
 .subscription-upgrade-options {
   display: grid;
   gap: var(--spacing-12);
-  /* 中文：滚动容器会裁切溢出，为卡片阴影预留内部缓冲区。 */
+  /* 滚动容器会裁切溢出，为卡片阴影预留内部缓冲区。 */
   padding: 10px var(--spacing-12) 14px;
 }
 
@@ -342,7 +342,7 @@
   background: var(--color-bg-base-secondary);
   color: var(--color-text-default);
   text-align: left;
-  /* 中文：升级计划卡片保持常态阴影，避免只有悬停时才有浮层层次。 */
+  /* 升级计划卡片保持常态阴影，避免只有悬停时才有浮层层次。 */
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
   cursor: pointer;
   transition:
@@ -458,12 +458,12 @@
   .subscription-current-card { grid-column: 1 / -1; }
 }
 
-/* 中文：四列需要较宽的内容区，空间不足时固定降为两列，避免卡片压缩到不可读。 */
+/* 四列需要较宽的内容区，空间不足时固定降为两列，避免卡片压缩到不可读。 */
 @media (max-width: 1540px) {
   .subscription-plan-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
-/* 中文：三张套餐卡在常见桌面宽度下仍保持三等分，完整利用横向空间。 */
+/* 三张套餐卡在常见桌面宽度下仍保持三等分，完整利用横向空间。 */
 @media (min-width: 1201px) {
   .subscription-plan-grid:where([data-plan-count="3"]) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }

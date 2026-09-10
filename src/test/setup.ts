@@ -1,4 +1,4 @@
-// 中文：测试环境与生产入口一样先注入 Semi Design 的 React 19 适配层。
+// 测试环境与生产入口一样先注入 Semi Design 的 React 19 适配层。
 import '@douyinfe/semi-ui/react19-adapter'
 import '@testing-library/jest-dom/vitest'
 import { cleanup } from '@testing-library/react'
@@ -7,7 +7,7 @@ import { afterEach } from 'vitest'
 
 afterEach(() => {
   cleanup()
-  // 中文：命令式 Toast 不属于 React 树，测试结束时需要显式销毁，避免污染下一个用例。
+  // 命令式 Toast 不属于 React 树，测试结束时需要显式销毁，避免污染下一个用例。
   Toast.destroyAll()
 })
 
@@ -37,7 +37,7 @@ function createMemoryStorage(): Storage {
   }
 }
 
-// 中文：Node 新版在 jsdom worker 中可能不提供存储对象，测试使用内存实现保持页面状态隔离。
+// Node 新版在 jsdom worker 中可能不提供存储对象，测试使用内存实现保持页面状态隔离。
 function ensureStorage(name: 'localStorage' | 'sessionStorage'): void {
   let storage: Storage | undefined
   try { storage = window[name] } catch { storage = undefined }

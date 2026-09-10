@@ -1,7 +1,7 @@
-/* 中文：创建与编辑 API Key 弹窗复用 AppModal 基线，仅约束业务宽高和内部表单。 */
+/* 创建与编辑 API Key 弹窗复用 AppModal 基线，仅约束业务宽高和内部表单。 */
 .api-key-management-modal .semi-modal {
   width: min(600px, calc(100vw - var(--spacing-32))) !important;
-  /* 中文：与全局 modal-wrap 的 24px 上下安全区保持一致，保证窄视口时上下外边距相等。 */
+  /* 与全局 modal-wrap 的 24px 上下安全区保持一致，保证窄视口时上下外边距相等。 */
   max-height: calc(100dvh - 48px);
 }
 
@@ -32,25 +32,25 @@
   grid-column: 1 / -1;
 }
 
-/* 中文：DOM 顺序服务于编辑复用，视觉顺序与创建稿一致。 */
+/* DOM 顺序服务于编辑复用，视觉顺序与创建稿一致。 */
 .api-key-modal-form > .api-key-name-field { order: 1; }
 .api-key-modal-form > .api-key-tags-field { order: 2; }
 .api-key-modal-form > .api-key-member-field { order: 3; }
 .api-key-modal-form > .api-key-limit-switch-field { order: 4; }
 .api-key-modal-form > .api-key-validity-field { order: 5; }
-/* 中文：费用来源与可用模型位置对调，费用来源显示在可用模型上方。 */
+/* 费用来源与可用模型位置对调，费用来源显示在可用模型上方。 */
 .api-key-modal-form > .api-key-billing-field { order: 6; }
 .api-key-modal-form > .api-key-model-field { order: 7; }
 .api-key-modal-form > .api-key-whitelist-field { order: 8; }
 .api-key-modal-form > .api-key-advanced-fields { order: 9; }
 
-/* 中文：限制内容在挂载时轻微淡入上移，减少开关展开的突兀感。 */
+/* 限制内容在挂载时轻微淡入上移，减少开关展开的突兀感。 */
 .api-key-advanced-inline-field,
 .api-key-advanced-fields {
   animation: api-key-advanced-enter 180ms cubic-bezier(0.2, 0, 0, 1) both;
 }
 
-/* 中文：动画延迟与对调后的视觉顺序保持一致。 */
+/* 动画延迟与对调后的视觉顺序保持一致。 */
 .api-key-billing-field { animation-delay: 20ms; }
 .api-key-model-field { animation-delay: 40ms; }
 .api-key-whitelist-field { animation-delay: 60ms; }
@@ -136,7 +136,7 @@
   box-shadow: none;
 }
 
-/* 中文：必填校验沿用人员管理的 Semi 错误边框和字段内错误文案。 */
+/* 必填校验沿用人员管理的 Semi 错误边框和字段内错误文案。 */
 .api-key-management-modal .api-key-modal-form .semi-input-wrapper.semi-input-wrapper-error,
 .api-key-management-modal .api-key-modal-form .semi-input-wrapper.semi-input-wrapper-error:hover,
 .api-key-management-modal .api-key-modal-form .semi-input-wrapper.semi-input-wrapper-error.semi-input-wrapper-focus,
@@ -181,7 +181,7 @@
   gap: var(--spacing-20);
 }
 
-/* 中文：模型范围仅保留为旧数据兼容状态，不在新稿中重复展示单选项。 */
+/* 模型范围仅保留为旧数据兼容状态，不在新稿中重复展示单选项。 */
 .api-key-model-field .api-key-scope-options {
   position: absolute;
   width: 1px;
@@ -202,7 +202,7 @@
   cursor: pointer;
 }
 
-/* 中文：单选选中态使用主题动作色，浅色为黑色、深色为白色，保持中性色辨识度。 */
+/* 单选选中态使用主题动作色，浅色为黑色、深色为白色，保持中性色辨识度。 */
 .api-key-scope-radio input,
 .billing-source-option input {
   box-sizing: border-box;
@@ -327,7 +327,7 @@
   background: var(--color-bg-overlay-l1);
 }
 
-/* 中文：把费用上限与三个限流输入排成截图中的 2x2 网格，提示横跨整行。 */
+/* 把费用上限与三个限流输入排成截图中的 2x2 网格，提示横跨整行。 */
 .api-key-advanced-settings > .api-key-form-field:nth-child(2) {
   display: contents;
 }
@@ -427,7 +427,7 @@
   line-height: 1.7;
 }
 
-/* 中文：创建结果弹窗复用 AppModal 外壳，仅补充完整密钥的可读性和复制操作布局。 */
+/* 创建结果弹窗复用 AppModal 外壳，仅补充完整密钥的可读性和复制操作布局。 */
 .api-key-created-modal .semi-modal {
   width: min(640px, calc(100vw - var(--spacing-32))) !important;
 }
@@ -500,7 +500,7 @@
 @media (max-width: 640px) {
   .api-key-management-modal .semi-modal {
     width: calc(100vw - var(--spacing-24)) !important;
-    /* 中文：移动端同样保留包裹层的上下安全区，底部操作区不会被视口裁切。 */
+    /* 移动端同样保留包裹层的上下安全区，底部操作区不会被视口裁切。 */
     max-height: calc(100dvh - 24px);
   }
 

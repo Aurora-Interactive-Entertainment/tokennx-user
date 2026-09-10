@@ -1,4 +1,4 @@
-/* 中文：充值管理页按参考图使用整页信息层级，支付接口和二维码流程仍由原组件负责。 */
+/* 充值管理页按参考图使用整页信息层级，支付接口和二维码流程仍由原组件负责。 */
 .recharge-console-page {
   min-height: calc(100vh - 116px);
   min-height: calc(100dvh - 116px);
@@ -38,7 +38,7 @@
   background: #000;
 }
 
-/* 中文：深色主题下使用高对比白底黑字，保持提醒按钮与费用中心按钮一致。 */
+/* 深色主题下使用高对比白底黑字，保持提醒按钮与费用中心按钮一致。 */
 html[data-theme="dark"] .recharge-console-page .recharge-alert-button.semi-button.semi-button-primary {
   border-color: #fff;
   color: #17181b;

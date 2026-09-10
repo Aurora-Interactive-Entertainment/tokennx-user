@@ -1,4 +1,4 @@
-/* 中文：活动弹窗覆盖 AppModal 的通用正文留白，让视觉图与底部区域无缝衔接。 */
+/* 活动弹窗覆盖 AppModal 的通用正文留白，让视觉图与底部区域无缝衔接。 */
 .activity-campaign-modal .semi-modal-content.app-modal-content {
   width: 480px;
   height: 478px;
@@ -13,7 +13,7 @@
   padding: 0 !important;
 }
 
-/* 中文：Semi 在部分版本会额外包一层 body-wrapper，图片型弹窗必须同时清除该层留白。 */
+/* Semi 在部分版本会额外包一层 body-wrapper，图片型弹窗必须同时清除该层留白。 */
 .activity-campaign-modal .semi-modal-content > .semi-modal-body-wrapper {
   padding: 0 !important;
   overflow: hidden;
@@ -37,7 +37,7 @@
   position: relative;
   height: 264px;
   overflow: hidden;
-  /* 中文：图片区域四角与弹窗外壳保持一致，避免移动端两侧出现直角切口。 */
+  /* 图片区域四角与弹窗外壳保持一致，避免移动端两侧出现直角切口。 */
   border-radius: 15px;
   background: linear-gradient(145deg, #8f1ed7 0%, #4c1b9d 48%, #261366 100%);
 }

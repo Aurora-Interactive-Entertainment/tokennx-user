@@ -375,7 +375,7 @@ describe('控制台模型接入页面', () => {
     })
 
     expect(modelSelect).toHaveTextContent('后端 Qwen')
-    // 中文：模型参数提示已从输入框下方移除。
+    // 模型参数提示已从输入框下方移除。
     expect(document.querySelector('.composer-hint')).toBeNull()
   })
 
@@ -410,7 +410,7 @@ describe('控制台模型接入页面', () => {
     expect(screen.getByText('先分析')).toBeInTheDocument()
     expect(screen.getByText('Markdown 已渲染')).toBeInTheDocument()
     expect(document.querySelector('.message.ai script')).toBeNull()
-    // 中文：对话完成后也不再展示底部快捷键和模型参数提示。
+    // 对话完成后也不再展示底部快捷键和模型参数提示。
     expect(document.querySelector('.composer-hint')).toBeNull()
     expect(screen.queryByText(/deepseek-chat · 第/)).toBeNull()
     expect(screen.queryByText(/第 .*轮/)).toBeNull()

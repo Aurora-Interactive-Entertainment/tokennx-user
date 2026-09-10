@@ -11,7 +11,7 @@ import "./purchase-subscription-modal.css";
 type PlanKey = "miniMax" | "deepSeek" | "seedance" | "kimi" | "glm";
 type TabKey = "all" | PlanKey;
 
-// 中文：弹窗卡片顺序与 Figma 画板一致，智谱卡片位于 Kimi 卡片之前。
+// 弹窗卡片顺序与 Figma 画板一致，智谱卡片位于 Kimi 卡片之前。
 const PLAN_KEYS: PlanKey[] = ["miniMax", "deepSeek", "seedance", "glm", "kimi"];
 const TAB_PLAN_KEYS: PlanKey[] = [
   "miniMax",

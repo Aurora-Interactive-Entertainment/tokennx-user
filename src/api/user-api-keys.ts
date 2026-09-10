@@ -49,7 +49,7 @@ export interface UserApiKey {
   secret: string;
   status: ApiKeyStatus;
   scope: ApiKeyScope;
-  // 中文：接口契约规定 model_ids 始终为数组；全量授权时使用空数组。
+  // 接口契约规定 model_ids 始终为数组；全量授权时使用空数组。
   model_ids: string[];
   models: ApiKeyModel[];
   tags: string[];
@@ -84,7 +84,7 @@ export interface UserApiKeyMutation {
   name: string;
   tags: string[];
   member_id?: string;
-  // 中文：创建/更新请求按文档使用 UTC RFC3339 字符串；列表响应仍是 Unix 毫秒时间戳。
+  // 创建/更新请求按文档使用 UTC RFC3339 字符串；列表响应仍是 Unix 毫秒时间戳。
   expires_at: string | null;
   scope: ApiKeyScope;
   model_ids: string[];
@@ -150,7 +150,7 @@ function contextQuery(
 }
 
 function fetchOptions(options: UserApiKeyRequestOptions): Pick<FetchJsonOptions, "signal"> {
-  // 中文：分页字段只用于拼接查询参数，不能透传给原生 fetch，避免产生无效 RequestInit 字段。
+  // 分页字段只用于拼接查询参数，不能透传给原生 fetch，避免产生无效 RequestInit 字段。
   return options.signal ? { signal: options.signal } : {};
 }
 
@@ -176,7 +176,7 @@ function normalizeApiKeyItem(value: unknown): UserApiKey {
   return {
     ...item,
     secret: typeof item.secret === "string" ? item.secret : "",
-    // 中文：兼容灰度旧响应中的 null/缺失值，同时向页面暴露稳定的非空数组。
+    // 兼容灰度旧响应中的 null/缺失值，同时向页面暴露稳定的非空数组。
     model_ids: Array.isArray(item.model_ids)
       ? item.model_ids.filter((modelID): modelID is string => typeof modelID === "string")
       : [],
@@ -253,7 +253,7 @@ export function getUserApiKeys(
 
 /**
  * 读取当前账户可见的全部密钥，供仍使用前端筛选和分页的页面聚合数据。
- * 中文：新服务按分页返回；旧灰度响应缺少分页字段时只读取首包，避免重复请求。
+ * 新服务按分页返回；旧灰度响应缺少分页字段时只读取首包，避免重复请求。
  */
 export async function getAllUserApiKeys(
   context: UserApiKeyContext,
@@ -282,7 +282,7 @@ export async function getAllUserApiKeys(
     }
     const lastPage = Math.max(1, Math.ceil(result.total / Math.max(1, result.page_size)));
     if (result.items.length === 0 || page >= lastPage || items.length >= result.total) break;
-    // 中文：服务端若忽略分页参数并重复返回同一页，检测到没有新增密钥后停止，避免死循环。
+    // 服务端若忽略分页参数并重复返回同一页，检测到没有新增密钥后停止，避免死循环。
     if (items.length === previousItemCount) break;
     page += 1;
   }
@@ -322,7 +322,7 @@ export function getEnterpriseApiKeys(
   ).then((value) => normalizeUserApiKeyList(value, options));
 }
 
-/** 中文：企业管理员页同样聚合服务端分页，供部门筛选继续复用。 */
+/** 企业管理员页同样聚合服务端分页，供部门筛选继续复用。 */
 export async function getAllEnterpriseApiKeys(
   context: UserApiKeyContext,
   filter: ApiKeyStatusFilter = "all",
@@ -351,7 +351,7 @@ export async function getAllEnterpriseApiKeys(
     }
     const lastPage = Math.max(1, Math.ceil(result.total / Math.max(1, result.page_size)));
     if (result.items.length === 0 || page >= lastPage || items.length >= result.total) break;
-    // 中文：兼容服务端暂未启用分页的灰度实例，重复页不再继续请求。
+    // 兼容服务端暂未启用分页的灰度实例，重复页不再继续请求。
     if (items.length === previousItemCount) break;
     page += 1;
   }
@@ -376,7 +376,7 @@ export function getSubscriptionModels(
   ).then(normalizeSubscriptionModels);
 }
 
-// 中文：保留语义化别名，便于页面和外部调用方按接口资源名称引用。
+// 保留语义化别名，便于页面和外部调用方按接口资源名称引用。
 export const getUserApiKeySubscriptionModels = getSubscriptionModels;
 
 export function createEnterpriseApiKey(
@@ -456,7 +456,7 @@ export function getUserApiKeyActivity(
   keyId: string,
   limit = 20,
 ): Promise<UserApiKeyActivityList> {
-  // 中文：活动接口限制为 1～100 条，兼容旧调用方的越界值并避免无效请求。
+  // 活动接口限制为 1～100 条，兼容旧调用方的越界值并避免无效请求。
   const normalizedLimit = Number.isFinite(limit)
     ? Math.min(100, Math.max(1, Math.trunc(limit)))
     : 20;
@@ -475,7 +475,7 @@ export function getUserApiKeyErrorMessage(error: unknown): string {
     100007: "api.apiKeys.unavailable",
     100009: "api.apiKeys.expired",
     160001: "api.apiKeys.sessionExpired",
-    // 中文：兼容旧网关仍返回的认证错误码，正式接口以 160001 为准。
+    // 兼容旧网关仍返回的认证错误码，正式接口以 160001 为准。
     110001: "api.apiKeys.sessionExpired",
   };
   return messageKeys[error.code]

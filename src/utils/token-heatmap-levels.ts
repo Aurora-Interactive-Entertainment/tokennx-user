@@ -11,7 +11,7 @@ function quantile(sortedValues: readonly number[], percentile: number): number {
   return lower + (upper - lower) * (position - lowerIndex);
 }
 
-/** 中文：在对数空间按分位数生成动态阈值，避免异常大值压缩普通日期的颜色差异。 */
+/** 在对数空间按分位数生成动态阈值，避免异常大值压缩普通日期的颜色差异。 */
 export function createTokenHeatmapThresholds(
   values: readonly number[],
 ): TokenHeatmapThresholds | null {
@@ -29,7 +29,7 @@ export function createTokenHeatmapThresholds(
   ];
 }
 
-/** 中文：0 Token 固定为灰色，非零值依据当前数据集的动态阈值映射到四档颜色。 */
+/** 0 Token 固定为灰色，非零值依据当前数据集的动态阈值映射到四档颜色。 */
 export function tokenHeatmapLevel(
   value: number,
   thresholds: TokenHeatmapThresholds | null,

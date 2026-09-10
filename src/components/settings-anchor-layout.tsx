@@ -34,7 +34,7 @@ export function SettingsAnchorLayout({ items, navigationLabel, children }: Setti
         0,
         document.documentElement.scrollHeight - window.innerHeight,
       )
-      // 中文：内容不足一屏时不强制激活最后一项，避免点击锚点后被“页面底部”判断覆盖。
+      // 内容不足一屏时不强制激活最后一项，避免点击锚点后被“页面底部”判断覆盖。
       if (maxScrollTop <= 24) return
       const pageBottom = window.scrollY >= maxScrollTop - 2
       if (pageBottom) {
@@ -50,7 +50,7 @@ export function SettingsAnchorLayout({ items, navigationLabel, children }: Setti
       if (!frame) frame = window.requestAnimationFrame(updateActiveSection)
     }
 
-    // 中文：以视口上部为当前阅读区，并在到达页面底部时激活最后一个区块。
+    // 以视口上部为当前阅读区，并在到达页面底部时激活最后一个区块。
     updateActiveSection()
     window.addEventListener('scroll', handleScroll, { passive: true })
     window.addEventListener('resize', handleScroll)

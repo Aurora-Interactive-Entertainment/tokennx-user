@@ -177,7 +177,7 @@ const LazyProfileContactDialog = lazy(() =>
     default: module.ProfileContactDialog,
   })),
 );
-// 中文：邮箱引导和通知正文仅在打开时加载，避免首页预先引入表单与 Markdown 依赖。
+// 邮箱引导和通知正文仅在打开时加载，避免首页预先引入表单与 Markdown 依赖。
 const LazyBindEmailDialog = lazy(() =>
   import("./bind-email-dialog").then((module) => ({
     default: module.BindEmailDialog,
@@ -240,7 +240,7 @@ type PublicLink = {
 
 export const PUBLIC_LINKS: PublicLink[] = [
   { labelKey: "nav.models", path: "/models" },
-  // 中文：私有化入口暂不对外展示，后续开放时再加入此列表。
+  // 私有化入口暂不对外展示，后续开放时再加入此列表。
   { labelKey: "nav.ranking", path: "/rankings" },
   { labelKey: "nav.apps", path: "/apps" },
   { labelKey: "nav.docs", path: "/docs" },
@@ -298,7 +298,7 @@ function persistBillingBalanceVisible(visible: boolean): void {
 function formatBillingOverviewAmount(value: string | undefined): string {
   const match = value?.trim().match(/^([+-]?)(\d+)(?:\.(\d+))?$/);
   if (!match) return "--";
-  // 中文：费用悬浮卡金额统一保留 4 位小数，使用整数运算避免浮点误差。
+  // 费用悬浮卡金额统一保留 4 位小数，使用整数运算避免浮点误差。
   const fraction = (match[3] ?? "").padEnd(5, "0");
   let scaled = BigInt(match[2]) * 10000n + BigInt(fraction.slice(0, 4));
   if (fraction[4] >= "5") scaled += 1n;
@@ -307,7 +307,7 @@ function formatBillingOverviewAmount(value: string | undefined): string {
   return `${match[1] === "-" && scaled !== 0n ? "-" : ""}${integer}.${decimal}`;
 }
 
-// 中文：登录后的默认工作页改为快速接入，控制台根路径不再承载总览页面。
+// 登录后的默认工作页改为快速接入，控制台根路径不再承载总览页面。
 export const DEFAULT_CONSOLE_PATH = "/console/quickstart";
 
 export function BrandMark({ compact = false }: { compact?: boolean }) {
@@ -741,7 +741,7 @@ export function ModelCard({
   const outputMark =
     MODEL_TYPE_MARKS[outputTypeValue] ??
     (model.modality === "multimodal" ? "M" : "?");
-  // 中文：恢复模型原有标签，并限制数量，避免右上角标签挤压模型名称。
+  // 恢复模型原有标签，并限制数量，避免右上角标签挤压模型名称。
   const cardTags = (
     model.tags?.length ? model.tags : model.labels.map((label) => ({ label }))
   ).slice(0, 4);
@@ -909,7 +909,7 @@ export function ModelCard({
 
   return (
     <article className={`model-card${compact ? " model-card--compact" : ""}`}>
-      {/* 中文：光效层与内容表面分离，旋转动画只触发合成，不重绘卡片正文。 */}
+      {/* 光效层与内容表面分离，旋转动画只触发合成，不重绘卡片正文。 */}
       <span
         className="model-card-glow model-card-glow--blur"
         aria-hidden="true"
@@ -958,7 +958,7 @@ export function ModelCard({
             {cardBody}
           </Link>
         )}
-        {/* 中文：费用说明和价格示例仅对视频模型开放，避免其他模型出现无关提示。 */}
+        {/* 费用说明和价格示例仅对视频模型开放，避免其他模型出现无关提示。 */}
         {model.modality === "video" ? (
           <VideoPricingPopover model={model} />
         ) : null}
@@ -1083,7 +1083,7 @@ type LoginDialCode = {
 
 const LOGIN_CODE_RETRY_SECONDS = 60;
 const PHONE_CODE_COOLDOWN_KEY = "token-nx:auth:phone-code-cooldown:v1";
-// 中文：当前登录仅支持中国大陆手机号，区号固定为 +86。
+// 当前登录仅支持中国大陆手机号，区号固定为 +86。
 const LOGIN_DIAL_CODE: LoginDialCode = {
   code: "+86",
   minLength: 11,
@@ -1300,7 +1300,7 @@ export function LoginPanel({
   const navigate = useNavigate();
 
   useEffect(() => {
-    // 中文：父组件重渲染可能产生新的回调，但不应因此重启正在进行的微信轮询。
+    // 父组件重渲染可能产生新的回调，但不应因此重启正在进行的微信轮询。
     onSuccessRef.current = onSuccess;
   }, [onSuccess]);
 
@@ -1834,7 +1834,7 @@ export function LoginDialog({
     if (open) {
       if (closeTimerRef.current !== undefined)
         window.clearTimeout(closeTimerRef.current);
-      // 中文：打开时立即挂载弹层，避免入场动画前先渲染一帧退出状态。
+      // 打开时立即挂载弹层，避免入场动画前先渲染一帧退出状态。
       setMounted(true);
       return;
     }
@@ -1993,7 +1993,7 @@ export function LoginRequiredAction({
       >
         {children}
       </Link>
-      {/* 中文：已登录用户直接进入目标页面，仅未登录时挂载登录弹窗。 */}
+      {/* 已登录用户直接进入目标页面，仅未登录时挂载登录弹窗。 */}
       {requiresLogin ? (
         <LoginDialog
           open={open}
@@ -2087,7 +2087,7 @@ function hasSeenEmailOnboarding(userID: string): boolean {
       ) === "1"
     );
   } catch {
-    // 中文：存储不可用时不阻断首次登录引导展示。
+    // 存储不可用时不阻断首次登录引导展示。
     return false;
   }
 }
@@ -2100,7 +2100,7 @@ function markEmailOnboardingSeen(userID: string | undefined): void {
       "1",
     );
   } catch {
-    // 中文：隐私模式禁用存储时仍允许当前会话关闭弹窗，不阻断用户操作。
+    // 隐私模式禁用存储时仍允许当前会话关闭弹窗，不阻断用户操作。
   }
 }
 
@@ -2191,7 +2191,7 @@ export function PublicHeader({
   const shownLoginSequenceRef = useRef(0);
   useEffect(() => {
     const user = auth.user;
-    // 中文：仅首次登录且服务端明确要求绑定邮箱时展示一次引导。
+    // 仅首次登录且服务端明确要求绑定邮箱时展示一次引导。
     if (
       !currentPath.startsWith("/console") ||
       auth.status !== "authenticated" ||
@@ -2353,7 +2353,7 @@ export function PublicHeader({
   }, [accountSettingsOpen, mobileOpen]);
 
   function renderPublicLink(link: PublicLink, mobile = false): ReactNode {
-    // 中文：充值管理属于费用中心，进入新页面时仍保持顶部费用入口的选中态。
+    // 充值管理属于费用中心，进入新页面时仍保持顶部费用入口的选中态。
     const isActive =
       !link.disabled &&
       (currentPath.startsWith(link.path) ||
@@ -2461,7 +2461,7 @@ export function PublicHeader({
                 {billingBalanceVisible ? billingBalance : maskedBillingBalance}
                 </strong>
               </div>
-              {/* 中文：顶部费用下拉中的充值入口与“查看模型”统一使用胶囊毛玻璃按钮。 */}
+              {/* 顶部费用下拉中的充值入口与“查看模型”统一使用胶囊毛玻璃按钮。 */}
               <Link
                 className="billing-hover-recharge login-capsule-soft"
                 to="/console/recharge"
@@ -2595,7 +2595,7 @@ export function PublicHeader({
                 inviteCode={inviteCode}
                 onSuccess={(user) => {
                   setMobileOpen(false);
-                  // 中文：登录成功后统一进入快速接入页；邀请链接仍回到首页继续处理邀请。
+                  // 登录成功后统一进入快速接入页；邀请链接仍回到首页继续处理邀请。
                   if (inviteCode && !authUserNeedsEmailBinding(user ?? {}))
                     navigate("/", { replace: true });
                   else navigate(DEFAULT_CONSOLE_PATH, { replace: true });
@@ -2663,7 +2663,7 @@ export function PublicHeader({
         }}
       />
       <PurchasePaymentModal open={Boolean(purchasePaymentPlan)} planName={purchasePaymentPlan ?? "套餐"} onClose={() => setPurchasePaymentPlan(null)} />
-      {/* 中文：首次打开后保留挂载，让原有关闭动画和表单重置生命周期继续生效。 */}
+      {/* 首次打开后保留挂载，让原有关闭动画和表单重置生命周期继续生效。 */}
       {bindEmailRequested ? (
         <Suspense fallback={null}>
           <LazyBindEmailDialog
@@ -2725,14 +2725,14 @@ type ConsoleNavGroup = {
   items: ConsoleNavItem[];
 };
 
-// 中文：侧栏图标统一使用 Semi Icons，图标语义与菜单名称保持一致。
+// 侧栏图标统一使用 Semi Icons，图标语义与菜单名称保持一致。
 const CONSOLE_NAV_ICONS: Record<
   ConsoleNavIconName,
   (props: { className?: string; "aria-hidden"?: boolean }) => ReactNode
 > = {
   quickstart: (props) => <IconLightningStroked {...props} />,
   models: (props) => <IconApps {...props} />,
-  // 中文：企业模型管理使用层叠服务器图标，与模型广场的九宫格图标区分开。
+  // 企业模型管理使用层叠服务器图标，与模型广场的九宫格图标区分开。
   "enterprise-models": (props) => <IconServerStroked {...props} />,
   "model-test": (props) => <IconCommentStroked {...props} />,
   image: (props) => <IconImage {...props} />,
@@ -2742,7 +2742,7 @@ const CONSOLE_NAV_ICONS: Record<
   records: (props) => <IconFile {...props} />,
   billing: (props) => <IconNoteMoneyStroked {...props} />,
   subscription: (props) => <IconCrownStroked {...props} />,
-  // 中文：购买菜单使用购物袋图标，避免与订阅管理的皇冠图标混淆。
+  // 购买菜单使用购物袋图标，避免与订阅管理的皇冠图标混淆。
   purchase: (props) => <IconShoppingBagStroked {...props} />,
   recharge: (props) => <IconCoinMoneyStroked {...props} />,
   invitation: (props) => <IconInviteStroked {...props} />,
@@ -2913,7 +2913,7 @@ const enterpriseNavGroups: ConsoleNavGroup[] = [
         icon: "api-keys",
         permissionScope: "keys",
       },
-      // 中文：企业充值复用个人充值页，但入口归入企业管理并沿用账务权限。
+      // 企业充值复用个人充值页，但入口归入企业管理并沿用账务权限。
       {
         key: "/console/recharge",
         label: "充值管理",
@@ -3010,8 +3010,8 @@ function localizeConsoleNavLabel(t: TFunction, value: string): string {
   return key ? t(key) : value;
 }
 
-// 中文：视频生成已开放；个人和企业空间共用同一组体验中心入口。
-// 中文：企业所有者入口同时驱动侧栏和用户菜单，避免两个导航面板出现权限差异。
+// 视频生成已开放；个人和企业空间共用同一组体验中心入口。
+// 企业所有者入口同时驱动侧栏和用户菜单，避免两个导航面板出现权限差异。
 export function consoleNavGroupsFor(
   workspace: Pick<Workspace, "type" | "role">,
   permissions: readonly string[] = [],
@@ -3120,7 +3120,7 @@ const WORKSPACE_MENU_GAP_PX = 1;
 // 临时调试开关：固定为点击展开，样式调整完成后改为 false 即可恢复 hover 交互。
 const USER_MENU_CLICK_PINNED_MODE = false;
 
-// 中文：登录后的用户菜单与参考站保持同一层级，空间切换和控制台入口共用当前工作空间状态。
+// 登录后的用户菜单与参考站保持同一层级，空间切换和控制台入口共用当前工作空间状态。
 function UserMenu({
   store,
   userId,
@@ -3194,7 +3194,7 @@ function UserMenu({
 
   useEffect(() => {
     let mounted = true;
-    // 中文：先保留本地快照，服务端成功返回后再同步企业列表，避免刷新时丢失当前空间。
+    // 先保留本地快照，服务端成功返回后再同步企业列表，避免刷新时丢失当前空间。
     const accessToken = getAccessToken();
     if (!accessToken || !userId) {
       return () => {
@@ -3209,7 +3209,7 @@ function UserMenu({
           );
       })
       .catch(() => {
-        // 中文：同步失败时保留已有空间和激活状态，避免网络波动导致页面回到个人空间。
+        // 同步失败时保留已有空间和激活状态，避免网络波动导致页面回到个人空间。
       });
     return () => {
       mounted = false;
@@ -3333,7 +3333,7 @@ function UserMenu({
   }
 
   function switchWorkspace(workspace: Workspace): void {
-    // 中文：重复选择当前空间时仅关闭选择菜单，不再弹出无效提示。
+    // 重复选择当前空间时仅关闭选择菜单，不再弹出无效提示。
     if (workspace.id !== activeWorkspace.id) {
       store.switchWorkspace(workspace.id);
     }
@@ -3620,7 +3620,7 @@ export function AccountSettingsModal({
     return {
       id: nextProfile.id,
       display_name: limitDisplayNameLength(nextProfile.display_name),
-      // 中文：新版资料响应省略这些字段，局部资料更新时沿用当前认证信息。
+      // 新版资料响应省略这些字段，局部资料更新时沿用当前认证信息。
       avatar_url: nextProfile.avatar_url ?? auth.user?.avatar_url ?? "",
       locale: nextProfile.locale ?? auth.user?.locale ?? "zh-CN",
       timezone:
@@ -3736,7 +3736,7 @@ export function AccountSettingsModal({
         ? Math.max(0, window.innerWidth - root.clientWidth)
         : 0;
 
-    // 中文：锁定真正的页面滚动容器，避免 body 成为滚动容器后改变 sticky 顶栏的定位参照。
+    // 锁定真正的页面滚动容器，避免 body 成为滚动容器后改变 sticky 顶栏的定位参照。
     root.style.overflow = "hidden";
     if (scrollbarWidth > 0) {
       const currentPaddingRight =
@@ -4057,7 +4057,7 @@ export function AccountSettingsModal({
         onAuthFailure={invalidateProfileSession}
         onHandleEnterprise={(enterpriseID) => {
           if (enterpriseID) store.switchWorkspace(enterpriseID);
-          // 中文：跳转处理企业前，注销流程弹窗与外层账户设置弹窗一并关闭。
+          // 跳转处理企业前，注销流程弹窗与外层账户设置弹窗一并关闭。
           setDeleteAccountVisible(false);
           onClose();
           navigate("/console/enterprise-settings");
@@ -4140,7 +4140,7 @@ export function ConsoleLayout({ children }: { children: ReactNode }) {
     isEnterpriseOwner(activeWorkspace) ||
     hasEnterpriseMenuPermission(enterpriseAccess.permissions, permissionScope);
 
-  // 中文：受控企业页面先等待权限上下文，再决定渲染页面或回到基础工作页。
+  // 受控企业页面先等待权限上下文，再决定渲染页面或回到基础工作页。
   useEffect(() => {
     let modalVisible = false;
     let pendingScrollPosition: { left: number; top: number } | null = null;
@@ -4411,7 +4411,7 @@ const MANUSCRIPT_FOOTER_GROUPS = [
 ] as const;
 
 const MANUSCRIPT_SUPPORT_TRANSITION_MS = 360;
-// 中文：Tab 内容切换使用独立的短过渡，旧内容完成滑出后再卸载。
+// Tab 内容切换使用独立的短过渡，旧内容完成滑出后再卸载。
 const MANUSCRIPT_SUPPORT_TAB_TRANSITION_MS = 300;
 const MANUSCRIPT_SUPPORT_MESSAGE_MAX_LENGTH = 1000;
 type SupportTab = "contact" | "notifications";
@@ -4446,11 +4446,11 @@ function persistDeletedNotificationID(notificationID: string): void {
       JSON.stringify([...deleted]),
     );
   } catch {
-    // 中文：本地存储不可用时仍保留当前页面内的删除反馈，不阻断用户操作。
+    // 本地存储不可用时仍保留当前页面内的删除反馈，不阻断用户操作。
   }
 }
 
-// 中文：统一由页面头部和客服按钮发送打开请求，保证客服浮层只维护一份交互状态。
+// 统一由页面头部和客服按钮发送打开请求，保证客服浮层只维护一份交互状态。
 export function requestSupportWidget(tab: SupportTab = "contact"): void {
   window.dispatchEvent(
     new CustomEvent(SUPPORT_OPEN_EVENT, { detail: { tab } }),
@@ -4660,7 +4660,7 @@ export function ManuscriptSupportWidget() {
     const handleOpenRequest = (event: Event) => {
       const detail = (event as CustomEvent<{ tab?: SupportTab }>).detail;
       if (detail?.tab === "contact" || detail?.tab === "notifications") {
-        // 中文：外部打开请求直接定位目标栏目，避免弹窗入场时额外挂载旧内容。
+        // 外部打开请求直接定位目标栏目，避免弹窗入场时额外挂载旧内容。
         if (tabTransitionTimerRef.current !== undefined)
           window.clearTimeout(tabTransitionTimerRef.current);
         setPreviousTab(null);
@@ -4712,7 +4712,7 @@ export function ManuscriptSupportWidget() {
     const messagesEnd = messagesEndRef.current;
     if (!messagesEnd || typeof messagesEnd.scrollIntoView !== "function")
       return;
-    // 中文：尊重用户的减弱动效偏好，客服消息定位不强制平滑滚动。
+    // 尊重用户的减弱动效偏好，客服消息定位不强制平滑滚动。
     const prefersReducedMotion =
       typeof window.matchMedia === "function" &&
       window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -4768,7 +4768,7 @@ export function ManuscriptSupportWidget() {
     setTabTransitionDirection(
       nextTab === "notifications" ? "forward" : "backward",
     );
-    // 中文：仅切换栏目，不清理通知详情，便于用户往返客服页后继续阅读。
+    // 仅切换栏目，不清理通知详情，便于用户往返客服页后继续阅读。
     setTab(nextTab);
     tabTransitionTimerRef.current = window.setTimeout(() => {
       setPreviousTab(null);
@@ -4790,7 +4790,7 @@ export function ManuscriptSupportWidget() {
   }
 
   function togglePanel(): void {
-    // 中文：首次点击客服入口先唤醒表情球；参考引擎会自动从 01 唤醒过渡到 02 待机。
+    // 首次点击客服入口先唤醒表情球；参考引擎会自动从 01 唤醒过渡到 02 待机。
     assistantBallRef.current?.wake();
     if (open || mounted) closePanel();
     else openPanel();
@@ -4813,7 +4813,7 @@ export function ManuscriptSupportWidget() {
     setReplying(true);
     if (replyTimerRef.current !== undefined)
       window.clearTimeout(replyTimerRef.current);
-    // 中文：先展示客服输入状态，再追加 mock 回复，模拟真实客服响应节奏。
+    // 先展示客服输入状态，再追加 mock 回复，模拟真实客服响应节奏。
     replyTimerRef.current = window.setTimeout(() => {
       setMessages((current) => [
         ...current,
@@ -4832,7 +4832,7 @@ export function ManuscriptSupportWidget() {
     notification: UserNotification,
   ): Promise<void> {
     if (!notification.read) {
-      // 中文：先在本地即时切换已读状态，让用户无需等待接口返回即可看到反馈。
+      // 先在本地即时切换已读状态，让用户无需等待接口返回即可看到反馈。
       setNotifications((current) =>
         current.map((item) =>
           item.id === notification.id ? { ...item, read: true } : item,
@@ -4842,7 +4842,7 @@ export function ManuscriptSupportWidget() {
       try {
         await markNotificationRead(notification.id);
       } catch {
-        // 中文：已读请求失败时恢复未读状态，但保留弹窗和当前浏览位置。
+        // 已读请求失败时恢复未读状态，但保留弹窗和当前浏览位置。
         setNotifications((current) =>
           current.map((item) =>
             item.id === notification.id ? { ...item, read: false } : item,
@@ -4851,7 +4851,7 @@ export function ManuscriptSupportWidget() {
         publishNotificationCount(notificationUnreadCount);
       }
     }
-    // 中文：通知正文进入独立内页，避免在窄小的浮层中截断 Markdown 内容。
+    // 通知正文进入独立内页，避免在窄小的浮层中截断 Markdown 内容。
     setSelectedNotification(notification);
   }
 
@@ -4874,7 +4874,7 @@ export function ManuscriptSupportWidget() {
   async function handleMarkAllNotificationsRead(): Promise<void> {
     if (notificationUnreadCount <= 0) return;
     const previousNotifications = notifications;
-    // 中文：批量已读同样采用乐观更新，避免按钮点击后列表状态延迟变化。
+    // 批量已读同样采用乐观更新，避免按钮点击后列表状态延迟变化。
     setNotifications((current) =>
       current.map((item) => ({ ...item, read: true })),
     );
@@ -5199,7 +5199,7 @@ export function ManuscriptSupportWidget() {
           </div>
         </section>
       ) : null}
-      {/* 中文：弹窗展开时隐藏"在线助手"按钮，关闭后再过渡显现。 */}
+      {/* 弹窗展开时隐藏"在线助手"按钮，关闭后再过渡显现。 */}
       <div
         className={`manuscript-support-trigger${open ? " is-hidden" : ""}`}
       >
@@ -5303,7 +5303,7 @@ export function EmptyPanel({
   action?: ReactNode;
   surface?: "plain" | "table";
 }) {
-  // 中文：表格空状态保留表格表面色，普通页面空状态继续沿用透明背景。
+  // 表格空状态保留表格表面色，普通页面空状态继续沿用透明背景。
   return (
     <div
       className={`empty-panel${surface === "table" ? " empty-panel--table" : ""}`}

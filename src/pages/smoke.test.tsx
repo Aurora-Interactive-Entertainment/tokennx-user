@@ -478,7 +478,7 @@ describe('页面主链冒烟场景', () => {
     })
 
     renderLogin('/console')
-    // 中文：这里只触发异步扫码链路，避免 user-event 等待轮询副作用导致测试无法结束。
+    // 这里只触发异步扫码链路，避免 user-event 等待轮询副作用导致测试无法结束。
     fireEvent.click(screen.getByRole('button', { name: '使用微信登录' }))
     expect(screen.queryByText(/本地演示|演示验证码|模拟扫码|占位二维码|演示占位/)).not.toBeInTheDocument()
     expect(await screen.findByText('控制台首页')).toBeInTheDocument()

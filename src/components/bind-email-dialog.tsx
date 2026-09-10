@@ -12,7 +12,7 @@ import './bind-email-dialog.css'
 type BindEmailDialogProps = { visible: boolean; onClose: () => void; onAuthFailure: () => void; onBound: () => void }
 type BindEmailFormValues = { email: string; code: string }
 
-/** 中文：绑定邮箱弹窗复用 Semi Form 的必填标记、错误样式和统一 AppModal 行为。 */
+/** 绑定邮箱弹窗复用 Semi Form 的必填标记、错误样式和统一 AppModal 行为。 */
 export function BindEmailDialog({ visible, onClose, onAuthFailure, onBound }: BindEmailDialogProps) {
   const { t } = useTranslation()
   const [retryAfter, setRetryAfter] = useState(0)

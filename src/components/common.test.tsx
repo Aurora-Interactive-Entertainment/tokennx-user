@@ -20,7 +20,7 @@ vi.mock('@/api/enterprise-console', async () => {
 
 const getEnterpriseContextMock = vi.mocked(getEnterpriseContext)
 
-// 中文：测试默认返回完整企业上下文，避免权限 mock 逃逸为不完整对象。
+// 测试默认返回完整企业上下文，避免权限 mock 逃逸为不完整对象。
 const DEFAULT_ENTERPRISE_CONTEXT: EnterpriseContext = {
   id: 'test-enterprise',
   name: '测试企业',
@@ -457,7 +457,7 @@ describe('公共 Header 布局', () => {
     )
 
     appStore.dispatch({ type: 'auth/loginWithPhone/fulfilled', payload: { id: 'email-onboarding-user', display_name: '测试用户', avatar_url: '', locale: 'zh-CN', timezone: 'Asia/Shanghai', status: 'active', promt_required: true } })
-    // 中文：首次打开会异步加载邮箱表单，等待真实弹窗后继续验证校验和关闭行为。
+    // 首次打开会异步加载邮箱表单，等待真实弹窗后继续验证校验和关闭行为。
     expect(await screen.findByRole('dialog', { name: '绑定邮箱' }, { timeout: 5000 })).toBeInTheDocument()
     const bindDialog = screen.getByRole('dialog', { name: '绑定邮箱' })
     expect(within(bindDialog).getByText('邮箱').closest('.semi-form-field-label')).toHaveClass('semi-form-field-label-required')

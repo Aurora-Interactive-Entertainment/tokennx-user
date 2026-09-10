@@ -30,7 +30,7 @@ type VideoPricingTab = {
 };
 
 const DEFAULT_RESOLUTIONS = ["480P", "720P", "1080P"];
-// 中文：为弹层保留更明显的左右外边距，并将最大宽度增加 80px。
+// 为弹层保留更明显的左右外边距，并将最大宽度增加 80px。
 const POPOVER_VIEWPORT_GUTTER = 80;
 const POPOVER_MAX_WIDTH = 980;
 const HOVER_SHOW_DELAY = 150;
@@ -275,7 +275,7 @@ export function VideoPricingPopover({ model }: { model: ModelRecord }) {
     const trigger = triggerRef.current;
     if (!trigger) return;
     const rect = trigger.getBoundingClientRect();
-    // 中文：以触发区中心定位，并为弹窗保留左右安全外边距。
+    // 以触发区中心定位，并为弹窗保留左右安全外边距。
     const popupWidth = Math.min(
       POPOVER_MAX_WIDTH,
       Math.max(0, window.innerWidth - POPOVER_VIEWPORT_GUTTER * 2),
@@ -301,7 +301,7 @@ export function VideoPricingPopover({ model }: { model: ModelRecord }) {
     };
   }, []);
 
-  // 中文：触发区和弹窗分属不同层级，使用短延迟确保鼠标移入弹窗时不会立即关闭。
+  // 触发区和弹窗分属不同层级，使用短延迟确保鼠标移入弹窗时不会立即关闭。
   const showPopover = () => {
     if (showTimer.current !== undefined) window.clearTimeout(showTimer.current);
     if (hideTimer.current !== undefined) window.clearTimeout(hideTimer.current);
@@ -311,7 +311,7 @@ export function VideoPricingPopover({ model }: { model: ModelRecord }) {
   const scheduleHoverPopover = () => {
     if (hideTimer.current !== undefined) window.clearTimeout(hideTimer.current);
     if (showTimer.current !== undefined) window.clearTimeout(showTimer.current);
-    // 中文：鼠标短暂掠过时不立即弹出，停留片刻后再展示价格示例。
+    // 鼠标短暂掠过时不立即弹出，停留片刻后再展示价格示例。
     showTimer.current = window.setTimeout(showPopover, HOVER_SHOW_DELAY);
   };
   const hidePopover = () => {
@@ -322,7 +322,7 @@ export function VideoPricingPopover({ model }: { model: ModelRecord }) {
 
   useEffect(() => {
     if (!visible) return;
-    // 中文：窗口尺寸或页面滚动变化时同步位置，保证响应式场景下弹窗仍贴着触发区。
+    // 窗口尺寸或页面滚动变化时同步位置，保证响应式场景下弹窗仍贴着触发区。
     const handleViewportChange = () => updatePopoverPosition();
     window.addEventListener("resize", handleViewportChange);
     window.addEventListener("scroll", handleViewportChange, true);

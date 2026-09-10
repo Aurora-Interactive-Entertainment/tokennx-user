@@ -11,7 +11,7 @@ interface RealNameRequiredDialogProps {
   onCompleted: () => void
 }
 
-// 中文：充值前实名提示独立成组件，保证充值表单只负责支付流程状态。
+// 充值前实名提示独立成组件，保证充值表单只负责支付流程状态。
 export function RealNameRequiredDialog({ visible, onCancel, onVerify, onCompleted }: RealNameRequiredDialogProps) {
   const { t } = useTranslation()
   return (

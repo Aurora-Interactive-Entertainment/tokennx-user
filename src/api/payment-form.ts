@@ -5,7 +5,7 @@ const PAYMENT_FORM_ERROR_CODE = 140002
 const PAYMENT_FORM_TARGET_PATTERN = /^[A-Za-z][A-Za-z0-9_-]{0,127}$/
 const PAYMENT_FORM_RESERVED_TARGETS = new Set(['_self', '_blank', '_parent', '_top'])
 
-// 中文：支付表单只能提交到支付宝官方网关，禁止服务端配置错误或篡改后把签名字段发送到外部站点。
+// 支付表单只能提交到支付宝官方网关，禁止服务端配置错误或篡改后把签名字段发送到外部站点。
 const ALIPAY_PAYMENT_HOSTS = new Set([
   'openapi.alipay.com',
   'mapi.alipay.com',

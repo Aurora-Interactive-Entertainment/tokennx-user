@@ -57,7 +57,7 @@ function isBillingCostChart(value: unknown): value is BillingCostChart {
 }
 
 export function normalizeBillingCostChart(chart: BillingCostChart, language: string): NormalizedChart {
-  // 中文：新账务接口统一使用 snake_case，驼峰轴名仅用于兼容旧服务。
+  // 新账务接口统一使用 snake_case，驼峰轴名仅用于兼容旧服务。
   const xAxis = chart.x_axis ?? chart.xAxis
   if (!xAxis) return { labels: [], series: [] }
   return {
@@ -69,7 +69,7 @@ export function normalizeBillingCostChart(chart: BillingCostChart, language: str
   }
 }
 
-// 中文：旧版接口按天返回明细数组，转换为与新版 ECharts 结构相同的多序列数据。
+// 旧版接口按天返回明细数组，转换为与新版 ECharts 结构相同的多序列数据。
 function normalizeLegacyChart<T>(items: CostItems<T>, date: (item: T) => string, name: (item: T) => string, cost: (item: T) => string, language: string): NormalizedChart {
   const rows = normalizeItems(items)
   const dates = Array.from(new Set(rows.map((item) => date(item) || '').filter(Boolean))).sort()
@@ -92,14 +92,14 @@ function normalizeChart<T>(input: ChartInput<T>, legacy: { date: (item: T) => st
   return isBillingCostChart(input) ? normalizeBillingCostChart(input, language) : normalizeLegacyChart(input, legacy.date, legacy.name, legacy.cost, language)
 }
 
-// 中文：账单类型由接口返回内部枚举，展示层统一转换为当前语言，避免图例直接显示 balance/subscription。
+// 账单类型由接口返回内部枚举，展示层统一转换为当前语言，避免图例直接显示 balance/subscription。
 function billingTypeLabel(value: string, t: (key: string) => string): string {
   if (value === 'balance') return t('console.billing.balanceType')
   if (value === 'subscription') return t('console.billing.subscription')
   return value || '--'
 }
 
-// 中文：日期较多时只展示有限数量的刻度，避免横轴文本互相遮挡；数据点和 tooltip 仍保留完整日期。
+// 日期较多时只展示有限数量的刻度，避免横轴文本互相遮挡；数据点和 tooltip 仍保留完整日期。
 function dateAxisInterval(labelCount: number): number {
   const maxVisibleLabels = 8
   if (labelCount <= maxVisibleLabels) return 0
@@ -120,7 +120,7 @@ function BillingCostChart({ title, chart, emptyLabel, chartType = 'line' }: { ti
     instance.setOption({
       animationDuration: 240,
       grid: { top: 18, right: 12, bottom: 62, left: 48 },
-      // 中文：所有折线图都在左下角保留图例，单序列图也要明确说明线条含义。
+      // 所有折线图都在左下角保留图例，单序列图也要明确说明线条含义。
       legend: chart.series.length > 0 ? { left: 0, bottom: 0, type: 'scroll', textStyle: { color: textColor, fontSize: 11 } } : undefined,
       tooltip: {
         trigger: 'axis',
@@ -151,12 +151,12 @@ function BillingCostChart({ title, chart, emptyLabel, chartType = 'line' }: { ti
       series: chart.series.map((item, index) => chartType === 'bar' ? ({
         name: item.name,
         type: 'bar',
-        // 中文：同一日期的不同模型费用使用同一堆叠组，呈现累计柱状图。
+        // 同一日期的不同模型费用使用同一堆叠组，呈现累计柱状图。
         stack: 'Total',
         data: item.data,
         barMaxWidth: 38,
         itemStyle: { color: palette[index % palette.length], borderRadius: [3, 3, 0, 0] },
-        // 中文：堆叠柱悬浮时不单独强调某个色块，只保留整列的坐标轴选中效果。
+        // 堆叠柱悬浮时不单独强调某个色块，只保留整列的坐标轴选中效果。
         emphasis: { focus: 'none' },
       }) : ({
         name: item.name,

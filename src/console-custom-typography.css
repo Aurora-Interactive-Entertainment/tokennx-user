@@ -1,4 +1,4 @@
-/* 中文：登录后的自研控制台文字统一使用项目基础字体，不引入私有字体文件。 */
+/* 登录后的自研控制台文字统一使用项目基础字体，不引入私有字体文件。 */
 :where(
   .console-page .page-title,
   .console-page .page-description,
@@ -57,7 +57,7 @@
   font-family: var(--font-family-base);
 }
 
-/* 中文：新版企业页的自研标题、正文、表格文字单独指定叶子节点，不向 Semi 容器传递字体。 */
+/* 新版企业页的自研标题、正文、表格文字单独指定叶子节点，不向 Semi 容器传递字体。 */
 :where(
   .console-page .trae-page-heading h1,
   .console-page .trae-page-heading h2,
@@ -102,7 +102,7 @@
   font-family: var(--font-family-base);
 }
 
-/* 中文：表格文字也复用项目基础字体，保持数字与表格的紧凑观感。 */
+/* 表格文字也复用项目基础字体，保持数字与表格的紧凑观感。 */
 :where(
   .console-page .trae-table th,
   .console-page .trae-table td,

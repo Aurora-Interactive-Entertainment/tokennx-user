@@ -100,14 +100,14 @@ export interface PublicHomepageStats {
   apiCalls: number
 }
 
-// 中文：只为后端签发的公开对象 ID 生成媒体地址，避免把未校验的内容字段拼接进 URL。
+// 只为后端签发的公开对象 ID 生成媒体地址，避免把未校验的内容字段拼接进 URL。
 export function getPublicHomepageAssetURL(objectID: string | undefined): string | undefined {
   const normalizedObjectID = objectID?.trim() ?? ''
   if (!PUBLIC_OBJECT_ID_PATTERN.test(normalizedObjectID)) return undefined
   return makeApiUrl(`${PUBLIC_HOMEPAGE_ASSET_PATH}/${encodeURIComponent(normalizedObjectID)}`)
 }
 
-// 中文：接口可能返回相对封面地址，统一使用当前环境的 API Base URL 补全。
+// 接口可能返回相对封面地址，统一使用当前环境的 API Base URL 补全。
 export function getPublicHomepageMediaURL(value: unknown): string | undefined {
   if (typeof value !== 'string') return undefined
   const normalizedURL = value.trim()
@@ -213,7 +213,7 @@ function parsePromotion(value: unknown): HomepagePromotion {
     && Number.isFinite(Number(value.total_reward_yuan)) && Number(value.total_reward_yuan) >= 0
     ? value.total_reward_yuan.trim()
     : emptyPromotion.total_reward_yuan
-  // 中文：用户名仅用于首页展示，过滤异常值并严格限制为接口承诺的六条。
+  // 用户名仅用于首页展示，过滤异常值并严格限制为接口承诺的六条。
   const usernames = Array.isArray(value.usernames)
     ? value.usernames.filter((name): name is string => typeof name === 'string' && Boolean(name.trim())).map((name) => name.trim()).slice(0, 6)
     : []

@@ -72,7 +72,7 @@ const DISTRIBUTION_WRAPPER_KEYS = [
   "model_distribution",
 ] as const;
 
-// 中文：后端不同版本可能将计数序列化为数字或数字字符串，统一转换后再交给图表。
+// 后端不同版本可能将计数序列化为数字或数字字符串，统一转换后再交给图表。
 function distributionNumber(value: unknown): number | null {
   if (typeof value === "number") return Number.isFinite(value) ? value : null;
   if (typeof value === "string" && value.trim() !== "") {
@@ -92,7 +92,7 @@ function distributionMetric(
   return value === undefined ? undefined : value;
 }
 
-// 中文：新版趋势接口按 metric 只返回一组指标；Token 明细由三类 Token 字段相加得到。
+// 新版趋势接口按 metric 只返回一组指标；Token 明细由三类 Token 字段相加得到。
 function distributionTokenTotal(item: Record<string, unknown>): number | undefined {
   const values = [item.input_tokens, item.output_tokens, item.cached_tokens]
     .map(distributionNumber);
@@ -113,7 +113,7 @@ function distributionValue(item: Record<string, unknown>): number | undefined {
   return cost === null ? undefined : cost;
 }
 
-// 中文：兼容接口返回的数组和键值对象，并统一为 ECharts 所需的数据项格式。
+// 兼容接口返回的数组和键值对象，并统一为 ECharts 所需的数据项格式。
 export function distributionEntries(value: unknown): DistributionEntry[] {
   if (!value) return [];
   if (Array.isArray(value)) {
@@ -124,14 +124,14 @@ export function distributionEntries(value: unknown): DistributionEntry[] {
   }
   if (typeof value !== "object") return [];
   const objectValue = value as Record<string, unknown>;
-  // 中文：兼容接口返回 { items/data/distribution: [...] } 的包装结构。
+  // 兼容接口返回 { items/data/distribution: [...] } 的包装结构。
   for (const key of DISTRIBUTION_WRAPPER_KEYS) {
     if (objectValue[key] !== undefined)
       return distributionEntries(objectValue[key]);
   }
   const directEntry = distributionEntry(objectValue, 0);
   if (directEntry) return [directEntry];
-  // 中文：兼容以工具 ID 为键、值为计数或明细对象的映射结构。
+  // 兼容以工具 ID 为键、值为计数或明细对象的映射结构。
   return Object.entries(objectValue)
     .flatMap(([name, item], index) => {
       const nestedObject =
@@ -156,7 +156,7 @@ export function distributionEntries(value: unknown): DistributionEntry[] {
     .sort((left, right) => right.value - left.value);
 }
 
-// 中文：从单条明细中提取名称和计数，统一供数组和对象映射复用。
+// 从单条明细中提取名称和计数，统一供数组和对象映射复用。
 function distributionEntry(
   value: unknown,
   index: number,
@@ -183,7 +183,7 @@ function distributionEntry(
 }
 
 /**
- * 中文：将 requests 与 tokens 两次趋势响应按名称合并，保证图表值和明细列使用各自准确口径。
+ * 将 requests 与 tokens 两次趋势响应按名称合并，保证图表值和明细列使用各自准确口径。
  * 服务端可能只在某一口径中返回某个维度，因此这里取两个响应的并集。
  */
 export function mergeDistributionEntries(
@@ -248,7 +248,7 @@ function DistributionPie({
   useEffect(() => {
     const node = chartRef.current;
     if (!node || data.length === 0) return undefined;
-    // 中文：每次主题或数据变化都重建图表，清理旧实例避免 SVG 节点和监听器泄漏。
+    // 每次主题或数据变化都重建图表，清理旧实例避免 SVG 节点和监听器泄漏。
     const chart = echarts.init(node, undefined, { renderer: "svg" });
     const dark = theme === "dark";
     chart.setOption({
@@ -271,7 +271,7 @@ function DistributionPie({
       series: [
         {
           type: "pie",
-          // 中文：环形图在独立网格列内居中并限制半径，避免右侧超出卡片被裁切。
+          // 环形图在独立网格列内居中并限制半径，避免右侧超出卡片被裁切。
           radius: ["40%", "65%"],
           center: ["50%", "50%"],
           avoidLabelOverlap: true,
@@ -373,7 +373,7 @@ export function PersonalUsageDistributionPies({
     const controller = new AbortController();
     setLoading(true);
     setError("");
-    // 中文：新版接口按 metric 返回单一分布口径，同时请求 requests/tokens 以完整填充列表。
+    // 新版接口按 metric 返回单一分布口径，同时请求 requests/tokens 以完整填充列表。
     void Promise.all([
       getUsageTrend(context, { ...query, metric: "requests" }, controller.signal),
       getUsageTrend(context, { ...query, metric: "tokens" }, controller.signal),

@@ -47,7 +47,7 @@ function profileToAuthUser(profile: UserProfile, fallback?: AuthUser | null): Au
   return {
     id: profile.id,
     display_name: limitDisplayNameLength(profile.display_name),
-    // 中文：新版资料接口省略这些认证字段，更新昵称或联系方式时不得清空现有值。
+    // 新版资料接口省略这些认证字段，更新昵称或联系方式时不得清空现有值。
     avatar_url: profile.avatar_url ?? fallback?.avatar_url ?? '',
     locale: profile.locale ?? fallback?.locale ?? 'zh-CN',
     timezone: profile.timezone ?? fallback?.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone,
@@ -57,7 +57,7 @@ function profileToAuthUser(profile: UserProfile, fallback?: AuthUser | null): Au
   }
 }
 
-// 中文：兼容历史资料接口返回的超长昵称，个人中心及工作空间展示统一使用前端上限。
+// 兼容历史资料接口返回的超长昵称，个人中心及工作空间展示统一使用前端上限。
 function normalizeProfile(profile: UserProfile): UserProfile {
   return { ...profile, display_name: limitDisplayNameLength(profile.display_name) }
 }
@@ -123,7 +123,7 @@ export function SettingsPage() {
       setEnterprises(nextEnterprises)
       setPreferences(nextPreferences)
       setEnterpriseContext(nextEnterpriseContext)
-      // 中文：首次加载也同步认证状态，确保 Header 与个人中心展示一致。
+      // 首次加载也同步认证状态，确保 Header 与个人中心展示一致。
       dispatch(updateAuthenticatedUser(profileToAuthUser(normalizedProfile, authUserRef.current)))
     } catch (requestError) {
       if (!handleProfileError(requestError)) setError(getProfileErrorMessage(requestError))
@@ -142,7 +142,7 @@ export function SettingsPage() {
 
   const preferenceItems = useMemo(() => {
     if (!preferences) return []
-    // 中文：按接口返回顺序展示固定白名单中的全部通知分类，兼容后端新增字段。
+    // 按接口返回顺序展示固定白名单中的全部通知分类，兼容后端新增字段。
     return preferences.items.flatMap((item) => (
       isNotificationPreferenceCode(item.code) ? [{ code: item.code, item }] : []
     ))
@@ -151,7 +151,7 @@ export function SettingsPage() {
   const workspaceItems = useMemo(() => {
     if (!profile) return []
     const activeWorkspaceId = store.activeWorkspace.type === 'personal' ? 'personal' : store.activeWorkspace.id
-    // 中文：个人空间始终保留，企业空间使用个人中心接口返回的成员关系。
+    // 个人空间始终保留，企业空间使用个人中心接口返回的成员关系。
     return [
       {
         id: 'personal',
@@ -217,7 +217,7 @@ export function SettingsPage() {
 
   return (
     <div className={`page-stack settings-console-page settings-redesign-page ${enterpriseWorkspace ? 'settings-redesign-page--enterprise' : 'settings-redesign-page--personal'}`}>
-      {/* 中文：个人设置按空间保留对应的账户、通知与工作空间内容。 */}
+      {/* 个人设置按空间保留对应的账户、通知与工作空间内容。 */}
       <PageTitle title={t('profile.title')} description={t('profile.description')} />
       <div className="settings-page-inner">
         <SettingsAnchorLayout items={anchorItems} navigationLabel={t('profile.navigation.label')}>
@@ -301,7 +301,7 @@ export function SettingsPage() {
         onAuthFailure={invalidateSession}
         onHandleEnterprise={(enterpriseID) => {
           if (enterpriseID) store.switchWorkspace(enterpriseID)
-          // 中文：跳转处理企业前，注销流程弹窗与外层账户设置弹窗一并关闭。
+          // 跳转处理企业前，注销流程弹窗与外层账户设置弹窗一并关闭。
           setDeactivateVisible(false)
           setAccountSettingsOpen(false)
           navigate('/console/enterprise-settings')

@@ -31,7 +31,7 @@ function formatPublicPrice(price: ModelPrice): ReactNode {
   return <ModelPriceSummary price={price} />
 }
 
-// 中文：文档产品导航根据目录标题匹配语义化图标，接口、隐私和支持入口各自使用专属图标。
+// 文档产品导航根据目录标题匹配语义化图标，接口、隐私和支持入口各自使用专属图标。
 function docsProductIcon(node: Pick<PublicDocsNode, 'title' | 'slug'>): ReactNode {
   const label = `${node.title} ${node.slug}`.toLowerCase()
   if (label.includes('api') || label.includes('接口') || label.includes('sdk')) return <IconCodeStroked aria-hidden="true" />
@@ -186,7 +186,7 @@ export function ModelDetailPage() {
 
   useEffect(() => {
     if (!model || !routeKey || modelId === routeKey) return
-    // 中文：旧模型 code 仅用于兼容历史链接，进入页面后立即规范化为模型别名。
+    // 旧模型 code 仅用于兼容历史链接，进入页面后立即规范化为模型别名。
     navigate(`/models/${encodeURIComponent(routeKey)}`, { replace: true })
   }, [model, modelId, navigate, routeKey])
 
@@ -971,6 +971,6 @@ export function LoginPage() {
   const [searchParams] = useSearchParams()
   const authUser = useAppSelector((state) => state.auth.user)
   const returnPath = normalizeLoginReturnPath(searchParams.get('return'))
-  // 中文：登录页没有公共页脚，仍然需要保留全局客服入口。
+  // 登录页没有公共页脚，仍然需要保留全局客服入口。
   return <div className="login-page"><div className="login-card"><LoginPanel onSuccess={(user) => navigate(user && authUserNeedsEmailBinding(user) ? DEFAULT_CONSOLE_PATH : returnPath)} /></div><ManuscriptSupportWidget /></div>
 }

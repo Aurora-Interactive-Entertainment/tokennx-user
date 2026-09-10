@@ -258,7 +258,7 @@ function compactPlaygroundSession(session: PlaygroundSession): PlaygroundSession
   }
 }
 
-// 中文：替换消息时截断目标轮次及其后续内容，避免编辑后旧回复继续残留在时间线中。
+// 替换消息时截断目标轮次及其后续内容，避免编辑后旧回复继续残留在时间线中。
 function preparePlaygroundReplacement(session: PlaygroundSession, attemptId: string): {
   messages: PlaygroundMessage[]
   contextBreaks: number[]
@@ -298,7 +298,7 @@ type AppStoreProviderWithUserProps = {
 }
 
 export function AppStoreProvider({ children, userId }: AppStoreProviderWithUserProps) {
-  // 中文：按账号作用域挂载，防止切换用户时旧会话在 effect 刷新前短暂可见。
+  // 按账号作用域挂载，防止切换用户时旧会话在 effect 刷新前短暂可见。
   const scopeKey = userId === undefined
     ? 'legacy'
     : userId === null
@@ -324,11 +324,11 @@ function AppStoreProviderWithUser({ children, userId }: AppStoreProviderWithUser
       localStorage.removeItem(LEGACY_PLAYGROUND_HISTORY_KEY)
       localStorage.removeItem(LEGACY_VIDEO_HISTORY_KEY)
     } catch {
-      // 中文：迁移到账号隔离存储时，旧的未隔离记录无法继续保留。
+      // 迁移到账号隔离存储时，旧的未隔离记录无法继续保留。
     }
   }, [userId])
 
-  // 中文：登录用户的对话按账号写入本地存储，并在账号切换时阻止旧状态写入新账号。
+  // 登录用户的对话按账号写入本地存储，并在账号切换时阻止旧状态写入新账号。
   useEffect(() => {
     if (userId !== undefined) {
       if (playgroundOwnerRef.current !== userId || playgroundHydratingRef.current) {
@@ -401,7 +401,7 @@ function AppStoreProviderWithUser({ children, userId }: AppStoreProviderWithUser
       ? preparePlaygroundReplacement(existing, input.replaceAttemptId)
       : undefined
     if (input.replaceAttemptId && !replacement) throw new Error('待替换的尝试不存在')
-    // 中文：编辑已有完整轮次会先截断再重答，即使原会话已满轮也允许替换，不会增加轮次。
+    // 编辑已有完整轮次会先截断再重答，即使原会话已满轮也允许替换，不会增加轮次。
     if (existing && !replacement && !canStartPlaygroundRound(existing.rounds)) {
       throw new Error(`智能会话最多支持 ${PLAYGROUND_MAX_ROUNDS} 轮对话`)
     }
@@ -489,7 +489,7 @@ function AppStoreProviderWithUser({ children, userId }: AppStoreProviderWithUser
     const lastBreak = existing.contextBreaks?.at(-1) ?? 0
     if (existing.messages.length <= lastBreak) return existing
     const updatedAt = new Date().toLocaleString('zh-CN', { hour12: false }).slice(0, 19)
-    // 中文：只切断后续请求上下文，历史消息和左侧会话条目继续保留。
+    // 只切断后续请求上下文，历史消息和左侧会话条目继续保留。
     const session: PlaygroundSession = {
       ...existing,
       contextBreaks: [...(existing.contextBreaks ?? []), existing.messages.length],

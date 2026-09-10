@@ -462,7 +462,7 @@
   .public-layout--manuscript-home .manuscript-partner-css-logo-mark { width: 17px; height: 17px; }
 }
 
-/* 中文：资讯卡保持固定高度，超出内容以省略号收尾，悬浮时由 title 属性展示全文。 */
+/* 资讯卡保持固定高度，超出内容以省略号收尾，悬浮时由 title 属性展示全文。 */
 .public-layout--manuscript-home .manuscript-news-card {
   height: 335px;
   min-height: 335px;
@@ -533,7 +533,7 @@
 }
 
 @media (max-width: 360px) {
-  /* 中文：320px 窄屏按可用宽度收缩推广卡内部绝对定位元素，避免沿用 375px 固定尺寸被裁切。 */
+  /* 320px 窄屏按可用宽度收缩推广卡内部绝对定位元素，避免沿用 375px 固定尺寸被裁切。 */
   .public-layout--manuscript-home .manuscript-home-shell { width: calc(100% - 24px); }
   .public-layout--manuscript-home .manuscript-hero h1,
   .public-layout--manuscript-home .manuscript-hero h1 strong { font-size: 18px; }
@@ -1617,7 +1617,7 @@
   }
 }
 
-/* 中文：资讯卡最终规则，覆盖旧版自适应样式，确保正文截断、图片居中。 */
+/* 资讯卡最终规则，覆盖旧版自适应样式，确保正文截断、图片居中。 */
 .public-layout--manuscript-home .manuscript-news-card {
   height: 335px;
   min-height: 335px;

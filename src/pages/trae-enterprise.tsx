@@ -91,7 +91,7 @@ type TraeMemberRow = {
 // 其他企业分析组件使用同一行模型；成员管理页本身只展示服务端返回的数据。
 const memberRows: TraeMemberRow[] = [];
 
-// 中文：当前企业上下文尚未返回订阅席位明细，先沿用订阅页的演示配额展示。
+// 当前企业上下文尚未返回订阅席位明细，先沿用订阅页的演示配额展示。
 const TRAE_MEMBER_SEAT_SUMMARY = {
   total: 10,
   allOccupied: 4,
@@ -116,7 +116,7 @@ function toTraeMemberRow(member: EnterpriseMember): TraeMemberRow {
   };
 }
 
-// 中文：成员目录同样是标准分页响应，页面表格需要读取全部匹配成员后再进行本地状态筛选。
+// 成员目录同样是标准分页响应，页面表格需要读取全部匹配成员后再进行本地状态筛选。
 async function loadAllEnterpriseMemberRows(
   enterpriseID: string,
   selectedDepartmentID: string,
@@ -143,7 +143,7 @@ async function loadAllEnterpriseMemberRows(
   return { items, total };
 }
 
-// 中文：部门列表是分页接口；每个父部门都要逐页读取，避免邀请/部门选择器只看到前 10 条。
+// 部门列表是分页接口；每个父部门都要逐页读取，避免邀请/部门选择器只看到前 10 条。
 export async function loadEnterpriseDepartmentTree(
   enterpriseID: string,
   signal: AbortSignal,
@@ -154,7 +154,7 @@ export async function loadEnterpriseDepartmentTree(
     const departments: EnterpriseDepartment[] = [];
     let page = 1;
     let total = 0;
-    // 中文：沿用原 page_size=10 以兼容旧部署，同时按 total 继续请求后续页。
+    // 沿用原 page_size=10 以兼容旧部署，同时按 total 继续请求后续页。
     do {
       const response = await getEnterpriseDepartments(request, {
         parent_id: parentID,
@@ -549,7 +549,7 @@ function MemberStatus({ value, t }: { value: string; t: Translate }) {
       : value === "pending"
         ? t("traeEnterprise.members.pending")
         : t("traeEnterprise.members.suspended");
-  // 中文：成员状态徽章与操作日志的状态徽章样式保持一致（带边框圆角小标签）。
+  // 成员状态徽章与操作日志的状态徽章样式保持一致（带边框圆角小标签）。
   return (
     <span className={`trae-member-status-pill is-${value}`}>{label}</span>
   );
@@ -581,7 +581,7 @@ function updateDepartmentNodes(
   );
 }
 
-// 中文：所有操作菜单统一按视口定位，窄屏靠近底部时自动翻到触发按钮上方，避免被屏幕裁切。
+// 所有操作菜单统一按视口定位，窄屏靠近底部时自动翻到触发按钮上方，避免被屏幕裁切。
 function getFloatingMenuPosition(
   anchor: DOMRect,
   width: number,
@@ -1611,10 +1611,10 @@ function TraeEnterpriseMembersContent({ context }: { context: EnterpriseContext 
       ),
     [debouncedQuery, members, status],
   );
-  // 中文：筛选请求期间继续展示上一次结果，避免新状态尚未返回时表体先变为空态造成闪烁。
+  // 筛选请求期间继续展示上一次结果，避免新状态尚未返回时表体先变为空态造成闪烁。
   const tableData = loading && members.length > 0 ? members : filtered;
   function handleMemberStatusChange(value: string): void {
-    // 中文：先锁定表体加载态，再切换筛选条件，避免状态变更后的首帧先渲染空表。
+    // 先锁定表体加载态，再切换筛选条件，避免状态变更后的首帧先渲染空表。
     setLoading(true);
     setLoadError(null);
     setStatus(value);

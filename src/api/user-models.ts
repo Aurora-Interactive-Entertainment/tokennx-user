@@ -50,7 +50,7 @@ export interface UserModelItem {
   provider_count: number
   total_tokens?: string | number
   prices: UserModelPrice[] | null
-  // 中文：视频模型可选参数由目录接口透传，用于价格示例的分辨率/时长展示。
+  // 视频模型可选参数由目录接口透传，用于价格示例的分辨率/时长展示。
   params?: Record<string, string[] | number[]>
   availability?: {
     rate?: number
@@ -170,7 +170,7 @@ export async function getAllUserModels(query: UserModelsQuery, signal?: AbortSig
     if (page === 1) activities = result.activities
     items.push(...result.items)
 
-    // 中文：旧服务不返回分页元信息，此时首包就是完整目录；新服务按真实总数继续读取。
+    // 旧服务不返回分页元信息，此时首包就是完整目录；新服务按真实总数继续读取。
     if (result.total === undefined || result.page_size === undefined) return { items, activities }
     const lastPage = Math.max(1, Math.ceil(result.total / result.page_size))
     if (result.items.length === 0 || page >= lastPage) return { items, activities }

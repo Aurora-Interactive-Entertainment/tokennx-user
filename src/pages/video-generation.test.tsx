@@ -124,7 +124,7 @@ describe('视频生成页面', () => {
     vi.mocked(useUserModels).mockReturnValue({ models: [], activities: [], total: null, page: null, pageSize: null, loading: false, error: '', refresh: vi.fn() })
     renderVideoPage()
 
-    // 中文：空模型列表只能显示本地化空态，不能回退为不可实际调用的内置模型。
+    // 空模型列表只能显示本地化空态，不能回退为不可实际调用的内置模型。
     expect(screen.queryByRole('option', { name: /CogVideo/ })).not.toBeInTheDocument()
     expect(screen.getByRole('option', { name: '当前空间暂无可用视频模型' })).toBeInTheDocument()
   })

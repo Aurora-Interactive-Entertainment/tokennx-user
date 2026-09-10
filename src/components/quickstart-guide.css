@@ -1,10 +1,10 @@
-/* 中文：快速接入页样式跟随组件加载，避免页面专属规则进入全局样式。 */
+/* 快速接入页样式跟随组件加载，避免页面专属规则进入全局样式。 */
 /* PDF quick-start guide: isolated styles keep the redesigned flow independent from the legacy guide. */
 .quickstart-pdf-page {
   width: 100%;
   margin: 0;
   padding: 32px 0;
-  /* 中文：快速接入页使用黑白灰中性色，避免与全局主题色混用。 */
+  /* 快速接入页使用黑白灰中性色，避免与全局主题色混用。 */
   --quickstart-neutral-accent: var(--text-primary);
   --quickstart-neutral-border: var(--border-strong);
   --quickstart-neutral-soft: color-mix(
@@ -269,7 +269,7 @@
   justify-content: flex-end;
   gap: 4px;
 }
-/* 中文：应用、复制按钮使用与用量明细一致的纯文字链接样式。 */
+/* 应用、复制按钮使用与用量明细一致的纯文字链接样式。 */
 .quickstart-pdf-key-actions .semi-button:not(.semi-button-disabled) {
   border: 0;
   color: var(--quickstart-neutral-accent);
@@ -339,7 +339,7 @@
   border: 1px solid var(--quickstart-neutral-border);
   color: var(--text-primary);
 }
-/* 中文：立即创建按钮按主题反转黑白，确保两种主题下都有足够对比度。 */
+/* 立即创建按钮按主题反转黑白，确保两种主题下都有足够对比度。 */
 html[data-theme="light"] .quickstart-pdf-outline-button,
 html[data-theme="light"] .quickstart-pdf-outline-button:visited {
   border-color: #17181b;
@@ -367,7 +367,7 @@ html[data-theme="dark"] .quickstart-pdf-outline-button:active {
   background: #f2f2f2;
 }
 .quickstart-pdf-cancel-button {
-  /* 中文：下一步按钮按主题使用高对比度配色，确保文字清晰可读。 */
+  /* 下一步按钮按主题使用高对比度配色，确保文字清晰可读。 */
   width: auto;
   min-width: 76px;
   height: 34px;
@@ -613,7 +613,7 @@ html[data-theme="dark"] .quickstart-pdf-cancel-button:focus-visible:not(:disable
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-/* 中文：第三步选项选中态改为实底反色（浅色黑底白字、深色白底黑字），选中更醒目。 */
+/* 第三步选项选中态改为实底反色（浅色黑底白字、深色白底黑字），选中更醒目。 */
 .quickstart-pdf-mode-tabs button.is-active {
   border-color: var(--text-primary);
   background: var(--text-primary);
@@ -658,7 +658,7 @@ html[data-theme="dark"] .quickstart-pdf-cancel-button:focus-visible:not(:disable
 html[data-theme="light"] .quickstart-pdf-protocol-button.protocol-openai .quickstart-pdf-protocol-icon {
   filter: none;
 }
-/* 中文：选中后背景反色，OpenAI 黑白图标需对应反转，保证在实底上可见。 */
+/* 选中后背景反色，OpenAI 黑白图标需对应反转，保证在实底上可见。 */
 html[data-theme="light"] .quickstart-pdf-protocol-button.protocol-openai.is-active .quickstart-pdf-protocol-icon {
   filter: brightness(0) invert(1);
 }
@@ -763,7 +763,7 @@ html[data-theme="dark"] .quickstart-pdf-api-mode-tabs button:not(.is-active) {
   border-radius: 5px;
   color: var(--text-secondary);
   background: transparent;
-  /* 中文：复制按钮文字与代码工具栏保持紧凑一致。 */
+  /* 复制按钮文字与代码工具栏保持紧凑一致。 */
   font-size: 13px;
 }
 .quickstart-pdf-code-toolbar .semi-button:hover {
@@ -935,7 +935,7 @@ html[data-theme="light"] .quickstart-code-token.is-number {
   }
 }
 
-/* 中文：第三步 API 选择器在中等宽度下允许换行，避免三组卡片挤压代码区域。 */
+/* 第三步 API 选择器在中等宽度下允许换行，避免三组卡片挤压代码区域。 */
 @media (min-width: 721px) and (max-width: 980px) {
   .quickstart-pdf-api-selector {
     align-items: stretch;

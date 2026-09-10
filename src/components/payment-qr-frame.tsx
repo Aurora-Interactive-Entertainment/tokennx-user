@@ -17,7 +17,7 @@ function frameNameForID(id: string): string {
   return `alipay-payment-${normalizedID || 'frame'}`
 }
 
-// 中文：仅读取已签名 biz_content 中的尺寸用于展示缩放，不能修改字段内容，否则支付宝验签会失败。
+// 仅读取已签名 biz_content 中的尺寸用于展示缩放，不能修改字段内容，否则支付宝验签会失败。
 function paymentQRCodeSourceSize(formHTML: string): number {
   if (typeof DOMParser === 'undefined') return PAYMENT_QR_DISPLAY_SIZE
   try {
@@ -49,7 +49,7 @@ export function PaymentQRCodeFrame({ formHTML, title, errorMessage, onError }: P
       if (nextSize > 0) setDisplaySize(nextSize)
     }
     updateDisplaySize()
-    // 中文：窄屏时以容器实际宽度重新计算比例，保证二维码四边同时缩放且不被裁切。
+    // 窄屏时以容器实际宽度重新计算比例，保证二维码四边同时缩放且不被裁切。
     if (typeof ResizeObserver === 'undefined') return
     const observer = new ResizeObserver(updateDisplaySize)
     observer.observe(shell)
@@ -60,7 +60,7 @@ export function PaymentQRCodeFrame({ formHTML, title, errorMessage, onError }: P
     let cleanup: (() => void) | undefined
     setSubmissionFailed(false)
     try {
-      // 中文：支付宝前置模式要求商户页面用 iframe 请求其支付页面，不能让表单接管顶层窗口。
+      // 支付宝前置模式要求商户页面用 iframe 请求其支付页面，不能让表单接管顶层窗口。
       cleanup = submitPaymentFormHTML(formHTML, { target: frameName })
     } catch (error) {
       setSubmissionFailed(true)

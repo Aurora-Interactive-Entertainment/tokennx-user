@@ -109,7 +109,7 @@
   overflow-x: auto;
 }
 .purchase-plan-tabs::before {
-  /* 中文：选中滑块使用设计稿中的浅青到淡紫渐变。 */
+  /* 选中滑块使用设计稿中的浅青到淡紫渐变。 */
   position: absolute;
   top: 8px;
   bottom: 8px;
@@ -166,7 +166,7 @@
   flex: 0 0 237px;
   min-height: 332px;
   padding: 25px 20px 18px;
-  /* 中文：边框改为内描边，让背景图完整铺到卡片边缘，消除顶部接缝。 */
+  /* 边框改为内描边，让背景图完整铺到卡片边缘，消除顶部接缝。 */
   border: 0;
   border-radius: 28px;
   background-clip: border-box;
@@ -489,7 +489,7 @@
   cursor: pointer;
 }
 .purchase-faq-item button i {
-  /* 中文：平移固定在旋转前，展开与收起时始终以同一位置为锚点。 */
+  /* 平移固定在旋转前，展开与收起时始终以同一位置为锚点。 */
   width: 12px;
   height: 12px;
   flex: 0 0 12px;
@@ -503,7 +503,7 @@
   transform: translateY(-3px) rotate(225deg);
 }
 .purchase-faq-answer {
-  /* 中文：保留答案节点，用网格行高过渡同时覆盖展开和收起。 */
+  /* 保留答案节点，用网格行高过渡同时覆盖展开和收起。 */
   display: grid;
   grid-template-rows: 0fr;
   opacity: 0;
@@ -565,7 +565,7 @@ html[data-theme="dark"] .purchase-faq-item + .purchase-faq-item {
     padding: 40px 16px 100px;
   }
   .purchase-hero h1 {
-    /* 中文：移动端压缩标题字号并启用平衡换行，避免最后一个字单独掉到下一行。 */
+    /* 移动端压缩标题字号并启用平衡换行，避免最后一个字单独掉到下一行。 */
     font-size: clamp(32px, 8.8vw, 42px);
     letter-spacing: -0.08em;
     line-height: 1.25;
@@ -755,7 +755,7 @@ html[data-theme="dark"] .purchase-faq-item + .purchase-faq-item {
   }
 }
 
-/* 中文：窄屏下两列套餐卡的可用宽度过小，改为单列保证套餐名称、额度和权益可读。 */
+/* 窄屏下两列套餐卡的可用宽度过小，改为单列保证套餐名称、额度和权益可读。 */
 @media (max-width: 360px) {
   .purchase-plan-grid {
     display: grid;

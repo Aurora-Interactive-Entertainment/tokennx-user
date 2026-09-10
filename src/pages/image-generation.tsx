@@ -97,7 +97,7 @@ type ImageResultCardProps = {
   onDelete: (id: string) => void;
 };
 
-// 中文：结果卡片字段与后端任务响应保持一一对应，接入接口时只需替换数据来源。
+// 结果卡片字段与后端任务响应保持一一对应，接入接口时只需替换数据来源。
 function ImageResultCard({
   item,
   onEdit,
@@ -219,7 +219,7 @@ function ImageResultCard({
   );
 }
 
-// 中文：历史栏使用 div 交互项时补齐键盘操作，与智能对话页保持一致。
+// 历史栏使用 div 交互项时补齐键盘操作，与智能对话页保持一致。
 function activateImageAction(
   event: KeyboardEvent<HTMLElement>,
   action: () => void,
@@ -253,7 +253,7 @@ const IMAGE_MODELS = [
   ["Kling-v2", "KlingAI"],
 ] as const;
 
-// 中文：先用本地能力表还原不同模型的比例偏好，后续可直接替换为后端返回的模型配置。
+// 先用本地能力表还原不同模型的比例偏好，后续可直接替换为后端返回的模型配置。
 const IMAGE_RATIO_OPTIONS = [
   "1:1",
   "2:3",
@@ -390,7 +390,7 @@ function ImageModelPicker({
   const [query, setQuery] = useState("");
   const [previewModel, setPreviewModel] = useState(selected[0] ?? IMAGE_MODELS[0][0]);
   const [draftSelected, setDraftSelected] = useState<string[]>(selected);
-  // 中文：保留弹窗节点至关闭动效结束，避免条件卸载导致收起动画被截断。
+  // 保留弹窗节点至关闭动效结束，避免条件卸载导致收起动画被截断。
   const [isMounted, setIsMounted] = useState(visible);
   const [isActive, setIsActive] = useState(false);
   useEffect(() => {
@@ -401,7 +401,7 @@ function ImageModelPicker({
       frame = requestAnimationFrame(() => setIsActive(true));
     } else {
       setIsActive(false);
-      // 中文：等待遮罩和面板的退出过渡完成后再卸载，避免收起动画被截断。
+      // 等待遮罩和面板的退出过渡完成后再卸载，避免收起动画被截断。
       timer = setTimeout(() => setIsMounted(false), IMAGE_PICKER_MOTION_DURATION_MS);
     }
     return () => {
@@ -659,7 +659,7 @@ export function ImagePage() {
       historyHydratingRef.current = false;
       return;
     }
-    // 中文：不保存 blob/data URL 预览，避免上传图片和大体积二进制内容进入本地存储。
+    // 不保存 blob/data URL 预览，避免上传图片和大体积二进制内容进入本地存储。
     writeUserSessionHistory(
       IMAGE_SESSION_HISTORY_KEY,
       userId,
@@ -700,7 +700,7 @@ export function ImagePage() {
     const generationFormat = format;
     if (promptOverride !== undefined) setPrompt(generationPrompt);
     setGenerating(true);
-    // 中文：这里是后端图片任务接口的接入边界，先用本地状态还原生成中的交互。
+    // 这里是后端图片任务接口的接入边界，先用本地状态还原生成中的交互。
     generationTimerRef.current = window.setTimeout(() => {
       if (historyOwnerRef.current !== userId) {
         setGenerating(false);
@@ -718,7 +718,7 @@ export function ImagePage() {
           size: generationSize,
           format: generationFormat,
           outputs: generationOutputs,
-          // 中文：本地占位结果先模拟接口失败响应，方便直接调试错误态布局。
+          // 本地占位结果先模拟接口失败响应，方便直接调试错误态布局。
           status: "failed",
           requestId,
           errorMessage: t("console.image.generationError"),

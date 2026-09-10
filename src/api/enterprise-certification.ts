@@ -8,7 +8,7 @@ const ENTERPRISE_CERTIFICATION_MATERIALS_PATH = `${ENTERPRISE_CERTIFICATION_PATH
 const ENTERPRISE_CERTIFICATION_FACE_PATH = `${ENTERPRISE_CERTIFICATION_PATH}/face`;
 const ENTERPRISE_CERTIFICATION_FACE_CONFIRM_PATH = `${ENTERPRISE_CERTIFICATION_FACE_PATH}/confirm`;
 
-// 中文：所有创建企业入口统一使用新建模式，避免历史认证记录覆盖新的企业申请表单。
+// 所有创建企业入口统一使用新建模式，避免历史认证记录覆盖新的企业申请表单。
 export const ENTERPRISE_CREATE_PATH = "/console/enterprise-create";
 export const NEW_ENTERPRISE_CREATE_PATH = `${ENTERPRISE_CREATE_PATH}?mode=new`;
 
@@ -228,7 +228,7 @@ export function validateEnterpriseCertificationForm(
   if (!input.licenseUrl)
     errors.licenseUrl = i18n.t("console.enterpriseCreate.licenseRequired");
   if (input.applicantType === "authorized_agent") {
-    // 中文：经办人字段只在代办路径校验，法人提交体不得携带这些字段。
+    // 经办人字段只在代办路径校验，法人提交体不得携带这些字段。
     if (!authorizedAgentName)
       errors.authorizedAgentName = i18n.t(
         "console.enterpriseCreate.authorizedAgentNameRequired",

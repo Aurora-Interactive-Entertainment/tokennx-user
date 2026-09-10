@@ -38,7 +38,7 @@ function getActivityStorage(): ActivityStorage | null {
   try {
     return window.localStorage;
   } catch {
-    // 中文：隐私模式或浏览器禁用本地存储时，活动弹窗仍可正常使用，只是不持久化关闭状态。
+    // 隐私模式或浏览器禁用本地存储时，活动弹窗仍可正常使用，只是不持久化关闭状态。
     return null;
   }
 }
@@ -78,7 +78,7 @@ export function markActivityCampaignClosedToday(
       getActivityCampaignDateKey(date),
     );
   } catch {
-    // 中文：写入失败不阻断关闭动作，当前会话仍按正常交互继续。
+    // 写入失败不阻断关闭动作，当前会话仍按正常交互继续。
   }
 }
 
@@ -115,7 +115,7 @@ function CampaignFallbackVisual({
   autoIssued: string;
 }) {
   const lines = copy
-    // 中文：避免把英文千位分隔符（如 1,000）误切成两行。
+    // 避免把英文千位分隔符（如 1,000）误切成两行。
     .split(/[，；;\n]|,(?!\d)/)
     .map((line) => line.trim())
     .filter(Boolean);
@@ -226,7 +226,7 @@ export function ActivityCampaignModal({
       data.isLoggedIn === false ||
       (data.isLoggedIn == null && authStatus !== "authenticated");
     if (requiresLogin) {
-      // 中文：先关闭活动弹窗，再拉起统一登录抽屉，避免两个遮罩叠加。
+      // 先关闭活动弹窗，再拉起统一登录抽屉，避免两个遮罩叠加。
       if (loginTimerRef.current !== undefined) {
         window.clearTimeout(loginTimerRef.current);
       }

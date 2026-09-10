@@ -1,4 +1,4 @@
-/* 中文：模型广场卡片对齐源站的白底网格、紧凑信息面板和底部操作区。 */
+/* 模型广场卡片对齐源站的白底网格、紧凑信息面板和底部操作区。 */
 
 .models-console-page .model-card-grid {
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 400px), 1fr));
@@ -61,7 +61,7 @@
     box-shadow 0.22s ease;
 }
 
-/* 中文：两层共用静态渐变，仅旋转合成层；柔光与清晰光带都只跟随亮段。 */
+/* 两层共用静态渐变，仅旋转合成层；柔光与清晰光带都只跟随亮段。 */
 .models-console-page .model-card-glow {
   position: absolute;
   inset: -2px;
@@ -211,7 +211,7 @@
 
 .models-console-page .model-card-copy.semi-button {
   z-index: 4;
-  /* 中文：与模型别名行垂直居中，按钮保持在卡片主体外以避免交互元素嵌套。 */
+  /* 与模型别名行垂直居中，按钮保持在卡片主体外以避免交互元素嵌套。 */
   top: 54px;
   right: 20px;
   width: 24px;
@@ -276,7 +276,7 @@
   -webkit-line-clamp: 2;
 }
 
-/* 中文：源站将输入输出、价格、上下文和可用率收纳在同一块浅色面板中。 */
+/* 源站将输入输出、价格、上下文和可用率收纳在同一块浅色面板中。 */
 .models-console-page .model-card-metrics {
   display: none;
 }
@@ -436,7 +436,7 @@
   padding: 12px 20px 16px;
 }
 
-/* 中文：视频卡片底部保留一行费用说明，文本超出时截断，悬停由 Popover 展示完整价格示例。 */
+/* 视频卡片底部保留一行费用说明，文本超出时截断，悬停由 Popover 展示完整价格示例。 */
 .models-console-page .model-card-video-pricing {
   position: absolute;
   right: 174px;
@@ -445,7 +445,7 @@
   display: flex;
   height: 32px;
   align-items: flex-end;
-  /* 中文：费用说明与底部操作区有重叠时保持在操作按钮上层，确保 hover 能命中触发区。 */
+  /* 费用说明与底部操作区有重叠时保持在操作按钮上层，确保 hover 能命中触发区。 */
   z-index: 5;
 }
 
@@ -458,7 +458,7 @@
   border: 0;
   color: var(--color-text-tertiary);
   background: transparent;
-  /* 中文：费用说明可交互但不显示问号光标，避免误导为错误提示。 */
+  /* 费用说明可交互但不显示问号光标，避免误导为错误提示。 */
   cursor: pointer;
   font-size: 12px;
   line-height: 18px;
@@ -532,7 +532,7 @@ html[data-theme="light"] .models-console-page .model-card-info-panel {
 }
 
 @media (max-width: 720px) {
-  /* 中文：移动端没有稳定 hover，隐藏大尺寸光效层以减少合成与绘制开销。 */
+  /* 移动端没有稳定 hover，隐藏大尺寸光效层以减少合成与绘制开销。 */
   .models-console-page .model-card-glow {
     display: none;
   }

@@ -338,7 +338,7 @@ html[data-theme="light"] .docs-method-table > div {
 .docs-page--manuscript .docs-sidebar.docs-sidebar--flat .docs-sidebar-document:not(.is-active):hover { color: #d7d7d7; background: rgba(255, 255, 255, .035); }
 .docs-page--manuscript .docs-article-toolbar .docs-copy-page { min-width: 112px; padding-inline: 10px; }
 .docs-page--manuscript .docs-article-toolbar--desktop-copy { top: 0; right: 0; display: flex; justify-content: flex-end; }
-/* 中文：页面复制操作归入右侧页内工具区，避免覆盖正文首段。 */
+/* 页面复制操作归入右侧页内工具区，避免覆盖正文首段。 */
 .docs-page--manuscript .docs-on-page--with-copy { padding-top: 28px; gap: 16px; }
 .docs-page--manuscript .docs-on-page--with-copy > .docs-copy-page { min-width: 112px; justify-self: start; padding-inline: 10px; }
 .docs-page--manuscript .docs-article-toolbar--mobile-copy { display: none; }

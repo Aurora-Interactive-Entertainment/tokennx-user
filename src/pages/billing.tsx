@@ -86,17 +86,17 @@ const BILLING_TABS: readonly [BillingTab, string][] = [
   ['invoice', 'console.billing.invoice'],
 ]
 
-// 中文：费用页通过查询参数直达费用或发票页签，非法值统一回退到账务概览。
+// 费用页通过查询参数直达费用或发票页签，非法值统一回退到账务概览。
 function billingTabFromSearch(search: string): BillingTab {
   const tab = new URLSearchParams(search).get('tab')
   return BILLING_TABS.some(([key]) => key === tab) ? tab as BillingTab : 'overview'
 }
 
-// 中文：快捷金额与新的充值管理设计稿保持一致，桌面端优先在一行内完整展示。
+// 快捷金额与新的充值管理设计稿保持一致，桌面端优先在一行内完整展示。
 const RECHARGE_OPTIONS = [100, 200, 500, 1000, 2000, 5000, 10000] as const
 const MIN_RECHARGE_AMOUNT = 10
 const PAYMENT_STATUS_POLL_INTERVAL_MS = 2000
-// 中文：支付查单只在有限时间内自动进行，避免网络异常时无限请求后端。
+// 支付查单只在有限时间内自动进行，避免网络异常时无限请求后端。
 const PAYMENT_STATUS_POLL_TIMEOUT_MS = 5 * 60 * 1000
 const PAYMENT_STATUS_POLL_MAX_INTERVAL_MS = 10 * 1000
 const PAYMENT_ACTIVE_STATUSES = new Set(['pending', 'paying'])
@@ -134,7 +134,7 @@ function defaultBillingDateRange(): Date[] {
   return [addLocalDays(today, -30), endOfLocalDay(today)]
 }
 
-// 中文：按日期选择器的日历日期生成 UTC 边界，避免本地时区导致账单跨日偏移。
+// 按日期选择器的日历日期生成 UTC 边界，避免本地时区导致账单跨日偏移。
 export function billingDateRangeToUtcMilliseconds(range: readonly Date[]): { startAt?: number; endAt?: number } {
   const start = range[0]
   const end = range[1]
@@ -144,7 +144,7 @@ export function billingDateRangeToUtcMilliseconds(range: readonly Date[]): { sta
   }
 }
 
-// 中文：部门筛选需要包含多级部门，按父节点逐层拉取并展平目录。
+// 部门筛选需要包含多级部门，按父节点逐层拉取并展平目录。
 async function loadBillingDepartments(enterpriseID: string, signal: AbortSignal): Promise<EnterpriseDepartment[]> {
   const result: EnterpriseDepartment[] = []
   const pending: Array<string | undefined> = [undefined]
@@ -170,7 +170,7 @@ async function loadBillingDepartments(enterpriseID: string, signal: AbortSignal)
 
 const EMPTY_BILLING_FILTERS: BillingAnalysisFilters = { periods: [], api_keys: [], models: [] }
 
-// 中文：费用分析新版不再返回 filters，筛选目录分别来自 API Key 和用户模型目录接口。
+// 费用分析新版不再返回 filters，筛选目录分别来自 API Key 和用户模型目录接口。
 async function loadBillingFilterCatalog(context: BillingContext, signal: AbortSignal): Promise<BillingAnalysisFilters> {
   const keyContext = context.account_type === 'enterprise' && context.enterprise_id
     ? { account_type: 'enterprise' as const, enterprise_id: context.enterprise_id }
@@ -259,7 +259,7 @@ function validateRechargeAmount(value: string): RechargeAmountValidation {
   return amount < MIN_RECHARGE_AMOUNT ? 'minimum' : null
 }
 
-// 中文：输入框只保留数字、小数点和两位小数，避免负号、字母等字符进入支付请求。
+// 输入框只保留数字、小数点和两位小数，避免负号、字母等字符进入支付请求。
 function sanitizeRechargeAmountInput(value: string): string {
   const sanitized = value.replace(/[^\d.]/g, '')
   const separatorIndex = sanitized.indexOf('.')
@@ -323,7 +323,7 @@ function isPaymentActive(status: string): boolean {
   return PAYMENT_ACTIVE_STATUSES.has(status)
 }
 
-// 中文：支付订单的 paid 状态必须同时具备服务端确认时间，避免不完整响应被展示为已到账。
+// 支付订单的 paid 状态必须同时具备服务端确认时间，避免不完整响应被展示为已到账。
 function isPaymentSettled(order: Pick<BillingPaymentOrder, 'status' | 'paid_at'>): boolean {
   return order.status === 'paid' && Boolean(order.paid_at)
 }
@@ -417,11 +417,11 @@ function PlainMoney({ value, negative = false }: { value: string; negative?: boo
 }
 
 function BillingSectionInfo({ content }: { content: string }) {
-  // 中文：信息说明仅保留图标触发器，提示内容交给 Semi Tooltip 渲染，避免正文常驻占位。
+  // 信息说明仅保留图标触发器，提示内容交给 Semi Tooltip 渲染，避免正文常驻占位。
   return <Tooltip className="app-info-tooltip billing-info-tooltip" content={content} position="top"><span className="billing-info-trigger" tabIndex={0} aria-label={content}><IconInfoCircle className="billing-info-icon" aria-hidden="true" /></span></Tooltip>
 }
 
-// 中文：Token NX 积分卡片，积分按当前周期消耗的输入+输出 token 汇总展示。
+// Token NX 积分卡片，积分按当前周期消耗的输入+输出 token 汇总展示。
 function PointsBalanceCard({ metrics }: { metrics: BillingAnalysisResponse['metrics'] }) {
   const points = safeAmount(metrics.input_tokens) + safeAmount(metrics.output_tokens)
   return <article className="billing-balance-card">
@@ -500,10 +500,10 @@ function AnalysisTab({ state, ledger, dateRange, apiKeyID, model, billingType, d
   if (state.status === 'error') return <BillingError state={state} onRetry={onRetry} />
   const data = state.data
   if (!data) return <EmptyPanel title={i18n.t('console.billing.noAnalysis')} description={i18n.t('console.billing.noAnalysisHint')} />
-  // 中文：后端在部分旧版本或权限受限场景下可能省略分析子对象，统一使用空数据渲染。
+  // 后端在部分旧版本或权限受限场景下可能省略分析子对象，统一使用空数据渲染。
   const metrics = data.metrics ?? EMPTY_ANALYSIS_METRICS
   const wallet = data.wallet ?? EMPTY_ANALYSIS_WALLET
-  // 中文：优先使用独立目录接口返回的筛选项，旧响应仍可通过 data.filters 灰度兼容。
+  // 优先使用独立目录接口返回的筛选项，旧响应仍可通过 data.filters 灰度兼容。
   const sourceFilters = data.filters ?? filterCatalog
   const filters = {
     periods: sourceFilters.periods ?? [],
@@ -592,7 +592,7 @@ function AnalysisTab({ state, ledger, dateRange, apiKeyID, model, billingType, d
   )
 }
 
-// 中文：充值表单独立复用在充值管理页面，费用页仅保留费用概览和发票页签。
+// 充值表单独立复用在充值管理页面，费用页仅保留费用概览和发票页签。
 export function RechargeTab({ context, onOrderUpdated, onAuthFailure }: { context: BillingContext; onOrderUpdated: () => void; onAuthFailure: () => void }) {
   const navigate = useNavigate()
   const [amount, setAmount] = useState('100')
@@ -627,7 +627,7 @@ export function RechargeTab({ context, onOrderUpdated, onAuthFailure }: { contex
 
   async function closePaymentDialog(): Promise<void> {
     const orderToClose = paymentOrder
-    // 中文：关闭二维码弹窗即结束本次支付会话，避免后台继续查单或复用旧二维码。
+    // 关闭二维码弹窗即结束本次支付会话，避免后台继续查单或复用旧二维码。
     setPaymentDialogOpen(false)
     setPaymentOrder(null)
     setPaymentFormHTML('')
@@ -636,7 +636,7 @@ export function RechargeTab({ context, onOrderUpdated, onAuthFailure }: { contex
     setPaymentQueryError('')
     setPaymentQuerying(false)
     if (!orderToClose || !isPaymentActive(orderToClose.status)) return
-    // 中文：关单完成前暂时锁住充值按钮，避免用户立即创建第二个未确认订单。
+    // 关单完成前暂时锁住充值按钮，避免用户立即创建第二个未确认订单。
     setSubmitting(true)
     try {
       await closeBillingPaymentOrder(orderToClose.id, {}, context)
@@ -649,7 +649,7 @@ export function RechargeTab({ context, onOrderUpdated, onAuthFailure }: { contex
         onAuthFailure()
         return
       }
-      // 中文：关单失败不阻塞用户继续操作，但保留错误提示，便于用户重新查询订单状态。
+      // 关单失败不阻塞用户继续操作，但保留错误提示，便于用户重新查询订单状态。
       Toast.warning(getBillingErrorMessage(error))
     } finally {
       setSubmitting(false)
@@ -664,7 +664,7 @@ export function RechargeTab({ context, onOrderUpdated, onAuthFailure }: { contex
     const startedAt = Date.now()
     let failureCount = 0
 
-    // 中文：前置模式没有可靠的跨域支付回跳，持续通过服务端查单确认最终状态。
+    // 前置模式没有可靠的跨域支付回跳，持续通过服务端查单确认最终状态。
     const poll = async (): Promise<void> => {
       if (disposed) return
       if (Date.now() - startedAt >= PAYMENT_STATUS_POLL_TIMEOUT_MS) {
@@ -740,7 +740,7 @@ export function RechargeTab({ context, onOrderUpdated, onAuthFailure }: { contex
         ? await getBillingPaymentOrder(pendingPaymentOrderIDRef.current, {}, context)
         : await createBillingPaymentOrder(context, { amount_yuan: amount.trim() }, orderIdempotencyKey)
       pendingPaymentOrderIDRef.current = order.id
-      // 中文：支付、查单接口同样需要携带当前账务主体，否则企业订单会被路由到个人接口。
+      // 支付、查单接口同样需要携带当前账务主体，否则企业订单会被路由到个人接口。
       const startIdempotencyKey = paymentStartIdempotencyKeyRef.current ?? createIdempotencyKey('payment-start')
       paymentStartIdempotencyKeyRef.current = startIdempotencyKey
       const payment = await startBillingPayment(order.id, startIdempotencyKey, {}, context)
@@ -772,7 +772,7 @@ export function RechargeTab({ context, onOrderUpdated, onAuthFailure }: { contex
         return
       }
       if (isApiError(error) && error.code === 140008) {
-        // 中文：实名认证拦截仅展示引导弹窗，避免顶部提示与弹窗重复。
+        // 实名认证拦截仅展示引导弹窗，避免顶部提示与弹窗重复。
         setRealNameDialogOpen(true)
         return
       }
@@ -823,7 +823,7 @@ export function RechargeTab({ context, onOrderUpdated, onAuthFailure }: { contex
         visible={realNameDialogOpen}
         onCancel={() => setRealNameDialogOpen(false)}
         onCompleted={() => setRealNameDialogOpen(false)}
-        // 中文：直接切换路由，避免先关闭弹窗再导航造成短暂的遮罩闪烁。
+        // 直接切换路由，避免先关闭弹窗再导航造成短暂的遮罩闪烁。
         onVerify={() => navigate('/console/real-name')}
       />
     </section>
@@ -893,7 +893,7 @@ export function BillingPage() {
   const [balanceAlertOpen, setBalanceAlertOpen] = useState(false)
   const [redemptionOpen, setRedemptionOpen] = useState(false)
 
-  // 中文：兼容旧版费用页充值链接，保留订单参数后转到新的充值管理页面。
+  // 兼容旧版费用页充值链接，保留订单参数后转到新的充值管理页面。
   useEffect(() => {
     const params = new URLSearchParams(location.search)
     if (params.get('tab') !== 'recharge') return
@@ -962,7 +962,7 @@ export function BillingPage() {
     const controller = new AbortController()
     setActiveTab('overview')
     setPaymentReturnState((previous) => ({ ...resourceState('loading'), data: previous.data }))
-    // 中文：支付回跳查单沿用当前账务主体，企业订单不能落到个人接口。
+    // 支付回跳查单沿用当前账务主体，企业订单不能落到个人接口。
     void getBillingPaymentOrder(paymentReturnOrderID, { signal: controller.signal }, context).then((order) => {
       if (controller.signal.aborted) return
       setPaymentReturnState({ status: 'success', data: order, error: '', requestId: null })
@@ -985,7 +985,7 @@ export function BillingPage() {
     void getBillingAnalysis(context, { start_at: startAt, end_at: endAt, api_key_id: apiKeyID || undefined, model: model || undefined, billing_type: billingType || undefined, department_id: departmentID || undefined, member_id: memberID || undefined, signal: controller.signal }).then((data) => {
       if (controller.signal.aborted) return
       setAnalysisState({ status: 'success', data, error: '', requestId: null })
-      // 中文：新版分析响应不含 filters；目录只在当前账务主体首次成功返回后补拉一次。
+      // 新版分析响应不含 filters；目录只在当前账务主体首次成功返回后补拉一次。
       if (!data.filters && filterCatalogLoadedRef.current !== contextKey) {
         filterCatalogLoadedRef.current = contextKey
         void loadBillingFilterCatalog(context, controller.signal).then((catalog) => {
@@ -1009,7 +1009,7 @@ export function BillingPage() {
     if (activeTab !== 'overview') return
     const controller = new AbortController()
     setLedgerState((previous) => ({ ...resourceState('loading'), data: previous.data }))
-    // 中文：账本是独立的完整流水列表，仅使用自身分页和类型筛选。
+    // 账本是独立的完整流水列表，仅使用自身分页和类型筛选。
     void getBillingStatements(context, {
       page: ledgerPage,
       page_size: ledgerPageSize,
@@ -1059,12 +1059,12 @@ export function BillingPage() {
   }
 
   async function exportCSV(): Promise<void> {
-    // 中文：ref 锁在状态更新前生效，防止账本导出按钮被连续点击创建重复任务。
+    // ref 锁在状态更新前生效，防止账本导出按钮被连续点击创建重复任务。
     if (ledgerExportLockRef.current || exportingLedger) return
     ledgerExportLockRef.current = true
     setExportingLedger(true)
     try {
-      // 中文：账本导出提交完整账务主体和当前类型筛选，服务端负责生成全部匹配流水。
+      // 账本导出提交完整账务主体和当前类型筛选，服务端负责生成全部匹配流水。
       const sourceType = ledgerLineType === 'model_consume' ? 'usage' : ledgerLineType === 'recharge' ? 'paid' : ledgerLineType === 'reward' ? 'reward' : undefined
       const task = await createExportTask(
         {
@@ -1108,7 +1108,7 @@ export function BillingPage() {
   }
 
   function updateInvoiceForm(key: keyof InvoiceForm, value: string): void {
-    // 中文：修改申请内容后必须使用新的幂等键，避免服务端把不同申请误判为同一次请求。
+    // 修改申请内容后必须使用新的幂等键，避免服务端把不同申请误判为同一次请求。
     if (!submittingInvoice) invoiceIdempotencyKeyRef.current = null
     setInvoiceForm((previous) => ({ ...previous, [key]: value }))
     setInvoiceFormErrors((previous) => {
@@ -1161,7 +1161,7 @@ export function BillingPage() {
   }
 
   async function downloadInvoice(item: BillingInvoiceItem): Promise<void> {
-    // 中文：ref 锁在状态更新前生效，避免发票下载链接被连续点击触发重复请求。
+    // ref 锁在状态更新前生效，避免发票下载链接被连续点击触发重复请求。
     if (invoiceDownloadLockRef.current || downloadingInvoiceID) return
     invoiceDownloadLockRef.current = true
     setDownloadingInvoiceID(item.id)

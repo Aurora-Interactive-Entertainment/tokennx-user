@@ -10,7 +10,7 @@ type TraeDialogProps = {
   closable?: boolean;
 };
 
-/** 中文：人员管理页统一复用 AppModal，业务类仅补充宽度和正文布局。 */
+/** 人员管理页统一复用 AppModal，业务类仅补充宽度和正文布局。 */
 export function TraeDialog({
   title,
   children,
@@ -21,7 +21,7 @@ export function TraeDialog({
   const [visible, setVisible] = useState(true);
   const closingRef = useRef(false);
   const closeTimerRef = useRef<number | null>(null);
-  // 中文：先切换 visible 触发 Semi 的退出动画，动画结束后再卸载业务节点。
+  // 先切换 visible 触发 Semi 的退出动画，动画结束后再卸载业务节点。
   const close = useCallback(() => {
     if (closingRef.current) return;
     closingRef.current = true;

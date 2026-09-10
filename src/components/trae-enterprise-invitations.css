@@ -3,7 +3,7 @@
 .trae-invitation-status-select { width: 136px; height: 32px; font-size: 13px; }
 .trae-invitation-toolbar .trae-secondary-button { min-height: 32px; padding-inline: 10px; font-size: 13px; }
 .trae-invitation-table {
-  /* 中文：取消固定布局和百分比列宽，让邀请表格按内容自然计算宽度。 */
+  /* 取消固定布局和百分比列宽，让邀请表格按内容自然计算宽度。 */
   width: 100%;
 }
 .trae-table.trae-invitation-table th, .trae-table.trae-invitation-table td { height: 45px; font-size: 13px; }
@@ -21,7 +21,7 @@
 .app-modal.trae-dialog.trae-invitation-create-dialog .semi-modal { width: min(560px, calc(100vw - 32px)); }
 .trae-invitation-create-form { gap: 14px; }
 .trae-invitation-create-form .trae-invitation-form-select.semi-select { box-sizing: border-box; width: 100%; height: 38px; min-height: 38px; }
-/* 中文：邀请弹窗中的两个下拉沿用页面统一选择器，避免默认控件在打开和校验时跳变；同时清掉 Semi 默认给无前缀选择器多加的 12px 左外边距。 */
+/* 邀请弹窗中的两个下拉沿用页面统一选择器，避免默认控件在打开和校验时跳变；同时清掉 Semi 默认给无前缀选择器多加的 12px 左外边距。 */
 .trae-invitation-create-form .trae-invitation-form-select .semi-select-selection { height: 36px; margin: 0; padding: 0 12px; }
 .trae-invitation-create-form .trae-invitation-form-select .semi-select-selection-text,
 .trae-invitation-create-form .trae-invitation-form-select .semi-select-selection-placeholder { font-size: 12px; line-height: 36px; }

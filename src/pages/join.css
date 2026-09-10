@@ -4,7 +4,7 @@
 
 .enterprise-join-shell {
   display: grid;
-  /* 中文：头部实际高度为 72px，修正此前 64px 导致的 8px 溢出滚动条。 */
+  /* 头部实际高度为 72px，修正此前 64px 导致的 8px 溢出滚动条。 */
   min-height: calc(100dvh - 72px);
   place-items: center;
   padding: 72px 24px 104px;

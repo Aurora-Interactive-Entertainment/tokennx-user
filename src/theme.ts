@@ -45,7 +45,7 @@ function applyTheme(mode: ThemeMode): void {
   root.dataset.themeMode = mode
   root.dataset.theme = mode
   root.style.colorScheme = mode
-  // 中文：把解析后的主题桥接给 Semi UI。Semi 只识别 body[theme-mode="dark"]，
+  // 把解析后的主题桥接给 Semi UI。Semi 只识别 body[theme-mode="dark"]，
   // 否则未被手工重写的 Semi 组件（Toast、Switch、Pagination 等）会停留在亮色默认调色板，暗色下显示近黑文字。
   document.body?.setAttribute('theme-mode', mode)
 }
@@ -66,7 +66,7 @@ export function setThemeMode(mode: ThemeMode): void {
   try {
     window.localStorage.setItem(THEME_STORAGE_KEY, mode)
   } catch {
-    // 中文：主题切换仍在当前页面生效，持久化失败不影响用户继续操作。
+    // 主题切换仍在当前页面生效，持久化失败不影响用户继续操作。
   }
   applyTheme(mode)
   notify()

@@ -40,7 +40,7 @@ import {
 type CueRange = "today" | "7d" | "30d" | "custom";
 
 function formatPersonalUsageYuan(value: string): string {
-  // 中文：保留个人用量页原有的全角人民币符号，只统一金额精度和舍入规则。
+  // 保留个人用量页原有的全角人民币符号，只统一金额精度和舍入规则。
   return formatMoneyYuan(
     value,
     BACKOFFICE_MONEY_DISPLAY_DECIMAL_PLACES,
@@ -86,7 +86,7 @@ function PersonalUsageOverview({
     const controller = new AbortController();
     setLoading(true);
     setError("");
-    // 中文：用量管理页按新文档同时读取摘要和分页模型统计，不再调用旧 overview 接口。
+    // 用量管理页按新文档同时读取摘要和分页模型统计，不再调用旧 overview 接口。
     void Promise.all([
       getUsageSummary(
         context,
@@ -244,12 +244,12 @@ function PersonalUsageRecords({
   const rows = data?.items ?? [];
 
   async function exportRows(): Promise<void> {
-    // 中文：使用 ref 立即锁定导出，避免连续点击在 React 重渲染前创建多个任务。
+    // 使用 ref 立即锁定导出，避免连续点击在 React 重渲染前创建多个任务。
     if (exportLockRef.current || exporting) return;
     exportLockRef.current = true;
     setExporting(true);
     try {
-      // 中文：个人调用记录导出使用当前账务主体、API Key 和完整时间边界，服务端生成全部匹配记录。
+      // 个人调用记录导出使用当前账务主体、API Key 和完整时间边界，服务端生成全部匹配记录。
       const contextPayload: ExportContext =
         context.account_type === "enterprise"
           ? { account_type: "enterprise", enterprise_id: context.enterprise_id }
@@ -409,7 +409,7 @@ export function PersonalUsageManagement({
     const controller = new AbortController();
     setFiltersLoading(true);
     setFiltersError("");
-    // 中文：筛选目录独立于日期范围，按文档只请求一次并复用 API Key 选项。
+    // 筛选目录独立于日期范围，按文档只请求一次并复用 API Key 选项。
     void getUsageFilters(context, controller.signal)
       .then(setFilters)
       .catch((reason: unknown) => {

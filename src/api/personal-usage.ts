@@ -353,7 +353,7 @@ function contextParams(context: PersonalUsageContext): URLSearchParams {
   return params;
 }
 
-// 中文：空字符串和 status=all 表示不筛选，其余值（包括 0）原样交给后端校验。
+// 空字符串和 status=all 表示不筛选，其余值（包括 0）原样交给后端校验。
 function appendQuery(
   params: URLSearchParams,
   values: Record<

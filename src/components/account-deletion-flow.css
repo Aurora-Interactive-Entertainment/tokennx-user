@@ -100,7 +100,7 @@
   gap: 12px;
 }
 
-/* 中文：企业阻断弹窗的取消按钮沿用 AppModal 次级按钮规范，浅色白底黑字，深色黑底白字。 */
+/* 企业阻断弹窗的取消按钮沿用 AppModal 次级按钮规范，浅色白底黑字，深色黑底白字。 */
 .account-deletion-enterprise-footer .account-deletion-enterprise-cancel {
   border: 1px solid var(--color-border-neutral-l2) !important;
   color: #17181b !important;

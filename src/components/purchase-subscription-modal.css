@@ -1,4 +1,4 @@
-/* 中文：弹窗沿用 Figma 的 1000px 宽布局，并压缩标题区留白后的紧凑高度。 */
+/* 弹窗沿用 Figma 的 1000px 宽布局，并压缩标题区留白后的紧凑高度。 */
 .purchase-subscription-modal .semi-modal {
   width: min(1000px, calc(100vw - 24px)) !important;
   max-width: none;
@@ -52,7 +52,7 @@ html[data-theme="dark"] .purchase-subscription-modal .semi-modal-close:hover { c
   --purchase-subscription-muted: #8b8f99;
   position: relative;
   width: 100%;
-  /* 中文：压缩标题、说明与筛选区的留白，同时保持卡片与底部的间距。 */
+  /* 压缩标题、说明与筛选区的留白，同时保持卡片与底部的间距。 */
   height: 490px;
   overflow: hidden;
   border-radius: 15px;
@@ -168,7 +168,7 @@ html[data-theme="dark"] .purchase-subscription-modal .semi-modal-close:hover { c
   height: 238px;
   box-sizing: border-box;
   overflow: hidden;
-  /* 中文：用内描边覆盖在图片上，确保卡片边框与图片边缘连续。 */
+  /* 用内描边覆盖在图片上，确保卡片边框与图片边缘连续。 */
   border: 0;
   border-radius: 20px;
   background-position: center;
@@ -177,7 +177,7 @@ html[data-theme="dark"] .purchase-subscription-modal .semi-modal-close:hover { c
   box-shadow:
     inset 0 0 0 2px var(--purchase-subscription-card-border),
     inset 0 1px 0 rgb(255 255 255 / 75%);
-  /* 中文：动画结束后释放 transform，避免覆盖卡片的 hover 位移。 */
+  /* 动画结束后释放 transform，避免覆盖卡片的 hover 位移。 */
   animation: purchase-subscription-plan-in 220ms ease backwards;
   transition:
     transform 180ms ease,
@@ -254,7 +254,7 @@ html[data-theme="dark"] .purchase-subscription-modal .semi-modal-close:hover { c
   white-space: nowrap;
 }
 
-/* 中文：角标右下角沿用套餐购买页的圆弧折角，避免两个入口出现不同的收口。 */
+/* 角标右下角沿用套餐购买页的圆弧折角，避免两个入口出现不同的收口。 */
 .purchase-subscription-plan-badge::after {
   position: absolute;
   top: calc(100% - 1px);
@@ -305,7 +305,7 @@ html[data-theme="dark"] .purchase-subscription-modal .semi-modal-close:hover { c
 
 .purchase-subscription-plan-info {
   position: absolute;
-  /* 中文：固定底边并保持自适应高度，权益内容增加时向上扩展。 */
+  /* 固定底边并保持自适应高度，权益内容增加时向上扩展。 */
   left: 9px;
   width: 130px;
   bottom: 43px;

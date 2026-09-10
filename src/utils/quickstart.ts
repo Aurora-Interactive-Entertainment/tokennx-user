@@ -6,7 +6,7 @@ export type QuickstartLanguage = 'python' | 'node' | 'curl'
 const QUICKSTART_PROTOCOLS = new Set<QuickstartProtocol>(['openai', 'anthropic', 'gemini'])
 const QUICKSTART_LANGUAGES = new Set<QuickstartLanguage>(['python', 'node', 'curl'])
 
-// 中文：代码样例与控制台请求使用同一个后端 Base URL，复制后可以直接复用当前网关。
+// 代码样例与控制台请求使用同一个后端 Base URL，复制后可以直接复用当前网关。
 export const QUICKSTART_API_BASE_URL = MODEL_API_BASE_URL
 
 export function normalizeQuickstartProtocol(value: string | null): QuickstartProtocol {
@@ -123,7 +123,7 @@ export function quickstartCodeSample({
     ].join('\n')
   }
 
-  // 中文：Gemini SDK 支持自定义网关地址；这里保留 v1beta 路径并沿用 Token NX 的 Bearer 鉴权。
+  // Gemini SDK 支持自定义网关地址；这里保留 v1beta 路径并沿用 Token NX 的 Bearer 鉴权。
   const geminiBaseEndpoint = rootEndpoint + '/v1beta'
   const geminiModelEndpoint = geminiBaseEndpoint + '/models/' + modelAlias + ':generateContent'
   if (language === 'python') {

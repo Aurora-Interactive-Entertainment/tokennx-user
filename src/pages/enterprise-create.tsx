@@ -131,9 +131,9 @@ export function EnterpriseCreatePage() {
   const [startingFace, setStartingFace] = useState(false);
   const [confirmingFace, setConfirmingFace] = useState(false);
   const [faceModalVisible, setFaceModalVisible] = useState(false);
-  // 中文：关闭法人刷脸弹窗后允许回到资料页修改，直到再次提交前都不自动弹窗。
+  // 关闭法人刷脸弹窗后允许回到资料页修改，直到再次提交前都不自动弹窗。
   const [editingInformation, setEditingInformation] = useState(false);
-  // 中文：新建模式首次进入时忽略服务端历史认证，成功提交后再接管本次流程。
+  // 新建模式首次进入时忽略服务端历史认证，成功提交后再接管本次流程。
   const [newApplicationStarted, setNewApplicationStarted] = useState(false);
   const [faceUrl, setFaceUrl] = useState("");
   const [faceConfirmNotice, setFaceConfirmNotice] =
@@ -165,7 +165,7 @@ export function EnterpriseCreatePage() {
     setErrorMessage("");
     try {
       const result = await getEnterpriseCertification(accessToken);
-      // 中文：新建模式只用于创建新的认证申请，不能把旧记录恢复到当前页面。
+      // 新建模式只用于创建新的认证申请，不能把旧记录恢复到当前页面。
       if (isNewMode && !newModeSubmitted.current) {
         setCertification(null);
         setFaceUrl("");
@@ -219,7 +219,7 @@ export function EnterpriseCreatePage() {
     if (workspaceRefreshError) appToast.error(workspaceRefreshError);
   }, [workspaceRefreshError]);
   useEffect(() => {
-    // 中文：切换到新建地址时清空上一次页面状态，避免旧弹窗或已填资料残留。
+    // 切换到新建地址时清空上一次页面状态，避免旧弹窗或已填资料残留。
     newModeSubmitted.current = false;
     setNewApplicationStarted(false);
     if (!isNewMode) return;
@@ -279,7 +279,7 @@ export function EnterpriseCreatePage() {
   function changeApplicantType(applicantType: EnterpriseApplicantType): void {
     setForm((previous) => ({ ...previous, applicantType }));
     if (applicantType === "legal_representative") {
-      // 中文：切回法人时清理代办字段错误，但保留已上传资料，方便用户再次切换。
+      // 切回法人时清理代办字段错误，但保留已上传资料，方便用户再次切换。
       setErrors((previous) => ({
         ...previous,
         authorizedAgentName: undefined,
@@ -427,7 +427,7 @@ export function EnterpriseCreatePage() {
       newModeSubmitted.current = true;
       setNewApplicationStarted(true);
       setCertification(result);
-      // 中文：法人提交成功后立即打开弹窗，避免二维码接口返回前闪现旧步骤页面。
+      // 法人提交成功后立即打开弹窗，避免二维码接口返回前闪现旧步骤页面。
       setEditingInformation(false);
       autoPresentedFaceStage.current = "";
       setFaceUrl(result.face_url ?? "");
@@ -482,7 +482,7 @@ export function EnterpriseCreatePage() {
         if (result.face_url) setFaceModalVisible(true);
         else {
           const message = t("console.enterpriseCreate.faceUrlMissing");
-          // 中文：旧步骤页删除后，二维码异常和重试都由当前弹窗承载。
+          // 旧步骤页删除后，二维码异常和重试都由当前弹窗承载。
           setFaceConfirmNotice({
             title: t("console.enterpriseCreate.faceQrFailedTitle"),
             message,
@@ -518,7 +518,7 @@ export function EnterpriseCreatePage() {
     const presentationKey = `${certification.id ?? "current"}:${certification.current_stage}:${certification.face_url ?? faceUrl}:${certification.version ?? ""}`;
     if (autoPresentedFaceStage.current === presentationKey) return;
     autoPresentedFaceStage.current = presentationKey;
-    // 中文：法人进入核验阶段后只展示扫码弹窗，资料表单继续作为底层页面。
+    // 法人进入核验阶段后只展示扫码弹窗，资料表单继续作为底层页面。
     setFaceModalVisible(true);
     void startFace(certification);
   }, [
@@ -609,7 +609,7 @@ export function EnterpriseCreatePage() {
           invalidateSession();
           return;
         }
-        // 中文：轮询失败通常表示核验尚未完成，保持弹窗并静默等待下一轮。
+        // 轮询失败通常表示核验尚未完成，保持弹窗并静默等待下一轮。
       }
       timer = window.setTimeout(() => {
         void pollFaceConfirmation();
@@ -644,7 +644,7 @@ export function EnterpriseCreatePage() {
       </div>
     );
 
-  // 中文：修改资料时以表单当前选择为准，避免服务端旧身份把页面推回刷脸步骤。
+  // 修改资料时以表单当前选择为准，避免服务端旧身份把页面推回刷脸步骤。
   const applicantType =
     isFreshNewMode || editingInformation
       ? form.applicantType
@@ -653,14 +653,14 @@ export function EnterpriseCreatePage() {
     isFreshNewMode || editingInformation
       ? 1
       : stepFromCertification(certification, applicantType);
-  // 中文：审核通过或流程已完成视为认证成功，进度条步骤渲染为绿色。
+  // 审核通过或流程已完成视为认证成功，进度条步骤渲染为绿色。
   const certificationVerified =
     certification?.status === "approved" ||
     certification?.current_stage === "completed";
   const isLegalFaceStage =
     applicantType === "legal_representative" &&
     isFaceVerificationStage(certification);
-  // 中文：法人核验阶段只用弹窗承载，底层始终保留资料表单，不再切换旧第二步页面。
+  // 法人核验阶段只用弹窗承载，底层始终保留资料表单，不再切换旧第二步页面。
   const showInformationForm = step === 1 || isLegalFaceStage;
   return (
     <div className="page-stack enterprise-create-page">
@@ -734,7 +734,7 @@ export function EnterpriseCreatePage() {
           setFaceModalVisible(false);
           setFaceConfirmNotice(null);
           setEditingInformation(true);
-          // 中文：允许用户再次提交时重新触发同一阶段的刷脸流程。
+          // 允许用户再次提交时重新触发同一阶段的刷脸流程。
           autoPresentedFaceStage.current = "";
         }}
       />

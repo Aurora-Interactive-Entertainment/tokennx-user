@@ -906,13 +906,13 @@ const resources = {
 } as const
 
 function getInitialLanguage(): string {
-  // 中文：产品默认使用中文，只有用户主动切换后才持久化其他语言。
+  // 产品默认使用中文，只有用户主动切换后才持久化其他语言。
   if (typeof window === 'undefined') return 'zh-CN'
   try {
     const stored = window.localStorage.getItem(LANGUAGE_STORAGE_KEY)
     if (stored && LANGUAGE_OPTIONS.some((option) => option.code === stored)) return stored
   } catch {
-    // 中文：存储不可用时回退默认语言，不能让初始化阶段卡住加载层。
+    // 存储不可用时回退默认语言，不能让初始化阶段卡住加载层。
   }
   return 'zh-CN'
 }
@@ -933,7 +933,7 @@ i18n.on('languageChanged', (language) => {
   try {
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, language)
   } catch {
-    // 中文：语言切换仍在当前会话生效，持久化失败不影响页面使用。
+    // 语言切换仍在当前会话生效，持久化失败不影响页面使用。
   }
   if (typeof document !== 'undefined') document.documentElement.lang = language === 'en-US' ? 'en' : 'zh-CN'
 })

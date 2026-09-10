@@ -179,7 +179,7 @@ export function PersonalTokenHeatmap({
       );
       if (![gap, labelWidth, minCell, maxCell].every(Number.isFinite)) return;
 
-      // 中文：按可用宽度等比分配小格尺寸，限制上下限后保持横纵间距一致。
+      // 按可用宽度等比分配小格尺寸，限制上下限后保持横纵间距一致。
       const cell = Math.min(
         maxCell,
         Math.max(

@@ -11,7 +11,7 @@
   overflow: hidden;
   border: 1px solid var(--color-border-neutral-l1);
   border-radius: 16px;
-  /* 中文：使用不透明主题背景，确保深色模式下弹窗内容清晰分层。 */
+  /* 使用不透明主题背景，确保深色模式下弹窗内容清晰分层。 */
   background: var(--color-bg-base-secondary) !important;
   box-shadow: 0 24px 72px rgba(19, 28, 56, 0.24);
 }
@@ -27,7 +27,7 @@
   background: transparent !important;
 }
 
-/* 中文：关闭按钮沿用其他业务弹窗的尺寸、圆角与交互反馈。 */
+/* 关闭按钮沿用其他业务弹窗的尺寸、圆角与交互反馈。 */
 .real-name-required-dialog .semi-button.semi-modal-close {
   top: 12px;
   right: 12px;
@@ -73,7 +73,7 @@
   clip-path: polygon(50% 0, 91% 24%, 91% 76%, 50% 100%, 9% 76%, 9% 24%);
 }
 
-/* 中文：补充设计稿中的角标星光，使用纯 CSS 避免引入额外图片资源。 */
+/* 补充设计稿中的角标星光，使用纯 CSS 避免引入额外图片资源。 */
 .real-name-required-icon::before {
   position: absolute;
   top: 13px;
@@ -143,7 +143,7 @@
   transform: none;
 }
 
-/* 中文：次要按钮跟随主题，浅色模式再恢复参考图中的白底样式。 */
+/* 次要按钮跟随主题，浅色模式再恢复参考图中的白底样式。 */
 .real-name-required-actions .semi-button:not(.real-name-required-primary),
 .real-name-required-actions .semi-button:not(.real-name-required-primary):hover,
 .real-name-required-actions .semi-button:not(.real-name-required-primary):active {

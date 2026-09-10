@@ -1,4 +1,4 @@
-/* 中文：客服通知面板使用独立层级，通知列表不复用聊天消息的气泡样式。 */
+/* 客服通知面板使用独立层级，通知列表不复用聊天消息的气泡样式。 */
 .manuscript-support-panel:has(.manuscript-support-notifications) {
   border-color: rgba(255, 255, 255, 0.18);
 }
@@ -13,7 +13,7 @@
   text-align: left;
 }
 
-/* 中文：详情态沿用列表顶部对齐，避免被空态网格规则垂直居中后出现大段空白。 */
+/* 详情态沿用列表顶部对齐，避免被空态网格规则垂直居中后出现大段空白。 */
 .manuscript-support-notifications:has(.manuscript-support-notification-detail) {
   display: flex;
   align-items: stretch;
@@ -28,7 +28,7 @@
   animation: manuscript-support-notification-list-enter 0.28s cubic-bezier(0.22, 0.8, 0.26, 1) both;
 }
 
-/* 中文：列表和详情切换时使用轻微横向位移与淡入，避免内容瞬间替换造成生硬感。 */
+/* 列表和详情切换时使用轻微横向位移与淡入，避免内容瞬间替换造成生硬感。 */
 @keyframes manuscript-support-notification-detail-enter {
   from { opacity: 0; transform: translateX(12px); }
   to { opacity: 1; transform: translateX(0); }
@@ -39,7 +39,7 @@
   to { opacity: 1; transform: translateX(0); }
 }
 
-/* 中文：提高通知列表选择器权重，确保组件样式覆盖全局基础按钮样式。 */
+/* 提高通知列表选择器权重，确保组件样式覆盖全局基础按钮样式。 */
 .manuscript-support-panel:has(.manuscript-support-notifications)
   .manuscript-support-notification-content {
   box-sizing: border-box;
@@ -113,7 +113,7 @@
     box-shadow 0.18s ease;
 }
 
-/* 中文：通知卡片拆成正文和删除两个独立按钮，避免嵌套按钮并为右上角叉号留出空间。 */
+/* 通知卡片拆成正文和删除两个独立按钮，避免嵌套按钮并为右上角叉号留出空间。 */
 .manuscript-support-panel:has(.manuscript-support-notifications)
   .manuscript-support-notification-item {
   padding: 0;
@@ -351,7 +351,7 @@
   line-height: 1.4;
 }
 
-/* 中文：浅色主题保持白色表面，但以冷灰边框和蓝色未读强调替代深色玻璃层。 */
+/* 浅色主题保持白色表面，但以冷灰边框和蓝色未读强调替代深色玻璃层。 */
 html[data-theme="light"]
   .manuscript-support-panel:has(.manuscript-support-notifications) {
   border-color: rgba(23, 24, 27, 0.16);

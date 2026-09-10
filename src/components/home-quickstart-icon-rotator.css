@@ -8,7 +8,7 @@
   height: 24px;
   place-items: center;
   overflow: visible;
-  /* 中文：图标脱离按钮内容流，使文字始终以按钮中心线居中。 */
+  /* 图标脱离按钮内容流，使文字始终以按钮中心线居中。 */
   translate: 0 -50%;
 }
 
@@ -20,13 +20,13 @@
   object-fit: contain;
   opacity: 0;
   transform: scale(.58);
-  /* 中文：交接间隔 2.25 秒，总周期随图标数量同步放大，保证任意时刻都有一个图标可见。 */
+  /* 交接间隔 2.25 秒，总周期随图标数量同步放大，保证任意时刻都有一个图标可见。 */
   animation: home-quickstart-icon-breathe 18s linear infinite;
   animation-delay: calc(var(--home-quickstart-icon-index) * 2.25s);
   animation-fill-mode: both;
 }
 
-/* 中文：每个图标在 2.25 秒窗口内完成“小 → 大 → 小”的呼吸；
+/* 每个图标在 2.25 秒窗口内完成“小 → 大 → 小”的呼吸；
    放大与缩小各约 0.2 秒，两个方向都更快更干脆，缩小幅度加大，
    缩到最小时正好完成淡出交给下一个图标。 */
 @keyframes home-quickstart-icon-breathe {

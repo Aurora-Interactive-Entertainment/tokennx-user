@@ -18,8 +18,8 @@ import { HomeRewardStat } from '@/components/home-reward-stat'
 import { HomeLiquidMetalQuickstartAction } from '@/components/home-liquid-metal-quickstart-action'
 import { appToast } from '@/components/app-toast'
 
-// 中文：首页独立为路由入口，避免首屏下载文档 Markdown、排行榜图表及其他公开页面依赖。
-// 中文：公开页面的模型链接只使用面向用户的别名，旧模型 code 仅由查找逻辑兼容。
+// 首页独立为路由入口，避免首屏下载文档 Markdown、排行榜图表及其他公开页面依赖。
+// 公开页面的模型链接只使用面向用户的别名，旧模型 code 仅由查找逻辑兼容。
 function modelPublicHref(model: { id: string; alias?: string }): string | undefined {
   const routeKey = modelRouteKey(model)
   return routeKey ? `/models/${encodeURIComponent(routeKey)}` : undefined
@@ -194,7 +194,7 @@ function useScoreboardValue(targetValue: number): number {
       return undefined
     }
 
-    // 中文：只在目标值落定时更新整组数字，按位翻页交给 CSS 延迟，避免每帧重挂载数字节点。
+    // 只在目标值落定时更新整组数字，按位翻页交给 CSS 延迟，避免每帧重挂载数字节点。
     const timeout = window.setTimeout(() => {
       valueRef.current = target
       setValue(target)
@@ -223,7 +223,7 @@ function ManuscriptScoreboardDigit({ metricId, index, digit, onFlipComplete }: {
     setFlipState((current) => {
       if (current.toDigit === digit) return current
 
-      // 中文：在浏览器绘制前锁定上一轮终值，确保每次都从旧数字翻到新数字。
+      // 在浏览器绘制前锁定上一轮终值，确保每次都从旧数字翻到新数字。
       return { fromDigit: current.toDigit, toDigit: digit, version: current.version + 1 }
     })
   }, [digit])
@@ -487,7 +487,7 @@ function HomePartnerLogo({ partner }: { partner: HomePartner }) {
   return <span className={`manuscript-partner-css-logo manuscript-partner-css-logo--${cssLogoName}`} aria-hidden="true"><i className="manuscript-partner-css-logo-mark"><b /><b /><b /></i></span>
 }
 
-// 中文：每条轨道复制一份品牌序列，循环位移到半程时正好衔接下一份内容，保证滚动不会跳帧。
+// 每条轨道复制一份品牌序列，循环位移到半程时正好衔接下一份内容，保证滚动不会跳帧。
 function HomePartnerRow({ partners, rowIndex }: { partners: HomePartner[]; rowIndex: number }) {
   const { t } = useTranslation()
   const rowRef = useRef<HTMLDivElement>(null)
@@ -563,7 +563,7 @@ function ManagedFeatureCard({ entry, index }: { entry: HomepageEntry; index: num
   const action = t(`home.rebuild.featureCards.${featureIndex}.action`)
   const imageURL = homepageMediaURL(content.image_object_id, content.image_url)
   const configuredPath = content.link_url?.trim()
-  // 中文：有后台目标时走统一登录态动作；旧数据缺少链接时保留兼容入口。
+  // 有后台目标时走统一登录态动作；旧数据缺少链接时保留兼容入口。
   const actionElement = featureIndex === 0
     ? <a className="manuscript-feature-action" href={homepageNavigationHref('/models')}>{action}</a>
     : configuredPath
@@ -581,14 +581,14 @@ function ManagedFeatureCard({ entry, index }: { entry: HomepageEntry; index: num
 
 function ManagedNewsCard({ entry, newsIndex }: { entry: HomepageEntry; newsIndex: number }) {
   const { t, i18n } = useTranslation()
-  // 中文：资讯卡固定进入对应文章详情，忽略后台遗留的文档链接，避免离开文章阅读页。
+  // 资讯卡固定进入对应文章详情，忽略后台遗留的文档链接，避免离开文章阅读页。
   const href = `/news/${encodeURIComponent(entry.id)}`
   const title = t(`home.rebuild.news.${newsIndex}.title`)
   const description = t(`home.rebuild.news.${newsIndex}.description`)
   const coverURL = homepageEntryMediaURL(entry, i18n.language)
   const card = <><div className="manuscript-news-copy"><h3 title={title}>{title}</h3><p title={description}>{description}</p><small>{homepageDate(entry.updated_at, i18n.language)} <b className="manuscript-news-new">{t('public.home.newBadge')}</b></small></div><div className={`manuscript-news-art manuscript-news-art--${newsIndex}`} aria-hidden="true"><img className="manuscript-news-art-image" src={coverURL || promoArticleArt} alt="" loading="lazy" decoding="async" width={850} height={333} onError={(event) => {
     if (event.currentTarget.getAttribute('src') !== promoArticleArt) event.currentTarget.src = promoArticleArt
-    // 中文：封面失效时回退到本地默认图，避免卡片出现破图。
+    // 封面失效时回退到本地默认图，避免卡片出现破图。
     if (event.currentTarget.getAttribute('src') !== promoArticleArt) event.currentTarget.src = promoArticleArt
   }} /></div></>
   return <Link className="manuscript-news-card" to={href}>{card}</Link>
@@ -600,7 +600,7 @@ function ManagedAdSlots({ entries }: { entries: HomepageEntry[] }) {
     const content = homepageTranslation(entry, i18n.language)
     const imageURL = homepageEntryMediaURL(entry, i18n.language)
     const ad = <img src={imageURL || promoBannerArt} alt={content.title || t('home.rebuild.adSlot')} loading="lazy" decoding="async" width={850} height={193} />
-    // 中文：推广广告统一承接邀请活动，未登录时由公共登录弹窗完成后续跳转。
+    // 推广广告统一承接邀请活动，未登录时由公共登录弹窗完成后续跳转。
     return <LoginRequiredAction className="manuscript-ad-slot" key={entry.id} returnPath="/console/invitations">{ad}</LoginRequiredAction>
   })}</div>
 }
@@ -616,7 +616,7 @@ const HOME_DEFAULT_PROMOTION_ITEMS: HomePromotionItem[] = [
 ]
 
 function homepageModelPrice(model: HomepagePromotionModel, meterKind: 'input_token' | 'output_token'): string {
-  // 中文：新版价格契约使用 input/output，兼容旧服务的 input_token/output_token 命名。
+  // 新版价格契约使用 input/output，兼容旧服务的 input_token/output_token 命名。
   const aliases = meterKind === 'input_token'
     ? new Set(['input', 'input_token', 'text_input'])
     : new Set(['output', 'output_token', 'text_output'])
@@ -826,7 +826,7 @@ export function HomePage({ onInitialScoreboardReady }: { onInitialScoreboardRead
       setHomepageStatus('ready')
     }).catch(() => {
       if (requestId === homepageRequestIdRef.current) setHomepageStatus('error')
-      // 中文：公开内容接口失败时保留已编排的默认首页，避免运营接口故障影响首页首屏。
+      // 公开内容接口失败时保留已编排的默认首页，避免运营接口故障影响首页首屏。
     }).finally(() => {
       if (homepageRequestControllerRef.current === controller) homepageRequestControllerRef.current = null
     })

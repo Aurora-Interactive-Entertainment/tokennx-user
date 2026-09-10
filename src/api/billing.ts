@@ -77,7 +77,7 @@ export interface BillingRewardIssuance {
   rule_code: string
   trigger_type: string
   event_id: string
-  // 中文：去重键属于服务端内部字段，新接口不会返回；保留可选字段兼容旧响应。
+  // 去重键属于服务端内部字段，新接口不会返回；保留可选字段兼容旧响应。
   dedupe_key?: string
   recipient_role: string
   recipient_type: string
@@ -126,7 +126,7 @@ export interface BillingPageResult<T> {
 }
 
 export interface BillingSummaryResponse {
-  // 中文：新接口将 account/wallet/bonus_grants 收敛在 wallet 对象内；account 保留为旧版本兼容字段。
+  // 新接口将 account/wallet/bonus_grants 收敛在 wallet 对象内；account 保留为旧版本兼容字段。
   account?: BillingAccount
   wallet: BillingWalletResponse
   recent_rewards: BillingRewardIssuance[]
@@ -187,7 +187,7 @@ export interface BillingDailyApiKeyCost {
   cost_yuan: string
 }
 
-/** 中文：费用分析接口返回的 ECharts 趋势图结构。日期轴使用 UTC 日桶时间戳，序列值单位为元。 */
+/** 费用分析接口返回的 ECharts 趋势图结构。日期轴使用 UTC 日桶时间戳，序列值单位为元。 */
 export interface BillingCostChartSeries {
   name: string
   type: 'line' | string
@@ -204,7 +204,7 @@ export interface BillingCostChart {
   y_axis?: {
     type: 'value' | string
   }
-  // 中文：以下驼峰字段只用于兼容灰度期间的旧账务服务响应。
+  // 以下驼峰字段只用于兼容灰度期间的旧账务服务响应。
   xAxis?: { type: 'category' | string; boundaryGap: boolean; data: number[] }
   yAxis?: { type: 'value' | string }
   series: BillingCostChartSeries[]
@@ -228,7 +228,7 @@ export interface BillingAnalysisMetrics {
   video_count: string
 }
 
-/** 中文：额度明细是可选扩展字段，兼容不同账务服务版本返回的明细口径。 */
+/** 额度明细是可选扩展字段，兼容不同账务服务版本返回的明细口径。 */
 export interface BillingQuotaDetails {
   recharge_yuan?: string
   reward_yuan?: string
@@ -263,7 +263,7 @@ export interface BillingAnalysisResponse {
   filters?: BillingAnalysisFilters
   metrics: BillingAnalysisMetrics
   quota_details?: BillingQuotaDetails
-  // 中文：兼容新版 ECharts 结构和旧版数组/分页结构，便于灰度期间平滑切换。
+  // 兼容新版 ECharts 结构和旧版数组/分页结构，便于灰度期间平滑切换。
   model_daily_costs?: BillingCostChart | BillingDailyModelCost[] | BillingPageResult<BillingDailyModelCost>
   billing_type_daily_costs?: BillingCostChart | BillingDailyBillingTypeCost[] | BillingPageResult<BillingDailyBillingTypeCost>
   api_key_daily_costs?: BillingCostChart | BillingDailyApiKeyCost[] | BillingPageResult<BillingDailyApiKeyCost>
@@ -294,7 +294,7 @@ export interface BillingInvoiceOption<T extends string = string> {
   label: string
 }
 
-// 中文：开票弹窗的只读信息与可选项统一由发票查询接口下发。
+// 开票弹窗的只读信息与可选项统一由发票查询接口下发。
 export interface BillingInvoiceApplicationForm {
   title: string
   tax_identifier?: string
@@ -380,7 +380,7 @@ export interface BillingPaymentStartResult {
   order: BillingPaymentOrder
   transaction: BillingPaymentTransaction
   form_html?: string
-  /** 中文：新支付接口可直接返回二维码内容，旧接口仍通过 form_html 兼容。 */
+  /** 新支付接口可直接返回二维码内容，旧接口仍通过 form_html 兼容。 */
   payment_url?: string
   qr_code?: string
   qr_code_url?: string
@@ -466,7 +466,7 @@ export function getBillingSummary(context: BillingContext, options: Pick<Billing
     unread_reward_count?: number | string
   }
   return fetchAuthenticatedJson<SummaryWire>(`${BILLING_PATH}/summary?${query}`, options).then((value) => {
-    // 中文：灰度期间旧服务返回扁平 wallet/unread_reward_count，统一在边界转换成新契约。
+    // 灰度期间旧服务返回扁平 wallet/unread_reward_count，统一在边界转换成新契约。
     const rawWallet = value.wallet as BillingWalletResponse | BillingWallet | undefined
     const wallet = rawWallet && typeof rawWallet === 'object' && 'wallet' in rawWallet
       ? rawWallet
@@ -507,13 +507,13 @@ export function getBillingStatements(context: BillingContext, options: BillingSt
   return fetchAuthenticatedJson<BillingPageResult<BillingStatementLine>>(`${BILLING_PATH}/statements?${query}`, requestOptions(options))
 }
 
-/** 中文：兑换码核销使用请求编号保证超时重试不会重复入账。 */
+/** 兑换码核销使用请求编号保证超时重试不会重复入账。 */
 export function redeemBillingCode(
   code: string,
   options: Pick<BillingRequestOptions, 'accessToken' | 'signal'> & { requestId?: string } = {},
 ): Promise<BillingRedemptionResult> {
   const requestCode = code.trim()
-  // 中文：兑换码格式在客户端先校验，避免把明显无效的请求发送到服务端；服务端仍会做最终校验。
+  // 兑换码格式在客户端先校验，避免把明显无效的请求发送到服务端；服务端仍会做最终校验。
   if (!/^[A-Za-z0-9]{12}$/.test(requestCode)) {
     return Promise.reject(new ApiError(i18n.t('api.billing.errors.100001'), 400, 100001, null))
   }
@@ -533,7 +533,7 @@ export function redeemBillingCode(
 }
 
 export function getBillingAnalysis(context: BillingContext, options: BillingAnalysisRequestOptions = {}): Promise<BillingAnalysisResponse> {
-  // 中文：费用分析接口使用时间范围，period 仅作为旧调用方的兼容输入。
+  // 费用分析接口使用时间范围，period 仅作为旧调用方的兼容输入。
   let startAt = options.start_at
   let endAt = options.end_at
   if ((!startAt || !endAt) && options.period) {
@@ -591,7 +591,7 @@ function paymentOrderPath(orderID: string, suffix = '', context: BillingContext 
 }
 
 export function createBillingPaymentOrder(context: BillingContext, input: BillingPaymentCreateInput, idempotencyKey: string, options: Pick<BillingRequestOptions, 'accessToken' | 'signal'> = {}): Promise<BillingPaymentOrder> {
-  // 中文：订单创建时发送当前账务主体，企业充值因此直接进入对应企业钱包。
+  // 订单创建时发送当前账务主体，企业充值因此直接进入对应企业钱包。
   const query = createBillingQuery(context)
   return fetchAuthenticatedJson<BillingPaymentOrder>(`${PAYMENT_ORDER_PATH}?${query}`, {
     ...paymentIdempotencyOptions(idempotencyKey, options),
@@ -614,7 +614,7 @@ export function getBillingPaymentOrder(orderID: string, options: Pick<BillingReq
 export function closeBillingPaymentOrder(orderID: string, options: Pick<BillingRequestOptions, 'accessToken' | 'signal'> = {}, context?: BillingContext): Promise<BillingPaymentOrder> {
   return fetchAuthenticatedJson<BillingPaymentOrder>(paymentOrderPath(orderID, '/close', context), {
     ...paymentIdempotencyOptions(`close-${orderID}`, options),
-    // 中文：关单接口要求显式空 JSON 对象，不能省略请求体。
+    // 关单接口要求显式空 JSON 对象，不能省略请求体。
     body: {},
   })
 }
@@ -627,7 +627,7 @@ export function downloadBillingInvoice(url: string, options: Pick<BillingRequest
 	return fetchAuthenticatedResponse(normalizedURL, options)
 }
 
-// 中文：发票下载地址只允许当前站点或配置的后端地址，并限制到发票下载接口，避免把 Bearer Token 发送到外域。
+// 发票下载地址只允许当前站点或配置的后端地址，并限制到发票下载接口，避免把 Bearer Token 发送到外域。
 export function isTrustedBillingInvoiceDownloadUrl(value: string): boolean {
   const normalized = value.trim()
   if (!normalized || normalized.startsWith('//')) return false
@@ -700,7 +700,7 @@ const BILLING_ERROR_KEYS: Record<number, string> = {
 export function getBillingErrorMessage(error: unknown): string {
   if (!isApiError(error)) return i18n.t('api.billing.requestFailed')
   if (error.apiMessage) return error.apiMessage
-  // 中文：实名认证业务码可能使用 403 HTTP 状态，必须优先展示服务端返回的真实提示。
+  // 实名认证业务码可能使用 403 HTTP 状态，必须优先展示服务端返回的真实提示。
   if (error.code === 140008) return error.message.trim() || i18n.t('api.billing.errors.140008')
   if (error.status === 403 || error.code === 120001) return i18n.t('api.billing.forbidden')
   const messageKey = BILLING_ERROR_KEYS[error.code]
