@@ -12,12 +12,12 @@ import { getActiveLocale } from "@/i18n";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import Button from "@douyinfe/semi-ui/lib/es/button";
 import SemiFormLabel from "@douyinfe/semi-ui/lib/es/form/label";
+import { CopyOutlineIcon } from "@/components/copy-outline-icon";
 import Modal from "@/components/app-modal";
 import Switch from "@douyinfe/semi-ui/lib/es/switch";
 import Toast from "@douyinfe/semi-ui/lib/es/toast";
 import {
   IconArrowRight,
-  IconCopy,
   IconDeleteStroked,
   IconEditStroked,
   IconKey,
@@ -1516,7 +1516,7 @@ export function ApiKeysPage({
                           disabled={!row.secret}
                           onClick={() => copyApiKey(row)}
                         >
-                          <IconCopy />
+                          <CopyOutlineIcon />
                         </button>
                       </span>
                     </td>
@@ -2145,7 +2145,7 @@ export function ApiKeysPage({
               <Button
                 theme="solid"
                 type="primary"
-                icon={<IconCopy aria-hidden="true" />}
+                icon={<CopyOutlineIcon />}
                 onClick={() => {
                   void copyText(createdSecret, t("console.account.copiedKey"));
                 }}
@@ -2339,7 +2339,7 @@ export function InvitationsPage() {
               <Button
                 theme="solid"
                 type="primary"
-                icon={<IconCopy />}
+                icon={<CopyOutlineIcon />}
                 onClick={copyLink}
               >
                 {copied

@@ -3,6 +3,10 @@ import { enterpriseGovernanceResources } from "./enterprise-governance";
 export const consoleResources = {
   "zh-CN": {
     console: {
+      timePricing: {
+        title: "峰谷价", example: "示例", timezone: "北京时间",
+        peak: "峰时", offPeak: "谷时", note: "价格与时段仅作展示，以实际计费为准",
+      },
       nav: {
         modelUse: "模型使用",
         quickstart: "快速接入",
@@ -2369,6 +2373,10 @@ export const consoleResources = {
   },
   "en-US": {
     console: {
+      timePricing: {
+        title: "Time-of-day pricing", example: "Demo", timezone: "UTC+8",
+        peak: "Peak", offPeak: "Off-peak", note: "Illustrative prices and hours; actual billing applies",
+      },
       nav: {
         modelUse: "Model access",
         quickstart: "Quick start",

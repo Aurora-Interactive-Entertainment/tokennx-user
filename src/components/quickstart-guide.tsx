@@ -3,9 +3,10 @@ import { Link, useSearchParams } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import Button from '@douyinfe/semi-ui/lib/es/button'
 import Toast from '@douyinfe/semi-ui/lib/es/toast'
+import { CopyOutlineIcon } from "@/components/copy-outline-icon";
 import { appToast } from '@/components/app-toast'
 import { QuickstartResourceState } from './quickstart-resource-state'
-import { IconCopy, IconFile } from '@douyinfe/semi-icons'
+import { IconFile } from '@douyinfe/semi-icons'
 import { findModelInList, modelAlias, type ModelRecord } from '@/data/models'
 import { useUserModels } from '@/data/user-models'
 import { normalizeQuickstartLanguage, normalizeQuickstartProtocol, QUICKSTART_API_BASE_URL, quickstartCodeSample, type QuickstartLanguage, type QuickstartProtocol } from '@/utils/quickstart'
@@ -195,7 +196,7 @@ function AgentStep({ model, language, protocol, setLanguage, setProtocol, t, onC
       <div className="quickstart-pdf-code-shell">
         <div className="quickstart-pdf-code-toolbar">
           <div className="quickstart-pdf-tabs quickstart-pdf-language-tabs" role="tablist">{(['curl', 'python', 'node'] as const).map((item) => <button type="button" role="tab" aria-selected={language === item} className={language === item ? 'is-active' : ''} key={item} onClick={() => setLanguage(item)}>{item === 'curl' ? 'cURL' : item === 'python' ? t('console.quickstart.python') : 'Node.js'}</button>)}</div>
-          <Button theme="borderless" size="small" icon={<IconCopy aria-hidden="true" />} onClick={() => onCopy(code)}>{t('console.quickstart.copy')}</Button>
+          <Button theme="borderless" size="small" icon={<CopyOutlineIcon />} onClick={() => onCopy(code)}>{t('console.quickstart.copy')}</Button>
         </div>
         <pre><code>{highlightCode(code)}</code></pre>
       </div>

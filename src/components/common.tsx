@@ -36,7 +36,6 @@ import {
   IconChevronRight,
   IconClose,
   IconCommentStroked,
-  IconCopyStroked,
   IconCustomerSupport,
   IconEditStroked,
   IconExit,
@@ -142,6 +141,8 @@ import {
   type SupportMessageRole,
 } from "./support-chat";
 import { BackofficeMoneyText as MoneyText } from "./money";
+import { ModelTimePricing } from "./model-time-pricing";
+import { CopyOutlineIcon } from "@/components/copy-outline-icon";
 import { ModelAvailability } from "./model-availability";
 import {
   enterpriseMenuPermissionKeyForPath,
@@ -694,12 +695,14 @@ function modelCardSpecs(model: ModelRecord): {
 export function ModelCard({
   model,
   compact = false,
+  showTimePricing = false,
   onSelect,
   onChat,
   onApi,
 }: {
   model: ModelRecord;
   compact?: boolean;
+  showTimePricing?: boolean;
   onSelect?: (model: ModelRecord) => void;
   onChat?: (model: ModelRecord) => void;
   onApi?: (model: ModelRecord) => void;
@@ -878,6 +881,7 @@ export function ModelCard({
           ) : null}
         </div>
       </div>
+      {showTimePricing ? <ModelTimePricing model={model} compact /> : null}
       <div
         className="model-card-spec-grid"
         aria-label={`${localizeConsoleLabel(t, specs.contextLabel)} / ${localizeConsoleLabel(t, specs.outputLabel)}`}
@@ -928,7 +932,7 @@ export function ModelCard({
         <Button
           className="model-card-copy"
           theme="borderless"
-          icon={<IconCopyStroked />}
+          icon={<CopyOutlineIcon />}
           aria-label={t("console.models.modelAlias", { name: model.name })}
           title={t("console.common.copyAlias")}
           onClick={copyAlias}
@@ -3976,7 +3980,7 @@ export function AccountSettingsModal({
                       void copyUserId();
                     }}
                   >
-                    <IconCopyStroked aria-hidden="true" />
+                    <CopyOutlineIcon />
                   </button>
                 </span>
               </div>

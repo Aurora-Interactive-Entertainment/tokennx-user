@@ -28,6 +28,11 @@ import { SeoManager } from "@/seo/site-seo";
 import { syncSentryIdentity } from "@/observability/sentry";
 
 const loadPublicPages = () => import("@/pages/public");
+const ActivityCampaignModal = lazy(() =>
+  import("@/components/activity-campaign-modal").then(({ ActivityCampaignModal }) => ({
+    default: ActivityCampaignModal,
+  })),
+);
 const loadInvitationPage = () => import("@/pages/join");
 const loadConsoleCorePages = () => import("@/pages/console-core");
 const loadConsoleAccountPages = () => import("@/pages/console-account");
@@ -467,6 +472,11 @@ export default function App({ onBootReady }: { onBootReady: () => void }) {
               <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </Suspense>
+            {
+              <Suspense fallback={null}>
+                <ActivityCampaignModal />
+              </Suspense>
+            }
           </AuthScopedStoreProvider>
         </>
       </AuthBootstrap>

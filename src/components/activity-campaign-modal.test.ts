@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   ACTIVITY_CAMPAIGN_CLOSED_DATE_KEY,
   getActivityCampaignDateKey,
+  getActivityCampaignCountdown,
   hasClosedActivityCampaignToday,
   markActivityCampaignClosedToday,
 } from "./activity-campaign-modal";
@@ -50,5 +51,19 @@ describe("活动弹窗每日关闭记录", () => {
       markActivityCampaignClosedToday(brokenStorage, now),
     ).not.toThrow();
     expect(hasClosedActivityCampaignToday(brokenStorage, now)).toBe(false);
+  });
+});
+
+describe("活动倒计时", () => {
+  it("每秒递减，并在分钟边界正确借位", () => {
+    const endAt = Date.parse("2026-09-15T09:21:00Z");
+    const now = Date.parse("2026-09-11T00:00:00Z");
+    expect(getActivityCampaignCountdown(endAt, now)).toEqual({ days: "04", hours: "09", minutes: "21", seconds: "00" });
+    expect(getActivityCampaignCountdown(endAt, now + 1000)).toEqual({ days: "04", hours: "09", minutes: "20", seconds: "59" });
+  });
+
+  it("到期后保持为零，计时器延迟时仍按实际剩余时间计算", () => {
+    expect(getActivityCampaignCountdown(10000, 7500).seconds).toBe("03");
+    expect(getActivityCampaignCountdown(10000, 12000)).toEqual({ days: "00", hours: "00", minutes: "00", seconds: "00" });
   });
 });

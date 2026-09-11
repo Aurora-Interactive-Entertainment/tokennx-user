@@ -3,7 +3,8 @@ import { useTranslation } from "react-i18next";
 import Toast from "@douyinfe/semi-ui/lib/es/toast";
 import { Form } from "@douyinfe/semi-ui/lib/es/form";
 import Select from "@douyinfe/semi-ui/lib/es/select";
-import { IconCopy, IconLink, IconRefresh } from "@douyinfe/semi-icons";
+import { IconLink, IconRefresh } from "@douyinfe/semi-icons";
+import { CopyOutlineIcon } from "@/components/copy-outline-icon";
 import { appToast } from "@/components/app-toast";
 import {
   createEnterpriseInvitation,
@@ -307,7 +308,7 @@ export function TraeEnterpriseInvitations({
                 <td>{invitation.used_count}/{invitation.max_uses} · {invitation.expires_at ? formatApiTime(invitation.expires_at) : t("traeEnterprise.inviteList.noExpiry")}</td>
                 <td><span className={`trae-status-badge ${inviteStatusClass(invitation.status)}`}><i aria-hidden="true" />{t(`traeEnterprise.inviteList.status.${invitation.status}`, { defaultValue: invitation.status })}</span></td>
                 <td><div className="trae-invitation-actions">
-                  {invitationURL(invitation) ? <button type="button" onClick={() => void copyInvitationURL(invitationURL(invitation))}><IconCopy aria-hidden="true" />{t("traeEnterprise.inviteList.copy")}</button> : null}
+                  {invitationURL(invitation) ? <button type="button" onClick={() => void copyInvitationURL(invitationURL(invitation))}><CopyOutlineIcon />{t("traeEnterprise.inviteList.copy")}</button> : null}
                   <button type="button" onClick={() => setDetailInvitation(invitation)}>{t("traeEnterprise.inviteList.usageDetails")}</button>
                   {invitation.status === "active" ? <>
                     <button type="button" disabled={updatingInvitationID === invitation.id} onClick={() => void updateInvitation(invitation, "regenerate")}>

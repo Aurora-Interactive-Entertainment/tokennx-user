@@ -6,10 +6,12 @@ import type { TFunction } from 'i18next'
 import Button from '@douyinfe/semi-ui/lib/es/button'
 import SideSheet from '@douyinfe/semi-ui/lib/es/sideSheet'
 import Toast from '@douyinfe/semi-ui/lib/es/toast'
-import { IconClose, IconCopy } from '@douyinfe/semi-icons'
+import { IconClose } from '@douyinfe/semi-icons'
 import { localizeConsoleLabel, ModelLogo } from './common'
 import { BackofficeMoneyText as MoneyText } from './money'
 import './model-detail-drawer.css'
+import { ModelTimePricing } from './model-time-pricing'
+import { CopyOutlineIcon } from './copy-outline-icon'
 import type { UserModelDetail, UserModelMetricPoint, UserModelPrice, UserModelTag } from '@/api/user-models'
 import { modelAlias, modelRouteKey, type ModelPrice, type ModelRecord } from '@/data/models'
 import { formatCount, formatNumber } from '@/utils/format'
@@ -269,7 +271,7 @@ export function ModelDetailDrawer({ model, detail, loading, error, visible, onCl
                 <h2 id="modelDetailTitle">{detailModel?.name || model.name}</h2>
                 <div className="model-detail-id-row">
                   <code>{displayAlias}</code>
-                  <Button className="model-detail-copy" theme="borderless" size="small" icon={<IconCopy />} aria-label={t('console.modelDetail.copyAlias')} title={t('console.modelDetail.copyAlias')} onClick={copyAlias} disabled={!publicAlias} />
+                  <Button className="model-detail-copy" theme="borderless" size="small" icon={<CopyOutlineIcon />} aria-label={t('console.modelDetail.copyAlias')} title={t('console.modelDetail.copyAlias')} onClick={copyAlias} disabled={!publicAlias} />
                 </div>
               </div>
             </div>
@@ -297,6 +299,7 @@ export function ModelDetailDrawer({ model, detail, loading, error, visible, onCl
               <PriceCell label={t('console.modelDetail.cacheHitPrice')} price={currentPrice(detailModel?.prices, 'cache_hit')} unavailableLabel={noDataLabel} />
               <PriceCell label={t('console.modelDetail.cacheCreatePrice')} price={currentPrice(detailModel?.prices, 'cache_creation')} unavailableLabel={noDataLabel} />
             </div>
+            <ModelTimePricing model={model} />
           </section>
 
           <section className="model-detail-section" aria-labelledby="modelDetailInfoTitle">

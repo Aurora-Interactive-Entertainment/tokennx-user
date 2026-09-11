@@ -3,7 +3,8 @@ import type { TFunction } from 'i18next'
 import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-router'
 import Toast from '@douyinfe/semi-ui/lib/es/toast'
 import Skeleton from '@douyinfe/semi-ui/lib/es/skeleton'
-import { IconBookOpenStroked, IconChevronDown, IconCodeStroked, IconCopyStroked, IconCustomerSupportStroked, IconFile, IconShieldStroked } from '@douyinfe/semi-icons'
+import { IconBookOpenStroked, IconChevronDown, IconCodeStroked, IconCustomerSupportStroked, IconFile, IconShieldStroked } from '@douyinfe/semi-icons'
+import { CopyOutlineIcon } from "@/components/copy-outline-icon";
 import { LoginPanel, LoginRequiredAction, ManuscriptSupportWidget, PublicLayout, ModelLogo, requestSupportWidget } from '@/components/common'
 import { resolveLoginDestination } from '@/auth/login-navigation'
 import '@/docs-page.css'
@@ -726,8 +727,8 @@ export function DocsPage() {
         </aside>
 
         <article className="docs-article" ref={articleRef}>
-          {currentDocument ? <div className="docs-article-toolbar docs-article-toolbar--desktop-copy"><button className="docs-copy-page" type="button" onClick={() => void copyMarkdown()}><IconCopyStroked aria-hidden="true" />{t('public.docs.manuscript.copyPage')}</button></div> : null}
-          {currentDocument ? <div className="docs-article-toolbar docs-article-toolbar--mobile-copy"><button className="docs-copy-page" type="button" onClick={() => void copyMarkdown()}><IconCopyStroked aria-hidden="true" />{t('public.docs.manuscript.copyPage')}</button></div> : null}
+          {currentDocument ? <div className="docs-article-toolbar docs-article-toolbar--desktop-copy"><button className="docs-copy-page" type="button" onClick={() => void copyMarkdown()}><CopyOutlineIcon />{t('public.docs.manuscript.copyPage')}</button></div> : null}
+          {currentDocument ? <div className="docs-article-toolbar docs-article-toolbar--mobile-copy"><button className="docs-copy-page" type="button" onClick={() => void copyMarkdown()}><CopyOutlineIcon />{t('public.docs.manuscript.copyPage')}</button></div> : null}
           {loading && !currentDocument ? <div className="docs-state" role="status"><Skeleton placeholder={<><Skeleton.Title /><Skeleton.Paragraph rows={8} /></>} loading /></div> : null}
           {!loading && !error && !currentDocument && !tree.length ? <div className="docs-state"><h1>{t('public.docs.manuscript.noDocuments')}</h1></div> : null}
           {currentDocument ? <MarkdownContent className="docs-markdown" content={currentDocument.content_markdown} enhancedCodeBlocks resolveImageUrl={resolveDocsImageUrl} /> : null}

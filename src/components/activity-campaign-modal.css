@@ -164,13 +164,18 @@
   line-height: 1.4;
 }
 
-.activity-campaign-close {
+.activity-campaign-modal .activity-campaign-close {
   position: absolute;
   top: 20px;
   right: 17px;
   display: grid;
   width: 40px;
   height: 40px;
+  /* 同时约束最小尺寸，避免移动端通用按钮的 44px 最小高度将圆框拉长。 */
+  min-width: 40px;
+  min-height: 40px;
+  padding: 0;
+  box-sizing: border-box;
   place-items: center;
   border: 1px solid rgb(255 255 255 / 92%);
   border-radius: 50%;
@@ -179,30 +184,32 @@
   cursor: pointer;
 }
 
-.activity-campaign-close span,
-.activity-campaign-close span::after {
-  width: 21px;
-  height: 1.5px;
-  background: currentColor;
-  content: "";
-  transition: transform 240ms cubic-bezier(.22, 1, .36, 1);
-  transform: rotate(45deg);
-}
-
-.activity-campaign-close span::after {
+.activity-campaign-close svg {
+  position: absolute;
+  top: 50%;
+  left: 50%;
   display: block;
-  transform: rotate(90deg);
+  width: 24px;
+  height: 24px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  margin: 0;
+  padding: 0;
+  font-size: 0;
+  transform: translate(-50%, -50%);
+  transition: transform 240ms cubic-bezier(.22, 1, .36, 1);
 }
 
 /* 悬停时只旋转叉号，保留外层圆形关闭按钮的位置与边框稳定。 */
-.activity-campaign-close:hover span,
-.activity-campaign-close:focus-visible span {
-  transform: rotate(135deg);
+.activity-campaign-close:hover svg,
+.activity-campaign-close:focus-visible svg {
+  transform: translate(-50%, -50%) rotate(90deg);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .activity-campaign-close span,
-  .activity-campaign-close span::after {
+  .activity-campaign-close svg {
     transition: none;
   }
 }
@@ -236,6 +243,8 @@
 }
 
 .activity-campaign-time-group strong {
+  position: relative;
+  overflow: hidden;
   display: grid;
   width: 45px;
   height: 42px;
@@ -248,13 +257,6 @@
   font-size: 20px;
   font-weight: 500;
   line-height: 1;
-  /* 倒计时每秒更新时保留翻页数字的轻微翻转感。 */
-  animation: activity-campaign-digit-flip 260ms ease both;
-}
-
-@keyframes activity-campaign-digit-flip {
-  from { opacity: 0; transform: perspective(120px) rotateX(-70deg); }
-  to { opacity: 1; transform: perspective(120px) rotateX(0); }
 }
 
 .activity-campaign-time-group i {
@@ -338,16 +340,18 @@ html[data-theme="dark"] .activity-campaign-body {
     font-size: clamp(10px, 2.8vw, 13px);
   }
 
-  .activity-campaign-close {
+  .activity-campaign-modal .activity-campaign-close {
     top: 10px;
     right: 10px;
     width: 34px;
     height: 34px;
+    min-width: 34px;
+    min-height: 34px;
   }
 
-  .activity-campaign-close span,
-  .activity-campaign-close span::after {
-    width: 18px;
+  .activity-campaign-close svg {
+    width: 22px;
+    height: 22px;
   }
 
   .activity-campaign-body {

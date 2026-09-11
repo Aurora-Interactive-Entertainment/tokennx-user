@@ -1,4 +1,9 @@
 /* 详情抽屉跟随全局主题变量，避免浅色模式仍使用硬编码深色背景。 */
+.model-detail-sheet .model-detail-copy.semi-button {
+  color: var(--color-text-tertiary);
+  background: transparent;
+}
+
 .model-detail-sheet .semi-sidesheet-inner {
   color: var(--color-text-default);
   background: var(--color-bg-base-default);

@@ -91,12 +91,10 @@ function pad(value: number): string {
   return String(Math.max(0, value)).padStart(2, "0");
 }
 
-function getCountdown(endAt?: string): Countdown {
-  const end = endAt ? Date.parse(endAt) : Number.NaN;
-  const remaining = Number.isFinite(end)
-    ? Math.max(0, end - Date.now())
-    : 4 * 24 * 60 * 60 * 1000 + 9 * 60 * 60 * 1000 + 20 * 60 * 1000 + 43 * 1000;
-  const totalSeconds = Math.floor(remaining / 1000);
+const PREVIEW_COUNTDOWN_MS = (4 * 86400 + 9 * 3600 + 20 * 60 + 43) * 1000;
+
+export function getActivityCampaignCountdown(endAt: number, now: number): Countdown {
+  const totalSeconds = Math.ceil(Math.max(0, endAt - now) / 1000);
   return {
     days: pad(Math.floor(totalSeconds / 86400)),
     hours: pad(Math.floor((totalSeconds % 86400) / 3600)),
@@ -174,7 +172,9 @@ export function ActivityCampaignModal({
   const authStatus = useAppSelector((state) => state.auth.status);
   const [visible, setVisible] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState(() => Date.now());
+  // 预览只在挂载时确定结束时间，刷新后重置；后续优先使用接口返回的结束时间。
+  const [previewEndAt] = useState(() => now + PREVIEW_COUNTDOWN_MS);
   const loginTimerRef = useRef<number | undefined>(undefined);
   const campaignAvailable = campaign !== null;
   const data = { ...DEFAULT_CAMPAIGN, ...(campaign ?? {}) };
@@ -204,14 +204,17 @@ export function ActivityCampaignModal({
   );
 
   useEffect(() => {
-    if (!data.activityEndAt || !visible) return undefined;
+    if (!visible) return undefined;
+    setNow(Date.now());
+    // 每次按当前时间重新计算，切回后台页面后也不会因计时器延迟产生累计偏差。
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(timer);
-  }, [data.activityEndAt, visible]);
+  }, [visible]);
 
   const countdown = useMemo(() => {
-    return getCountdown(data.activityEndAt);
-  }, [data.activityEndAt, now]);
+    const endAt = data.activityEndAt ? Date.parse(data.activityEndAt) : Number.NaN;
+    return getActivityCampaignCountdown(Number.isFinite(endAt) ? endAt : previewEndAt, now);
+  }, [data.activityEndAt, previewEndAt, now]);
 
   const closeCampaign = useCallback((): void => {
     markActivityCampaignClosedToday();
@@ -253,14 +256,21 @@ export function ActivityCampaignModal({
           <div className="activity-campaign-visual">
             {data.image ? (
               <img src={data.image} alt={campaignCopy} />
-            ) : null}
+            ) : (
+              <CampaignFallbackVisual
+                copy={campaignCopy}
+                autoIssued={t("console.purchasePage.activityModal.autoIssued")}
+              />
+            )}
             <button
               className="activity-campaign-close"
               type="button"
               aria-label={t("console.purchasePage.activityModal.close")}
               onClick={closeCampaign}
             >
-              <span aria-hidden="true" />
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M5 5l14 14M19 5L5 19" />
+              </svg>
             </button>
           </div>
           <div className="activity-campaign-body">

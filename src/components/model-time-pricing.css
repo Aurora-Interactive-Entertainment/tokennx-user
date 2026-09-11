@@ -1,0 +1,94 @@
+.model-time-pricing {
+  margin-top: 12px;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.model-time-pricing-heading,
+.model-time-pricing-label,
+.model-time-pricing-values {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 10px;
+}
+
+.model-time-pricing-heading small {
+  margin-left: 4px;
+  padding: 1px 5px;
+  border: 1px solid var(--color-border-neutral-l1);
+  border-radius: 4px;
+  font-size: 10px;
+}
+
+.model-time-pricing-periods {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.model-time-pricing-period {
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border-neutral-l1);
+  border-radius: 6px;
+  background: var(--color-bg-overlay-l2);
+}
+
+.model-time-pricing-label b {
+  color: var(--color-text-default);
+  font-weight: 500;
+}
+
+.model-time-pricing-period--offPeak .model-time-pricing-label b,
+.model-time-pricing-period--offPeak strong {
+  color: var(--color-success, #29966f);
+}
+
+.model-time-pricing-values {
+  margin-top: 6px;
+}
+
+.model-time-pricing-values > span {
+  white-space: nowrap;
+}
+
+.model-time-pricing-values strong {
+  color: var(--color-text-default);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.model-time-pricing-note {
+  margin-top: 6px;
+  color: var(--color-text-tertiary);
+  font-size: 11px;
+}
+
+.model-time-pricing--compact {
+  margin: 4px 0 8px;
+  font-size: 11px;
+  line-height: 16px;
+}
+
+.model-time-pricing--placeholder {
+  min-height: 94px;
+  visibility: hidden;
+}
+
+.model-time-pricing--compact .model-time-pricing-period {
+  padding: 6px 8px;
+}
+
+@media (max-width: 480px) {
+  .model-time-pricing-periods {
+    grid-template-columns: 1fr;
+  }
+
+  .model-time-pricing-period {
+    padding: 6px 8px;
+  }
+}

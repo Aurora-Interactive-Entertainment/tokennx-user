@@ -2,6 +2,8 @@
 
 .models-console-page .model-card-grid {
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 400px), 1fr));
+  /* 所有行按最高内容等高，兼容有无峰谷价以及长名称换行。 */
+  grid-auto-rows: 1fr;
   /* 轨道整体靠左，卡片从左往右依次排列。 */
   justify-content: start;
   gap: 16px;
@@ -26,8 +28,8 @@
   min-width: min(400px, 100%);
   /* 卡片在轨道内靠左排列，从左往右依次铺开。 */
   justify-self: start;
-  height: 340px;
-  min-height: 340px;
+  height: 100%;
+  min-height: 460px;
   isolation: isolate;
   overflow: visible;
   padding: 0;
@@ -133,7 +135,8 @@
 }
 
 .models-console-page .model-card-link {
-  display: block;
+  display: flex;
+  flex-direction: column;
   width: 100%;
   min-height: 0;
   flex: 1 1 auto;
@@ -281,7 +284,7 @@
 }
 
 .models-console-page .model-card-info-panel {
-  margin: 0;
+  margin: auto 0 0;
   padding: 10px 16px 6px;
   border-radius: 14px;
   background: color-mix(
@@ -372,6 +375,22 @@
 
 .models-console-page .model-card-price-cell small {
   margin-left: 3px;
+}
+
+/* 窄屏将价格标签独立成行，避免输入、输出被逐字挤断。 */
+@media (max-width: 480px) {
+  .models-console-page .model-card-price-cell {
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .models-console-page .model-card-price-cell strong {
+    text-align: left;
+  }
+
+  .models-console-page .model-card-price-cell small {
+    white-space: nowrap;
+  }
 }
 
 .models-console-page .model-card-spec-grid {
@@ -546,8 +565,8 @@ html[data-theme="light"] .models-console-page .model-card-info-panel {
 
   .models-console-page .model-card {
     width: min(595px, 100%);
-    height: auto;
-    min-height: 0;
+    height: 100%;
+    min-height: 460px;
   }
 
   .models-console-page .model-card-link {
