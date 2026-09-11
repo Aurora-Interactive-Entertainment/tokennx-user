@@ -4609,10 +4609,10 @@ export function PublicFooter() {
           <img src={manuscriptFilingIcpIcon} alt="" aria-hidden="true" />
           {PUBLIC_COMPANY_INFO.filing}
         </span>
-        <span className="manuscript-footer-filing-item">
+        {/* <span className="manuscript-footer-filing-item">
           <img src={manuscriptFilingSecurityIcon} alt="" aria-hidden="true" />
           {PUBLIC_COMPANY_INFO.securityFiling}
-        </span>
+        </span> */}
       </div>
       <ManuscriptSupportWidget />
     </footer>

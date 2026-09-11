@@ -1,10 +1,50 @@
+import { execFileSync } from 'node:child_process'
 import { fileURLToPath, URL } from 'node:url'
 import { semiTheming } from '@douyinfe/semi-vite-plugin'
 import { sentryVitePlugin } from '@sentry/vite-plugin'
 import react from '@vitejs/plugin-react'
-import { defineConfig, loadEnv } from 'vite'
+import { defineConfig, loadEnv, type Plugin } from 'vite'
 
 const CHUNK_SIZE_WARNING_LIMIT_KB = 600
+const BUILD_VERSION_MARKER = '__TOKEN_NX_BUILD_VERSION_VALUE__'
+
+function safeVersionPart(value: string): string {
+  return value.trim().replace(/[^0-9A-Za-z._-]/g, '-').replace(/-{2,}/g, '-').slice(0, 80)
+}
+
+function gitCommit(): string {
+  try {
+    return execFileSync('git', ['rev-parse', '--short=12', 'HEAD'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim()
+  } catch {
+    return ''
+  }
+}
+
+// 版本优先由发布流水线指定；本地或未配置流水线时使用构建时间和提交号，保证每次产物都可识别。
+function resolveBuildVersion(env: Record<string, string>): string {
+  const explicit = process.env.VITE_BUILD_VERSION?.trim() || env.VITE_BUILD_VERSION?.trim() || process.env.BUILD_VERSION?.trim() || env.BUILD_VERSION?.trim()
+  const normalizedExplicit = safeVersionPart(explicit || '')
+  if (normalizedExplicit) return normalizedExplicit
+  const commit = safeVersionPart(process.env.GIT_COMMIT_SHA?.trim() || process.env.GITHUB_SHA?.trim() || process.env.CI_COMMIT_SHA?.trim() || gitCommit())
+  const timestamp = new Date().toISOString().replace(/[-:TZ.]/g, '').slice(0, 14)
+  return `build-${timestamp}${commit ? `-${commit}` : ''}`
+}
+
+function buildVersionPlugin(version: string): Plugin {
+  return {
+    name: 'token-nx-build-version',
+    transformIndexHtml(html: string) {
+      return html.replaceAll(BUILD_VERSION_MARKER, version)
+    },
+    generateBundle() {
+      this.emitFile({
+        type: 'asset',
+        fileName: 'version.json',
+        source: `${JSON.stringify({ version, generated_at: new Date().toISOString() }, null, 2)}\n`,
+      })
+    },
+  }
+}
 
 // 按运行时职责拆分共享依赖，避免所有页面共用一个超大 common chunk。
 const CODE_SPLITTING_GROUPS = [
@@ -52,6 +92,7 @@ const CODE_SPLITTING_GROUPS = [
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
+  const buildVersion = resolveBuildVersion(env)
   const sentryBuildEnv = {
     authToken: process.env.SENTRY_AUTH_TOKEN?.trim() || env.SENTRY_AUTH_TOKEN?.trim() || '',
     org: process.env.SENTRY_ORG?.trim() || env.SENTRY_ORG?.trim() || '',
@@ -63,7 +104,7 @@ export default defineConfig(({ mode }) => {
       process.env.GIT_COMMIT_SHA?.trim() ||
       process.env.GITHUB_SHA?.trim() ||
       process.env.CI_COMMIT_SHA?.trim() ||
-      '',
+      buildVersion,
   }
   const uploadSourceMaps =
     (process.env.SENTRY_SOURCE_MAP_UPLOAD || env.SENTRY_SOURCE_MAP_UPLOAD) === 'true'
@@ -88,8 +129,10 @@ export default defineConfig(({ mode }) => {
     // 将 CI 发布版本注入浏览器包，确保运行时事件与 Source Map 使用同一 release。
     define: {
       __SENTRY_RELEASE__: JSON.stringify(sentryBuildEnv.release),
+      __TOKEN_NX_BUILD_VERSION__: JSON.stringify(buildVersion),
     },
     plugins: [
+      buildVersionPlugin(buildVersion),
       // 使用 Semi 官方 Vite 插件提供主题编译入口，结构型 token 保持官方默认值。
       semiTheming({
         include: fileURLToPath(new URL('./src/theme/semi-theme.scss', import.meta.url)),

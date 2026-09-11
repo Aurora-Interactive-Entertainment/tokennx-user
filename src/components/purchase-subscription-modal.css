@@ -395,11 +395,32 @@
 }
 
 .purchase-catalog-state {
+  position: absolute;
+  inset: 0;
+  box-sizing: border-box;
   display: grid;
   gap: 12px;
+  min-height: 0;
+  place-content: center;
+  justify-items: center;
   padding: 24px;
   text-align: center;
   color: var(--purchase-subscription-text, #fff);
+}
+.purchase-catalog-empty-icon {
+  display: inline-grid;
+  width: 88px;
+  height: 88px;
+  place-items: center;
+  margin: 0 auto 8px;
+  border-radius: 50%;
+  color: #91a1b8;
+  background: #e9edf3;
+}
+.purchase-catalog-empty-icon svg { width: 32px; height: 32px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linejoin: round; }
+html[data-theme="dark"] .purchase-catalog-empty-icon {
+  color: #aab8cc;
+  background: #303644;
 }
 .purchase-catalog-state button {
   justify-self: center;
@@ -411,7 +432,7 @@
   cursor: pointer;
 }
 .purchase-subscription-modal-content > .purchase-catalog-state {
-  padding-top: 180px;
+  padding: 24px;
 }
 
 /* 深色弹窗使用更明亮的独立表面和细边界，避免与页面背景融在一起。 */
@@ -532,7 +553,10 @@ html[data-theme="light"] .purchase-subscription-tabs button.is-active {
   }
 
   .purchase-subscription-modal-content > .purchase-catalog-state {
-    padding-top: 32px;
+    position: relative;
+    inset: auto;
+    min-height: 360px;
+    padding: 24px 16px;
   }
 
   .purchase-subscription-tabs::-webkit-scrollbar {

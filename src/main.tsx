@@ -6,6 +6,7 @@ import ReactDOM from 'react-dom/client'
 import App from './App'
 import { AppErrorBoundary } from './components/app-error-boundary'
 import { createReactRootErrorHandler, initSentry } from './observability/sentry'
+import { BUILD_VERSION } from './build-version'
 import { store } from './store'
 import './i18n'
 import './theme'
@@ -17,6 +18,7 @@ import './components/dropdown-options.css'
 
 // 监控必须先于 React 挂载初始化，才能捕获首屏和懒加载阶段的致命异常。
 initSentry()
+if (typeof document !== 'undefined') document.documentElement.dataset.buildVersion = BUILD_VERSION
 
 function applyInitialPerformanceMode(): void {
   if (typeof navigator === 'undefined' || typeof document === 'undefined') return

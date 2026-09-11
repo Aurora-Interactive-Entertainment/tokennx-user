@@ -385,9 +385,23 @@
   color: var(--purchase-muted);
   text-align: center;
 }
+.purchase-plan-state .purchase-catalog-empty-icon {
+  background: #e9edf3;
+}
 .purchase-plan-state strong {
   color: var(--purchase-ink);
   font-size: 18px;
+}
+.purchase-plan-state .purchase-catalog-empty-icon {
+  margin-bottom: 10px;
+}
+.purchase-plan-state .purchase-catalog-empty-icon svg {
+  width: 32px;
+  height: 32px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linejoin: round;
 }
 .purchase-plan-state button {
   min-height: 36px;

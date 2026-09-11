@@ -3,6 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="token-nx-build-version" content="__TOKEN_NX_BUILD_VERSION_VALUE__" />
     <meta name="theme-color" content="#1a1b1d" />
     <meta name="description" content="Token NX 是合规的企业级大型 AI 算力聚合平台，聚合多家大模型算力，提供优质、低价的 API 接入与企业管理能力。" data-seo-managed="true" />
     <meta name="robots" content="index, follow" data-seo-managed="true" />
@@ -250,6 +251,10 @@
     </script>
   </head>
   <body>
+    <script>
+      // 固定地址 version.json 与此全局值共同用于 CDN 发布版本识别。
+      window.__TOKEN_NX_BUILD_VERSION__ = '__TOKEN_NX_BUILD_VERSION_VALUE__';
+    </script>
     <div id="root">
       <script src="/seo-static.js"></script>
       <div id="app-mount"></div>
