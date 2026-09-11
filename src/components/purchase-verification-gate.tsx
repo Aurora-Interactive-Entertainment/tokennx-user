@@ -3,17 +3,19 @@ import { useNavigate } from "react-router";
 import { getRealNameErrorMessage, getRealNameProfile } from "@/api/real-name";
 import { isAuthenticationFailure } from "@/api/http";
 import { getAccessToken } from "@/auth/token-storage";
+import type { BillingContext } from "@/api/billing";
 import { appToast } from "./app-toast";
 import { RealNameRequiredDialog } from "./real-name-required-dialog";
 
 interface PurchaseVerificationGateProps {
   onClose: () => void;
   onAuthFailure?: () => void;
+  context?: BillingContext;
   children: (onRealNameRequired: () => void) => ReactNode;
 }
 
-// 所有购买入口（包括公开联调入口）先通过实名校验，成功后才挂载支付组件和支付会话。
-export function PurchaseVerificationGate({ onClose, onAuthFailure, children }: PurchaseVerificationGateProps) {
+// 个人购买预查个人实名；企业认证及 billing.operate 权限由下单接口按企业主体校验。
+export function PurchaseVerificationGate({ onClose, onAuthFailure, context, children }: PurchaseVerificationGateProps) {
   const navigate = useNavigate();
   const [status, setStatus] = useState<"checking" | "required" | "verified" | "closed">("checking");
   const [checking, setChecking] = useState(true);
@@ -38,6 +40,10 @@ export function PurchaseVerificationGate({ onClose, onAuthFailure, children }: P
           (callbacks.current.onAuthFailure ?? callbacks.current.onClose)();
           return;
         }
+        if (context?.account_type === "enterprise") {
+          setStatus("verified");
+          return;
+        }
         const profile = await getRealNameProfile(accessToken);
         if (!cancelled && !dismissed.current) setStatus(profile.status === "verified" ? "verified" : "required");
       } catch (error) {
@@ -56,7 +62,7 @@ export function PurchaseVerificationGate({ onClose, onAuthFailure, children }: P
     };
     void check();
     return () => { cancelled = true; };
-  }, [retry]);
+  }, [retry, context?.account_type]);
 
   if (status === "verified") return children(requireRealName);
   if (status !== "required") return null;

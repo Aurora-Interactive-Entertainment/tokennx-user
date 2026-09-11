@@ -28,4 +28,11 @@ describe('支付宝支付二维码 iframe', () => {
 
     expect(screen.getByTitle('支付宝二维码')).toHaveStyle({ width: '250px', height: '250px', transform: 'scale(1)' })
   })
+
+  it('读取 action 中签名参数的二维码宽度且原样提交表单', () => {
+    const form = '<form method="post" action="https://openapi.alipay.com/gateway.do?sign=test&amp;biz_content=%7B%22qrcode_width%22%3A200%7D"><input type="submit"></form>'
+    render(<PaymentQRCodeFrame formHTML={form} title="支付宝二维码" errorMessage="加载失败" onError={vi.fn()} />)
+    expect(screen.getByTitle('支付宝二维码')).toHaveStyle({ width: '200px', height: '200px', transform: 'scale(1.25)' })
+    expect(submitPaymentFormHTML).toHaveBeenCalledWith(form, expect.any(Object))
+  })
 })

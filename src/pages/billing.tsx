@@ -7,7 +7,7 @@ import Tooltip from '@douyinfe/semi-ui/lib/es/tooltip'
 import Modal from '@/components/app-modal'
 import Toast from '@douyinfe/semi-ui/lib/es/toast'
 import { IconCoinMoneyStroked, IconDownload, IconGiftStroked, IconHistory, IconInfoCircle, IconMoneyExchangeStroked, IconRefresh, IconShareMoneyStroked, IconTaskMoneyStroked, IconTicketCodeExchangeStroked } from '@douyinfe/semi-icons'
-import { isApiError, isAuthenticationFailure } from '@/api/http'
+import { ApiError, isApiError, isAuthenticationFailure } from '@/api/http'
 import {
   BILLING_FIRST_PAGE,
   BILLING_PAGE_SIZE,
@@ -30,7 +30,6 @@ import {
   type BillingInvoiceResponse,
   type BillingPageResult,
   type BillingPaymentOrder,
-  type BillingPaymentStartResult,
   type BillingStatementLine,
 } from '@/api/billing'
 import { getAllUserApiKeys } from '@/api/user-api-keys'
@@ -42,7 +41,9 @@ import { TraePagination } from '@/components/trae-pagination'
 import { BackofficeMoneyText as MoneyText } from '@/components/money'
 import { PaymentQRCodeFrame } from '@/components/payment-qr-frame'
 import { PaymentQRCode } from '@/components/payment-qr-code'
-import { isAllowedAlipayPaymentUrl } from '@/api/payment-form'
+import { isPaymentActive, isPaymentSettled, isPaymentOrderPollable, paymentCarrier } from '@/api/payment-flow'
+import { useBillingPaymentPolling } from '@/components/use-billing-payment-polling'
+import { usePaymentExpiry } from '@/components/use-payment-expiry'
 import { CompatSelect as Select } from '@/components/semi-compat'
 import alipayIcon from '@/assets/payment-icons/alipay.svg'
 import wechatIcon from '@/assets/payment-icons/wechat.svg'
@@ -50,7 +51,7 @@ import { useAppStore, type Workspace } from '@/data/app-state'
 import { invalidateAuth } from '@/store/auth-slice'
 import { useAppDispatch } from '@/store/hooks'
 import i18n from '@/i18n'
-import { BACKOFFICE_MONEY_DISPLAY_DECIMAL_PLACES, formatApiTime, formatCount, formatPersonOptionLabel, formatYuan, isZeroYuan } from '@/utils/format'
+import { BACKOFFICE_MONEY_DISPLAY_DECIMAL_PLACES, formatApiTime, formatCount, formatPersonOptionLabel, formatYuan, formatYuanExact, isZeroYuan } from '@/utils/format'
 import { addLocalDays, endOfLocalDay, startOfLocalDay } from '@/utils/date-range'
 import { createExportTask, downloadExportTask, getExportErrorMessage, saveExportResponse, waitForExportTask } from '@/api/exports'
 import { BillingCostCharts } from '@/components/billing-cost-charts'
@@ -94,11 +95,6 @@ function billingTabFromSearch(search: string): BillingTab {
 // 快捷金额与新的充值管理设计稿保持一致，桌面端优先在一行内完整展示。
 const RECHARGE_OPTIONS = [100, 200, 500, 1000, 2000, 5000, 10000] as const
 const MIN_RECHARGE_AMOUNT = 10
-const PAYMENT_STATUS_POLL_INTERVAL_MS = 2000
-// 支付查单只在有限时间内自动进行，避免网络异常时无限请求后端。
-const PAYMENT_STATUS_POLL_TIMEOUT_MS = 5 * 60 * 1000
-const PAYMENT_STATUS_POLL_MAX_INTERVAL_MS = 10 * 1000
-const PAYMENT_ACTIVE_STATUSES = new Set(['pending', 'paying'])
 const DEFAULT_INVOICE_FILE_EXTENSION = 'pdf'
 export function billingContextForWorkspace(workspace: Pick<Workspace, 'id' | 'type'>): BillingContext {
   return workspace.type === 'enterprise' ? { account_type: 'enterprise', enterprise_id: workspace.id } : { account_type: 'personal' }
@@ -318,32 +314,8 @@ export function paymentStatusCopy(status: string): { tone: 'info' | 'warning' | 
   return { tone: 'warning', label: i18n.t('console.billing.paymentStatusUnknown') }
 }
 
-function isPaymentActive(status: string): boolean {
-  return PAYMENT_ACTIVE_STATUSES.has(status)
-}
-
-// 支付订单的 paid 状态必须同时具备服务端确认时间，避免不完整响应被展示为已到账。
-function isPaymentSettled(order: Pick<BillingPaymentOrder, 'status' | 'paid_at'>): boolean {
-  return order.status === 'paid' && Boolean(order.paid_at)
-}
-
-function isPaymentOrderPollable(order: Pick<BillingPaymentOrder, 'status' | 'paid_at'>): boolean {
-  return isPaymentActive(order.status) || (order.status === 'paid' && !order.paid_at)
-}
-
 function paymentOrderStatusCopy(order: Pick<BillingPaymentOrder, 'status' | 'paid_at'>): ReturnType<typeof paymentStatusCopy> {
   return paymentStatusCopy(isPaymentSettled(order) ? order.status : order.status === 'paid' ? 'unknown' : order.status)
-}
-
-function extractPaymentQRCodeValue(payment: BillingPaymentStartResult): string {
-  const candidates = [
-    payment.transaction?.payment_url,
-    payment.payment_url,
-    payment.qr_code,
-    payment.qr_code_url,
-    payment.qr_url,
-  ]
-  return candidates.find((value): value is string => typeof value === 'string' && isAllowedAlipayPaymentUrl(value))?.trim() ?? ''
 }
 
 export function PaymentReturnNotice({ state, onRetry }: { state: ResourceState<BillingPaymentOrder>; onRetry: () => void }) {
@@ -412,7 +384,10 @@ function safeAmount(value: string | number | undefined | null): number {
 
 function PlainMoney({ value, negative = false }: { value: string; negative?: boolean }) {
   const display = formatYuan(value, BACKOFFICE_MONEY_DISPLAY_DECIMAL_PLACES)
-  return <span>{negative && display !== '--' ? `-${display}` : display}</span>
+  const exact = formatYuanExact(value)
+  // 余额卡片会用省略号截断超长金额，title 保证 hover 时仍能看到完整数值。
+  const title = exact === '--' ? undefined : negative ? `-${exact}` : exact
+  return <span title={title}>{negative && display !== '--' ? `-${display}` : display}</span>
 }
 
 function BillingSectionInfo({ content }: { content: string }) {
@@ -597,6 +572,8 @@ export function RechargeTab({ context, onOrderUpdated, onAuthFailure }: { contex
   const [paymentOrder, setPaymentOrder] = useState<BillingPaymentOrder | null>(null)
   const [paymentFormHTML, setPaymentFormHTML] = useState('')
   const [paymentQRCodeValue, setPaymentQRCodeValue] = useState('')
+  const [paymentAttemptExpiresAt, setPaymentAttemptExpiresAt] = useState<number | null>(null)
+  const { expired: paymentExpired } = usePaymentExpiry(paymentOrder?.expires_at, paymentAttemptExpiresAt)
   const [paymentFormError, setPaymentFormError] = useState('')
   const [paymentQueryError, setPaymentQueryError] = useState('')
   const [paymentQuerying, setPaymentQuerying] = useState(false)
@@ -605,9 +582,14 @@ export function RechargeTab({ context, onOrderUpdated, onAuthFailure }: { contex
   const paymentOrderIdempotencyKeyRef = useRef<string | null>(null)
   const paymentStartIdempotencyKeyRef = useRef<string | null>(null)
   const pendingPaymentOrderIDRef = useRef<string | null>(null)
+  const paymentSubmittingRef = useRef(false)
+  const paymentControllerRef = useRef<AbortController | null>(null)
   const agreementAccepted = true
   const [paymentMethod, setPaymentMethod] = useState<'alipay' | 'wechat'>('alipay')
   const [realNameDialogOpen, setRealNameDialogOpen] = useState(false)
+
+  // 切换账务主体或离开充值页后，中止旧请求，避免旧订单继续发起支付。
+  useEffect(() => () => paymentControllerRef.current?.abort(), [])
 
   const handlePaymentFormError = useCallback((error: unknown) => {
     setPaymentFormError(getBillingErrorMessage(error))
@@ -628,6 +610,7 @@ export function RechargeTab({ context, onOrderUpdated, onAuthFailure }: { contex
     setPaymentOrder(null)
     setPaymentFormHTML('')
     setPaymentQRCodeValue('')
+    setPaymentAttemptExpiresAt(null)
     setPaymentFormError('')
     setPaymentQueryError('')
     setPaymentQuerying(false)
@@ -652,55 +635,22 @@ export function RechargeTab({ context, onOrderUpdated, onAuthFailure }: { contex
     }
   }
 
-  useEffect(() => {
-    if (!paymentDialogOpen || !paymentOrder || !isPaymentOrderPollable(paymentOrder)) return
-    const controller = new AbortController()
-    let disposed = false
-    let timer: number | undefined
-    const startedAt = Date.now()
-    let failureCount = 0
-
-    // 前置模式没有可靠的跨域支付回跳，持续通过服务端查单确认最终状态。
-    const poll = async (): Promise<void> => {
-      if (disposed) return
-      if (Date.now() - startedAt >= PAYMENT_STATUS_POLL_TIMEOUT_MS) {
-        setPaymentQueryError(i18n.t('console.billing.paymentStatusUnknown'))
-        setPaymentQuerying(false)
-        return
+  useBillingPaymentPolling({
+    context, order: paymentOrder, enabled: paymentDialogOpen, refreshToken: paymentRefreshToken, expired: paymentExpired,
+    onOrder: (latestOrder) => {
+      setPaymentQueryError('')
+      setPaymentOrder(latestOrder)
+      if (!isPaymentOrderPollable(latestOrder)) {
+        paymentOrderIdempotencyKeyRef.current = null
+        paymentStartIdempotencyKeyRef.current = null
+        pendingPaymentOrderIDRef.current = null
+        onOrderUpdated()
       }
-      setPaymentQuerying(true)
-      try {
-        const latestOrder = await getBillingPaymentOrder(paymentOrder.id, { signal: controller.signal }, context)
-        if (disposed) return
-        failureCount = 0
-        setPaymentQueryError('')
-        setPaymentOrder(latestOrder)
-        if (!isPaymentOrderPollable(latestOrder)) {
-          paymentOrderIdempotencyKeyRef.current = null
-          paymentStartIdempotencyKeyRef.current = null
-          pendingPaymentOrderIDRef.current = null
-          onOrderUpdated()
-          return
-        }
-        timer = window.setTimeout(() => void poll(), PAYMENT_STATUS_POLL_INTERVAL_MS)
-      } catch (error) {
-        if (disposed || controller.signal.aborted) return
-        failureCount += 1
-        setPaymentQueryError(getBillingErrorMessage(error))
-        const retryDelay = Math.min(PAYMENT_STATUS_POLL_MAX_INTERVAL_MS, PAYMENT_STATUS_POLL_INTERVAL_MS * (2 ** Math.min(failureCount - 1, 3)))
-        timer = window.setTimeout(() => void poll(), retryDelay)
-      } finally {
-        if (!disposed) setPaymentQuerying(false)
-      }
-    }
-
-    void poll()
-    return () => {
-      disposed = true
-      controller.abort()
-      if (timer !== undefined) window.clearTimeout(timer)
-    }
-  }, [context.account_type, context.enterprise_id, onOrderUpdated, paymentDialogOpen, paymentOrder?.id, paymentOrder?.status, paymentRefreshToken])
+    },
+    onError: (error) => { if (isAuthenticationFailure(error)) onAuthFailure(); else setPaymentQueryError(getBillingErrorMessage(error)) },
+    onTimeout: () => setPaymentQueryError(i18n.t('console.billing.paymentStatusUnknown')),
+    onQuerying: setPaymentQuerying,
+  })
 
   function choose(value: number): void {
     paymentOrderIdempotencyKeyRef.current = null
@@ -710,44 +660,55 @@ export function RechargeTab({ context, onOrderUpdated, onAuthFailure }: { contex
     setAmount(String(value))
   }
 
+  function choosePaymentMethod(method: 'alipay' | 'wechat'): void {
+    if (paymentSubmittingRef.current || method === paymentMethod) return
+    // 同一订单可重试支付；切换渠道必须使用新的支付幂等键，避免参数冲突。
+    paymentStartIdempotencyKeyRef.current = null
+    setPaymentMethod(method)
+  }
+
   async function handleRecharge(): Promise<void> {
-    if (paymentMethod !== 'alipay') {
-      Toast.warning(i18n.t('console.billing.wechatPaymentUnavailable'))
-      return
-    }
     const amountValidation = validateRechargeAmount(amount)
     const value = parseAmount(amount)
     if (amountValidation !== null || value === null) {
       Toast.error(i18n.t(amountValidation === 'required' ? 'console.billing.amountRequired' : amountValidation === 'minimum' ? 'console.billing.amountMinimum' : 'console.billing.amountInvalid'))
       return
     }
-    if (submitting) return
+    if (submitting || paymentSubmittingRef.current) return
+    paymentSubmittingRef.current = true
+    const controller = new AbortController()
+    paymentControllerRef.current = controller
+    const { signal } = controller
     setSubmitting(true)
     setPaymentOrder(null)
     setPaymentDialogOpen(false)
     setPaymentFormHTML('')
     setPaymentQRCodeValue('')
+    setPaymentAttemptExpiresAt(null)
     setPaymentFormError('')
     setPaymentQueryError('')
     try {
       const orderIdempotencyKey = paymentOrderIdempotencyKeyRef.current ?? createIdempotencyKey('payment-order')
       paymentOrderIdempotencyKeyRef.current = orderIdempotencyKey
       const order = pendingPaymentOrderIDRef.current
-        ? await getBillingPaymentOrder(pendingPaymentOrderIDRef.current, {}, context)
-        : await createBillingPaymentOrder(context, { amount_yuan: amount.trim() }, orderIdempotencyKey)
+        ? await getBillingPaymentOrder(pendingPaymentOrderIDRef.current, { signal }, context)
+        : await createBillingPaymentOrder(context, { amount_yuan: amount.trim() }, orderIdempotencyKey, { signal })
+      if (signal.aborted) return
       pendingPaymentOrderIDRef.current = order.id
       // 支付、查单接口同样需要携带当前账务主体，否则企业订单会被路由到个人接口。
       const startIdempotencyKey = paymentStartIdempotencyKeyRef.current ?? createIdempotencyKey('payment-start')
       paymentStartIdempotencyKeyRef.current = startIdempotencyKey
-      const payment = await startBillingPayment(order.id, startIdempotencyKey, {}, context)
+      // 充值页统一沿用电脑扫码场景；微信必须显式指定渠道，支付宝保留原请求参数。
+      const payment = await startBillingPayment(order.id, startIdempotencyKey, { signal, ...(paymentMethod === 'wechat' ? { scene: 'pc' as const, channel: 'wechat' } : {}) }, context)
+      if (signal.aborted) return
       setPaymentOrder(payment.order)
       if (!isPaymentOrderPollable(payment.order)) {
         paymentOrderIdempotencyKeyRef.current = null
         paymentStartIdempotencyKeyRef.current = null
         pendingPaymentOrderIDRef.current = null
       }
-      const qrCodeValue = extractPaymentQRCodeValue(payment)
-      const formHTML = payment.form_html?.trim() ?? ''
+      const { qr: qrCodeValue, form: formHTML } = paymentCarrier(payment, paymentMethod)
+      setPaymentAttemptExpiresAt(payment.transaction?.expires_at ?? null)
       setPaymentQRCodeValue(qrCodeValue)
       if (!formHTML && !qrCodeValue) {
         if (isPaymentSettled(payment.order)) {
@@ -758,23 +719,25 @@ export function RechargeTab({ context, onOrderUpdated, onAuthFailure }: { contex
           Toast.success(i18n.t('console.billing.paymentStatusPaid'))
           return
         }
-        throw new Error(i18n.t('api.billing.paymentFormInvalid'))
+        throw new ApiError(i18n.t(paymentMethod === 'wechat' ? 'api.billing.wechatQRCodeInvalid' : 'api.billing.paymentFormInvalid'), 502, 0, null)
       }
       setPaymentFormHTML(formHTML)
       setPaymentDialogOpen(true)
     } catch (error) {
+      if (signal.aborted) return
       if (isAuthenticationFailure(error)) {
         onAuthFailure()
         return
       }
-      if (isApiError(error) && error.code === 140008) {
+      if (isApiError(error) && [140008, 170008].includes(error.code)) {
         // 实名认证拦截仅展示引导弹窗，避免顶部提示与弹窗重复。
         setRealNameDialogOpen(true)
         return
       }
       Toast.error(getBillingErrorMessage(error))
     } finally {
-      setSubmitting(false)
+      paymentSubmittingRef.current = false
+      if (!signal.aborted) setSubmitting(false)
     }
   }
 
@@ -784,6 +747,9 @@ export function RechargeTab({ context, onOrderUpdated, onAuthFailure }: { contex
   const amountValidation = selected === null ? validateRechargeAmount(amount) : null
   const amountValidationMessage = amountValidation === 'required' ? i18n.t('console.billing.amountRequired') : amountValidation === 'minimum' ? i18n.t('console.billing.amountMinimum') : amountValidation === 'invalid' ? i18n.t('console.billing.amountInvalid') : ''
   const customAmountSelected = selected === null && Boolean(amount.trim())
+  const paymentFrameTitle = i18n.t(paymentMethod === 'wechat' ? 'console.billing.wechatPaymentFrameTitle' : 'console.billing.paymentFrameTitle')
+  const paymentFrameHint = i18n.t(paymentMethod === 'wechat' ? 'console.billing.wechatPaymentFrameHint' : 'console.billing.paymentFrameHint')
+  const paymentCarrierError = i18n.t(paymentMethod === 'wechat' ? 'api.billing.wechatQRCodeInvalid' : 'api.billing.paymentFormInvalid')
 
   return (
     <section className="billing-subpage billing-recharge-page">
@@ -793,8 +759,8 @@ export function RechargeTab({ context, onOrderUpdated, onAuthFailure }: { contex
           <div className="recharge-form-label"><strong>{i18n.t('console.billing.rechargeAmount')}</strong><span className="recharge-required" aria-hidden="true">*</span></div>
           <div className="recharge-amount-content">
             <div className="recharge-options" id="rechargeOptions">
-              {RECHARGE_OPTIONS.map((value) => <button type="button" className={`recharge-option${selected === value ? ' active' : ''}`} aria-pressed={selected === value} key={value} onClick={() => choose(value)}><span className="recharge-amount">{value} {i18n.t('console.billing.amountUnit')}</span><span className="recharge-selected-corner" aria-hidden="true">✓</span></button>)}
-              <label className={`recharge-option recharge-option-other${customAmountSelected ? ' active' : ''}`} htmlFor="rechargeCustomAmount"><input id="rechargeCustomAmount" aria-label={i18n.t('console.billing.otherAmount')} aria-describedby="rechargeAmountValidation" aria-invalid={amountValidation !== null} inputMode="decimal" type="text" value={selected === null ? amount : ''} onFocus={() => { if (selected !== null) { paymentOrderIdempotencyKeyRef.current = null; paymentStartIdempotencyKeyRef.current = null; pendingPaymentOrderIDRef.current = null; setSelected(null); setAmount('') } }} onChange={(event) => { paymentOrderIdempotencyKeyRef.current = null; paymentStartIdempotencyKeyRef.current = null; pendingPaymentOrderIDRef.current = null; setSelected(null); setAmount(sanitizeRechargeAmountInput(event.target.value)) }} placeholder={i18n.t('console.billing.otherAmountPlaceholder')} /><span className="recharge-selected-corner" aria-hidden="true">✓</span></label>
+              {RECHARGE_OPTIONS.map((value) => <button type="button" className={`recharge-option${selected === value ? ' active' : ''}`} aria-pressed={selected === value} key={value} disabled={submitting} onClick={() => choose(value)}><span className="recharge-amount">{value} {i18n.t('console.billing.amountUnit')}</span><span className="recharge-selected-corner" aria-hidden="true">✓</span></button>)}
+              <label className={`recharge-option recharge-option-other${customAmountSelected ? ' active' : ''}`} htmlFor="rechargeCustomAmount"><input id="rechargeCustomAmount" disabled={submitting} aria-label={i18n.t('console.billing.otherAmount')} aria-describedby="rechargeAmountValidation" aria-invalid={amountValidation !== null} inputMode="decimal" type="text" value={selected === null ? amount : ''} onFocus={() => { if (selected !== null) { paymentOrderIdempotencyKeyRef.current = null; paymentStartIdempotencyKeyRef.current = null; pendingPaymentOrderIDRef.current = null; setSelected(null); setAmount('') } }} onChange={(event) => { paymentOrderIdempotencyKeyRef.current = null; paymentStartIdempotencyKeyRef.current = null; pendingPaymentOrderIDRef.current = null; setSelected(null); setAmount(sanitizeRechargeAmountInput(event.target.value)) }} placeholder={i18n.t('console.billing.otherAmountPlaceholder')} /><span className="recharge-selected-corner" aria-hidden="true">✓</span></label>
             </div>
             {amountValidationMessage ? <p className="recharge-amount-validation" id="rechargeAmountValidation" role="alert">{amountValidationMessage}</p> : null}
           </div>
@@ -802,8 +768,8 @@ export function RechargeTab({ context, onOrderUpdated, onAuthFailure }: { contex
         <div className="recharge-form-row recharge-method-row">
           <div className="recharge-form-label"><strong>{i18n.t('console.billing.paymentPlatform')}</strong><span className="recharge-required" aria-hidden="true">*</span></div>
           <div className="recharge-method-controls">
-            <button type="button" className={`recharge-method-option${paymentMethod === 'wechat' ? ' is-selected' : ''}`} aria-pressed={paymentMethod === 'wechat'} onClick={() => setPaymentMethod('wechat')}><img className="recharge-method-icon" src={wechatIcon} alt="" /><span>{i18n.t('console.billing.wechat')}</span><span className="recharge-selected-corner" aria-hidden="true">✓</span></button>
-            <button type="button" className={`recharge-method-option${paymentMethod === 'alipay' ? ' is-selected' : ''}`} aria-label={i18n.t('console.billing.alipayPay')} aria-pressed={paymentMethod === 'alipay'} onClick={() => setPaymentMethod('alipay')}><img className="recharge-method-icon" src={alipayIcon} alt="" /><span>{i18n.t('console.billing.alipay')}</span><span className="recharge-selected-corner" aria-hidden="true">✓</span></button>
+            <button type="button" className={`recharge-method-option${paymentMethod === 'wechat' ? ' is-selected' : ''}`} aria-pressed={paymentMethod === 'wechat'} disabled={submitting} onClick={() => choosePaymentMethod('wechat')}><img className="recharge-method-icon" src={wechatIcon} alt="" /><span>{i18n.t('console.billing.wechat')}</span><span className="recharge-selected-corner" aria-hidden="true">✓</span></button>
+            <button type="button" className={`recharge-method-option${paymentMethod === 'alipay' ? ' is-selected' : ''}`} aria-label={i18n.t('console.billing.alipayPay')} aria-pressed={paymentMethod === 'alipay'} disabled={submitting} onClick={() => choosePaymentMethod('alipay')}><img className="recharge-method-icon" src={alipayIcon} alt="" /><span>{i18n.t('console.billing.alipay')}</span><span className="recharge-selected-corner" aria-hidden="true">✓</span></button>
           </div>
         </div>
         <div className="recharge-form-actions"><Button className="recharge-confirm-button" theme="solid" type="primary" aria-label={i18n.t('console.billing.rechargeNow')} loading={submitting} disabled={submitting || !agreementAccepted || rechargeAmount === null || rechargeAmount < MIN_RECHARGE_AMOUNT || amountValidation !== null} onClick={() => void handleRecharge()}>{i18n.t('console.billing.rechargeNow')}</Button><span>{i18n.t('console.billing.viewRechargeRecordsPrefix')} <Link to="/console/billing">{i18n.t('console.billing.rechargeRecords')}</Link></span></div>
@@ -812,7 +778,9 @@ export function RechargeTab({ context, onOrderUpdated, onAuthFailure }: { contex
         <div className="payment-qr-dialog-content">
           <div className="payment-qr-dialog-order"><p>{i18n.t('console.billing.paymentReturnOrder', { orderNo: paymentOrder.order_no })}</p><span>{paymentCopy.label}</span></div>
           <strong className="payment-qr-dialog-amount">{formatYuan(paymentOrder.amount_yuan, 2)}</strong>
-          {paymentActive && (paymentQRCodeValue || paymentFormHTML) ? <><p className="payment-qr-hint">{i18n.t('console.billing.paymentFrameHint')}</p>{paymentQRCodeValue ? <PaymentQRCode value={paymentQRCodeValue} title={i18n.t('console.billing.paymentFrameTitle')} errorMessage={i18n.t('api.billing.paymentFormInvalid')} onError={handlePaymentFormError} /> : <PaymentQRCodeFrame formHTML={paymentFormHTML} title={i18n.t('console.billing.paymentFrameTitle')} errorMessage={i18n.t('api.billing.paymentFormInvalid')} onError={handlePaymentFormError} />}<Button className="payment-qr-refresh-button" theme="outline" size="small" icon={<IconRefresh />} loading={paymentQuerying} disabled={!paymentActive || paymentQuerying} onClick={() => { setPaymentQueryError(''); setPaymentRefreshToken((value) => value + 1) }}>{i18n.t('console.billing.paymentRefresh')}</Button></> : null}
+          {paymentExpired && isPaymentActive(paymentOrder.status) ? <p role="status">{i18n.t('console.billing.paymentStatusExpired')}</p> : null}
+          {isPaymentActive(paymentOrder.status) && !paymentExpired && (paymentQRCodeValue || paymentFormHTML) ? <><p className="payment-qr-hint">{paymentFrameHint}</p>{paymentQRCodeValue ? <PaymentQRCode value={paymentQRCodeValue} title={paymentFrameTitle} errorMessage={paymentCarrierError} onError={handlePaymentFormError} /> : <PaymentQRCodeFrame formHTML={paymentFormHTML} title={paymentFrameTitle} errorMessage={paymentCarrierError} onError={handlePaymentFormError} />}</> : null}
+          {paymentActive ? <Button className="payment-qr-refresh-button" theme="outline" size="small" icon={<IconRefresh />} loading={paymentQuerying} disabled={!paymentActive || paymentQuerying} onClick={() => { setPaymentQueryError(''); setPaymentRefreshToken((value) => value + 1) }}>{i18n.t('console.billing.paymentRefresh')}</Button> : null}
         </div>
       </Modal> : null}
       <RealNameRequiredDialog

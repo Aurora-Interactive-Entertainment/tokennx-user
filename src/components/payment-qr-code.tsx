@@ -22,7 +22,8 @@ export function PaymentQRCode({ value, title, errorMessage, onError }: PaymentQR
     canvas.width = 0
     canvas.height = 0
 
-    void QRCode.toCanvas(canvas, value.trim(), {
+    // 微信二维码是支付渠道返回的完整载体，校验非空后不得改写其内容。
+    void QRCode.toCanvas(canvas, value, {
       width: 320,
       margin: 2,
       color: { dark: '#111827', light: '#ffffff' },

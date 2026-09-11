@@ -10048,6 +10048,16 @@ html[data-theme="dark"] .generation-send-button.send-btn.is-running.semi-button:
   gap: var(--spacing-12);
   margin-top: auto;
 }
+/* 金额过长时省略号截断并让出空间，充值按钮固定保留在卡片右侧不被顶出。 */
+.billing-balance-card-footer > strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.billing-balance-card-footer > .billing-balance-recharge-button {
+  flex: 0 0 auto;
+}
 .billing-balance-card-heading {
   display: flex;
   align-items: center;

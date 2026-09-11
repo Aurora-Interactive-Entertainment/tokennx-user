@@ -35,6 +35,27 @@ const ENTERPRISE_CONTEXT: BillingContext = { account_type: 'enterprise', enterpr
 describe('用户账务 API 客户端', () => {
   beforeEach(() => vi.restoreAllMocks())
 
+  it.each([
+    { plan_id: 'plan-1', amount_yuan: '0.01' },
+    { plan_id: '' },
+    { plan_id: 'plan-1', quantity: 0 },
+    { plan_id: 'plan-1', quantity: 1.5 },
+    { plan_id: 'plan-1', quantity: 100001 },
+    { amount_yuan: '1.00', quantity: 1 },
+    { plan_id: 'plan-1', description: 'x'.repeat(501) },
+    {},
+  ])('无效套餐请求不会发送到支付服务：%j', (input) => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch')
+    expect(() => createBillingPaymentOrder(PERSONAL_CONTEXT, input as never, 'valid-key')).toThrow(ApiError)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it.each(['', 'x'.repeat(129), '中文键', 'key\nvalue'])('阻止无效支付幂等键：%j', (key) => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch')
+    expect(() => createBillingPaymentOrder(PERSONAL_CONTEXT, { plan_id: 'plan-1' }, key)).toThrow(ApiError)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
   it('套餐购买发送商品公开 ID 和数量，不提交客户端金额', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(apiResponse({ id: 'plan-order' }))
     await createBillingPaymentOrder(ENTERPRISE_CONTEXT, { plan_id: 'plan-public-id', quantity: 1 }, 'plan-order-key', { accessToken: 'billing-token' })

@@ -1,13 +1,13 @@
-/* 弹窗沿用 Figma 的 1000px 宽布局，并压缩标题区留白后的紧凑高度。 */
+/* 放大购买目录，保证套餐名称、额度和价格在桌面端清晰可读。 */
 .purchase-subscription-modal .semi-modal {
-  width: min(1000px, calc(100vw - 24px)) !important;
+  width: min(1520px, calc(100vw - 48px)) !important;
   max-width: none;
 }
 
 .purchase-subscription-modal .semi-modal-content.app-modal-content {
   width: 100%;
-  height: 490px;
-  max-height: calc(100dvh - 24px);
+  height: min(700px, calc(100dvh - 48px));
+  max-height: calc(100dvh - 48px);
   padding: 0;
   border: 0;
   border-radius: 15px;
@@ -35,8 +35,8 @@
   --purchase-subscription-muted: #8b8f99;
   position: relative;
   width: 100%;
-  /* 压缩标题、说明与筛选区的留白，同时保持卡片与底部的间距。 */
-  height: 490px;
+  /* 缩短卡片整排下方的留白，保留卡片内部和滚动区域的原有间距。 */
+  height: min(700px, calc(100dvh - 48px));
   overflow: hidden;
   border-radius: 15px;
   background: #0f1117;
@@ -44,11 +44,11 @@
 
 .purchase-subscription-modal-content h2 {
   position: absolute;
-  top: 27px;
-  left: 34px;
+  top: 42px;
+  left: 52px;
   margin: 0;
   color: var(--purchase-subscription-text);
-  font-size: 42px;
+  font-size: 56px;
   font-weight: 700;
   line-height: 58px;
   letter-spacing: -1px;
@@ -56,12 +56,12 @@
 
 .purchase-subscription-modal-subtitle {
   position: absolute;
-  top: 106px;
-  left: 34px;
+  top: 126px;
+  left: 52px;
   margin: 0;
   color: var(--purchase-subscription-muted);
-  font-size: 14px;
-  line-height: 18px;
+  font-size: 18px;
+  line-height: 26px;
 }
 
 .purchase-subscription-plan-price:focus-visible,
@@ -72,11 +72,11 @@
 
 .purchase-subscription-tabs {
   position: absolute;
-  top: 146px;
-  left: 34px;
+  top: 184px;
+  left: 52px;
   display: grid;
-  width: calc(100% - 68px);
-  height: 44px;
+  width: calc(100% - 104px);
+  height: 54px;
   grid-template-columns: repeat(var(--purchase-subscription-tab-count, 1), minmax(90px, 1fr));
   overflow-x: auto;
   scrollbar-width: thin;
@@ -90,10 +90,10 @@
 
 .purchase-subscription-tabs::before {
   position: absolute;
-  top: 6px;
-  bottom: 6px;
-  left: 6px;
-  width: max(90px, calc((100% - 12px) / var(--purchase-subscription-tab-count, 1)));
+  top: 7px;
+  bottom: 7px;
+  left: 7px;
+  width: max(110px, calc((100% - 14px) / var(--purchase-subscription-tab-count, 1)));
   border-radius: 16px;
   background: linear-gradient(100deg, #dbf1f9 0%, #bf98ee 100%);
   content: "";
@@ -113,8 +113,8 @@
   color: #878b95;
   background: transparent;
   font: inherit;
-  font-size: 14px;
-  line-height: 30px;
+  font-size: 18px;
+  line-height: 38px;
   white-space: nowrap;
   cursor: pointer;
   transition: color 180ms ease;
@@ -126,16 +126,22 @@
 
 .purchase-subscription-plans {
   position: absolute;
-  top: 216px;
-  left: 34px;
+  top: 264px;
+  left: 52px;
   display: grid;
-  width: calc(100% - 68px);
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: 20px;
+  width: calc(100% - 104px);
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 24px;
   /* 目录数量由接口决定，超出一排后在卡片区域滚动。 */
-  max-height: 262px;
+  max-height: calc(100% - 286px);
   overflow-y: auto;
   padding-block: 4px;
+  /* 保留滚动能力但隐藏原生滚动条，避免切换分类时右侧出现突兀的灰色滑块。 */
+  scrollbar-width: none;
+}
+
+.purchase-subscription-plans::-webkit-scrollbar {
+  display: none;
 }
 
 @keyframes purchase-subscription-plan-in {
@@ -154,7 +160,7 @@
   --purchase-subscription-card-hover-border: #f080b4;
   position: relative;
   width: 100%;
-  height: 238px;
+  height: 350px;
   box-sizing: border-box;
   overflow: hidden;
   /* 用内描边覆盖在图片上，确保卡片边框与图片边缘连续。 */
@@ -270,18 +276,18 @@
   inset: 0;
   z-index: 1;
   box-sizing: border-box;
-  padding: 30px 9px 0;
+  padding: 42px 18px 0;
   color: #17181b;
 }
 
 .purchase-subscription-plan-content h3 {
   display: flex;
   align-items: center;
-  gap: 5px;
-  margin: 0 0 7px;
-  font-size: 14px;
+  gap: 8px;
+  margin: 0 0 10px;
+  font-size: 20px;
   font-weight: 700;
-  line-height: 18px;
+  line-height: 26px;
 }
 
 /* 套餐名单行截断，把右侧空间让给限购标签。 */
@@ -295,56 +301,56 @@
 /* 限购标签：粉橙渐变胶囊，紧跟套餐名靠右展示，后续由接口字段控制显隐。 */
 .purchase-subscription-limit-tag {
   flex: 0 0 auto;
-  height: 18px;
-  padding: 0 4px;
-  border-radius: 9px;
+  height: 24px;
+  padding: 0 7px;
+  border-radius: 12px;
   background: linear-gradient(90deg, #df5075 0%, #ef964a 100%);
   color: #fff;
-  font-size: 7px;
+  font-size: 11px;
   font-weight: 600;
-  line-height: 18px;
+  line-height: 24px;
   white-space: nowrap;
 }
 
 .purchase-subscription-plan-content > strong {
   display: block;
   margin: 0;
-  font-size: 12px;
+  font-size: 17px;
   font-weight: 400;
-  line-height: 15px;
+  line-height: 24px;
 }
 
 .purchase-subscription-plan-info {
   position: absolute;
   /* 固定底边并保持自适应高度，权益内容增加时向上扩展。 */
-  left: 9px;
-  width: 130px;
-  bottom: 43px;
+  left: 18px;
+  width: calc(100% - 36px);
+  bottom: 60px;
   right: auto;
   height: auto;
   box-sizing: border-box;
-  min-height: 55px;
-  padding: 6px 6px 7px;
+  min-height: 82px;
+  padding: 10px 12px 12px;
   border: 1px solid #fff;
-  border-radius: 4px;
+  border-radius: 10px;
   background: rgb(255 255 255 / 70%);
 }
 
 .purchase-subscription-plan-info > span {
   display: block;
-  margin-bottom: 5px;
-  font-size: 10px;
-  line-height: 13px;
+  margin-bottom: 7px;
+  font-size: 15px;
+  line-height: 20px;
 }
 
 .purchase-subscription-plan-info ul {
   display: grid;
-  gap: 2px;
+  gap: 4px;
   margin: 0;
   padding: 0;
   list-style: none;
-  font-size: 7px;
-  line-height: 11px;
+  font-size: 12px;
+  line-height: 18px;
 }
 
 .purchase-subscription-plan-info li {
@@ -354,10 +360,10 @@
 }
 
 .purchase-subscription-plan-info li::before {
-  width: 4px;
-  height: 4px;
-  flex: 0 0 4px;
-  margin: 3px 4px 0 0;
+  width: 6px;
+  height: 6px;
+  flex: 0 0 6px;
+  margin: 6px 6px 0 0;
   border-radius: 50%;
   background: var(--purchase-subscription-card-border);
   content: "";
@@ -365,21 +371,21 @@
 
 .purchase-subscription-plan-price {
   position: absolute;
-  right: 8px;
-  bottom: 8px;
-  left: 8px;
+  right: 18px;
+  bottom: 16px;
+  left: 18px;
   z-index: 3;
-  height: 28px;
-  min-height: 28px;
+  height: 42px;
+  min-height: 42px;
   padding: 0;
   border: 1px solid #fff;
-  border-radius: 16px;
+  border-radius: 22px;
   color: #17181b;
   background: linear-gradient(90deg, #aef3ff 0%, #f8b1ee 46%, #d7a1f9 100%);
   font: inherit;
-  font-size: 12px;
+  font-size: 18px;
   font-weight: 700;
-  line-height: 26px;
+  line-height: 40px;
   cursor: pointer;
 }
 
@@ -462,7 +468,7 @@ html[data-theme="light"] .purchase-subscription-tabs button.is-active {
 
 @media (max-width: 760px) {
   .purchase-subscription-modal .semi-modal-content.app-modal-content {
-    height: min(490px, calc(100dvh - 24px));
+    height: min(720px, calc(100dvh - 24px));
   }
 
   .purchase-subscription-modal .semi-modal-content > .semi-modal-body,
@@ -472,11 +478,16 @@ html[data-theme="light"] .purchase-subscription-tabs button.is-active {
     > .semi-modal-body-wrapper
     > .semi-modal-body,
   .purchase-subscription-modal-content {
-    height: min(490px, calc(100dvh - 24px));
+    height: min(720px, calc(100dvh - 24px));
   }
 
   .purchase-subscription-modal-content {
     overflow: auto;
+    scrollbar-width: none;
+  }
+
+  .purchase-subscription-modal-content::-webkit-scrollbar {
+    display: none;
   }
 
   .purchase-subscription-modal-content h2,
@@ -489,10 +500,15 @@ html[data-theme="light"] .purchase-subscription-tabs button.is-active {
   }
 
   .purchase-subscription-modal-content h2 {
-    width: max-content;
+    width: calc(100% - 32px);
+    max-width: calc(100% - 32px);
+    box-sizing: border-box;
     padding: 24px 16px 0;
-    font-size: clamp(28px, 8vw, 42px);
-    line-height: 48px;
+    font-size: clamp(28px, 8vw, 36px);
+    line-height: 42px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .purchase-subscription-modal-subtitle {
@@ -562,13 +578,16 @@ html[data-theme="light"] .purchase-subscription-tabs button.is-active {
   }
 
   .purchase-subscription-plan {
-    flex: 0 0 170px;
+    flex: 0 0 230px;
+    height: 320px;
   }
 
   /* 覆盖全局移动端 44px 触控高度（body button 选择器优先级更高，这里用 body 前缀提升优先级），恢复 28px 药丸按钮，避免与权益面板重叠。 */
   body .purchase-subscription-modal .purchase-subscription-plan-price {
-    height: 28px;
-    min-height: 28px;
+    height: 38px;
+    min-height: 38px;
+    font-size: 16px;
+    line-height: 36px;
     border-radius: 999px;
   }
 }

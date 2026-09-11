@@ -22,7 +22,9 @@ function paymentQRCodeSourceSize(formHTML: string): number {
   if (typeof DOMParser === 'undefined') return PAYMENT_QR_DISPLAY_SIZE
   try {
     const parsed = new DOMParser().parseFromString(formHTML.trim(), 'text/html')
-    const bizContent = parsed.querySelector<HTMLInputElement>('form input[name="biz_content"]')?.value
+    const sourceForm = parsed.querySelector('form')
+    const bizContent = sourceForm?.querySelector<HTMLInputElement>('input[name="biz_content"]')?.value
+      || new URL(sourceForm?.getAttribute('action') || '').searchParams.get('biz_content')
     if (!bizContent) return PAYMENT_QR_DISPLAY_SIZE
     const payload = JSON.parse(bizContent) as { qrcode_width?: unknown }
     const sourceSize = Number(payload.qrcode_width)

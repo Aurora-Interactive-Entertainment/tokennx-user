@@ -288,7 +288,15 @@ html[data-theme="dark"] .recharge-console-page .recharge-alert-button.semi-butto
   min-width: 0;
 }
 
+.recharge-console-page .recharge-amount-content {
+  position: relative;
+}
+
+/* 提示放入金额行已有的底部间距，避免撑高网格导致标题和支付选项移动。 */
 .recharge-console-page .recharge-amount-validation {
+  position: absolute;
+  inset-inline: 0;
+  top: 100%;
   margin: 8px 0 0;
   color: #e45b61;
   font-size: 12px;

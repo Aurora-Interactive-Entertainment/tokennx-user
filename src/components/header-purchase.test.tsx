@@ -44,7 +44,6 @@ afterEach(cleanup)
 
 async function openCatalog() {
   fireEvent.click(screen.getByRole('button', { name: '订阅' }))
-  fireEvent.click(await screen.findByRole('button', { name: /Deepseek V4 Pro/ }))
   return screen.findByRole('dialog')
 }
 

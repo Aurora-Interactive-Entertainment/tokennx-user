@@ -6,7 +6,7 @@ import { usePurchaseCatalog } from './use-purchase-catalog'
 
 vi.mock('@/api/product-plans', () => ({ getProductPlans: vi.fn(), getPublicProductPlans: vi.fn() }))
 beforeEach(() => { vi.resetAllMocks(); vi.mocked(getPublicProductPlans).mockResolvedValue(planListFixture([publicPlanFixture])); vi.mocked(getProductPlans).mockResolvedValue(planListFixture([userPlanFixture])) })
-afterEach(cleanup)
+afterEach(() => { cleanup(); vi.unstubAllEnvs() })
 
 describe('身份隔离的预加载套餐目录', () => {
   it('挂载即取公开目录，登录及退出切换接口且不复用旧价格', async () => {
@@ -47,9 +47,13 @@ describe('身份隔离的预加载套餐目录', () => {
     await waitFor(() => expect(getProductPlans).toHaveBeenCalledTimes(3))
   })
 
-  it('错误可重试，空目录不展示虚构套餐', async () => {
-    vi.mocked(getPublicProductPlans).mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce(planListFixture([]))
-    const { result } = renderHook(() => usePurchaseCatalog(null))
+  it.each([null, 'user-1'])('开发环境请求失败后可重试，空目录不生成本地套餐：%s', async (userKey) => {
+    // 显式覆盖开发模式，防止仅在本地启用的假数据回退绕过测试。
+    vi.stubEnv('DEV', true)
+    vi.stubEnv('MODE', 'development')
+    const getPlans = userKey ? getProductPlans : getPublicProductPlans
+    vi.mocked(getPlans).mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce(planListFixture([]))
+    const { result } = renderHook(() => usePurchaseCatalog(userKey))
     await waitFor(() => expect(result.current.error).not.toBe(''))
     act(() => result.current.reload())
     await waitFor(() => expect(result.current.loading).toBe(false))

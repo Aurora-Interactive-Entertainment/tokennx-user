@@ -1,8 +1,9 @@
 import { useEffect, useId, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
-import { appToast } from "./app-toast";
 import type { BillingContext } from "@/api/billing";
+import { isPaymentActive, isPaymentSettled } from "@/api/payment-flow";
+import Spin from "@douyinfe/semi-ui/lib/es/spin";
 import { PaymentQRCode } from "./payment-qr-code";
 import { PaymentQRCodeFrame } from "./payment-qr-frame";
 import { PurchaseVerificationGate } from "./purchase-verification-gate";
@@ -25,7 +26,6 @@ interface PurchasePaymentProps {
   onCloseAll?: () => void;
   onPaid?: () => void;
   onAuthFailure?: () => void;
-  guestDebug?: boolean;
 }
 
 export function PurchasePaymentModal(props: PurchasePaymentProps) {
@@ -35,6 +35,7 @@ export function PurchasePaymentModal(props: PurchasePaymentProps) {
       key={`${props.context?.account_type}:${props.context?.enterprise_id}:${props.planID}`}
       onClose={props.onCloseAll ?? props.onClose}
       onAuthFailure={props.onAuthFailure}
+      context={props.context}
     >
       {(onRealNameRequired) => <PurchasePaymentContent {...props} onRealNameRequired={onRealNameRequired} />}
     </PurchaseVerificationGate>
@@ -51,27 +52,17 @@ function PurchasePaymentContent({
   context = { account_type: "personal" },
   onPaid,
   onAuthFailure,
-  guestDebug = false,
   onRealNameRequired,
 }: PurchasePaymentProps & { onRealNameRequired: () => void }) {
   const { t } = useTranslation();
   const [closing, setClosing] = useState(false);
-  const payment = usePlanPayment(context, planID, onPaid, onAuthFailure, guestDebug);
+  const payment = usePlanPayment(context, planID, onPaid, onAuthFailure);
   useEffect(() => {
     // 服务端再次要求实名时卸载支付会话，认证提示下面不保留支付弹窗或查单任务。
     if (payment.realNameRequired) onRealNameRequired();
   }, [payment.realNameRequired, onRealNameRequired]);
-  // 公开入口临时联调直接下单；正式购买改由勾选协议触发，无需额外确认按钮。
-  useEffect(() => {
-    if (guestDebug) void payment.start();
-  }, []);
-  useEffect(() => {
-    // 调试阶段的接口错误不占用设计稿布局，正式流程仍通过全局提示反馈。
-    if (payment.error && !guestDebug) appToast.error(payment.error);
-  }, [payment.error, guestDebug]);
   const radioName = useId();
-  const [method, setMethod] = useState("alipay");
-  const [agreed, setAgreed] = useState(false);
+  const { method, agreed } = payment;
   const copy = "console.purchasePage.paymentModal";
   const isPlan = ["miniMax", "deepSeek", "seedance", "kimi", "glm"].includes(
     planName,
@@ -95,12 +86,6 @@ function PurchasePaymentContent({
     validitySeconds && validitySeconds > 0
       ? Math.max(1, Math.ceil(validitySeconds / 86400))
       : 30;
-  useEffect(() => {
-    if (open) {
-      setMethod("alipay");
-      setAgreed(false);
-    }
-  }, [open, planName]);
   return (
     <>
       <AppModal
@@ -142,15 +127,21 @@ function PurchasePaymentContent({
                 <img src={alipayIcon} alt={t(`${copy}.alipay`)} />
                 <img src={wechatIcon} alt={t(`${copy}.wechat`)} />
               </div>
-              <div className="purchase-payment-qr">
-                {payment.active && payment.qr ? (
+              <div className="purchase-payment-qr" aria-busy={agreed && payment.busy}>
+                {!agreed ? (
+                  <span className="purchase-payment-consent" role="status">{t(`${copy}.agreementRequired`)}</span>
+                ) : payment.busy ? (
+                  <div className="purchase-payment-loading" role="status"><Spin size="large" /><span>{t(`${copy}.processing`)}</span></div>
+                ) : payment.expired && payment.active && payment.order?.status !== "paid" ? (
+                  <span role="status">{t("console.billing.paymentStatusExpired")}</span>
+                ) : payment.order?.status !== "paid" && payment.active && payment.qr ? (
                   <PaymentQRCode
                     value={payment.qr}
                     title={t(`${copy}.scan`)}
-                    errorMessage={t("api.billing.paymentFormInvalid")}
+                    errorMessage={t(method === "wechat" ? "api.billing.wechatQRCodeInvalid" : "api.billing.paymentFormInvalid")}
                     onError={payment.handleError}
                   />
-                ) : payment.active && payment.form ? (
+                ) : payment.order?.status !== "paid" && payment.active && payment.form ? (
                   <PaymentQRCodeFrame
                     formHTML={payment.form}
                     title={t(`${copy}.scan`)}
@@ -159,18 +150,27 @@ function PurchasePaymentContent({
                   />
                 ) : payment.order ? (
                   <span role="status">
-                    {payment.order
-                      ? t(
+                    {payment.order.status === "paid" && payment.order.paid_at
+                      ? t(`${copy}.paid`)
+                      : t(
                           `console.billing.paymentStatus${payment.order.status === "paid" && !payment.order.paid_at ? "Unknown" : payment.order.status.charAt(0).toUpperCase() + payment.order.status.slice(1)}`,
-                        )
-                      : t(`${copy}.qrUnavailable`)}
+                        )}
                   </span>
-                ) : null}
+                ) : <span>{t(`${copy}.qrUnavailable`)}</span>}
+              </div>
+              {/* 操作按钮紧跟二维码，用户无需在弹窗底部寻找刷新或重试入口。 */}
+              <div className="purchase-payment-actions">
+                {agreed && !payment.blocked && payment.error && (!payment.order || isPaymentActive(payment.order.status)) && (
+                  <button type="button" disabled={payment.busy} onClick={() => void payment.start()}>{t(`${copy}.retry`)}</button>
+                )}
+                {payment.active && (
+                  <button type="button" disabled={payment.busy || payment.querying} onClick={payment.refresh}>{t(`${copy}.refresh`)}</button>
+                )}
               </div>
               <fieldset
                 className="purchase-payment-options"
                 aria-label={t(`${copy}.method`)}
-                disabled={payment.busy || Boolean(payment.order)}
+                disabled={payment.busy || payment.blocked || Boolean(payment.order && !isPaymentActive(payment.order.status))}
               >
                 {[
                   { key: "wechat", icon: wechatIcon },
@@ -185,14 +185,10 @@ function PurchasePaymentContent({
                       name={radioName}
                       value={item.key}
                       checked={method === item.key}
-                      disabled={item.key === "wechat"}
-                      onChange={() => setMethod(item.key)}
+                      onChange={() => void payment.selectMethod(item.key as "wechat" | "alipay")}
                     />
                     <img src={item.icon} alt="" aria-hidden="true" />
                     <strong>{t(`${copy}.${item.key}`)}</strong>
-                    {item.key === "wechat" && (
-                      <small>{t(`${copy}.unavailable`)}</small>
-                    )}
                   </label>
                 ))}
               </fieldset>
@@ -201,12 +197,8 @@ function PurchasePaymentContent({
                   <input
                     type="checkbox"
                     checked={agreed}
-                    disabled={payment.busy || Boolean(payment.order)}
-                    onChange={(event) => {
-                      const checked = event.target.checked;
-                      setAgreed(checked);
-                      if (checked && !payment.order) void payment.start();
-                    }}
+                    disabled={payment.blocked || closing || Boolean(payment.order && isPaymentSettled(payment.order))}
+                    onChange={(event) => void payment.setAgreed(event.target.checked)}
                   />
                   {t(`${copy}.readAgreement`)}
                 </label>
@@ -216,7 +208,8 @@ function PurchasePaymentContent({
               </div>
             </div>
           </div>
-          {payment.order && (
+          {agreed && payment.error && <p className="purchase-payment-error" role="alert">{payment.error}</p>}
+          {agreed && payment.order && (
             <p className="purchase-payment-status" role="status">
               {t("console.billing.paymentReturnOrder", {
                 orderNo: payment.order.order_no,

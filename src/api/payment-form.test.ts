@@ -44,6 +44,20 @@ describe('支付宝支付表单提交器', () => {
     submit.mockRestore()
   })
 
+  it('兼容文档中的签名查询串表单，不改变编码或要求命名输入框', () => {
+    const submit = vi.spyOn(HTMLFormElement.prototype, 'submit').mockImplementation(function (this: HTMLFormElement) {
+      this.setAttribute('data-payment-test', 'submitted')
+    })
+    const action = 'https://openapi.alipay.com/gateway.do?app_id=123&sign=a%2Bb%2Fc%3D&biz_content=%7B%22total_amount%22%3A%2212.50%22%7D'
+    const cleanup = submitPaymentFormHTML(`<form method="post" action="${action.replaceAll('&', '&amp;')}"><input type="submit" value="立即支付"></form>`, { target: 'payment-frame' })
+    const form = document.querySelector<HTMLFormElement>('form[data-payment-test]')!
+    expect(form.action).toBe(action)
+    expect(form.querySelectorAll('input')).toHaveLength(0)
+    expect(submit).toHaveBeenCalledOnce()
+    cleanup()
+    submit.mockRestore()
+  })
+
   it('拒绝缺少表单、非 POST 或没有字段的支付响应', () => {
     expect(() => submitPaymentFormHTML('', { target: '_self' })).toThrowError(ApiError)
     expect(() => submitPaymentFormHTML('<form action="https://openapi.alipay.com/gateway.do" method="GET"><input name="sign" value="x"></form>', { target: '_self' })).toThrowError('支付宝支付表单无效，请重新发起支付')

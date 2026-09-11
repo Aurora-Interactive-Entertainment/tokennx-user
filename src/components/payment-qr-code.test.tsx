@@ -31,4 +31,10 @@ describe('支付二维码', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('二维码生成失败')
     expect(onError).toHaveBeenCalledWith(error)
   })
+
+  it('微信二维码原文包含空白和转义字符时也不截断或改写', async () => {
+    const value = ' weixin://wxpay/bizpayurl?pr=A%2FB+Z&sign=X%3D '
+    render(<PaymentQRCode value={value} title="微信支付二维码" errorMessage="二维码生成失败" onError={vi.fn()} />)
+    await waitFor(() => expect(QRCode.toCanvas).toHaveBeenCalledWith(screen.getByLabelText('微信支付二维码'), value, expect.any(Object)))
+  })
 })

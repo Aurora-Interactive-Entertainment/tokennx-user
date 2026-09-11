@@ -61,7 +61,8 @@ export function submitPaymentFormHTML(formHTML: string, options: PaymentFormSubm
   form.hidden = true
   form.setAttribute('aria-hidden', 'true')
   const fields = Array.from(sourceForm.querySelectorAll<HTMLInputElement>('input[name]'))
-  if (fields.length === 0) throw new ApiError(i18n.t('api.billing.paymentFormInvalid'), 502, PAYMENT_FORM_ERROR_CODE, null)
+  // 新接口把签名参数放在 action 查询串中，可能没有命名输入框；保持原串，不重新拼接签名。
+  if (fields.length === 0 && !actionURL.searchParams.get('sign')) throw new ApiError(i18n.t('api.billing.paymentFormInvalid'), 502, PAYMENT_FORM_ERROR_CODE, null)
   for (const field of fields) {
     const input = document.createElement('input')
     input.type = 'hidden'
@@ -71,7 +72,8 @@ export function submitPaymentFormHTML(formHTML: string, options: PaymentFormSubm
   }
   document.body.append(form)
   try {
-    form.submit()
+    // 避免 name="submit" 的字段遮蔽原生提交方法。
+    HTMLFormElement.prototype.submit.call(form)
   } catch (error) {
     form.remove()
     throw new ApiError(i18n.t('api.billing.paymentFormInvalid'), 502, PAYMENT_FORM_ERROR_CODE, null)

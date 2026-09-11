@@ -33,6 +33,7 @@ export function usePurchaseCatalog(userKey: string | null, context: BillingConte
           page++
         }
         if (controller.signal.aborted) return
+        // 所有环境只展示接口返回的套餐，空目录交由页面显示正式空状态。
         const sorted = Array.from(new Map(plans.map(plan => [plan.id, plan])).values())
           .sort((a, b) => a.group_sort_order - b.group_sort_order || a.name.localeCompare(b.name))
         setState({ key, plans: sorted, loading: false, error: '' })

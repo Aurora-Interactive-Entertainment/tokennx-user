@@ -11,8 +11,10 @@
 
 .payment-qr-code {
   display: block;
-  width: 100%;
-  height: 100%;
+  /* 二维码库会写入 320px 行内尺寸；显示尺寸必须随容器等比缩放，防止小弹窗裁切。 */
+  width: 100% !important;
+  height: auto !important;
+  aspect-ratio: 1;
   max-width: 100%;
   max-height: 100%;
   object-fit: contain;

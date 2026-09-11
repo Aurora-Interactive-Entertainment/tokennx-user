@@ -84,6 +84,8 @@ export const apiResources = {
         paymentOrderRequired: '支付订单编号不能为空',
         paymentSceneInvalid: '请选择电脑网站或手机网站支付方式',
         paymentFormInvalid: '支付宝支付表单无效，请重新发起支付',
+        wechatQRCodeInvalid: '微信支付二维码无效，请重新发起支付',
+        paymentOrderMismatch: '支付订单信息与当前购买不一致，已停止支付，请联系管理员核查',
         forbidden: '当前工作空间没有账务查看权限',
         errors: {
           '100001': '账务请求参数无效，请刷新后重试',
@@ -255,6 +257,8 @@ export const apiResources = {
         paymentOrderRequired: 'The payment order ID is required.',
         paymentSceneInvalid: 'Choose computer-website or mobile-website payment.',
         paymentFormInvalid: 'The Alipay payment form is invalid. Start payment again.',
+        wechatQRCodeInvalid: 'The WeChat Pay QR code is invalid. Start payment again.',
+        paymentOrderMismatch: 'The payment order does not match this purchase. Payment has stopped; please contact support.',
         forbidden: 'This workspace does not have permission to view billing.',
         errors: {
           '100001': 'The billing request parameters are invalid. Refresh and try again.',
