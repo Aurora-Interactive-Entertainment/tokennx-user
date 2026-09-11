@@ -377,7 +377,8 @@ describe('页面主链冒烟场景', () => {
     render(<MemoryRouter><Provider store={createAppStore()}><AppStoreProvider><ModelsPublicPage /></AppStoreProvider></Provider></MemoryRouter>)
     expect(screen.getAllByRole('tab')).toHaveLength(5)
     expect(document.querySelectorAll('.models-showcase-card')).toHaveLength(9)
-    expect(screen.getByRole('link', { name: 'DeepSeek V3' })).toBeInTheDocument()
+    expect(screen.getByText('DeepSeek V3')).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'DeepSeek V3' })).not.toBeInTheDocument()
   })
 
   it('模型目录包含文本、视频和图片三个分组', async () => {

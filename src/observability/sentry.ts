@@ -22,6 +22,7 @@ const CRITICAL_API_PREFIXES = [
   "/api/user/enterprise",
   "/api/user/billing",
   "/api/user/payment",
+  "/api/user/redemption-codes/",
   "/api/user/real-name",
   "/api/user/account-deletion",
   "/api/user/profile",
@@ -156,6 +157,7 @@ export function isSentryEnabled(): boolean {
 
 export function createReactRootErrorHandler():
   ReturnType<typeof Sentry.reactErrorHandler> | undefined {
+  // React 19 的三个根节点回调共享同一个 Sentry handler，调用方可分别绑定。
   return sentryInitialized ? Sentry.reactErrorHandler() : undefined;
 }
 

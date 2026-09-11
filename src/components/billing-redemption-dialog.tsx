@@ -68,9 +68,6 @@ export function BillingRedemptionDialog({ visible, onClose, onSuccess, onAuthFai
       okButtonProps={{ loading: submitting, disabled: submitting }}
     >
       <div className="billing-redemption-form">
-        <label className="billing-redemption-label" htmlFor="billing-redemption-code">
-          {i18n.t('console.billing.redeemCode')}
-        </label>
         <input
           id="billing-redemption-code"
           className={`billing-redemption-input${error ? ' is-invalid' : ''}`}

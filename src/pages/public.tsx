@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import type { TFunction } from 'i18next'
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
+import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-router'
 import Toast from '@douyinfe/semi-ui/lib/es/toast'
 import Skeleton from '@douyinfe/semi-ui/lib/es/skeleton'
 import { IconBookOpenStroked, IconChevronDown, IconCodeStroked, IconCopyStroked, IconCustomerSupportStroked, IconFile, IconShieldStroked } from '@douyinfe/semi-icons'
-import { LoginPanel, LoginRequiredAction, ManuscriptSupportWidget, PublicLayout, ModelLogo, normalizeLoginReturnPath, requestSupportWidget, DEFAULT_CONSOLE_PATH, authUserNeedsEmailBinding } from '@/components/common'
+import { LoginPanel, LoginRequiredAction, ManuscriptSupportWidget, PublicLayout, ModelLogo, requestSupportWidget } from '@/components/common'
+import { resolveLoginDestination } from '@/auth/login-navigation'
 import '@/docs-page.css'
 import './public-apps.css'
 import './public-rankings.css'
@@ -17,7 +18,7 @@ import { getToolUsageClients, getToolUsageLeaderboard, type ToolUsageClients, ty
 import { getPublicDocument, getPublicDocumentAssetUrl, getPublicDocsTree, publicDocumentHref, type PublicDocument, type PublicDocsLocale, type PublicDocsNode } from '@/api/public-docs'
 import { getPublicModelMarket, type PublicMarketModel, type PublicMarketTopic, type PublicModelMarket } from '@/api/public-model-market'
 import { isApiError } from '@/api/http'
-import { findModel, findModelInList, modelAlias, modelRouteKey, MODEL_CATALOG, MODALITY_LABELS, type ModelModality, type ModelPrice, type ModelRecord } from '@/data/models'
+import { findModelInList, modelAlias, MODEL_CATALOG, MODALITY_LABELS, type ModelModality, type ModelPrice, type ModelRecord } from '@/data/models'
 import { useAppSelector } from '@/store/hooks'
 import { QUICKSTART_API_BASE_URL, quickstartCodeSample } from '@/utils/quickstart'
 import { useTranslation } from 'react-i18next'
@@ -175,44 +176,9 @@ export function ModelsPublicPage() {
   )
 }
 
+/** 兼容旧引用；公开模型详情已统一收敛到控制台模型广场侧边栏。 */
 export function ModelDetailPage() {
-  const { t } = useTranslation()
-  const { modelId } = useParams()
-  const navigate = useNavigate()
-  const model = findModel(modelId)
-  const routeKey = model ? modelRouteKey(model) : undefined
-  const displayAlias = model ? modelAlias(model) || t('console.common.modelAliasUnset') : ''
-  const modelQuery = routeKey ? encodeURIComponent(routeKey) : ''
-
-  useEffect(() => {
-    if (!model || !routeKey || modelId === routeKey) return
-    // 旧模型 code 仅用于兼容历史链接，进入页面后立即规范化为模型别名。
-    navigate(`/models/${encodeURIComponent(routeKey)}`, { replace: true })
-  }, [model, modelId, navigate, routeKey])
-
-  if (!model) return <PublicLayout mainClassName="public-model-detail"><div className="public-model-missing"><h1>{t('public.modelDetail.missingTitle')}</h1><p>{t('public.modelDetail.missingHint')}</p><Link className="btn btn-primary" to="/models">{t('public.modelDetail.backCatalog')}</Link></div></PublicLayout>
-
-  return (
-    <PublicLayout mainClassName="public-model-detail">
-      <Link className="public-model-back" to="/models">← {t('public.modelDetail.backCatalog')}</Link>
-      <section className="public-model-hero" aria-labelledby="modelTitle">
-        <div>
-          <div className="public-model-detail-identity"><ModelLogo model={model} className="public-model-detail-logo" /><div><p className="public-model-detail-kicker">{publicCompanyLabel(t, model.company)}</p><h1 id="modelTitle">{model.name}</h1><p className="public-model-detail-id">{t('public.modelDetail.alias', { alias: displayAlias })}</p></div></div>
-          <div className="public-model-detail-meta"><span className="badge">{publicModalityLabel(t, model.modality)}</span>{model.context ? <span className="badge">{t('public.modelDetail.context', { value: model.context })}</span> : null}<span className="badge">{t('public.models.capabilityCount', { count: model.capabilities.length })}</span></div>
-        </div>
-        <div className="public-model-detail-actions"><LoginRequiredAction className="btn btn-secondary" returnPath={'/console/playground?model=' + modelQuery}>{t('public.modelDetail.onlineTest')}</LoginRequiredAction><LoginRequiredAction className="btn btn-primary" returnPath={'/console/api-keys?model=' + modelQuery}>{t('public.modelDetail.apiAccess')}</LoginRequiredAction></div>
-      </section>
-
-      <div className="public-model-detail-grid">
-        <div>
-          <section className="public-model-detail-section" aria-labelledby="capabilitiesTitle"><h2 id="capabilitiesTitle">{t('public.modelDetail.capabilitiesTitle')}</h2><div className="public-model-detail-capabilities">{model.capabilities.map((capability) => <span className="badge" key={capability}>{publicCapabilityLabel(t, capability)}</span>)}</div><p>{t('public.modelDetail.contextWindow', { value: model.context ?? t('public.modelDetail.byParameter') })}</p></section>
-          <section className="public-model-detail-section" aria-labelledby="pricingTitle"><h2 id="pricingTitle">{t('public.modelDetail.pricingTitle')}</h2><div className="public-table-wrap"><table className="public-model-detail-prices"><tbody><tr><th scope="row">{t('public.models.officialPrice')}</th><td>{formatPublicPrice(model.officialPrice)}</td></tr><tr><th scope="row">{t('public.models.tokenNxPrice')}</th><td><strong><ModelPriceSummary price={model.tokenNxPrice} /></strong></td></tr></tbody></table></div><p className="public-model-price-note">{t('public.modelDetail.priceNote')}</p></section>
-          <section className="public-model-detail-section" aria-labelledby="boundaryTitle"><h2 id="boundaryTitle">{t('public.modelDetail.boundaryTitle')}</h2><p>{t('public.modelDetail.boundaryText')}</p></section>
-        </div>
-        <aside className="public-model-connect" aria-labelledby="connectTitle"><h2 id="connectTitle">{t('public.modelDetail.accessTitle')}</h2><dl><div><dt>{t('public.modelDetail.baseUrl')}</dt><dd><code>{QUICKSTART_API_BASE_URL}</code></dd></div><div><dt>{t('public.modelDetail.aliasLabel')}</dt><dd><code>{displayAlias}</code></dd></div><div><dt>{t('public.modelDetail.defaultProtocol')}</dt><dd>{t('public.modelDetail.protocolValue')}</dd></div></dl><p>{t('public.modelDetail.accessHint')}</p><LoginRequiredAction className="btn btn-primary" returnPath={'/console/api-keys?model=' + modelQuery}>{t('public.modelDetail.createApiKey')}</LoginRequiredAction></aside>
-      </div>
-    </PublicLayout>
-  )
+  return <Navigate to="/models" replace />
 }
 
 function RankingModelLogo({ code, name }: { code: string; name: string }) {
@@ -373,136 +339,6 @@ export function AppsPage() {
           </article>)}
           {!leaderboard ? (loadError ? null : <div className="apps-list-state" role="status">{t('public.apps.loading')}</div>) : !rankingItems.length ? <div className="apps-list-state">{t('public.apps.empty')}</div> : null}
         </section>
-      </div>
-    </PublicLayout>
-  )
-}
-
-function LegacyDocsPage() {
-  const { t } = useTranslation()
-  const code = quickstartCodeSample({ protocol: 'openai', language: 'curl', modelAlias: 'deepseek-public' })
-  const [copied, setCopied] = useState<'code' | 'page' | 'mcp' | null>(null)
-  const [copyMenuOpen, setCopyMenuOpen] = useState(false)
-  const [activeSection, setActiveSection] = useState('overview')
-
-  const sidebarItems = [
-    ['overview', 'overview'],
-    ['quickstart', 'quickstart'],
-    ['batch', 'batch'],
-    ['original', 'original'],
-    ['models', 'models'],
-    ['mcp', 'mcp'],
-    ['servers', 'servers'],
-    ['providers', 'providers'],
-    ['parameters', 'parameters'],
-    ['privacy', 'privacy'],
-    ['troubleshooting', 'troubleshooting'],
-    ['principles', 'principles'],
-    ['authentication', 'authentication'],
-    ['api-keys', 'apiKeys'],
-    ['byok', 'byok'],
-    ['rate-limits', 'rateLimits'],
-    ['uptime', 'uptime'],
-    ['limits', 'limits'],
-  ] as const
-
-  const markdownPage = `# ${t('public.docs.manuscript.quickstart')}\n\n${t('public.docs.manuscript.quickstartSubtitle')}\n\n${code}`
-
-  async function copyText(value: string, type: 'code' | 'page' | 'mcp'): Promise<void> {
-    try {
-      await navigator.clipboard.writeText(value)
-      setCopied(type)
-      Toast.success(t(type === 'code' ? 'public.docs.manuscript.copyCodeSuccess' : type === 'page' ? 'public.docs.manuscript.copyPageSuccess' : 'public.docs.manuscript.copyMcpSuccess'))
-      window.setTimeout(() => setCopied(null), 1500)
-    } catch {
-      Toast.error(t('public.docs.manuscript.copyUnsupported'))
-    }
-  }
-
-  return (
-    <PublicLayout mainClassName="docs-page--manuscript">
-      <nav className="docs-product-nav" aria-label={t('public.docs.manuscript.productNavLabel')}>
-        <div className="docs-product-nav-inner">
-          <Link className="is-active" to="/docs"><span aria-hidden="true">▣</span>{t('public.docs.manuscript.productNav.docs')}</Link>
-          <button type="button"><span aria-hidden="true">⌘</span>{t('public.docs.manuscript.productNav.apiReference')}</button>
-          <button type="button"><span aria-hidden="true">&lt;/&gt;</span>{t('public.docs.manuscript.productNav.clientSdk')}</button>
-          <button type="button"><span aria-hidden="true">◇</span>{t('public.docs.manuscript.productNav.agentSdk')}</button>
-          <button type="button"><span aria-hidden="true">✣</span>{t('public.docs.manuscript.productNav.recipes')}</button>
-        </div>
-      </nav>
-
-      <div className="docs-shell">
-        <aside className="docs-sidebar" aria-label={t('public.docs.manuscript.sidebarLabel')}>
-          <nav>
-            {sidebarItems.map(([id, labelKey]) => <a className={activeSection === id ? 'is-active' : ''} href={`#${id}`} key={id} onClick={() => setActiveSection(id)}><span aria-hidden="true">◇</span>{t(`public.docs.manuscript.sidebar.${labelKey}`)}</a>)}
-          </nav>
-        </aside>
-
-        <article className="docs-article">
-          <div className="docs-article-toolbar">
-            <div className="docs-copy-control">
-              <button type="button" aria-expanded={copyMenuOpen} aria-haspopup="menu" onClick={() => setCopyMenuOpen((open) => !open)}><IconCopyStroked aria-hidden="true" /><span>{t('public.docs.manuscript.copyPage')}</span><IconChevronDown aria-hidden="true" /></button>
-              {copyMenuOpen ? <div className="docs-copy-menu" role="menu">
-                <button type="button" role="menuitem" onClick={() => void copyText(markdownPage, 'page')}><span><IconCopyStroked aria-hidden="true" /></span><strong>{t('public.docs.manuscript.copyPage')}</strong><small>{t('public.docs.manuscript.copyPageDescription')}</small></button>
-                <a role="menuitem" href="data:text/plain;charset=utf-8,%23%20Token%20NX%20Quickstart" target="_blank" rel="noreferrer"><span><IconFile aria-hidden="true" /></span><strong>{t('public.docs.manuscript.viewMarkdown')}</strong><small>{t('public.docs.manuscript.viewMarkdownDescription')}</small></a>
-                <button type="button" role="menuitem" onClick={() => void copyText(`${QUICKSTART_API_BASE_URL}/mcp`, 'mcp')}><span>&lt;/&gt;</span><strong>{t('public.docs.manuscript.copyMcp')}</strong><small>{t('public.docs.manuscript.copyMcpDescription')}</small></button>
-                <a role="menuitem" href="https://cursor.com" target="_blank" rel="noreferrer"><span>C</span><strong>{t('public.docs.manuscript.connectCursor')}</strong><small>{t('public.docs.manuscript.connectCursorDescription')}</small></a>
-                <a role="menuitem" href="https://code.visualstudio.com" target="_blank" rel="noreferrer"><span>V</span><strong>{t('public.docs.manuscript.connectVsCode')}</strong><small>{t('public.docs.manuscript.connectVsCodeDescription')}</small></a>
-              </div> : null}
-            </div>
-          </div>
-
-          <header id="overview" className="docs-article-head">
-            <span>{t('public.docs.manuscript.overview')}</span>
-            <h1>{t('public.docs.manuscript.quickstart')}</h1>
-            <p>{t('public.docs.manuscript.quickstartSubtitle')}</p>
-          </header>
-
-          <section id="quickstart" className="docs-section">
-            <p>{t('public.docs.manuscript.introduction')}</p>
-            <p>{t('public.docs.manuscript.integrationOptions')}</p>
-            <div className="docs-method-table" role="table" aria-label={t('public.docs.manuscript.methodComparison')}>
-              <div role="row"><strong role="columnheader">{t('public.docs.manuscript.method')}</strong><strong role="columnheader">{t('public.docs.manuscript.bestFor')}</strong></div>
-              <div role="row"><a href="#openrouter-api" role="cell">API</a><span role="cell">{t('public.docs.manuscript.apiBestFor')}</span></div>
-              <div role="row"><a href="#client-sdk" role="cell">{t('public.docs.manuscript.productNav.clientSdk')}</a><span role="cell">{t('public.docs.manuscript.clientSdkBestFor')}</span></div>
-              <div role="row"><a href="#proxy-sdk" role="cell">{t('public.docs.manuscript.productNav.agentSdk')}</a><span role="cell">{t('public.docs.manuscript.agentSdkBestFor')}</span></div>
-            </div>
-          </section>
-
-          <section id="openrouter-api" className="docs-section docs-api-section">
-            <div className="docs-code-block">
-              <div className="docs-code-head"><span>cURL</span><button type="button" aria-label={t('public.docs.manuscript.copyCurl')} title={t('public.docs.manuscript.copyCurl')} onClick={() => void copyText(code, 'code')}><IconCopyStroked aria-hidden="true" /></button></div>
-              <pre><code>{code}</code></pre>
-            </div>
-            <div className="docs-note"><strong>{t('public.docs.manuscript.tip')}</strong><span>{t('public.docs.manuscript.routingTip')}</span></div>
-            <p>{t('public.docs.manuscript.routingDescription')}</p>
-          </section>
-
-          <section id="client-sdk" className="docs-section">
-            <h2>{t('public.docs.manuscript.thirdPartyTitle')}</h2>
-            <p>{t('public.docs.manuscript.thirdPartyDescription')}</p>
-          </section>
-
-          <section id="proxy-sdk" className="docs-section">
-            <h2>{t('public.docs.manuscript.assistantTitle')}</h2>
-            <p>{t('public.docs.manuscript.assistantDescription')}</p>
-            <div className="docs-mcp-url"><code>{QUICKSTART_API_BASE_URL}/mcp</code><button type="button" aria-label={t('public.docs.manuscript.copyMcp')} title={t('public.docs.manuscript.copyMcp')} onClick={() => void copyText(`${QUICKSTART_API_BASE_URL}/mcp`, 'mcp')}><IconCopyStroked aria-hidden="true" /></button></div>
-            <p>{t('public.docs.manuscript.assistantGuidePrefix')} <a href="#mcp">{t('public.docs.manuscript.mcpGuide')}</a>{t('public.docs.manuscript.assistantGuideSuffix')}</p>
-          </section>
-
-          <Link id="batch" className="docs-next-link" to="/docs#batch">{t('public.docs.manuscript.nextBatch')} <span aria-hidden="true">-&gt;</span></Link>
-          <span className="docs-copy-status" aria-live="polite">{copied ? t(copied === 'code' ? 'public.docs.manuscript.copyCodeSuccess' : copied === 'page' ? 'public.docs.manuscript.copyPageSuccess' : 'public.docs.manuscript.copyMcpSuccess') : ''}</span>
-        </article>
-
-        <aside className="docs-on-page" aria-label={t('public.docs.manuscript.onPageLabel')}>
-          <strong>{t('public.docs.manuscript.onPageTitle')}</strong>
-          <a className="is-active" href="#openrouter-api">{t('public.docs.manuscript.onPage.api')}</a>
-          <a href="#client-sdk">{t('public.docs.manuscript.onPage.clientSdk')}</a>
-          <a href="#proxy-sdk">{t('public.docs.manuscript.onPage.agentSdk')}</a>
-          <a href="#openai-sdk">{t('public.docs.manuscript.onPage.openaiSdk')}</a>
-          <a href="#third-party-sdk">{t('public.docs.manuscript.onPage.thirdPartySdk')}</a>
-          <a href="#ai-assistant">{t('public.docs.manuscript.onPage.aiAssistant')}</a>
-        </aside>
       </div>
     </PublicLayout>
   )
@@ -970,7 +806,7 @@ export function LoginPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const authUser = useAppSelector((state) => state.auth.user)
-  const returnPath = normalizeLoginReturnPath(searchParams.get('return'))
+  const returnPath = resolveLoginDestination(searchParams.get('return'))
   // 登录页没有公共页脚，仍然需要保留全局客服入口。
-  return <div className="login-page"><div className="login-card"><LoginPanel onSuccess={(user) => navigate(user && authUserNeedsEmailBinding(user) ? DEFAULT_CONSOLE_PATH : returnPath)} /></div><ManuscriptSupportWidget /></div>
+  return <div className="login-page"><div className="login-card"><LoginPanel onSuccess={() => navigate(returnPath, { replace: true })} /></div><ManuscriptSupportWidget /></div>
 }

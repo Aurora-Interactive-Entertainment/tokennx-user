@@ -12,6 +12,10 @@ import { clearAuthTokens, getVerifiedPhone, saveAuthTokens, saveVerifiedPhone } 
 import { activeNavKey, ConsoleLayout, consoleNavGroupsFor, DEFAULT_CONSOLE_PATH, isEnterpriseOwner, isEnterprisePermissionPath, LoginPanel, localizeConsoleLabel, normalizeLoginReturnPath, PublicFooter, PublicHeader, PublicLayout, PUBLIC_LINKS } from './common'
 import { NEW_ENTERPRISE_CREATE_PATH } from '@/api/enterprise-certification'
 import i18n from '@/i18n'
+import { getProductPlans, getPublicProductPlans } from '@/api/product-plans'
+import { publicPlanFixture, userPlanFixture, planListFixture } from '@/test/product-plan-fixtures'
+
+vi.mock('@/api/product-plans', async (original) => ({ ...await original<object>(), getProductPlans: vi.fn(), getPublicProductPlans: vi.fn() }))
 
 vi.mock('@/api/enterprise-console', async () => {
   const actual = await vi.importActual<typeof import('@/api/enterprise-console')>('@/api/enterprise-console')
@@ -92,6 +96,8 @@ function LocationProbe() {
 beforeEach(() => {
   clearAuthTokens()
   vi.clearAllMocks()
+  vi.mocked(getPublicProductPlans).mockResolvedValue(planListFixture([publicPlanFixture]))
+  vi.mocked(getProductPlans).mockResolvedValue(planListFixture([userPlanFixture]))
   getEnterpriseContextMock.mockResolvedValue(DEFAULT_ENTERPRISE_CONTEXT)
 })
 afterEach(() => {
@@ -108,8 +114,8 @@ it('未登录购买套餐先打开登录弹窗，关闭登录不会显示支付�
   render(<MemoryRouter><Provider store={createAppStore()}><AppStoreProvider><PublicHeader /></AppStoreProvider></Provider></MemoryRouter>)
 
   await user.click(screen.getByRole('button', { name: '订阅' }))
-  fireEvent.click(screen.getByRole('button', { name: /Deepseek V4 Pro/ }))
-  await user.click(await screen.findByRole('button', { name: /DeepSeek套餐包/ }))
+  fireEvent.click(await screen.findByRole('button', { name: /Deepseek V4 Pro/ }))
+  await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: /DeepSeek套餐包/ }))
 
   const login = await screen.findByRole('dialog', { name: i18n.t('login.dialogLabel') })
   expect(screen.queryByRole('heading', { name: '支付' })).not.toBeInTheDocument()
@@ -132,8 +138,8 @@ it.each(['verified', 'unverified'])('公开购买入口先校验实名状态 %s�
   render(<MemoryRouter><Provider store={appStore}><AppStoreProvider><PublicHeader /></AppStoreProvider></Provider></MemoryRouter>)
 
   fireEvent.click(screen.getByRole('button', { name: '订阅' }))
-  fireEvent.click(screen.getByRole('button', { name: /Deepseek V4 Pro/ }))
-  fireEvent.click(await screen.findByRole('button', { name: /DeepSeek套餐包/ }))
+  fireEvent.click(await screen.findByRole('button', { name: /Deepseek V4 Pro/ }))
+  fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: /DeepSeek套餐包/ }))
 
   if (status === 'verified') {
     expect(await screen.findByRole('heading', { name: '支付' })).toBeInTheDocument()

@@ -27,9 +27,7 @@ export type ActivityCampaignModalProps = {
 export const ACTIVITY_CAMPAIGN_CLOSED_DATE_KEY =
   "token-nx:activity-campaign:closed-date:v1";
 
-const DEFAULT_CAMPAIGN: ActivityCampaign = {
-  redirectPath: "/console/real-name",
-};
+const DEFAULT_CAMPAIGN: ActivityCampaign = {};
 
 type ActivityStorage = Pick<Storage, "getItem" | "setItem">;
 
@@ -255,12 +253,7 @@ export function ActivityCampaignModal({
           <div className="activity-campaign-visual">
             {data.image ? (
               <img src={data.image} alt={campaignCopy} />
-            ) : (
-              <CampaignFallbackVisual
-                copy={campaignCopy}
-                autoIssued={t("console.purchasePage.activityModal.autoIssued")}
-              />
-            )}
+            ) : null}
             <button
               className="activity-campaign-close"
               type="button"

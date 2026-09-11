@@ -11,6 +11,13 @@ import i18n from '@/i18n'
 import { AboutPage, AppsPage, DocsPage, LegalPage, ModelDetailPage, ModelsPublicPage, PricingPage, RankingsPage, StatusPage } from './public'
 import { HomePage } from './home'
 
+// 首页内容测试独立于头部目录预加载，避免一次性 fetch 响应被套餐请求消费。
+vi.mock('@/api/product-plans', async (original) => ({
+  ...await original<object>(),
+  getPublicProductPlans: vi.fn(async () => ({ items: [], total: 0, page: 1, page_size: 100 })),
+  getProductPlans: vi.fn(async () => ({ items: [], total: 0, page: 1, page_size: 100 })),
+}))
+
 function LocationProbe() {
   const location = useLocation()
   return <output data-testid="location">{location.pathname}</output>

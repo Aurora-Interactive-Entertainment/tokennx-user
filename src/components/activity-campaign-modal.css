@@ -248,6 +248,13 @@
   font-size: 20px;
   font-weight: 500;
   line-height: 1;
+  /* 倒计时每秒更新时保留翻页数字的轻微翻转感。 */
+  animation: activity-campaign-digit-flip 260ms ease both;
+}
+
+@keyframes activity-campaign-digit-flip {
+  from { opacity: 0; transform: perspective(120px) rotateX(-70deg); }
+  to { opacity: 1; transform: perspective(120px) rotateX(0); }
 }
 
 .activity-campaign-time-group i {

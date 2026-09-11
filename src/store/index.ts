@@ -1,10 +1,12 @@
 import { configureStore } from '@reduxjs/toolkit'
 import authReducer from './auth-slice'
+import purchaseIntentReducer from './purchase-intent-slice'
 
 export function createAppStore() {
   return configureStore({
     reducer: {
       auth: authReducer,
+      purchaseIntent: purchaseIntentReducer,
     },
   })
 }

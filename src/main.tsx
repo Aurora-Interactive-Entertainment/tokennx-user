@@ -47,7 +47,16 @@ if (!appMount) throw new Error('应用挂载节点不存在')
 
 // 静态加载层独立于 React 根节点，由 App 首帧通知决定淡出时机。
 const rootErrorHandler = createReactRootErrorHandler()
-ReactDOM.createRoot(appMount, rootErrorHandler ? { onUncaughtError: rootErrorHandler } : undefined).render(
+ReactDOM.createRoot(
+  appMount,
+  rootErrorHandler
+    ? {
+        onCaughtError: rootErrorHandler,
+        onRecoverableError: rootErrorHandler,
+        onUncaughtError: rootErrorHandler,
+      }
+    : undefined,
+).render(
   <AppErrorBoundary>
     <AppRoot />
   </AppErrorBoundary>,

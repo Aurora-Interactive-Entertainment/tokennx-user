@@ -1,4 +1,3 @@
-import { PUBLIC_PURCHASE_GUEST_DEBUG, PUBLIC_PURCHASE_DEBUG_PLAN_IDS } from "@/api/purchase-request";
 import {
   lazy,
   Suspense,
@@ -13,6 +12,12 @@ import {
   type RefObject,
 } from "react";
 import { createPortal } from "react-dom";
+import {
+  DEFAULT_CONSOLE_PATH,
+  normalizeLoginReturnPath,
+  resolveLoginDestination,
+} from "@/auth/login-navigation";
+export { DEFAULT_CONSOLE_PATH, normalizeLoginReturnPath } from "@/auth/login-navigation";
 import type { TFunction } from "i18next";
 import { Link, Navigate, useLocation, useNavigate } from "react-router";
 import Avatar from "@douyinfe/semi-ui/lib/es/avatar";
@@ -153,7 +158,7 @@ import {
 export { isEnterpriseOwner } from "./enterprise-menu-access";
 import tokenNxLogo from "@/token-nx-logo.png";
 import headerLogo from "@/assets/figma-header/token-nx-header-logo.png";
-import { PurchaseHoverMenu } from "./purchase-hover-menu";
+import { HeaderPurchase } from "./header-purchase";
 import "@/public-mobile-nav.css";
 import "@/public-footer.css";
 import accountBadge from "@/assets/figma-account-badge.png";
@@ -166,8 +171,7 @@ import { AccountDeletionFlow } from "./account-deletion-flow";
 import { workspaceContextFor } from "@/utils/workspace";
 import { apiTimeToDate, formatApiTime } from "@/utils/format";
 import { VideoPricingPopover } from "./video-pricing-popover";
-import { PurchaseSubscriptionModal } from "./purchase-subscription-modal";
-import { PurchasePaymentModal } from "./purchase-payment-modal";
+import { BillingRedemptionDialog } from "./billing-redemption-dialog";
 import {
   publishProfileUpdate,
   subscribeProfileUpdates,
@@ -307,9 +311,6 @@ function formatBillingOverviewAmount(value: string | undefined): string {
   const decimal = String(scaled % 10000n).padStart(4, "0");
   return `${match[1] === "-" && scaled !== 0n ? "-" : ""}${integer}.${decimal}`;
 }
-
-// 登录后的默认工作页改为快速接入，控制台根路径不再承载总览页面。
-export const DEFAULT_CONSOLE_PATH = "/console/quickstart";
 
 export function BrandMark({ compact = false }: { compact?: boolean }) {
   return (
@@ -1800,14 +1801,6 @@ export function LoginPanel({
 
 const LOGIN_DIALOG_TRANSITION_MS = 280;
 
-export function normalizeLoginReturnPath(
-  value: string | null | undefined,
-): string {
-  return value && value.startsWith("/") && !value.startsWith("//")
-    ? value
-    : DEFAULT_CONSOLE_PATH;
-}
-
 type LoginDialogProps = {
   open: boolean;
   onClose: () => void;
@@ -1958,7 +1951,8 @@ export function LoginPopover({
 }
 
 type LoginRequiredActionProps = {
-  returnPath: string;
+  /** 指定后登录完成继续前往该页面；省略时进入快速接入。 */
+  returnPath?: string;
   children: ReactNode;
   className?: string;
 };
@@ -1999,13 +1993,7 @@ export function LoginRequiredAction({
         <LoginDialog
           open={open}
           onClose={() => setOpen(false)}
-          onSuccess={(user) =>
-            navigate(
-              user && authUserNeedsEmailBinding(user)
-                ? DEFAULT_CONSOLE_PATH
-                : safeReturnPath,
-            )
-          }
+          onSuccess={() => navigate(resolveLoginDestination(safeReturnPath))}
         />
       ) : null}
     </>
@@ -2133,10 +2121,8 @@ export function PublicHeader({
   const [billingOverview, setBillingOverview] =
     useState<AccountOverviewResponse | null>(null);
   const [accountSettingsOpen, setAccountSettingsOpen] = useState(false);
-  const [purchaseSubscriptionOpen, setPurchaseSubscriptionOpen] = useState(false);
-  const [purchasePaymentPlan, setPurchasePaymentPlan] = useState<string | null>(null);
-  const [purchaseLoginPlan, setPurchaseLoginPlan] = useState<string | null>(null);
-  const [purchaseLoginOpen, setPurchaseLoginOpen] = useState(false);
+  // 兑换码入口从费用管理页迁移到头像菜单，弹窗统一在头部挂载。
+  const [redemptionOpen, setRedemptionOpen] = useState(false);
   const [bindEmailOpen, setBindEmailOpen] = useState(false);
   const [bindEmailRequested, setBindEmailRequested] = useState(false);
   const headerRef = useRef<HTMLElement | null>(null);
@@ -2531,10 +2517,7 @@ export function PublicHeader({
               aria-hidden="true"
             />
           </Link>
-          <PurchaseHoverMenu onSelect={() => {
-            if (!PUBLIC_PURCHASE_GUEST_DEBUG && auth.status !== "authenticated") setPurchaseLoginOpen(true);
-            else setPurchaseSubscriptionOpen(true);
-          }} />
+          <HeaderPurchase inviteCode={inviteCode} />
           <nav
             className="header-nav public-nav"
             aria-label={t("console.common.publicNav")}
@@ -2581,6 +2564,11 @@ export function PublicHeader({
                   accountSettingsOpen={accountSettingsOpen}
                   onNavigate={go}
                   onOpenSettings={() => setAccountSettingsOpen(true)}
+                  onOpenRedemption={
+                    store.activeWorkspace.type === "personal"
+                      ? () => setRedemptionOpen(true)
+                      : undefined
+                  }
                   onLogout={() => {
                     void dispatch(logoutAuth()).finally(() => go("/"));
                   }}
@@ -2600,10 +2588,15 @@ export function PublicHeader({
                 inviteCode={inviteCode}
                 onSuccess={(user) => {
                   setMobileOpen(false);
-                  // 登录成功后统一进入快速接入页；邀请链接仍回到首页继续处理邀请。
-                  if (inviteCode && !authUserNeedsEmailBinding(user ?? {}))
-                    navigate("/", { replace: true });
-                  else navigate(DEFAULT_CONSOLE_PATH, { replace: true });
+                  // 普通登录使用默认页；保留邀请入口原有的回首页处理逻辑。
+                  navigate(
+                    resolveLoginDestination(
+                      inviteCode && !authUserNeedsEmailBinding(user ?? {})
+                        ? "/"
+                        : undefined,
+                    ),
+                    { replace: true },
+                  );
                 }}
               />
             )}
@@ -2644,32 +2637,19 @@ export function PublicHeader({
         visible={accountSettingsOpen}
         onClose={() => setAccountSettingsOpen(false)}
       />
-      <PurchaseSubscriptionModal
-        open={purchaseSubscriptionOpen}
-        covered={Boolean(purchasePaymentPlan) || purchaseLoginOpen || purchaseLoginPlan !== null}
-        onClose={() => setPurchaseSubscriptionOpen(false)}
-        onPlanSelect={(planKey) => {
-          // 未登录时复用登录弹窗，并保留所选套餐，登录成功后继续购买。
-          if (!PUBLIC_PURCHASE_GUEST_DEBUG && auth.status !== "authenticated") {
-            setPurchaseLoginPlan(planKey);
-            return;
-          }
-          setPurchasePaymentPlan(planKey);
-        }}
-      />
-      <LoginDialog
-        open={purchaseLoginOpen || purchaseLoginPlan !== null}
-        dialogId="purchase-login-dialog"
-        inviteCode={inviteCode}
-        onClose={() => { setPurchaseLoginPlan(null); setPurchaseLoginOpen(false); }}
+      <BillingRedemptionDialog
+        visible={redemptionOpen}
+        onClose={() => setRedemptionOpen(false)}
         onSuccess={() => {
-          setPurchasePaymentPlan(purchaseLoginPlan);
-          if (!purchaseLoginPlan) setPurchaseSubscriptionOpen(true);
-          setPurchaseLoginPlan(null);
-          setPurchaseLoginOpen(false);
+          // 兑换成功后清除头部余额缓存并重新拉取，下拉余额即时刷新。
+          billingOverviewCacheRef.current.delete(billingContextCacheKey);
+          loadBillingOverview(billingContext, billingContextCacheKey);
+        }}
+        onAuthFailure={() => {
+          dispatch(invalidateAuth());
+          navigate("/", { replace: true });
         }}
       />
-      <PurchasePaymentModal open={Boolean(purchasePaymentPlan)} planID={purchasePaymentPlan && PUBLIC_PURCHASE_GUEST_DEBUG ? PUBLIC_PURCHASE_DEBUG_PLAN_IDS[purchasePaymentPlan] : undefined} planName={purchasePaymentPlan ?? ""} guestDebug={PUBLIC_PURCHASE_GUEST_DEBUG} onClose={() => setPurchasePaymentPlan(null)} onAuthFailure={() => { setPurchaseLoginPlan(purchasePaymentPlan); setPurchasePaymentPlan(null); }} onCloseAll={() => { setPurchasePaymentPlan(null); setPurchaseSubscriptionOpen(false); }} />
       {/* 首次打开后保留挂载，让原有关闭动画和表单重置生命周期继续生效。 */}
       {bindEmailRequested ? (
         <Suspense fallback={null}>
@@ -3093,6 +3073,7 @@ type UserMenuProps = {
   accountSettingsOpen?: boolean;
   onNavigate: (path: string) => void;
   onOpenSettings: () => void;
+  onOpenRedemption?: () => void;
   onLogout: () => void;
 };
 
@@ -3137,6 +3118,7 @@ function UserMenu({
   accountSettingsOpen = false,
   onNavigate,
   onOpenSettings,
+  onOpenRedemption,
   onLogout,
 }: UserMenuProps) {
   const { t } = useTranslation();
@@ -3560,6 +3542,23 @@ function UserMenu({
             {group.items.map(renderMenuItem)}
           </div>
         ))}
+        {/* 兑换码入口从费用管理页迁移到头像菜单，仅个人空间提供。 */}
+        {onOpenRedemption ? (
+          <div className="user-dropdown-section">
+            <button
+              className="dropdown-link"
+              role="menuitem"
+              type="button"
+              onClick={() => {
+                closeMenu();
+                onOpenRedemption();
+              }}
+            >
+              <ConsoleNavIcon name="reward" className="dropdown-icon" />
+              <span>{t("console.billing.redeemCode")}</span>
+            </button>
+          </div>
+        ) : null}
         <div className="user-dropdown-section">
           <button
             className="dropdown-link"
@@ -4355,7 +4354,7 @@ export function ConsoleLayout({ children }: { children: ReactNode }) {
 
 const PUBLIC_COMPANY_INFO = {
   name: "安顺佳云灵犀智能科技有限公司",
-  filing: "京ICP备20011824号-24",
+  filing: "黔ICP备2026012800号-2",
   securityFiling: "北京公安备 11010802041394号",
 } as const;
 
@@ -4610,12 +4609,6 @@ export function PublicFooter() {
           <img src={manuscriptFilingSecurityIcon} alt="" aria-hidden="true" />
           {PUBLIC_COMPANY_INFO.securityFiling}
         </span>
-        <Link className="manuscript-footer-filing-item" to="/about">
-          {t("footer.businessLicense")}
-        </Link>
-        <Link className="manuscript-footer-filing-item" to="/terms">
-          {t("footer.license")}
-        </Link>
       </div>
       <ManuscriptSupportWidget />
     </footer>

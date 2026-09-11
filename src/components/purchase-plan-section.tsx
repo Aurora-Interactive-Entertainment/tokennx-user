@@ -7,91 +7,10 @@ import seedanceBackground from '@/assets/figma-combo/seedance.png'
 import kimiBackground from '@/assets/figma-combo/kimi.png'
 import glmBackground from '@/assets/figma-combo/GLM.png'
 
+import { formatPlanPrice, planGroups, planGroup, planQuota, planFeatures, planBonus, planName } from './purchase-plan-display'
+
 const CARD_BACKGROUNDS = [miniMaxBackground, deepSeekBackground, seedanceBackground, kimiBackground, glmBackground]
 const CARD_TONES = ['miniMax', 'deepSeek', 'seedance', 'kimi', 'glm'] as const
-
-type GroupOption = { name: string; sortOrder: number }
-
-function normalizeInteger(value: string | number | null | undefined): string | null {
-  const raw = String(value ?? '').trim()
-  return /^\d+$/.test(raw) ? raw.replace(/^0+(?=\d)/, '') : null
-}
-
-function formatCount(value: string | number | null | undefined, locale: string): string {
-  const normalized = normalizeInteger(value)
-  if (!normalized) return String(value ?? '').trim()
-  try {
-    return BigInt(normalized).toLocaleString(locale)
-  } catch {
-    return normalized.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
-  }
-}
-
-function formatPrice(priceCent: string | number | undefined): string {
-  const normalized = normalizeInteger(priceCent)
-  if (!normalized) return '—'
-  const whole = normalized.length > 2 ? normalized.slice(0, -2) : '0'
-  const fraction = normalized.slice(-2).padStart(2, '0')
-  return `¥${whole}.${fraction}`
-}
-
-function groupOptions(plans: ProductPlanSummary[]): GroupOption[] {
-  const groups = new Map<string, number>()
-  plans.forEach((plan) => {
-    const name = plan.group_name?.trim() || plan.model_name?.trim() || plan.model_code
-    const previous = groups.get(name)
-    const sortOrder = Number.isFinite(plan.group_sort_order) ? plan.group_sort_order : 0
-    if (previous === undefined || sortOrder < previous) groups.set(name, sortOrder)
-  })
-  return Array.from(groups, ([name, sortOrder]) => ({ name, sortOrder }))
-    .sort((left, right) => left.sortOrder - right.sortOrder || left.name.localeCompare(right.name))
-}
-
-function planQuota(plan: ProductPlanSummary, locale: string, t: ReturnType<typeof useTranslation>['t']): string {
-  if (plan.token_quota) return t('console.purchasePage.api.tokenQuota', { value: formatCount(plan.token_quota, locale) })
-  if (plan.request_quota) return t('console.purchasePage.api.requestQuota', { value: formatCount(plan.request_quota, locale) })
-  return t('console.purchasePage.api.quotaUnavailable')
-}
-
-function planFeatures(plan: ProductPlanSummary, locale: string, t: ReturnType<typeof useTranslation>['t']): string[] {
-  const features: string[] = []
-  const description = plan.description?.trim()
-  if (description) features.push(description)
-  const seconds = plan.price?.validity_seconds
-  if (Number.isFinite(seconds) && seconds > 0) {
-    const days = Math.max(1, Math.ceil(seconds / 86400))
-    features.push(t('console.purchasePage.api.validity', { count: days }))
-  }
-  const availability = [
-    plan.stock_remaining !== null
-      ? t('console.purchasePage.api.stockRemaining', { count: Math.max(0, plan.stock_remaining) })
-      : '',
-    plan.purchase_limit > 0
-      ? t('console.purchasePage.api.purchaseRemaining', {
-        count: Math.max(0, plan.purchase_limit - plan.purchased_count),
-      })
-      : '',
-  ].filter(Boolean)
-  if (availability.length > 0) features.push(availability.join(' · '))
-  const limits = [
-    plan.rpm_limit > 0 ? `RPM ${formatCount(plan.rpm_limit, locale)}` : '',
-    plan.tpm_limit > 0 ? `TPM ${formatCount(plan.tpm_limit, locale)}` : '',
-    plan.concurrency_limit > 0 ? t('console.purchasePage.api.concurrency', { count: plan.concurrency_limit }) : '',
-  ].filter(Boolean)
-  if (limits.length > 0) features.push(limits.join(' · '))
-  return features.slice(0, 3)
-}
-
-function bonusLabel(plan: ProductPlanSummary, locale: string, t: ReturnType<typeof useTranslation>['t']): string {
-  if (!plan.first_purchase_bonus_available) return ''
-  if (plan.first_purchase_bonus_token) {
-    return t('console.purchasePage.api.bonusToken', { value: formatCount(plan.first_purchase_bonus_token, locale) })
-  }
-  if (plan.first_purchase_bonus_request > 0) {
-    return t('console.purchasePage.api.bonusRequest', { count: plan.first_purchase_bonus_request })
-  }
-  return t('console.purchasePage.api.firstPurchaseBonus')
-}
 
 function PurchasePlanCard({
   plan,
@@ -107,8 +26,8 @@ function PurchasePlanCard({
   const { t, i18n } = useTranslation()
   const tone = CARD_TONES[index % CARD_TONES.length]
   const fallback = CARD_BACKGROUNDS[index % CARD_BACKGROUNDS.length]
-  const badge = bonusLabel(plan, i18n.language, t)
-  const price = formatPrice(plan.price?.price_cent)
+  const badge = planBonus(plan, i18n.language, t)
+  const price = formatPlanPrice(plan.price?.price_cent)
   const disabled = !plan.can_purchase || selecting
   const buttonLabel = selecting
     ? t('console.purchasePage.api.readingDetail')
@@ -125,9 +44,9 @@ function PurchasePlanCard({
       {badge ? <span className="purchase-plan-badge">{badge}</span> : null}
       <div className="purchase-plan-content">
         <h3>
-          {plan.name?.trim() || plan.code}
-          {/* 限购标签：先渲染样式，后续由接口字段控制是否显示。 */}
-          <span className="purchase-plan-limit-tag">{t('console.purchasePage.api.limitOne')}</span>
+          {planName(plan)}
+          {/* 限购次数由登录后的列表决定。 */}
+          {plan.purchase_limit > 0 && <span className="purchase-plan-limit-tag">{t('console.purchasePage.api.purchaseLimit', { count: plan.purchase_limit })}</span>}
         </h3>
         <strong>{plan.model_name?.trim() || plan.group_name}</strong>
         <div className="purchase-plan-info">
@@ -166,12 +85,12 @@ export default function PurchasePlanSection({
   onSelect: (plan: ProductPlanSummary) => void
 }) {
   const { t } = useTranslation()
-  const groups = useMemo(() => groupOptions(plans), [plans])
+  const groups = useMemo(() => planGroups(plans), [plans])
   const [activeGroup, setActiveGroup] = useState('all')
-  const tabs = useMemo(() => ['all', ...groups.map((group) => group.name)], [groups])
+  const tabs = useMemo(() => ['all', ...groups], [groups])
   const cards = useMemo(() => activeGroup === 'all'
     ? plans
-    : plans.filter((plan) => (plan.group_name?.trim() || plan.model_name?.trim() || plan.model_code) === activeGroup), [activeGroup, plans])
+    : plans.filter((plan) => planGroup(plan) === activeGroup), [activeGroup, plans])
 
   useEffect(() => {
     if (!tabs.includes(activeGroup)) setActiveGroup('all')

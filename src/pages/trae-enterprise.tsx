@@ -10,15 +10,11 @@ import {
   IconApartment,
   IconBarChartVStroked,
   IconBookmark,
-  IconCalendar,
   IconChevronDown,
   IconChevronRight,
   IconChevronUp,
-  IconCreditCard,
   IconEditStroked,
-  IconExternalOpen,
   IconFile,
-  IconGift,
   IconGridView,
   IconInfoCircle,
   IconLink,
@@ -26,8 +22,6 @@ import {
   IconPlus,
   IconSearch,
   IconTick,
-  IconUserGroup,
-  IconUserListStroked,
 } from "@douyinfe/semi-icons";
 import { TraeDialog } from "@/components/trae-dialog";
 import { TraeEnterpriseInvitations } from "@/components/trae-enterprise-invitations";
@@ -2251,133 +2245,6 @@ function TraeEnterpriseMembersContent({ context }: { context: EnterpriseContext 
         </TraeDialog>
       ) : null}
     </div>
-  );
-}
-
-function ProgressBar({ value, tone = "" }: { value: number; tone?: string }) {
-  return (
-    <div className={`trae-progress ${tone}`}>
-      <i style={{ width: `${Math.min(100, Math.max(0, value))}%` }} />
-    </div>
-  );
-}
-
-export function TraeEnterpriseSubscriptionPage() {
-  const { t } = useTranslation();
-  return (
-    <TraeShell
-      className="trae-subscription-page"
-      title={t("traeEnterprise.subscription.title")}
-      action={
-        <button
-          className="trae-secondary-button trae-subscription-manage-button"
-          type="button"
-        >
-          <IconExternalOpen aria-hidden="true" />
-          {t("traeEnterprise.subscription.goManage")}
-        </button>
-      }
-    >
-      <TraeSection title={t("traeEnterprise.subscription.plan")}>
-        <div className="trae-subscription-top">
-          <article className="trae-subscription-card">
-            <span>{t("traeEnterprise.subscription.current")}</span>
-            <strong>
-              <span className="trae-subscription-icon"><IconApartment aria-hidden="true" /></span>
-              {t("traeEnterprise.subscription.flagship")}{" "}
-              <small>{t("traeEnterprise.subscription.active")}</small>
-            </strong>
-          </article>
-          <article className="trae-subscription-card">
-            <span>{t("traeEnterprise.subscription.expiry")}</span>
-            <strong>
-              <span className="trae-subscription-icon"><IconCalendar aria-hidden="true" /></span>
-              2026/09/21
-            </strong>
-            <button
-              className="trae-secondary-button trae-subscription-renew-button"
-              type="button"
-            >
-              {t("traeEnterprise.subscription.renew")}
-            </button>
-          </article>
-        </div>
-        <div className="trae-subscription-capacity">
-          <div className="trae-capacity-block">
-            <div className="trae-capacity-heading">
-              <span>
-                {t("traeEnterprise.subscription.seats")}{" "}
-                <small>{t("traeEnterprise.subscription.seatHint")}</small>
-              </span>
-              <button
-                className="trae-secondary-button"
-                type="button"
-              >
-                {t("traeEnterprise.subscription.addSeats")}
-              </button>
-            </div>
-            <strong className="trae-capacity-number"><i><IconUserGroup aria-hidden="true" /></i>4 / 10</strong>
-            <div className="trae-capacity-legend trae-capacity-legend--split">
-              <span className="is-green">{t("traeEnterprise.subscription.allAccount")} 10</span>
-              <span className="is-purple">{t("traeEnterprise.subscription.workAccount")} 20</span>
-            </div>
-            <ProgressBar value={40} tone="is-mixed" />
-          </div>
-          <div className="trae-capacity-block">
-            <div className="trae-capacity-heading">
-              <span>
-                {t("traeEnterprise.subscription.available")} <IconInfoCircle className="app-info-icon" aria-hidden="true" />
-              </span>
-            </div>
-            <strong className="trae-capacity-number"><i><IconUserListStroked aria-hidden="true" /></i>30</strong>
-            <div className="trae-capacity-legend trae-capacity-legend--usage">
-              <span>
-                {t("traeEnterprise.subscription.allAccount")} <b>4 / 10</b>
-                <em>{t("traeEnterprise.subscription.remaining")} 6</em>
-              </span>
-              <ProgressBar value={40} tone="is-success" />
-              <span>
-                {t("traeEnterprise.subscription.workAccount")} <b>0 / 20</b>
-                <em>{t("traeEnterprise.subscription.remaining")} 20</em>
-              </span>
-              <ProgressBar value={0} tone="is-empty" />
-            </div>
-          </div>
-        </div>
-        <div className="trae-payg-row">
-          <div>
-            <span>{t("traeEnterprise.subscription.addon")} <IconInfoCircle className="app-info-icon" aria-hidden="true" /></span>
-            <strong>
-              <span className="trae-subscription-icon"><IconGift aria-hidden="true" /></span>
-              {t("traeEnterprise.subscription.notPurchased")}
-            </strong>
-          </div>
-          <button
-            className="trae-secondary-button trae-subscription-addon-button"
-            type="button"
-          >
-            {t("traeEnterprise.subscription.buyAddon")}{" "}
-            <IconExternalOpen aria-hidden="true" />
-          </button>
-        </div>
-        <div className="trae-payg-row">
-          <div>
-            <span>{t("traeEnterprise.subscription.payg")} <IconInfoCircle className="app-info-icon" aria-hidden="true" /></span>
-            <strong>
-              <span className="trae-subscription-icon"><IconCreditCard aria-hidden="true" /></span>
-              {t("traeEnterprise.subscription.notOpen")}
-            </strong>
-          </div>
-          <button
-            className="trae-secondary-button trae-subscription-payg-button"
-            type="button"
-          >
-            {t("traeEnterprise.subscription.openPayg")}{" "}
-            <IconExternalOpen aria-hidden="true" />
-          </button>
-        </div>
-      </TraeSection>
-    </TraeShell>
   );
 }
 

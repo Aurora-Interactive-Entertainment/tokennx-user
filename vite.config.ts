@@ -56,7 +56,14 @@ export default defineConfig(({ mode }) => {
     authToken: process.env.SENTRY_AUTH_TOKEN?.trim() || env.SENTRY_AUTH_TOKEN?.trim() || '',
     org: process.env.SENTRY_ORG?.trim() || env.SENTRY_ORG?.trim() || '',
     project: process.env.SENTRY_PROJECT?.trim() || env.SENTRY_PROJECT?.trim() || '',
-    release: process.env.SENTRY_RELEASE?.trim() || env.SENTRY_RELEASE?.trim() || '',
+    // 优先使用 CI 提供的稳定版本号；兼容常见 CI 的提交 SHA 变量，避免线上事件没有 release。
+    release:
+      process.env.SENTRY_RELEASE?.trim() ||
+      env.SENTRY_RELEASE?.trim() ||
+      process.env.GIT_COMMIT_SHA?.trim() ||
+      process.env.GITHUB_SHA?.trim() ||
+      process.env.CI_COMMIT_SHA?.trim() ||
+      '',
   }
   const uploadSourceMaps =
     (process.env.SENTRY_SOURCE_MAP_UPLOAD || env.SENTRY_SOURCE_MAP_UPLOAD) === 'true'

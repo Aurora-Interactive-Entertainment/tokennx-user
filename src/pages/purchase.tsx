@@ -1,16 +1,26 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "react-router";
-import { getBillingErrorMessage } from "@/api/billing";
-import { isAuthenticationFailure } from "@/api/http";
-import { getProductPlanDetail, getProductPlans, type ProductPlanDetail, type ProductPlanSummary } from "@/api/product-plans";
+import { isUserProductPlan, type ProductPlanSummary } from "@/api/product-plans";
+import { usePurchaseCatalog } from "@/components/use-purchase-catalog";
 import ActivityTicker from "@/components/activity-ticker";
-import { appToast } from "@/components/app-toast";
 import PurchasePlanSection from "@/components/purchase-plan-section";
 import { PurchasePaymentModal } from "@/components/purchase-payment-modal";
 import { useAppStore } from "@/data/app-state";
 import { invalidateAuth } from "@/store/auth-slice";
-import { useAppDispatch } from "@/store/hooks";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import claudeCodeLogo from "@/assets/svg/Claudecode.svg";
+import geminiLogo from "@/assets/svg/gemini.svg";
+import openAiLogo from "@/assets/svg/OpenAl.svg";
+import qwenLogo from "@/assets/svg/qwen.svg";
+import cursorLogo from "@/assets/ai-tools/cursor.svg";
+import githubCopilotLogo from "@/assets/ai-tools/github-copilot.svg";
+import openCodeLogo from "@/assets/ai-tools/opencode.svg";
+import windsurfLogo from "@/assets/ai-tools/windsurf.svg";
+import clineLogo from "@/assets/ai-tools/cline.svg";
+import rooCodeLogo from "@/assets/ai-tools/roo-code.svg";
+import traeLogo from "@/assets/ai-tools/trae.svg";
+import workBuddyLogo from "@/assets/ai-tools/workbuddy.svg";
 import { billingContextForWorkspace } from "./billing";
 import "./purchase.css";
 
@@ -192,6 +202,22 @@ function PurchaseNotice() {
   );
 }
 
+// 品牌名称保持官方写法，图标使用本地资源，避免页面依赖外部图片服务。
+const SUPPORTED_TOOLS = [
+  { name: "WorkBuddy", logo: workBuddyLogo },
+  { name: "Claude Code", logo: claudeCodeLogo },
+  { name: "Cursor", logo: cursorLogo },
+  { name: "OpenAI Codex", logo: openAiLogo },
+  { name: "GitHub Copilot", logo: githubCopilotLogo },
+  { name: "Windsurf", logo: windsurfLogo },
+  { name: "Gemini CLI", logo: geminiLogo },
+  { name: "Qwen Code", logo: qwenLogo },
+  { name: "Cline", logo: clineLogo },
+  { name: "Roo Code", logo: rooCodeLogo },
+  { name: "OpenCode", logo: openCodeLogo },
+  { name: "TRAE", logo: traeLogo },
+];
+
 function SupportedTools() {
   const { t } = useTranslation();
   return (
@@ -201,10 +227,12 @@ function SupportedTools() {
         subtitle={t("console.purchasePage.tools.subtitle")}
       />
       <div className="purchase-tool-grid">
-        {Array.from({ length: 12 }, (_, index) => (
-          <div className="purchase-tool-card" key={index}>
-            <span aria-hidden="true">OC</span>
-            {t("console.purchasePage.tools.name")}
+        {SUPPORTED_TOOLS.map((tool) => (
+          <div className="purchase-tool-card" key={tool.name}>
+            <span className="purchase-tool-logo-wrap">
+              <img className="purchase-tool-logo" src={tool.logo} alt="" />
+            </span>
+            <span className="purchase-tool-name">{tool.name}</span>
           </div>
         ))}
       </div>
@@ -261,84 +289,21 @@ export function PurchasePage({ activityMessages }: { activityMessages?: Purchase
     () => billingContextForWorkspace(store.activeWorkspace),
     [store.activeWorkspace.id, store.activeWorkspace.type],
   );
-  const [plans, setPlans] = useState<ProductPlanSummary[]>([]);
-  const [plansLoading, setPlansLoading] = useState(true);
-  const [plansError, setPlansError] = useState("");
-  const [retryToken, setRetryToken] = useState(0);
-  const [selectingPlanID, setSelectingPlanID] = useState<string | null>(null);
-  const [selectedPlan, setSelectedPlan] = useState<ProductPlanDetail | null>(null);
-  const selectionRequest = useRef<AbortController | null>(null);
+  const auth = useAppSelector(state => state.auth);
+  const userKey = auth.status === "authenticated" && auth.user ? `${auth.user.id}:${auth.loginSequence}` : null;
+  const catalog = usePurchaseCatalog(userKey, context);
+  const plans = catalog.plans.filter(isUserProductPlan);
+  const [selection, setSelection] = useState<{ scope: string; plan: ProductPlanSummary } | null>(null);
+  const selectedPlan = selection?.scope === catalog.scope ? selection.plan : null;
 
-  useEffect(() => {
-    setSelectedPlan(null);
-    setSelectingPlanID(null);
-    return () => selectionRequest.current?.abort();
-  }, [context]);
+  useEffect(() => { setSelection(null); }, [catalog.scope]);
 
-  useEffect(() => {
-    const controller = new AbortController();
-    setPlansLoading(true);
-    setPlansError("");
-    void getProductPlans(context, { page: 1, page_size: 100, signal: controller.signal })
-      .then((response) => {
-        if (controller.signal.aborted) return;
-        const items = Array.isArray(response?.items) ? response.items : [];
-        setPlans([...items].sort((left, right) =>
-          left.group_sort_order - right.group_sort_order || left.name.localeCompare(right.name),
-        ));
-        setPlansLoading(false);
-      })
-      .catch((reason: unknown) => {
-        if (controller.signal.aborted) return;
-        if (isAuthenticationFailure(reason)) {
-          dispatch(invalidateAuth());
-          navigate("/", { replace: true });
-          return;
-        }
-        setPlans([]);
-        setPlansError(getBillingErrorMessage(reason));
-        setPlansLoading(false);
-      });
-    return () => controller.abort();
-  }, [context, dispatch, navigate, retryToken]);
-
-  const selectPlan = useCallback((plan: ProductPlanSummary) => {
-    if (!plan.can_purchase || selectingPlanID) return;
-    const controller = new AbortController();
-    selectionRequest.current = controller;
-    setSelectingPlanID(plan.id);
-    void getProductPlanDetail(context, plan.id, { signal: controller.signal })
-      .then((detail) => {
-        if (controller.signal.aborted) return;
-        if (!detail.can_purchase) {
-          // 详情接口是购买前的最终状态，库存或限购变化时同步刷新卡片状态。
-          setPlans((current) => current.map((item) => item.id === detail.id
-            ? {
-              ...item,
-              can_purchase: false,
-              stock_remaining: detail.stock_remaining,
-              purchase_limit: detail.purchase_limit,
-              purchased_count: detail.purchased_count,
-            }
-            : item));
-          appToast.warning(t("console.purchasePage.api.unavailable"));
-          return;
-        }
-        setSelectedPlan(detail);
-      })
-      .catch((reason: unknown) => {
-        if (controller.signal.aborted) return;
-        if (isAuthenticationFailure(reason)) {
-          dispatch(invalidateAuth());
-          navigate("/", { replace: true });
-          return;
-        }
-        appToast.error(getBillingErrorMessage(reason));
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setSelectingPlanID(null);
-      });
-  }, [context, dispatch, navigate, selectingPlanID, t]);
+  function selectPlan(plan: ProductPlanSummary) {
+    // 新列表已包含完整权益，不再调用已取消的套餐详情接口。
+    if (userKey && plan.can_purchase && !catalog.loading && !catalog.error) {
+      setSelection({ scope: catalog.scope, plan });
+    }
+  }
 
   return (
     <>
@@ -373,10 +338,10 @@ export function PurchasePage({ activityMessages }: { activityMessages?: Purchase
         </header>
         <PurchasePlanSection
           plans={plans}
-          loading={plansLoading}
-          error={plansError}
-          selectingPlanID={selectingPlanID}
-          onRetry={() => setRetryToken((value) => value + 1)}
+          loading={catalog.loading}
+          error={catalog.error}
+          selectingPlanID={null}
+          onRetry={catalog.reload}
           onSelect={selectPlan}
         />
         <PurchaseNotice />
@@ -387,7 +352,7 @@ export function PurchasePage({ activityMessages }: { activityMessages?: Purchase
         open={selectedPlan !== null}
         context={context}
         planID={selectedPlan?.id}
-        onPaid={() => setRetryToken((value) => value + 1)}
+        onPaid={catalog.reload}
         onAuthFailure={() => {
           dispatch(invalidateAuth());
           navigate("/", { replace: true });
@@ -395,7 +360,7 @@ export function PurchasePage({ activityMessages }: { activityMessages?: Purchase
         planName={selectedPlan?.name ?? ""}
         priceCent={selectedPlan?.price.price_cent}
         validitySeconds={selectedPlan?.price.validity_seconds}
-        onClose={() => setSelectedPlan(null)}
+        onClose={() => setSelection(null)}
       />
     </>
   );

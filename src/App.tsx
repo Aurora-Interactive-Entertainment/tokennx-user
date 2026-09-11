@@ -16,7 +16,6 @@ import {
   DEFAULT_CONSOLE_PATH,
   PublicLayout,
 } from "@/components/common";
-import { ActivityCampaignModal } from "@/components/activity-campaign-modal";
 import { AppStoreProvider } from "@/data/app-state";
 import {
   hydrateAuth,
@@ -44,11 +43,6 @@ const HomePage = lazy(() =>
 const ModelsPublicPage = lazy(() =>
   loadPublicPages().then(({ ModelsPublicPage }) => ({
     default: ModelsPublicPage,
-  })),
-);
-const ModelDetailPage = lazy(() =>
-  loadPublicPages().then(({ ModelDetailPage }) => ({
-    default: ModelDetailPage,
   })),
 );
 const RankingsPage = lazy(() =>
@@ -354,8 +348,6 @@ export default function App({ onBootReady }: { onBootReady: () => void }) {
       <ScrollToTop />
       <AuthBootstrap>
         <>
-          {/* 活动弹窗挂在应用入口而非购买页，后续可由接口通过 shouldDisplay/campaign 控制。 */}
-          <ActivityCampaignModal />
           <AuthScopedStoreProvider>
             <BootReadyWatcher onBootReady={onBootReady} />
             <Suspense fallback={<AppLoadingFallback />}>
@@ -365,7 +357,6 @@ export default function App({ onBootReady }: { onBootReady: () => void }) {
                 element={<HomePage onInitialScoreboardReady={onBootReady} />}
               />
               <Route path="/models" element={<ModelsPublicPage />} />
-              <Route path="/models/:modelId" element={<ModelDetailPage />} />
               <Route path="/rankings" element={<RankingsPage />} />
               <Route path="/apps" element={<AppsPage />} />
               <Route path="/docs" element={<DocsPage />} />
@@ -392,7 +383,6 @@ export default function App({ onBootReady }: { onBootReady: () => void }) {
                   element={<HomePage onInitialScoreboardReady={onBootReady} />}
                 />
                 <Route path="models" element={<ModelsPublicPage />} />
-                <Route path="models/:modelId" element={<ModelDetailPage />} />
                 <Route path="rankings" element={<RankingsPage />} />
                 <Route path="apps" element={<AppsPage />} />
                 <Route path="docs" element={<DocsPage />} />
@@ -473,7 +463,8 @@ export default function App({ onBootReady }: { onBootReady: () => void }) {
               {SentryTestPage ? (
                 <Route path="/__sentry-test" element={<SentryTestPage />} />
               ) : null}
-              <Route path="*" element={<NotFoundPage />} />
+              {/* 未匹配路由统一回到首页，暂时不展示 404 页面。 */}
+              <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </Suspense>
           </AuthScopedStoreProvider>

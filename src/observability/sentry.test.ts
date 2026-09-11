@@ -10,6 +10,13 @@ describe("关键 API 错误分类", () => {
       shouldReportCriticalApiFailure("PATCH", 503, "/api/user/profile"),
     ).toBe(true);
     expect(
+      shouldReportCriticalApiFailure(
+        "POST",
+        500,
+        "/api/user/redemption-codes/redeem",
+      ),
+    ).toBe(true);
+    expect(
       shouldReportCriticalApiFailure("GET", 500, "/api/user/billing"),
     ).toBe(false);
     expect(

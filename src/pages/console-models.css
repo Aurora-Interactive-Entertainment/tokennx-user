@@ -165,12 +165,6 @@
   padding-right: 136px;
 }
 
-.models-console-page
-  .model-card:has(.model-card-tag:nth-child(2))
-  .model-card-topline {
-  padding-right: 250px;
-}
-
 .models-console-page .model-logo {
   width: 40px;
   height: 40px;
@@ -182,14 +176,16 @@
 
 .models-console-page .model-card-name {
   display: block;
-  overflow: hidden;
+  /* 长名称完整展示，窄屏允许换行，不使用单行省略。 */
+  overflow-wrap: anywhere;
+  overflow: visible;
   margin: 0;
   color: var(--color-text-default);
   font-size: 18px;
   font-weight: 650;
   line-height: 24px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  text-overflow: clip;
+  white-space: normal;
 }
 
 .models-console-page .model-card-company {
@@ -249,7 +245,8 @@
   justify-content: flex-end;
   flex-wrap: wrap;
   gap: 5px;
-  max-width: 250px;
+  /* 标签在预留区域内换行，避免按标签数量挤占标题空间。 */
+  max-width: 120px;
   margin: 0;
 }
 

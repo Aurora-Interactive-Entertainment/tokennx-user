@@ -2,22 +2,6 @@
   width: min(440px, calc(100vw - 32px));
 }
 
-.billing-reward-card-footer {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 8px;
-  margin-top: auto;
-}
-
-.billing-reward-card-footer > strong {
-  color: var(--color-text-default);
-  font-size: 24px;
-  font-weight: 650;
-  line-height: 1.1;
-  font-variant-numeric: tabular-nums;
-}
-
 .billing-redemption-form {
   display: grid;
   gap: 8px;

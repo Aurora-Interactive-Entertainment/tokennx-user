@@ -16,7 +16,7 @@ export const PUBLIC_HOMEPAGE_STATS_PATH = '/api/homepage/stats'
 const PUBLIC_OBJECT_ID_PATTERN = /^[0-9A-HJKMNP-TV-Z]{26}$/
 let initialHomepageRequestConsumed = false
 
-export type HomepageKind = 'card' | 'promotion_model' | 'ad_slot' | 'news' | 'partner'
+export type HomepageKind = 'card' | 'promotion_model' | 'ad_slot' | 'news' | 'partner' | 'popup'
 export type HomepageDiscountKind = 'half' | 'free' | 'custom'
 export type HomepageLocale = 'zh-CN' | 'en-US'
 
@@ -85,6 +85,7 @@ export interface PublicHomepage {
   ad_slots: HomepageEntry[]
   news: HomepageEntry[]
   partners: HomepageEntry[]
+  popups?: HomepageEntry[]
   promotion: HomepagePromotion
 }
 
@@ -228,6 +229,7 @@ function parseHomepage(value: unknown): PublicHomepage {
     ad_slots: parseEntries(value.ad_slots, 'ad_slot'),
     news: parseEntries(value.news, 'news'),
     partners: parseEntries(value.partners, 'partner'),
+    ...(Array.isArray(value.popups) ? { popups: parseEntries(value.popups, 'popup') } : {}),
     promotion: parsePromotion(value.promotion),
   }
 }

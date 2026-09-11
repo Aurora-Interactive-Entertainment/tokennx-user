@@ -58,7 +58,7 @@ describe('控制台认证路由', () => {
         </Provider>,
       )
 
-      expect(await screen.findByText('页面不存在')).toBeInTheDocument()
+      await waitFor(() => expect(window.location.pathname).toBe('/'))
       window.dispatchEvent(
         new StorageEvent('storage', {
           key: AUTH_SYNC_STORAGE_KEY,

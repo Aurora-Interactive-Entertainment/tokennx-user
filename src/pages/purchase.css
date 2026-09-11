@@ -511,17 +511,33 @@
   border-color: #a9a9a9;
   box-shadow: 0 10px 22px rgba(23, 24, 27, 0.12);
 }
-.purchase-tool-card span {
+.purchase-tool-logo-wrap {
   display: grid;
   width: 54px;
   height: 54px;
   flex: 0 0 54px;
   place-items: center;
+  border: 1px solid #e4e4e4;
   border-radius: 12px;
-  color: #fff;
-  background: #17181b;
+  color: #17181b;
+  background: #fff !important;
   font-size: 20px;
   font-weight: 500;
+}
+.purchase-tool-logo {
+  width: 34px;
+  height: 34px;
+  object-fit: contain;
+}
+.purchase-tool-name {
+  max-width: 100%;
+  overflow: visible;
+  text-align: center;
+  font-size: 16px;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+  white-space: normal;
 }
 .purchase-faq {
   margin-top: 135px;
@@ -778,7 +794,7 @@ html[data-theme="dark"] .purchase-faq-item + .purchase-faq-item {
     padding: 18px 12px;
     font-size: 14px;
   }
-  .purchase-tool-card span {
+  .purchase-tool-logo-wrap {
     width: 54px;
     height: 54px;
     flex-basis: 54px;

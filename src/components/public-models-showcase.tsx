@@ -94,11 +94,7 @@ export function ModelsHeroCarousel({ carousels = [] }: { carousels?: PublicMarke
 
   const slide = slides[activeIndex] ?? FALLBACK_SLIDES[0]
   // 跳转控制台模型广场时用 keyword 搜索参数定位模型，控制台搜索框会命中该字段。
-  const slideReturnPath = slide.modelName
-    ? `/console/models?keyword=${encodeURIComponent(slide.modelName)}`
-    : slide.modelId
-      ? `/console/models?model=${encodeURIComponent(slide.modelId)}`
-      : '/console/models'
+  const slideReturnPath = slide.modelId ? `/console/models?keyword=${encodeURIComponent(slide.modelId)}` : '/console/models'
   const selectSlide = (index: number) => {
     if (index === activeIndex) return
     setOutgoingSlide(slide)
@@ -125,12 +121,12 @@ export function ModelsHeroCarousel({ carousels = [] }: { carousels?: PublicMarke
 
 export function ShowcaseModelCard({ model }: { model: ModelRecord }) {
   const { t } = useTranslation()
-  const modelHref = `/models/${encodeURIComponent(model.alias || model.id)}`
+  const modelReturnPath = `/console/models?keyword=${encodeURIComponent(model.id)}`
   return <article className="models-showcase-card">
-    <div className="models-showcase-card-head"><Link className="models-showcase-card-identity" to={modelHref} aria-label={model.name}><ModelLogo model={model} className="models-showcase-card-logo" /><span><strong>{model.name}</strong><small>{t('public.models.releaseDate', { date: '2026年7月3日' })}</small></span></Link></div>
+    <div className="models-showcase-card-head"><div className="models-showcase-card-identity"><ModelLogo model={model} className="models-showcase-card-logo" /><span><strong>{model.name}</strong><small>{t('public.models.releaseDate', { date: '2026年7月3日' })}</small></span></div></div>
     <p className="models-showcase-card-description">{model.description}</p>
     <dl className="models-showcase-card-prices"><div><dt>{t('public.models.inputPrice')}</dt><dd>{hasDiscount(model, 'input') ? <del className="models-showcase-card-price-original"><span>{t('public.models.priceBase')}</span>{priceValue(model, 'input', 'officialPrice')}</del> : <span className="models-showcase-card-price-original models-showcase-card-price-original--placeholder" aria-hidden="true" />}<strong className="models-showcase-card-price-current"><span className="models-showcase-card-price-current-currency">{t('public.models.priceBase')}</span>{priceValue(model, 'input')}</strong></dd></div><div><dt>{t('public.models.outputPrice')}</dt><dd>{hasDiscount(model, 'output') ? <del className="models-showcase-card-price-original"><span>{t('public.models.priceBase')}</span>{priceValue(model, 'output', 'officialPrice')}</del> : <span className="models-showcase-card-price-original models-showcase-card-price-original--placeholder" aria-hidden="true" />}<strong className="models-showcase-card-price-current"><span className="models-showcase-card-price-current-currency">{t('public.models.priceBase')}</span>{priceValue(model, 'output')}</strong></dd></div></dl>
-    <div className="models-showcase-card-actions"><LoginRequiredAction className="models-showcase-card-primary" returnPath={model.name ? `/console/models?keyword=${encodeURIComponent(model.name)}` : `/console/models?model=${encodeURIComponent(model.id)}`}>{t('public.models.tryNow')}</LoginRequiredAction><Link className="models-showcase-card-docs" to="/docs/01M0765G0JDT3JCZ6QQXNM40TX/token-nx-api-documentation">{t('public.models.apiDocs')}</Link></div>
+    <div className="models-showcase-card-actions"><LoginRequiredAction className="models-showcase-card-primary" returnPath={modelReturnPath}>{t('public.models.tryNow')}</LoginRequiredAction><Link className="models-showcase-card-docs" to="/docs/01M0765G0JDT3JCZ6QQXNM40TX/token-nx-api-documentation">{t('public.models.apiDocs')}</Link></div>
   </article>
 }
 

@@ -646,6 +646,112 @@ html[data-theme="dark"] .quickstart-pdf-cancel-button:focus-visible:not(:disable
   overflow-x: auto;
   scrollbar-width: thin;
 }
+
+/* 第三步的接入方式切换独立于 API 协议选择器，避免改变现有 API 接入布局。 */
+.quickstart-pdf-integration-tabs {
+  display: flex;
+  align-items: center;
+  gap: 26px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.quickstart-pdf-integration-tabs button {
+  position: relative;
+  min-height: 34px;
+  padding: 0 0 8px;
+  border: 0;
+  color: var(--text-secondary);
+  background: transparent;
+  font-size: 13px;
+  cursor: pointer;
+}
+.quickstart-pdf-integration-tabs button:hover { color: var(--text-primary); }
+.quickstart-pdf-integration-tabs button.is-active {
+  color: var(--text-primary);
+}
+.quickstart-pdf-integration-tabs button.is-active::after {
+  position: absolute;
+  right: 0;
+  bottom: -1px;
+  left: 0;
+  height: 2px;
+  background: var(--text-primary);
+  content: "";
+}
+.quickstart-pdf-agent-tools {
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-panel);
+}
+.quickstart-pdf-agent-tool-tabs {
+  display: flex;
+  align-items: stretch;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--border-subtle);
+  scrollbar-width: thin;
+}
+.quickstart-pdf-agent-tool-tabs button {
+  display: inline-flex;
+  min-width: max-content;
+  min-height: 44px;
+  align-items: center;
+  gap: 8px;
+  padding: 0 16px;
+  border: 0;
+  border-right: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  background: var(--bg-base-soft);
+  font-size: 13px;
+  cursor: pointer;
+}
+.quickstart-pdf-agent-tool-tabs button:hover { color: var(--text-primary); }
+.quickstart-pdf-agent-tool-tabs button.is-active {
+  color: var(--text-primary);
+  background: var(--bg-panel);
+}
+.quickstart-pdf-agent-tool-icon {
+  display: inline-grid;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  place-items: center;
+  border-radius: 5px;
+  color: #fff;
+  background: #64748b;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+}
+.quickstart-pdf-agent-tool-icon.tool-claudeCode { background: #d97757; }
+.quickstart-pdf-agent-tool-icon.tool-workBuddy { background: #57c99d; }
+.quickstart-pdf-agent-tool-icon.tool-openClaw { background: #dd5147; }
+.quickstart-pdf-agent-tool-icon.tool-hermesAgent,
+.quickstart-pdf-agent-tool-icon.tool-cline { background: #202124; }
+.quickstart-pdf-agent-tool-icon.tool-cursor { background: #111827; }
+.quickstart-pdf-agent-tool-content {
+  min-height: 144px;
+  padding: 18px 20px 20px;
+}
+.quickstart-pdf-agent-tool-content h3 {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0 0 10px;
+  color: var(--text-primary);
+  font-size: 15px;
+}
+.quickstart-pdf-agent-tool-content p {
+  max-width: 720px;
+  margin: 0 0 16px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.7;
+}
+.quickstart-pdf-agent-tool-content a {
+  color: var(--quickstart-neutral-accent);
+  font-size: 12px;
+  text-decoration: none;
+}
+.quickstart-pdf-agent-tool-content a:hover { text-decoration: underline; }
 .quickstart-pdf-protocol-tabs,
 .quickstart-pdf-api-mode-tabs {
   flex: 0 0 auto;
