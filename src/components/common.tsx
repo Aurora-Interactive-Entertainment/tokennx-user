@@ -1704,7 +1704,6 @@ export function LoginPanel({
               view={wechat.view}
               error={wechat.error}
               frameRef={wechat.frameRef}
-              onOpenFallback={wechat.openInNewWindow}
               onRetry={wechat.start}
               onBack={() => { setTab("phone"); setFeedback(""); }}
             />

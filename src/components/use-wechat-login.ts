@@ -21,8 +21,6 @@ export function useWechatLogin(options: {
   const [session, setSession] = useState<WechatQrResult | null>(null)
   const [error, setError] = useState('')
   const frameRef = useRef<HTMLIFrameElement>(null)
-  // 顶层兜底窗口必须保留引用，回调页返回的消息要校验 event.source。
-  const popupRef = useRef<Window | null>(null)
   const latest = useRef({ ...options, t })
   latest.current = { ...options, t }
 
@@ -34,7 +32,6 @@ export function useWechatLogin(options: {
     let timer: number | undefined
     let expiryTimer: number | undefined
     const controller = new AbortController()
-    popupRef.current = null
     const stop = () => {
       active = false
       qr = null
@@ -95,9 +92,7 @@ export function useWechatLogin(options: {
     function onMessage(event: MessageEvent) {
       if (!active || !qr || exchanging) return
       const callbackOrigin = parseWechatRedirectUri(qr.redirect_uri)?.origin
-      const frameCode = readWechatCallback(event, frameRef.current?.contentWindow, qr.state, callbackOrigin)
-      const popupCode = readWechatCallback(event, popupRef.current, qr.state, callbackOrigin)
-      const code = frameCode ?? popupCode
+      const code = readWechatCallback(event, frameRef.current?.contentWindow, qr.state, callbackOrigin)
       if (!code) return
       // 在发请求前同步锁定本次二维码，重复消息和 StrictMode 都不能并发兑换。
       exchanging = true
@@ -128,18 +123,5 @@ export function useWechatLogin(options: {
     return stop
   }, [attempt, dispatch, options.enabled])
 
-  function openInNewWindow(url: string): void {
-    try {
-      // 不传 noopener/noreferrer，回调页需要通过 window.opener 把授权码发回登录页。
-      const popup = window.open(url, '_blank')
-      popupRef.current = popup
-      // 被浏览器拦截时 window.open 返回 null 而不抛错，必须显式提示，否则用户点了没有任何反应。
-      if (!popup) setError(latest.current.t('login.popupBlocked'))
-    } catch {
-      popupRef.current = null
-      setError(latest.current.t('login.popupBlocked'))
-    }
-  }
-
-  return { view, session, error, frameRef, openInNewWindow, start: () => setAttempt(value => value + 1) }
+  return { view, session, error, frameRef, start: () => setAttempt(value => value + 1) }
 }

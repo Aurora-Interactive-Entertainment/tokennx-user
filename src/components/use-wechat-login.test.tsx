@@ -88,25 +88,6 @@ describe('微信回调兑换生命周期', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 
-  it('顶层兜底窗口回调使用窗口引用完成兑换', async () => {
-    const popup = { closed: false } as unknown as Window
-    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(envelope(qr())).mockResolvedValueOnce(envelope(binding))
-    vi.spyOn(window, 'open').mockReturnValue(popup)
-    const hook = setup()
-    act(() => hook.result.current.start())
-    await advance()
-    act(() => hook.result.current.openInNewWindow('https://open.weixin.qq.com/connect/qrconnect'))
-    act(() => window.dispatchEvent(new MessageEvent('message', {
-      origin: window.location.origin,
-      source: popup,
-      data: { type: WECHAT_CALLBACK_MESSAGE, code: 'popup-code', state: 'first' },
-    })))
-    await advance()
-    expect(fetchMock).toHaveBeenCalledTimes(2)
-    expect(JSON.parse(String(fetchMock.mock.calls[1][1]?.body))).toEqual({ code: 'popup-code', state: 'first' })
-    expect(hook.onBinding).toHaveBeenCalledWith('binding-ticket')
-  })
-
   it('刷新取消旧请求，迟到二维码与旧 state 回调不能影响新会话', async () => {
     const old = deferred<Response>()
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockReturnValueOnce(old.promise).mockResolvedValueOnce(envelope(qr('second')))

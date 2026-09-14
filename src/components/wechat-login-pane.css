@@ -56,32 +56,6 @@
   background: var(--color-bg-base-default);
 }
 
-.wechat-login-hint {
-  margin: 12px 0;
-  color: var(--color-text-secondary);
-  font-size: 12px;
-  line-height: 1.6;
-  text-align: center;
-  overflow-wrap: anywhere;
-}
-
-.wechat-login-frame-failure {
-  width: 100%;
-  color: var(--color-text-secondary);
-  text-align: center;
-}
-
-.wechat-login-frame-failure p {
-  margin: 0 0 12px;
-  color: var(--color-danger, #f04444);
-  font-size: 12px;
-  line-height: 1.6;
-}
-
-.wechat-login-frame-failure .submit-btn {
-  width: 100%;
-}
-
 :is(.login-popover, .login-card) .wechat-login-feedback.wechat-status {
   margin: 12px 0;
   width: 100%;
