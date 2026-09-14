@@ -1,4 +1,6 @@
 .docs-markdown { color: #8b8b8b; font-size: 16px; line-height: 1.75; }
+/* 表格滚动容器承接表格原本的 25px 段间距；放在 last-child 规则之前，末尾表格仍然不留白。 */
+.docs-markdown .markdown-table-scroll { margin: 0 0 25px; }
 .docs-markdown > :first-child { margin-top: 0; }
 .docs-markdown > :last-child { margin-bottom: 0; }
 .docs-markdown h1, .docs-markdown h2, .docs-markdown h3, .docs-markdown h4 { color: #fff; font-weight: 500; line-height: 1.35; letter-spacing: 0; scroll-margin-top: 174px; }
@@ -17,7 +19,10 @@
 .docs-markdown pre code { color: inherit; font: 12px/1.7 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; white-space: pre; }
 .docs-markdown table { display: table; width: 100%; max-width: 100%; overflow: visible; border-collapse: collapse; }
 .docs-markdown th, .docs-markdown td { padding: 14px 12px; border: 1px solid #353535; color: #8b8b8b; text-align: left; }
-.docs-markdown th { color: var(--table-header-color, #fff); background: #202020; font-size: 13px; font-weight: 500; }
+.docs-markdown th { color: var(--table-header-color, #fff); background: #202020; font-size: 13px; font-weight: 500; white-space: nowrap; }
+/* 文档表格第一列是“维度 / 参数 / 状态码”这类短标签列，给一个能放下 4 个汉字的下限宽度，
+   避免 CJK 标签在还有富余宽度时被挤成两行；上限不锁死，长内容照常折行。 */
+.docs-markdown th:first-child, .docs-markdown td:first-child { min-width: 6em; }
 .docs-markdown .markdown-image-frame { position: relative; display: block; min-block-size: clamp(120px, 22vw, 220px); max-width: 100%; margin: 30px auto; overflow: hidden; border-radius: 4px; background: #202020; }
 .docs-markdown .markdown-image-frame.is-loaded { min-block-size: 0; background: transparent; }
 .docs-markdown .markdown-image { display: block; max-width: 100%; height: auto; margin: 0 auto; border-radius: inherit; opacity: 0; transition: opacity .18s ease-out; }
@@ -50,5 +55,4 @@ html[data-theme="light"] .docs-markdown .markdown-image-loading-ring { border-co
   .docs-markdown h1 { max-width: none; font-size: 26px; }
   .docs-markdown h2 { font-size: 23px; }
   .docs-markdown { font-size: 15px; }
-  .docs-markdown table { display: block; overflow-x: auto; }
 }

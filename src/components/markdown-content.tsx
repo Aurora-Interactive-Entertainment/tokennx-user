@@ -191,6 +191,8 @@ export const MarkdownContent = memo(function MarkdownContent({ content, classNam
   // 兼容 React Markdown 与 unified 不同版本的 AST 类型定义。
   const components: any = {
     img: ({ src, alt }: { src?: string; alt?: string }) => <MarkdownImage src={src} alt={alt} resolveImageUrl={resolveImageUrl} />,
+    // 表格套一层滚动容器：内容放不下时整表横向滚动，既不撑破正文列，也不用把长 token 拆行。
+    table: ({ children }: { children?: React.ReactNode }) => <div className="markdown-table-scroll"><table>{children}</table></div>,
     ...(enhancedCodeBlocks ? {
       pre: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
       code: ({ className: codeClassName, children, node }: { className?: string; children?: React.ReactNode; node?: MarkdownAstNode }) => {

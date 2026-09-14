@@ -2,15 +2,20 @@ import Button from "@douyinfe/semi-ui/lib/es/button";
 import { useEffect, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Sentry } from "@/observability/sentry";
+import { isChunkLoadError, recoverFromChunkLoadError } from "@/utils/chunk-recovery";
 import "./app-error-boundary.css";
 
-function AppErrorFallback({ resetError }: { resetError: () => void }) {
+function AppErrorFallback({ error, resetError }: { error: unknown; resetError: () => void }) {
   const { t } = useTranslation();
 
   useEffect(() => {
     // 即使应用在首屏渲染阶段崩溃，也必须释放静态加载层以展示恢复入口。
     document.documentElement.classList.add("app-ready");
   }, []);
+
+  useEffect(() => {
+    if (isChunkLoadError(error)) recoverFromChunkLoadError();
+  }, [error]);
 
   return (
     <main className="app-error-boundary" role="alert">
@@ -44,8 +49,8 @@ export function AppErrorBoundary({ children }: { children: ReactNode }) {
         scope.setTag("capture_source", "react-boundary");
         scope.setTag("monitoring_priority", "critical");
       }}
-      fallback={({ resetError }) => (
-        <AppErrorFallback resetError={resetError} />
+      fallback={({ error, resetError }) => (
+        <AppErrorFallback error={error} resetError={resetError} />
       )}
     >
       {children}

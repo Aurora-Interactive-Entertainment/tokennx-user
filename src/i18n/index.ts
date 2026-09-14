@@ -4,6 +4,7 @@ import { apiResources } from './api'
 import { consoleResources } from './console'
 import { enterpriseCreateResources } from './enterprise-create'
 import { publicResources } from './public'
+import { wechatLoginResources } from './wechat-login'
 import { traeEnterpriseResources } from './trae-enterprise'
 
 export const LANGUAGE_STORAGE_KEY = 'token-nx:locale'
@@ -90,6 +91,7 @@ const resources = {
         no: '否', relativeJustNow: '刚刚', relativeMinutesAgo: '{{count}} 分钟前', relativeHoursAgo: '{{count}} 小时前', relativeDaysAgo: '{{count}} 天前',
       },
       login: {
+        ...wechatLoginResources['zh-CN'],
         trigger: '登录',
         close: '关闭登录面板',
         dialogLabel: '登录 Token NX',
@@ -425,7 +427,7 @@ const resources = {
           rewardRejected: '访问',
           rewardPendingUnit: '元', rewardApprovedUnit: '人', rewardRejectedUnit: '次',
           loadingFeatures: '正在加载首页功能', loadingModels: '正在加载优惠模型', loadingPromotions: '正在加载推广与资讯', loadingPartners: '正在加载合作伙伴',
-          adSlot: '预留广告位',
+          adSlot: '邀请活动',
           news: [
             { tag: '产品动态', title: 'Token NX 内测版上线，注册即送千万Token资源包', description: 'Token NX正式开启内测通道，面向全网用户开放抢先体验资格。为回馈首批内测参与者、降低AI开发与智能应用落地门槛，平台同步推出重磅新人福利：所有新用户完成账号注册，即可免费领取千万量级Token资源包，零成本解锁全平台模型服务。', date: '2026年7月7日' },
             { tag: '模型资讯', title: 'Token NX已上架国内主流大模型', description: 'Token NX 已上架国内主流大模型，GLM、Seedance、Kimi、MiniMax、Deepseek 最新版本上线，全网最低价即可体验', date: '2026年7月7日' },
@@ -676,7 +678,8 @@ const resources = {
       common: {
         home: 'Home', viewDetails: 'View details', viewModelDetails: 'View model details', viewModelCatalog: 'Back to model catalog', viewPricing: 'View full pricing', viewDocs: 'View integration docs', browseModels: 'Browse model catalog', running: 'Operational', yes: 'Yes', no: 'No', relativeJustNow: 'Just now', relativeMinutesAgo: '{{count}} minutes ago', relativeHoursAgo: '{{count}} hours ago', relativeDaysAgo: '{{count}} days ago',
       },
-        login: {
+      login: {
+        ...wechatLoginResources['en-US'],
         trigger: 'Sign in', close: 'Close sign-in panel', dialogLabel: 'Sign in to Token NX', brand: 'Token NX', title: 'Welcome to Token NX', phoneLoginTitle: 'Phone sign in', wechatLoginTitle: 'WeChat sign in', bindPhoneTitle: 'Bind phone number', methods: 'Sign-in methods', emailTab: 'Email', phoneTab: 'Phone', wechatTab: 'WeChat QR', email: 'Email', emailPlaceholder: 'Enter your email address', phone: 'Phone number', phonePlaceholder: 'Enter your phone number', countryCode: 'Country or region code', countryMainland: 'Mainland China', countryHongKong: 'Hong Kong, China', countryMacau: 'Macau, China', countryTaiwan: 'Taiwan, China', countryUsCanada: 'United States/Canada', countryUnitedKingdom: 'United Kingdom', countryJapan: 'Japan', countrySouthKorea: 'South Korea', countrySingapore: 'Singapore', countryMalaysia: 'Malaysia', countryAustralia: 'Australia', countryGermany: 'Germany', countryFrance: 'France', code: 'Verification code', codePlaceholder: 'Enter 6-digit code', sendCode: 'Get code', sendingCode: 'Sending...', resendCode: 'Resend', retryAfter: 'Retry in {{seconds}}s', login: 'Sign in', loginRegister: 'Sign in / Register', loggingIn: 'Signing in...', rememberLogin: 'Keep me signed in for 30 days', wechatLoginAction: 'Sign in with WeChat', backToPhone: 'Back to phone sign in', separatorOr: 'or', bindAndLogin: 'Bind and sign in', loginConsentPrefix: 'By signing in, you acknowledge that you have read and agree to Token NX', userAgreement: 'User Agreement', privacyPolicy: 'Privacy Policy', agreementAnd: 'and', wechatScanHint: 'Scan the QR code with WeChat', wechatPreparing: 'Preparing WeChat sign-in', wechatAgreement: 'Scanning means you agree to our User Agreement and Privacy Policy', openWechat: 'Open WeChat sign-in window', refreshQr: 'Get a new QR code', qrLoading: 'Loading QR code...', qrFailed: 'Unable to load QR code', bindingTitle: 'Bind a phone number to finish WeChat sign-in', bindingHint: 'Bind your phone number to finish signing in with WeChat', bindingLogin: 'Bind phone and sign in', binding: 'Binding...', validationEmail: 'Enter a valid email address', validationPhone: 'Enter a valid phone number', validationCode: 'Enter the 6-digit verification code', sentTo: 'Code sent to {{destination}}', popupBlocked: 'Allow the browser to open the WeChat sign-in window', emptyWechatResult: 'The WeChat sign-in result was empty. Get a new QR code', missingBindingTicket: 'The service did not return a binding ticket', loginFailed: 'Authentication failed. Please try again',
       },
       bindEmail: {

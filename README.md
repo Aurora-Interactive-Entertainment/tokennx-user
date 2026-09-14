@@ -133,6 +133,29 @@ npm run build:prod
 
 正式构建读取 `.env.production`，当前请求地址为 `https://api.tokennx.cn`。两种构建都会先执行 TypeScript 检查，并将结果输出到 `dist/`；后一次构建会覆盖前一次的产物，部署前请确认使用了对应命令。构建目标为 `es2022`，页面和公共依赖会进行代码分块。普通构建不生成 source map；只有发布环境显式开启 Sentry 上传时才生成隐藏映射，上传成功后从 `dist/` 删除。
 
+### 静态站点发布（必须遵守）
+
+Vite 的入口 HTML 会引用带 hash 的 `/assets/*` 文件。发布时如果先替换 `index.html`，而新资源尚未上传，OpenResty/Nginx 的 SPA 回退会把资源请求错误地返回为 `200 text/html`，冷缓存访客会在 React 启动前白屏。`npm run build` 已自动执行静态引用完整性校验；单独检查已有产物可运行：
+
+```bash
+npm run release:verify
+```
+
+线上服务器请采用版本目录或“资源先行、HTML 最后”的发布顺序：
+
+1. 将完整 `dist/assets/`（以及 `version.json`、其他 `public/` 静态文件）上传并校验成功；不要先删除仍可能被旧 HTML 引用的 hash 资源。
+2. 最后再替换 `index.html`；更推荐把完整产物放入新版本目录，校验通过后原子切换 `current` 软链接，并保留旧版本资源一段时间。
+3. 将 [`deploy/nginx/tokennx-user.conf`](deploy/nginx/tokennx-user.conf) 中的规则合并到站点 `server {}`：`/assets/` 使用 `try_files $uri =404`，HTML 入口使用 `no-store`，SPA 回退只能放在最后。若现有配置有 `error_page 404 /index.html`，必须确保它不会作用于 `/assets/`。
+
+切换后至少执行以下线上冒烟检查（把域名替换为实际站点）：
+
+```bash
+curl -i https://tokennx.cn/assets/__missing_release_probe__.js
+curl -sSI https://tokennx.cn/ | grep -i cache-control
+```
+
+第一条必须返回 `404` 且不能是 `text/html`；入口响应不能带长期 `max-age`。若 CDN 另有缓存规则，也要同步设置 HTML 不缓存、hash 资源长期缓存。
+
 ### 本地预览构建结果
 
 ```bash

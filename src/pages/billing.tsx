@@ -126,7 +126,7 @@ function resourceState<T>(status: ResourceStatus = 'idle', data: T | null = null
 
 function defaultBillingDateRange(): Date[] {
   const today = startOfLocalDay(new Date())
-  return [addLocalDays(today, -30), endOfLocalDay(today)]
+  return [addLocalDays(today, -29), endOfLocalDay(today)]
 }
 
 // 按日期选择器的日历日期生成 UTC 边界，避免本地时区导致账单跨日偏移。
@@ -395,9 +395,11 @@ function BillingSectionInfo({ content }: { content: string }) {
   return <Tooltip className="app-info-tooltip billing-info-tooltip" content={content} position="top"><span className="billing-info-trigger" tabIndex={0} aria-label={content}><IconInfoCircle className="billing-info-icon" aria-hidden="true" /></span></Tooltip>
 }
 
-// Token NX 积分卡片，积分按当前周期消耗的输入+输出 token 汇总展示。
+// Token NX 积分优先使用接口返回的 total_tokens，只有旧接口缺少该字段时才兼容计算。
 function PointsBalanceCard({ metrics }: { metrics: BillingAnalysisResponse['metrics'] }) {
-  const points = safeAmount(metrics.input_tokens) + safeAmount(metrics.output_tokens)
+  const points = metrics.total_tokens !== undefined
+    ? safeAmount(metrics.total_tokens)
+    : safeAmount(metrics.input_tokens) + safeAmount(metrics.output_tokens) + safeAmount(metrics.cached_tokens)
   return <article className="billing-balance-card">
     <div className="billing-balance-card-heading"><span>{i18n.t('console.billing.pointsBalance')}</span><BillingSectionInfo content={i18n.t('console.billing.pointsBalanceHint')} /></div>
     <strong>{formatCount(points)}</strong>
@@ -432,23 +434,16 @@ function CreditDetailsSection({ data }: { data: BillingAnalysisResponse }) {
   const wallet = data.wallet ?? EMPTY_ANALYSIS_WALLET
   const metrics = data.metrics ?? EMPTY_ANALYSIS_METRICS
   const quota = data.quota_details
-  const ledgerItems = data.ledger?.items ?? []
-  const sumLedger = (predicate: (item: NonNullable<BillingAnalysisResponse['ledger']>['items'][number]) => boolean): string => ledgerItems.filter(predicate).reduce((sum, item) => sum + safeAmount(item.amount_yuan), 0).toString()
-  const usageFromLedger = sumLedger((item) => item.direction === 'expense')
-  const rechargeFromLedger = sumLedger((item) => item.kind === 'recharge' || /充值|top.?up/i.test(item.description))
-  const rewardFromLedger = sumLedger((item) => item.kind === 'reward' || /奖励|reward|bonus/i.test(item.description))
-  const giftFromLedger = sumLedger((item) => /赠送|gift/i.test(item.description))
-  const invitationFromLedger = sumLedger((item) => /推广|邀请|invitation|promotion|referr/i.test(item.description))
-  const expiredFromLedger = sumLedger((item) => /过期|expire/i.test(item.description))
-  const total = safeAmount(quota?.total_yuan) || safeAmount(wallet.total_balance_yuan || wallet.total_available_yuan)
+  // 额度明细必须使用分析接口的当前额度口径。账本是分页流水，不能拿当前页累计值替代账户余额或区间用量。
+  const total = safeAmount(quota?.total_yuan || wallet.total_balance_yuan || wallet.total_available_yuan)
   const rows: BillingQuotaRow[] = [
-    { key: 'recharge', label: i18n.t('console.billing.quotaRecharge'), value: quota?.recharge_yuan ?? (rechargeFromLedger !== '0' ? rechargeFromLedger : wallet.paid_available_yuan), icon: <IconCoinMoneyStroked aria-hidden="true" />, tone: 'recharge' },
-    { key: 'reward', label: i18n.t('console.billing.quotaReward'), value: quota?.reward_yuan ?? (rewardFromLedger !== '0' ? rewardFromLedger : wallet.bonus_available_yuan), icon: <IconTicketCodeExchangeStroked aria-hidden="true" />, tone: 'reward' },
-    { key: 'gift', label: i18n.t('console.billing.quotaGift'), value: quota?.gift_yuan ?? giftFromLedger, icon: <IconGiftStroked aria-hidden="true" />, tone: 'gift' },
-    { key: 'invitation', label: i18n.t('console.billing.quotaInvitation'), value: quota?.invitation_yuan ?? invitationFromLedger, icon: <IconShareMoneyStroked aria-hidden="true" />, tone: 'invitation' },
-    { key: 'expired', label: i18n.t('console.billing.quotaExpired'), value: quota?.expired_yuan ?? expiredFromLedger, icon: <IconHistory aria-hidden="true" />, tone: 'expired' },
-    { key: 'usage', label: i18n.t('console.billing.quotaUsage'), value: quota?.usage_yuan ?? (usageFromLedger !== '0' ? usageFromLedger : metrics.total_cost_yuan), icon: <IconTaskMoneyStroked aria-hidden="true" />, tone: 'negative' },
-    { key: 'total', label: i18n.t('console.billing.totalBalance'), value: wallet.total_balance_yuan || wallet.total_available_yuan, icon: <IconMoneyExchangeStroked aria-hidden="true" />, tone: 'total' },
+    { key: 'recharge', label: i18n.t('console.billing.quotaRecharge'), value: quota?.recharge_yuan ?? wallet.paid_available_yuan, icon: <IconCoinMoneyStroked aria-hidden="true" />, tone: 'recharge' },
+    { key: 'reward', label: i18n.t('console.billing.quotaReward'), value: quota?.reward_yuan ?? wallet.bonus_available_yuan, icon: <IconTicketCodeExchangeStroked aria-hidden="true" />, tone: 'reward' },
+    { key: 'gift', label: i18n.t('console.billing.quotaGift'), value: quota?.gift_yuan ?? '0', icon: <IconGiftStroked aria-hidden="true" />, tone: 'gift' },
+    { key: 'invitation', label: i18n.t('console.billing.quotaInvitation'), value: quota?.invitation_yuan ?? '0', icon: <IconShareMoneyStroked aria-hidden="true" />, tone: 'invitation' },
+    { key: 'expired', label: i18n.t('console.billing.quotaExpired'), value: quota?.expired_yuan ?? '0', icon: <IconHistory aria-hidden="true" />, tone: 'expired' },
+    { key: 'usage', label: i18n.t('console.billing.quotaUsage'), value: quota?.usage_yuan ?? metrics.total_cost_yuan, icon: <IconTaskMoneyStroked aria-hidden="true" />, tone: 'negative' },
+    { key: 'total', label: i18n.t('console.billing.totalBalance'), value: quota?.total_yuan ?? (wallet.total_balance_yuan || wallet.total_available_yuan), icon: <IconMoneyExchangeStroked aria-hidden="true" />, tone: 'total' },
   ]
   return <section className="billing-quota-section" aria-labelledby="billingQuotaHeading">
     <h2 id="billingQuotaHeading" className="billing-subsection-heading">{i18n.t('console.billing.quotaDetails')}</h2>
@@ -502,7 +497,7 @@ function AnalysisTab({ state, ledger, dateRange, apiKeyID, model, billingType, d
       <div className="billing-filter-grid" aria-label={i18n.t('console.billing.filterLabel')}>
         <label className="billing-filter-field" htmlFor="billing-period-filter">
           <span id="billing-period-filter-label" className="billing-filter-label billing-filter-label-hidden">{i18n.t('console.billing.billingPeriod')}</span>
-          <DatePicker className="trae-date-picker billing-filter-date-picker" dropdownClassName="trae-date-picker-dropdown" type="dateRange" value={dateRange} format="yyyy-MM-dd" rangeSeparator=" ~ " presetPosition="left" showClear={false} presets={[{ text: i18n.t('console.billing.last7Days'), start: addLocalDays(startOfLocalDay(new Date()), -6), end: endOfLocalDay(new Date()) }, { text: i18n.t('console.billing.last30Days'), start: addLocalDays(startOfLocalDay(new Date()), -30), end: endOfLocalDay(new Date()) }, { text: i18n.t('console.billing.last90Days'), start: addLocalDays(startOfLocalDay(new Date()), -89), end: endOfLocalDay(new Date()) }]} onChange={(value) => { if (!Array.isArray(value)) return; const dates = value.filter((item): item is Date => item instanceof Date); if (dates.length === 2) onDateRangeChange(dates) }} aria-labelledby="billing-period-filter-label" />
+          <DatePicker className="trae-date-picker billing-filter-date-picker" dropdownClassName="trae-date-picker-dropdown" type="dateRange" value={dateRange} format="yyyy-MM-dd" rangeSeparator=" ~ " presetPosition="left" showClear={false} presets={[{ text: i18n.t('console.billing.last7Days'), start: addLocalDays(startOfLocalDay(new Date()), -6), end: endOfLocalDay(new Date()) }, { text: i18n.t('console.billing.last30Days'), start: addLocalDays(startOfLocalDay(new Date()), -29), end: endOfLocalDay(new Date()) }, { text: i18n.t('console.billing.last90Days'), start: addLocalDays(startOfLocalDay(new Date()), -89), end: endOfLocalDay(new Date()) }]} onChange={(value) => { if (!Array.isArray(value)) return; const dates = value.filter((item): item is Date => item instanceof Date); if (dates.length === 2) onDateRangeChange(dates) }} aria-labelledby="billing-period-filter-label" />
         </label>
         <label className="billing-filter-field" htmlFor="billing-api-key-filter">
           <span id="billing-api-key-filter-label" className="billing-filter-label billing-filter-label-hidden">{i18n.t('console.billing.apiKey')}</span>

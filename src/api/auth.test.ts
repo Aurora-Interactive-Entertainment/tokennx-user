@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { bindWechatPhone, getWechatStatus, loginByEmail, loginByPhone, refreshSession, sendBindingPhoneCode, sendEmailCode, sendPhoneCode } from './auth'
+import { bindWechatPhone, exchangeWechatCode, loginByEmail, loginByPhone, refreshSession, requestWechatQr, sendBindingPhoneCode, sendEmailCode, sendPhoneCode } from './auth'
 
 function response(data: unknown): Response {
   return new Response(JSON.stringify({ code: 0, msg: 'success', data }), {
@@ -10,6 +10,17 @@ function response(data: unknown): Response {
 
 describe('认证接口封装', () => {
   beforeEach(() => vi.restoreAllMocks())
+
+  it('微信二维码参数禁用缓存并校验回调地址', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(response({ app_id: 'wx1234567890abcdef', scope: 'snsapi_login', redirect_uri: 'http://localhost/wechat-callback.html', state: 'valid_state', expires_at: Date.now() + 60000 }))
+    const result = await requestWechatQr()
+    expect(result.state).toBe('valid_state')
+    expect(fetchMock.mock.calls[0][1]?.cache).toBe('no-store')
+    fetchMock.mockResolvedValue(response({ app_id: 'wx1234567890abcdef', scope: 'snsapi_login', redirect_uri: 'https://evil.example/callback', state: 'valid_state', expires_at: Date.now() + 60000 }))
+    await expect(requestWechatQr()).rejects.toMatchObject({ status: 502 })
+    fetchMock.mockResolvedValue(response({ app_id: 'wx1234567890abcdef', scope: 'snsapi_login', redirect_uri: 'https://tokennx.cn/weixin/callback', state: 'valid_state', expires_at: Date.now() + 60000 }))
+    await expect(requestWechatQr()).resolves.toMatchObject({ redirect_uri: 'https://tokennx.cn/weixin/callback' })
+  })
 
   it('按后端契约发送邮箱验证码，并仅通过查询参数传邀请码', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(response({}))
@@ -58,10 +69,11 @@ describe('认证接口封装', () => {
     expect(JSON.parse(String(fetchMock.mock.calls[1][1]?.body))).toEqual({ binding_ticket: 'binding-ticket', phone: '13800138000', code: '482915' })
   })
 
-  it('正确编码微信状态并合并并发 refresh 请求', async () => {
-    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(response({ status: 'pending' }))
-    await getWechatStatus('state with space')
-    expect(String(fetchMock.mock.calls[0][0])).toContain('state%20with%20space')
+  it('兑换微信授权码只发送 code 和 state，并合并并发 refresh 请求', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(response({ status: 'succeeded', binding_required: false }))
+    await exchangeWechatCode('wechat-code', 'state with space')
+    expect(String(fetchMock.mock.calls[0][0])).toContain('/api/auth/wechat/exchange')
+    expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toEqual({ code: 'wechat-code', state: 'state with space' })
 
     let resolveRequest: ((value: Response) => void) | undefined
     fetchMock.mockImplementation(() => new Promise<Response>((resolve) => { resolveRequest = resolve }))

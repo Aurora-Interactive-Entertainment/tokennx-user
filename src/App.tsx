@@ -26,6 +26,7 @@ import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { subscribeAuthTokenChanges } from "@/auth/token-storage";
 import { SeoManager } from "@/seo/site-seo";
 import { syncSentryIdentity } from "@/observability/sentry";
+import { WechatCallbackPage } from "@/pages/wechat-callback";
 
 const loadPublicPages = () => import("@/pages/public");
 const ActivityCampaignModal = lazy(() =>
@@ -380,6 +381,7 @@ export default function App({ onBootReady }: { onBootReady: () => void }) {
                 element={<LegalPage kind="recharge" />}
               />
               <Route path="/login" element={<LoginPage />} />
+              <Route path="/weixin/callback" element={<WechatCallbackPage />} />
               <Route path="/join" element={<JoinPage />} />
               <Route path="/invite" element={<InviteLandingPage />} />
               <Route path="/en" element={<EnglishLocaleRoute />}>

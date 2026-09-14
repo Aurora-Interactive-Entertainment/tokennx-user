@@ -10,14 +10,16 @@ import { usePurchaseCatalog } from './use-purchase-catalog'
 import { PurchaseHoverMenu } from './purchase-hover-menu'
 import { PurchaseSubscriptionModal } from './purchase-subscription-modal'
 import { PurchasePaymentModal } from './purchase-payment-modal'
+import type { BillingContext } from '@/api/billing'
 
 // 顶部入口在页面挂载时预加载，弹窗只消费同一份目录，不重复请求。
-export function HeaderPurchase({ inviteCode }: { inviteCode?: string }) {
+export function HeaderPurchase({ inviteCode, context = { account_type: 'personal' } }: { inviteCode?: string; context?: BillingContext }) {
   const { t } = useTranslation()
   const auth = useAppSelector(state => state.auth)
   const dispatch = useAppDispatch()
   const userKey = auth.status === 'authenticated' && auth.user ? `${auth.user.id}:${auth.loginSequence}` : null
-  const catalog = usePurchaseCatalog(userKey)
+  // 顶部弹窗与控制台使用同一账务主体，企业空间不能误查个人套餐目录。
+  const catalog = usePurchaseCatalog(userKey, context)
   const { loginPlanID, resume } = useAppSelector(state => state.purchaseIntent)
   const [open, setOpen] = useState(Boolean(loginPlanID || resume))
   const [selected, setSelected] = useState<{ scope: string; plan: ProductPlanSummary } | null>(null)

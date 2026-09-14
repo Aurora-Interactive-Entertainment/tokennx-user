@@ -22,3 +22,13 @@ it('缺失数据不伪装为零，并保留大整数余量精度', () => {
   expect(screen.getByText('当前套餐token总量：—')).toBeVisible()
   expect(screen.getByText('过期倒计时：—')).toBeVisible()
 })
+
+it('按请求次数模式展示额度，并保留 Token 小数精度', () => {
+  render(<SubscriptionUsageCard model={{ name: 'Request plan', quota_mode: 'request_quota', total_requests: '100', used_requests: '25', remaining_requests: '75' }} />)
+  expect(screen.getByText('当前套餐请求次数总量：100')).toBeVisible()
+  expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuetext', '剩余请求次数：75')
+  cleanup()
+  render(<SubscriptionUsageCard model={{ name: 'Decimal plan', total_tokens: '1000.500000000', remaining_tokens: '999.25' }} />)
+  expect(screen.getByText('当前套餐token总量：1,000.5')).toBeVisible()
+  expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuetext', '剩余 token：999.25')
+})

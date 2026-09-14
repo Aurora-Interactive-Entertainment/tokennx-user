@@ -1,5 +1,5 @@
 import { createAsyncThunk, createSlice, type PayloadAction } from '@reduxjs/toolkit'
-import { getCurrentUser, loginByEmail, loginByPhone, logout, requestWechatQr as requestWechatQrRequest, sendBindingPhoneCode, sendEmailCode, sendPhoneCode, bindWechatPhone, type AuthResult, type AuthUser, type EmailCodeResult, type PhoneCodeResult, type WechatQrResult, type WechatStatusResult, getWechatStatus } from '@/api/auth'
+import { getCurrentUser, loginByEmail, loginByPhone, logout, sendBindingPhoneCode, sendEmailCode, sendPhoneCode, bindWechatPhone, type AuthResult, type AuthUser, type EmailCodeResult, type PhoneCodeResult } from '@/api/auth'
 import { AUTH_INVALID_CODE, isApiError, isAuthenticationFailure } from '@/api/http'
 import { clearAuthTokens, getAccessToken, readRefreshToken, saveAuthTokens } from '@/auth/token-storage'
 import { refreshAuthSession, withAuthSessionLock } from '@/auth/refresh-coordinator'
@@ -42,6 +42,11 @@ export function authError(error: unknown): AuthOperationError {
     160002: i18n.t('api.auth.bindingRequired'),
     160003: i18n.t('api.auth.phoneAlreadyBound'),
     160004: i18n.t('api.auth.codeTooFrequent'),
+    160005: i18n.t('login.invalidVerificationCode'),
+    160006: i18n.t('login.invalidBindingTicket'),
+    160007: i18n.t('login.wechatExpired'),
+    160008: i18n.t('login.accountUnavailable'),
+    120003: i18n.t('login.originNotAllowed'),
     110002: i18n.t('api.auth.bindingRequired'),
     110003: i18n.t('api.auth.phoneAlreadyBound'),
     110004: i18n.t('api.auth.codeTooFrequent'),
@@ -116,22 +121,6 @@ export const completeWechatLogin = createAsyncThunk<AuthUser, AuthResult, ThunkC
   }
 })
 
-export const requestWechatQr = createAsyncThunk<WechatQrResult, void, ThunkConfig>('auth/requestWechatQr', async (_, { rejectWithValue }) => {
-  try {
-    return await requestWechatQrApi()
-  } catch (error) {
-    return rejectWithValue(authError(error))
-  }
-})
-
-export const pollWechatStatus = createAsyncThunk<WechatStatusResult, { state: string }, ThunkConfig>('auth/pollWechatStatus', async ({ state }, { rejectWithValue }) => {
-  try {
-    return await getWechatStatus(state)
-  } catch (error) {
-    return rejectWithValue(authError(error))
-  }
-})
-
 export const requestBindingCode = createAsyncThunk<PhoneCodeResult, { bindingTicket: string; phone: string; countryCode?: string }, ThunkConfig>('auth/requestBindingCode', async ({ bindingTicket, phone, countryCode = '+86' }, { rejectWithValue }) => {
   try {
     return await sendBindingPhoneCode(bindingTicket, phone, countryCode)
@@ -160,10 +149,6 @@ export const logoutAuth = createAsyncThunk<void, void, ThunkConfig>('auth/logout
     return rejectWithValue(authError(error))
   }
 })
-
-async function requestWechatQrApi(): Promise<WechatQrResult> {
-  return requestWechatQrRequest()
-}
 
 const authSlice = createSlice({
   name: 'auth',

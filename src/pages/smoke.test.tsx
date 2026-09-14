@@ -65,6 +65,7 @@ function LoginDialogHarness() {
 describe('页面主链冒烟场景', () => {
   beforeEach(() => window.localStorage.clear())
   beforeEach(() => window.sessionStorage.clear())
+  beforeEach(() => clearAuthTokens({ force: true }))
   afterEach(() => {
     vi.useRealTimers()
     vi.restoreAllMocks()
@@ -409,7 +410,7 @@ describe('页面主链冒烟场景', () => {
     await user.clear(screen.getByLabelText('手机号'))
     await user.type(screen.getByLabelText('手机号'), '13800138000')
     await user.click(screen.getByRole('button', { name: '获取验证码' }))
-    expect(await screen.findByText('验证码已发送至 +86 138****8000')).toBeInTheDocument()
+    expect(await screen.findByText('验证码已发送至 138****8000')).toBeInTheDocument()
     expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toMatchObject({ destination: '13800138000', country_code: '+86' })
   })
 
@@ -469,21 +470,23 @@ describe('页面主链冒烟场景', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 
-  it('微信扫码成功后会轮询状态并续接到控制台', async () => {
-    const openMock = vi.spyOn(window, 'open').mockReturnValue(null)
+  it('微信授权回调兑换成功后续接到控制台', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
       const url = String(input)
-      if (url.endsWith('/api/auth/wechat/qr')) return apiResponse({ state: 'wechat-state', authorize_url: 'https://open.weixin.qq.com/connect/qrconnect?state=wechat-state', expires_at: '2099-01-01T00:05:00Z' })
-      if (url.includes('/api/auth/wechat/status?state=wechat-state')) return apiResponse({ status: 'ready', result: authResult })
+      if (url.endsWith('/api/auth/wechat/qr')) return apiResponse({ app_id: 'wx1234567890abcdef', scope: 'snsapi_login', redirect_uri: 'http://localhost/wechat-callback.html', state: 'wechat-state', expires_at: Date.now() + 60000 })
+      if (url.endsWith('/api/auth/wechat/exchange')) return apiResponse(authResult)
       throw new Error(`unexpected request: ${url}`)
     })
 
     renderLogin('/console')
-    // 这里只触发异步扫码链路，避免 user-event 等待轮询副作用导致测试无法结束。
+    // 模拟同源回调页发送授权码，验证兑换接口和登录后的跳转。
     fireEvent.click(screen.getByRole('button', { name: '使用微信登录' }))
+    const frame = await screen.findByTitle('微信登录')
+    const callbackEvent = new MessageEvent('message', { origin: window.location.origin, data: { type: 'token-nx:wechat-callback', code: 'wechat-code', state: 'wechat-state' } })
+    Object.defineProperty(callbackEvent, 'source', { value: (frame as HTMLIFrameElement).contentWindow })
+    fireEvent(window, callbackEvent)
     expect(screen.queryByText(/本地演示|演示验证码|模拟扫码|占位二维码|演示占位/)).not.toBeInTheDocument()
     expect(await screen.findByText('控制台首页')).toBeInTheDocument()
-    expect(openMock).not.toHaveBeenCalled()
     expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 
@@ -504,21 +507,52 @@ describe('页面主链冒烟场景', () => {
     const bindingResult = { ...authResult, access_token: 'binding-access', refresh_token: 'binding-refresh' }
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
       const url = String(input)
-      if (url.endsWith('/api/auth/wechat/qr')) return apiResponse({ state: 'binding-state', authorize_url: 'https://open.weixin.qq.com/connect/qrconnect?state=binding-state', expires_at: '2099-01-01T00:05:00Z' })
-      if (url.includes('/api/auth/wechat/status?state=binding-state')) return apiResponse({ status: 'ready', result: { status: 'pending_binding', binding_required: true, binding_ticket: 'binding-ticket' } })
-      if (url.endsWith('/api/auth/bind-phone/code')) return apiResponse({ destination_masked: '139****0000', expires_at: '2099-01-01T00:05:00Z', retry_after_seconds: 60 })
+      if (url.endsWith('/api/auth/wechat/qr')) return apiResponse({ app_id: 'wx1234567890abcdef', scope: 'snsapi_login', redirect_uri: 'http://localhost/wechat-callback.html', state: 'binding-state', expires_at: Date.now() + 60000 })
+      if (url.endsWith('/api/auth/wechat/exchange')) return apiResponse({ status: 'pending_binding', binding_required: true, binding_ticket: 'binding-ticket' })
+      if (url.endsWith('/api/auth/bind-phone/code')) return apiResponse({})
       if (url.endsWith('/api/auth/bind-phone')) return apiResponse(bindingResult)
       throw new Error(`unexpected request: ${url}`)
     })
 
     renderLogin('/console')
     fireEvent.click(screen.getByRole('button', { name: '使用微信登录' }))
+    const bindingFrame = await screen.findByTitle('微信登录')
+    const callbackEvent = new MessageEvent('message', { origin: window.location.origin, data: { type: 'token-nx:wechat-callback', code: 'wechat-code', state: 'binding-state' } })
+    Object.defineProperty(callbackEvent, 'source', { value: (bindingFrame as HTMLIFrameElement).contentWindow })
+    fireEvent(window, callbackEvent)
     expect(await screen.findByRole('heading', { name: '绑定手机号' })).toBeInTheDocument()
+    expect(getAccessToken()).toBeNull()
     await user.type(screen.getByLabelText('手机号'), '13900139000')
     await user.click(screen.getByRole('button', { name: '获取验证码' }))
-    expect(await screen.findByText('验证码已发送至 139****0000')).toBeInTheDocument()
+    expect(await screen.findByText('验证码已发送至 139****9000')).toBeInTheDocument()
     await user.type(screen.getByLabelText('验证码'), '731204')
-    await user.click(screen.getByRole('button', { name: '绑定并登录' }))
+    await user.click(screen.getByRole('button', { name: '绑定' }))
     expect(await screen.findByText('控制台首页')).toBeInTheDocument()
+  })
+
+  it('绑定验证码错误保留手机号表单，不能跳首页或改用普通手机号登录', async () => {
+    const user = userEvent.setup()
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = String(input)
+      if (url.endsWith('/api/auth/wechat/qr')) return apiResponse({ app_id: 'wx1234567890abcdef', scope: 'snsapi_login', redirect_uri: 'http://localhost/wechat-callback.html', state: 'binding-error', expires_at: Date.now() + 60000 })
+      if (url.endsWith('/api/auth/wechat/exchange')) return apiResponse({ status: 'pending_binding', binding_required: true, binding_ticket: 'ticket' })
+      if (url.endsWith('/api/auth/bind-phone')) return apiResponse({}, 401, 160001, '绑定验证码无效')
+      throw new Error(`unexpected request: ${url}`)
+    })
+    renderLogin('/console')
+    fireEvent.click(screen.getByRole('button', { name: '使用微信登录' }))
+    const errorFrame = await screen.findByTitle('微信登录')
+    const callbackEvent = new MessageEvent('message', { origin: window.location.origin, data: { type: 'token-nx:wechat-callback', code: 'wechat-code', state: 'binding-error' } })
+    Object.defineProperty(callbackEvent, 'source', { value: (errorFrame as HTMLIFrameElement).contentWindow })
+    fireEvent(window, callbackEvent)
+    await screen.findByRole('heading', { name: '绑定手机号' })
+    await user.type(screen.getByLabelText('手机号'), '13900139000')
+    await user.type(screen.getByLabelText('验证码'), '123456')
+    await user.click(screen.getByRole('button', { name: '绑定' }))
+    expect(await screen.findByText('绑定验证码无效')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '绑定手机号' })).toBeInTheDocument()
+    expect(screen.getByLabelText('手机号')).toHaveValue('13900139000')
+    expect(JSON.parse(String(fetchMock.mock.calls[2][1]?.body))).toEqual({ binding_ticket: 'ticket', phone: '13900139000', code: '123456' })
+    expect(getAccessToken()).toBeNull()
   })
 })

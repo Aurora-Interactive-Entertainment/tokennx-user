@@ -108,14 +108,11 @@ import {
 } from "@/api/notifications";
 import {
   completeBinding,
-  completeWechatLogin,
   invalidateAuth,
   loginWithPhone,
   logoutAuth,
-  pollWechatStatus,
   requestBindingCode,
   requestPhoneCode,
-  requestWechatQr,
   updateAuthenticatedUser,
 } from "@/store/auth-slice";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
@@ -165,6 +162,8 @@ import "@/public-footer.css";
 import accountBadge from "@/assets/figma-account-badge.png";
 import manuscriptFooterLogo from "@/assets/figma-home/footer-logo.png";
 import "./login-panel.css";
+import { useWechatLogin } from "./use-wechat-login";
+import { WechatLoginPane } from "./wechat-login-pane";
 import "./account-settings-modal.css";
 import "./support-widget.css";
 import { appToast } from "./app-toast";
@@ -1286,13 +1285,6 @@ export function LoginPanel({
   const [phoneCodeLoading, setPhoneCodeLoading] = useState(false);
   const [phoneLoginLoading, setPhoneLoginLoading] = useState(false);
   const [feedback, setFeedback] = useState("");
-  const [wechatView, setWechatView] = useState<
-    "idle" | "loading" | "pending" | "binding" | "error"
-  >("idle");
-  const [wechatQr, setWechatQr] = useState<{
-    state: string;
-    authorize_url: string;
-  } | null>(null);
   const [bindingTicket, setBindingTicket] = useState("");
   const [bindingPhone, setBindingPhone] = useState("");
   const [bindingCode, setBindingCode] = useState("");
@@ -1301,14 +1293,21 @@ export function LoginPanel({
   const [bindingCodeLoading, setBindingCodeLoading] = useState(false);
   const [bindingLoading, setBindingLoading] = useState(false);
   const phoneInputRef = useRef<HTMLInputElement>(null);
-  const onSuccessRef = useRef(onSuccess);
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-
-  useEffect(() => {
-    // 父组件重渲染可能产生新的回调，但不应因此重启正在进行的微信轮询。
-    onSuccessRef.current = onSuccess;
-  }, [onSuccess]);
+  const wechat = useWechatLogin({
+    enabled: tab === "wechat",
+    onSuccess,
+    onBinding: (ticket) => {
+      setBindingTicket(ticket);
+      // 微信身份尚未绑定时复用手机号表单；必须拿绑定用途验证码完成身份关联。
+      setBindingPhone("");
+      setBindingCode("");
+      setBindingCodeSent(false);
+      setBindingRetryAfter(0);
+      setFeedback(t("login.bindingHint"));
+    },
+  });
 
   useEffect(() => {
     if (phoneRetryAfter <= 0) return undefined;
@@ -1336,58 +1335,6 @@ export function LoginPanel({
     );
     return () => window.clearInterval(timer);
   }, [bindingRetryAfter]);
-
-  useEffect(() => {
-    if (tab !== "wechat" || wechatView !== "pending" || !wechatQr)
-      return undefined;
-    let active = true;
-    let timer: number | undefined;
-    const poll = async (): Promise<void> => {
-      try {
-        const result = await dispatch(
-          pollWechatStatus({ state: wechatQr.state }),
-        ).unwrap();
-        if (!active) return;
-        if (result.status === "pending") {
-          timer = window.setTimeout(() => void poll(), 2000);
-          return;
-        }
-        if (!result.result) {
-          setWechatView("error");
-          setFeedback(t("login.emptyWechatResult"));
-          return;
-        }
-        if (
-          result.result.status === "pending_binding" ||
-          result.result.binding_required
-        ) {
-          if (!result.result.binding_ticket) {
-            setWechatView("error");
-            setFeedback(t("login.missingBindingTicket"));
-            return;
-          }
-          setBindingTicket(result.result.binding_ticket);
-          setWechatView("binding");
-          setFeedback(t("login.bindingHint"));
-          return;
-        }
-        const user = await dispatch(
-          completeWechatLogin(result.result),
-        ).unwrap();
-        onSuccessRef.current(user);
-      } catch (error) {
-        if (active) {
-          setWechatView("error");
-          handleLoginError(error);
-        }
-      }
-    };
-    void poll();
-    return () => {
-      active = false;
-      if (timer !== undefined) window.clearTimeout(timer);
-    };
-  }, [dispatch, tab, t, wechatQr, wechatView]);
 
   function readLoginError(error: unknown): string {
     if (typeof error === "object" && error !== null && "message" in error)
@@ -1432,7 +1379,7 @@ export function LoginPanel({
     setFeedback("");
     try {
       const destination = currentPhone;
-      const result = await dispatch(
+      await dispatch(
         requestPhoneCode({
           destination,
           countryCode: LOGIN_DIAL_CODE.code,
@@ -1443,7 +1390,7 @@ export function LoginPanel({
       savePhoneCodeCooldown(destination, LOGIN_DIAL_CODE.code);
       setFeedback(
         t("login.sentTo", {
-          destination: result.destination_masked || maskLoginPhone(destination),
+          destination: maskLoginPhone(destination),
         }),
       );
     } catch (error) {
@@ -1481,20 +1428,6 @@ export function LoginPanel({
     }
   }
 
-  async function startWechatLogin(): Promise<void> {
-    setWechatView("loading");
-    setWechatQr(null);
-    setFeedback("");
-    try {
-      const result = await dispatch(requestWechatQr()).unwrap();
-      setWechatQr({ state: result.state, authorize_url: result.authorize_url });
-      setWechatView("pending");
-    } catch (error) {
-      setWechatView("error");
-      handleLoginError(error);
-    }
-  }
-
   async function requestBindingCodeAction(): Promise<void> {
     if (
       !bindingTicket ||
@@ -1506,7 +1439,7 @@ export function LoginPanel({
     setBindingCodeLoading(true);
     setFeedback("");
     try {
-      const result = await dispatch(
+      await dispatch(
         requestBindingCode({
           bindingTicket,
           phone: normalizeLoginPhone(bindingPhone),
@@ -1517,12 +1450,11 @@ export function LoginPanel({
       setBindingRetryAfter(LOGIN_CODE_RETRY_SECONDS);
       setFeedback(
         t("login.sentTo", {
-          destination:
-            result.destination_masked || maskLoginPhone(bindingPhone),
+          destination: maskLoginPhone(bindingPhone),
         }),
       );
     } catch (error) {
-      handleLoginError(error);
+      handleBindingError(error);
     } finally {
       setBindingCodeLoading(false);
     }
@@ -1532,6 +1464,7 @@ export function LoginPanel({
     event: React.FormEvent<HTMLFormElement>,
   ): Promise<void> {
     event.preventDefault();
+    if (!bindingTicket || bindingLoading) return;
     if (!validatePhone(bindingPhone)) return;
     if (!/^\d{6}$/.test(bindingCode)) {
       setFeedback(t("login.validationCode"));
@@ -1551,10 +1484,30 @@ export function LoginPanel({
       saveVerifiedPhone(user.id, bindingPhone);
       onSuccess(user);
     } catch (error) {
-      handleLoginError(error);
+      // 验证码/绑定票据错误属于当前绑定流程，不能按站点登录态失效关闭整个表单。
+      handleBindingError(error);
     } finally {
       setBindingLoading(false);
     }
+  }
+
+  function handleBindingError(error: unknown): void {
+    const code = (error as { code?: number } | null)?.code;
+    if (code === 160006) {
+      // 票据失效后不能继续绑定；回到微信页申请新二维码和新票据。
+      setBindingTicket("");
+      setBindingCode("");
+      setBindingCodeSent(false);
+      setFeedback("");
+      wechat.start();
+      return;
+    }
+    if (code === 160005) {
+      setBindingCode("");
+      setBindingCodeSent(false);
+      setBindingRetryAfter(0);
+    }
+    setFeedback(readLoginError(error));
   }
 
   return (
@@ -1642,8 +1595,7 @@ export function LoginPanel({
             onClick={() => {
               setTab("wechat");
               setFeedback("");
-              if (wechatView === "idle" || wechatView === "error")
-                void startWechatLogin();
+              wechat.start();
             }}
           >
             <img
@@ -1657,9 +1609,9 @@ export function LoginPanel({
         </div>
       ) : (
         <div
-          className={`login-pane${wechatView === "binding" ? " login-pane--phone login-pane--binding" : " login-pane--wechat"}`}
+          className={`login-pane${wechat.view === "binding" ? " login-pane--phone login-pane--binding" : " login-pane--wechat"}`}
         >
-          {wechatView === "binding" ? (
+          {wechat.view === "binding" ? (
             <form className="login-form" onSubmit={submitBinding} noValidate>
               <h2 className="login-panel-title" id="login-panel-heading">
                 <label htmlFor="binding-phone">
@@ -1728,7 +1680,7 @@ export function LoginPanel({
                 <span>
                   {bindingLoading
                     ? t("login.binding")
-                    : t("login.bindAndLogin")}
+                    : t("login.bindAction")}
                 </span>
               </button>
               <div className="login-separator">
@@ -1739,8 +1691,7 @@ export function LoginPanel({
                 type="button"
                 onClick={() => {
                   setTab("phone");
-                  setWechatView("idle");
-                  setWechatQr(null);
+                  setBindingTicket("");
                   setFeedback("");
                 }}
               >
@@ -1748,54 +1699,15 @@ export function LoginPanel({
               </button>
             </form>
           ) : (
-            <>
-              <h2 className="login-panel-title" id="login-panel-heading">
-                {t("login.wechatLoginTitle")}
-              </h2>
-              <div className="wechat-qr-remote">
-                {wechatQr ? (
-                  <iframe
-                    title={t("login.wechatTab")}
-                    src={wechatQr.authorize_url}
-                  />
-                ) : (
-                  <span>
-                    {wechatView === "error"
-                      ? t("login.qrFailed")
-                      : t("login.qrLoading")}
-                  </span>
-                )}
-              </div>
-              <p
-                className={`wechat-status${wechatView === "error" ? " is-error" : " public-sr-only"}`}
-                role="status"
-                aria-live="polite"
-              >
-                {feedback ||
-                  (wechatView === "pending"
-                    ? t("login.wechatScanHint")
-                    : t("login.wechatPreparing"))}
-              </p>
-              {wechatView === "error" ? (
-                <button
-                  className="btn btn-primary submit-btn login-capsule-action login-capsule-soft"
-                  type="button"
-                  onClick={() => void startWechatLogin()}
-                >
-                  <span>{t("login.refreshQr")}</span>
-                </button>
-              ) : null}
-              <button
-                className="btn login-switch-btn"
-                type="button"
-                onClick={() => {
-                  setTab("phone");
-                  setFeedback("");
-                }}
-              >
-                {t("login.backToPhone")}
-              </button>
-            </>
+            <WechatLoginPane
+              session={wechat.session}
+              view={wechat.view}
+              error={wechat.error}
+              frameRef={wechat.frameRef}
+              onOpenFallback={wechat.openInNewWindow}
+              onRetry={wechat.start}
+              onBack={() => { setTab("phone"); setFeedback(""); }}
+            />
           )}
         </div>
       )}
@@ -2521,7 +2433,7 @@ export function PublicHeader({
               aria-hidden="true"
             />
           </Link>
-          <HeaderPurchase inviteCode={inviteCode} />
+          <HeaderPurchase inviteCode={inviteCode} context={billingContext} />
           <nav
             className="header-nav public-nav"
             aria-label={t("console.common.publicNav")}
@@ -3613,6 +3525,19 @@ export function AccountSettingsModal({
   const [rendered, setRendered] = useState(visible);
   const closeTimerRef = useRef<number | undefined>(undefined);
   const nicknameRequestPending = useRef(false);
+  const openingScrollPosition = useRef<{ left: number; top: number } | null>(
+    null,
+  );
+  const wasVisible = useRef(false);
+
+  if (visible && !wasVisible.current && typeof window !== "undefined") {
+    openingScrollPosition.current = {
+      left: window.scrollX,
+      top: window.scrollY,
+    };
+  }
+  wasVisible.current = visible;
+
   const initial = displayName.slice(0, 1).toUpperCase();
   const accountLabel = t("console.nav.account").replace(/管理$/, "");
   const phone =
@@ -3740,13 +3665,18 @@ export function AccountSettingsModal({
     const root = document.documentElement;
     const body = document.body;
     const previousRootOverflow = root.style.overflow;
+    const previousRootScrollbarGutter = root.style.getPropertyValue(
+      "scrollbar-gutter",
+    );
     const previousBodyPaddingRight = body.style.paddingRight;
     const scrollbarWidth =
       root.clientWidth > 0
         ? Math.max(0, window.innerWidth - root.clientWidth)
         : 0;
 
-    // 锁定真正的页面滚动容器，避免 body 成为滚动容器后改变 sticky 顶栏的定位参照。
+    // 根节点已预留稳定滚动条槽时，锁定滚动会让固定遮罩少覆盖一段宽度。
+    // 弹窗期间取消该槽，再用 body 内边距保留原内容宽度，避免遮罩出现右侧缝隙和页面横移。
+    root.style.setProperty("scrollbar-gutter", "auto");
     root.style.overflow = "hidden";
     if (scrollbarWidth > 0) {
       const currentPaddingRight =
@@ -3756,9 +3686,60 @@ export function AccountSettingsModal({
 
     return () => {
       root.style.overflow = previousRootOverflow;
+      if (previousRootScrollbarGutter) {
+        root.style.setProperty("scrollbar-gutter", previousRootScrollbarGutter);
+      } else {
+        root.style.removeProperty("scrollbar-gutter");
+      }
       body.style.paddingRight = previousBodyPaddingRight;
     };
   }, [rendered]);
+
+  useLayoutEffect(() => {
+    const position = openingScrollPosition.current;
+    if (!position || typeof window === "undefined") return undefined;
+    let frameOne = 0;
+    let frameTwo = 0;
+    let timer = 0;
+
+    const restoreScrollPosition = () => {
+      const root = document.documentElement;
+      const previousScrollBehavior = root.style.scrollBehavior;
+      root.style.scrollBehavior = "auto";
+      window.scrollTo({
+        left: position.left,
+        top: position.top,
+        behavior: "instant" as ScrollBehavior,
+      });
+      frameTwo = window.requestAnimationFrame(() => {
+        root.style.scrollBehavior = previousScrollBehavior;
+        if (!visible) openingScrollPosition.current = null;
+      });
+    };
+
+    const scheduleRestore = () => {
+      frameOne = window.requestAnimationFrame(() => {
+        frameTwo = window.requestAnimationFrame(restoreScrollPosition);
+      });
+    };
+
+    if (visible) {
+      // 等待滚动锁定完成后恢复打开前的页面锚点，避免弹窗出现时页面跳动。
+      scheduleRestore();
+    } else {
+      // 关闭动画结束、滚动锁释放后再恢复锚点，避免恢复动作被锁定逻辑覆盖。
+      timer = window.setTimeout(
+        scheduleRestore,
+        ACCOUNT_SETTINGS_EXIT_DURATION_MS + 20,
+      );
+    }
+
+    return () => {
+      window.clearTimeout(timer);
+      window.cancelAnimationFrame(frameOne);
+      window.cancelAnimationFrame(frameTwo);
+    };
+  }, [visible]);
 
   useEffect(() => {
     if (!visible) return undefined;
@@ -4359,7 +4340,7 @@ export function ConsoleLayout({ children }: { children: ReactNode }) {
 const PUBLIC_COMPANY_INFO = {
   name: "安顺佳云灵犀智能科技有限公司",
   filing: "黔ICP备2026012800号-2",
-  securityFiling: "北京公安备 11010802041394号",
+  securityFiling: "贵公网安备52040002000234号",
 } as const;
 
 const PUBLIC_FOOTER_DOC_HREFS = {
@@ -4609,10 +4590,10 @@ export function PublicFooter() {
           <img src={manuscriptFilingIcpIcon} alt="" aria-hidden="true" />
           {PUBLIC_COMPANY_INFO.filing}
         </span>
-        {/* <span className="manuscript-footer-filing-item">
+        <span className="manuscript-footer-filing-item">
           <img src={manuscriptFilingSecurityIcon} alt="" aria-hidden="true" />
           {PUBLIC_COMPANY_INFO.securityFiling}
-        </span> */}
+        </span>
       </div>
       <ManuscriptSupportWidget />
     </footer>

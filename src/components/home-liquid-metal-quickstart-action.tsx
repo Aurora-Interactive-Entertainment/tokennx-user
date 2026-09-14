@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, type KeyboardEvent, type PointerEvent, type ReactNode } from 'react'
 import { LoginRequiredAction } from '@/components/common'
 import { HomeQuickstartIconRotator } from '@/components/home-quickstart-icon-rotator'
+import { buildAssetUrl } from '@/utils/build-asset'
 import './home-liquid-metal-quickstart-action.css'
 
 type LiquidMessage =
@@ -11,6 +12,9 @@ type HomeLiquidMetalQuickstartActionProps = {
   children: ReactNode
   returnPath: string
 }
+
+// 效果页放在 public/ 下没有内容指纹，带上构建版本号避免部署后仍用浏览器里的旧副本。
+const LIQUID_METAL_FRAME_SRC = buildAssetUrl('/liquid-metal-quickstart.html')
 
 export function HomeLiquidMetalQuickstartAction({ children, returnPath }: HomeLiquidMetalQuickstartActionProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null)
@@ -121,7 +125,7 @@ export function HomeLiquidMetalQuickstartAction({ children, returnPath }: HomeLi
         className="home-liquid-metal-quickstart__fx"
         title=""
         aria-hidden="true"
-        src="/liquid-metal-quickstart.html"
+        src={LIQUID_METAL_FRAME_SRC}
         sandbox="allow-scripts"
         tabIndex={-1}
         onLoad={sync}

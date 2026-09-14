@@ -10,7 +10,8 @@ import { clearAuthTokens, saveAuthTokens } from '@/auth/token-storage'
 import { AppStoreProvider, useAppStore } from '@/data/app-state'
 import { createAppStore } from '@/store'
 import i18n from '@/i18n'
-import { BillingPage, billingContextForWorkspace, billingContextKey, statementKindLabel, validateInvoiceForm } from './billing'
+import { BillingPage, billingContextForWorkspace, billingContextKey, billingDateRangeToUtcMilliseconds, statementKindLabel, validateInvoiceForm } from './billing'
+import { getInvoiceDialogOptions } from '@/components/billing-invoice-form'
 
 const AUTH_RESULT: AuthResult = {
   status: 'succeeded',
@@ -188,10 +189,13 @@ function WorkspaceControl() {
   }}>切换到企业空间</button>
 }
 
-function renderBilling(config: { analysisError?: boolean; invoiceError?: boolean; requestId?: string; paymentReturnOrderID?: string; paymentStatus?: string; tab?: string; invoice?: BillingInvoiceItem; analysisWallet?: Partial<BillingAnalysisResponse['wallet']>; paymentFormHTML?: string } = {}) {
+function renderBilling(config: { analysisError?: boolean; invoiceError?: boolean; requestId?: string; paymentReturnOrderID?: string; paymentStatus?: string; tab?: string; invoice?: BillingInvoiceItem; analysisWallet?: Partial<BillingAnalysisResponse['wallet']>; analysisQuota?: BillingAnalysisResponse['quota_details']; analysisTotalTokens?: string | number; analysisCachedTokens?: string | number; paymentFormHTML?: string } = {}) {
   const appStore = createAppStore()
   appStore.dispatch({ type: 'auth/loginWithEmail/fulfilled', payload: AUTH_RESULT.user })
     const analysis = makeAnalysis(false, config.analysisWallet)
+    if (config.analysisQuota) analysis.quota_details = config.analysisQuota
+    if (config.analysisTotalTokens !== undefined) analysis.metrics.total_tokens = config.analysisTotalTokens
+    if (config.analysisCachedTokens !== undefined) analysis.metrics.cached_tokens = config.analysisCachedTokens
   let postInput: { body: string; headers: Headers } | null = null
   let paymentOrderInput: { body: string; headers: Headers } | null = null
   let paymentStartInput: { body: string; headers: Headers } | null = null
@@ -245,6 +249,21 @@ function renderBilling(config: { analysisError?: boolean; invoiceError?: boolean
 }
 
 describe('用户费用管理页面', () => {
+  it('发票项目名称优先使用开票接口返回的选项', () => {
+    const response = makeInvoices()
+    response.application_form!.project_names = [{ value: '接口项目', label: '接口项目' }]
+    expect(getInvoiceDialogOptions(response).projectNames).toEqual([{ value: '接口项目', label: '接口项目' }])
+  })
+
+  it('日期快捷范围按接口左闭右开自然日传参', () => {
+    const start = new Date(2026, 8, 1)
+    const end = new Date(2026, 8, 30)
+    expect(billingDateRangeToUtcMilliseconds([start, end])).toEqual({
+      startAt: Date.UTC(2026, 8, 1),
+      endAt: Date.UTC(2026, 9, 1),
+    })
+  })
+
   beforeEach(async () => {
     await i18n.changeLanguage('zh-CN')
     vi.restoreAllMocks()
@@ -307,6 +326,32 @@ describe('用户费用管理页面', () => {
     expect(totalCard).not.toBeNull()
     expect(within(totalCard).getByText('¥100.0000')).toBeInTheDocument()
     expect(screen.queryByText('¥99.999733')).toBeNull()
+  })
+
+  it('额度明细和积分优先使用分析接口直接返回的字段', async () => {
+    renderBilling({
+      analysisQuota: {
+        recharge_yuan: '7.25',
+        reward_yuan: '6.50',
+        gift_yuan: '5.75',
+        invitation_yuan: '4.25',
+        expired_yuan: '3.125',
+        usage_yuan: '2.50',
+        total_yuan: '21.00',
+      },
+      analysisTotalTokens: '123456',
+    })
+    await screen.findByRole('heading', { name: '费用分析' })
+    const values = within(document.querySelector('.billing-quota-section') as HTMLElement).getAllByRole('strong')
+    expect(values.map((value) => value.textContent)).toEqual(['¥7.2500', '¥6.5000', '¥5.7500', '¥4.2500', '¥3.1250', '-¥2.5000', '¥21.0000'])
+    expect(screen.getByText('123,456')).toBeInTheDocument()
+  })
+
+
+  it('旧分析接口没有总积分字段时按输入、输出和缓存读取 Token 兼容汇总', async () => {
+    renderBilling({ analysisCachedTokens: '40000' })
+    await screen.findByRole('heading', { name: '费用分析' })
+    expect(screen.getByText('7,760,000')).toBeInTheDocument()
   })
 
   it('支持分析筛选、账本类型筛选和 Tab 键盘切换', async () => {

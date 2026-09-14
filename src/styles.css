@@ -7352,6 +7352,22 @@ html[data-theme="dark"] .workspace-notice-link:hover {
   overflow-wrap: anywhere;
   line-height: 1.7;
 }
+/* 表格单元格按整词计算最小宽度，避免 400 这类短 token 被压成两行；
+   真放不下的长 token（URL 等）仍在单元格内断行，不会撑出表格。 */
+.markdown-content table th,
+.markdown-content table td {
+  overflow-wrap: break-word;
+}
+/* 表格的横向滚动容器：宽表整体滚动，不撑破正文列。间距移到容器上，相邻间距折叠行为与原来一致。 */
+.markdown-table-scroll {
+  max-width: 100%;
+  margin: 0 0 10px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+.markdown-content .markdown-table-scroll > table {
+  margin-bottom: 0;
+}
 .markdown-content > :first-child {
   margin-top: 0;
 }
@@ -21995,4 +22011,17 @@ html[data-theme="light"]
 }
 .billing-hover-recharge.login-capsule-soft::before {
   display: none;
+}
+
+/* 登录抽屉的遮罩覆盖内容区，但文档导航需持续可见，方便用户确认当前阅读位置。 */
+body:has(> .login-drawer-backdrop) .public-header-host > .app-header {
+  z-index: 10002;
+}
+body:has(> .login-drawer-backdrop) > .login-popover {
+  z-index: 10003;
+}
+body:has(> .login-drawer-backdrop) .docs-page--manuscript .docs-product-nav,
+body:has(> .login-drawer-backdrop) .docs-page--manuscript .docs-sidebar,
+body:has(> .login-drawer-backdrop) .docs-page--manuscript .docs-on-page {
+  z-index: 10002;
 }

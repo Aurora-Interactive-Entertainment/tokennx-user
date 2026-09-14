@@ -5,6 +5,8 @@ import {
   useRef,
   useState,
 } from "react";
+import { BUILD_VERSION } from "@/build-version";
+import { buildAssetUrl } from "@/utils/build-asset";
 
 type EmotionId = "00" | "01" | "02";
 
@@ -61,18 +63,18 @@ interface SupportEmotionBallProps {
   className?: string;
 }
 
-const EMOTION_BALL_ASSET_VERSION = "support-gaze-v9";
 // 感应半径取视口短边的 58%，并限制上下界，方便统一调整跟随区域大小。
 const GAZE_RANGE_RATIO = 0.58;
 const GAZE_RANGE_MIN = 220;
 const GAZE_RANGE_MAX = 720;
 
+// public/ 下的脚本没有内容指纹，统一带上构建版本号，避免部署后继续执行浏览器里的旧副本。
 const SCRIPT_PATHS = [
   "/emotion-ball/rings.js",
   "/emotion-ball/emotions.js",
   "/emotion-ball/ball.js",
-  `/emotion-ball/engine.js?v=${EMOTION_BALL_ASSET_VERSION}`,
-] as const;
+  "/emotion-ball/engine.js",
+].map(buildAssetUrl);
 
 let emotionBallLoader: Promise<EmotionBallApi> | null = null;
 
@@ -82,7 +84,7 @@ function loadEmotionBall(): Promise<EmotionBallApi> {
   }
   if (
     window.EmotionBall &&
-    window.__supportEmotionBallVersion === EMOTION_BALL_ASSET_VERSION
+    window.__supportEmotionBallVersion === BUILD_VERSION
   ) {
     return Promise.resolve(window.EmotionBall);
   }
@@ -123,7 +125,7 @@ function loadEmotionBall(): Promise<EmotionBallApi> {
   }, Promise.resolve()).then(() => {
     if (!window.EmotionBall) throw new Error("表情引擎初始化失败");
     // 记录独立脚本版本，开发热更新时不会继续复用旧的鼠标注视实现。
-    window.__supportEmotionBallVersion = EMOTION_BALL_ASSET_VERSION;
+    window.__supportEmotionBallVersion = BUILD_VERSION;
     return window.EmotionBall;
   });
   return emotionBallLoader;

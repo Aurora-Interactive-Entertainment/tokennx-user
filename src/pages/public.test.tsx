@@ -460,8 +460,11 @@ describe('公开模型页面', () => {
     expect(document.querySelector('.manuscript-feature-image')).toHaveAttribute('src', '/api/homepage/assets/01J00000000000000000000001')
     expect(document.querySelector('.manuscript-feature-image')).toHaveAttribute('loading', 'eager')
     expect(document.querySelector('.manuscript-feature-image')).toHaveAttribute('fetchpriority', 'high')
-    expect(screen.getByRole('img', { name: '后台广告位' })).toHaveAttribute('src', '/api/homepage/assets/01J00000000000000000000002')
-    expect(screen.getByRole('img', { name: '后台广告位' }).closest('a')).toHaveAttribute('href', '/login?return=%2Fconsole%2Finvitations')
+    // 广告图是装饰海报，后台标题不进 alt，避免懒加载期间被浏览器画到图上；链接名称由屏幕阅读器文案提供。
+    const adLink = screen.getByRole('link', { name: '邀请活动' })
+    expect(adLink).toHaveAttribute('href', '/login?return=%2Fconsole%2Finvitations')
+    expect(adLink.querySelector('img')).toHaveAttribute('src', '/api/homepage/assets/01J00000000000000000000002')
+    expect(adLink.querySelector('img')).toHaveAttribute('alt', '')
     expect(document.querySelector('.manuscript-partner-image')).toHaveAttribute('src', '/api/homepage/assets/01J00000000000000000000003')
     expect(document.querySelectorAll('.manuscript-partner-row')).toHaveLength(1)
     expect(document.querySelector('.manuscript-partner-row')).toHaveClass('is-static', 'is-compact')
@@ -497,7 +500,7 @@ describe('公开模型页面', () => {
 
     renderPage(<HomePage />, '/')
 
-    const adImage = await screen.findByRole('img', { name: 'English promotion' })
+    const adImage = (await screen.findByRole('link', { name: 'Invitation campaign' })).querySelector('img')
     expect(adImage).toHaveAttribute('src', 'https://cdn.example.com/promotion.png')
     expect(adImage).not.toHaveAttribute('src', '/src/assets/figma-home/promo-banner.png')
   })

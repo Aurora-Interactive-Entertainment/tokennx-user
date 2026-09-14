@@ -180,9 +180,10 @@ function groupUsageByModel(items: EnterpriseUsageDetailResponse['items']): Usage
 }
 
 async function loadAllUsageRows(enterpriseID: string, signal: AbortSignal): Promise<EnterpriseUsageDetailResponse> {
+  // 用量管理的主面板按文档展示当前周期近 30 天数据，不能只请求 today 后再冒充周期汇总。
   const first = await getEnterpriseUsageDetail(
     { enterprise_id: enterpriseID },
-    { range: 'today', page: 1, page_size: 100, signal },
+    { range: '30d', page: 1, page_size: 100, signal },
   )
   const items = [...(first.items ?? [])]
   const total = Number(first.total) || items.length
@@ -190,7 +191,7 @@ async function loadAllUsageRows(enterpriseID: string, signal: AbortSignal): Prom
   while (items.length < total && page <= Math.ceil(total / 100)) {
     const next = await getEnterpriseUsageDetail(
       { enterprise_id: enterpriseID },
-      { range: 'today', page, page_size: 100, signal },
+      { range: '30d', page, page_size: 100, signal },
     )
     items.push(...(next.items ?? []))
     if ((next.items ?? []).length === 0) break
@@ -238,7 +239,8 @@ export function TraeUsageBoard({ context, onDetail }: UsageBoardProps) {
   const items = overview?.items ?? []
   const totals = useMemo(() => summarizeUsage(items), [items])
   const modelRows = useMemo(() => groupUsageByModel(items), [items])
-  const totalTokens = totals.input_tokens + totals.output_tokens
+  // 文档定义 Token 消耗为输入 + 输出 + 缓存读取，汇总卡和模型表必须与明细口径一致。
+  const totalTokens = totals.input_tokens + totals.output_tokens + totals.cached_tokens
   const canViewBilling = overview?.can_view_billing ?? false
   const totalCost = Number(totals.cost_yuan)
 
@@ -282,7 +284,7 @@ export function TraeUsageBoard({ context, onDetail }: UsageBoardProps) {
             <thead><tr><th>{t('traeEnterprise.usage.name')}</th><th>{t('traeEnterprise.usage.totalTokens')}</th><th>{t('traeEnterprise.usage.requestCount')}</th><th>{t('traeEnterprise.usage.totalCost')}</th><th>{t('traeEnterprise.usage.operation')}</th></tr></thead>
             <tbody>{modelRows.map((model) => <tr key={model.model_code || model.model_name}>
               <td><span className="trae-person-cell"><span><strong>{model.model_alias || model.model_name || model.model_code || '--'}</strong><small>{model.vendor || model.model_code || '--'}</small></span></span></td>
-              <td className="trae-usage-number">{formatCount(model.input_tokens + model.output_tokens)}</td>
+              <td className="trae-usage-number">{formatCount(model.input_tokens + model.output_tokens + model.cached_tokens)}</td>
               <td className="trae-usage-number">{formatCount(model.requests)}</td>
               <td className="trae-usage-number">{canViewBilling ? formatYuan(model.cost_yuan, BACKOFFICE_MONEY_DISPLAY_DECIMAL_PLACES) : '--'}</td>
               <td>{onDetail ? <button className="trae-text-button" type="button" onClick={() => onDetail('all')}>{t('traeEnterprise.usage.detailAction')}</button> : null}</td>

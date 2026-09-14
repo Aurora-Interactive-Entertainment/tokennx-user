@@ -34,7 +34,7 @@ const MAX_TAX_IDENTIFIER_LENGTH = 128
 const MAX_EMAIL_LENGTH = 320
 const MAX_PROJECT_NAME_LENGTH = 255
 
-// 发票项目名称按税务申报要求固定展示，接口返回的可选项目不参与编辑。
+// 发票项目名称优先使用接口返回的可选项；旧服务未下发时再回退到平台默认项目。
 export function getInvoiceDialogOptions(
   response: BillingInvoiceResponse | null,
 ): InvoiceDialogOptions {
@@ -53,7 +53,9 @@ export function getInvoiceDialogOptions(
             label: i18n.t('console.billing.invoiceTypeSpecial'),
           },
         ],
-    projectNames: [{ value: fixedProjectName, label: fixedProjectName }],
+    projectNames: applicationForm?.project_names?.length
+      ? applicationForm.project_names
+      : [{ value: fixedProjectName, label: fixedProjectName }],
   }
 }
 

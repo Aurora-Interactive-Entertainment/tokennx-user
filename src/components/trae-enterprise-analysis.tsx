@@ -81,7 +81,7 @@ function dailyTrendValue(point: EnterpriseAnalyticsDailyUsageTrendPoint): number
 }
 
 function getDateKeys(dateRange: Date[]): string[] {
-  const start = dateRange[0] ?? addDays(startOfToday(), -30);
+  const start = dateRange[0] ?? addDays(startOfToday(), -29);
   const end = dateRange[1] ?? startOfToday();
   const dates: string[] = [];
   for (let date = new Date(start); date <= end; date = addDays(date, 1)) {
@@ -103,7 +103,8 @@ function getRequestOptions(
   // 接口约定自定义区间必须使用 UTC 自然日边界；日期选择器给出的 Date
   // 是本地午夜，因此先按年月日重建 UTC 时间戳，避免夏令时或时区偏移造成少一天。
   const startAt = Date.UTC(start.getFullYear(), start.getMonth(), start.getDate());
-  const endAt = Date.UTC(end.getFullYear(), end.getMonth(), end.getDate(), 23, 59, 59, 999);
+  // 自定义区间使用 UTC 左闭右开边界，与个人用量接口保持一致。
+  const endAt = Date.UTC(end.getFullYear(), end.getMonth(), end.getDate() + 1);
   const days = Math.round((endAt - startAt) / 86_400_000);
   if (days === 7) return { ...options, range: "7d" };
   if (days === 30) return { ...options, range: "30d" };
@@ -129,12 +130,12 @@ function TraeDateRangePicker({
     () => [
       {
         text: t("traeEnterprise.analysis.datePresets.last7"),
-        start: addDays(today, -7),
+        start: addDays(today, -6),
         end: today,
       },
       {
         text: t("traeEnterprise.analysis.datePresets.last30"),
-        start: addDays(today, -30),
+        start: addDays(today, -29),
         end: today,
       },
       {
@@ -536,7 +537,7 @@ export function TraeEnterpriseAnalysis({ context }: AnalysisProps) {
   const [scope, setScope] = useState("");
   const [dateRange, setDateRange] = useState<Date[]>(() => {
     const today = startOfToday();
-    return [addDays(today, -30), today];
+    return [addDays(today, -29), today];
   });
   const [members, setMembers] = useState<EnterpriseMember[]>([]);
   const [data, setData] = useState<EnterpriseAnalyticsResponse | null>(null);
@@ -582,7 +583,8 @@ export function TraeEnterpriseAnalysis({ context }: AnalysisProps) {
   }, [context.id, dateRange, handleError, reloadToken, scope]);
 
   const metrics = data?.metrics;
-  const cumulativeTokens = (metrics?.cumulative_input_tokens ?? 0) + (metrics?.cumulative_output_tokens ?? 0);
+  // 文档定义 Token 消耗包含缓存读取；分析接口的 cached_tokens 为累计缓存读取量。
+  const cumulativeTokens = (metrics?.cumulative_input_tokens ?? 0) + (metrics?.cumulative_output_tokens ?? 0) + (metrics?.cached_tokens ?? 0);
   const latestDayTokens = (metrics?.latest_day_input_tokens ?? 0) + (metrics?.latest_day_output_tokens ?? 0);
   const personMetrics = [
     [t("traeEnterprise.analysis.activeMembersCount"), metrics ? formatCount(metrics.active_members) : "--", t("traeEnterprise.analysis.memberUnit")],

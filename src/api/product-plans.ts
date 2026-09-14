@@ -1,6 +1,7 @@
 import { fetchAuthenticatedJson } from './authenticated'
 import { createBillingQuery, type BillingContext } from './billing'
 import { fetchJson, type FetchJsonOptions } from './http'
+import type { ApiTimestamp } from '@/utils/format'
 
 const PRODUCT_PLANS_PATH = '/api/user/product-plans'
 
@@ -79,6 +80,47 @@ export interface ProductPlanListOptions extends Pick<FetchJsonOptions, 'accessTo
   page_size?: number
 }
 
+export interface PurchasedProductPlanModel {
+  model_id: string
+  model_code: string
+  model_name: string
+  model_type: string
+  entitlement_mode: 'token_quota' | 'request_quota' | string
+  token_quota_total: string | null
+  token_quota_used: string | null
+  token_quota_frozen: string | null
+  token_quota_remaining: string | null
+  request_quota_total: string | null
+  request_quota_used: string | null
+  request_quota_frozen: string | null
+  request_quota_remaining: string | null
+}
+
+/** 已购权益快照；额度字段必须保持字符串，避免大数和小数精度损失。 */
+export interface PurchasedProductPlan {
+  id: string
+  plan_id: string
+  plan_code: string
+  plan_name: string
+  display_name: string
+  account_type: 'personal' | 'enterprise' | string
+  status: 'active' | 'frozen' | 'expired' | 'terminated' | string
+  paid_amount_cent: string
+  order_no: string
+  starts_at: ApiTimestamp
+  expires_at: ApiTimestamp
+  activated_at: ApiTimestamp | null
+  terminated_at: ApiTimestamp | null
+  termination_reason: string
+  models: PurchasedProductPlanModel[]
+}
+
+export interface PurchasedProductPlanListOptions extends ProductPlanListOptions {
+  status?: 'active' | 'history' | 'all'
+}
+
+const PURCHASED_PRODUCT_PLANS_PATH = '/api/user/product-plans/purchased'
+
 /** 查询当前账务主体可购买的模型用量套餐。 */
 export function getProductPlans(context: BillingContext, options: ProductPlanListOptions = {}): Promise<ProductPlanListResponse> {
   const query = createBillingQuery(context, {
@@ -86,6 +128,22 @@ export function getProductPlans(context: BillingContext, options: ProductPlanLis
     page_size: options.page_size ?? 100,
   })
   return fetchAuthenticatedJson<ProductPlanListResponse>(`${PRODUCT_PLANS_PATH}?${query}`, {
+    accessToken: options.accessToken,
+    signal: options.signal,
+  })
+}
+
+/** 查询当前账务主体已购套餐及模型额度余额。 */
+export function getPurchasedProductPlans(
+  context: BillingContext,
+  options: PurchasedProductPlanListOptions = {},
+): Promise<ProductPlanListResponse<PurchasedProductPlan>> {
+  const query = createBillingQuery(context, {
+    status: options.status ?? 'active',
+    page: options.page ?? 1,
+    page_size: options.page_size ?? 100,
+  })
+  return fetchAuthenticatedJson<ProductPlanListResponse<PurchasedProductPlan>>(`${PURCHASED_PRODUCT_PLANS_PATH}?${query}`, {
     accessToken: options.accessToken,
     signal: options.signal,
   })

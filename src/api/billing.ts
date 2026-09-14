@@ -223,6 +223,10 @@ export interface BillingAnalysisMetrics {
   request_count: string
   input_tokens: string
   output_tokens: string
+  /** 缓存读取 Token；旧服务缺少时由 total_tokens 或输入/输出字段兼容。 */
+  cached_tokens?: string | number
+  /** 接口直接返回的积分（Token 总量）；旧服务未返回时再由输入/输出 Token 兼容计算。 */
+  total_tokens?: string | number
   image_count: string
   audio_count: string
   video_count: string

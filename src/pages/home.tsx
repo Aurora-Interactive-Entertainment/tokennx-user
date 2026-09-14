@@ -597,9 +597,9 @@ function ManagedNewsCard({ entry, newsIndex }: { entry: HomepageEntry; newsIndex
 function ManagedAdSlots({ entries }: { entries: HomepageEntry[] }) {
   const { t, i18n } = useTranslation()
   return <div className="manuscript-ad-slots">{entries.map((entry) => {
-    const content = homepageTranslation(entry, i18n.language)
     const imageURL = homepageEntryMediaURL(entry, i18n.language)
-    const ad = <img src={imageURL || promoBannerArt} alt={content.title || t('home.rebuild.adSlot')} loading="lazy" decoding="async" width={850} height={193} />
+    // 广告图是纯海报装饰：alt 留空，避免图片懒加载期间浏览器把后台标题（可能是“测试”这类占位文案）画到图上。
+    const ad = <><img src={imageURL || promoBannerArt} alt="" loading="lazy" decoding="async" width={850} height={193} /><span className="public-sr-only">{t('home.rebuild.adSlot')}</span></>
     // 推广广告统一承接邀请活动，未登录时由公共登录弹窗完成后续跳转。
     return <LoginRequiredAction className="manuscript-ad-slot" key={entry.id} returnPath="/console/invitations">{ad}</LoginRequiredAction>
   })}</div>

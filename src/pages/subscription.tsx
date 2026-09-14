@@ -1,12 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Button from "@douyinfe/semi-ui/lib/es/button";
 import {
-  getBillingErrorMessage,
-  getBillingRequestId,
-  getBillingSummary,
-  type BillingSummaryResponse,
-} from "@/api/billing";
+  getPurchasedProductPlans,
+  type PurchasedProductPlan,
+} from "@/api/product-plans";
+import { getBillingErrorMessage, getBillingRequestId } from "@/api/billing";
 import { isAuthenticationFailure } from "@/api/http";
 import { PageTitle } from "@/components/common";
 import { appToast } from "@/components/app-toast";
@@ -20,17 +19,6 @@ import { SubscriptionUsageCard, type SubscriptionUsage } from '@/components/subs
 
 type SubscriptionModel = SubscriptionUsage;
 
-type SubscriptionModelSource = Partial<SubscriptionUsage> & {
-  name?: string;
-  model_name?: string;
-  model?: { name?: string };
-};
-
-type SubscriptionSummaryWithModels = BillingSummaryResponse & {
-  subscription_models?: SubscriptionModelSource[];
-  subscriptions?: SubscriptionModelSource[];
-};
-
 
 export function SubscriptionPage() {
   const { t } = useTranslation();
@@ -39,47 +27,73 @@ export function SubscriptionPage() {
   const navigate = useNavigate();
   const activeWorkspace = store.activeWorkspace;
   const context = useMemo(() => activeWorkspace ? billingContextForWorkspace(activeWorkspace) : null, [activeWorkspace?.id, activeWorkspace?.type]);
-  const [summary, setSummary] = useState<BillingSummaryResponse | null>(null);
+  const [entitlements, setEntitlements] = useState<PurchasedProductPlan[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [requestId, setRequestId] = useState<string | null>(null);
-  const subscribedModels = useMemo<SubscriptionModel[]>(() => {
-    const payload = summary as SubscriptionSummaryWithModels | null;
-    const source = payload?.subscription_models ?? payload?.subscriptions;
-    if (!Array.isArray(source)) return [];
-    const models = source.map((item) => ({
-      ...item,
-      name: item.model_name?.trim() || item.name?.trim() || item.model?.name?.trim() || "",
-    })).filter((item) => item.name);
-    return models;
-  }, [summary]);
+  const requestController = useRef<AbortController | null>(null);
+  const subscribedModels = useMemo<SubscriptionModel[]>(() => entitlements.flatMap((entitlement) =>
+    entitlement.models.map((model) => {
+      const name = model.model_name?.trim() || entitlement.display_name?.trim() || entitlement.plan_name?.trim() || entitlement.plan_code;
+      const isRequestQuota = model.entitlement_mode === "request_quota";
+      return {
+        name,
+        quota_mode: isRequestQuota ? "request_quota" as const : "token_quota" as const,
+        total_tokens: model.token_quota_total,
+        used_tokens: model.token_quota_used,
+        remaining_tokens: model.token_quota_remaining,
+        total_requests: model.request_quota_total,
+        used_requests: model.request_quota_used,
+        remaining_requests: model.request_quota_remaining,
+        expires_at: entitlement.expires_at,
+      };
+    }),
+  ).filter((model) => model.name), [entitlements]);
 
-  // 订阅页沿用账务 summary，保证个人空间和企业空间展示同一套余额上下文。
-  const loadSummary = useCallback(() => {
+  // 已购权益接口按当前账务主体查询，个人空间和企业空间共用同一套展示逻辑。
+  const loadPurchasedPlans = useCallback(() => {
     if (!context) return;
+    requestController.current?.abort();
     const controller = new AbortController();
+    requestController.current = controller;
     setLoading(true);
     setError("");
     setRequestId(null);
-    void getBillingSummary(context, { signal: controller.signal }).then((data) => {
-      if (controller.signal.aborted) return;
-      setSummary(data);
-      setLoading(false);
-    }).catch((reason: unknown) => {
+    void (async () => {
+      const items: PurchasedProductPlan[] = [];
+      let page = 1;
+      while (!controller.signal.aborted) {
+        const response = await getPurchasedProductPlans(context, { status: "active", page, page_size: 100, signal: controller.signal });
+        if (!Array.isArray(response.items) || !Number.isSafeInteger(response.total) || response.total < 0 || response.page !== page) {
+          throw new Error("Invalid purchased product plan list");
+        }
+        items.push(...response.items);
+        if (response.items.length === 0 || items.length >= response.total) break;
+        page += 1;
+      }
+      if (!controller.signal.aborted) {
+        setEntitlements(Array.from(new Map(items.map((item) => [item.id, item])).values()));
+        setLoading(false);
+      }
+    })().catch((reason: unknown) => {
       if (controller.signal.aborted) return;
       if (isAuthenticationFailure(reason)) {
         dispatch(invalidateAuth());
         navigate("/", { replace: true });
         return;
       }
+      setEntitlements([]);
       setError(getBillingErrorMessage(reason));
       setRequestId(getBillingRequestId(reason));
       setLoading(false);
     });
-    return () => controller.abort();
+    return () => {
+      controller.abort();
+      if (requestController.current === controller) requestController.current = null;
+    };
   }, [context, dispatch, navigate]);
 
-  useEffect(() => loadSummary(), [loadSummary]);
+  useEffect(() => loadPurchasedPlans(), [loadPurchasedPlans]);
 
   useEffect(() => {
     if (!error) return;
@@ -90,6 +104,7 @@ export function SubscriptionPage() {
     <div className="page-stack subscription-page">
       <PageTitle
         title={t("console.subscriptionPage.title")}
+        actions={<Button theme="borderless" onClick={loadPurchasedPlans} loading={loading} aria-label={t("console.subscriptionPage.refresh")}>↻</Button>}
       />
       {loading ? null : subscribedModels.length > 0 ? (
         <div className="subscription-overview-grid subscription-models-only" aria-label={t("console.subscriptionPage.currentSection")}>

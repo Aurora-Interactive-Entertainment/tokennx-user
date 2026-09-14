@@ -1,0 +1,13 @@
+.wechat-callback-page {
+  min-height: 100vh;
+  display: grid;
+  place-content: center;
+  gap: 0.75rem;
+  padding: 2rem;
+  text-align: center;
+  color: var(--text-primary, #1f2329);
+  background: var(--bg-primary, #fff);
+}
+
+.wechat-callback-page p { margin: 0; }
+.wechat-callback-page a { color: inherit; }
