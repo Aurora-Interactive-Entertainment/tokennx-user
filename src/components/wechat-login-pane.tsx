@@ -19,8 +19,9 @@ function WechatLoginFrame({ session, frameRef, onOpenFallback }: {
   const [phase, setPhase] = useState<'loading' | 'ready' | 'slow' | 'failed'>('loading')
 
   useEffect(() => {
-    // 只有长时间收不到微信官方就绪消息时才提示“加载较慢”；明确的 iframe error 走失败兜底。
-    const slowTimer = window.setTimeout(() => setPhase(value => value === 'loading' ? 'slow' : value), 15000)
+    // 官方就绪消息正常在百毫秒内到达；5 秒还没到就先把遮罩撤掉，
+    // 避免因为漏掉一条通知，把已经渲染好的二维码白盖十几秒。
+    const slowTimer = window.setTimeout(() => setPhase(value => value === 'loading' ? 'slow' : value), 5000)
     const onMessage = (event: MessageEvent) => {
       // 只信任当前官方 iframe 的就绪通知，postMessage 不可直接签发本站登录态。
       if (event.origin !== WECHAT_AUTHORIZATION_ORIGIN || event.source !== frameRef.current?.contentWindow) return
@@ -48,7 +49,8 @@ function WechatLoginFrame({ session, frameRef, onOpenFallback }: {
           title={t('login.wechatLoginTitle')}
           src={src}
           scrolling="no"
-          allow={`local-network-access ${WECHAT_AUTHORIZATION_ORIGIN}; local-network ${WECHAT_AUTHORIZATION_ORIGIN}; loopback-network ${WECHAT_AUTHORIZATION_ORIGIN}`}
+          // 微信官方授权页需要访问本机微信桥接服务，权限声明与官方 WxLogin 组件保持一致。
+          allow="local-network-access"
           referrerPolicy="strict-origin-when-cross-origin"
           // 就绪只以官方 postMessage 为准；也不能按 load 次数推断“用户已授权”，
           // 否则官方页自身任何一次跳转都会让下面的遮罩永久盖住二维码。
@@ -99,12 +101,14 @@ export function WechatLoginPane({ session, view, error, frameRef, onOpenFallback
         </div>
       )}
       {error ? <p className={`wechat-status wechat-login-feedback${failed ? ' is-error' : ''}`} role="status" aria-live="polite">{error}</p> : null}
-      {/* 正常与过期状态都沿用登录页原有按钮，不再切换成文字链接。 */}
-      {(failed || session) && (
-        <button className="btn btn-primary submit-btn login-capsule-action login-capsule-soft" type="button" onClick={onRetry}>
-          <span>{t('login.refreshQr')}</span>
-        </button>
-      )}
+      {/* 始终占位：二维码有效时隐藏但保留高度，避免显示/隐藏时把下面的按钮顶得上下跑。 */}
+      <button
+        className={`btn btn-primary submit-btn login-capsule-action login-capsule-soft${failed ? '' : ' is-slot-hidden'}`}
+        type="button"
+        onClick={onRetry}
+      >
+        <span>{t('login.refreshQr')}</span>
+      </button>
       <button className="btn login-switch-btn" type="button" onClick={onBack}>{t('login.backToPhone')}</button>
     </>
   )

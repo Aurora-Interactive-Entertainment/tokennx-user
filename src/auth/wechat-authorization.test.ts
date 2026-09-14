@@ -22,11 +22,15 @@ describe('微信官方参数及回调边界', () => {
     expect(url.searchParams.get('state')).toBe(session.state)
     expect(url.searchParams.get('appid')).toBe(session.app_id)
     expect(url.searchParams.get('scope')).toBe('snsapi_login')
+    expect(url.searchParams.get('login_type')).toBe('jssdk')
+    expect(url.searchParams.get('response_type')).toBe('code')
     expect(url.searchParams.get('self_redirect')).toBe('true')
     expect(url.searchParams.get('fast_login')).toBe('1')
     expect(url.searchParams.get('stylelite')).toBe('1')
     expect(url.searchParams.get('color_scheme')).toBe('dark')
     expect(url.searchParams.get('lang')).toBe('en')
+    expect(url.searchParams.get('ts')).toMatch(/^\d{13}$/)
+    expect(url.hash).toBe('#wechat_redirect')
   })
 
   it.each(['javascript:alert(1)', '<iframe src="x"></iframe>', 'https://user:pass@localhost/callback', 'https://localhost/callback?code=old', 'https://localhost/callback#state'])('拒绝不安全回调地址 %s', value => {

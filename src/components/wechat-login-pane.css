@@ -95,3 +95,8 @@
   margin: 8px 0 20px;
   font-size: 14px;
 }
+
+/* 二维码有效时刷新按钮不可用，但保留占位高度，避免下面的“返回手机号登录”上下跳动。 */
+:is(.login-popover, .login-card) .login-pane--wechat .submit-btn.is-slot-hidden {
+  visibility: hidden;
+}

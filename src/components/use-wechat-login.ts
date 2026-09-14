@@ -50,7 +50,8 @@ export function useWechatLogin(options: {
       setError(message)
       stop()
     }
-    const expire = () => fail(latest.current.t('login.wechatExpired'), 'expired')
+    // 过期态已由占位区的“二维码已过期”和刷新按钮表达，不再额外压一行重复提示。
+    const expire = () => fail('', 'expired')
 
     async function exchange(code: string, current: WechatQrResult, failures = 0): Promise<void> {
       if (!active) return

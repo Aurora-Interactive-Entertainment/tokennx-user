@@ -38,12 +38,16 @@ export function wechatFrameUrl(session: WechatQrResult, theme: 'light' | 'dark',
   url.searchParams.set('scope', session.scope)
   url.searchParams.set('redirect_uri', session.redirect_uri)
   url.searchParams.set('state', session.state)
+  // 与微信官方 WxLogin 组件保持一致，让授权页按内嵌 JS SDK 模式初始化。
+  url.searchParams.set('login_type', 'jssdk')
   url.searchParams.set('response_type', 'code')
   url.searchParams.set('self_redirect', 'true')
   url.searchParams.set('stylelite', '1')
   url.searchParams.set('fast_login', '1')
   url.searchParams.set('color_scheme', theme)
   url.searchParams.set('lang', language.startsWith('en') ? 'en' : 'zh_CN')
+  // 官方组件会为每次授权附加时间戳，避免浏览器复用旧的本机微信探测页面。
+  url.searchParams.set('ts', Date.now().toString())
   url.hash = 'wechat_redirect'
   return url.toString()
 }
