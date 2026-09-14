@@ -4,7 +4,7 @@ import type { WechatQrResult } from '@/api/auth'
 
 const session: WechatQrResult = {
   app_id: 'wx1234567890abcdef', scope: 'snsapi_login',
-  redirect_uri: 'http://localhost/wechat-callback.html?flow=login&next=%2Fconsole',
+  redirect_uri: 'http://localhost/weixin/callback?flow=login&next=%2Fconsole',
   state: 'one-time_state', expires_at: Date.now() + 60000,
 }
 describe('微信官方参数及回调边界', () => {

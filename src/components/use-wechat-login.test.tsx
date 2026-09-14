@@ -14,7 +14,7 @@ function envelope(data: unknown, status = 200, code = 0) {
   return new Response(JSON.stringify({ code, msg: status === 200 ? 'success' : '暂不可用', data }), { status, headers: { 'Content-Type': 'application/json' } })
 }
 function qr(state = 'first', lifetime = 60000) {
-  return { app_id: 'wx1234567890abcdef', scope: 'snsapi_login', redirect_uri: window.location.origin + '/wechat-callback.html', state, expires_at: Date.now() + lifetime }
+  return { app_id: 'wx1234567890abcdef', scope: 'snsapi_login', redirect_uri: window.location.origin + '/weixin/callback', state, expires_at: Date.now() + lifetime }
 }
 const binding = { status: 'pending_binding', binding_required: true, binding_ticket: 'binding-ticket' }
 function deferred<T>() {

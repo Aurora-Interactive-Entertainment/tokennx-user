@@ -144,8 +144,19 @@ npm run release:verify
 线上服务器请采用版本目录或“资源先行、HTML 最后”的发布顺序：
 
 1. 将完整 `dist/assets/`（以及 `version.json`、其他 `public/` 静态文件）上传并校验成功；不要先删除仍可能被旧 HTML 引用的 hash 资源。
-2. 最后再替换 `index.html`；更推荐把完整产物放入新版本目录，校验通过后原子切换 `current` 软链接，并保留旧版本资源一段时间。
+2. 最后再替换 `index.html`；更推荐把完整产物放入新版本目录，校验通过后原子切换 `current` 软链接。切换后的目录要继续保留旧版本的 hash 资源（或使用共享 assets 目录），不要立即删除旧资源，以免已有缓存 HTML 找不到它们。
 3. 将 [`deploy/nginx/tokennx-user.conf`](deploy/nginx/tokennx-user.conf) 中的规则合并到站点 `server {}`：`/assets/` 使用 `try_files $uri =404`，HTML 入口使用 `no-store`，SPA 回退只能放在最后。若现有配置有 `error_page 404 /index.html`，必须确保它不会作用于 `/assets/`。
+
+如果暂时不能做版本目录切换，可以在服务器上按下面顺序发布（不要加 `--delete`）：
+
+```bash
+WEBROOT=/var/www/tokennx-user/current
+rsync -a --exclude='index.html' dist/ "$WEBROOT"/
+install -m 0644 dist/index.html "$WEBROOT/index.html.next"
+mv -f "$WEBROOT/index.html.next" "$WEBROOT/index.html"
+```
+
+修改 OpenResty/Nginx 后先执行 `nginx -t` 再 reload；若前面还有 CDN，还要清理已有的 `/`、`/index.html` 和 `/version.json` 缓存，并确认 CDN 不会忽略源站的 `no-store`。
 
 切换后至少执行以下线上冒烟检查（把域名替换为实际站点）：
 
@@ -154,7 +165,7 @@ curl -i https://tokennx.cn/assets/__missing_release_probe__.js
 curl -sSI https://tokennx.cn/ | grep -i cache-control
 ```
 
-第一条必须返回 `404` 且不能是 `text/html`；入口响应不能带长期 `max-age`。若 CDN 另有缓存规则，也要同步设置 HTML 不缓存、hash 资源长期缓存。
+第一条必须返回 `404`（不能是 `200`，也不能返回入口 HTML）；入口响应不能带长期 `max-age`。若 CDN 另有缓存规则，也要同步设置 HTML 不缓存、hash 资源长期缓存。
 
 ### 本地预览构建结果
 

@@ -12,7 +12,7 @@ describe('认证接口封装', () => {
   beforeEach(() => vi.restoreAllMocks())
 
   it('微信二维码参数禁用缓存并校验回调地址', async () => {
-    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(response({ app_id: 'wx1234567890abcdef', scope: 'snsapi_login', redirect_uri: 'http://localhost/wechat-callback.html', state: 'valid_state', expires_at: Date.now() + 60000 }))
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(response({ app_id: 'wx1234567890abcdef', scope: 'snsapi_login', redirect_uri: 'http://localhost/weixin/callback', state: 'valid_state', expires_at: Date.now() + 60000 }))
     const result = await requestWechatQr()
     expect(result.state).toBe('valid_state')
     expect(fetchMock.mock.calls[0][1]?.cache).toBe('no-store')

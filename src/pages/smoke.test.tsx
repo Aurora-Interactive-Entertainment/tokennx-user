@@ -473,7 +473,7 @@ describe('页面主链冒烟场景', () => {
   it('微信授权回调兑换成功后续接到控制台', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
       const url = String(input)
-      if (url.endsWith('/api/auth/wechat/qr')) return apiResponse({ app_id: 'wx1234567890abcdef', scope: 'snsapi_login', redirect_uri: 'http://localhost/wechat-callback.html', state: 'wechat-state', expires_at: Date.now() + 60000 })
+      if (url.endsWith('/api/auth/wechat/qr')) return apiResponse({ app_id: 'wx1234567890abcdef', scope: 'snsapi_login', redirect_uri: 'http://localhost/weixin/callback', state: 'wechat-state', expires_at: Date.now() + 60000 })
       if (url.endsWith('/api/auth/wechat/exchange')) return apiResponse(authResult)
       throw new Error(`unexpected request: ${url}`)
     })
@@ -507,7 +507,7 @@ describe('页面主链冒烟场景', () => {
     const bindingResult = { ...authResult, access_token: 'binding-access', refresh_token: 'binding-refresh' }
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
       const url = String(input)
-      if (url.endsWith('/api/auth/wechat/qr')) return apiResponse({ app_id: 'wx1234567890abcdef', scope: 'snsapi_login', redirect_uri: 'http://localhost/wechat-callback.html', state: 'binding-state', expires_at: Date.now() + 60000 })
+      if (url.endsWith('/api/auth/wechat/qr')) return apiResponse({ app_id: 'wx1234567890abcdef', scope: 'snsapi_login', redirect_uri: 'http://localhost/weixin/callback', state: 'binding-state', expires_at: Date.now() + 60000 })
       if (url.endsWith('/api/auth/wechat/exchange')) return apiResponse({ status: 'pending_binding', binding_required: true, binding_ticket: 'binding-ticket' })
       if (url.endsWith('/api/auth/bind-phone/code')) return apiResponse({})
       if (url.endsWith('/api/auth/bind-phone')) return apiResponse(bindingResult)
@@ -534,7 +534,7 @@ describe('页面主链冒烟场景', () => {
     const user = userEvent.setup()
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
       const url = String(input)
-      if (url.endsWith('/api/auth/wechat/qr')) return apiResponse({ app_id: 'wx1234567890abcdef', scope: 'snsapi_login', redirect_uri: 'http://localhost/wechat-callback.html', state: 'binding-error', expires_at: Date.now() + 60000 })
+      if (url.endsWith('/api/auth/wechat/qr')) return apiResponse({ app_id: 'wx1234567890abcdef', scope: 'snsapi_login', redirect_uri: 'http://localhost/weixin/callback', state: 'binding-error', expires_at: Date.now() + 60000 })
       if (url.endsWith('/api/auth/wechat/exchange')) return apiResponse({ status: 'pending_binding', binding_required: true, binding_ticket: 'ticket' })
       if (url.endsWith('/api/auth/bind-phone')) return apiResponse({}, 401, 160001, '绑定验证码无效')
       throw new Error(`unexpected request: ${url}`)
