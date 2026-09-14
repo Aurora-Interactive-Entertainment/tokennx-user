@@ -395,9 +395,9 @@ function BillingSectionInfo({ content }: { content: string }) {
   return <Tooltip className="app-info-tooltip billing-info-tooltip" content={content} position="top"><span className="billing-info-trigger" tabIndex={0} aria-label={content}><IconInfoCircle className="billing-info-icon" aria-hidden="true" /></span></Tooltip>
 }
 
-// Token NX 积分优先使用接口返回的 total_tokens，只有旧接口缺少该字段时才兼容计算。
+// Token NX 积分优先使用接口返回的 total_tokens，字段缺失或为 null 时才兼容计算。
 function PointsBalanceCard({ metrics }: { metrics: BillingAnalysisResponse['metrics'] }) {
-  const points = metrics.total_tokens !== undefined
+  const points = metrics.total_tokens != null
     ? safeAmount(metrics.total_tokens)
     : safeAmount(metrics.input_tokens) + safeAmount(metrics.output_tokens) + safeAmount(metrics.cached_tokens)
   return <article className="billing-balance-card">

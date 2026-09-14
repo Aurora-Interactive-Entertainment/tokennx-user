@@ -11,13 +11,15 @@ export function isChunkLoadError(error: unknown): boolean {
 /** 每个构建版本最多自动恢复一次，避免缓存异常时无限刷新。 */
 export function recoverFromChunkLoadError(): boolean {
   if (typeof window === "undefined") return false;
+  const url = new URL(window.location.href);
+  // 微信授权回调页一次性携带 code/state，重载会重放一次性授权码；index.html 的内联构建版本守卫同样跳过这类 URL。
+  if (url.searchParams.has("code") && url.searchParams.has("state")) return false;
   try {
     if (window.sessionStorage.getItem(RECOVERY_KEY) === BUILD_VERSION) return false;
     window.sessionStorage.setItem(RECOVERY_KEY, BUILD_VERSION);
   } catch {
     return false;
   }
-  const url = new URL(window.location.href);
   url.searchParams.set("__token_nx_build", BUILD_VERSION);
   window.location.replace(url.toString());
   return true;

@@ -92,9 +92,10 @@ export async function requestWechatQr(options: { signal?: AbortSignal } = {}): P
   const redirect = parseWechatRedirectUri(result.redirect_uri)
   // 回调由前端页面接收；不能把后端配置改写成 localhost 或其他来源。
   const isSameOrigin = redirect?.origin === window.location.origin
-  // 本地联调时正式后端只能返回正式回调域名；回调页会根据 referrer 将消息发回 localhost。
-  const isLocalFormalCallback = import.meta.env.DEV && redirect?.origin === WECHAT_FORMAL_CALLBACK_ORIGIN && redirect.pathname === WECHAT_CALLBACK_PATH
-  if (!redirect || (!isSameOrigin && !isLocalFormalCallback)) {
+  // 后端只下发一个正式回调地址，而站点可能同时挂在别名域名下（tokennx.cn 与 www.tokennx.cn 在浏览器里是两个 origin）。
+  // 正式回调地址必须在所有环境放行，否则别名域名上的用户发不出二维码；本地联调也依赖它，回调页按 referrer 把消息发回 localhost。
+  const isFormalCallback = redirect?.origin === WECHAT_FORMAL_CALLBACK_ORIGIN && redirect.pathname === WECHAT_CALLBACK_PATH
+  if (!redirect || (!isSameOrigin && !isFormalCallback)) {
     throw new ApiError(i18n.t('login.wechatRedirectMismatch'), 502, 0, null)
   }
   return result

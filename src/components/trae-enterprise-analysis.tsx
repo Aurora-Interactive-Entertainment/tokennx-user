@@ -125,7 +125,7 @@ function TraeDateRangePicker({
 }) {
   const { t } = useTranslation();
   const today = useMemo(startOfToday, []);
-  const minDate = useMemo(() => addDays(today, -90), [today]);
+  const minDate = useMemo(() => addDays(today, -89), [today]);
   const presets = useMemo(
     () => [
       {
@@ -583,8 +583,8 @@ export function TraeEnterpriseAnalysis({ context }: AnalysisProps) {
   }, [context.id, dateRange, handleError, reloadToken, scope]);
 
   const metrics = data?.metrics;
-  // 文档定义 Token 消耗包含缓存读取；分析接口的 cached_tokens 为累计缓存读取量。
-  const cumulativeTokens = (metrics?.cumulative_input_tokens ?? 0) + (metrics?.cumulative_output_tokens ?? 0) + (metrics?.cached_tokens ?? 0);
+  // cumulative_* 才是全部历史；cached_tokens 是「当前时间范围内」的量，混进来会让“累计”随区间变化。
+  const cumulativeTokens = (metrics?.cumulative_input_tokens ?? 0) + (metrics?.cumulative_output_tokens ?? 0);
   const latestDayTokens = (metrics?.latest_day_input_tokens ?? 0) + (metrics?.latest_day_output_tokens ?? 0);
   const personMetrics = [
     [t("traeEnterprise.analysis.activeMembersCount"), metrics ? formatCount(metrics.active_members) : "--", t("traeEnterprise.analysis.memberUnit")],

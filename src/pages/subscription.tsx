@@ -5,7 +5,7 @@ import {
   getPurchasedProductPlans,
   type PurchasedProductPlan,
 } from "@/api/product-plans";
-import { getBillingErrorMessage, getBillingRequestId } from "@/api/billing";
+import { getBillingErrorMessage } from "@/api/billing";
 import { isAuthenticationFailure } from "@/api/http";
 import { PageTitle } from "@/components/common";
 import { appToast } from "@/components/app-toast";
@@ -30,10 +30,10 @@ export function SubscriptionPage() {
   const [entitlements, setEntitlements] = useState<PurchasedProductPlan[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [requestId, setRequestId] = useState<string | null>(null);
   const requestController = useRef<AbortController | null>(null);
   const subscribedModels = useMemo<SubscriptionModel[]>(() => entitlements.flatMap((entitlement) =>
-    entitlement.models.map((model) => {
+    // 后端可能把空模型列表序列化成 null，这里必须兜底，否则会在渲染期抛错并整页降级到错误边界。
+    (entitlement.models ?? []).map((model) => {
       const name = model.model_name?.trim() || entitlement.display_name?.trim() || entitlement.plan_name?.trim() || entitlement.plan_code;
       const isRequestQuota = model.entitlement_mode === "request_quota";
       return {
@@ -58,17 +58,19 @@ export function SubscriptionPage() {
     requestController.current = controller;
     setLoading(true);
     setError("");
-    setRequestId(null);
     void (async () => {
       const items: PurchasedProductPlan[] = [];
       let page = 1;
       while (!controller.signal.aborted) {
         const response = await getPurchasedProductPlans(context, { status: "active", page, page_size: 100, signal: controller.signal });
-        if (!Array.isArray(response.items) || !Number.isSafeInteger(response.total) || response.total < 0 || response.page !== page) {
+        // 只校验结构：分页字段允许是字符串形式的数字，个别字段的序列化差异不应该让整页加载失败。
+        const total = Number(response.total);
+        const currentPage = Number(response.page);
+        if (!Array.isArray(response.items) || !Number.isSafeInteger(total) || total < 0 || currentPage !== page) {
           throw new Error("Invalid purchased product plan list");
         }
         items.push(...response.items);
-        if (response.items.length === 0 || items.length >= response.total) break;
+        if (response.items.length === 0 || items.length >= total) break;
         page += 1;
       }
       if (!controller.signal.aborted) {
@@ -84,7 +86,6 @@ export function SubscriptionPage() {
       }
       setEntitlements([]);
       setError(getBillingErrorMessage(reason));
-      setRequestId(getBillingRequestId(reason));
       setLoading(false);
     });
     return () => {
@@ -94,6 +95,9 @@ export function SubscriptionPage() {
   }, [context, dispatch, navigate]);
 
   useEffect(() => loadPurchasedPlans(), [loadPurchasedPlans]);
+
+  // 刷新按钮会把 requestController 换成新的实例，卸载时不能只中断 effect 里那一个，否则最新请求会继续在卸载后写状态。
+  useEffect(() => () => requestController.current?.abort(), []);
 
   useEffect(() => {
     if (!error) return;

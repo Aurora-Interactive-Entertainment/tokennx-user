@@ -60,7 +60,7 @@ export function useWechatLogin(options: {
         if (!active) return
         window.clearTimeout(expiryTimer)
         setError('')
-        if (result?.status === 'pending_binding' && result.binding_required) {
+        if (result?.status === 'pending_binding' || result?.binding_required) {
           if (!result.binding_ticket?.trim()) return fail(latest.current.t('login.missingBindingTicket'))
           // 后端明确表示未绑定的微信身份不构成本站登录；清掉旧令牌和 Redux 状态，避免误判为已登录。
           clearAuthTokens({ force: true })
@@ -100,6 +100,8 @@ export function useWechatLogin(options: {
       if (!code) return
       // 在发请求前同步锁定本次二维码，重复消息和 StrictMode 都不能并发兑换。
       exchanging = true
+      // 回调已到达，停止二维码过期计时；否则兑换过程中定时器触发会把这次请求中断成“已过期”。
+      window.clearTimeout(expiryTimer)
       setSession(null)
       setView('completing')
       void exchange(code, qr)
@@ -128,9 +130,13 @@ export function useWechatLogin(options: {
   function openInNewWindow(url: string): void {
     try {
       // 不传 noopener/noreferrer，回调页需要通过 window.opener 把授权码发回登录页。
-      popupRef.current = window.open(url, '_blank')
+      const popup = window.open(url, '_blank')
+      popupRef.current = popup
+      // 被浏览器拦截时 window.open 返回 null 而不抛错，必须显式提示，否则用户点了没有任何反应。
+      if (!popup) setError(latest.current.t('login.popupBlocked'))
     } catch {
       popupRef.current = null
+      setError(latest.current.t('login.popupBlocked'))
     }
   }
 

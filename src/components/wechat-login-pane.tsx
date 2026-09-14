@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type RefObject } from 'react'
+import { useEffect, useState, type RefObject } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { WechatQrResult } from '@/api/auth'
 import { WECHAT_AUTHORIZATION_ORIGIN, wechatFrameUrl } from '@/auth/wechat-authorization'
@@ -15,8 +15,8 @@ function WechatLoginFrame({ session, frameRef, onOpenFallback }: {
   const theme = useResolvedTheme()
   // 单次授权过程中固定官方页面参数，主题/语言切换不重载正在授权的二维码。
   const [src] = useState(() => wechatFrameUrl(session, theme, i18n.language))
-  const [phase, setPhase] = useState<'loading' | 'ready' | 'callback' | 'slow' | 'failed'>('loading')
-  const loadCount = useRef(0)
+  // 这里只描述二维码自身的加载状态；“正在完成登录”由 use-wechat-login 的 view 驱动。
+  const [phase, setPhase] = useState<'loading' | 'ready' | 'slow' | 'failed'>('loading')
 
   useEffect(() => {
     // 只有长时间收不到微信官方就绪消息时才提示“加载较慢”；明确的 iframe error 走失败兜底。
@@ -50,19 +50,14 @@ function WechatLoginFrame({ session, frameRef, onOpenFallback }: {
           scrolling="no"
           allow={`local-network-access ${WECHAT_AUTHORIZATION_ORIGIN}; local-network ${WECHAT_AUTHORIZATION_ORIGIN}; loopback-network ${WECHAT_AUTHORIZATION_ORIGIN}`}
           referrerPolicy="strict-origin-when-cross-origin"
-          onLoad={() => {
-            loadCount.current += 1
-            // 首次 load 只代表文档建立；二维码就绪必须等待官方 postMessage。
-            // 授权后进入同源回调页，父页面校验消息后兑换登录结果。
-            if (loadCount.current > 1) setPhase('callback')
-          }}
-          // iframe error 是明确的加载失败，不能再显示“加载较慢”。
+          // 就绪只以官方 postMessage 为准；也不能按 load 次数推断“用户已授权”，
+          // 否则官方页自身任何一次跳转都会让下面的遮罩永久盖住二维码。
           onError={() => setPhase('failed')}
         />
-        {phase === 'loading' || phase === 'callback' ? (
+        {phase === 'loading' ? (
           <div className="wechat-login-frame-cover" role="status">
             <span className="get-code-spinner" aria-hidden="true" />
-            <span>{t(phase === 'callback' ? 'login.wechatCompleting' : 'login.qrLoading')}</span>
+            <span>{t('login.qrLoading')}</span>
           </div>
         ) : null}
       </div>

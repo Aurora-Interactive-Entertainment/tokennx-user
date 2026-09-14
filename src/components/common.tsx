@@ -3702,9 +3702,18 @@ export function AccountSettingsModal({
     let frameTwo = 0;
     let timer = 0;
 
+    // cleanup 会取消下面那个恢复帧（弹窗在恢复前就关闭时），所以这里必须兜底还原，
+    // 否则内联的 scroll-behavior:auto 会一直留在 <html> 上，覆盖全局的平滑滚动。
+    let overriddenScrollBehavior: string | null = null;
+    const restoreScrollBehavior = () => {
+      if (overriddenScrollBehavior === null) return;
+      document.documentElement.style.scrollBehavior = overriddenScrollBehavior;
+      overriddenScrollBehavior = null;
+    };
+
     const restoreScrollPosition = () => {
       const root = document.documentElement;
-      const previousScrollBehavior = root.style.scrollBehavior;
+      overriddenScrollBehavior = root.style.scrollBehavior;
       root.style.scrollBehavior = "auto";
       window.scrollTo({
         left: position.left,
@@ -3712,7 +3721,7 @@ export function AccountSettingsModal({
         behavior: "instant" as ScrollBehavior,
       });
       frameTwo = window.requestAnimationFrame(() => {
-        root.style.scrollBehavior = previousScrollBehavior;
+        restoreScrollBehavior();
         if (!visible) openingScrollPosition.current = null;
       });
     };
@@ -3738,6 +3747,7 @@ export function AccountSettingsModal({
       window.clearTimeout(timer);
       window.cancelAnimationFrame(frameOne);
       window.cancelAnimationFrame(frameTwo);
+      restoreScrollBehavior();
     };
   }, [visible]);
 

@@ -150,5 +150,5 @@ if (failures.length > 0) {
   for (const failure of failures) console.error(`- ${failure}`);
   process.exitCode = 1;
 } else {
-  console.log(`静态发布产物校验通过：${DIST_DIR}（${checked.size} 个文件）`);
+  console.log(`静态发布产物校验通过：${DIST_DIR}（已检查 ${checked.size} 个资源引用）`);
 }

@@ -5,8 +5,8 @@
   gap: 0.75rem;
   padding: 2rem;
   text-align: center;
-  color: var(--text-primary, #1f2329);
-  background: var(--bg-primary, #fff);
+  color: var(--color-text-default);
+  background: var(--color-bg-base-default);
 }
 
 .wechat-callback-page p { margin: 0; }
