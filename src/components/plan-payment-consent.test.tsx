@@ -1,6 +1,7 @@
 import { act, cleanup, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  closeBillingPaymentOrder,
   createBillingPaymentOrder,
   getBillingPaymentOrder,
   startBillingPayment,
@@ -8,10 +9,12 @@ import {
   type BillingPaymentStartResult,
 } from "@/api/billing";
 import { recordPaymentTransition } from "@/observability/payment-log";
+import { ApiError } from "@/api/http";
 import { usePlanPayment } from "./use-plan-payment";
 
 vi.mock("@/api/billing", async (original) => ({
   ...(await original<object>()),
+  closeBillingPaymentOrder: vi.fn(),
   createBillingPaymentOrder: vi.fn(),
   getBillingPaymentOrder: vi.fn(),
   startBillingPayment: vi.fn(),
@@ -53,6 +56,10 @@ describe("套餐协议与渠道并发边界", () => {
     vi.mocked(createBillingPaymentOrder).mockResolvedValue(pending);
     vi.mocked(getBillingPaymentOrder).mockResolvedValue(pending);
     vi.mocked(startBillingPayment).mockResolvedValue(wechat);
+    vi.mocked(closeBillingPaymentOrder).mockResolvedValue({
+      ...pending,
+      status: "closed",
+    });
   });
   afterEach(() => {
     cleanup();
@@ -113,9 +120,13 @@ describe("套餐协议与渠道并发边界", () => {
     expect(result.current.busy).toBe(false);
   });
 
-  it("二维码返回前锁定切换和重复提交，返回后切换沿用订单但更换支付幂等键", async () => {
+  it("二维码返回前锁定切换和重复提交，返回后切换先关旧单再为新渠道下单", async () => {
     const delayed = deferred<BillingPaymentStartResult>();
+    const switched = { ...pending, id: "order-2" };
     vi.mocked(startBillingPayment).mockReturnValueOnce(delayed.promise);
+    vi.mocked(createBillingPaymentOrder)
+      .mockResolvedValueOnce(pending)
+      .mockResolvedValueOnce(switched);
     const { result } = renderHook(() => usePlanPayment(context, "plan-1"));
     await act(async () => {
       void result.current.setAgreed(true);
@@ -129,17 +140,28 @@ describe("套餐协议与渠道并发边界", () => {
     expect(startBillingPayment).toHaveBeenCalledOnce();
     expect(getBillingPaymentOrder).not.toHaveBeenCalled();
     await act(async () => delayed.resolve(wechat));
+    // 查单以新订单为准，避免测试用旧订单响应伪造出跨订单串号。
+    vi.mocked(getBillingPaymentOrder).mockResolvedValue(switched);
     vi.mocked(startBillingPayment).mockResolvedValue({
-      order: pending,
+      order: switched,
       transaction: { payment_product: "alipay_page" },
       payment_url: "https://qr.alipay.com/test",
     } as BillingPaymentStartResult);
     await act(() => result.current.selectMethod("alipay"));
     expect(result.current.method).toBe("alipay");
     expect(result.current.qr).toBe("https://qr.alipay.com/test");
-    expect(createBillingPaymentOrder).toHaveBeenCalledOnce();
+    // 换渠道必须换单：旧渠道订单先关单，再为新渠道创建订单并更换下单幂等键。
+    expect(closeBillingPaymentOrder).toHaveBeenCalledWith(
+      "order-1",
+      {},
+      context,
+    );
+    expect(createBillingPaymentOrder).toHaveBeenCalledTimes(2);
+    const created = vi.mocked(createBillingPaymentOrder).mock.calls;
+    expect(created[0][2]).not.toBe(created[1][2]);
     const calls = vi.mocked(startBillingPayment).mock.calls;
-    expect(calls[0][0]).toBe(calls[1][0]);
+    expect(calls[0][0]).toBe("order-1");
+    expect(calls[1][0]).toBe("order-2");
     expect(calls[0][1]).not.toBe(calls[1][1]);
   });
 
@@ -241,7 +263,77 @@ describe("套餐协议与渠道并发边界", () => {
     expect(createBillingPaymentOrder).toHaveBeenCalledOnce();
   });
 
-  it("切换前查到已支付不再调用另一渠道，且不能重新创建订单", async () => {
+  it("切换渠道时查到旧订单已支付则结束会话，不再为新渠道下单", async () => {
+    const onPaid = vi.fn();
+    const { result } = renderHook(() =>
+      usePlanPayment(context, "plan-1", onPaid),
+    );
+    await act(() => result.current.setAgreed(true));
+    vi.mocked(closeBillingPaymentOrder).mockResolvedValue({
+      ...pending,
+      status: "paid",
+      paid_at: Date.now(),
+    });
+    await act(() => result.current.selectMethod("alipay"));
+    expect(onPaid).toHaveBeenCalledOnce();
+    expect(startBillingPayment).toHaveBeenCalledOnce();
+    expect(createBillingPaymentOrder).toHaveBeenCalledOnce();
+    expect(result.current.active).toBe(false);
+  });
+
+  it("关单失败不阻塞换渠道，仍为新渠道创建订单", async () => {
+    const switched = { ...pending, id: "order-2" };
+    vi.mocked(createBillingPaymentOrder)
+      .mockResolvedValueOnce(pending)
+      .mockResolvedValueOnce(switched);
+    vi.mocked(closeBillingPaymentOrder).mockRejectedValue(
+      new ApiError("渠道暂不可用", 503, 170007, null),
+    );
+    vi.mocked(getBillingPaymentOrder).mockImplementation(async (id) =>
+      id === "order-2" ? switched : pending,
+    );
+    const { result } = renderHook(() => usePlanPayment(context, "plan-1"));
+    await act(() => result.current.setAgreed(true));
+    vi.mocked(startBillingPayment).mockResolvedValue({
+      order: switched,
+      transaction: { payment_product: "alipay_page" },
+      payment_url: "https://qr.alipay.com/test",
+    } as BillingPaymentStartResult);
+    await act(() => result.current.selectMethod("alipay"));
+    expect(result.current.method).toBe("alipay");
+    expect(result.current.qr).toBe("https://qr.alipay.com/test");
+    expect(createBillingPaymentOrder).toHaveBeenCalledTimes(2);
+    expect(vi.mocked(startBillingPayment).mock.calls[1][0]).toBe("order-2");
+  });
+
+  it("关单被拒时以查单结果确认旧订单状态，不凭关单失败直接重复下单", async () => {
+    const switched = { ...pending, id: "order-2" };
+    vi.mocked(createBillingPaymentOrder)
+      .mockResolvedValueOnce(pending)
+      .mockResolvedValueOnce(switched);
+    vi.mocked(closeBillingPaymentOrder).mockRejectedValue(
+      new ApiError("订单状态已变化", 409, 170004, "req-170004"),
+    );
+    vi.mocked(getBillingPaymentOrder).mockImplementation(async (id) =>
+      id === "order-2" ? switched : pending,
+    );
+    const { result } = renderHook(() => usePlanPayment(context, "plan-1"));
+    await act(() => result.current.setAgreed(true));
+    vi.mocked(startBillingPayment).mockResolvedValue({
+      order: switched,
+      transaction: { payment_product: "alipay_page" },
+      payment_url: "https://qr.alipay.com/test",
+    } as BillingPaymentStartResult);
+    // 查单仍返回待支付订单：确认后照常切换到支付宝。
+    await act(() => result.current.selectMethod("alipay"));
+    expect(getBillingPaymentOrder).toHaveBeenCalledWith("order-1", {}, context);
+    expect(result.current.method).toBe("alipay");
+    expect(createBillingPaymentOrder).toHaveBeenCalledTimes(2);
+  });
+
+  it("关单期间查单确认旧订单已支付时，不再为新渠道下单", async () => {
+    const closing = deferred<BillingPaymentOrder>();
+    vi.mocked(closeBillingPaymentOrder).mockReturnValue(closing.promise);
     const onPaid = vi.fn();
     const { result } = renderHook(() =>
       usePlanPayment(context, "plan-1", onPaid),
@@ -252,11 +344,15 @@ describe("套餐协议与渠道并发边界", () => {
       status: "paid",
       paid_at: Date.now(),
     });
-    await act(() => result.current.selectMethod("alipay"));
+    const switching = result.current.selectMethod("alipay");
+    // 关单还没返回时查单先确认支付成功，切换必须就此结束。
+    await act(() => vi.advanceTimersByTimeAsync(2000));
+    await act(async () => closing.resolve({ ...pending, status: "closed" }));
+    await act(() => switching);
     expect(onPaid).toHaveBeenCalledOnce();
-    expect(startBillingPayment).toHaveBeenCalledOnce();
+    expect(result.current.method).toBe("wechat");
     expect(createBillingPaymentOrder).toHaveBeenCalledOnce();
-    expect(result.current.active).toBe(false);
+    expect(startBillingPayment).toHaveBeenCalledOnce();
   });
 
   it("渠道二维码先过期则立即隐藏，继续以服务端查单确认最终结果", async () => {

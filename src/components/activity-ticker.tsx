@@ -10,13 +10,12 @@ export default function ActivityTicker({ messages, label }: { messages: ReactNod
     const container = viewport.current;
     const content = group.current;
     if (!container || !content) return;
-    // 测量原始消息组，复制内容不参与溢出判断；字体、语言和窗口变化均重新计算。
+    // 只要有记录就一直滚动，单条记录不再静态停住；复制足够份数铺满视口让循环无缝。
+    // 字体、语言和窗口变化均重新计算。
     const measure = () => {
       const width = content.getBoundingClientRect().width;
       const available = container.clientWidth;
-      const single = content.firstElementChild?.getBoundingClientRect().width ?? 0;
-      const scrolling = messages.length > 1 || single > available;
-      setLayout({ distance: scrolling ? width : 0, copies: scrolling && width > 0 ? Math.ceil(available / width) + 1 : 1 });
+      setLayout({ distance: width, copies: width > 0 ? Math.ceil(available / width) + 1 : 1 });
     };
     measure();
     const observer = new ResizeObserver(measure);

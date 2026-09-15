@@ -10,6 +10,7 @@ import {
   getBillingBonusGrants,
   getBillingErrorMessage,
   getBillingInvoices,
+  getBillingInvoiceInformation,
   getBillingRequestId,
   getBillingRewards,
   getBillingStatements,
@@ -127,6 +128,33 @@ describe('用户账务 API 客户端', () => {
 	expect(JSON.parse(String(fetchMock.mock.calls[2]?.[1]?.body))).toMatchObject({ amount_yuan: '20.00', taxpayer_type: 'enterprise', invoice_type: 'special' })
   })
 
+  it('按当前账务主体读取实时开票资料', async () => {
+    const information = {
+      available_amount_yuan: '88.00',
+      taxpayer_type: 'enterprise',
+      title: '已认证企业',
+      tax_identifier: '91330000000000000X',
+      invoice_types: [{ code: 'normal', name: '增值税普通发票' }],
+      project_name: '*生产生活服务*云服务费',
+    }
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(apiResponse(information))
+
+    await expect(getBillingInvoiceInformation(ENTERPRISE_CONTEXT, { accessToken: 'billing-token' })).resolves.toEqual(information)
+
+    const requestURL = new URL(String(fetchMock.mock.calls[0]?.[0]), window.location.origin)
+    expect(requestURL.pathname).toBe('/api/user/billing/invoice-information')
+    expect(requestURL.searchParams.get('account_type')).toBe('enterprise')
+    expect(requestURL.searchParams.get('enterprise_id')).toBe(ENTERPRISE_CONTEXT.enterprise_id)
+    expect(fetchMock.mock.calls[0]?.[1]?.method).toBeUndefined()
+    expect(new Headers(fetchMock.mock.calls[0]?.[1]?.headers).get('Authorization')).toBe('Bearer billing-token')
+  })
+
+  it.each(['', 'x'.repeat(129), '中文键', 'key\nvalue'])('拒绝无效发票幂等键：%j', (key) => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch')
+    expect(() => submitBillingInvoice(PERSONAL_CONTEXT, { amount_yuan: '1.00', title: '个人', invoice_type: 'normal' }, key)).toThrow(ApiError)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
   it('支持电脑/手机网站支付并通过服务端返回表单', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, requestOptions) => {
       const url = new URL(String(input), window.location.origin)
@@ -212,6 +240,8 @@ describe('用户账务 API 客户端', () => {
     expect(getBillingErrorMessage(new ApiError('revoked', 409, 130006, 'req-130006'))).toBe('该奖励没有可撤销余额')
     expect(getBillingErrorMessage(new ApiError('invoice unavailable', 409, 130011, 'req-130011'))).toBe('当前可开票金额不足')
     expect(getBillingErrorMessage(new ApiError('payment unavailable', 503, 140007, 'req-140007'))).toBe('支付宝渠道暂不可用，请稍后重试')
+    // 渠道未开通与渠道临时失败同为 503：缺少 170013 映射时只会退化成「服务暂时不可用」。
+    expect(getBillingErrorMessage(new ApiError('服务暂时不可用，请稍后重试', 503, 170013, 'req-170013'))).toBe('支付渠道暂未开通，请联系管理员开通后重试')
     expect(getBillingErrorMessage(new ApiError('完成实名认证后才能充值', 403, 140008, 'req-140008'))).toBe('完成实名认证后才能充值')
     expect(getBillingErrorMessage(new Error('offline'))).toBe('账务请求失败，请稍后重试')
     expect(getBillingRequestId(new ApiError('bad', 400, 100001, 'req-1'))).toBe('req-1')

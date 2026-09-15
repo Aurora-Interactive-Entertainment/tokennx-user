@@ -57,7 +57,7 @@
 }
 .purchase-payment-summary dt {
   color: var(--payment-muted);
-  font-size: 18px;
+  font-size: 16px;
   line-height: 22px;
 }
 .purchase-payment-summary dd {
@@ -87,7 +87,7 @@
   height: 32px;
 }
 .purchase-payment-scan-title strong {
-  font-size: 18px;
+  font-size: 16px;
   line-height: 24px;
   white-space: nowrap;
 }
@@ -142,42 +142,23 @@
   left: 0;
   transform-origin: top left;
 }
-.purchase-payment-status {
-  margin: 12px 0 0;
-  font-size: 12px;
-  overflow-wrap: anywhere;
-  color: var(--payment-muted);
-}
-.purchase-payment-error {
-  margin: 12px 0 0;
-  color: var(--semi-color-danger);
-  font-size: 12px;
-  line-height: 1.5;
-  overflow-wrap: anywhere;
-}
-.purchase-payment-actions {
-  display: flex;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  width: min(200px, 100%);
-  margin-inline: auto;
-}
-.purchase-payment-actions:not(:empty) {
-  margin: -4px auto 12px;
-}
-.purchase-payment-actions:empty {
-  display: none;
-}
-.purchase-payment-actions button {
-  padding: 6px 10px;
-  border: 1px solid var(--payment-text);
-  border-radius: 4px;
+.purchase-payment-qr-refresh {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
   color: #fff;
   background: #080808;
   cursor: pointer;
 }
-.purchase-payment-actions button:disabled {
+.purchase-payment-qr-refresh svg {
+  width: 20px;
+  height: 20px;
+}
+.purchase-payment-qr-refresh:disabled {
   opacity: 0.5;
   cursor: default;
 }
@@ -215,8 +196,9 @@
   height: 14px;
 }
 .purchase-payment-options strong {
-  font-size: 16px;
+  font-size: 15px;
   line-height: 22px;
+  font-weight: 500;
 }
 .purchase-payment-options:disabled label {
   opacity: 0.6;
@@ -254,11 +236,6 @@ html[data-theme="dark"] .purchase-payment-modal {
   --payment-surface: #20232a;
   --payment-placeholder: #292d35;
   --payment-line: #383d47;
-}
-html[data-theme="dark"] .purchase-payment-actions button {
-  border-color: #fff;
-  color: #080808;
-  background: #fff;
 }
 @media (max-width: 440px) {
   .purchase-payment-modal .semi-modal {

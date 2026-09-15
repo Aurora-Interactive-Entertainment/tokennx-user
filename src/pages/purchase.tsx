@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "react-router";
-import { isUserProductPlan, type ProductPlanSummary } from "@/api/product-plans";
+import { getRecentProductPlanPurchases, isUserProductPlan, type ProductPlanSummary, type RecentProductPlanPurchase } from "@/api/product-plans";
 import { usePurchaseCatalog } from "@/components/use-purchase-catalog";
 import ActivityTicker from "@/components/activity-ticker";
 import PurchasePlanSection from "@/components/purchase-plan-section";
@@ -9,6 +9,7 @@ import { PurchasePaymentModal } from "@/components/purchase-payment-modal";
 import { useAppStore } from "@/data/app-state";
 import { invalidateAuth } from "@/store/auth-slice";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { relativeTime } from "@/utils/format";
 import claudeCodeLogo from "@/assets/svg/Claudecode.svg";
 import geminiLogo from "@/assets/svg/gemini.svg";
 import openAiLogo from "@/assets/svg/OpenAl.svg";
@@ -92,15 +93,9 @@ function SectionHeading({
 
 export type PurchaseActivityMessage = { user: string; plan: string; highlight?: string; time: string };
 
-function PurchaseActivityTicker({ messages }: { messages?: PurchaseActivityMessage[] }) {
+function PurchaseActivityTicker({ messages = [] }: { messages?: PurchaseActivityMessage[] }) {
   const { t } = useTranslation();
-  // 保留现有演示内容；传入空数组时直接隐藏，后续可由接口消息列表驱动。
-  const items = messages ?? Array.from({ length: 2 }, () => ({
-    user: t("console.purchasePage.activity.user"),
-    plan: t("console.purchasePage.activity.plan"),
-    highlight: t("console.purchasePage.activity.highlight"),
-    time: t("console.purchasePage.activity.time"),
-  }));
+  const items = messages;
   return (
     <ActivityTicker label={t("console.purchasePage.activity.plan")} messages={items.map((item, index) => (
           <span className="purchase-activity-message" key={index}>
@@ -293,8 +288,33 @@ export function PurchasePage({ activityMessages }: { activityMessages?: Purchase
   const userKey = auth.status === "authenticated" && auth.user ? `${auth.user.id}:${auth.loginSequence}` : null;
   const catalog = usePurchaseCatalog(userKey, context);
   const plans = catalog.plans.filter(isUserProductPlan);
+  const [recentPurchases, setRecentPurchases] = useState<RecentProductPlanPurchase[] | null>(null);
   const [selection, setSelection] = useState<{ scope: string; plan: ProductPlanSummary } | null>(null);
   const selectedPlan = selection?.scope === catalog.scope ? selection.plan : null;
+
+  useEffect(() => {
+    if (activityMessages !== undefined) return;
+    const controller = new AbortController();
+    getRecentProductPlanPurchases({ limit: 5, signal: controller.signal })
+      .then((response) => setRecentPurchases(response.items))
+      .catch(() => {
+        if (!controller.signal.aborted) setRecentPurchases([]);
+      });
+    return () => controller.abort();
+  }, [activityMessages]);
+
+  const recentActivityMessages = useMemo<PurchaseActivityMessage[]>(() => {
+    if (!recentPurchases) return [];
+    return recentPurchases.map((item) => {
+      const highlight = `${item.plan_title} ¥${item.price_yuan}`;
+      return {
+        user: item.buyer_phone || t("console.account.phoneUnbound"),
+        plan: t("console.purchasePage.activity.purchase", { plan: item.plan_title, price: item.price_yuan }),
+        highlight,
+        time: relativeTime(item.purchase_time),
+      };
+    });
+  }, [recentPurchases, t]);
 
   useEffect(() => { setSelection(null); }, [catalog.scope]);
 
@@ -334,7 +354,7 @@ export function PurchasePage({ activityMessages }: { activityMessages?: Purchase
                 </span>
               ))}
           </p>
-          <PurchaseActivityTicker messages={activityMessages} />
+          <PurchaseActivityTicker messages={activityMessages ?? recentActivityMessages} />
         </header>
         <PurchasePlanSection
           plans={plans}

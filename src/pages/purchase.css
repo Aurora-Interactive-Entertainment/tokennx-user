@@ -55,7 +55,8 @@
 }
 .purchase-activity-item {
   flex: 0 0 auto;
-  padding: 12px 0 12px 12px;
+  /* 左右留白对称，单条记录循环滚动时首尾间距与中间保持一致。 */
+  padding: 12px 0 12px 40px;
   font-size: 16px;
   white-space: nowrap;
 }
@@ -272,7 +273,7 @@
   inset: 0;
   z-index: 1;
   box-sizing: border-box;
-  padding: 42px 14px 0;
+  padding: 32px 14px 0;
   color: #17181b;
 }
 .purchase-plan-content h3 {

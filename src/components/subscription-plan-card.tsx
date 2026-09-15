@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import type { CatalogPlan } from '@/api/product-plans'
-import { canSelectPlan, formatPlanPrice, planBonus, planFeatures, planName, planQuota } from './purchase-plan-display'
+import { canSelectPlan, formatPlanPrice, planBonus, planFeatures, planGroup, planName, planQuota } from './purchase-plan-display'
 import miniMaxBackground from '@/assets/figma-combo/minimax.png'
 import deepSeekBackground from '@/assets/figma-combo/ds.png'
 import seedanceBackground from '@/assets/figma-combo/seedance.png'
@@ -35,7 +35,8 @@ export function SubscriptionPlanCard({ plan, index, onSelect }: { plan: CatalogP
         {/* 公开目录不返回限购，只有登录后才展示真实限购次数。 */}
         {'purchase_limit' in plan && plan.purchase_limit > 0 && <span className="purchase-subscription-limit-tag">{t('console.purchasePage.api.purchaseLimit', { count: plan.purchase_limit })}</span>}
       </h3>
-      <strong>{plan.model_name || plan.group_name}</strong>
+      {/* 套餐副标题使用分组名，与套餐列表字段保持一致。 */}
+      <strong>{planGroup(plan)}</strong>
       <div className="purchase-subscription-plan-info">
         <span>{planQuota(plan, i18n.language, t)}</span>
         <ul>{planFeatures(plan, i18n.language, t).map(feature => <li key={feature}>{feature}</li>)}</ul>

@@ -175,7 +175,8 @@ describe('套餐付款弹窗', () => {
     vi.mocked(createBillingPaymentOrder).mockRejectedValue(new ApiError('企业无购买权限', 403, 170012, null, '企业无购买权限'))
     render(<MemoryRouter><PurchasePaymentModal open context={context} planName="Max" planID="plan-1" onClose={vi.fn()} /></MemoryRouter>)
     fireEvent.click(await screen.findByRole('checkbox'))
-    expect(await screen.findByRole('alert')).toHaveTextContent('企业无购买权限')
+    // 错误只走 toast：弹窗内不再常驻红字，避免撑高布局。
+    await waitFor(() => expect(vi.mocked(appToast.error)).toHaveBeenCalledWith(expect.stringContaining('企业无购买权限')))
     expect(getRealNameProfile).not.toHaveBeenCalled()
     expect(createBillingPaymentOrder).toHaveBeenCalledWith(context, { plan_id: 'plan-1', quantity: 1 }, expect.any(String), expect.any(Object))
     expect(startBillingPayment).not.toHaveBeenCalled()
@@ -188,7 +189,7 @@ describe('套餐付款弹窗', () => {
     vi.mocked(startBillingPayment).mockRejectedValueOnce(new ApiError('渠道暂不可用', 503, 170007, null, '渠道暂不可用')).mockResolvedValueOnce({ order: { ...pending, status: 'paid', paid_at: 1 } } as never)
     render(<MemoryRouter><PurchasePaymentModal open planName="Max" planID="plan-1" priceCent="20000" onClose={vi.fn()} /></MemoryRouter>)
     fireEvent.click(await screen.findByRole('checkbox'))
-    expect(await screen.findByRole('alert')).toHaveTextContent('渠道暂不可用')
+    await waitFor(() => expect(vi.mocked(appToast.error)).toHaveBeenCalledWith(expect.stringContaining('渠道暂不可用')))
     expect(screen.getByRole('checkbox')).toBeEnabled()
     expect(screen.getByRole('button', { name: '重试支付' }).closest('.purchase-payment-methods')).not.toBeNull()
     expect(screen.getByText('¥12.50')).toBeInTheDocument()
@@ -198,5 +199,38 @@ describe('套餐付款弹窗', () => {
     expect(startBillingPayment).toHaveBeenCalledTimes(2)
     expect(vi.mocked(startBillingPayment).mock.calls[0][1]).toBe(vi.mocked(startBillingPayment).mock.calls[1][1])
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('订单确认入账后自动退场，动画结束后才通知父组件卸载', async () => {
+    const onClose = vi.fn()
+    const paid = { id: 'paid-order', status: 'paid', paid_at: 1, amount_yuan: '1.00' }
+    vi.mocked(createBillingPaymentOrder).mockResolvedValue(paid as never)
+    render(<MemoryRouter><PurchasePaymentModal open planName="deepSeek" planID="plan-1" onClose={onClose} /></MemoryRouter>)
+    await screen.findByRole('heading', { name: '支付' })
+    fireEvent(document.querySelector('.semi-modal-content-animate-show')!, new Event('webkitAnimationEnd', { bubbles: true }))
+    fireEvent(document.querySelector('.semi-modal-mask-animate-show')!, new Event('webkitAnimationEnd', { bubbles: true }))
+    // 买完不需要用户再点关闭：订单一旦入账就自动走退场动画。
+    fireEvent.click(screen.getByRole('checkbox'))
+    await waitFor(() => expect(document.querySelector('.semi-modal-content-animate-hide')).not.toBeNull())
+    expect(onClose).not.toHaveBeenCalled()
+    fireEvent(document.querySelector('.semi-modal-content-animate-hide')!, new Event('webkitAnimationEnd', { bubbles: true }))
+    await waitFor(() => expect(onClose).toHaveBeenCalledOnce())
+  })
+
+  it('已支付但尚未入账时保留弹窗继续查单，入账后才自动关闭', async () => {
+    const onClose = vi.fn()
+    const paidWithoutCredit = { id: 'paid-order', status: 'paid', paid_at: null, amount_yuan: '1.00' }
+    vi.mocked(createBillingPaymentOrder).mockResolvedValue(paidWithoutCredit as never)
+    vi.mocked(getBillingPaymentOrder).mockResolvedValue(paidWithoutCredit as never)
+    render(<MemoryRouter><PurchasePaymentModal open planName="deepSeek" planID="plan-1" onClose={onClose} /></MemoryRouter>)
+    fireEvent.click(await screen.findByRole('checkbox'))
+    // 未入账时既不能当作购买完成，也不能提前切断状态确认。
+    expect(await screen.findByText('支付状态未知，请刷新查询')).toBeInTheDocument()
+    expect(onClose).not.toHaveBeenCalled()
+    expect(document.querySelector('.semi-modal-content-animate-hide')).toBeNull()
+    vi.mocked(getBillingPaymentOrder).mockResolvedValue({ ...paidWithoutCredit, paid_at: 1 } as never)
+    await act(async () => window.dispatchEvent(new Event('online')))
+    await waitFor(() => expect(document.querySelector('.semi-modal-content-animate-hide')).not.toBeNull())
+    expect(onClose).not.toHaveBeenCalled()
   })
 })

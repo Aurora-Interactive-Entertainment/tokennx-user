@@ -444,7 +444,9 @@ describe("enterprise verification page", () => {
     );
     expect(
       await screen.findByText(
-        i18n.t("console.enterpriseCreate.faceConfirmPendingTitle"),
+        `${i18n.t(
+          "console.enterpriseCreate.faceConfirmPendingTitle",
+        )}: ${i18n.t("console.enterpriseCreate.faceConfirmPendingMessage")}`,
       ),
     ).toBeInTheDocument();
     expect(screen.getByRole("dialog")).toBeInTheDocument();
@@ -518,7 +520,12 @@ describe("enterprise verification page", () => {
         name: i18n.t("console.enterpriseCreate.faceCompleted"),
       }),
     );
-    expect(await screen.findByText("请求参数无效")).toBeInTheDocument();
+    // 人脸核验提示以 appToast 弹出，文案是「标题: 接口消息」，因此按拼接后的整串断言。
+    expect(
+      await screen.findByText(
+        `${i18n.t("console.enterpriseCreate.faceConfirmFailedTitle")}: 请求参数无效`,
+      ),
+    ).toBeInTheDocument();
     expect(screen.getByRole("dialog")).toBeInTheDocument();
   });
 

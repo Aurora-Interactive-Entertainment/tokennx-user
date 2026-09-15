@@ -415,6 +415,62 @@ describe('控制台导航路径匹配', () => {
     }
   })
 
+  it('个人空间打开企业专属页面时回到快速接入', async () => {
+    const previousSnapshot = window.localStorage.getItem('token-nx:user-front:v1')
+    window.localStorage.setItem('token-nx:user-front:v1', JSON.stringify({
+      activeWorkspaceId: 'personal',
+      workspaces: [{ id: 'personal', name: '个人空间', type: 'personal', role: 'owner' }],
+    }))
+
+    try {
+      render(
+        <MemoryRouter initialEntries={['/console/enterprise-settings']}>
+          <Provider store={createAppStore()}>
+            <AppStoreProvider><LocationProbe /><ConsoleLayout><span>页面内容</span></ConsoleLayout></AppStoreProvider>
+          </Provider>
+        </MemoryRouter>,
+      )
+
+      await waitFor(() => expect(screen.getByTestId('common-location')).toHaveTextContent('/console/quickstart'))
+    } finally {
+      if (previousSnapshot === null) {
+        window.localStorage.removeItem('token-nx:user-front:v1')
+      } else {
+        window.localStorage.setItem('token-nx:user-front:v1', previousSnapshot)
+      }
+    }
+  })
+
+  it('个人空间保留个人也有入口的企业路径', async () => {
+    const previousSnapshot = window.localStorage.getItem('token-nx:user-front:v1')
+    window.localStorage.setItem('token-nx:user-front:v1', JSON.stringify({
+      activeWorkspaceId: 'personal',
+      workspaces: [{ id: 'personal', name: '个人空间', type: 'personal', role: 'owner' }],
+    }))
+
+    try {
+      for (const path of ['/console/trae-enterprise/subscription', '/console/enterprise-create']) {
+        const view = render(
+          <MemoryRouter initialEntries={[path]}>
+            <Provider store={createAppStore()}>
+              <AppStoreProvider><LocationProbe /><ConsoleLayout><span>页面内容</span></ConsoleLayout></AppStoreProvider>
+            </Provider>
+          </MemoryRouter>,
+        )
+
+        // 订阅管理和企业入驻个人空间同样可用，不能被当成企业专属页面重定向。
+        await waitFor(() => expect(screen.getByTestId('common-location')).toHaveTextContent(path))
+        view.unmount()
+      }
+    } finally {
+      if (previousSnapshot === null) {
+        window.localStorage.removeItem('token-nx:user-front:v1')
+      } else {
+        window.localStorage.setItem('token-nx:user-front:v1', previousSnapshot)
+      }
+    }
+  })
+
   it('企业成员加载角色组权限后只展示对应企业菜单并允许受控路由', async () => {
     const previousSnapshot = window.localStorage.getItem('token-nx:user-front:v1')
     window.localStorage.setItem('token-nx:user-front:v1', JSON.stringify({

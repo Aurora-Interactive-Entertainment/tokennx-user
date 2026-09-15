@@ -48,7 +48,8 @@ function PurchasePlanCard({
           {/* 限购次数由登录后的列表决定。 */}
           {plan.purchase_limit > 0 && <span className="purchase-plan-limit-tag">{t('console.purchasePage.api.purchaseLimit', { count: plan.purchase_limit })}</span>}
         </h3>
-        <strong>{plan.model_name?.trim() || plan.group_name}</strong>
+        {/* 套餐副标题展示分组名，避免把权益模型名称误当成套餐名称。 */}
+        <strong>{planGroup(plan)}</strong>
         <div className="purchase-plan-info">
           <span className="purchase-plan-quota">{planQuota(plan, i18n.language, t)}</span>
           <ul>

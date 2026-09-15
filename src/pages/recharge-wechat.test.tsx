@@ -37,16 +37,18 @@ function paymentResponse(extra: Record<string, unknown> = {}) {
 // 使用真实 API 封装和页面，只替换网络与 canvas，覆盖请求参数到到账刷新整条链路。
 function mockBackend(options: {
   create?: () => Promise<Response> | Response
-  pay?: () => Promise<Response> | Response
-  query?: () => Promise<Response> | Response
+  pay?: (orderID: string, init?: RequestInit) => Promise<Response> | Response
+  query?: (orderID: string) => Promise<Response> | Response
+  close?: () => Promise<Response> | Response
 } = {}) {
   return vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
     const path = new URL(String(input), window.location.origin).pathname
     if (path === '/api/user/billing/wallet') return response({ wallet: { total_available_yuan: '0', paid_available_yuan: '0', debt_yuan: '0' }, bonus_grants: [] })
     if (path === '/api/user/payment/orders' && init?.method === 'POST') return options.create?.() ?? response({ ...ORDER, status: 'pending' })
-    if (path === `/api/user/payment/orders/${ORDER.id}/pay`) return options.pay?.() ?? paymentResponse()
-    if (path === `/api/user/payment/orders/${ORDER.id}/close`) return response({ ...ORDER, status: 'closed' })
-    if (path === `/api/user/payment/orders/${ORDER.id}`) return options.query?.() ?? response(ORDER)
+    const match = path.match(/^\/api\/user\/payment\/orders\/([^/]+)(?:\/(pay|close))?$/)
+    if (match?.[2] === 'pay') return options.pay?.(match[1], init) ?? paymentResponse()
+    if (match?.[2] === 'close') return options.close?.() ?? response({ ...ORDER, id: match[1], status: 'closed' })
+    if (match) return options.query?.(match[1]) ?? response({ ...ORDER, id: match[1] })
     throw new Error(`Unexpected request: ${path}`)
   })
 }
@@ -210,7 +212,7 @@ describe('充值管理微信支付回归', () => {
     expect(callsFor(fetchMock, `/${ORDER.id}`)).toHaveLength(count + 1)
   })
 
-  it('渠道不可用后重试保留幂等键，切换支付宝仅更换支付幂等键', async () => {
+  it('渠道不可用后重试保留幂等键，切换渠道同时更换订单及支付幂等键', async () => {
     const fetchMock = mockBackend({ pay: () => response({}, 170007, 503) })
     await mountPage()
     await click('立即充值')
@@ -224,8 +226,132 @@ describe('充值管理微信支付回归', () => {
     const keys = payments.map(([, init]) => new Headers(init?.headers).get('Idempotency-Key'))
     expect(keys[0]).toBe(keys[1])
     expect(keys[2]).not.toBe(keys[1])
-    expect(JSON.parse(String(payments[2][1]?.body))).toEqual({ scene: 'pc' })
+    expect(JSON.parse(String(payments[2][1]?.body))).toEqual({ scene: 'pc', channel: 'alipay' })
+    const orders = callsFor(fetchMock, '/orders')
+    expect(orders).toHaveLength(2)
+    expect(new Headers(orders[0][1]?.headers).get('Idempotency-Key')).not.toBe(new Headers(orders[1][1]?.headers).get('Idempotency-Key'))
+  })
+
+  it.each(['personal', 'enterprise'] as const)('%s 支付宝失败后切微信使用新订单，往返切换不复用旧渠道订单', async (type) => {
+    let sequence = 0
+    const fetchMock = mockBackend({
+      create: () => response({ ...ORDER, id: `switch-order-${++sequence}`, status: 'pending' }),
+      pay: (id, init) => {
+        if (JSON.parse(String(init?.body)).channel !== 'wechat') return response({}, 0, 503)
+        return paymentResponse({ order: { ...ORDER, id } })
+      },
+    })
+    await mountPage(type)
+    await click('支付宝支付')
+    expect(callsFor(fetchMock, '/orders')).toHaveLength(0)
+    await click('立即充值')
+    await click('支付宝支付')
+    await click('立即充值')
+    await click('微信')
+    await click('立即充值')
+    expect(screen.getByRole('dialog')).toHaveTextContent('微信扫描二维码')
+    await act(async () => { fireEvent.click(document.querySelector('.payment-qr-dialog .semi-modal-close')!) })
+    await click('支付宝支付')
+    await click('立即充值')
+
+    const payments = callsFor(fetchMock, '/pay')
+    expect(payments.map(([input]) => new URL(String(input), window.location.origin).pathname)).toEqual([
+      '/api/user/payment/orders/switch-order-1/pay',
+      '/api/user/payment/orders/switch-order-1/pay',
+      '/api/user/payment/orders/switch-order-2/pay',
+      '/api/user/payment/orders/switch-order-3/pay',
+    ])
+    expect(payments.map(([, init]) => JSON.parse(String(init?.body)))).toEqual([
+      { scene: 'pc', channel: 'alipay' }, { scene: 'pc', channel: 'alipay' },
+      { scene: 'pc', channel: 'wechat' }, { scene: 'pc', channel: 'alipay' },
+    ])
+    for (const [input] of payments) expect(new URL(String(input), window.location.origin).searchParams.get('account_type')).toBe(type)
+  })
+
+  it('支付宝弹窗关单失败后切微信，不再查询或支付旧订单', async () => {
+    let sequence = 0
+    const fetchMock = mockBackend({
+      create: () => response({ ...ORDER, id: `close-order-${++sequence}`, status: 'pending' }),
+      pay: (id, init) => paymentResponse({
+        order: { ...ORDER, id },
+        ...(JSON.parse(String(init?.body)).channel === 'wechat' ? {} : { qr_code: 'https://qr.alipay.com/close-test' }),
+      }),
+      close: () => response({}, 0, 503),
+    })
+    await mountPage()
+    await click('支付宝支付')
+    await click('立即充值')
+    expect(screen.getByLabelText('支付宝支付二维码')).toBeInTheDocument()
+    await act(async () => { fireEvent.click(document.querySelector('.payment-qr-dialog .semi-modal-close')!) })
+    const oldQueries = callsFor(fetchMock, '/close-order-1').length
+    await click('微信')
+    await click('立即充值')
+    expect(screen.getByLabelText('微信支付二维码')).toBeInTheDocument()
+    expect(screen.queryByLabelText('支付宝支付二维码')).toBeNull()
+    expect(callsFor(fetchMock, '/close-order-1')).toHaveLength(oldQueries)
+    expect(callsFor(fetchMock, '/close-order-1/pay')).toHaveLength(1)
+    expect(callsFor(fetchMock, '/close-order-2/pay')).toHaveLength(1)
+  })
+
+  it('关单请求进行中锁定渠道和提交，卸载后中止关单且忽略迟到响应', async () => {
+    let resolveClose!: (value: Response) => void
+    const fetchMock = mockBackend({ close: () => new Promise((resolve) => { resolveClose = resolve }) })
+    const view = await mountPage()
+    await click('立即充值')
+    await act(async () => { fireEvent.click(document.querySelector('.payment-qr-dialog .semi-modal-close')!) })
+    expect(screen.getByRole('button', { name: '支付宝支付' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: '立即充值' })).toBeDisabled()
+    const signal = callsFor(fetchMock, '/close')[0][1]?.signal
+    view.unmount()
+    expect(signal?.aborted).toBe(true)
+    await act(async () => { resolveClose(response({ ...ORDER, status: 'closed' })) })
     expect(callsFor(fetchMock, '/orders')).toHaveLength(1)
+    expect(callsFor(fetchMock, '/wallet')).toHaveLength(1)
+  })
+
+  it('创建订单进行中按钮保持主题色但禁止重复提交和切换渠道', async () => {
+    let resolveCreate!: (value: Response) => void
+    const fetchMock = mockBackend({ create: () => new Promise((resolve) => { resolveCreate = resolve }) })
+    const view = await mountPage()
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: '立即充值' })) })
+    const button = screen.getByRole('button', { name: '立即充值' })
+    expect(button).toBeDisabled()
+    expect(button).toHaveClass('is-loading')
+    expect(button).toHaveClass('semi-button-primary-disabled')
+    expect(screen.getByRole('button', { name: '微信' })).toBeDisabled()
+    await act(async () => { resolveCreate(response({ ...ORDER, status: 'pending' })) })
+    view.unmount()
+    expect(callsFor(fetchMock, '/orders')).toHaveLength(1)
+  })
+
+  it.each(['closed', 'expired'])('重试查到旧订单为 %s 时重新下单，不再支付终态订单', async (status) => {
+    let sequence = 0
+    const fetchMock = mockBackend({
+      create: () => response({ ...ORDER, id: `retry-order-${++sequence}`, status: 'pending' }),
+      pay: (id) => id === 'retry-order-1' ? response({}, 0, 503) : paymentResponse({ order: { ...ORDER, id } }),
+      query: (id) => response({ ...ORDER, id, status: id === 'retry-order-1' ? status : 'paying' }),
+    })
+    await mountPage()
+    await click('立即充值')
+    await click('立即充值')
+    expect(callsFor(fetchMock, '/orders')).toHaveLength(2)
+    expect(callsFor(fetchMock, '/retry-order-1/pay')).toHaveLength(1)
+    expect(callsFor(fetchMock, '/retry-order-2/pay')).toHaveLength(1)
+  })
+
+  it.each([null, Date.now()])('重试查到旧订单已支付（paid_at=%s），不再调用支付或重复下单', async (paid_at) => {
+    const fetchMock = mockBackend({
+      pay: () => response({}, 0, 503),
+      query: () => response({ ...ORDER, status: 'paid', paid_at }),
+    })
+    await mountPage()
+    await click('立即充值')
+    await click('立即充值')
+    expect(callsFor(fetchMock, '/orders')).toHaveLength(1)
+    expect(callsFor(fetchMock, '/pay')).toHaveLength(1)
+    expect(screen.queryByLabelText('微信支付二维码')).toBeNull()
+    if (paid_at) expect(screen.getByText('充值已到账')).toBeInTheDocument()
+    else expect(screen.getByRole('dialog')).toBeInTheDocument()
   })
 
   it.each([undefined, '', '   ', 123])('微信缺失或无效二维码 %s 时拒绝使用其他支付载体', async (qrcode_url) => {

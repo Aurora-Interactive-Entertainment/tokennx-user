@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AppStoreProvider } from '@/data/app-state'
 import { createAppStore } from '@/store'
 import i18n from '@/i18n'
-import { AboutPage, AppsPage, DocsPage, LegalPage, ModelDetailPage, ModelsPublicPage, PricingPage, RankingsPage, StatusPage } from './public'
+import { AboutPage, AppsPage, DocsPage, LegalPage, ModelsPublicPage, PricingPage, RankingsPage, StatusPage } from './public'
 import { HomePage } from './home'
 
 // 首页内容测试独立于头部目录预加载，避免一次性 fetch 响应被套餐请求消费。
@@ -141,31 +141,13 @@ describe('公开模型页面', () => {
     expect(document.querySelectorAll('.manuscript-footer-qr-row .public-footer-qr')).toHaveLength(2)
   })
 
-  it('模型目录和首页促销模型链接使用模型别名', () => {
+  it('模型目录卡片展示模型名称，主按钮按模型 ID 跳转控制台模型广场', () => {
     renderPage(<ModelsPublicPage />, '/models')
 
-    expect(screen.getByRole('link', { name: 'DeepSeek V3' })).toHaveAttribute('href', '/models/deepseek-public')
+    // 详情页已收敛到控制台，卡片不再包裹详情链接，模型名以纯文本展示，主按钮负责跳转。
+    const showcaseCard = screen.getByText('DeepSeek V3').closest('.models-showcase-card') as HTMLElement
+    expect(within(showcaseCard).getByRole('link', { name: '立即体验' })).toHaveAttribute('href', '/login?return=%2Fconsole%2Fmodels%3Fkeyword%3Ddeepseek-chat')
     expect(screen.queryByText('deepseek-chat')).toBeNull()
-  })
-
-  it('模型详情显示别名，并将在线测试和 API 接入跳转参数规范为别名', () => {
-    render(
-      <MemoryRouter initialEntries={['/models/deepseek-chat']}>
-        <Provider store={createAppStore()}>
-          <AppStoreProvider>
-            <LocationProbe />
-            <Routes><Route path="/models/:modelId" element={<ModelDetailPage />} /></Routes>
-          </AppStoreProvider>
-        </Provider>
-      </MemoryRouter>,
-    )
-
-    expect(screen.getByText('模型别名：deepseek-public')).toBeInTheDocument()
-    expect(screen.queryByText('deepseek-chat')).toBeNull()
-    expect(screen.getByRole('link', { name: '登录后在线测试' })).toHaveAttribute('href', '/login?return=%2Fconsole%2Fplayground%3Fmodel%3Ddeepseek-public')
-    expect(screen.getByRole('link', { name: '登录后 API 接入' })).toHaveAttribute('href', '/login?return=%2Fconsole%2Fapi-keys%3Fmodel%3Ddeepseek-public')
-
-    return waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/models/deepseek-public'))
   })
 
   it('公开文档示例使用模型别名', () => {
@@ -325,7 +307,7 @@ describe('公开模型页面', () => {
     expect(screen.getAllByRole('button', { name: 'Copy page' })).toHaveLength(2)
   })
 
-  it('首页促销模型链接不使用内部模型 code', async () => {
+  it('首页促销模型链接按模型 ID 跳转控制台模型广场搜索', async () => {
     vi.mocked(globalThis.fetch).mockResolvedValueOnce(new Response(JSON.stringify({
       code: 0,
       msg: 'success',
@@ -341,7 +323,7 @@ describe('公开模型页面', () => {
 
     const promotionLinks = await screen.findAllByRole('link', { name: /Claude Opus 4\.8/ })
     expect(promotionLinks).toHaveLength(1)
-    promotionLinks.forEach((link) => expect(link).toHaveAttribute('href', '/models/claude-public'))
+    promotionLinks.forEach((link) => expect(link).toHaveAttribute('href', '/login?return=%2Fconsole%2Fmodels%3Fkeyword%3Dclaude-sonnet-4'))
   })
 
   it('首页接口成功返回空编排时使用默认优惠模型兜底', async () => {
@@ -441,7 +423,7 @@ describe('公开模型页面', () => {
     expect(document.querySelector('.manuscript-skeleton-card')).toBeNull()
     // 优惠卡片的模型名称以接口嵌套 model 为准，活动翻译标题不能覆盖模型身份。
     expect(screen.queryByText('后台优惠模型')).toBeNull()
-    expect(screen.getByText('managed-model').closest('a')).toHaveAttribute('href', '/models/managed-model')
+    expect(screen.getByText('managed-model').closest('a')).toHaveAttribute('href', '/login?return=%2Fconsole%2Fmodels%3Fkeyword%3Dmanaged-model-1')
     const promotionCard = screen.getByText('managed-model').closest('.manuscript-price-card')
     expect(promotionCard).toHaveTextContent('Managed AI')
     expect(promotionCard?.querySelector('.manuscript-price-model-logo img')).toHaveAttribute('src', 'https://cdn.example.com/managed-model.png')
@@ -529,24 +511,6 @@ describe('公开模型页面', () => {
     expect(screen.getByRole('heading', { name: 'Text models' })).toBeInTheDocument()
     expect(screen.getAllByText('Input / M Tokens').length).toBeGreaterThan(0)
     expect(screen.queryByText('模型目录')).toBeNull()
-  })
-
-  it('英文环境渲染模型详情和价格摘要', async () => {
-    await i18n.changeLanguage('en-US')
-    render(
-      <MemoryRouter initialEntries={['/models/dall-e-public']}>
-        <Provider store={createAppStore()}>
-          <AppStoreProvider>
-            <Routes><Route path="/models/:modelId" element={<ModelDetailPage />} /></Routes>
-          </AppStoreProvider>
-        </Provider>
-      </MemoryRouter>,
-    )
-
-    expect(screen.getByText('Model alias: dall-e-public')).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Price comparison' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Sign in for API access' })).toBeInTheDocument()
-    expect(screen.getAllByText('Standard').length).toBeGreaterThan(0)
   })
 
   it('logo-only partners remain visible', async () => {

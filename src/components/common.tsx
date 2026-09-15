@@ -2863,6 +2863,26 @@ const enterpriseNavGroups: ConsoleNavGroup[] = [
   },
 ];
 
+// 只存在于企业导航、个人空间没有的页面。共享入口（企业入驻、订阅管理、费用管理等）两边都有，
+// 所以这里按「企业导航有、个人导航没有」推导差集，而不是按路径前缀猜。
+const ENTERPRISE_ONLY_CONSOLE_PATHS: readonly string[] = (() => {
+  const navPaths = (groups: ConsoleNavGroup[]) =>
+    groups.flatMap((group) => group.items.map((item) => item.path ?? item.key));
+  const personalPaths = new Set(navPaths(personalNavGroups));
+  return [
+    ...new Set(
+      navPaths(enterpriseNavGroups).filter((path) => !personalPaths.has(path)),
+    ),
+  ];
+})();
+
+/** 该控制台路径是否只在企业空间存在；个人空间停在这些路径上时应回到默认页。 */
+export function isEnterpriseOnlyConsolePath(pathname: string): boolean {
+  return ENTERPRISE_ONLY_CONSOLE_PATHS.some(
+    (path) => pathname === path || pathname.startsWith(`${path}/`),
+  );
+}
+
 // 临时隐藏入口但保留页面、路由和菜单定义，后续只需移除对应路径即可恢复。
 const TEMPORARILY_HIDDEN_CONSOLE_NAV_PATHS = new Set([
   "/console/image",
@@ -4129,12 +4149,6 @@ export function ConsoleLayout({ children }: { children: ReactNode }) {
   );
   const navKey = activeNavKey(location.pathname);
   const permissionScope = enterpriseMenuPermissionKeyForPath(location.pathname);
-  const isSharedSubscriptionRoute =
-    location.pathname === "/console/trae-enterprise/subscription";
-  const isTraeEnterpriseRoute =
-    !isSharedSubscriptionRoute &&
-    (location.pathname === "/console/trae-enterprise" ||
-      location.pathname.startsWith("/console/trae-enterprise/"));
   const hasRoutePermission =
     permissionScope === null ||
     isEnterpriseOwner(activeWorkspace) ||
@@ -4212,7 +4226,11 @@ export function ConsoleLayout({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  if (isTraeEnterpriseRoute && activeWorkspace.type !== "enterprise") {
+  // 个人空间没有企业页面：从企业切到个人后若仍停在企业路径上，回到快速接入。
+  if (
+    activeWorkspace.type !== "enterprise" &&
+    isEnterpriseOnlyConsolePath(location.pathname)
+  ) {
     return <Navigate replace to={DEFAULT_CONSOLE_PATH} />;
   }
   if (

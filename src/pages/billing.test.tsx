@@ -232,6 +232,20 @@ function renderBilling(config: { analysisError?: boolean; invoiceError?: boolean
       postInput = { body: String(requestOptions.body), headers: new Headers(requestOptions.headers) }
       return apiResponse(makeInvoice({ status: 'submitted', status_label: '开票中' }))
     }
+    if (url.pathname === '/api/user/billing/invoice-information') {
+      const enterprise = url.searchParams.get('account_type') === 'enterprise'
+      return apiResponse({
+        available_amount_yuan: '40.00',
+        taxpayer_type: enterprise ? 'enterprise' : 'personal',
+        title: enterprise ? '真实关联企业开票抬头' : '接口返回的个人抬头',
+        tax_identifier: enterprise ? '91310000TEST123456' : '',
+        invoice_types: [
+          { code: 'normal', name: i18n.t('console.billing.invoiceTypeNormal') },
+          { code: 'special', name: i18n.t('console.billing.invoiceTypeSpecial') },
+        ],
+        project_name: i18n.t('console.billing.defaultProjectName'),
+      })
+    }
     if (url.pathname.endsWith('/download')) return new Response('invoice-bytes', { status: 200, headers: { 'Content-Type': 'application/pdf' } })
     if (url.pathname === '/api/user/billing/invoices') {
       if (config.invoiceError) return apiResponse({}, 503, 100002, '费用管理服务暂时不可用', 'invoice-unavailable')

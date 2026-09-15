@@ -34,7 +34,10 @@
   gap: 14px;
 }
 
-.subscription-models-only { width: 100%; }
+.subscription-models-only {
+  width: 100%;
+  justify-content: start;
+}
 
 .subscription-empty-state {
   display: flex;
@@ -120,6 +123,9 @@
 
 .subscription-model-card {
   display: flex;
+  width: min(100%, 760px);
+  min-width: min(320px, 100%);
+  box-sizing: border-box;
   min-height: 206px;
   flex-direction: column;
   padding: 25px 24px 20px;

@@ -1,5 +1,6 @@
 import type {
   BillingInvoiceOption,
+  BillingInvoiceInformationResponse,
   BillingInvoiceResponse,
   BillingInvoiceType,
 } from '@/api/billing'
@@ -37,11 +38,15 @@ const MAX_PROJECT_NAME_LENGTH = 255
 // 发票项目名称优先使用接口返回的可选项；旧服务未下发时再回退到平台默认项目。
 export function getInvoiceDialogOptions(
   response: BillingInvoiceResponse | null,
+  information: BillingInvoiceInformationResponse | null = null,
 ): InvoiceDialogOptions {
   const applicationForm = response?.application_form
   const fixedProjectName = i18n.t('console.billing.defaultProjectName')
+  const informationTypes = information?.invoice_types?.filter((option) => option.code && option.name)
   return {
-    invoiceTypes: applicationForm?.invoice_types?.length
+    invoiceTypes: informationTypes?.length
+      ? informationTypes.map((option) => ({ value: option.code, label: option.name }))
+      : applicationForm?.invoice_types?.length
       ? applicationForm.invoice_types
       : [
           {
@@ -53,7 +58,9 @@ export function getInvoiceDialogOptions(
             label: i18n.t('console.billing.invoiceTypeSpecial'),
           },
         ],
-    projectNames: applicationForm?.project_names?.length
+    projectNames: information?.project_name?.trim()
+      ? [{ value: information.project_name, label: information.project_name }]
+      : applicationForm?.project_names?.length
       ? applicationForm.project_names
       : [{ value: fixedProjectName, label: fixedProjectName }],
   }
@@ -63,15 +70,16 @@ export function getInvoiceDialogOptions(
 export function createInvoiceForm(
   response: BillingInvoiceResponse | null,
   workspaceType: Workspace['type'],
+  information: BillingInvoiceInformationResponse | null = null,
 ): InvoiceForm {
   const applicationForm = response?.application_form
-  const options = getInvoiceDialogOptions(response)
+  const options = getInvoiceDialogOptions(response, information)
   return {
     amount_yuan:
-      applicationForm?.amount_yuan ?? response?.available_amount_yuan ?? '',
-    title: applicationForm?.title ?? response?.account.name ?? '',
-    tax_identifier: applicationForm?.tax_identifier ?? '',
-    taxpayer_type: workspaceType === 'enterprise' ? 'enterprise' : 'personal',
+      information?.available_amount_yuan ?? applicationForm?.amount_yuan ?? response?.available_amount_yuan ?? '',
+    title: information?.title ?? applicationForm?.title ?? response?.account.name ?? '',
+    tax_identifier: information?.tax_identifier ?? applicationForm?.tax_identifier ?? '',
+    taxpayer_type: information?.taxpayer_type === 'enterprise' || workspaceType === 'enterprise' ? 'enterprise' : 'personal',
     email: '',
     project_name: options.projectNames[0]?.value ?? '',
     invoice_type: options.invoiceTypes[0]?.value ?? '',

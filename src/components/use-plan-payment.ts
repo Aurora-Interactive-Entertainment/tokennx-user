@@ -175,6 +175,14 @@ export function usePlanPayment(
       handleError(reason);
     },
     onTimeout: () => {
+      const current = session.current.order;
+      // 单轮自动查单有 5 分钟上限，但支付本身的有效期是订单的 expires_at：
+      // 还在有效期内就续一轮，避免"二维码还能扫、钱也付了、前端却永远不确认"。
+      // 超过订单有效期才停下并提示状态未知。
+      if (current?.expires_at && Date.now() < current.expires_at) {
+        setRefreshToken((value) => value + 1);
+        return;
+      }
       transition("timeout");
       setError(t("console.billing.paymentStatusUnknown"));
     },
@@ -279,6 +287,36 @@ export function usePlanPayment(
     transition("paused");
   }
 
+  // 换渠道后旧订单不再使用：先关单，避免遗留一个还能被扫走的旧渠道二维码。
+  // 关单被拒通常说明订单已经被支付，必须以查单结果为准，返回 true 让调用方结束本次会话。
+  async function closeAbandonedOrder(previous: BillingPaymentOrder) {
+    const state = session.current;
+    // 已支付但尚未入账的订单同样要收尾：继续查单确认，不能再发起第二笔支付。
+    const wasPaid = (latest: BillingPaymentOrder) => {
+      if (latest.status !== "paid") return false;
+      acceptOrder(latest);
+      return true;
+    };
+    try {
+      return wasPaid(await closeBillingPaymentOrder(previous.id, {}, context));
+    } catch (reason) {
+      if (!state.alive) return false;
+      if (isAuthenticationFailure(reason)) {
+        state.blocked = true;
+        setBlocked(true);
+        callbacks.current.onAuthFailure?.();
+        return false;
+      }
+      if (!isApiError(reason) || ![140004, 170004].includes(reason.code))
+        return false;
+      try {
+        return wasPaid(await getBillingPaymentOrder(previous.id, {}, context));
+      } catch {
+        return false;
+      }
+    }
+  }
+
   async function selectMethod(channel: PaymentChannel) {
     const state = session.current;
     if (
@@ -288,14 +326,28 @@ export function usePlanPayment(
       (state.order && !isPaymentActive(state.order.status))
     )
       return;
-    state.channel = channel;
-    // 同一渠道网络重试保留键，切换渠道必须更换支付键，订单键保持不变。
-    state.payKey = crypto.randomUUID();
-    setMethod(channel);
-    setQR("");
-    setForm("");
-    setAttemptExpiresAt(null);
-    transition(state.phase);
+    const previous = state.order;
+    // 支付尝试挂在订单上，整个切换过程必须独占会话，否则并发切换会互相覆盖订单。
+    state.locked = true;
+    try {
+      // 先收尾旧订单：它可能已经被支付，此时必须结束会话，不能把这次购买切到另一个渠道。
+      if (previous && (await closeAbandonedOrder(previous))) return;
+      // 关单期间查单也可能先确认支付成功，同样不能再为新渠道下单。
+      if (state.order?.status === "paid") return;
+      state.channel = channel;
+      // 同一渠道网络重试保留订单和支付键；切换渠道必须换单，不能把已经带旧渠道支付尝试的订单交给新渠道。
+      state.payKey = crypto.randomUUID();
+      state.createKey = crypto.randomUUID();
+      state.order = null;
+      setMethod(channel);
+      setOrder(null);
+      setQR("");
+      setForm("");
+      setAttemptExpiresAt(null);
+      transition(state.phase);
+    } finally {
+      state.locked = false;
+    }
     if (state.agreed) await start();
   }
 

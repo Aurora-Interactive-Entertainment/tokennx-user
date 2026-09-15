@@ -10854,6 +10854,22 @@ body:has(.billing-console-page) .semi-select-option-icon {
   background: #fff;
   color: #17181b;
 }
+/* 提交中的按钮只锁定重复点击，保持提交前的主题色，避免点击后从黑/白色闪成灰色。 */
+.recharge-confirm-button.is-loading,
+.recharge-confirm-button.is-loading:hover,
+.recharge-confirm-button.is-loading:active {
+  border-color: #fff;
+  background: #fff;
+  color: #17181b !important;
+  opacity: 1;
+}
+html[data-theme="light"] .recharge-confirm-button.is-loading,
+html[data-theme="light"] .recharge-confirm-button.is-loading:hover,
+html[data-theme="light"] .recharge-confirm-button.is-loading:active {
+  border-color: #17181b;
+  background: #17181b;
+  color: #fff !important;
+}
 html[data-theme="light"] .recharge-confirm-button.semi-button-primary:not(.semi-button-disabled),
 html[data-theme="light"] .recharge-confirm-button.semi-button-primary:not(.semi-button-disabled):hover {
   border-color: #17181b;

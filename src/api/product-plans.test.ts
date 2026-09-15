@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { clearAuthTokens, saveAuthTokens } from '@/auth/token-storage'
-import { getProductPlans, getPublicProductPlans, getPurchasedProductPlans } from './product-plans'
+import { getProductPlans, getPublicProductPlans, getPurchasedProductPlans, getRecentProductPlanPurchases } from './product-plans'
 
 const publicPlan = {
   id: 'real-plan-1', code: 'text-1m', name: '文本套餐', display_name: '文本套餐', type: 'model_quota_bundle', description: '日常调用',
@@ -48,5 +48,18 @@ describe('公开与用户套餐列表接口', () => {
     const result = await getPurchasedProductPlans({ account_type: 'enterprise', enterprise_id: 'ent-1' }, { status: 'active', page: 2, page_size: 20 })
     expect(String(fetchMock.mock.calls[0][0])).toBe('/api/user/product-plans/purchased?account_type=enterprise&enterprise_id=ent-1&status=active&page=2&page_size=20')
     expect(result.items[0].models[0].token_quota_remaining).toBe('9007199254740992')
+  })
+
+  it('读取公开最近购买动态，不携带登录令牌并过滤无效记录', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ code: 0, data: {
+      items: [
+        { purchase_time: 1789000000000, buyer_phone: '138****5678', plan_title: '专业套餐', price_cent: '9900', price_yuan: '99.00' },
+        { purchase_time: 'invalid', buyer_phone: '', plan_title: '无效', price_cent: '1', price_yuan: '0.01' },
+      ],
+    } })))
+    const result = await getRecentProductPlanPurchases()
+    expect(String(fetchMock.mock.calls[0][0])).toBe('/api/product-plans/purchases/recent?limit=5')
+    expect(new Headers(fetchMock.mock.calls[0][1]?.headers).has('Authorization')).toBe(false)
+    expect(result.items).toEqual([{ purchase_time: 1789000000000, buyer_phone: '138****5678', plan_title: '专业套餐', price_cent: '9900', price_yuan: '99.00' }])
   })
 })

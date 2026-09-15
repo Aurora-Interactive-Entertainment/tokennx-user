@@ -18,6 +18,7 @@ import {
 	getBillingPaymentOrder,
 	closeBillingPaymentOrder,
 	getBillingInvoices,
+	getBillingInvoiceInformation,
 	getBillingRequestId,
 	startBillingPayment,
 	downloadBillingInvoice,
@@ -26,6 +27,7 @@ import {
   type BillingAnalysisFilters,
   type BillingContext,
   type BillingInvoiceInput,
+  type BillingInvoiceInformationResponse,
   type BillingInvoiceItem,
   type BillingInvoiceResponse,
   type BillingPageResult,
@@ -395,9 +397,12 @@ function BillingSectionInfo({ content }: { content: string }) {
   return <Tooltip className="app-info-tooltip billing-info-tooltip" content={content} position="top"><span className="billing-info-trigger" tabIndex={0} aria-label={content}><IconInfoCircle className="billing-info-icon" aria-hidden="true" /></span></Tooltip>
 }
 
-// Token NX 积分优先使用接口返回的 total_tokens，字段缺失或为 null 时才兼容计算。
-function PointsBalanceCard({ metrics }: { metrics: BillingAnalysisResponse['metrics'] }) {
-  const points = metrics.total_tokens != null
+// Token NX 积分优先使用钱包接口返回的 points，旧接口缺失时再兼容 Token 汇总。
+function PointsBalanceCard({ metrics, wallet }: { metrics: BillingAnalysisResponse['metrics']; wallet: BillingAnalysisResponse['wallet'] }) {
+  // 钱包返回 points 时直接展示积分余额；旧分析接口才回退到 Token 汇总。
+  const points = wallet.points != null
+    ? safeAmount(wallet.points)
+    : metrics.total_tokens != null
     ? safeAmount(metrics.total_tokens)
     : safeAmount(metrics.input_tokens) + safeAmount(metrics.output_tokens) + safeAmount(metrics.cached_tokens)
   return <article className="billing-balance-card">
@@ -425,7 +430,7 @@ function AccountBalanceSection({ wallet, metrics, onRecharge, onBalanceAlert }: 
         <div className="billing-balance-card-heading"><span>{i18n.t('console.billing.rewardBalance')}</span><BillingSectionInfo content={i18n.t('console.billing.rewardBalanceHint')} /></div>
         <strong><PlainMoney value={wallet.bonus_available_yuan} /></strong>
       </article>
-      <PointsBalanceCard metrics={metrics} />
+      <PointsBalanceCard metrics={metrics} wallet={wallet} />
     </div>
   </section>
 }
@@ -435,15 +440,24 @@ function CreditDetailsSection({ data }: { data: BillingAnalysisResponse }) {
   const metrics = data.metrics ?? EMPTY_ANALYSIS_METRICS
   const quota = data.quota_details
   // 额度明细必须使用分析接口的当前额度口径。账本是分页流水，不能拿当前页累计值替代账户余额或区间用量。
-  const total = safeAmount(quota?.total_yuan || wallet.total_balance_yuan || wallet.total_available_yuan)
+  const hasWalletQuotaDetails = [
+    wallet.recharge_amount_yuan,
+    wallet.voucher_exchange_amount_yuan,
+    wallet.system_gift_amount_yuan,
+    wallet.invitation_consumed_amount_yuan,
+    wallet.expired_amount_yuan,
+    wallet.consumed_amount_yuan,
+  ].some((value) => value != null)
+  const total = safeAmount(hasWalletQuotaDetails ? wallet.total_balance_yuan : (quota?.total_yuan || wallet.total_balance_yuan || wallet.total_available_yuan))
   const rows: BillingQuotaRow[] = [
-    { key: 'recharge', label: i18n.t('console.billing.quotaRecharge'), value: quota?.recharge_yuan ?? wallet.paid_available_yuan, icon: <IconCoinMoneyStroked aria-hidden="true" />, tone: 'recharge' },
-    { key: 'reward', label: i18n.t('console.billing.quotaReward'), value: quota?.reward_yuan ?? wallet.bonus_available_yuan, icon: <IconTicketCodeExchangeStroked aria-hidden="true" />, tone: 'reward' },
-    { key: 'gift', label: i18n.t('console.billing.quotaGift'), value: quota?.gift_yuan ?? '0', icon: <IconGiftStroked aria-hidden="true" />, tone: 'gift' },
-    { key: 'invitation', label: i18n.t('console.billing.quotaInvitation'), value: quota?.invitation_yuan ?? '0', icon: <IconShareMoneyStroked aria-hidden="true" />, tone: 'invitation' },
-    { key: 'expired', label: i18n.t('console.billing.quotaExpired'), value: quota?.expired_yuan ?? '0', icon: <IconHistory aria-hidden="true" />, tone: 'expired' },
-    { key: 'usage', label: i18n.t('console.billing.quotaUsage'), value: quota?.usage_yuan ?? metrics.total_cost_yuan, icon: <IconTaskMoneyStroked aria-hidden="true" />, tone: 'negative' },
-    { key: 'total', label: i18n.t('console.billing.totalBalance'), value: quota?.total_yuan ?? (wallet.total_balance_yuan || wallet.total_available_yuan), icon: <IconMoneyExchangeStroked aria-hidden="true" />, tone: 'total' },
+    // 新版钱包字段成组出现时按截图口径展示；旧服务回退 quota_details。
+    { key: 'recharge', label: i18n.t('console.billing.quotaRecharge'), value: hasWalletQuotaDetails ? wallet.paid_available_yuan : (quota?.recharge_yuan ?? wallet.paid_available_yuan ?? '0'), icon: <IconCoinMoneyStroked aria-hidden="true" />, tone: 'recharge' },
+    { key: 'reward', label: i18n.t('console.billing.quotaReward'), value: hasWalletQuotaDetails ? (wallet.voucher_exchange_amount_yuan ?? '0') : (quota?.reward_yuan ?? '0'), icon: <IconTicketCodeExchangeStroked aria-hidden="true" />, tone: 'reward' },
+    { key: 'gift', label: i18n.t('console.billing.quotaGift'), value: hasWalletQuotaDetails ? (wallet.system_gift_amount_yuan ?? '0') : (quota?.gift_yuan ?? '0'), icon: <IconGiftStroked aria-hidden="true" />, tone: 'gift' },
+    { key: 'invitation', label: i18n.t('console.billing.quotaInvitation'), value: hasWalletQuotaDetails ? (wallet.invitation_consumed_amount_yuan ?? '0') : (quota?.invitation_yuan ?? '0'), icon: <IconShareMoneyStroked aria-hidden="true" />, tone: 'invitation' },
+    { key: 'expired', label: i18n.t('console.billing.quotaExpired'), value: hasWalletQuotaDetails ? (wallet.expired_amount_yuan ?? '0') : (quota?.expired_yuan ?? '0'), icon: <IconHistory aria-hidden="true" />, tone: 'expired' },
+    { key: 'usage', label: i18n.t('console.billing.quotaUsage'), value: hasWalletQuotaDetails ? (wallet.consumed_amount_yuan ?? '0') : (quota?.usage_yuan ?? metrics.total_cost_yuan), icon: <IconTaskMoneyStroked aria-hidden="true" />, tone: 'negative' },
+    { key: 'total', label: i18n.t('console.billing.totalBalance'), value: hasWalletQuotaDetails ? wallet.total_balance_yuan : (quota?.total_yuan ?? (wallet.total_balance_yuan || wallet.total_available_yuan)), icon: <IconMoneyExchangeStroked aria-hidden="true" />, tone: 'total' },
   ]
   return <section className="billing-quota-section" aria-labelledby="billingQuotaHeading">
     <h2 id="billingQuotaHeading" className="billing-subsection-heading">{i18n.t('console.billing.quotaDetails')}</h2>
@@ -599,8 +613,10 @@ export function RechargeTab({ context, onOrderUpdated, onAuthFailure }: { contex
   }, [paymentQueryError])
 
   async function closePaymentDialog(): Promise<void> {
+    if (paymentSubmittingRef.current) return
     const orderToClose = paymentOrder
     // 关闭二维码弹窗即结束本次支付会话，避免后台继续查单或复用旧二维码。
+    cancelPaymentPolling()
     setPaymentDialogOpen(false)
     setPaymentOrder(null)
     setPaymentFormHTML('')
@@ -611,14 +627,20 @@ export function RechargeTab({ context, onOrderUpdated, onAuthFailure }: { contex
     setPaymentQuerying(false)
     if (!orderToClose || !isPaymentActive(orderToClose.status)) return
     // 关单完成前暂时锁住充值按钮，避免用户立即创建第二个未确认订单。
+    paymentSubmittingRef.current = true
+    const controller = new AbortController()
+    paymentControllerRef.current = controller
+    const { signal } = controller
     setSubmitting(true)
     try {
-      await closeBillingPaymentOrder(orderToClose.id, {}, context)
+      await closeBillingPaymentOrder(orderToClose.id, { signal }, context)
+      if (signal.aborted) return
       paymentOrderIdempotencyKeyRef.current = null
       paymentStartIdempotencyKeyRef.current = null
       pendingPaymentOrderIDRef.current = null
       onOrderUpdated()
     } catch (error) {
+      if (signal.aborted) return
       if (isAuthenticationFailure(error)) {
         onAuthFailure()
         return
@@ -626,11 +648,12 @@ export function RechargeTab({ context, onOrderUpdated, onAuthFailure }: { contex
       // 关单失败不阻塞用户继续操作，但保留错误提示，便于用户重新查询订单状态。
       Toast.warning(getBillingErrorMessage(error))
     } finally {
-      setSubmitting(false)
+      paymentSubmittingRef.current = false
+      if (!signal.aborted) setSubmitting(false)
     }
   }
 
-  useBillingPaymentPolling({
+  const cancelPaymentPolling = useBillingPaymentPolling({
     context, order: paymentOrder, enabled: paymentDialogOpen, refreshToken: paymentRefreshToken, expired: paymentExpired,
     onOrder: (latestOrder) => {
       setPaymentQueryError('')
@@ -656,9 +679,13 @@ export function RechargeTab({ context, onOrderUpdated, onAuthFailure }: { contex
   }
 
   function choosePaymentMethod(method: 'alipay' | 'wechat'): void {
-    if (paymentSubmittingRef.current || method === paymentMethod) return
-    // 同一订单可重试支付；切换渠道必须使用新的支付幂等键，避免参数冲突。
+    // 二维码弹窗打开后必须先关闭当前订单，再切换渠道；避免后台轮询和界面载体属于不同订单。
+    if (paymentSubmittingRef.current || paymentDialogOpen || method === paymentMethod) return
+    // 切换渠道后新建充值会话，避免支付失败或关单失败时把旧渠道订单交给新渠道。
+    // 同一渠道重试仍保留原订单和幂等键，防止网络重试重复下单。
+    paymentOrderIdempotencyKeyRef.current = null
     paymentStartIdempotencyKeyRef.current = null
+    pendingPaymentOrderIDRef.current = null
     setPaymentMethod(method)
   }
 
@@ -683,18 +710,45 @@ export function RechargeTab({ context, onOrderUpdated, onAuthFailure }: { contex
     setPaymentFormError('')
     setPaymentQueryError('')
     try {
-      const orderIdempotencyKey = paymentOrderIdempotencyKeyRef.current ?? createIdempotencyKey('payment-order')
-      paymentOrderIdempotencyKeyRef.current = orderIdempotencyKey
-      const order = pendingPaymentOrderIDRef.current
+      const createOrder = () => {
+        const key = paymentOrderIdempotencyKeyRef.current ?? createIdempotencyKey('payment-order')
+        paymentOrderIdempotencyKeyRef.current = key
+        return createBillingPaymentOrder(context, { amount_yuan: amount.trim() }, key, { signal })
+      }
+      let order = pendingPaymentOrderIDRef.current
         ? await getBillingPaymentOrder(pendingPaymentOrderIDRef.current, { signal }, context)
-        : await createBillingPaymentOrder(context, { amount_yuan: amount.trim() }, orderIdempotencyKey, { signal })
+        : await createOrder()
       if (signal.aborted) return
+      // 关单响应丢失时旧订单可能已关闭；已关闭或过期订单必须重新创建，不能继续 /pay。
+      if (['closed', 'expired'].includes(order.status)) {
+        paymentOrderIdempotencyKeyRef.current = null
+        paymentStartIdempotencyKeyRef.current = null
+        pendingPaymentOrderIDRef.current = null
+        order = await createOrder()
+        if (signal.aborted) return
+      }
       pendingPaymentOrderIDRef.current = order.id
+      // 支付响应丢失后先以查单结果为准；已支付但尚未到账时继续查单，不重复发起扣款。
+      if (!isPaymentActive(order.status)) {
+        setPaymentOrder(order)
+        if (!isPaymentOrderPollable(order)) {
+          paymentOrderIdempotencyKeyRef.current = null
+          paymentStartIdempotencyKeyRef.current = null
+          pendingPaymentOrderIDRef.current = null
+        }
+        if (isPaymentSettled(order)) {
+          onOrderUpdated()
+          Toast.success(i18n.t('console.billing.paymentStatusPaid'))
+        } else {
+          setPaymentDialogOpen(true)
+        }
+        return
+      }
       // 支付、查单接口同样需要携带当前账务主体，否则企业订单会被路由到个人接口。
       const startIdempotencyKey = paymentStartIdempotencyKeyRef.current ?? createIdempotencyKey('payment-start')
       paymentStartIdempotencyKeyRef.current = startIdempotencyKey
-      // 充值页统一沿用电脑扫码场景；微信必须显式指定渠道，支付宝保留原请求参数。
-      const payment = await startBillingPayment(order.id, startIdempotencyKey, { signal, ...(paymentMethod === 'wechat' ? { scene: 'pc' as const, channel: 'wechat' } : {}) }, context)
+      // 两种支付方式均显式发送当前渠道，避免依赖服务端默认渠道或旧交易信息。
+      const payment = await startBillingPayment(order.id, startIdempotencyKey, { signal, scene: 'pc', channel: paymentMethod }, context)
       if (signal.aborted) return
       setPaymentOrder(payment.order)
       if (!isPaymentOrderPollable(payment.order)) {
@@ -767,7 +821,7 @@ export function RechargeTab({ context, onOrderUpdated, onAuthFailure }: { contex
             <button type="button" className={`recharge-method-option${paymentMethod === 'alipay' ? ' is-selected' : ''}`} aria-label={i18n.t('console.billing.alipayPay')} aria-pressed={paymentMethod === 'alipay'} disabled={submitting} onClick={() => choosePaymentMethod('alipay')}><img className="recharge-method-icon" src={alipayIcon} alt="" /><span>{i18n.t('console.billing.alipay')}</span><span className="recharge-selected-corner" aria-hidden="true">✓</span></button>
           </div>
         </div>
-        <div className="recharge-form-actions"><Button className="recharge-confirm-button" theme="solid" type="primary" aria-label={i18n.t('console.billing.rechargeNow')} loading={submitting} disabled={submitting || !agreementAccepted || rechargeAmount === null || rechargeAmount < MIN_RECHARGE_AMOUNT || amountValidation !== null} onClick={() => void handleRecharge()}>{i18n.t('console.billing.rechargeNow')}</Button><span>{i18n.t('console.billing.viewRechargeRecordsPrefix')} <Link to="/console/billing">{i18n.t('console.billing.rechargeRecords')}</Link></span></div>
+        <div className="recharge-form-actions"><Button className={`recharge-confirm-button${submitting ? ' is-loading' : ''}`} theme="solid" type="primary" aria-label={i18n.t('console.billing.rechargeNow')} loading={submitting} disabled={submitting || !agreementAccepted || rechargeAmount === null || rechargeAmount < MIN_RECHARGE_AMOUNT || amountValidation !== null} onClick={() => void handleRecharge()}>{i18n.t('console.billing.rechargeNow')}</Button><span>{i18n.t('console.billing.viewRechargeRecordsPrefix')} <Link to="/console/billing">{i18n.t('console.billing.rechargeRecords')}</Link></span></div>
       </div>
       {paymentOrder && paymentCopy && paymentDialogOpen ? <Modal visible title={i18n.t('console.billing.rechargeModalTitle')} onCancel={closePaymentDialog} footer={null} className="payment-qr-dialog">
         <div className="payment-qr-dialog-content">
@@ -794,12 +848,12 @@ function InvoiceHistory({ response, downloadingInvoiceID, onDownload }: { respon
   return <section className="invoice-history" aria-labelledby="invoiceHistoryHeading"><h2 id="invoiceHistoryHeading">{i18n.t('console.billing.invoiceHistory')}</h2>{history.items.length === 0 ? <EmptyPanel surface="table" title={i18n.t('console.billing.noInvoice')} description={i18n.t('console.billing.invoiceHint')} /> : <div className="invoice-table-scroll" role="region" aria-label={i18n.t('console.billing.invoiceHistoryTable')} tabIndex={0}><table className="invoice-history-table"><thead><tr><th>{i18n.t('console.billing.submittedAt')}</th><th>{i18n.t('console.billing.invoiceAmount')}</th><th>{i18n.t('console.billing.invoiceEntity')}</th><th>{i18n.t('console.billing.invoiceMethod')}</th><th>{i18n.t('console.billing.invoiceTitle')}</th><th>{i18n.t('console.billing.invoiceType')}</th><th>{i18n.t('console.billing.status')}</th><th>{i18n.t('console.billing.operation')}</th></tr></thead><tbody>{history.items.map((item) => { const downloading = downloadingInvoiceID === item.id; return <tr key={item.id}><td>{formatApiTime(item.submitted_at)}</td><td><MoneyText value={item.amount_yuan} /></td><td>{response.account.name}</td><td>{i18n.t('console.billing.manualApply')}</td><td>{item.title_masked || '--'}</td><td>{invoiceTypeLabel(item.invoice_type)}</td><td><span className={invoiceStatusClass(item.status)}>{invoiceStatusLabel(item)}</span></td><td>{item.download_url ? <a href={item.download_url} download aria-busy={downloading} aria-disabled={downloading} onClick={(event) => { event.preventDefault(); if (!downloading) onDownload(item) }}>{downloading ? i18n.t('console.billing.downloading') : i18n.t('console.billing.view')}</a> : <span className="invoice-status-pending">{i18n.t('console.billing.invoiceProcessing')}</span>}</td></tr> })}</tbody></table></div>}</section>
 }
 
-function InvoiceTab({ state, faqOpen, downloadingInvoiceID, onToggleFaq, onRetry, onOpenDialog, onDownload, onPageChange, onPageSizeChange, page, pageSize }: { state: ResourceState<BillingInvoiceResponse>; faqOpen: boolean; downloadingInvoiceID: string | null; onToggleFaq: () => void; onRetry: () => void; onOpenDialog: () => void; onDownload: (item: BillingInvoiceItem) => void; onPageChange: (page: number) => void; onPageSizeChange: (pageSize: number) => void; page: number; pageSize: number }) {
+function InvoiceTab({ state, invoiceInfoLoading, faqOpen, downloadingInvoiceID, onToggleFaq, onRetry, onOpenDialog, onDownload, onPageChange, onPageSizeChange, page, pageSize }: { state: ResourceState<BillingInvoiceResponse>; invoiceInfoLoading: boolean; faqOpen: boolean; downloadingInvoiceID: string | null; onToggleFaq: () => void; onRetry: () => void; onOpenDialog: () => void; onDownload: (item: BillingInvoiceItem) => void; onPageChange: (page: number) => void; onPageSizeChange: (pageSize: number) => void; page: number; pageSize: number }) {
   if (state.status === 'loading' || state.status === 'idle') return <BillingLoading label={i18n.t('console.billing.invoiceLoading')} />
   if (state.status === 'error') return <BillingError state={state} onRetry={onRetry} />
   if (!state.data) return <EmptyPanel title={i18n.t('console.billing.invoiceInfo')} description={i18n.t('console.billing.invoiceInfoHint')} />
   const data = state.data
-  return <section id="invoiceSection" className="invoice-page" aria-labelledby="invoiceHeading" tabIndex={-1}><h2 id="invoiceHeading" className="sr-only">{i18n.t('console.billing.invoice')}</h2><div className="invoice-faq"><button type="button" className="invoice-faq-toggle" aria-expanded={faqOpen} aria-controls="invoiceFaqBody" onClick={onToggleFaq}><span>{i18n.t('console.billing.invoiceFaq')}</span><span className="sr-only">{i18n.t('console.billing.invoiceFaqToggle')}</span></button><div className="invoice-faq-body" id="invoiceFaqBody" hidden={!faqOpen}>{i18n.t('console.billing.invoiceFaqHint')}</div></div><div id="invoiceOverview" data-invoice-view="overview"><p className="invoice-demo-note">{i18n.t('console.billing.localInvoiceNote')}</p><div className="invoice-metrics" aria-label={i18n.t('console.billing.invoiceOverview')}><Metric label={i18n.t('console.billing.availableAmount')} value={<MoneyText value={data.available_amount_yuan} />} tone="invoice-metric-primary" action={<Button className="invoice-metric-action" theme="solid" type="primary" size="small" onClick={onOpenDialog} disabled={isZeroYuan(data.available_amount_yuan)}>{i18n.t('console.billing.invoiceNow')}</Button>} /><Metric label={i18n.t('console.billing.issued')} value={formatCount(data.issued_count ?? 0)} note={i18n.t('console.billing.issuedDone')} /><Metric label={i18n.t('console.billing.issuing')} value={formatCount(data.pending_count ?? 0)} note={i18n.t('console.billing.waiting')} /></div><InvoiceHistory response={data} downloadingInvoiceID={downloadingInvoiceID} onDownload={onDownload} /><BillingPagination page={page} total={data.history.total} pageSize={data.history.page_size || pageSize} label={i18n.t('console.billing.invoiceHistory')} disabled={state.status !== 'success'} onPageChange={onPageChange} onPageSizeChange={onPageSizeChange} /></div></section>
+  return <section id="invoiceSection" className="invoice-page" aria-labelledby="invoiceHeading" tabIndex={-1}><h2 id="invoiceHeading" className="sr-only">{i18n.t('console.billing.invoice')}</h2><div className="invoice-faq"><button type="button" className="invoice-faq-toggle" aria-expanded={faqOpen} aria-controls="invoiceFaqBody" onClick={onToggleFaq}><span>{i18n.t('console.billing.invoiceFaq')}</span><span className="sr-only">{i18n.t('console.billing.invoiceFaqToggle')}</span></button><div className="invoice-faq-body" id="invoiceFaqBody" hidden={!faqOpen}>{i18n.t('console.billing.invoiceFaqHint')}</div></div><div id="invoiceOverview" data-invoice-view="overview"><p className="invoice-demo-note">{i18n.t('console.billing.localInvoiceNote')}</p><div className="invoice-metrics" aria-label={i18n.t('console.billing.invoiceOverview')}><Metric label={i18n.t('console.billing.availableAmount')} value={<MoneyText value={data.available_amount_yuan} />} tone="invoice-metric-primary" action={<Button className="invoice-metric-action" theme="solid" type="primary" size="small" onClick={onOpenDialog} disabled={invoiceInfoLoading || isZeroYuan(data.available_amount_yuan)}>{i18n.t('console.billing.invoiceNow')}</Button>} /><Metric label={i18n.t('console.billing.issued')} value={formatCount(data.issued_count ?? 0)} note={i18n.t('console.billing.issuedDone')} /><Metric label={i18n.t('console.billing.issuing')} value={formatCount(data.pending_count ?? 0)} note={i18n.t('console.billing.waiting')} /></div><InvoiceHistory response={data} downloadingInvoiceID={downloadingInvoiceID} onDownload={onDownload} /><BillingPagination page={page} total={data.history.total} pageSize={data.history.page_size || pageSize} label={i18n.t('console.billing.invoiceHistory')} disabled={state.status !== 'success'} onPageChange={onPageChange} onPageSizeChange={onPageSizeChange} /></div></section>
 }
 
 export function BillingPage() {
@@ -836,6 +890,7 @@ export function BillingPage() {
   const [analysisState, setAnalysisState] = useState<ResourceState<BillingAnalysisResponse>>(resourceState())
   const [ledgerState, setLedgerState] = useState<ResourceState<BillingPageResult<BillingStatementLine>>>(resourceState())
   const [invoiceState, setInvoiceState] = useState<ResourceState<BillingInvoiceResponse>>(resourceState())
+  const [invoiceInformationState, setInvoiceInformationState] = useState<ResourceState<BillingInvoiceInformationResponse>>(resourceState())
   const [invoiceFaqOpen, setInvoiceFaqOpen] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [dialogStep, setDialogStep] = useState<1 | 2 | 3>(1)
@@ -886,6 +941,12 @@ export function BillingPage() {
     setDateRange(defaultBillingDateRange())
     setLedgerState(resourceState())
     setInvoiceState(resourceState())
+    setInvoiceInformationState(resourceState())
+    // 切换个人/企业主体后清理旧主体的弹窗资料，避免误把旧抬头提交到新账务主体。
+    setDialogOpen(false)
+    setDialogStep(1)
+    setInvoiceFormErrors({})
+    invoiceIdempotencyKeyRef.current = null
     setPaymentReturnState(resourceState())
   }, [contextKey, requestedTab])
 
@@ -989,6 +1050,7 @@ export function BillingPage() {
     if (activeTab !== 'invoice') return
     const controller = new AbortController()
     setInvoiceState((previous) => ({ ...resourceState('loading'), data: previous.data }))
+    setInvoiceInformationState((previous) => ({ ...resourceState('loading'), data: previous.data }))
     void getBillingInvoices(context, { page: invoicePage, page_size: invoicePageSize, signal: controller.signal }).then((data) => {
       if (!controller.signal.aborted) setInvoiceState({ status: 'success', data, error: '', requestId: null })
     }).catch((error: unknown) => {
@@ -998,6 +1060,17 @@ export function BillingPage() {
         return
       }
       setInvoiceState(loadError(error))
+    })
+    // 开票资料是独立接口，必须以当前认证主体的实时结果填充弹窗，不能使用列表接口的旧版扩展字段。
+    void getBillingInvoiceInformation(context, { signal: controller.signal }).then((data) => {
+      if (!controller.signal.aborted) setInvoiceInformationState({ status: 'success', data, error: '', requestId: null })
+    }).catch((error: unknown) => {
+      if (controller.signal.aborted) return
+      if (isAuthenticationFailure(error)) {
+        handleAuthFailure()
+        return
+      }
+      setInvoiceInformationState(loadError(error))
     })
     return () => controller.abort()
   }, [activeTab, context, handleAuthFailure, invoicePage, invoicePageSize, loadError, reloadToken])
@@ -1050,7 +1123,14 @@ export function BillingPage() {
   }
 
   function openInvoiceDialog(): void {
-    setInvoiceForm(createInvoiceForm(invoiceState.data, activeWorkspace.type))
+    const information = invoiceInformationState.data
+    const hasInformation = Boolean(information?.title && information.project_name && information.invoice_types?.length)
+    // 兼容尚未部署新接口的旧服务；新服务成功返回时始终优先使用实时资料。
+    if (!hasInformation && !invoiceState.data?.application_form) {
+      Toast.error(invoiceInformationState.error || t('console.billing.invoiceInfoHint'))
+      return
+    }
+    setInvoiceForm(createInvoiceForm(invoiceState.data, activeWorkspace.type, hasInformation ? information : null))
     setInvoiceFormErrors({})
     setDialogStep(1)
     invoiceIdempotencyKeyRef.current = null
@@ -1077,7 +1157,7 @@ export function BillingPage() {
   }
 
   function nextInvoiceStep(): void {
-    const errors = validateInvoiceForm(invoiceForm, invoiceState.data?.available_amount_yuan ?? '0')
+    const errors = validateInvoiceForm(invoiceForm, invoiceInformationState.data?.available_amount_yuan ?? invoiceState.data?.available_amount_yuan ?? '0')
     setInvoiceFormErrors(errors)
     if (Object.keys(errors).length > 0) return
     setDialogStep(2)
@@ -1126,7 +1206,8 @@ export function BillingPage() {
       const response = await downloadBillingInvoice(item.download_url)
       const url = URL.createObjectURL(await response.blob())
       const anchor = document.createElement('a')
-      const extension = item.file_type.trim() || DEFAULT_INVOICE_FILE_EXTENSION
+      // 文件类型来自服务端，下载文件名只保留安全的扩展名字符，避免路径分隔符污染本地文件名。
+      const extension = item.file_type.trim().toLowerCase().replace(/[^a-z0-9]+/g, '').slice(0, 10) || DEFAULT_INVOICE_FILE_EXTENSION
       anchor.href = url
       anchor.download = `发票${item.request_no ? `-${item.request_no}` : ''}.${extension}`
       document.body.append(anchor)
@@ -1155,7 +1236,7 @@ export function BillingPage() {
 
   let content: ReactNode
   if (activeTab === 'overview') content = <AnalysisTab state={analysisState} ledger={ledgerSection} dateRange={dateRange} apiKeyID={apiKeyID} model={model} billingType={billingType} departmentID={departmentID} memberID={memberID} departments={departments} members={members} directoryLoading={directoryLoading} directoryEnabled={context.account_type === 'enterprise'} filterCatalog={analysisFilters} onRecharge={() => navigate('/console/recharge')} onBalanceAlert={() => setBalanceAlertOpen(true)} onFilterChange={changeAnalysisFilter} onDateRangeChange={changeAnalysisDateRange} onRetry={() => setReloadToken((value) => value + 1)} />
-  else content = <InvoiceTab state={invoiceState} faqOpen={invoiceFaqOpen} downloadingInvoiceID={downloadingInvoiceID} onToggleFaq={() => setInvoiceFaqOpen((value) => !value)} onRetry={() => setReloadToken((value) => value + 1)} onOpenDialog={openInvoiceDialog} onDownload={(item) => void downloadInvoice(item)} onPageChange={setInvoicePage} onPageSizeChange={(nextPageSize) => { setInvoicePageSize(nextPageSize); setInvoicePage(BILLING_FIRST_PAGE) }} page={invoicePage} pageSize={invoicePageSize} />
+  else content = <InvoiceTab state={invoiceState} invoiceInfoLoading={invoiceInformationState.status === 'loading' || invoiceInformationState.status === 'idle'} faqOpen={invoiceFaqOpen} downloadingInvoiceID={downloadingInvoiceID} onToggleFaq={() => setInvoiceFaqOpen((value) => !value)} onRetry={() => setReloadToken((value) => value + 1)} onOpenDialog={openInvoiceDialog} onDownload={(item) => void downloadInvoice(item)} onPageChange={setInvoicePage} onPageSizeChange={(nextPageSize) => { setInvoicePageSize(nextPageSize); setInvoicePage(BILLING_FIRST_PAGE) }} page={invoicePage} pageSize={invoicePageSize} />
 
-  return <div className="page-stack billing-console-page"><PageTitle title={t('console.billing.title')} description={t('console.billing.description')} /><RequestFocus data={analysisState.data} requestId={requestedRecordId} /><PaymentReturnNotice state={paymentReturnState} onRetry={() => setPaymentReturnRetryToken((value) => value + 1)} /><ConsoleTabs items={BILLING_TABS.map(([itemKey, label]) => ({ itemKey, tab: t(label) }))} activeKey={activeTab} onChange={(value) => onTabChange(value as BillingTab)} ariaLabel={t('console.billing.title')} /><div className="billing-tab-panel" role="tabpanel" id={`panel-${activeTab}`} aria-labelledby={`tab-${activeTab}`}>{content}</div><BillingInvoiceDialog open={dialogOpen} form={invoiceForm} options={getInvoiceDialogOptions(invoiceState.data)} errors={invoiceFormErrors} step={dialogStep} submitting={submittingInvoice} onClose={closeInvoiceDialog} onChange={updateInvoiceForm} onNext={nextInvoiceStep} onBack={() => { setDialogStep(1); setInvoiceFormErrors({}) }} onSubmit={() => void submitInvoice()} /><BalanceAlertDialog visible={balanceAlertOpen} onClose={() => setBalanceAlertOpen(false)} onAuthFailure={handleAuthFailure} /></div>
+  return <div className="page-stack billing-console-page"><PageTitle title={t('console.billing.title')} description={t('console.billing.description')} /><RequestFocus data={analysisState.data} requestId={requestedRecordId} /><PaymentReturnNotice state={paymentReturnState} onRetry={() => setPaymentReturnRetryToken((value) => value + 1)} /><ConsoleTabs items={BILLING_TABS.map(([itemKey, label]) => ({ itemKey, tab: t(label) }))} activeKey={activeTab} onChange={(value) => onTabChange(value as BillingTab)} ariaLabel={t('console.billing.title')} /><div className="billing-tab-panel" role="tabpanel" id={`panel-${activeTab}`} aria-labelledby={`tab-${activeTab}`}>{content}</div><BillingInvoiceDialog open={dialogOpen} form={invoiceForm} options={getInvoiceDialogOptions(invoiceState.data, invoiceInformationState.data)} errors={invoiceFormErrors} step={dialogStep} submitting={submittingInvoice} onClose={closeInvoiceDialog} onChange={updateInvoiceForm} onNext={nextInvoiceStep} onBack={() => { setDialogStep(1); setInvoiceFormErrors({}) }} onSubmit={() => void submitInvoice()} /><BalanceAlertDialog visible={balanceAlertOpen} onClose={() => setBalanceAlertOpen(false)} onAuthFailure={handleAuthFailure} /></div>
 }

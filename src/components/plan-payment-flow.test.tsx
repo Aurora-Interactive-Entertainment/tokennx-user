@@ -10,12 +10,14 @@ vi.mock('@/auth/token-storage', async (original) => ({ ...await original<object>
 
 const personal: BillingContext = { account_type: 'personal' }
 const enterprise: BillingContext = { account_type: 'enterprise', enterprise_id: 'enterprise-public-id' }
+// 订单时间必须用相对值：写死时间戳会在某天之后变成“已过期”，让用例连断言都跑不到。
+const ORDER_CREATED_AT = Date.now()
 const pending: BillingPaymentOrder = {
   id: 'order-public-id', order_no: 'TG-P-ORDER', order_type: 'plan_purchase',
   status: 'pending', currency: 'CNY', amount_cent: '2399', amount_yuan: '23.99',
   paid_amount_cent: '0', paid_amount_yuan: '0.00', account_type: 'personal',
-  billing_account_id: '11', expires_at: 1789200000000, paid_at: null, closed_at: null,
-  created_at: 1789190000000, updated_at: 1789190000000, version: '0',
+  billing_account_id: '11', expires_at: ORDER_CREATED_AT + 30 * 60 * 1000, paid_at: null, closed_at: null,
+  created_at: ORDER_CREATED_AT, updated_at: ORDER_CREATED_AT, version: '0',
 }
 const signedAction = 'https://openapi.alipay.com/gateway.do?app_id=test&sign=a%2Bb%2Fc%3D&biz_content=%7B%22qrcode_width%22%3A200%7D'
 const signedForm = `<form method="post" action="${signedAction.replaceAll('&', '&amp;')}"><input type="submit" value="立即支付"></form>`
@@ -95,16 +97,15 @@ describe('套餐支付 HTTP 合同与页面联动', () => {
       if (options?.method === 'POST') expect(new Headers(options.headers).get('Content-Type')).toBe('application/json')
     }
 
+    // 支付结果由自动查单收敛：二维码显示期间不再有手动刷新入口，
+    // 服务端状态变化必须被后续轮询自动拾取（单轮查单间隔 2 秒）。
     serverOrder = { ...serverOrder, status: 'paid', paid_at: null, version: '2' }
-    fireEvent.click(screen.getByRole('button', { name: '刷新支付状态' }))
-    await waitFor(() => expect(screen.queryByTitle('扫码支付')).toBeNull())
+    await waitFor(() => expect(screen.queryByTitle('扫码支付')).toBeNull(), { timeout: 6000 })
     expect(onPaid).not.toHaveBeenCalled()
-    serverOrder = { ...serverOrder, paid_at: 1789190100000, paid_amount_yuan: '23.99', paid_amount_cent: '2399', version: '3' }
-    fireEvent.click(screen.getByRole('button', { name: '刷新支付状态' }))
-    await screen.findByText('套餐购买成功')
+    serverOrder = { ...serverOrder, paid_at: Date.now(), paid_amount_yuan: '23.99', paid_amount_cent: '2399', version: '3' }
+    await screen.findByText('套餐购买成功', undefined, { timeout: 6000 })
     expect(onPaid).toHaveBeenCalledOnce()
     expect(screen.queryByRole('button', { name: '重试支付' })).toBeNull()
-    expect(screen.queryByRole('button', { name: '刷新支付状态' })).toBeNull()
   })
 
   it('企业订单四个接口沿用同一主体，关单显式发送空 JSON', async () => {

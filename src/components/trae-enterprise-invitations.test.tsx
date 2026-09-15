@@ -117,7 +117,13 @@ describe("Trae 企业邀请链接", () => {
     renderInvitations(true, contextWithoutRoles);
 
     const dialog = screen.getByRole("dialog", { name: "邀请成员" });
-    expect(within(dialog).getByText("当前企业暂无可分配角色，请刷新企业权限后再创建邀请。")).toBeInTheDocument();
+    // 目录为空时组件用 appToast 弹顶部提示：toast 挂在 document.body 上而非弹窗内，需要等待其渲染。
+    const toast = await waitFor(() => {
+      const node = document.querySelector(".semi-toast.app-toast.semi-toast-error");
+      if (!node) throw new Error("roleUnavailable toast not shown");
+      return node as HTMLElement;
+    });
+    expect(toast).toHaveTextContent("当前企业暂无可分配角色，请刷新企业权限后再创建邀请。");
     expect(within(dialog).getByRole("button", { name: "生成邀请链接" })).toBeDisabled();
     expect(createInvitationMock).not.toHaveBeenCalled();
   });

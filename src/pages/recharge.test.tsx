@@ -137,7 +137,7 @@ describe("充值管理页面", () => {
     const paymentCall = fetchMock.mock.calls.find(([input]) =>
       new URL(String(input), window.location.origin).pathname.endsWith("/pay"),
     );
-    expect(JSON.parse(String(paymentCall?.[1]?.body))).toEqual({ scene: "pc" });
+    expect(JSON.parse(String(paymentCall?.[1]?.body))).toEqual({ scene: "pc", channel: "alipay" });
   });
 
   it("余额提醒弹窗复用个人通知偏好并保存阈值", async () => {

@@ -1,6 +1,7 @@
 import { fetchAuthenticatedJson } from './authenticated'
 import { createBillingQuery, type BillingContext } from './billing'
-import { fetchJson, type FetchJsonOptions } from './http'
+import { ApiError, fetchJson, type FetchJsonOptions } from './http'
+import i18n from '@/i18n'
 import type { ApiTimestamp } from '@/utils/format'
 
 const PRODUCT_PLANS_PATH = '/api/user/product-plans'
@@ -120,6 +121,52 @@ export interface PurchasedProductPlanListOptions extends ProductPlanListOptions 
 }
 
 const PURCHASED_PRODUCT_PLANS_PATH = '/api/user/product-plans/purchased'
+export const RECENT_PRODUCT_PLAN_PURCHASES_PATH = '/api/product-plans/purchases/recent'
+
+/** 公开购买动态记录；手机号由服务端脱敏，价格使用订单快照。 */
+export interface RecentProductPlanPurchase {
+  purchase_time: ApiTimestamp
+  buyer_phone: string
+  plan_title: string
+  price_cent: string
+  price_yuan: string
+}
+
+export interface RecentProductPlanPurchasesResponse {
+  items: RecentProductPlanPurchase[]
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+}
+
+function parseRecentProductPlanPurchase(value: unknown): RecentProductPlanPurchase | null {
+  if (!isRecord(value)) return null
+  const purchaseTime = value.purchase_time
+  const buyerPhone = value.buyer_phone
+  const planTitle = value.plan_title
+  const priceCent = value.price_cent
+  const priceYuan = value.price_yuan
+  if (typeof purchaseTime !== 'number' || !Number.isSafeInteger(purchaseTime) || purchaseTime < 0 || typeof buyerPhone !== 'string' || typeof planTitle !== 'string' || !planTitle.trim()
+    || typeof priceCent !== 'string' || !priceCent.trim() || typeof priceYuan !== 'string' || !priceYuan.trim()) return null
+  return {
+    purchase_time: purchaseTime,
+    buyer_phone: buyerPhone.trim(),
+    plan_title: planTitle.trim(),
+    price_cent: priceCent.trim(),
+    price_yuan: priceYuan.trim(),
+  }
+}
+
+function parseRecentProductPlanPurchases(value: unknown): RecentProductPlanPurchasesResponse {
+  if (!isRecord(value)) throw new ApiError(i18n.t('api.http.unreadableResponse'), 502, 100003, null)
+  return {
+    items: Array.isArray(value.items) ? value.items.flatMap((item) => {
+      const parsed = parseRecentProductPlanPurchase(item)
+      return parsed ? [parsed] : []
+    }) : [],
+  }
+}
 
 /** 查询当前账务主体可购买的模型用量套餐。 */
 export function getProductPlans(context: BillingContext, options: ProductPlanListOptions = {}): Promise<ProductPlanListResponse> {
@@ -147,6 +194,17 @@ export function getPurchasedProductPlans(
     accessToken: options.accessToken,
     signal: options.signal,
   })
+}
+
+/** 查询公开的最近套餐购买动态，不携带登录令牌。 */
+export async function getRecentProductPlanPurchases(
+  options: { limit?: number; signal?: AbortSignal } = {},
+): Promise<RecentProductPlanPurchasesResponse> {
+  const limit = options.limit ?? 5
+  const query = new URLSearchParams({ limit: String(limit) })
+  return parseRecentProductPlanPurchases(await fetchJson<unknown>(`${RECENT_PRODUCT_PLAN_PURCHASES_PATH}?${query}`, {
+    signal: options.signal,
+  }))
 }
 
 /** 公开目录不携带令牌或企业 ID，不触发刷新登录态。 */

@@ -45,6 +45,14 @@ export interface BillingWallet {
   total_available_yuan: string
   total_balance_yuan: string
   version: string
+  /** 费用明细接口返回的各类余额变动字段。 */
+  consumed_amount_yuan?: string
+  expired_amount_yuan?: string
+  invitation_consumed_amount_yuan?: string
+  recharge_amount_yuan?: string
+  system_gift_amount_yuan?: string
+  voucher_exchange_amount_yuan?: string
+  points?: string | number
 }
 
 export type BillingBonusGrantStatus = 'active' | 'exhausted' | 'expired' | 'revoked' | string
@@ -262,7 +270,7 @@ export interface BillingLedgerItem {
 
 export interface BillingAnalysisResponse {
   account: BillingAccount
-  wallet: Pick<BillingWallet, 'currency' | 'status' | 'paid_available_yuan' | 'bonus_available_yuan' | 'total_available_yuan' | 'total_balance_yuan' | 'debt_yuan'>
+  wallet: Pick<BillingWallet, 'currency' | 'status' | 'paid_available_yuan' | 'bonus_available_yuan' | 'total_available_yuan' | 'total_balance_yuan' | 'debt_yuan' | 'consumed_amount_yuan' | 'expired_amount_yuan' | 'invitation_consumed_amount_yuan' | 'recharge_amount_yuan' | 'system_gift_amount_yuan' | 'voucher_exchange_amount_yuan' | 'points'>
   period?: { value: string; label: string; start: ApiTimestamp; end: ApiTimestamp }
   filters?: BillingAnalysisFilters
   metrics: BillingAnalysisMetrics
@@ -291,7 +299,8 @@ export interface BillingInvoiceItem {
   rejection_reason?: string
 }
 
-export type BillingInvoiceType = 'normal' | 'special'
+// 发票类型由后台配置下发，不能假设永远只有普通/专用两种编码。
+export type BillingInvoiceType = string
 
 export interface BillingInvoiceOption<T extends string = string> {
   value: T
@@ -316,6 +325,16 @@ export interface BillingInvoiceResponse {
   pending_count?: number | string
   history: BillingPageResult<BillingInvoiceItem>
   application_form?: BillingInvoiceApplicationForm
+}
+
+/** 提交发票前读取的实时开票资料（对应 invoice-information 接口）。 */
+export interface BillingInvoiceInformationResponse {
+  available_amount_yuan: string
+  taxpayer_type: 'enterprise' | 'personal' | string
+  title: string
+  tax_identifier: string
+  invoice_types: Array<{ code: string; name: string }>
+  project_name: string
 }
 
 export interface BillingInvoiceInput {
@@ -571,13 +590,22 @@ export function getBillingInvoices(context: BillingContext, options: BillingRequ
   return fetchAuthenticatedJson<BillingInvoiceResponse>(`${BILLING_PATH}/invoices?${query}`, requestOptions(options))
 }
 
+export function getBillingInvoiceInformation(context: BillingContext, options: Pick<BillingRequestOptions, 'accessToken' | 'signal'> = {}): Promise<BillingInvoiceInformationResponse> {
+  const query = createBillingQuery(context)
+  return fetchAuthenticatedJson<BillingInvoiceInformationResponse>(`${BILLING_PATH}/invoice-information?${query}`, options)
+}
+
 export function submitBillingInvoice(context: BillingContext, input: BillingInvoiceInput, idempotencyKey: string, options: Pick<BillingRequestOptions, 'accessToken' | 'signal'> = {}): Promise<BillingInvoiceItem> {
+  const normalizedKey = idempotencyKey.trim()
+  if (!/^[\x20-\x7e]{1,128}$/.test(normalizedKey)) {
+    throw new ApiError(i18n.t('api.billing.errors.100001'), 400, 100001, null)
+  }
   const query = createBillingQuery(context)
   return fetchAuthenticatedJson<BillingInvoiceItem>(`${BILLING_PATH}/invoices?${query}`, {
     ...options,
     method: 'POST',
     body: input,
-    headers: { 'Idempotency-Key': idempotencyKey },
+    headers: { 'Idempotency-Key': normalizedKey },
   })
 }
 
@@ -684,6 +712,7 @@ const BILLING_ERROR_KEYS: Record<number, string> = {
   100002: 'api.billing.errors.100002',
   100004: 'api.billing.errors.100004',
   100006: 'api.billing.errors.100006',
+  100007: 'api.billing.errors.100007',
   130001: 'api.billing.errors.130001',
   130002: 'api.billing.errors.130002',
   130003: 'api.billing.errors.130003',
@@ -695,6 +724,7 @@ const BILLING_ERROR_KEYS: Record<number, string> = {
   130009: 'api.billing.errors.130009',
   130010: 'api.billing.errors.130010',
   130011: 'api.billing.errors.130011',
+  130012: 'api.billing.errors.130012',
   130103: 'api.billing.errors.130103',
   130104: 'api.billing.errors.130104',
   130105: 'api.billing.errors.130105',
@@ -713,6 +743,8 @@ const BILLING_ERROR_KEYS: Record<number, string> = {
   170007: 'api.billing.errors.170007',
   170008: 'api.billing.errors.170008',
   170012: 'api.billing.errors.170012',
+  // 渠道未开通与渠道临时失败同为 503，必须按业务码区分，否则只能给出无信息的通用文案。
+  170013: 'api.billing.errors.170013',
 }
 
 export function getBillingErrorMessage(error: unknown): string {

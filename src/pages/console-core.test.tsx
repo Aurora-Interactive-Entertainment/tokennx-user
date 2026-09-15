@@ -182,17 +182,19 @@ describe('控制台模型接入页面', () => {
     const clipboardWriteText = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue(undefined)
     renderConsolePage(<QuickstartPage />, ['/console/quickstart?model=deepseek-chat&protocol=openai&language=curl'])
 
-    expect(await screen.findByText('几分钟内完成接入')).toBeInTheDocument()
-    expect(screen.getByText('第一步')).toBeInTheDocument()
+    // 加载占位与接入页共用同一标题文案，先等待只在加载完成后出现的「第一步」步骤标题，避免断言落在随后被替换的占位节点上。
+    expect(await screen.findByText('第一步')).toBeInTheDocument()
+    expect(screen.getByText('几分钟内完成接入')).toBeInTheDocument()
     expect(screen.getByText('第二步')).toBeInTheDocument()
     expect(screen.getByText('第三步')).toBeInTheDocument()
     // 快速接入文档规定页面只读取模型目录，密钥创建通过链接交给密钥管理页。
     expect(vi.mocked(globalThis.fetch).mock.calls.every(([input]) => !String(input).includes('/api/user/api-keys'))).toBe(true)
     expect(screen.getByRole('link', { name: '立即创建' })).toHaveAttribute('href', expect.stringContaining('/console/api-keys?return='))
 
-    const integrationToggle = screen.getByRole('button', { name: 'API 接入' })
-    await user.click(integrationToggle)
-    const integrationSection = integrationToggle.closest('section') as HTMLElement
+    // 第三步（接入智能体）面板默认折叠且 aria-hidden，需先展开该步骤，其中的接入示例才可被无障碍查询访问。
+    const agentStepToggle = screen.getByRole('button', { name: '接入智能体' })
+    await user.click(agentStepToggle)
+    const integrationSection = agentStepToggle.closest('section') as HTMLElement
     expect(integrationSection).toHaveTextContent(MODEL_API_BASE_URL)
     expect(integrationSection).toHaveTextContent('/chat/completions')
     expect(integrationSection).toHaveTextContent('deepseek-public')

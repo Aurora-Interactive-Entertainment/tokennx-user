@@ -4,11 +4,13 @@ import { Link } from "react-router";
 import type { BillingContext } from "@/api/billing";
 import { isPaymentActive, isPaymentSettled } from "@/api/payment-flow";
 import Spin from "@douyinfe/semi-ui/lib/es/spin";
+import { IconRefresh } from "@douyinfe/semi-icons";
 import { PaymentQRCode } from "./payment-qr-code";
 import { PaymentQRCodeFrame } from "./payment-qr-frame";
 import { PurchaseVerificationGate } from "./purchase-verification-gate";
 import { usePlanPayment } from "./use-plan-payment";
 import AppModal from "@/components/app-modal";
+import { appToast } from "@/components/app-toast";
 import wechatIcon from "@/assets/payment-icons/wechat-pay.svg";
 import alipayIcon from "@/assets/payment-icons/alipay.svg";
 import "./purchase-payment-modal.css";
@@ -57,6 +59,15 @@ function PurchasePaymentContent({
   const { t } = useTranslation();
   const [closing, setClosing] = useState(false);
   const payment = usePlanPayment(context, planID, onPaid, onAuthFailure);
+  useEffect(() => {
+    if (payment.error) appToast.error(payment.error);
+  }, [payment.error]);
+  useEffect(() => {
+    // 订单确认入账（paid_at 已回）后自动关闭支付弹窗：买完不该再留一个需要手动关闭的弹窗。
+    // 已支付但尚未到账时继续查单，等入账确认后再关闭，避免提前切断状态确认。
+    if (!closing && payment.order && isPaymentSettled(payment.order))
+      void payment.close(() => setClosing(true));
+  }, [payment.order, closing]);
   useEffect(() => {
     // 服务端再次要求实名时卸载支付会话，认证提示下面不保留支付弹窗或查单任务。
     if (payment.realNameRequired) onRealNameRequired();
@@ -132,8 +143,6 @@ function PurchasePaymentContent({
                   <span className="purchase-payment-consent" role="status">{t(`${copy}.agreementRequired`)}</span>
                 ) : payment.busy ? (
                   <div className="purchase-payment-loading" role="status"><Spin size="large" /><span>{t(`${copy}.processing`)}</span></div>
-                ) : payment.expired && payment.active && payment.order?.status !== "paid" ? (
-                  <span role="status">{t("console.billing.paymentStatusExpired")}</span>
                 ) : payment.order?.status !== "paid" && payment.active && payment.qr ? (
                   <PaymentQRCode
                     value={payment.qr}
@@ -148,6 +157,21 @@ function PurchasePaymentContent({
                     errorMessage={t("api.billing.paymentFormInvalid")}
                     onError={payment.handleError}
                   />
+                ) : payment.order?.status !== "paid" && !payment.blocked && (!payment.order || isPaymentActive(payment.order.status)) ? (
+                  // 订单没建出来（下单失败）或建出来了却拿不到二维码/表单（发起支付失败）：
+                  // 都必须给出明确的重试入口，否则界面只剩一句状态文案，用户无路可走。
+                  // 重试沿用同一个支付幂等键：上一次没有创建成功，同键重试才是补上那次调用。
+                  <button
+                    type="button"
+                    className="purchase-payment-qr-refresh"
+                    aria-label={t(`${copy}.retry`)}
+                    title={t(`${copy}.retry`)}
+                    // 只跟 busy：查单在途时 querying 为真，若一并禁用会让按钮点不动。
+                    disabled={payment.busy}
+                    onClick={() => void payment.start()}
+                  >
+                    <IconRefresh aria-hidden="true" />
+                  </button>
                 ) : payment.order ? (
                   <span role="status">
                     {payment.order.status === "paid" && payment.order.paid_at
@@ -157,15 +181,6 @@ function PurchasePaymentContent({
                         )}
                   </span>
                 ) : <span>{t(`${copy}.qrUnavailable`)}</span>}
-              </div>
-              {/* 操作按钮紧跟二维码，用户无需在弹窗底部寻找刷新或重试入口。 */}
-              <div className="purchase-payment-actions">
-                {agreed && !payment.blocked && payment.error && (!payment.order || isPaymentActive(payment.order.status)) && (
-                  <button type="button" disabled={payment.busy} onClick={() => void payment.start()}>{t(`${copy}.retry`)}</button>
-                )}
-                {payment.active && (
-                  <button type="button" disabled={payment.busy || payment.querying} onClick={payment.refresh}>{t(`${copy}.refresh`)}</button>
-                )}
               </div>
               <fieldset
                 className="purchase-payment-options"
@@ -208,14 +223,6 @@ function PurchasePaymentContent({
               </div>
             </div>
           </div>
-          {agreed && payment.error && <p className="purchase-payment-error" role="alert">{payment.error}</p>}
-          {agreed && payment.order && (
-            <p className="purchase-payment-status" role="status">
-              {t("console.billing.paymentReturnOrder", {
-                orderNo: payment.order.order_no,
-              })}
-            </p>
-          )}
         </div>
       </AppModal>
     </>

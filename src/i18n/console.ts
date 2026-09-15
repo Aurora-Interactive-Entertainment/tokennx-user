@@ -1219,6 +1219,7 @@ export const consoleResources = {
           plan: "开通了 Kimi k3 ¥1.00套餐",
           highlight: "Kimi k3 ¥1.00",
           time: "5分钟前",
+          purchase: "开通了 {{plan}} ¥{{price}}套餐",
         },
         activityModal: {
           title: "限时活动",
@@ -3651,6 +3652,7 @@ export const consoleResources = {
           plan: "activated Kimi k3 ¥1.00 plan",
           highlight: "Kimi k3 ¥1.00",
           time: "5 minutes ago",
+          purchase: "activated {{plan}} ¥{{price}} plan",
         },
         activityModal: {
           title: "Limited-time event",
