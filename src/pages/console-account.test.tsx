@@ -69,6 +69,7 @@ function mockApiKeyApi(config: {
   expireAccess?: boolean;
   refreshFails?: boolean;
   empty?: boolean;
+  items?: Array<typeof KEY_ITEM>;
   limitsDisabled?: boolean;
   noSelectedModels?: boolean;
   withoutSecret?: boolean;
@@ -86,7 +87,7 @@ function mockApiKeyApi(config: {
     keyItem.model_ids = []
     keyItem.models = []
   }
-  let items = config.empty ? [] : [keyItem]
+  let items = config.empty ? [] : config.items ?? [keyItem]
   let accessExpired = config.expireAccess ?? false
   const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, requestOptions) => {
     const url = String(input)
@@ -210,6 +211,29 @@ describe('密钥管理页面', () => {
     expect(updateSelectedKeyIDs(['page-one-key', 'page-two-key'], ['page-two-key'], false)).toEqual(['page-one-key'])
   })
 
+  it('标签筛选覆盖后续分页的数据，并支持清除筛选', async () => {
+    const user = userEvent.setup()
+    mockApiKeyApi({ items: Array.from({ length: 25 }, (_, index) => ({ ...KEY_ITEM, id: `tag-key-${index}`, name: `标签测试密钥-${index}`, tags: [index === 24 ? '生产环境' : '开发环境'] })) })
+    renderPage()
+    expect(await screen.findByText('标签测试密钥-0')).toBeInTheDocument()
+    expect(screen.queryByText('标签测试密钥-24')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('combobox', { name: '按标签筛选' }))
+    fireEvent(document.querySelector('.semi-popover-wrapper')!, new Event('webkitAnimationEnd', { bubbles: true }))
+    fireEvent.click(await screen.findByRole('option', { name: /生产环境/ }))
+    // Semi 在收起动画后提交选择；jsdom 中 React 监听的是带前缀的动画结束事件。
+    await waitFor(() => expect(document.querySelector('.semi-tooltip-animation-hide')).not.toBeNull())
+    fireEvent(document.querySelector('.semi-popover-wrapper')!, new Event('webkitAnimationEnd', { bubbles: true }))
+    expect(await screen.findByText('标签测试密钥-24')).toBeInTheDocument()
+    expect(screen.queryByText('标签测试密钥-0')).not.toBeInTheDocument()
+    expect(screen.getAllByRole('row')).toHaveLength(2)
+    await user.click(screen.getByRole('combobox', { name: '按标签筛选' }))
+    fireEvent(document.querySelector('.semi-popover-wrapper')!, new Event('webkitAnimationEnd', { bubbles: true }))
+    fireEvent.click(await screen.findByRole('option', { name: /全部标签/ }))
+    await waitFor(() => expect(document.querySelector('.semi-tooltip-animation-hide')).not.toBeNull())
+    fireEvent(document.querySelector('.semi-popover-wrapper')!, new Event('webkitAnimationEnd', { bubbles: true }))
+    expect(await screen.findByText('标签测试密钥-0')).toBeInTheDocument()
+  })
+
   it('加载真实密钥列表并展示参考页核心结构', async () => {
     mockApiKeyApi()
     renderPage()
@@ -225,6 +249,7 @@ describe('密钥管理页面', () => {
       'API 密钥',
       '创建人',
       '状态',
+      '标签',
       '创建时间',
       '操作',
     ])

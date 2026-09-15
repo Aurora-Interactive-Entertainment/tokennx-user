@@ -1,8 +1,10 @@
 import { useEffect } from 'react'
 import { useLocation } from 'react-router'
 import { useTranslation } from 'react-i18next'
+import { consoleRouteTitle } from '@/routes/console-route-meta'
 
-export const SITE_ORIGIN = 'https://tokennx.com'
+// 浏览器端以当前站点为准，预览环境和正式域名都不会被写死到 SEO 链接里。
+export const SITE_ORIGIN = new URL(import.meta.env.VITE_PUBLIC_SITE_ORIGIN?.trim() || (typeof window !== 'undefined' ? window.location.origin : 'https://tokennx.cn')).origin
 export const SITE_NAME = 'Token NX'
 export const SITE_DESCRIPTION = '合规的企业级大型 AI 算力聚合平台'
 export const SITE_SHARE_IMAGE = `${SITE_ORIGIN}/og/share.png`
@@ -44,8 +46,8 @@ const SEO_PAGES: Record<string, SeoPage> = {
       heading: '企业级 AI 算力聚合平台',
       summary: 'Token NX 聚合多家大模型的算力，为开发者和企业提供系统级、企业级的 AI 算力服务，以优质服务和低廉价格降低 AI 使用成本。',
       answers: [
-        { question: 'Token NX 是什么？', answer: 'Token NX 是合规的企业级大型 AI 算力聚合平台，把多家大模型的算力、API Key、公开价格和调用记录集中在一个入口。' },
-        { question: '如何开始调用模型？', answer: '创建 API Key 后，在 OpenAI 兼容 SDK 中把 Base URL 配置为 https://api.tokennx.com/v1，选择可用模型并发送请求。' },
+        { question: 'Token NX 是什么？', answer: 'Token NX 是合规的企业级大型 AI 算力聚合平台，把多家大模型的算力、API Key 和公开价格集中在一个入口。' },
+        { question: '如何开始调用模型？', answer: '创建 API Key 后，在 OpenAI 兼容 SDK 中把 Base URL 配置为 https://api.tokennx.cn/v1，选择可用模型并发送请求。' },
         { question: '为什么选择 Token NX？', answer: '合规运营、企业级服务、多家大模型算力聚合，以及低廉的价格和优质的服务支持。' },
       ],
       breadcrumb: '首页',
@@ -56,8 +58,8 @@ const SEO_PAGES: Record<string, SeoPage> = {
       heading: 'Enterprise-Grade AI Compute Aggregation',
       summary: 'Token NX aggregates compute from multiple large models and delivers system-level, enterprise-level AI compute services to developers and enterprises, lowering AI costs with quality support and low pricing.',
       answers: [
-        { question: 'What is Token NX?', answer: 'Token NX is a compliant, enterprise-grade AI compute aggregation platform that brings model compute, API keys, public pricing, and request records into one entry point.' },
-        { question: 'How do I start calling a model?', answer: 'After creating an API key, set the Base URL to https://api.tokennx.com/v1 in an OpenAI-compatible SDK, select a model, and send a request.' },
+        { question: 'What is Token NX?', answer: 'Token NX is a compliant, enterprise-grade AI compute aggregation platform that brings model compute, API keys, and public pricing into one entry point.' },
+        { question: 'How do I start calling a model?', answer: 'After creating an API key, set the Base URL to https://api.tokennx.cn/v1 in an OpenAI-compatible SDK, select a model, and send a request.' },
         { question: 'Why choose Token NX?', answer: 'Compliant operations, enterprise-grade services, aggregated compute from multiple large models, and low pricing with quality support.' },
       ],
       breadcrumb: 'Home',
@@ -92,8 +94,8 @@ const SEO_PAGES: Record<string, SeoPage> = {
   },
   '/about': {
     schemaType: 'AboutPage',
-    zh: { title: '平台介绍 - Token NX', description: '了解 Token NX 的合规运营、企业级算力聚合服务、数据处理原则和官方联系方式。', heading: 'Token NX 平台', summary: 'Token NX 是合规的企业级大型 AI 算力聚合平台，聚合多家大模型算力，提供用量计费、调用记录和密钥管理，并公开说明服务边界。', breadcrumb: '平台介绍' },
-    en: { title: 'About - Token NX', description: "Learn about Token NX's compliant, enterprise-grade AI compute services, data handling, and official contact.", heading: 'About Token NX', summary: 'Token NX is a compliant, enterprise-grade AI compute aggregation platform providing usage-based billing, request records, and key management while explaining service boundaries.', breadcrumb: 'About' },
+    zh: { title: '平台介绍 - Token NX', description: '了解 Token NX 的合规运营、企业级算力聚合服务、数据处理原则和官方联系方式。', heading: 'Token NX 平台', summary: 'Token NX 是合规的企业级大型 AI 算力聚合平台，聚合多家大模型算力，提供用量计费和密钥管理，并公开说明服务边界。', breadcrumb: '平台介绍' },
+    en: { title: 'About - Token NX', description: "Learn about Token NX's compliant, enterprise-grade AI compute services, data handling, and official contact.", heading: 'About Token NX', summary: 'Token NX is a compliant, enterprise-grade AI compute aggregation platform providing usage-based billing and key management while explaining service boundaries.', breadcrumb: 'About' },
   },
   '/terms': {
     schemaType: 'WebPage',
@@ -102,8 +104,8 @@ const SEO_PAGES: Record<string, SeoPage> = {
   },
   '/privacy': {
     schemaType: 'WebPage',
-    zh: { title: '隐私政策 - Token NX', description: '了解 Token NX 如何收集、使用、保存和保护账户信息、调用数据及相关服务数据。', heading: 'Token NX 隐私政策', summary: '本页面说明 Token NX 在提供账户、计费、模型调用和调用记录服务时如何处理与保护必要数据。', breadcrumb: '隐私政策' },
-    en: { title: 'Privacy Policy - Token NX', description: 'Understand how Token NX collects, uses, stores, and protects account information, call data, and related service data.', heading: 'Token NX Privacy Policy', summary: 'This page explains how Token NX handles and protects necessary data while providing accounts, billing, model access, and request records.', breadcrumb: 'Privacy Policy' },
+    zh: { title: '隐私政策 - Token NX', description: '了解 Token NX 如何收集、使用、保存和保护账户信息、模型调用及相关服务数据。', heading: 'Token NX 隐私政策', summary: '本页面说明 Token NX 在提供账户、计费和模型调用服务时如何处理与保护必要数据。', breadcrumb: '隐私政策' },
+    en: { title: 'Privacy Policy - Token NX', description: 'Understand how Token NX collects, uses, stores, and protects account information, call data, and related service data.', heading: 'Token NX Privacy Policy', summary: 'This page explains how Token NX handles and protects necessary data while providing accounts, billing, and model access.', breadcrumb: 'Privacy Policy' },
   },
   '/docs': {
     schemaType: 'WebPage',
@@ -132,8 +134,8 @@ const SEO_PAGES: Record<string, SeoPage> = {
   },
   '/pricing': {
     schemaType: 'CollectionPage',
-    zh: { title: '模型价格 - Token NX', description: '对比模型公司参考价与 Token NX 公开价格。', heading: '模型价格', summary: '查看 Token NX 公开模型的价格对照与计费说明。', breadcrumb: '价格' },
-    en: { title: 'Model Pricing - Token NX', description: 'Compare provider reference prices with public Token NX pricing.', heading: 'Model Pricing', summary: 'Review public model pricing comparisons and billing notes on Token NX.', breadcrumb: 'Pricing' },
+    zh: { title: '套餐价格 - Token NX', description: '查看 Token NX 当前套餐价格、模型额度和有效期。', heading: '套餐价格', summary: '比较 Token NX 公开套餐，查看额度、有效期和购买说明。', breadcrumb: '套餐价格' },
+    en: { title: 'Package Pricing - Token NX', description: 'Compare Token NX package prices, model quotas, and validity periods.', heading: 'Package Pricing', summary: 'Review public Token NX packages, quotas, validity periods, and purchase details.', breadcrumb: 'Package pricing' },
   },
   '/status': {
     schemaType: 'WebPage',
@@ -178,7 +180,11 @@ export function resolveSeo(pathname: string, language: string): ResolvedSeo {
   const modelDetail = routePath.startsWith('/models/') && routePath !== '/models'
   const page = SEO_PAGES[routePath]
   const noindex = isNoindexPath(routePath) || (!page && !modelDetail)
-  const copy = modelDetail ? MODEL_DETAIL_COPY[locale] : page?.[locale === 'en-US' ? 'en' : 'zh'] ?? MODEL_DETAIL_COPY[locale]
+  const consolePage = routePath === '/console' || routePath.startsWith('/console/')
+  const consoleTitle = consoleRouteTitle(routePath, locale)
+  const copy = consolePage
+    ? { title: `${consoleTitle} - ${SITE_NAME}`, heading: consoleTitle, breadcrumb: consoleTitle, description: '', summary: '' }
+    : modelDetail ? MODEL_DETAIL_COPY[locale] : page?.[locale === 'en-US' ? 'en' : 'zh'] ?? MODEL_DETAIL_COPY[locale]
   const routeForLanguage = modelDetail ? routePath : routePath
   const canonical = noindex ? undefined : canonicalPath(routeForLanguage, locale)
   const canonicalUrl = canonical ? `${SITE_ORIGIN}${canonical}` : undefined
@@ -210,7 +216,7 @@ function createLink(rel: string, href: string, extra: Record<string, string> = {
 function buildJsonLd(seo: ResolvedSeo): Record<string, unknown> {
   const canonicalUrl = seo.canonicalUrl ?? SITE_ORIGIN
   const graph: Record<string, unknown>[] = [
-    { '@type': 'Organization', '@id': `${SITE_ORIGIN}/#organization`, name: SITE_NAME, url: SITE_ORIGIN, logo: SITE_LOGO, description: 'Token NX 是合规的企业级大型 AI 算力聚合平台，提供用量计费、调用记录和密钥管理。', email: 'legal@tokennx.com' },
+    { '@type': 'Organization', '@id': `${SITE_ORIGIN}/#organization`, name: SITE_NAME, url: SITE_ORIGIN, logo: SITE_LOGO, description: 'Token NX 是合规的企业级大型 AI 算力聚合平台，提供用量计费和密钥管理。', email: 'support@tokennx.com' },
     { '@type': 'WebSite', '@id': `${SITE_ORIGIN}/#website`, url: `${SITE_ORIGIN}/`, name: SITE_NAME, description: SITE_DESCRIPTION, inLanguage: ['zh-CN', 'en'], publisher: { '@id': `${SITE_ORIGIN}/#organization` } },
     { '@type': 'Service', '@id': `${SITE_ORIGIN}/#service`, name: SITE_NAME, serviceType: SITE_DESCRIPTION, description: 'Token NX 聚合多家大模型的算力，为开发者和企业提供系统级、企业级的 AI 算力服务，以优质服务和低廉价格降低 AI 使用成本。', url: `${SITE_ORIGIN}/`, provider: { '@id': `${SITE_ORIGIN}/#organization` }, termsOfService: `${SITE_ORIGIN}/terms/` },
   ]

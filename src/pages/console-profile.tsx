@@ -17,7 +17,7 @@ import {
 } from '@/api/profile'
 import { getAccessToken } from '@/auth/token-storage'
 import { isAuthenticationFailure } from '@/api/http'
-import { AccountSettingsModal, PageTitle } from '@/components/common'
+import { AccountSettingsModal, PageTitle, workspacesFromMemberships } from '@/components/common'
 import { SettingsAnchorLayout, type SettingsAnchorItem } from '@/components/settings-anchor-layout'
 import { NEW_ENTERPRISE_CREATE_PATH } from '@/api/enterprise-certification'
 import { useAppStore } from '@/data/app-state'
@@ -29,6 +29,7 @@ import { useTranslation } from 'react-i18next'
 import { appToast as Toast } from '@/components/app-toast'
 import { publishProfileUpdate, subscribeProfileUpdates } from '@/profile/profile-sync'
 import { AccountDeletionFlow } from '@/components/account-deletion-flow'
+import { enterpriseRoleLabel } from '@/utils/enterprise-labels'
 import './console-profile.css'
 
 const PREFERENCE_DEFINITIONS: Record<NotificationPreferenceCode, { labelKey: string; descriptionKey: string }> = {
@@ -37,7 +38,6 @@ const PREFERENCE_DEFINITIONS: Record<NotificationPreferenceCode, { labelKey: str
   billing_updates: { labelKey: 'profile.notifications.billingUpdates', descriptionKey: 'profile.notifications.billingUpdatesDescription' },
   low_balance: { labelKey: 'profile.notifications.lowBalance', descriptionKey: 'profile.notifications.lowBalanceDescription' },
   usage_alerts: { labelKey: 'profile.notifications.usageAlerts', descriptionKey: 'profile.notifications.usageAlertsDescription' },
-  workflow_results: { labelKey: 'profile.notifications.workflowResults', descriptionKey: 'profile.notifications.workflowResultsDescription' },
   invitations: { labelKey: 'profile.notifications.invitations', descriptionKey: 'profile.notifications.invitationsDescription' },
   service_updates: { labelKey: 'profile.notifications.serviceUpdates', descriptionKey: 'profile.notifications.serviceUpdatesDescription' },
   product_updates: { labelKey: 'profile.notifications.productUpdates', descriptionKey: 'profile.notifications.productUpdatesDescription' },
@@ -63,12 +63,11 @@ function normalizeProfile(profile: UserProfile): UserProfile {
 }
 
 function roleLabels(roles: string[], locale: string, roleOptions: EnterpriseRoleOption[] = []): string {
-  if (locale === 'en-US') return roles.join(', ')
-  return roles.map((role) => roleOptions.find((option) => option.code === role)?.name || role).join('、')
+  return roles.map((role) => enterpriseRoleLabel(role, roleOptions)).join(locale.startsWith('en') ? ', ' : '、')
 }
 
 export function SettingsPage() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const dispatch = useAppDispatch()
   const authUser = useAppSelector((state) => state.auth.user)
   const authUserRef = useRef(authUser)
@@ -164,11 +163,11 @@ export function SettingsPage() {
         id: membership.enterprise_id,
         name: membership.enterprise_name,
         type: t('profile.workspace.enterpriseType'),
-        role: roleLabels(membership.roles.length ? membership.roles : ['owner'], profile.locale ?? authUser?.locale ?? 'zh-CN', membership.enterprise_id === enterpriseContext?.id ? enterpriseContext.role_options : []),
+        role: roleLabels(membership.roles, i18n.language, membership.enterprise_id === enterpriseContext?.id ? enterpriseContext.role_options : []) || '--',
         current: activeWorkspaceId === membership.enterprise_id || activeWorkspaceId === membership.id,
       })),
     ]
-  }, [authUser?.locale, enterprises, enterpriseContext, profile, store.activeWorkspace.id, store.activeWorkspace.type, t])
+  }, [enterprises, enterpriseContext, i18n.language, profile, store.activeWorkspace.id, store.activeWorkspace.type, t])
 
   const anchorItems = useMemo<SettingsAnchorItem[]>(() => [
     { id: 'settings-account', label: t('profile.account.title') },
@@ -246,8 +245,8 @@ export function SettingsPage() {
                   if (!definition) return null
                   return (
                     <label className="notification-row" htmlFor={`profile-notification-${code}`} key={code}>
-                      <span><strong>{t(definition.labelKey)}</strong><small>{t(definition.descriptionKey)}</small></span>
-                      <Switch id={`profile-notification-${code}`} aria-label={t(definition.labelKey)} checked={item.enabled} disabled={Boolean(savingPreference) || item.mandatory === true} loading={savingPreference === code} onChange={(enabled) => { void savePreference(code, enabled) }} />
+                      <span><strong>{t(definition.labelKey)}</strong><small>{t(definition.descriptionKey)}</small>{item.mandatory === true ? <small id={`profile-notification-${code}-mandatory`}>{t('profile.notifications.mandatoryHint')}</small> : null}</span>
+                      <Switch id={`profile-notification-${code}`} aria-label={t(definition.labelKey)} aria-describedby={item.mandatory === true ? `profile-notification-${code}-mandatory` : undefined} checked={item.enabled} disabled={Boolean(savingPreference) || item.mandatory === true} loading={savingPreference === code} onChange={(enabled) => { void savePreference(code, enabled) }} />
                     </label>
                   )
                 })}
@@ -265,12 +264,19 @@ export function SettingsPage() {
                 {workspaceItems.map((workspace) => (
                   <div className="workspace-item" key={workspace.id}>
                     <div><strong>{workspace.name}</strong><small>{workspace.type}</small></div>
-                    <span>{workspace.current ? t('profile.workspace.current') : workspace.role}</span>
+                    <div className="workspace-item-actions">
+                      <span>{workspace.current ? t('profile.workspace.current') : workspace.role}</span>
+                      {!workspace.current ? <Button theme="outline" size="small" aria-label={t('profile.workspace.switchTo', { name: workspace.name })} onClick={() => {
+                        // 与头像菜单共用空间转换和切换逻辑，先同步最新成员关系再切换。
+                        store.replaceEnterpriseWorkspaces(workspacesFromMemberships(enterprises))
+                        store.switchWorkspace(workspace.id)
+                      }}>{t('profile.workspace.switch')}</Button> : null}
+                    </div>
                   </div>
                 ))}
               </div>
               <Button className="settings-secondary-button" theme="outline" onClick={() => navigate(NEW_ENTERPRISE_CREATE_PATH)}>{t('profile.workspace.create')}</Button>
-              <p className="settings-hint">{t('profile.workspace.createHint')}</p>
+              {enterprises.length === 0 ? <p className="settings-hint">{t('profile.workspace.createHint')}</p> : null}
             </div>
           </section>
 

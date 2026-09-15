@@ -51,6 +51,7 @@ import {
 import { EnterprisePageShell, useEnterpriseConsoleContext, useEnterpriseErrorHandler, EnterpriseError, EnterpriseLoading } from "./enterprise-console-shared";
 import { ConsoleTabs } from "@/components/console-tabs";
 import { formatApiTime } from "@/utils/format";
+import { enterpriseRoleLabel, joinSourceLabel } from "@/utils/enterprise-labels";
 import "@/trae-enterprise.css";
 
 type Translate = (key: string, options?: Record<string, unknown>) => string;
@@ -1882,17 +1883,13 @@ function TraeEnterpriseMembersContent({ context }: { context: EnterpriseContext 
                     title: t("traeEnterprise.members.role"),
                     dataIndex: "role",
                     key: "role",
-                    render: (value) =>
-                      value === "admin"
-                        ? t("traeEnterprise.members.owner")
-                        : value === "owner"
-                          ? t("traeEnterprise.members.admin")
-                          : t("traeEnterprise.members.member"),
+                    render: (value) => enterpriseRoleLabel(String(value), context.role_options),
                   },
                   {
                     title: t("traeEnterprise.members.type"),
                     dataIndex: "account",
                     key: "type",
+                    render: (value) => joinSourceLabel(String(value)),
                   },
                   {
                     title: t("traeEnterprise.members.joined"),

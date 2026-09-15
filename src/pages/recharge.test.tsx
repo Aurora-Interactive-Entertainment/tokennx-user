@@ -103,7 +103,7 @@ describe("充值管理页面", () => {
 
     const user = userEvent.setup();
     expect(
-      screen.getByRole("heading", { name: "充值汇款" }),
+      screen.getByRole("heading", { name: "充值管理" }),
     ).toBeInTheDocument();
     expect(
       screen.queryByText(
@@ -221,6 +221,7 @@ describe("充值管理页面", () => {
   });
 
   it("实时提示自定义充值金额错误并在满足最低金额后启用充值", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(apiResponse({ items: [], total: 0, page: 1, page_size: 10 }));
     render(
       <MemoryRouter initialEntries={["/console/recharge"]}>
         <Provider store={createAppStore()}>

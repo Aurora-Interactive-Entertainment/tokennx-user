@@ -14,6 +14,7 @@ import {
   AppLoadingScreen,
   ConsoleLayout,
   DEFAULT_CONSOLE_PATH,
+  prefetchUnreadNotificationCount,
   PublicLayout,
 } from "@/components/common";
 import { AppStoreProvider } from "@/data/app-state";
@@ -25,6 +26,7 @@ import {
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { subscribeAuthTokenChanges } from "@/auth/token-storage";
 import { SeoManager } from "@/seo/site-seo";
+import type { ConsoleRoutePath } from "@/routes/console-route-meta";
 import { syncSentryIdentity } from "@/observability/sentry";
 import { WechatCallbackPage } from "@/pages/wechat-callback";
 
@@ -215,6 +217,35 @@ const SettingsPage = lazy(() =>
   })),
 );
 
+// 路由组件必须覆盖标题清单，防止新增控制台页面漏配元信息。
+const consolePages: Record<ConsoleRoutePath, ReactNode> = {
+  "models": <ConsoleModelsPage />,
+  "models/:modelId": <ConsoleModelDetailPage />,
+  "playground": <PlaygroundPage />,
+  "image": <ImagePage />,
+  "video": <VideoPage />,
+  "quickstart": <QuickstartPage />,
+  "api-keys": <ApiKeysPage />,
+  "enterprise-api-keys": <ApiKeysPage mode="enterprise" />,
+  "usage": <PersonalUsagePage />,
+  "billing": <BillingPage />,
+  "subscription": <SubscriptionPage />,
+  "purchase": <PurchasePage />,
+  "recharge": <RechargePage />,
+  "real-name": <RealNamePage />,
+  "settings": <SettingsPage />,
+  "invitations": <InvitationsPage />,
+  "enterprise-create": <EnterpriseCreatePage />,
+  "enterprise-governance": <EnterpriseGovernancePage />,
+  "enterprise-models": <EnterpriseModelsPage />,
+  "enterprise-settings": <EnterpriseSettingsPage />,
+  "trae-enterprise/data-analysis": <TraeEnterpriseAnalysisPage />,
+  "trae-enterprise/users": <TraeEnterpriseMembersPage />,
+  "trae-enterprise/subscription": <SubscriptionPage />,
+  "trae-enterprise/usage": <TraeEnterpriseUsagePage />,
+  "trae-enterprise/operation-log": <TraeEnterpriseAuditPage />,
+};
+
 export function ConsoleOutlet() {
   const { t } = useTranslation();
   const authStatus = useAppSelector((state) => state.auth.status);
@@ -236,6 +267,18 @@ export function AuthBootstrap({ children }: { children: ReactNode }) {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const authStatus = useAppSelector((state) => state.auth.status);
+
+  // 登录后预取一次未读通知数：铃铛红点来自客服浮层派发的未读数事件，
+  // 浮层此前只在打开通知面板时才取数，导致红点必须点一下才出现。
+  // 这里按登录态取一次，不轮询；未登录不请求，避免无谓的鉴权失败。
+  useEffect(() => {
+    if (authStatus !== "authenticated") return undefined;
+    const controller = new AbortController();
+    void prefetchUnreadNotificationCount(controller.signal).catch(() => {
+      // 预取失败不影响页面，红点保持隐藏，等用户打开通知面板时再取。
+    });
+    return () => controller.abort();
+  }, [authStatus]);
 
   useEffect(
     () =>
@@ -407,64 +450,9 @@ export default function App({ onBootReady }: { onBootReady: () => void }) {
               </Route>
               <Route path="/console" element={<ConsoleOutlet />}>
                 <Route index element={<ConsoleHomeRedirect />} />
-                <Route path="models" element={<ConsoleModelsPage />} />
-                <Route
-                  path="models/:modelId"
-                  element={<ConsoleModelDetailPage />}
-                />
-                <Route path="playground" element={<PlaygroundPage />} />
-                <Route path="image" element={<ImagePage />} />
-                <Route path="video" element={<VideoPage />} />
-                <Route path="quickstart" element={<QuickstartPage />} />
-                <Route path="api-keys" element={<ApiKeysPage />} />
-                <Route
-                  path="enterprise-api-keys"
-                  element={<ApiKeysPage mode="enterprise" />}
-                />
-                <Route path="usage" element={<PersonalUsagePage />} />
-                <Route path="billing" element={<BillingPage />} />
-                <Route path="subscription" element={<SubscriptionPage />} />
-                <Route path="purchase" element={<PurchasePage />} />
-                <Route path="recharge" element={<RechargePage />} />
-                <Route path="real-name" element={<RealNamePage />} />
-                <Route path="settings" element={<SettingsPage />} />
-                <Route path="invitations" element={<InvitationsPage />} />
-                <Route
-                  path="enterprise-create"
-                  element={<EnterpriseCreatePage />}
-                />
-                <Route
-                  path="enterprise-governance"
-                  element={<EnterpriseGovernancePage />}
-                />
-                <Route
-                  path="enterprise-models"
-                  element={<EnterpriseModelsPage />}
-                />
-                <Route
-                  path="enterprise-settings"
-                  element={<EnterpriseSettingsPage />}
-                />
-                <Route
-                  path="trae-enterprise/data-analysis"
-                  element={<TraeEnterpriseAnalysisPage />}
-                />
-                <Route
-                  path="trae-enterprise/users"
-                  element={<TraeEnterpriseMembersPage />}
-                />
-                <Route
-                  path="trae-enterprise/subscription"
-                  element={<SubscriptionPage />}
-                />
-                <Route
-                  path="trae-enterprise/usage"
-                  element={<TraeEnterpriseUsagePage />}
-                />
-                <Route
-                  path="trae-enterprise/operation-log"
-                  element={<TraeEnterpriseAuditPage />}
-                />
+                {Object.entries(consolePages).map(([path, element]) => (
+                  <Route key={path} path={path} element={element} />
+                ))}
               </Route>
               <Route path="/home" element={<Navigate to="/" replace />} />
               {SentryTestPage ? (

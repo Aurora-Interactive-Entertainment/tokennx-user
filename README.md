@@ -143,6 +143,8 @@ npm run release:verify
 
 该检查只覆盖本地构建目录，不能替代上线后的 HTTP 冒烟检查。
 
+SEO 的 HTML、robots 和 sitemap 默认使用 `https://tokennx.cn`。发布到其他域名时在对应构建环境设置 `VITE_PUBLIC_SITE_ORIGIN`（例如 `https://example.com`，不含路径）；构建会同步替换静态抓取入口。客户端未配置时使用当前访问域名。完整性检查同时校验 SEO 域名一致性及 logo、分享图、favicon 是否存在。
+
 线上服务器请采用版本目录或“资源先行、HTML 最后”的发布顺序：
 
 1. 将完整 `dist/assets/`（以及 `version.json`、其他 `public/` 静态文件）上传并校验成功；不要先删除仍可能被旧 HTML 引用的 hash 资源。

@@ -12,6 +12,7 @@ import {
   type RefObject,
 } from "react";
 import { createPortal } from "react-dom";
+import { CONSOLE_IMAGE_GENERATION_ENABLED } from "@/config/console-features";
 import {
   DEFAULT_CONSOLE_PATH,
   normalizeLoginReturnPath,
@@ -123,6 +124,7 @@ import {
   saveVerifiedPhone,
 } from "@/auth/token-storage";
 import { isAuthenticationFailure } from "@/api/http";
+import { enterpriseRoleLabel } from "@/utils/enterprise-labels";
 import { useTranslation } from "react-i18next";
 import {
   cycleThemeModeWithTransition,
@@ -138,9 +140,8 @@ import {
   type SupportMessageRole,
 } from "./support-chat";
 import { BackofficeMoneyText as MoneyText } from "./money";
-import { ModelTimePricing } from "./model-time-pricing";
-import { CopyOutlineIcon } from "@/components/copy-outline-icon";
 import { ModelAvailability } from "./model-availability";
+import { CopyOutlineIcon } from "@/components/copy-outline-icon";
 import {
   enterpriseMenuPermissionKeyForPath,
   hasEnterpriseMenuPermission,
@@ -694,14 +695,12 @@ function modelCardSpecs(model: ModelRecord): {
 export function ModelCard({
   model,
   compact = false,
-  showTimePricing = false,
   onSelect,
   onChat,
   onApi,
 }: {
   model: ModelRecord;
   compact?: boolean;
-  showTimePricing?: boolean;
   onSelect?: (model: ModelRecord) => void;
   onChat?: (model: ModelRecord) => void;
   onApi?: (model: ModelRecord) => void;
@@ -880,28 +879,24 @@ export function ModelCard({
           ) : null}
         </div>
       </div>
-      {showTimePricing ? <ModelTimePricing model={model} compact /> : null}
-      <div
+      {/* 仅展示已提供的规格，避免把缺失参数渲染成无意义的占位行。 */}
+      {(specs.contextValue !== MODEL_UNAVAILABLE_LABEL || specs.outputValue !== MODEL_UNAVAILABLE_LABEL) ? <div
         className="model-card-spec-grid"
         aria-label={`${localizeConsoleLabel(t, specs.contextLabel)} / ${localizeConsoleLabel(t, specs.outputLabel)}`}
       >
-        <div className="model-card-spec-cell">
+        {specs.contextValue !== MODEL_UNAVAILABLE_LABEL ? <div className="model-card-spec-cell">
           <span>{localizeConsoleLabel(t, specs.contextLabel)}:</span>
           <strong>
-            {specs.contextValue === MODEL_UNAVAILABLE_LABEL
-              ? t("console.common.unavailable")
-              : specs.contextValue}
+            {specs.contextValue}
           </strong>
-        </div>
-        <div className="model-card-spec-cell">
+        </div> : null}
+        {specs.outputValue !== MODEL_UNAVAILABLE_LABEL ? <div className="model-card-spec-cell">
           <span>{localizeConsoleLabel(t, specs.outputLabel)}:</span>
           <strong>
-            {specs.outputValue === MODEL_UNAVAILABLE_LABEL
-              ? t("console.common.unavailable")
-              : specs.outputValue}
+            {specs.outputValue}
           </strong>
-        </div>
-      </div>
+        </div> : null}
+      </div> : null}
       <ModelAvailability
         className="model-card-availability"
         hourly={model.availability.hourly}
@@ -2644,7 +2639,7 @@ const CONSOLE_NAV_ICONS: Record<
   records: (props) => <IconFile {...props} />,
   billing: (props) => <IconNoteMoneyStroked {...props} />,
   subscription: (props) => <IconCrownStroked {...props} />,
-  // 购买菜单使用购物袋图标，避免与订阅管理的皇冠图标混淆。
+  // 购买菜单使用购物袋图标，避免与套餐管理的皇冠图标混淆。
   purchase: (props) => <IconShoppingBagStroked {...props} />,
   recharge: (props) => <IconCoinMoneyStroked {...props} />,
   invitation: (props) => <IconInviteStroked {...props} />,
@@ -2706,8 +2701,8 @@ const personalNavGroups: ConsoleNavGroup[] = [
     items: [
       { key: "/console/real-name", label: "实名认证", icon: "real-name" },
       {
-        key: "/console/trae-enterprise/subscription",
-        label: "订阅管理",
+        key: "/console/subscription",
+        label: "套餐管理",
         icon: "subscription",
       },
       { key: "/console/purchase", label: "套餐购买", icon: "purchase" },
@@ -2722,6 +2717,7 @@ const personalNavGroups: ConsoleNavGroup[] = [
     label: "活动中心",
     items: [
       { key: "/console/invitations", label: "邀请返现", icon: "invitation" },
+      { key: "/console/redemption", label: "兑换码", icon: "reward", actionOnly: true },
       {
         key: "/console/real-name-reward",
         label: "认证返现",
@@ -2799,7 +2795,7 @@ const enterpriseNavGroups: ConsoleNavGroup[] = [
       },
       {
         key: "/console/trae-enterprise/subscription",
-        label: "订阅管理",
+        label: "套餐管理",
         icon: "subscription",
         permissionScope: "billing",
       },
@@ -2861,9 +2857,17 @@ const enterpriseNavGroups: ConsoleNavGroup[] = [
       { key: "/console/api-keys", label: "我的密钥", icon: "api-keys" },
     ],
   },
+  {
+    key: "activity",
+    label: "活动中心",
+    // 兑换码始终计入个人空间余额，与企业账务无关，因此不做企业权限校验。
+    items: [
+      { key: "/console/redemption", label: "兑换码", icon: "reward", actionOnly: true },
+    ],
+  },
 ];
 
-// 只存在于企业导航、个人空间没有的页面。共享入口（企业入驻、订阅管理、费用管理等）两边都有，
+// 只存在于企业导航、个人空间没有的页面。共享入口（企业入驻、套餐管理、费用管理等）两边都有，
 // 所以这里按「企业导航有、个人导航没有」推导差集，而不是按路径前缀猜。
 const ENTERPRISE_ONLY_CONSOLE_PATHS: readonly string[] = (() => {
   const navPaths = (groups: ConsoleNavGroup[]) =>
@@ -2885,7 +2889,7 @@ export function isEnterpriseOnlyConsolePath(pathname: string): boolean {
 
 // 临时隐藏入口但保留页面、路由和菜单定义，后续只需移除对应路径即可恢复。
 const TEMPORARILY_HIDDEN_CONSOLE_NAV_PATHS = new Set([
-  "/console/image",
+  ...(!CONSOLE_IMAGE_GENERATION_ENABLED ? ["/console/image"] : []),
   "/console/real-name-reward",
 ]);
 
@@ -2915,7 +2919,8 @@ const CONSOLE_NAV_LABEL_KEYS: Record<string, string> = {
   我的数据: "console.nav.myData",
   个人用量: "console.nav.personalUsage",
   "企业管理（新版）": "traeEnterprise.nav.group",
-  订阅管理: "traeEnterprise.nav.subscription",
+  套餐管理: "console.subscriptionPage.title",
+  兑换码: "console.billing.redeemCodeTitle",
   套餐购买: "console.nav.purchase",
   企业设置: "console.nav.enterpriseSettings",
   模型管理: "console.nav.enterpriseModels",
@@ -3306,7 +3311,7 @@ function UserMenu({
                 <span className="workspace-type">
                   {workspace.type === "personal"
                     ? t("console.common.personalWorkspace")
-                    : `${workspace.name} · ${workspace.role}`}
+                    : `${workspace.name} · ${enterpriseRoleLabel(workspace.role)}`}
                 </span>
               </span>
               {active ? (
@@ -4141,7 +4146,9 @@ export function ConsoleLayout({ children }: { children: ReactNode }) {
   const location = useLocation();
   const store = useAppStore();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [redemptionOpen, setRedemptionOpen] = useState(false);
   const activeWorkspace = store.activeWorkspace;
+  useEffect(() => setRedemptionOpen(false), [activeWorkspace.id]);
   const enterpriseAccess = useEnterpriseMenuAccess(activeWorkspace);
   const groups = consoleNavGroupsFor(
     activeWorkspace,
@@ -4226,6 +4233,10 @@ export function ConsoleLayout({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  // 兼容旧的个人套餐收藏链接，迁移到个人路径并保留查询参数。
+  if (activeWorkspace.type === "personal" && location.pathname === "/console/trae-enterprise/subscription") {
+    return <Navigate replace to={`/console/subscription${location.search}${location.hash}`} />;
+  }
   // 个人空间没有企业页面：从企业切到个人后若仍停在企业路径上，回到快速接入。
   if (
     activeWorkspace.type !== "enterprise" &&
@@ -4277,6 +4288,10 @@ export function ConsoleLayout({ children }: { children: ReactNode }) {
                           type="button"
                           onClick={() => {
                             setSidebarOpen(false);
+                            if (item.key === "/console/redemption") {
+                              setRedemptionOpen(true);
+                              return;
+                            }
                             Toast.info(
                               item.soon
                                 ? t("console.common.comingSoon", {
@@ -4360,6 +4375,8 @@ export function ConsoleLayout({ children }: { children: ReactNode }) {
         />
       ) : null}
       <ManuscriptSupportWidget />
+      {/* 兑换接口只支持个人账户；切换企业空间时同时卸载弹窗。 */}
+      <BillingRedemptionDialog visible={redemptionOpen} onClose={() => setRedemptionOpen(false)} />
     </div>
   );
 }
@@ -4412,8 +4429,7 @@ const MANUSCRIPT_FOOTER_GROUPS = [
       { labelKey: "footer.apiPrice", path: "/models" },
       {
         labelKey: "footer.subscriptionPrice",
-        path: "/console/trae-enterprise/subscription",
-        requiresLogin: true,
+        path: "/pricing",
       },
     ],
   },
@@ -4468,6 +4484,34 @@ function persistDeletedNotificationID(notificationID: string): void {
   }
 }
 
+// 未读数有两个来源：通知面板的列表（权威）和登录后的首屏预取（仅为点亮铃铛红点）。
+// 版本号用于丢弃晚到的预取结果，避免用户已经读完之后红点又冒出来。
+let notificationCountRevision = 0;
+
+function dispatchNotificationCount(count: number): void {
+  window.dispatchEvent(
+    new CustomEvent(SUPPORT_NOTIFICATION_COUNT_EVENT, {
+      detail: { count: Math.max(0, Math.trunc(count)) },
+    }),
+  );
+}
+
+// 登录后预取一次未读通知数，Header 铃铛红点无需先点开通知面板即可显示。
+// 口径与通知面板一致：只统计未读且未被本地删除的通知。
+export async function prefetchUnreadNotificationCount(
+  signal?: AbortSignal,
+): Promise<void> {
+  const revision = notificationCountRevision;
+  const response = await getNotifications({ limit: 100, unread_only: true, signal });
+  if (signal?.aborted || revision !== notificationCountRevision) return;
+  const deletedIDs = readDeletedNotificationIDs();
+  dispatchNotificationCount(
+    (response.items ?? []).filter(
+      (item) => !item.read && !deletedIDs.has(item.id),
+    ).length,
+  );
+}
+
 // 统一由页面头部和客服按钮发送打开请求，保证客服浮层只维护一份交互状态。
 export function requestSupportWidget(tab: SupportTab = "contact"): void {
   window.dispatchEvent(
@@ -4487,12 +4531,6 @@ export function PublicFooter() {
         <div className="public-footer-brand manuscript-footer-brand">
           <span className="manuscript-footer-logo">
             <img src={manuscriptFooterLogo} alt="Token NX" decoding="async" />
-          </span>
-          <span>
-            {t("footer.copyright", {
-              year: new Date().getFullYear(),
-              company: "Token NX, Inc.",
-            })}
           </span>
           <small>{PUBLIC_COMPANY_INFO.name}</small>
         </div>
@@ -4660,12 +4698,10 @@ export function ManuscriptSupportWidget() {
 
   function publishNotificationCount(count: number): void {
     const normalized = Math.max(0, Math.trunc(count));
+    // 面板内的计数是权威值：标记之后，晚到的首屏预取结果会被丢弃。
+    notificationCountRevision += 1;
     setNotificationUnreadCount(normalized);
-    window.dispatchEvent(
-      new CustomEvent(SUPPORT_NOTIFICATION_COUNT_EVENT, {
-        detail: { count: normalized },
-      }),
-    );
+    dispatchNotificationCount(normalized);
   }
 
   useEffect(() => {

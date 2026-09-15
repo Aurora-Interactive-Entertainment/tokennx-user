@@ -1,0 +1,45 @@
+.api-keys-console-page .api-keys-toolbar {
+  flex-wrap: wrap;
+}
+
+.api-key-tag-filter-control {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 8px;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+
+.api-key-tag-filter-control > span {
+  flex: 0 0 auto;
+}
+
+.api-keys-console-page .api-key-tag-filter {
+  flex: 0 1 200px;
+  width: 200px;
+  min-width: 140px;
+  max-width: 100%;
+}
+
+.api-keys-console-page .tag-cell .tag-list {
+  min-width: 100px;
+  max-width: 240px;
+  flex-wrap: wrap;
+}
+
+.api-keys-console-page .tag-cell .model-tag {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 640px) {
+  .api-key-tag-filter-control {
+    width: 100%;
+  }
+
+  .api-keys-console-page .api-key-tag-filter {
+    flex: 1;
+  }
+}

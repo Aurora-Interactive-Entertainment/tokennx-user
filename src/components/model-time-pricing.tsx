@@ -3,13 +3,10 @@ import type { ModelRecord } from '@/data/models'
 import { BackofficeMoneyText as MoneyText } from './money'
 import './model-time-pricing.css'
 
-export function ModelTimePricing({ model, compact = false }: { model: ModelRecord; compact?: boolean }) {
+export function ModelTimePricing({ model }: { model: ModelRecord }) {
   const { t } = useTranslation()
-  const hasTimePricing = model.company.trim().toLowerCase() === 'deepseek'
-  if (!hasTimePricing) {
-    // 没有峰谷价的模型也保留同等空间，避免同一行卡片内容上下跳动。
-    return compact ? <div className="model-time-pricing model-time-pricing--compact model-time-pricing--placeholder" aria-hidden="true" /> : null
-  }
+  // 仅 DeepSeek 提供峰谷价；其余模型不渲染该区块。
+  if (model.company.trim().toLowerCase() !== 'deepseek') return null
 
   // 接口尚未提供分时价格：仅用当前价格及五折价格预览排版，不参与计费。
   const periods = [
@@ -18,7 +15,7 @@ export function ModelTimePricing({ model, compact = false }: { model: ModelRecor
   ] as const
 
   return (
-    <div className={`model-time-pricing${compact ? ' model-time-pricing--compact' : ''}`}>
+    <div className="model-time-pricing">
       <div className="model-time-pricing-heading">
         <span>{t('console.timePricing.title')} <small>{t('console.timePricing.example')}</small></span>
         <span>{t('console.timePricing.timezone')}</span>

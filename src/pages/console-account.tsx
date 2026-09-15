@@ -13,6 +13,7 @@ import { Link, useNavigate, useSearchParams } from "react-router";
 import Button from "@douyinfe/semi-ui/lib/es/button";
 import SemiFormLabel from "@douyinfe/semi-ui/lib/es/form/label";
 import { CopyOutlineIcon } from "@/components/copy-outline-icon";
+import { ApiKeyTagFilter } from "@/components/api-key-tag-filter";
 import Modal from "@/components/app-modal";
 import Switch from "@douyinfe/semi-ui/lib/es/switch";
 import Toast from "@douyinfe/semi-ui/lib/es/toast";
@@ -328,6 +329,7 @@ export function ApiKeysPage({
   const [requiredErrors, setRequiredErrors] = useState<ApiKeyRequiredErrors>({});
   const [expiryPreset, setExpiryPreset] = useState<ApiKeyExpiryPreset>("never");
   const [filter, setFilter] = useState<ApiKeyStatusFilter>("all");
+  const [tagFilter, setTagFilter] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(API_KEY_PAGE_SIZE);
   const [result, setResult] = useState<UserApiKeyList | null>(null);
@@ -391,13 +393,14 @@ export function ApiKeysPage({
     setDepartmentFilter("all");
     setMemberFilter("all");
     setFilterMemberSearch("");
+    setTagFilter("");
     setPage(1);
   }, [workspaceKey]);
 
   useEffect(() => {
     setSelectedKeyIDs([]);
     setPage(1);
-  }, [departmentFilter, filter, memberFilter]);
+  }, [departmentFilter, filter, memberFilter, tagFilter]);
 
   useEffect(() => {
     if (
@@ -1182,7 +1185,7 @@ export function ApiKeysPage({
       .filter((member) => member.department?.id === departmentFilter)
       .flatMap((member) => [member.user_id, member.id]),
   );
-  const filteredRows = items.filter(
+  const scopedRows = items.filter(
     (item) =>
       (filter === "all" || item.status === filter) &&
       (mode !== "enterprise" ||
@@ -1193,6 +1196,9 @@ export function ApiKeysPage({
         !currentUserID ||
         item.creator.id === currentUserID),
   );
+  // 标签仅来自当前列表范围，在完整结果中筛选后分页；保留选中项以便空结果时清除。
+  const tagOptions = [...new Set([...scopedRows.flatMap((item) => item.tags), tagFilter].filter(Boolean))].sort((left, right) => left.localeCompare(right, getActiveLocale()));
+  const filteredRows = scopedRows.filter((item) => !tagFilter || item.tags.includes(tagFilter));
   const totalRows = filteredRows.length;
   const pageCount = Math.max(1, Math.ceil(totalRows / pageSize));
   const currentPage = Math.min(page, pageCount);
@@ -1285,7 +1291,7 @@ export function ApiKeysPage({
       : t("console.account.apiKeysDescription");
   // 空状态也沿用完整表头，列数随企业选择列和扩展字段保持一致。
   const apiKeyTableColumnCount =
-    6 + (showExtendedColumns ? 6 : 0) + (enterpriseSelectionEnabled ? 1 : 0);
+    7 + (showExtendedColumns ? 5 : 0) + (enterpriseSelectionEnabled ? 1 : 0);
   const normalizedFilterMemberSearch = filterMemberSearch
     .trim()
     .toLocaleLowerCase();
@@ -1332,7 +1338,8 @@ export function ApiKeysPage({
             onMemberChange={setMemberFilter}
             onMemberSearch={setFilterMemberSearch}
           />
-        ) : <span className="api-keys-toolbar-spacer" aria-hidden="true" />}
+        ) : null}
+        <ApiKeyTagFilter tags={tagOptions} value={tagFilter} onChange={setTagFilter} />
         <div className="api-keys-toolbar-actions">
           <div
             className="status-filters"
@@ -1418,7 +1425,7 @@ export function ApiKeysPage({
                 {showExtendedColumns ? <th>{t("console.account.usageLimit")}</th> : null}
                 {showExtendedColumns ? <th>{t("console.account.availableModels")}</th> : null}
                 <th>{t("console.common.status")}</th>
-                {showExtendedColumns ? <th>{t("console.account.tags")}</th> : null}
+                <th>{t("console.account.tags")}</th>
                 <th>{t("console.account.createdTime")}</th>
                 {showExtendedColumns ? <th>{t("console.account.lastUsed")}</th> : null}
                 {showExtendedColumns ? <th>{t("console.account.activity")}</th> : null}
@@ -1607,7 +1614,7 @@ export function ApiKeysPage({
                             : t("console.account.expired")}
                       </span>
                     </td>
-                    {showExtendedColumns ? <td className="tag-cell">
+                    <td className="tag-cell">
                       {row.tags.length ? (
                         <div className="tag-list">
                           {row.tags.map((tag) => (
@@ -1619,7 +1626,7 @@ export function ApiKeysPage({
                       ) : (
                         <span className="table-muted">--</span>
                       )}
-                    </td> : null}
+                    </td>
                     <td>{apiDateLabel(row.created_at)}</td>
                     {showExtendedColumns ? <td>{apiDateLabel(row.last_used_at)}</td> : null}
                     {showExtendedColumns ? <td>

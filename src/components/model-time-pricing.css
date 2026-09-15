@@ -68,21 +68,6 @@
   font-size: 11px;
 }
 
-.model-time-pricing--compact {
-  margin: 4px 0 8px;
-  font-size: 11px;
-  line-height: 16px;
-}
-
-.model-time-pricing--placeholder {
-  min-height: 94px;
-  visibility: hidden;
-}
-
-.model-time-pricing--compact .model-time-pricing-period {
-  padding: 6px 8px;
-}
-
 @media (max-width: 480px) {
   .model-time-pricing-periods {
     grid-template-columns: 1fr;

@@ -224,9 +224,6 @@ function InvoiceSuccessStep() {
       <p className="invoice-dialog-note">
         {i18n.t('console.billing.invoiceSuccessHint')}
       </p>
-      <p className="invoice-demo-note">
-        {i18n.t('console.billing.invoiceSuccessDemo')}
-      </p>
     </div>
   )
 }

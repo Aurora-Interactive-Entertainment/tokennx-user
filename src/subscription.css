@@ -144,19 +144,40 @@
 }
 
 .subscription-progress {
-  height: 10px;
+  position: relative;
+  height: 8px;
   margin-top: auto;
-  padding: 4px;
   border-radius: 4px;
   background: var(--bg-base-soft);
 }
 
-.subscription-progress span {
+/* 填充撑满轨道高度，用量少时才不会缩成一条看不清的细线。 */
+.subscription-progress-fill {
   display: block;
   width: 0;
   height: 100%;
-  border-radius: 2px;
-  background: var(--brand);
+  border-radius: inherit;
+  background: #1dc981;
+}
+
+/* 悬停提示跟随指针：气泡贴边停靠，箭头靠内联变量指向鼠标所在位置。 */
+.subscription-progress-tip {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 0;
+  z-index: 2;
+  pointer-events: none;
+  will-change: transform;
+  animation: subscription-progress-tip-in 120ms ease-out;
+}
+
+@keyframes subscription-progress-tip-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .subscription-progress-tip { animation: none; }
 }
 
 .subscription-model-card small {

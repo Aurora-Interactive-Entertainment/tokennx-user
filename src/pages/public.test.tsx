@@ -10,6 +10,10 @@ import { createAppStore } from '@/store'
 import i18n from '@/i18n'
 import { AboutPage, AppsPage, DocsPage, LegalPage, ModelsPublicPage, PricingPage, RankingsPage, StatusPage } from './public'
 import { HomePage } from './home'
+import { ShowcaseModelCard } from '@/components/public-models-showcase'
+import { MODEL_CATALOG } from '@/data/models'
+import { getPublicProductPlans, getProductPlans } from '@/api/product-plans'
+import { publicPlanFixture, planListFixture } from '@/test/product-plan-fixtures'
 
 // 首页内容测试独立于头部目录预加载，避免一次性 fetch 响应被套餐请求消费。
 vi.mock('@/api/product-plans', async (original) => ({
@@ -148,6 +152,26 @@ describe('公开模型页面', () => {
     const showcaseCard = screen.getByText('DeepSeek V3').closest('.models-showcase-card') as HTMLElement
     expect(within(showcaseCard).getByRole('link', { name: '立即体验' })).toHaveAttribute('href', '/login?return=%2Fconsole%2Fmodels%3Fkeyword%3Ddeepseek-chat')
     expect(screen.queryByText('deepseek-chat')).toBeNull()
+  })
+
+  it('套餐价格使用公开目录，未登录可查看价格并沿用购买登录入口', async () => {
+    const catalog = planListFixture([publicPlanFixture])
+    vi.mocked(getPublicProductPlans).mockResolvedValueOnce(catalog).mockResolvedValueOnce(catalog)
+    const authenticatedRequests = vi.mocked(getProductPlans).mock.calls.length
+    renderPage(<PricingPage />, '/pricing')
+    const card = (await screen.findByRole('heading', { name: publicPlanFixture.name })).closest('article')!
+    expect(card).toHaveTextContent('¥1.99')
+    expect(card).toHaveTextContent('10,000,000')
+    expect(card).not.toHaveTextContent(/库存|剩余.*购买/)
+    expect(within(card).getByRole('link', { name: '购买套餐' })).toHaveAttribute('href', '/login?return=%2Fconsole%2Fpurchase')
+    expect(vi.mocked(getProductPlans).mock.calls.length).toBe(authenticatedRequests)
+  })
+
+  it('模型发布日期使用接口时间，缺少日期时不显示硬编码日期', () => {
+    renderPage(<><ShowcaseModelCard model={MODEL_CATALOG[0]} /><ShowcaseModelCard model={{ ...MODEL_CATALOG[1], launchedAt: new Date('2026-06-17T00:00:00+08:00').getTime() }} /></>, '/models')
+    const cards = document.querySelectorAll('.models-showcase-card')
+    expect(cards[0].querySelector('.models-showcase-card-identity small')).toBeNull()
+    expect(cards[1].querySelector('.models-showcase-card-identity small')).toHaveTextContent('2026年6月17日')
   })
 
   it('公开文档示例使用模型别名', () => {
@@ -321,12 +345,12 @@ describe('公开模型页面', () => {
     }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
     renderPage(<HomePage />, '/')
 
-    const promotionLinks = await screen.findAllByRole('link', { name: /Claude Opus 4\.8/ })
+    const promotionLinks = await screen.findAllByRole('link', { name: /Claude Sonnet 4/ })
     expect(promotionLinks).toHaveLength(1)
     promotionLinks.forEach((link) => expect(link).toHaveAttribute('href', '/login?return=%2Fconsole%2Fmodels%3Fkeyword%3Dclaude-sonnet-4'))
   })
 
-  it('首页接口成功返回空编排时使用默认优惠模型兜底', async () => {
+  it('首页接口成功返回空编排时不显示虚构的优惠模型', async () => {
     renderPage(<HomePage />, '/')
 
     expect(document.querySelector('.manuscript-feature-grid')).toHaveAttribute('aria-busy', 'true')
@@ -334,10 +358,10 @@ describe('公开模型页面', () => {
     expect(screen.queryByText('Claude Opus 4.8')).toBeNull()
     await waitFor(() => expect(document.querySelector('.manuscript-feature-grid')).not.toHaveAttribute('aria-busy'))
     expect(document.querySelectorAll('.manuscript-feature-card')).toHaveLength(0)
-    expect(document.querySelectorAll('.manuscript-price-card')).toHaveLength(3)
+    expect(document.querySelectorAll('.manuscript-price-card')).toHaveLength(0)
     expect(document.querySelector('.manuscript-ad-slot')).toBeNull()
     expect(document.querySelector('.manuscript-partner-row')).toBeNull()
-    expect(screen.getAllByText('Claude Opus 4.8')).toHaveLength(3)
+    expect(screen.queryByText('Claude Opus 4.8')).toBeNull()
   })
 
   it('模型页卸载后忽略已取消的目录响应', async () => {
@@ -435,18 +459,18 @@ describe('公开模型页面', () => {
     expect(availabilityBars[0]).toHaveClass('is-danger')
     expect(availabilityBars[1]).toHaveClass('is-warning')
     expect(availabilityBars[2]).toHaveClass('is-healthy')
-    expect(screen.getByText('Token NX 内测版上线，注册即送千万Token资源包')).toBeInTheDocument()
-    expect(screen.getByText('Token NX 内测版上线，注册即送千万Token资源包').closest('a')).toHaveAttribute('href', '/news/news-2')
+    expect(screen.getByText('Token NX 平台正式上线')).toBeInTheDocument()
+    expect(screen.getByText('Token NX 平台正式上线').closest('a')).toHaveAttribute('href', '/news/news-2')
     expect(screen.queryByText('未固定动态')).toBeNull()
     expect(screen.getAllByText('后台伙伴').length).toBeGreaterThan(0)
     expect(document.querySelector('.manuscript-feature-image')).toHaveAttribute('src', '/api/homepage/assets/01J00000000000000000000001')
     expect(document.querySelector('.manuscript-feature-image')).toHaveAttribute('loading', 'eager')
     expect(document.querySelector('.manuscript-feature-image')).toHaveAttribute('fetchpriority', 'high')
-    // 广告图是装饰海报，后台标题不进 alt，避免懒加载期间被浏览器画到图上；链接名称由屏幕阅读器文案提供。
-    const adLink = screen.getByRole('link', { name: '邀请活动' })
+    // 正式广告标题用于替代文本和链接名称，确保无障碍入口与海报内容一致。
+    const adLink = screen.getByRole('link', { name: '后台广告位' })
     expect(adLink).toHaveAttribute('href', '/login?return=%2Fconsole%2Finvitations')
     expect(adLink.querySelector('img')).toHaveAttribute('src', '/api/homepage/assets/01J00000000000000000000002')
-    expect(adLink.querySelector('img')).toHaveAttribute('alt', '')
+    expect(adLink.querySelector('img')).toHaveAttribute('alt', '后台广告位')
     expect(document.querySelector('.manuscript-partner-image')).toHaveAttribute('src', '/api/homepage/assets/01J00000000000000000000003')
     expect(document.querySelectorAll('.manuscript-partner-row')).toHaveLength(1)
     expect(document.querySelector('.manuscript-partner-row')).toHaveClass('is-static', 'is-compact')
@@ -482,7 +506,7 @@ describe('公开模型页面', () => {
 
     renderPage(<HomePage />, '/')
 
-    const adImage = (await screen.findByRole('link', { name: 'Invitation campaign' })).querySelector('img')
+    const adImage = (await screen.findByRole('link', { name: 'English promotion' })).querySelector('img')
     expect(adImage).toHaveAttribute('src', 'https://cdn.example.com/promotion.png')
     expect(adImage).not.toHaveAttribute('src', '/src/assets/figma-home/promo-banner.png')
   })

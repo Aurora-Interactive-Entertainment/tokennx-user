@@ -8,6 +8,7 @@ import promoModelLogo from '@/assets/figma-home/promo-model-logo.svg'
 import promoBannerArt from '@/assets/figma-home/promo-banner.png'
 import promoArticleArt from '@/assets/figma-home/promo-article.png'
 import '@/mobile-home.css'
+import { homepageEntryIsCurrent } from '@/utils/homepage-display'
 import { ModelAvailability } from '@/components/model-availability'
 import { getPublicHomepage, getPublicHomepageAssetURL, getPublicHomepageMediaURL, getPublicHomepageStats, type HomepageDiscountKind, type HomepageEntry, type HomepagePromotionModel, type HomepageTranslation, type PublicHomepage } from '@/api/homepage'
 import { findModel, modelRouteKey, MODEL_CATALOG, type ModelAvailabilityHour, type ModelRecord } from '@/data/models'
@@ -112,6 +113,11 @@ function homepageString(value: unknown): string | undefined {
   if (typeof value !== 'string') return undefined
   const normalized = value.trim()
   return normalized || undefined
+}
+
+function isHomepagePlaceholder(value: string | undefined): boolean {
+  const normalized = value?.trim().toLowerCase() ?? ''
+  return !normalized || /^(test|testing|todo|demo|待补充|测试|占位|待完善|\d+)$/.test(normalized)
 }
 
 // 首页运营条目在不同版本接口中可能把图片放在翻译字段或条目根字段，统一从接口数据解析。
@@ -597,9 +603,11 @@ function ManagedNewsCard({ entry, newsIndex }: { entry: HomepageEntry; newsIndex
 function ManagedAdSlots({ entries }: { entries: HomepageEntry[] }) {
   const { t, i18n } = useTranslation()
   return <div className="manuscript-ad-slots">{entries.map((entry) => {
+    const content = homepageTranslation(entry, i18n.language)
+    const title = isHomepagePlaceholder(content.title) ? t('home.rebuild.inviteCampaignTitle') : content.title!.trim()
     const imageURL = homepageEntryMediaURL(entry, i18n.language)
-    // 广告图是纯海报装饰：alt 留空，避免图片懒加载期间浏览器把后台标题（可能是“测试”这类占位文案）画到图上。
-    const ad = <><img src={imageURL || promoBannerArt} alt="" loading="lazy" decoding="async" width={850} height={193} /><span className="public-sr-only">{t('home.rebuild.adSlot')}</span></>
+    // CMS 标题用于可访问名称；占位标题不进入 DOM，避免把“测试”暴露给访客。
+    const ad = <><img src={imageURL || promoBannerArt} alt={title} loading="lazy" decoding="async" width={850} height={193} /></>
     // 推广广告统一承接邀请活动，未登录时由公共登录弹窗完成后续跳转。
     return <LoginRequiredAction className="manuscript-ad-slot" key={entry.id} returnPath="/console/invitations">{ad}</LoginRequiredAction>
   })}</div>
@@ -607,13 +615,6 @@ function ManagedAdSlots({ entries }: { entries: HomepageEntry[] }) {
 
 type HomePromotionRouteModel = Pick<ModelRecord, 'id' | 'alias'>
 type HomePromotionItem = { id: string; model: HomePromotionRouteModel; name: string; company: string; logoUrl?: string; discountKind: HomepageDiscountKind; input: string; output: string; availability?: number; hourly: ModelAvailabilityHour[] }
-
-const HOME_DEFAULT_PROMOTION_MODEL = findModel('claude-sonnet-4') ?? MODEL_CATALOG[0]
-const HOME_DEFAULT_PROMOTION_ITEMS: HomePromotionItem[] = [
-  { id: 'claude-opus-promo-1', model: HOME_DEFAULT_PROMOTION_MODEL, name: 'Claude Opus 4.8', company: 'Anthropic', discountKind: 'half', input: '0.1', output: '0.1', availability: HOME_DEFAULT_PROMOTION_MODEL.availability.rate, hourly: HOME_DEFAULT_PROMOTION_MODEL.availability.hourly ?? [] },
-  { id: 'claude-opus-promo-2', model: HOME_DEFAULT_PROMOTION_MODEL, name: 'Claude Opus 4.8', company: 'Anthropic', discountKind: 'free', input: '0.1', output: '0.1', availability: HOME_DEFAULT_PROMOTION_MODEL.availability.rate, hourly: HOME_DEFAULT_PROMOTION_MODEL.availability.hourly ?? [] },
-  { id: 'claude-opus-promo-3', model: HOME_DEFAULT_PROMOTION_MODEL, name: 'Claude Opus 4.8', company: 'Anthropic', discountKind: 'half', input: '0.1', output: '0.1', availability: HOME_DEFAULT_PROMOTION_MODEL.availability.rate, hourly: HOME_DEFAULT_PROMOTION_MODEL.availability.hourly ?? [] },
-]
 
 function homepageModelPrice(model: HomepagePromotionModel, meterKind: 'input_token' | 'output_token'): string {
   // 新版价格契约使用 input/output，兼容旧服务的 input_token/output_token 命名。
@@ -627,11 +628,10 @@ function homepageModelPrice(model: HomepagePromotionModel, meterKind: 'input_tok
   return homepagePrice(unitPrice * (1_000_000 / price.unit_quantity))
 }
 
-function managedPromotionItems(homepage: PublicHomepage | null, language: string): HomePromotionItem[] {
-  if (!homepage?.promotion_models.length) return HOME_DEFAULT_PROMOTION_ITEMS
+function managedPromotionItems(homepage: PublicHomepage | null): HomePromotionItem[] {
+  if (!homepage?.promotion_models.length) return []
   const managedItems = homepage.promotion_models.flatMap((entry): HomePromotionItem[] => {
-    const content = homepageTranslation(entry, language)
-    if (entry.model) {
+    if (entry.model && (!entry.model_id || entry.model.id === entry.model_id || entry.model.alias === entry.model_id)) {
       return [{
         id: entry.id,
         model: entry.model,
@@ -651,12 +651,12 @@ function managedPromotionItems(homepage: PublicHomepage | null, language: string
         })),
       }]
     }
-    const model = findModel(entry.model_id)
+    const model = entry.model_id ? findModel(entry.model_id) : undefined
     if (!model) return []
     return [{
       id: entry.id,
       model,
-      name: content.title?.trim() || model.name,
+      name: model.name,
       company: model.company,
       discountKind: entry.data.discount_kind ?? 'half',
       input: homepagePrice(model.tokenNxPrice.inputRaw ?? model.tokenNxPrice.input),
@@ -665,18 +665,22 @@ function managedPromotionItems(homepage: PublicHomepage | null, language: string
       hourly: model.availability.hourly ?? [],
     }]
   })
-  return managedItems.length ? managedItems : HOME_DEFAULT_PROMOTION_ITEMS
+  // 接口返回了活动配置但模型关联失败时隐藏该卡，不静默回退成另一款模型。
+  return managedItems
 }
 
 function managedPartners(homepage: PublicHomepage | null, language: string): HomePartner[] {
   if (!homepage?.partners.length) return []
-  return homepage.partners.flatMap((entry) => {
-    const content = homepageTranslation(entry, language)
-    const logoURL = homepageMediaURL(content.logo_object_id, content.logo_url)
-    if (!logoURL) return []
-    const name = content.name?.trim() || content.title?.trim() || entry.id
-    return [{ name, logoUrl: logoURL, href: content.link_url, logoKind: 'wordmark' as const }]
-  })
+  // 排序字段全部为 0 时稳定排序保持接口原顺序。
+  return [...homepage.partners]
+    .sort((a, b) => a.sort_order - b.sort_order)
+    .flatMap((entry) => {
+      const content = homepageTranslation(entry, language)
+      const logoURL = homepageMediaURL(content.logo_object_id, content.logo_url)
+      if (!logoURL) return []
+      const name = content.name?.trim() || content.title?.trim() || entry.id
+      return [{ name, logoUrl: logoURL, href: content.link_url, logoKind: 'wordmark' as const }]
+    })
 }
 
 type HomepageLoadStatus = 'loading' | 'ready' | 'error'
@@ -781,13 +785,20 @@ export function HomePage({ onInitialScoreboardReady }: { onInitialScoreboardRead
     String(homepage?.promotion.visit_count ?? 0),
   ]
   const promotionItems = useMemo(() => {
-    return managedPromotionItems(homepage, i18n.language)
+    return managedPromotionItems(homepage)
   }, [homepage, i18n.language])
+  const [contentTime, setContentTime] = useState(Date.now)
+  useEffect(() => {
+    const refresh = () => setContentTime(Date.now())
+    const timer = window.setInterval(refresh, HOME_STATS_POLL_INTERVAL)
+    document.addEventListener('visibilitychange', refresh)
+    return () => { window.clearInterval(timer); document.removeEventListener('visibilitychange', refresh) }
+  }, [])
   const managedNews = useMemo(() => {
-    const news = homepage?.news ?? []
+    const news = (homepage?.news ?? []).filter((entry) => homepageEntryIsCurrent(entry, contentTime))
     const pinned = news.filter((entry) => entry.pinned)
     return (pinned.length ? pinned : news).slice(0, 2)
-  }, [homepage])
+  }, [homepage, contentTime])
   // 资讯文案为 i18n 固定内容、封面图来自接口条目；按接口翻译标题匹配文案槽位，
   // 避免接口排序与 i18n 顺序不一致时文案与封面错配；未匹配条目按顺序回填剩余槽位。
   const managedNewsSlots = useMemo(() => {

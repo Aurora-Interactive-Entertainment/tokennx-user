@@ -9,6 +9,7 @@ import { PageTitle } from '@/components/common'
 import { getBillingErrorMessage, getBillingPaymentOrder, getBillingRequestId, getBillingWallet, type BillingPaymentOrder, type BillingWallet } from '@/api/billing'
 import { isAuthenticationFailure } from '@/api/http'
 import { BalanceAlertDialog } from '@/components/balance-alert-dialog'
+import { RechargeHistory } from '@/components/recharge-history'
 import { appToast as Toast } from '@/components/app-toast'
 import { useAppStore } from '@/data/app-state'
 import { invalidateAuth } from '@/store/auth-slice'
@@ -79,6 +80,8 @@ export function RechargePage() {
       <RechargeBalanceCard wallet={wallet} />
       <div className="recharge-page-tabs" role="tablist" aria-label={t('console.billing.rechargeTabs')}><button className="is-active" type="button" role="tab" aria-selected="true">{t('console.billing.onlineRecharge')}</button></div>
       <RechargeTab key={billingContextKey(context)} context={context} onOrderUpdated={() => setWalletReloadToken((value) => value + 1)} onAuthFailure={handleAuthFailure} />
+      {/* 工作空间切换时重建分页和请求状态，避免显示上一个主体的充值记录。 */}
+      <RechargeHistory key={`history:${billingContextKey(context)}`} context={context} refreshToken={walletReloadToken} onAuthFailure={handleAuthFailure} />
       <BalanceAlertDialog visible={balanceAlertOpen} onClose={() => setBalanceAlertOpen(false)} onAuthFailure={handleAuthFailure} />
     </div>
   )

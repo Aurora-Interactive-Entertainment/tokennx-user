@@ -141,9 +141,28 @@ async function verifyVersion() {
   }
 }
 
+async function verifyPublicMetadata() {
+  try {
+    const html = await readFile(join(DIST_DIR, "index.html"), "utf8");
+    const canonical = html.match(/rel="canonical"\s+href="([^"]+)"/)?.[1];
+    const origin = new URL(canonical).origin;
+    const sitemap = await readFile(join(DIST_DIR, "sitemap.xml"), "utf8");
+    const robots = await readFile(join(DIST_DIR, "robots.txt"), "utf8");
+    // 静态抓取入口必须使用同一绝对域名，避免客户端正常而爬虫仍访问失效站点。
+    for (const match of sitemap.matchAll(/(?:<loc>|href=")([^<"]+)/g)) {
+      if (new URL(match[1]).origin !== origin) failures.push(`sitemap 域名与入口不一致：${match[1]}`);
+    }
+    if (!robots.includes(`Sitemap: ${origin}/sitemap.xml`)) failures.push("robots.txt 的 Sitemap 地址与入口不一致");
+    for (const path of ["logo.png", "og/share.png", "favicon.ico"]) await existsFile(path);
+  } catch {
+    failures.push("公开 SEO 文件缺失，或 canonical/sitemap 不是有效的绝对地址");
+  }
+}
+
 await verifyHtmlReferences();
 await verifyManifest();
 await verifyVersion();
+await verifyPublicMetadata();
 
 if (failures.length > 0) {
   console.error("静态发布产物校验失败：");

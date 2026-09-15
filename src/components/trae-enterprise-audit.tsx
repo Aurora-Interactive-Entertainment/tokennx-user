@@ -29,11 +29,13 @@ import {
   waitForExportTask,
 } from "@/api/exports";
 import { isAuthenticationFailure } from "@/api/http";
+import { enterpriseAuditCodeLabel } from "@/utils/enterprise-labels";
 import { addLocalDays as shiftDays, endOfLocalDay as endOfDay, startOfLocalDay as startOfDay } from "@/utils/date-range";
 import "./trae-enterprise-audit.css";
 import "./trae-date-picker.css";
 
 type AuditSelectOption = { value: string; label: string };
+type AuditActionOption = Pick<EnterpriseAuditLog, 'action' | 'resource_type' | 'summary'>;
 
 function mergeOptions(current: AuditSelectOption[], incoming: AuditSelectOption[]): AuditSelectOption[] {
   const options = new Map(current.map((option) => [option.value, option]));
@@ -41,8 +43,18 @@ function mergeOptions(current: AuditSelectOption[], incoming: AuditSelectOption[
   return Array.from(options.values());
 }
 
-function actionLabel(log: EnterpriseAuditLog): string {
-  return log.summary?.trim() || log.action?.trim() || "--";
+function actionLabel(log: AuditActionOption): string {
+  return log.summary?.trim() || enterpriseAuditCodeLabel(log.action || "") || "--";
+}
+
+function operationTypeLabel(log: AuditActionOption): string {
+  return enterpriseAuditCodeLabel(log.resource_type || log.action || "") || "--";
+}
+
+function actionOptionLabel(log: AuditActionOption): string {
+  const type = operationTypeLabel(log);
+  const action = actionLabel(log);
+  return type === action ? type : `${type} · ${action}`;
 }
 
 function operatorLabel(log: EnterpriseAuditLog): string {
@@ -51,7 +63,7 @@ function operatorLabel(log: EnterpriseAuditLog): string {
 }
 
 function resourceLabel(log: EnterpriseAuditLog): string {
-  const type = log.resource_type?.trim();
+  const type = enterpriseAuditCodeLabel(log.resource_type || "");
   const id = log.resource_id?.trim();
   if (type && id) return `${type} · ${id}`;
   return type || id || "--";
@@ -81,8 +93,10 @@ function AuditSelect({
   searchable?: boolean;
   onChange: (value: string) => void;
 }) {
+  const { i18n } = useTranslation();
   return (
     <Select
+      key={i18n.language}
       aria-label={label}
       className="trae-select"
       dropdownClassName="trae-select-dropdown trae-audit-select-dropdown"
@@ -91,6 +105,8 @@ function AuditSelect({
       searchPlaceholder={label}
       value={value}
       onChange={(nextValue) => onChange(String(nextValue ?? "all"))}
+      // Semi 的选项点击通过 onSelect 同步受控值，避免只更新显示却未触发查询。
+      onSelect={(nextValue) => onChange(String(nextValue ?? "all"))}
     >
       {options.map((option) => (
         <Select.Option key={option.value} value={option.value}>
@@ -207,7 +223,7 @@ export function TraeEnterpriseAudit({ context }: { context: EnterpriseContext })
   const [error, setError] = useState<{ message: string; requestId: string | null } | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
   const [detail, setDetail] = useState<EnterpriseAuditLog | null>(null);
-  const [actionOptions, setActionOptions] = useState<AuditSelectOption[]>([]);
+  const [actionLogs, setActionLogs] = useState<AuditActionOption[]>([]);
   const [operatorOptions, setOperatorOptions] = useState<AuditSelectOption[]>([]);
 
   useEffect(() => {
@@ -232,7 +248,8 @@ export function TraeEnterpriseAudit({ context }: { context: EnterpriseContext })
         const items = response.items ?? [];
         setRows(items);
         setTotal(response.total ?? 0);
-        setActionOptions((current) => mergeOptions(current, items.map((log) => ({ value: log.action, label: actionLabel(log) }))));
+        // 缓存原始枚举，切换语言时重新生成标签，避免筛选项停留在旧语言。
+        setActionLogs((current) => Array.from(new Map([...current, ...items.map(({ action, resource_type, summary }) => ({ action, resource_type, summary }))].map((log) => [log.action, log])).values()));
         setOperatorOptions((current) => mergeOptions(current, items.map((log) => ({ value: log.actor_id, label: operatorLabel(log) }))));
       })
       .catch((reason: unknown) => {
@@ -304,7 +321,7 @@ export function TraeEnterpriseAudit({ context }: { context: EnterpriseContext })
           label={t("traeEnterprise.audit.type")}
           value={action}
           onChange={(value) => { setAction(value); setPage(1); }}
-          options={[{ value: "all", label: t("traeEnterprise.audit.type") }, ...actionOptions]}
+          options={[{ value: "all", label: t("traeEnterprise.audit.type") }, ...actionLogs.map((log) => ({ value: log.action, label: actionOptionLabel(log) }))]}
         />
         <AuditSelect
           label={t("traeEnterprise.audit.operator")}
@@ -341,8 +358,8 @@ export function TraeEnterpriseAudit({ context }: { context: EnterpriseContext })
                       if (event.key === "Enter" || event.key === " ") setDetail(log);
                     }}
                   >
-                    <td><span className="trae-audit-action-cell"><strong>{actionLabel(log)}</strong></span></td>
-                    <td><span className="trae-audit-record-cell"><span title={resourceLabel(log)}>{resourceLabel(log)}</span></span></td>
+                    <td><span className="trae-audit-action-cell"><strong>{operationTypeLabel(log)}</strong></span></td>
+                    <td><span className="trae-audit-record-cell"><span title={actionLabel(log)}>{actionLabel(log)}</span></span></td>
                     <td><span className={`trae-audit-result ${resultClass(log.result)}`}>{auditResultLabel(log.result)}</span></td>
                     <td><span className="trae-audit-operator-cell"><strong>{log.actor_name || log.actor_id || "--"}</strong><small>{log.actor_contact || log.actor_id || "--"}</small></span></td>
                     <td>{formatEnterpriseTime(log.occurred_at)}</td>

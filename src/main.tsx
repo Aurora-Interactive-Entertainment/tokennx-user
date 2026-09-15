@@ -1,12 +1,12 @@
 import '@douyinfe/semi-ui/react19-adapter'
 import '@douyinfe/semi-ui/lib/es/_base/base.css'
-import { useCallback } from 'react'
 import { Provider } from 'react-redux'
 import ReactDOM from 'react-dom/client'
 import App from './App'
 import { AppErrorBoundary } from './components/app-error-boundary'
 import { createReactRootErrorHandler, initSentry } from './observability/sentry'
 import { BUILD_VERSION } from './build-version'
+import { releaseBootLoader } from './utils/boot-loader'
 import { store } from './store'
 import './i18n'
 import './theme'
@@ -37,8 +37,6 @@ function applyInitialPerformanceMode(): void {
 applyInitialPerformanceMode()
 
 function AppRoot() {
-  const releaseBootLoader = useCallback(() => document.documentElement.classList.add('app-ready'), [])
-
   // 所有路由在首帧释放静态加载层，首页计分板动画在页面可见后继续完成。
   return <Provider store={store}><App onBootReady={releaseBootLoader} /></Provider>
 }

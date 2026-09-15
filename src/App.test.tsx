@@ -5,8 +5,9 @@ import { describe, expect, it, vi } from 'vitest'
 import { AppStoreProvider } from '@/data/app-state'
 import { createAppStore } from '@/store'
 import { invalidateAuth } from '@/store/auth-slice'
-import { AUTH_SYNC_STORAGE_KEY } from '@/auth/token-storage'
-import App, { ConsoleHomeRedirect, ConsoleOutlet } from './App'
+import { AUTH_SYNC_STORAGE_KEY, clearAuthTokens, saveAuthTokens } from '@/auth/token-storage'
+import { PublicHeader } from '@/components/common'
+import App, { AuthBootstrap, ConsoleHomeRedirect, ConsoleOutlet } from './App'
 
 describe('控制台认证路由', () => {
   it('登录失效访问控制台时直接回到首页', () => {
@@ -73,6 +74,63 @@ describe('控制台认证路由', () => {
       await waitFor(() => expect(window.location.pathname).toBe('/'))
     } finally {
       window.history.pushState({}, '', originalPath)
+    }
+  })
+
+  it('登录后自动预取未读通知数，铃铛红点无需点击即可显示', async () => {
+    const appStore = createAppStore()
+    appStore.dispatch({ type: 'auth/loginWithEmail/fulfilled', payload: { id: 'user-1', display_name: '测试用户', avatar_url: '', locale: 'zh-CN', timezone: 'Asia/Shanghai', status: 'active' } })
+    saveAuthTokens({ status: 'succeeded', binding_required: false, access_token: 'notification-access-token', refresh_token: 'notification-refresh-token', refresh_expires_at: Date.UTC(2099, 0, 1) })
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = String(input)
+      const payload = url.includes('/api/user/notifications')
+        ? { items: [{ id: 'notice-1', type: 'account', category: 'security', severity: 'info', title: '新消息', content: '内容', read: false, created_at: '2026-08-26T11:54:26Z' }], unread_count: 1 }
+        : {}
+      return new Response(JSON.stringify({ code: 0, msg: 'success', data: payload }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+    })
+
+    try {
+      render(
+        <Provider store={appStore}>
+          <AppStoreProvider>
+            <MemoryRouter initialEntries={['/']}>
+              <AuthBootstrap><PublicHeader /></AuthBootstrap>
+            </MemoryRouter>
+          </AppStoreProvider>
+        </Provider>,
+      )
+
+      // 未读接口由登录态触发，红点不依赖用户先点开铃铛。
+      await waitFor(() => expect(document.querySelector('.header-notification-dot')).not.toBeNull())
+      const notificationCalls = fetchMock.mock.calls.map(([input]) => String(input)).filter((url) => url.includes('/api/user/notifications'))
+      expect(notificationCalls).toHaveLength(1)
+      expect(notificationCalls[0]).toContain('unread_only=1')
+    } finally {
+      clearAuthTokens({ force: true, broadcast: false })
+      fetchMock.mockRestore()
+    }
+  })
+
+  it('未登录时不预取未读通知数', () => {
+    const appStore = createAppStore()
+    appStore.dispatch(invalidateAuth())
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ code: 0, msg: 'success', data: {} }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
+
+    try {
+      render(
+        <Provider store={appStore}>
+          <AppStoreProvider>
+            <MemoryRouter initialEntries={['/']}>
+              <AuthBootstrap><PublicHeader /></AuthBootstrap>
+            </MemoryRouter>
+          </AppStoreProvider>
+        </Provider>,
+      )
+
+      expect(fetchMock.mock.calls.filter(([input]) => String(input).includes('/api/user/notifications'))).toHaveLength(0)
+      expect(document.querySelector('.header-notification-dot')).toBeNull()
+    } finally {
+      fetchMock.mockRestore()
     }
   })
 })

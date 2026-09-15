@@ -77,6 +77,7 @@ export interface HomepageEntry {
     [key: string]: unknown
   }
   updated_at?: ApiTimestamp
+  expires_at?: ApiTimestamp
 }
 
 export interface PublicHomepage {
@@ -184,6 +185,7 @@ function parseEntry(value: unknown, expectedKind: HomepageKind): HomepageEntry |
     ...(model ? { model } : {}),
     data: value.data as HomepageEntry['data'],
     ...(isApiTimestamp(value.updated_at) ? { updated_at: value.updated_at } : {}),
+    ...(isApiTimestamp(value.expires_at) ? { expires_at: value.expires_at } : {}),
   }
 }
 

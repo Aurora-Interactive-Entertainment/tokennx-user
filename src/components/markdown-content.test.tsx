@@ -101,7 +101,7 @@ describe('模型回复 Markdown 渲染', () => {
   })
 
   it('infers syntax highlighting and language labels for untyped shell code', () => {
-    const { container } = render(<MarkdownContent enhancedCodeBlocks content={'<pre><code>curl https://api.tokennx.com/v1/models\n</code></pre>'} allowHtml />)
+    const { container } = render(<MarkdownContent enhancedCodeBlocks content={'<pre><code>curl https://api.tokennx.cn/v1/models\n</code></pre>'} allowHtml />)
 
     expect(screen.getByText('Shell', { selector: '.markdown-code-reader-language' })).toBeInTheDocument()
     expect(container.querySelector('.markdown-code-reader .token.function')).toHaveTextContent('curl')
@@ -129,11 +129,11 @@ describe('模型回复 Markdown 渲染', () => {
   })
 
   it('adds semantic color to generic URLs and authorization headers', () => {
-    const { container } = render(<MarkdownContent enhancedCodeBlocks content={'```text\nAuthorization: Bearer 你的API密钥 at https://api.tokennx.com/v1\n```'} />)
+    const { container } = render(<MarkdownContent enhancedCodeBlocks content={'```text\nAuthorization: Bearer 你的API密钥 at https://api.tokennx.cn/v1\n```'} />)
 
     expect(screen.getByText('Text', { selector: '.markdown-code-reader-language' })).toBeInTheDocument()
     expect(container.querySelector('.markdown-code-reader pre')).toHaveClass('language-nxconfig')
     expect(container.querySelector('.markdown-code-reader .token.property')).toHaveTextContent('Authorization')
-    expect(container.querySelector('.markdown-code-reader .token.url')).toHaveTextContent('https://api.tokennx.com/v1')
+    expect(container.querySelector('.markdown-code-reader .token.url')).toHaveTextContent('https://api.tokennx.cn/v1')
   })
 })

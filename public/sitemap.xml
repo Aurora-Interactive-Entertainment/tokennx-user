@@ -1,51 +1,57 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
-    <loc>https://tokennx.com/</loc>
-    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://tokennx.com/" />
-    <xhtml:link rel="alternate" hreflang="en" href="https://tokennx.com/en/" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://tokennx.com/" />
+    <loc>https://tokennx.cn/</loc>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://tokennx.cn/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://tokennx.cn/en/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://tokennx.cn/" />
   </url>
   <url>
-    <loc>https://tokennx.com/models/</loc>
-    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://tokennx.com/models/" />
-    <xhtml:link rel="alternate" hreflang="en" href="https://tokennx.com/en/models/" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://tokennx.com/models/" />
+    <loc>https://tokennx.cn/models/</loc>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://tokennx.cn/models/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://tokennx.cn/en/models/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://tokennx.cn/models/" />
   </url>
   <url>
-    <loc>https://tokennx.com/about/</loc>
-    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://tokennx.com/about/" />
-    <xhtml:link rel="alternate" hreflang="en" href="https://tokennx.com/en/about/" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://tokennx.com/about/" />
+    <loc>https://tokennx.cn/about/</loc>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://tokennx.cn/about/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://tokennx.cn/en/about/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://tokennx.cn/about/" />
   </url>
   <url>
-    <loc>https://tokennx.com/terms/</loc>
-    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://tokennx.com/terms/" />
-    <xhtml:link rel="alternate" hreflang="en" href="https://tokennx.com/en/terms/" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://tokennx.com/terms/" />
+    <loc>https://tokennx.cn/terms/</loc>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://tokennx.cn/terms/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://tokennx.cn/en/terms/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://tokennx.cn/terms/" />
   </url>
   <url>
-    <loc>https://tokennx.com/privacy/</loc>
-    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://tokennx.com/privacy/" />
-    <xhtml:link rel="alternate" hreflang="en" href="https://tokennx.com/en/privacy/" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://tokennx.com/privacy/" />
+    <loc>https://tokennx.cn/privacy/</loc>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://tokennx.cn/privacy/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://tokennx.cn/en/privacy/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://tokennx.cn/privacy/" />
   </url>
   <url>
-    <loc>https://tokennx.com/docs/</loc>
-    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://tokennx.com/docs/" />
-    <xhtml:link rel="alternate" hreflang="en" href="https://tokennx.com/en/docs/" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://tokennx.com/docs/" />
+    <loc>https://tokennx.cn/docs/</loc>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://tokennx.cn/docs/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://tokennx.cn/en/docs/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://tokennx.cn/docs/" />
   </url>
   <url>
-    <loc>https://tokennx.com/quickstart/</loc>
-    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://tokennx.com/quickstart/" />
-    <xhtml:link rel="alternate" hreflang="en" href="https://tokennx.com/en/quickstart/" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://tokennx.com/quickstart/" />
+    <loc>https://tokennx.cn/quickstart/</loc>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://tokennx.cn/quickstart/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://tokennx.cn/en/quickstart/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://tokennx.cn/quickstart/" />
   </url>
   <url>
-    <loc>https://tokennx.com/contact/</loc>
-    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://tokennx.com/contact/" />
-    <xhtml:link rel="alternate" hreflang="en" href="https://tokennx.com/en/contact/" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://tokennx.com/contact/" />
+    <loc>https://tokennx.cn/contact/</loc>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://tokennx.cn/contact/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://tokennx.cn/en/contact/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://tokennx.cn/contact/" />
+  </url>
+  <url>
+    <loc>https://tokennx.cn/pricing/</loc>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://tokennx.cn/pricing/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://tokennx.cn/en/pricing/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://tokennx.cn/pricing/" />
   </url>
 </urlset>

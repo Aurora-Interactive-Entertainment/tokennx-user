@@ -18,7 +18,6 @@ import { TraePagination } from '@/components/trae-pagination'
 import { CompatCard as Card, CompatInput as Input, CompatSelect as Select } from '@/components/semi-compat'
 import { useAppStore, type PlaygroundMessage, type PlaygroundSession } from '@/data/app-state'
 import { findModelInList, mapUserModels, modelAlias, type ModelRecord } from '@/data/models'
-import type { UserModelModality } from '@/api/user-models'
 import { useUserModelDetail, useUserModels } from '@/data/user-models'
 import { ModelRuntimeError, streamChatCompletion, type ChatCompletionMessage } from '@/api/model-runtime'
 import { formatNumber } from '@/utils/format'
@@ -26,7 +25,7 @@ import { canStartPlaygroundRound, limitPlaygroundPrompt, PLAYGROUND_MAX_INPUT_CH
 import { clearAuthTokens, getAccessToken } from '@/auth/token-storage'
 import { invalidateAuth } from '@/store/auth-slice'
 import { useAppDispatch } from '@/store/hooks'
-import { DEFAULT_MODEL_PAGE_SIZE, MODEL_CATEGORIES, MODEL_PAGE_SIZES, MODEL_PRICE_FILTERS, MODEL_SORTS, filterAndSortModels, modelCategoryCounts, paginateModels, type ModelCategory, type ModelPriceFilter, type ModelSort } from '@/utils/model-filters'
+import { DEFAULT_MODEL_PAGE_SIZE, CONSOLE_MODEL_CATEGORIES, MODEL_PAGE_SIZES, MODEL_PRICE_FILTERS, MODEL_SORTS, filterAndSortModels, modelCategoryCounts, paginateModels, type ModelCategory, type ModelPriceFilter, type ModelSort } from '@/utils/model-filters'
 import { QuickstartGuide } from '@/components/quickstart-guide'
 import './playground.css'
 import './console-models.css'
@@ -59,9 +58,9 @@ export function ConsoleModelsPage() {
     return () => window.clearTimeout(timer)
   }, [query])
   // 关键词搜索由后端完成，此时不能启用服务端分页参数（结果集已被检索过滤）。
-  const canUseServerPagination = !debouncedKeyword && company === 'all' && priceFilter === 'all' && sort === 'default'
-  const serverModelType: UserModelModality | undefined = category === 'all' || category === 'speech' || category === 'transcription' ? undefined : category
-  const { models: userModels, activities, total: apiTotal, page: apiPage, pageSize: apiPageSize, loading, error } = useUserModels({ activityId: activityId || undefined, modelType: serverModelType, ...(debouncedKeyword ? { keyword: debouncedKeyword } : {}), ...(canUseServerPagination ? { page, pageSize } : {}) })
+  // 模型类型同样不能交给后端过滤：服务端只返回当前类型的模型，分类计数会因此丢掉其他类型的数量。
+  const canUseServerPagination = category === 'all' && !debouncedKeyword && company === 'all' && priceFilter === 'all' && sort === 'default'
+  const { models: userModels, activities, total: apiTotal, page: apiPage, pageSize: apiPageSize, loading, error } = useUserModels({ activityId: activityId || undefined, ...(debouncedKeyword ? { keyword: debouncedKeyword } : {}), ...(canUseServerPagination ? { page, pageSize } : {}) })
   const [detailModel, setDetailModel] = useState<ModelRecord | null>(null)
   const requestedDetailState = useUserModelDetail(requestedModelAlias)
   const detailState = useUserModelDetail(requestedModelAlias ?? (detailModel ? modelAlias(detailModel) : null))
@@ -173,10 +172,10 @@ export function ConsoleModelsPage() {
       </div>
     </div>
     <div className="models-subbar">
-      <div className="modality-tabs" role="group" aria-label={t('console.common.modelType')}>{MODEL_CATEGORIES.map((tab) => <button className={`modality-tab${category === tab.value ? ' active' : ''}`} type="button" aria-pressed={category === tab.value} key={tab.value} disabled={categoryCounts[tab.value] === 0} onClick={() => updateFilter(() => setCategory(tab.value))}>{t(tab.labelKey)} <span className="tab-count">{categoryCounts[tab.value]}</span></button>)}</div><span className="models-result-count">{t('console.common.modelCount', { count: pageResult.total })}</span>
+      <div className="modality-tabs" role="group" aria-label={t('console.common.modelType')}>{CONSOLE_MODEL_CATEGORIES.map((tab) => <button className={`modality-tab${category === tab.value ? ' active' : ''}`} type="button" aria-pressed={category === tab.value} key={tab.value} disabled={categoryCounts[tab.value] === 0} onClick={() => updateFilter(() => setCategory(tab.value))}>{t(tab.labelKey)} <span className="tab-count">{categoryCounts[tab.value]}</span></button>)}</div><span className="models-result-count">{t('console.common.modelCount', { count: pageResult.total })}</span>
     </div>
     {filteredModels.length ? <>
-      <div className={modelGridClassName}>{pageResult.items.map((model) => <ModelCard key={model.id} model={model} showTimePricing onSelect={setDetailModel} onApi={(selectedModel) => navigate(`/console/api-keys?model=${encodeURIComponent(modelAlias(selectedModel))}`)} onChat={(selectedModel) => navigate(`/console/playground?model=${encodeURIComponent(modelAlias(selectedModel))}`)} />)}</div>
+      <div className={modelGridClassName}>{pageResult.items.map((model) => <ModelCard key={model.id} model={model} onSelect={setDetailModel} onApi={(selectedModel) => navigate(`/console/api-keys?model=${encodeURIComponent(modelAlias(selectedModel))}`)} onChat={(selectedModel) => navigate(`/console/playground?model=${encodeURIComponent(modelAlias(selectedModel))}`)} />)}</div>
       <TraePagination ariaLabel={t('console.models.modelPage')} currentPage={pageResult.page} pageSize={pageSize} total={pageResult.total} pageSizeOpts={[...MODEL_PAGE_SIZES]} summary={t('console.common.showRange', { start: pageResult.start, end: pageResult.end, total: pageResult.total })} onChange={(nextPage, nextPageSize) => { setPageSize(nextPageSize); setPage(nextPageSize === pageSize ? nextPage : FIRST_MODEL_PAGE) }} />
     </> : <EmptyPanel title={t('console.models.modelNotFound')} description={t('console.common.adjustFilters')} action={<Button theme="outline" onClick={clearFilters}>{t('console.common.clearFilters')}</Button>} />}
     </> : null}

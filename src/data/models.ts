@@ -44,6 +44,7 @@ export interface ModelRecord {
   name: string
   company: string
   iconUrl?: string
+  launchedAt?: number
   modality: ModelModality
   capabilities: string[]
   context?: string

@@ -1,8 +1,10 @@
 /* 模型广场卡片对齐源站的白底网格、紧凑信息面板和底部操作区。 */
 
 .models-console-page .model-card-grid {
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 400px), 1fr));
-  /* 所有行按最高内容等高，兼容有无峰谷价以及长名称换行。 */
+  /* auto-fill 保留没被占用的空轨道：auto-fit 会收起空轨道，只剩少量卡片时轨道被撑宽，
+  卡片被顶到两端，中间留出大片空隙。 */
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 400px), 1fr));
+  /* 所有行按最高内容等高，兼容长名称换行。 */
   grid-auto-rows: 1fr;
   /* 轨道整体靠左，卡片从左往右依次排列。 */
   justify-content: start;
@@ -29,7 +31,6 @@
   /* 卡片在轨道内靠左排列，从左往右依次铺开。 */
   justify-self: start;
   height: 100%;
-  min-height: 460px;
   isolation: isolate;
   overflow: visible;
   padding: 0;
@@ -566,7 +567,6 @@ html[data-theme="light"] .models-console-page .model-card-info-panel {
   .models-console-page .model-card {
     width: min(595px, 100%);
     height: 100%;
-    min-height: 460px;
   }
 
   .models-console-page .model-card-link {

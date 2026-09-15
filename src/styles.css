@@ -299,6 +299,36 @@ html[data-theme="light"]
   color: #3f444c !important;
 }
 
+/* 跟随指针的浮动提示沿用 .app-info-tooltip 的视觉规范，箭头位置由 --follow-tip-arrow 指定。 */
+.app-follow-tooltip {
+  box-sizing: border-box;
+  /* 视口过窄时按视口收敛，但不低于下限，避免退化成一条细缝。 */
+  max-width: clamp(120px, 100vw - 16px, 320px);
+  padding: 0 8px;
+  border: 1px solid #202226;
+  border-radius: 4px;
+  color: #fff;
+  background: #000;
+  font-size: 11px;
+  line-height: 22px;
+  white-space: nowrap;
+}
+.app-follow-tooltip::after {
+  content: "";
+  position: absolute;
+  bottom: -4px;
+  left: var(--follow-tip-arrow, 50%);
+  width: 8px;
+  height: 8px;
+  margin-left: -4px;
+  background: inherit;
+  transform: rotate(45deg);
+}
+html[data-theme="light"] .app-follow-tooltip {
+  border-color: #3f444c;
+  background: #3f444c;
+}
+
 /* These triggers only explain nearby content; they should not look like controls. */
 .app-info-icon,
 .app-info-icon-trigger,
@@ -8762,9 +8792,6 @@ html[data-theme="dark"] .generation-send-button.send-btn.is-running.semi-button:
   justify-content: space-between;
   gap: var(--spacing-16);
 }
-.api-keys-toolbar-spacer {
-  flex: 1 1 auto;
-}
 .api-keys-toolbar-actions {
   display: flex;
   flex: 0 0 auto;
@@ -10524,8 +10551,7 @@ body:has(.billing-console-page) .semi-select-option-icon {
   font-weight: 600;
 }
 .billing-subpage-copy p,
-.billing-demo-note,
-.invoice-demo-note {
+.billing-demo-note {
   margin: 0;
   color: var(--color-text-tertiary);
   font-size: 12px;

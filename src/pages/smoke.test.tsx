@@ -113,7 +113,7 @@ describe('页面主链冒烟场景', () => {
     expect(screen.queryByRole('heading', { name: '快速接入' })).not.toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: '接入流程' })).not.toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: '服务状态' })).not.toBeInTheDocument()
-    expect(screen.getByText('安顺佳云灵犀智能科技有限公司')).toBeInTheDocument()
+    expect(document.querySelector('.manuscript-footer-brand')).toHaveTextContent('安顺佳云灵犀智能科技有限公司')
     expect(screen.getByAltText('Token NX 微信公众号临时二维码')).toBeInTheDocument()
   })
 

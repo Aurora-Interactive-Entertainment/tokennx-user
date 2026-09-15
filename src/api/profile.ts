@@ -18,7 +18,6 @@ export const PROFILE_NOTIFICATION_CODES = [
   'billing_updates',
   'low_balance',
   'usage_alerts',
-  'workflow_results',
   'invitations',
   'service_updates',
   'product_updates',

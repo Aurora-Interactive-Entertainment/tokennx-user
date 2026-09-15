@@ -104,6 +104,7 @@ function publicMarketModelToRecord(model: PublicMarketModel): ModelRecord {
     company: model.company,
     ...(model.icon_url ? { iconUrl: model.icon_url } : {}),
     modality,
+    launchedAt: model.launched_at,
     capabilities: [],
     description: model.description || '',
     officialPrice: { ...price },
@@ -743,16 +744,7 @@ export function DocsPage() {
   )
 }
 
-export function PricingPage() {
-  const { t } = useTranslation()
-  return (
-    <PublicLayout mainClassName="public-page">
-      <header className="public-page-head"><h1>{t('public.pricing.title')}</h1><p>{t('public.pricing.description')}</p><div className="public-actions"><Link className="btn btn-primary" to="/models">{t('public.pricing.viewCapabilities')}</Link><LoginRequiredAction className="btn btn-secondary" returnPath="/console/quickstart">{t('public.pricing.startIntegration')}</LoginRequiredAction></div></header>
-      <section className="public-section"><div className="public-table-wrap"><table className="public-table"><thead><tr><th>{t('public.pricing.model')}</th><th>{t('public.pricing.type')}</th><th>{t('public.pricing.officialPrice')}</th><th>{t('public.pricing.tokenNxPrice')}</th></tr></thead><tbody>{MODEL_CATALOG.map((model) => <tr key={model.id}><td>{model.name}</td><td>{publicModalityLabel(t, model.modality)}</td><td>{formatPublicPrice(model.officialPrice)}</td><td><ModelPriceSummary price={model.tokenNxPrice} /></td></tr>)}</tbody></table></div></section>
-      <section className="public-section"><h2>{t('public.pricing.localCostTitle')}</h2><div className="public-grid"><div className="public-grid-item"><h3>{t('public.pricing.textModel')}</h3><p>{t('public.pricing.textModelDescription')}</p></div><div className="public-grid-item"><h3>{t('public.pricing.generationModel')}</h3><p>{t('public.pricing.generationModelDescription')}</p></div><div className="public-grid-item"><h3>{t('public.pricing.failedRequest')}</h3><p>{t('public.pricing.failedRequestDescription')}</p></div></div></section>
-    </PublicLayout>
-  )
-}
+export { PricingPage } from './public-pricing'
 
 export function StatusPage() {
   const { t } = useTranslation()

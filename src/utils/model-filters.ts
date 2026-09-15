@@ -1,4 +1,5 @@
 import type { ModelPrice, ModelRecord } from '@/data/models'
+import { CONSOLE_IMAGE_GENERATION_ENABLED } from '@/config/console-features'
 
 export const MODEL_CATEGORIES = [
   { value: 'all', labelKey: 'console.common.all' },
@@ -7,13 +8,15 @@ export const MODEL_CATEGORIES = [
   { value: 'audio', labelKey: 'console.common.audio' },
   { value: 'video', labelKey: 'console.common.video' },
   { value: 'embedding', labelKey: 'console.common.embedding' },
-  { value: 'rerank', labelKey: 'console.common.rerank' },
+  { value: 'rerank', labelKey: 'console.common.reranking' },
   { value: 'speech', labelKey: 'console.common.speech' },
   { value: 'transcription', labelKey: 'console.common.transcription' },
   { value: 'multimodal', labelKey: 'console.enterprise.model.multimodal' },
 ] as const
 
 export type ModelCategory = typeof MODEL_CATEGORIES[number]['value']
+
+export const CONSOLE_MODEL_CATEGORIES = MODEL_CATEGORIES.filter((category) => category.value !== 'image' || CONSOLE_IMAGE_GENERATION_ENABLED)
 
 export const MODEL_PRICE_FILTERS = [
   { value: 'all', labelKey: 'console.common.all' },

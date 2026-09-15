@@ -592,8 +592,8 @@ export function TraeEnterpriseAnalysis({ context }: AnalysisProps) {
     [t("traeEnterprise.analysis.cumulativeTokens"), metrics ? formatCount(cumulativeTokens) : "--", t("traeEnterprise.analysis.tokenUnit")],
     [t("traeEnterprise.analysis.latestDayTokens"), metrics ? formatCount(latestDayTokens) : "--", t("traeEnterprise.analysis.tokenUnit")],
   ];
-  const toolRows = (data?.tools ?? [])
-    .filter((tool) => !/agent|智能体/i.test(`${tool.id} ${tool.name}`))
+  // 工具榜按调用量排序；名称包含 Agent 的客户端仍然属于工具，不应被隐藏。
+  const toolRows = [...(data?.tools ?? [])]
     .sort((a, b) => b.request_count - a.request_count)
     .slice(0, 5)
     .map((tool) => ({ name: tool.name, count: tool.request_count }));
@@ -671,7 +671,7 @@ export function TraeEnterpriseAnalysis({ context }: AnalysisProps) {
       </TraeSection>
 
       <div className="trae-analysis-ranking-grid">
-        <TraeAnalysisRanking title={t("traeEnterprise.analysis.mcp")} rows={toolRows} />
+        <TraeAnalysisRanking title={t("traeEnterprise.analysis.toolRanking")} rows={toolRows} />
         <TraeAnalysisRanking title={t("traeEnterprise.analysis.agent")} rows={memberRows} />
       </div>
 

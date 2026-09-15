@@ -7,6 +7,7 @@ import type { ModelRecord } from '@/data/models'
 import modelCardArt from '@/assets/figma-home/model-card-art.png'
 import promoArticleArt from '@/assets/figma-home/promo-article.png'
 import promoBannerArt from '@/assets/figma-home/promo-banner.png'
+import { apiTimeToDate } from '@/utils/format'
 import './public-models-showcase.css'
 
 export type ModelsShowcaseGroup = {
@@ -120,10 +121,12 @@ export function ModelsHeroCarousel({ carousels = [] }: { carousels?: PublicMarke
 }
 
 export function ShowcaseModelCard({ model }: { model: ModelRecord }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
+  // 发布日期以模型接口为准；缺少日期时不显示虚构的统一日期。
+  const launchDate = model.launchedAt ? apiTimeToDate(model.launchedAt) : null
   const modelReturnPath = `/console/models?keyword=${encodeURIComponent(model.id)}`
   return <article className="models-showcase-card">
-    <div className="models-showcase-card-head"><div className="models-showcase-card-identity"><ModelLogo model={model} className="models-showcase-card-logo" /><span><strong>{model.name}</strong><small>{t('public.models.releaseDate', { date: '2026年7月3日' })}</small></span></div></div>
+    <div className="models-showcase-card-head"><div className="models-showcase-card-identity"><ModelLogo model={model} className="models-showcase-card-logo" /><span><strong>{model.name}</strong>{launchDate ? <small>{t('public.models.releaseDate', { date: launchDate.toLocaleDateString(i18n.language, { year: 'numeric', month: 'long', day: 'numeric' }) })}</small> : null}</span></div></div>
     <p className="models-showcase-card-description">{model.description}</p>
     <dl className="models-showcase-card-prices"><div><dt>{t('public.models.inputPrice')}</dt><dd>{hasDiscount(model, 'input') ? <del className="models-showcase-card-price-original"><span>{t('public.models.priceBase')}</span>{priceValue(model, 'input', 'officialPrice')}</del> : <span className="models-showcase-card-price-original models-showcase-card-price-original--placeholder" aria-hidden="true" />}<strong className="models-showcase-card-price-current"><span className="models-showcase-card-price-current-currency">{t('public.models.priceBase')}</span>{priceValue(model, 'input')}</strong></dd></div><div><dt>{t('public.models.outputPrice')}</dt><dd>{hasDiscount(model, 'output') ? <del className="models-showcase-card-price-original"><span>{t('public.models.priceBase')}</span>{priceValue(model, 'output', 'officialPrice')}</del> : <span className="models-showcase-card-price-original models-showcase-card-price-original--placeholder" aria-hidden="true" />}<strong className="models-showcase-card-price-current"><span className="models-showcase-card-price-current-currency">{t('public.models.priceBase')}</span>{priceValue(model, 'output')}</strong></dd></div></dl>
     <div className="models-showcase-card-actions"><LoginRequiredAction className="models-showcase-card-primary" returnPath={modelReturnPath}>{t('public.models.tryNow')}</LoginRequiredAction><Link className="models-showcase-card-docs" to="/docs/01M0765G0JDT3JCZ6QQXNM40TX/token-nx-api-documentation">{t('public.models.apiDocs')}</Link></div>

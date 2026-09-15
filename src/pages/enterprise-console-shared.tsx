@@ -14,6 +14,7 @@ import { useAppDispatch } from '@/store/hooks'
 import { useAppStore } from '@/data/app-state'
 import { BACKOFFICE_MONEY_DISPLAY_DECIMAL_PLACES, formatCount, formatApiTime, formatYuan, type ApiTimeValue } from '@/utils/format'
 import i18n from '@/i18n'
+import { enterpriseRoleLabel } from '@/utils/enterprise-labels'
 
 export type EnterpriseCapability = keyof EnterpriseContext['capabilities']
 
@@ -149,10 +150,7 @@ export function EnterpriseExportButton({ onClick, disabled = false, label }: { o
 }
 
 export function roleLabel(value: string, options: EnterpriseRoleOption[] = []): string {
-  const code = value.trim()
-  const option = options.find((item) => item.code === code)
-  if (option?.owner_role || code === 'owner') return i18n.t('console.enterpriseSettings.owner')
-  return option?.name || code || i18n.t('console.enterprise.roleUnnamed')
+  return enterpriseRoleLabel(value, options)
 }
 
 export function roleVisualClass(value: string, options: EnterpriseRoleOption[] = []): 'owner' | 'custom' {

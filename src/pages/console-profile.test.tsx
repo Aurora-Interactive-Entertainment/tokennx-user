@@ -30,6 +30,8 @@ const PREFERENCES = {
     { code: 'low_balance', enabled: true, default_enabled: true, version: 0 },
     { code: 'invitations', enabled: true, default_enabled: true, version: 0 },
     { code: 'product_updates', enabled: false, default_enabled: false, version: 0 },
+    { code: 'security_alerts', enabled: true, default_enabled: true, version: 0, mandatory: true },
+    { code: 'workflow_results', enabled: true, default_enabled: true, version: 0 },
   ],
 }
 
@@ -217,9 +219,26 @@ describe('个人设置页面', () => {
     expect(document.querySelectorAll('.settings-section')).toHaveLength(4)
     expect(screen.getByRole('navigation', { name: '个人设置导航' })).toHaveTextContent('账户通知偏好工作空间账号安全')
     expect(document.querySelector('#settings-account > .settings-section-head + .settings-card')).not.toBeNull()
-    expect(screen.getAllByRole('switch')).toHaveLength(3)
+    expect(screen.getAllByRole('switch')).toHaveLength(4)
+    expect(screen.queryByText('工作流结果')).not.toBeInTheDocument()
+    expect(screen.getByRole('switch', { name: '安全提醒' })).toBeDisabled()
+    expect(screen.getByRole('switch', { name: '安全提醒' })).toHaveAccessibleDescription('安全通知不可关闭。')
+    expect(screen.queryByText('企业空间需要先完成企业认证。')).not.toBeInTheDocument()
     expect(appStore.getState().auth.user?.phone_masked).toBe('138****5678')
     expect(fetchMock).toHaveBeenCalledTimes(3)
+  })
+
+  it('工作空间入口可在企业与个人之间切换，并加载相应设置', async () => {
+    const user = userEvent.setup()
+    const { fetchMock } = mockProfileApi()
+    renderPage()
+    await user.click(await screen.findByRole('button', { name: '切换到 示例企业' }))
+    expect(await screen.findByRole('button', { name: '切换到 接口用户 的个人空间' })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: '通知偏好' })).not.toBeInTheDocument()
+    expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith(`/api/user/enterprise/${ENTERPRISE_CONTEXT.id}/context`))).toBe(true)
+    await user.click(screen.getByRole('button', { name: '切换到 接口用户 的个人空间' }))
+    expect(await screen.findByRole('heading', { name: '通知偏好' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '切换到 接口用户 的个人空间' })).not.toBeInTheDocument()
   })
 
   it('打开账户弹窗时锁定根滚动容器且不改变 body 的滚动上下文', async () => {

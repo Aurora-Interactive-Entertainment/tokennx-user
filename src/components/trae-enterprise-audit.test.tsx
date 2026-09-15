@@ -85,11 +85,22 @@ beforeEach(() => {
 });
 
 describe("Trae 企业操作日志", () => {
+  it("操作类型和筛选统一翻译，筛选请求仍使用原始枚举", async () => {
+    getEnterpriseAuditLogsMock.mockResolvedValue(auditPage({ items: [{ ...LOG, action: 'enterprise_department', resource_type: 'enterprise_department', summary: '创建部门' }] }));
+    const user = userEvent.setup();
+    renderAudit();
+    expect(await screen.findByText('创建部门')).toBeInTheDocument();
+    expect(screen.getByText('部门', { exact: true })).toBeInTheDocument();
+    await user.click(screen.getByText('全部操作类型', { exact: true }));
+    await user.click(await screen.findByText('部门 · 创建部门', { exact: true }));
+    await waitFor(() => expect(getEnterpriseAuditLogsMock).toHaveBeenLastCalledWith({ enterprise_id: 'ent_test' }, expect.objectContaining({ action: 'enterprise_department' })));
+  });
+
   it("按接口分页加载日志，并以本地自然日构造完整时间范围", async () => {
     renderAudit();
 
     expect(await screen.findByText("更新成员状态")).toBeInTheDocument();
-    expect(screen.getByText("enterprise_member · member_2")).toBeInTheDocument();
+    expect(screen.getByText("成员", { exact: true })).toBeInTheDocument();
     expect(screen.getByText("管理员")).toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: "操作状态" })).toBeInTheDocument();
     expect(screen.getByText("成功", { selector: ".trae-audit-result" })).toBeInTheDocument();
@@ -113,7 +124,7 @@ describe("Trae 企业操作日志", () => {
     await user.click(await screen.findByText("更新成员状态"));
 
     const dialog = await screen.findByRole("dialog", { name: "操作详情" });
-    expect(dialog).toHaveTextContent("enterprise_member · member_2");
+    expect(dialog).toHaveTextContent("成员 · member_2");
     expect(dialog).toHaveTextContent("req_audit_1");
     expect(dialog).toHaveTextContent('"status": "active"');
     expect(dialog).toHaveTextContent('"status": "removed"');

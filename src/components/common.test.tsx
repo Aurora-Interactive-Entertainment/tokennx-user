@@ -9,7 +9,7 @@ import { AppStoreProvider } from '@/data/app-state'
 import { createAppStore } from '@/store'
 import { synchronizeAuthenticatedUser } from '@/store/auth-slice'
 import { clearAuthTokens, getVerifiedPhone, saveAuthTokens, saveVerifiedPhone } from '@/auth/token-storage'
-import { activeNavKey, ConsoleLayout, consoleNavGroupsFor, DEFAULT_CONSOLE_PATH, isEnterpriseOwner, isEnterprisePermissionPath, LoginPanel, localizeConsoleLabel, normalizeLoginReturnPath, PublicFooter, PublicHeader, PublicLayout, PUBLIC_LINKS } from './common'
+import { activeNavKey, ConsoleLayout, consoleNavGroupsFor, DEFAULT_CONSOLE_PATH, isEnterpriseOwner, isEnterprisePermissionPath, LoginPanel, localizeConsoleLabel, normalizeLoginReturnPath, prefetchUnreadNotificationCount, PublicFooter, PublicHeader, PublicLayout, PUBLIC_LINKS } from './common'
 import { NEW_ENTERPRISE_CREATE_PATH } from '@/api/enterprise-certification'
 import i18n from '@/i18n'
 import { getProductPlans, getPublicProductPlans } from '@/api/product-plans'
@@ -203,7 +203,7 @@ describe('控制台导航路径匹配', () => {
     expect(activeNavKey('/console')).toBe('')
   })
 
-  it('展示侧栏入口、个人空间标识和全局客服入口', () => {
+  it('展示侧栏入口、个人空间标识和全局客服入口', async () => {
     render(
       <MemoryRouter initialEntries={['/console/quickstart']}>
         <Provider store={createAppStore()}>
@@ -227,12 +227,16 @@ describe('控制台导航路径匹配', () => {
     expect(navigation).not.toHaveTextContent('联系我们')
     expect(navigation).not.toHaveTextContent('在线客服')
     expect(screen.getByRole('link', { name: '实名认证' })).toHaveAttribute('href', '/console/real-name')
-    expect(screen.getByRole('link', { name: '订阅管理' })).toHaveAttribute('href', '/console/trae-enterprise/subscription')
+    expect(screen.getByRole('link', { name: '套餐管理' })).toHaveAttribute('href', '/console/subscription')
     expect(screen.getByRole('link', { name: '视频生成' })).toHaveAttribute('href', '/console/video')
     expect(screen.queryByRole('button', { name: /认证返现/ })).toBeNull()
     expect(screen.getByRole('button', { name: '打开客服' })).toBeInTheDocument()
     expect(navigation.closest('.console-sidebar')).not.toHaveTextContent('han')
     expect(navigation.querySelectorAll('.console-nav-link .console-nav-icon')).toHaveLength(navigation.querySelectorAll('.console-nav-link').length)
+    await userEvent.setup().click(within(navigation).getByRole('button', { name: '兑换码' }))
+    const redemption = await screen.findByRole('dialog', { name: '兑换码' })
+    expect(redemption).toHaveTextContent('兑换码可通过官方活动获取，详情请咨询客服。')
+    expect(redemption).toHaveTextContent('兑换仅适用于个人账户')
   })
 
   it('Header 消息图标打开全局客服并默认切换到通知栏目', async () => {
@@ -307,7 +311,7 @@ describe('控制台导航路径匹配', () => {
       const settings = sections.find((section) => section.querySelector('.console-nav-section-title')?.textContent === '企业设置')
       expect(management).not.toBeUndefined()
       expect(settings).not.toBeUndefined()
-      expect(within(management as HTMLElement).getAllByRole('link').map((link) => link.textContent)).toEqual(['人员管理', '用量管理', '操作日志', '数据分析', '费用管理', '订阅管理', '套餐购买', '密钥管理', '充值管理'])
+      expect(within(management as HTMLElement).getAllByRole('link').map((link) => link.textContent)).toEqual(['人员管理', '用量管理', '操作日志', '数据分析', '费用管理', '套餐管理', '套餐购买', '密钥管理', '充值管理'])
       expect(within(management as HTMLElement).queryByRole('link', { name: '权限与标签' })).toBeNull()
       expect(within(settings as HTMLElement).getAllByRole('link').map((link) => link.textContent)).toEqual(['企业设置', '模型管理', '权限管理'])
     } finally {
@@ -366,14 +370,43 @@ describe('控制台导航路径匹配', () => {
     }
   })
 
+  it('企业空间同样提供兑换码入口并说明余额计入个人空间', async () => {
+    const previousSnapshot = window.localStorage.getItem('token-nx:user-front:v1')
+    window.localStorage.setItem('token-nx:user-front:v1', JSON.stringify({
+      activeWorkspaceId: 'ent-redeem',
+      workspaces: [{ id: 'ent-redeem', name: '测试企业', type: 'enterprise', role: 'member' }],
+    }))
+
+    try {
+      render(
+        <MemoryRouter initialEntries={['/console/quickstart']}>
+          <Provider store={createAppStore()}>
+            <AppStoreProvider><ConsoleLayout><span>页面内容</span></ConsoleLayout></AppStoreProvider>
+          </Provider>
+        </MemoryRouter>,
+      )
+
+      const navigation = screen.getByRole('navigation', { name: '控制台导航' })
+      await userEvent.setup().click(within(navigation).getByRole('button', { name: '兑换码' }))
+      const redemption = await screen.findByRole('dialog', { name: '兑换码' })
+      expect(redemption).toHaveTextContent('兑换仅适用于个人账户，余额将计入个人空间。')
+    } finally {
+      if (previousSnapshot === null) {
+        window.localStorage.removeItem('token-nx:user-front:v1')
+      } else {
+        window.localStorage.setItem('token-nx:user-front:v1', previousSnapshot)
+      }
+    }
+  })
+
   it('企业导航过滤器按角色组权限显示对应菜单并把费用归入企业管理', () => {
     expect(isEnterpriseOwner({ type: 'enterprise', role: 'owner' })).toBe(true)
     expect(isEnterpriseOwner({ type: 'enterprise', role: 'member' })).toBe(false)
     expect(isEnterpriseOwner({ type: 'personal', role: 'owner' })).toBe(false)
-    expect(consoleNavGroupsFor({ type: 'enterprise', role: 'member' }).flatMap((group) => group.items).map((item) => item.label)).toEqual(['快速接入', '模型广场', '智能对话', '视频生成', '个人用量', '个人设置', '我的密钥'])
+    expect(consoleNavGroupsFor({ type: 'enterprise', role: 'member' }).flatMap((group) => group.items).map((item) => item.label)).toEqual(['快速接入', '模型广场', '智能对话', '视频生成', '个人用量', '个人设置', '我的密钥', '兑换码'])
     expect(consoleNavGroupsFor({ type: 'enterprise', role: 'member' }, ['usage.detail']).flatMap((group) => group.items).map((item) => item.label)).toContain('用量管理')
     expect(consoleNavGroupsFor({ type: 'enterprise', role: 'member' }, ['billing.view']).flatMap((group) => group.items).map((item) => item.label)).toContain('费用管理')
-    expect(consoleNavGroupsFor({ type: 'enterprise', role: 'member' }, ['billing.view']).find((group) => group.key === 'enterprise-management')?.items.map((item) => item.label)).toEqual(['费用管理', '订阅管理', '套餐购买', '充值管理'])
+    expect(consoleNavGroupsFor({ type: 'enterprise', role: 'member' }, ['billing.view']).find((group) => group.key === 'enterprise-management')?.items.map((item) => item.label)).toEqual(['费用管理', '套餐管理', '套餐购买', '充值管理'])
     expect(consoleNavGroupsFor({ type: 'enterprise', role: 'member' }, ['billing.view']).find((group) => group.key === 'account')?.items.map((item) => item.label)).not.toEqual(expect.arrayContaining(['费用管理', '充值管理']))
     expect(consoleNavGroupsFor({ type: 'enterprise', role: 'member' }, ['tags.edit']).flatMap((group) => group.items).map((item) => item.label)).toContain('权限管理')
     expect(consoleNavGroupsFor({ type: 'enterprise', role: 'owner' }).flatMap((group) => group.items).map((item) => item.label)).toContain('费用管理')
@@ -458,8 +491,8 @@ describe('控制台导航路径匹配', () => {
           </MemoryRouter>,
         )
 
-        // 订阅管理和企业入驻个人空间同样可用，不能被当成企业专属页面重定向。
-        await waitFor(() => expect(screen.getByTestId('common-location')).toHaveTextContent(path))
+        // 个人套餐旧链接迁移到个人路径，企业入驻入口保持可用。
+        await waitFor(() => expect(screen.getByTestId('common-location')).toHaveTextContent(path === '/console/trae-enterprise/subscription' ? '/console/subscription' : path))
         view.unmount()
       }
     } finally {
@@ -600,6 +633,88 @@ describe('公共 Header 布局', () => {
       </MemoryRouter>,
     )
     expect(screen.getByRole('button', { name: '查看通知' }).querySelectorAll('.header-notification-dot')).toHaveLength(1)
+  })
+
+  it('预取的未读数排除已读与本地删除，口径与通知面板一致', async () => {
+    saveAuthTokens({ status: 'succeeded', binding_required: false, access_token: 'notification-access-token', refresh_token: 'notification-refresh-token', refresh_expires_at: Date.UTC(2099, 0, 1) })
+    const counts: number[] = []
+    const listener = (event: Event) => counts.push((event as CustomEvent<{ count?: number }>).detail?.count ?? -1)
+    window.addEventListener('token-nx:notification-count', listener)
+    window.localStorage.setItem('token-nx:deleted-notifications', JSON.stringify(['notice-deleted']))
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(profileApiResponse({
+      items: [
+        { id: 'notice-unread', type: 'account', category: 'security', severity: 'info', title: '新消息', content: '内容', read: false, created_at: '2026-08-26T11:54:26Z' },
+        { id: 'notice-deleted', type: 'account', category: 'security', severity: 'info', title: '已删除', content: '内容', read: false, created_at: '2026-08-26T11:54:26Z' },
+        { id: 'notice-read', type: 'account', category: 'security', severity: 'info', title: '已读', content: '内容', read: true, created_at: '2026-08-26T11:54:26Z' },
+      ],
+      unread_count: 2,
+    }))
+
+    try {
+      await prefetchUnreadNotificationCount()
+      expect(counts).toEqual([1])
+    } finally {
+      window.removeEventListener('token-nx:notification-count', listener)
+      window.localStorage.removeItem('token-nx:deleted-notifications')
+    }
+  })
+
+  it('通知面板取过未读数后，晚到的预取结果不会让红点复活', async () => {
+    const user = userEvent.setup()
+    saveAuthTokens({ status: 'succeeded', binding_required: false, access_token: 'notification-access-token', refresh_token: 'notification-refresh-token', refresh_expires_at: Date.UTC(2099, 0, 1) })
+    const counts: number[] = []
+    const listener = (event: Event) => counts.push((event as CustomEvent<{ count?: number }>).detail?.count ?? -1)
+    window.addEventListener('token-nx:notification-count', listener)
+    let resolvePrefetch: (response: Response) => void = () => undefined
+    const pendingPrefetch = new Promise<Response>((resolve) => { resolvePrefetch = resolve })
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = String(input)
+      // 首屏预取先挂起，模拟用户还没来得及看就已经在通知面板里操作完的慢网络。
+      if (url.includes('unread_only=1')) return pendingPrefetch
+      if (url.includes('/api/user/notifications')) {
+        return profileApiResponse({
+          items: [
+            { id: 'notice-1', type: 'account', category: 'security', severity: 'info', title: '新消息', content: '内容', read: false, created_at: '2026-08-26T11:54:26Z' },
+            { id: 'notice-2', type: 'account', category: 'security', severity: 'info', title: '新消息', content: '内容', read: false, created_at: '2026-08-26T11:54:26Z' },
+          ],
+          unread_count: 2,
+        })
+      }
+      return profileApiResponse({})
+    })
+
+    try {
+      render(
+        <MemoryRouter initialEntries={['/']}>
+          <Provider store={createAppStore()}>
+            <AppStoreProvider>
+              <PublicHeader />
+              <PublicFooter />
+            </AppStoreProvider>
+          </Provider>
+        </MemoryRouter>,
+      )
+
+      const prefetch = prefetchUnreadNotificationCount()
+      await user.click(screen.getByRole('button', { name: '查看通知' }))
+      // 面板返回 2 条未读并发布权威计数。
+      await waitFor(() => expect(counts).toContain(2))
+
+      resolvePrefetch(profileApiResponse({
+        items: [
+          { id: 'notice-1', type: 'account', category: 'security', severity: 'info', title: '新消息', content: '内容', read: false, created_at: '2026-08-26T11:54:26Z' },
+          { id: 'notice-2', type: 'account', category: 'security', severity: 'info', title: '新消息', content: '内容', read: false, created_at: '2026-08-26T11:54:26Z' },
+          { id: 'notice-3', type: 'account', category: 'security', severity: 'info', title: '新消息', content: '内容', read: false, created_at: '2026-08-26T11:54:26Z' },
+        ],
+        unread_count: 3,
+      }))
+      await prefetch
+
+      expect(counts).not.toContain(3)
+      expect(counts.at(-1)).toBe(2)
+    } finally {
+      window.removeEventListener('token-nx:notification-count', listener)
+    }
   })
 
   it('费用弹窗可通过眼睛按钮隐藏和恢复余额', async () => {
@@ -858,13 +973,15 @@ describe('公共 Header 布局', () => {
     expect(screen.getByRole('link', { name: '视频生成' })).toHaveAttribute('href', '/login?return=%2Fconsole%2Fvideo')
     expect(screen.getByRole('link', { name: '模型排名' })).toHaveAttribute('href', '/rankings')
     expect(screen.getByRole('link', { name: '智能体排名' })).toHaveAttribute('href', '/apps')
-    expect(screen.getByRole('link', { name: '套餐价格' })).toHaveAttribute('href', '/login?return=%2Fconsole%2Ftrae-enterprise%2Fsubscription')
+    expect(screen.getByRole('link', { name: '套餐价格' })).toHaveAttribute('href', '/pricing')
     expect(screen.getByRole('link', { name: i18n.t('footer.platformIntro') })).toHaveAttribute('href', '/docs/01M074Z9VZXG1V0T6KYRW7AE34/platform-overview')
     expect(screen.getByRole('link', { name: i18n.t('footer.apiDocs') })).toHaveAttribute('href', '/docs/01M0765G0JAQQMZ1WDAE1DBG87/integration-overview')
     expect(screen.getByRole('link', { name: i18n.t('footer.faq') })).toHaveAttribute('href', '/docs/01M0765G0JADMQ2Y49DHV3MX70/frequently-asked-questions')
     expect(screen.getByRole('link', { name: i18n.t('footer.userAgreement') })).toHaveAttribute('href', '/terms')
     expect(screen.getByRole('link', { name: i18n.t('footer.privacyAgreement') })).toHaveAttribute('href', '/privacy')
     expect(screen.getByRole('link', { name: i18n.t('footer.rechargeAgreement') })).toHaveAttribute('href', '/recharge-agreement')
+    expect(document.querySelectorAll('#manuscript-footer-panel-footer-legal a')).toHaveLength(3)
+    expect(screen.getByRole('contentinfo')).not.toHaveTextContent('Token NX, Inc.')
     expect(screen.getByRole('link', { name: '商务合作：bd@tokennx.com' })).toHaveAttribute('href', 'mailto:bd@tokennx.com')
 
     await user.click(screen.getByRole('button', { name: '售前咨询：在线咨询' }))

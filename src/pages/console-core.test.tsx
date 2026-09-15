@@ -260,11 +260,29 @@ describe('控制台模型接入页面', () => {
 
     const modelTypes = screen.getByRole('group', { name: '模型类型筛选' })
     expect(within(modelTypes).getByRole('button', { name: /全部\s*3/ })).toBeEnabled()
-    expect(within(modelTypes).getByRole('button', { name: /图片\s*1/ })).toBeEnabled()
+    expect(within(modelTypes).queryByRole('button', { name: /^图片/ })).not.toBeInTheDocument()
     expect(within(modelTypes).getByRole('button', { name: /音频\s*0/ })).toBeDisabled()
     const coloredTag = document.querySelector<HTMLElement>('.models-console-page .model-card-tags .model-color-tag')
     expect(coloredTag).toHaveTextContent('折扣')
     expect(coloredTag?.style.getPropertyValue('--model-tag-color')).toBe('#c98a35')
+  })
+
+  it('按模型类型筛选时保留其他类型的分类计数', async () => {
+    const user = userEvent.setup()
+    // 真实接口带 model_type 时只返回该类型模型；类型筛选必须留在本地，否则计数只剩当前类型的数量。
+    vi.mocked(globalThis.fetch).mockImplementation(async (input) => {
+      const modelType = new URL(String(input), 'http://localhost').searchParams.get('model_type')
+      const items = manyModelsResponse().items.filter((item) => !modelType || item.modality === modelType)
+      return new Response(JSON.stringify({ code: 0, msg: 'success', data: { items } }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+    })
+    renderConsolePage(<ConsoleModelsPage />, ['/console/models'])
+
+    const modelTypes = await screen.findByRole('group', { name: '模型类型筛选' })
+    await user.click(within(modelTypes).getByRole('button', { name: /^文本/ }))
+
+    expect(await screen.findByText('8 个模型')).toBeInTheDocument()
+    expect(within(modelTypes).getByRole('button', { name: /全部\s*12/ })).toBeEnabled()
+    expect(within(modelTypes).getByRole('button', { name: /文本\s*8/ })).toHaveAttribute('aria-pressed', 'true')
   })
 
   it('模型广场支持通过查询参数打开抽屉，并在关闭后清除参数', async () => {
@@ -335,7 +353,7 @@ describe('控制台模型接入页面', () => {
     await user.click(screen.getByRole('button', { name: '免费' }))
     expect(await screen.findByText('1 个模型')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /全部\s*1/ })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /图片\s*1/ })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^图片/ })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: /文本\s*0/ })).toBeDisabled()
 
     const search = screen.getByRole('textbox', { name: '搜索模型名称或公司' })

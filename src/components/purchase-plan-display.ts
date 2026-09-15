@@ -41,11 +41,7 @@ export function planFeatures(plan: CatalogPlan, locale: string, t: TFunction): s
   if (plan.description?.trim()) features.push(plan.description.trim())
   const seconds = plan.price?.validity_seconds
   if (seconds > 0) features.push(t('console.purchasePage.api.validity', { count: Math.max(1, Math.ceil(seconds / 86400)) }))
-  const availability = [
-    'stock_remaining' in plan && plan.stock_remaining != null ? t('console.purchasePage.api.stockRemaining', { count: Math.max(0, plan.stock_remaining) }) : '',
-    'purchase_limit' in plan && plan.purchase_limit > 0 ? t('console.purchasePage.api.purchaseRemaining', { count: Math.max(0, plan.purchase_limit - plan.purchased_count) }) : '',
-  ].filter(Boolean)
-  if (availability.length) features.push(availability.join(' · '))
+  // 库存和已购次数是后台运营字段，不能把占位库存或剩余次数暴露给用户。
   const limits = [
     plan.rpm_limit > 0 ? `RPM ${formatPlanCount(plan.rpm_limit, locale)}` : '',
     plan.tpm_limit > 0 ? `TPM ${formatPlanCount(plan.tpm_limit, locale)}` : '',

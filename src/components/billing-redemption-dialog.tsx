@@ -76,7 +76,8 @@ export function BillingRedemptionDialog({ visible, onClose, onSuccess, onAuthFai
           autoComplete="off"
           inputMode="text"
           aria-invalid={Boolean(error)}
-          aria-describedby="billing-redemption-hint"
+          aria-label={i18n.t('console.billing.redeemCodeTitle')}
+          aria-describedby="billing-redemption-hint billing-redemption-source"
           placeholder={i18n.t('console.billing.redeemCodePlaceholder')}
           onChange={(event) => {
             setCode(event.target.value.replace(/[^A-Za-z0-9]/g, '').slice(0, 12))
@@ -91,6 +92,9 @@ export function BillingRedemptionDialog({ visible, onClose, onSuccess, onAuthFai
         />
         <p className="billing-redemption-hint" id="billing-redemption-hint">
           {i18n.t('console.billing.redeemCodeHint')}
+        </p>
+        <p className="billing-redemption-hint" id="billing-redemption-source">
+          {i18n.t('console.billing.redeemCodeSource')}
         </p>
       </div>
     </Modal>

@@ -340,7 +340,15 @@ html:has(.settings-console-page) {
   font-size: 12px;
 }
 
-.settings-redesign-page .workspace-item > span {
+.settings-redesign-page .workspace-item-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.settings-redesign-page .workspace-item-actions > span {
   flex: 0 0 auto;
   padding: 4px 10px;
   border: 1px solid var(--color-border-neutral-l2);
