@@ -5,6 +5,7 @@ import { getRecentProductPlanPurchases, isUserProductPlan, type ProductPlanSumma
 import { usePurchaseCatalog } from "@/components/use-purchase-catalog";
 import ActivityTicker from "@/components/activity-ticker";
 import PurchasePlanSection from "@/components/purchase-plan-section";
+import { planName } from "@/components/purchase-plan-display";
 import { PurchasePaymentModal } from "@/components/purchase-payment-modal";
 import { useAppStore } from "@/data/app-state";
 import { invalidateAuth } from "@/store/auth-slice";
@@ -377,7 +378,7 @@ export function PurchasePage({ activityMessages }: { activityMessages?: Purchase
           dispatch(invalidateAuth());
           navigate("/", { replace: true });
         }}
-        planName={selectedPlan?.name ?? ""}
+        planName={selectedPlan ? planName(selectedPlan) : ""}
         priceCent={selectedPlan?.price.price_cent}
         validitySeconds={selectedPlan?.price.validity_seconds}
         onClose={() => setSelection(null)}

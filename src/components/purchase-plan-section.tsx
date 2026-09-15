@@ -11,6 +11,13 @@ import { formatPlanPrice, planGroups, planGroup, planQuota, planFeatures, planBo
 
 const CARD_BACKGROUNDS = [miniMaxBackground, deepSeekBackground, seedanceBackground, kimiBackground, glmBackground]
 const CARD_TONES = ['miniMax', 'deepSeek', 'seedance', 'kimi', 'glm'] as const
+const MODEL_NAMES = ['minimax', 'deepseek', 'seedance', 'kimi', 'glm']
+
+// 按模型匹配已有插画，不能按列表顺序配图，否则筛选和排序后会显示其他品牌。
+function planBrandIndex(plan: ProductPlanSummary): number {
+  const text = `${plan.model_code} ${plan.model_name} ${plan.group_name}`.toLowerCase()
+  return MODEL_NAMES.findIndex((model) => text.includes(model))
+}
 
 function PurchasePlanCard({
   plan,
@@ -24,8 +31,9 @@ function PurchasePlanCard({
   onSelect: (plan: ProductPlanSummary) => void
 }) {
   const { t, i18n } = useTranslation()
-  const tone = CARD_TONES[index % CARD_TONES.length]
-  const fallback = CARD_BACKGROUNDS[index % CARD_BACKGROUNDS.length]
+  const brandIndex = planBrandIndex(plan)
+  const tone = CARD_TONES[brandIndex >= 0 ? brandIndex : index % CARD_TONES.length]
+  const fallback = CARD_BACKGROUNDS[brandIndex >= 0 ? brandIndex : index % CARD_BACKGROUNDS.length]
   const badge = planBonus(plan, i18n.language, t)
   const price = formatPlanPrice(plan.price?.price_cent)
   const disabled = !plan.can_purchase || selecting

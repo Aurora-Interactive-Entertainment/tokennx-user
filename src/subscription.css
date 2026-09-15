@@ -123,7 +123,7 @@
 
 .subscription-model-card {
   display: flex;
-  width: min(100%, 760px);
+  width: min(100%, 520px);
   min-width: min(320px, 100%);
   box-sizing: border-box;
   min-height: 206px;

@@ -83,7 +83,9 @@ export function SubscriptionUsageCard({ model }: { model: SubscriptionUsage }) {
 
   return <article className="subscription-model-card">
     <h3>{model.name}</h3>
-    <p>{t(isRequestQuota ? 'console.subscriptionPage.totalRequests' : 'console.subscriptionPage.totalTokens')}：{formatTokens(total)}</p>
+    <p>{isRequestQuota
+      ? t('console.subscriptionPage.totalRequests', { count: formatTokens(total) })
+      : t('console.subscriptionPage.totalTokens', { tokens: formatTokens(total) })}</p>
     <Tooltip content={remainingLabel}>
       <div className="subscription-progress" role="progressbar" tabIndex={0} aria-label={remainingLabel} aria-valuetext={remainingLabel} aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent ?? undefined}>
         <span style={{ width: `${percent ?? 0}%` }} />
