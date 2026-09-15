@@ -77,7 +77,7 @@ describe('控制台认证路由', () => {
     }
   })
 
-  it('登录后自动预取未读通知数，铃铛红点无需点击即可显示', async () => {
+  it('登录后自动取未读通知数，铃铛红点无需点击即可显示', async () => {
     const appStore = createAppStore()
     appStore.dispatch({ type: 'auth/loginWithEmail/fulfilled', payload: { id: 'user-1', display_name: '测试用户', avatar_url: '', locale: 'zh-CN', timezone: 'Asia/Shanghai', status: 'active' } })
     saveAuthTokens({ status: 'succeeded', binding_required: false, access_token: 'notification-access-token', refresh_token: 'notification-refresh-token', refresh_expires_at: Date.UTC(2099, 0, 1) })
@@ -104,14 +104,15 @@ describe('控制台认证路由', () => {
       await waitFor(() => expect(document.querySelector('.header-notification-dot')).not.toBeNull())
       const notificationCalls = fetchMock.mock.calls.map(([input]) => String(input)).filter((url) => url.includes('/api/user/notifications'))
       expect(notificationCalls).toHaveLength(1)
-      expect(notificationCalls[0]).toContain('unread_only=1')
+      // 与通知面板保持同一条请求，避免后端不认识的参数导致取数静默失败。
+      expect(notificationCalls[0]).toContain('/api/user/notifications?limit=100')
     } finally {
       clearAuthTokens({ force: true, broadcast: false })
       fetchMock.mockRestore()
     }
   })
 
-  it('未登录时不预取未读通知数', () => {
+  it('未登录时不请求未读通知数', () => {
     const appStore = createAppStore()
     appStore.dispatch(invalidateAuth())
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ code: 0, msg: 'success', data: {} }), { status: 200, headers: { 'Content-Type': 'application/json' } }))

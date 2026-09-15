@@ -178,10 +178,12 @@
   font-weight: 400;
 }
 
-/* 统一输入框与下拉框内容的垂直对齐，避免提示文字在控件内偏上或偏下。 */
+/* 统一输入框与下拉框内容的垂直对齐，避免提示文字在控件内偏上或偏下。
+   Semi 默认给 .semi-select-selection 加了 12px 左边距，会让下拉框文字比同排输入框右移，这里一并清零。 */
 .real-name-control > .semi-select .semi-select-selection {
   display: flex;
   align-items: center;
+  margin-left: 0;
   min-height: 38px;
   box-sizing: border-box;
 }

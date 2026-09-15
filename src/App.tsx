@@ -268,14 +268,14 @@ export function AuthBootstrap({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const authStatus = useAppSelector((state) => state.auth.status);
 
-  // 登录后预取一次未读通知数：铃铛红点来自客服浮层派发的未读数事件，
+  // 登录后取一次未读通知数：铃铛红点来自客服浮层派发的未读数事件，
   // 浮层此前只在打开通知面板时才取数，导致红点必须点一下才出现。
-  // 这里按登录态取一次，不轮询；未登录不请求，避免无谓的鉴权失败。
+  // 这里按登录态取一次（不轮询、未登录不请求），结果由 Header 复用。
   useEffect(() => {
     if (authStatus !== "authenticated") return undefined;
     const controller = new AbortController();
     void prefetchUnreadNotificationCount(controller.signal).catch(() => {
-      // 预取失败不影响页面，红点保持隐藏，等用户打开通知面板时再取。
+      // 取数失败不影响页面，红点保持隐藏，等用户打开通知面板时再取。
     });
     return () => controller.abort();
   }, [authStatus]);

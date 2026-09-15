@@ -9,7 +9,7 @@ import { AppStoreProvider } from '@/data/app-state'
 import { createAppStore } from '@/store'
 import { synchronizeAuthenticatedUser } from '@/store/auth-slice'
 import { clearAuthTokens, getVerifiedPhone, saveAuthTokens, saveVerifiedPhone } from '@/auth/token-storage'
-import { activeNavKey, ConsoleLayout, consoleNavGroupsFor, DEFAULT_CONSOLE_PATH, isEnterpriseOwner, isEnterprisePermissionPath, LoginPanel, localizeConsoleLabel, normalizeLoginReturnPath, prefetchUnreadNotificationCount, PublicFooter, PublicHeader, PublicLayout, PUBLIC_LINKS } from './common'
+import { activeNavKey, ConsoleLayout, consoleNavGroupsFor, DEFAULT_CONSOLE_PATH, isEnterpriseOwner, isEnterprisePermissionPath, LoginPanel, localizeConsoleLabel, normalizeLoginReturnPath, prefetchUnreadNotificationCount, PublicFooter, PublicHeader, PublicLayout, PUBLIC_LINKS, resetUnreadNotificationCount } from './common'
 import { NEW_ENTERPRISE_CREATE_PATH } from '@/api/enterprise-certification'
 import i18n from '@/i18n'
 import { getProductPlans, getPublicProductPlans } from '@/api/product-plans'
@@ -96,6 +96,8 @@ function LocationProbe() {
 beforeEach(() => {
   clearAuthTokens()
   vi.clearAllMocks()
+  // 未读数是模块级缓存，用例之间清零避免红点状态互相影响。
+  resetUnreadNotificationCount()
   vi.mocked(getPublicProductPlans).mockResolvedValue(planListFixture([publicPlanFixture]))
   vi.mocked(getProductPlans).mockResolvedValue(planListFixture([userPlanFixture]))
   getEnterpriseContextMock.mockResolvedValue(DEFAULT_ENTERPRISE_CONTEXT)
@@ -657,6 +659,39 @@ describe('公共 Header 布局', () => {
       window.removeEventListener('token-nx:notification-count', listener)
       window.localStorage.removeItem('token-nx:deleted-notifications')
     }
+  })
+
+  it('取过未读数后重挂 Header 仍显示红点，且不重复请求', async () => {
+    const appStore = createAppStore()
+    appStore.dispatch({ type: 'auth/loginWithEmail/fulfilled', payload: { id: 'user-1', display_name: '测试用户', avatar_url: '', locale: 'zh-CN', timezone: 'Asia/Shanghai', status: 'active' } })
+    saveAuthTokens({ status: 'succeeded', binding_required: false, access_token: 'notification-access-token', refresh_token: 'notification-refresh-token', refresh_expires_at: Date.UTC(2099, 0, 1) })
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(profileApiResponse({
+      items: [{ id: 'notice-1', type: 'account', category: 'security', severity: 'info', title: '新消息', content: '内容', read: false, created_at: '2026-08-26T11:54:26Z' }],
+      unread_count: 1,
+    }))
+
+    // 登录后由应用层取一次未读数。
+    await prefetchUnreadNotificationCount()
+
+    const renderHeader = () => render(
+      <MemoryRouter initialEntries={['/']}>
+        <Provider store={appStore}>
+          <AppStoreProvider><PublicHeader /></AppStoreProvider>
+        </Provider>
+      </MemoryRouter>,
+    )
+
+    const notificationCalls = () => fetchMock.mock.calls.map(([input]) => String(input)).filter((url) => url.includes('/api/user/notifications'))
+
+    const firstMount = renderHeader()
+    await waitFor(() => expect(document.querySelector('.header-notification-dot')).not.toBeNull())
+    expect(notificationCalls()).toHaveLength(1)
+
+    // 公开页之间跳转时每个页面各自渲染布局，Header 会重新挂载，红点不应因此消失，也不该重复取数。
+    firstMount.unmount()
+    renderHeader()
+    await waitFor(() => expect(document.querySelector('.header-notification-dot')).not.toBeNull())
+    expect(notificationCalls()).toHaveLength(1)
   })
 
   it('通知面板取过未读数后，晚到的预取结果不会让红点复活', async () => {

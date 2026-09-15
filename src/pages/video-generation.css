@@ -1143,45 +1143,58 @@ html[data-theme='dark'] .video-console-page .video-composer-box {
   }
 }
 
-/* 任务结果区按参考页的纵向记录卡呈现，失败、进行中和成功状态共享操作栏。 */
-.video-console-page .video-task-card {
+/* 一次生成按对话呈现：提问气泡在上、结果消息在下，参数以标签跟随提问。 */
+.video-console-page .video-chat {
+  display: flex;
   width: min(930px, 100%);
+  flex-direction: column;
+  gap: 20px;
   margin: 0 auto 28px;
-  padding: 0;
   color: var(--color-text-default);
 }
-.video-console-page .video-task-card-heading {
+.video-console-page .video-chat-message {
   display: flex;
   min-width: 0;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 16px;
+  flex-direction: column;
 }
-.video-console-page .video-task-card-heading > div { min-width: 0; }
-.video-console-page .video-task-card-heading h2 {
-  overflow: hidden;
-  margin: 0 0 4px;
-  color: var(--color-text-default);
-  font-size: 15px;
-  font-weight: 600;
-  line-height: 22px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.video-console-page .video-chat-message--user {
+  max-width: min(680px, 82%);
+  align-self: flex-end;
+  align-items: flex-end;
+  gap: 6px;
 }
-.video-console-page .video-task-card-heading p {
-  display: flex;
-  align-items: center;
-  gap: 4px;
+.video-console-page .video-chat-prompt {
   margin: 0;
+  padding: 10px 14px;
+  border-radius: 12px 12px 4px 12px;
+  background: var(--color-bg-base-secondary);
+  font-size: 14px;
+  line-height: 22px;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.video-console-page .video-chat-tags {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+.video-console-page .video-chat-tag {
+  padding: 2px 8px;
+  border-radius: 6px;
   color: var(--color-text-tertiary);
-  font-size: 12px;
+  background: var(--color-bg-base-secondary);
+  font-size: 11px;
   line-height: 18px;
 }
-.video-console-page .video-task-card-heading p .semi-icon { font-size: 13px; }
+.video-console-page .video-chat-message--assistant { gap: 12px; }
+.video-console-page .video-chat-body { min-width: 0; }
 .video-console-page .video-task-status {
-  display: none;
+  display: inline-flex;
   flex: 0 0 auto;
+  align-items: center;
+  align-self: center;
+  gap: 4px;
   padding: 3px 8px;
   border-radius: 999px;
   color: var(--color-text-tertiary);
@@ -1194,7 +1207,6 @@ html[data-theme='dark'] .video-console-page .video-composer-box {
 .video-console-page .video-task-status.is-cancelled,
 .video-console-page .video-task-status.is-unknown { color: #d4380d; background: #fff1f0; }
 .video-console-page .video-task-status.is-succeeded { color: #389e0d; background: #f6ffed; }
-.video-console-page .video-task-card-body { min-width: 0; }
 .video-console-page .video-task-error {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
@@ -1262,20 +1274,20 @@ html[data-theme='dark'] .video-console-page .video-composer-box {
   width: min(760px, 100%);
   margin-bottom: 10px;
 }
-.video-console-page .video-task-card-actions {
+.video-console-page .video-chat-actions {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  margin-top: 12px;
 }
-.video-console-page .video-task-card-actions .semi-button {
+.video-console-page .video-chat-actions .semi-button {
   height: 32px;
   min-height: 32px;
   border-radius: 8px;
   font-size: 13px;
   font-weight: 400;
 }
-.video-console-page .video-task-card-actions .semi-button-outline { padding-inline: 12px; }
+.video-console-page .video-chat-actions .semi-button-outline { padding-inline: 12px; }
 .video-console-page .video-task-more-dropdown { min-width: 120px; }
 .video-console-page .video-task-more-dropdown .semi-dropdown-item-danger { color: var(--color-danger, #f04438); }
 
@@ -1806,8 +1818,7 @@ html[data-theme='dark'] .video-console-page .video-task-status.is-unknown { colo
 html[data-theme='dark'] .video-console-page .video-task-status.is-succeeded { color: #b7eb8f; background: rgb(82 196 26 / 14%); }
 
 @media (max-width: 760px) {
-  .video-console-page .video-task-card-heading h2 { white-space: normal; }
-  .video-console-page .video-task-card-actions { flex-wrap: wrap; }
+  .video-console-page .video-chat-message--user { max-width: 92%; }
   .video-console-page .video-task-progress { grid-template-columns: auto minmax(0, 1fr); }
   .video-console-page .video-task-progress-value { grid-column: 2; }
 }

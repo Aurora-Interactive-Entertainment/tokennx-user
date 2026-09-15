@@ -155,6 +155,8 @@ function PurchasePaymentContent({
                     formHTML={payment.form}
                     title={t(`${copy}.scan`)}
                     errorMessage={t("api.billing.paymentFormInvalid")}
+                    // 与下单、发起支付共用同一句加载文案，二维码页面加载完成前不出现空白区域。
+                    loadingLabel={t(`${copy}.processing`)}
                     onError={payment.handleError}
                   />
                 ) : payment.order?.status !== "paid" && !payment.blocked && (!payment.order || isPaymentActive(payment.order.status)) ? (

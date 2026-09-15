@@ -880,6 +880,7 @@ export const consoleResources = {
         rechargeModalTitle: "充值",
         paymentFrameHint:
           "二维码在当前商家页面内展示，请使用支付宝扫码完成支付。",
+        paymentFrameLoading: "正在加载支付二维码，请稍候…",
         paymentRefresh: "刷新支付状态",
         paymentAmount: "支付金额",
         required: "必填",
@@ -3298,6 +3299,7 @@ export const consoleResources = {
         rechargeModalTitle: "Top up",
         paymentFrameHint:
           "The QR code is displayed on this merchant page. Scan it with Alipay to complete payment.",
+        paymentFrameLoading: "Loading the payment QR code, please wait…",
         paymentRefresh: "Refresh payment status",
         paymentAmount: "Payment amount",
         required: "Required",

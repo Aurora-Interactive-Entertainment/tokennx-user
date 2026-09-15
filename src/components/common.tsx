@@ -2018,8 +2018,13 @@ export function PublicHeader({
   const store = useAppStore();
   const dispatch = useAppDispatch();
   const auth = useAppSelector((state) => state.auth);
+  // 未登录时红点必须为空，避免同一次会话里换账号后沿用上一账号的未读数。
   const [liveUnreadNotificationCount, setLiveUnreadNotificationCount] =
-    useState(0);
+    useState(() =>
+      auth.status === "authenticated"
+        ? (unreadNotificationCountCache ?? 0)
+        : 0,
+    );
   const unreadNotificationCount =
     providedUnreadNotificationCount ?? liveUnreadNotificationCount;
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -2061,6 +2066,17 @@ export function PublicHeader({
         handleNotificationCount,
       );
   }, []);
+
+  // 已登录时红点取最近一次未读数：登录后由应用预取，公开页跳转重挂 Header 时直接复用缓存，
+  // 未登录时清零，避免同一次会话里换账号后沿用上一个账号的状态。
+  useEffect(() => {
+    if (auth.status !== "authenticated") {
+      resetUnreadNotificationCount();
+      setLiveUnreadNotificationCount(0);
+      return;
+    }
+    setLiveUnreadNotificationCount(readUnreadNotificationCount());
+  }, [auth.status]);
 
   const inviteCode =
     new URLSearchParams(location.search).get("invite_code")?.trim() ||
@@ -4484,32 +4500,46 @@ function persistDeletedNotificationID(notificationID: string): void {
   }
 }
 
-// 未读数有两个来源：通知面板的列表（权威）和登录后的首屏预取（仅为点亮铃铛红点）。
-// 版本号用于丢弃晚到的预取结果，避免用户已经读完之后红点又冒出来。
+// 未读数有两个来源：通知面板的列表（权威）和登录后的首次取数（只为点亮铃铛红点）。
+// 缓存值让 Header 在公开页之间跳转重挂后红点不会丢；版本号用于丢弃晚到的取数结果，
+// 避免用户已经读完之后红点又冒出来。
+let unreadNotificationCountCache: number | null = null;
 let notificationCountRevision = 0;
 
-function dispatchNotificationCount(count: number): void {
+function publishUnreadNotificationCount(count: number): void {
+  const normalized = Math.max(0, Math.trunc(count));
+  unreadNotificationCountCache = normalized;
   window.dispatchEvent(
     new CustomEvent(SUPPORT_NOTIFICATION_COUNT_EVENT, {
-      detail: { count: Math.max(0, Math.trunc(count)) },
+      detail: { count: normalized },
     }),
   );
 }
 
-// 登录后预取一次未读通知数，Header 铃铛红点无需先点开通知面板即可显示。
-// 口径与通知面板一致：只统计未读且未被本地删除的通知。
+// 未读通知数：与通知面板同一条请求（同样的参数与口径），只统计未读且未被本地删除的通知。
 export async function prefetchUnreadNotificationCount(
   signal?: AbortSignal,
 ): Promise<void> {
   const revision = notificationCountRevision;
-  const response = await getNotifications({ limit: 100, unread_only: true, signal });
+  const response = await getNotifications({ limit: 100, signal });
   if (signal?.aborted || revision !== notificationCountRevision) return;
   const deletedIDs = readDeletedNotificationIDs();
-  dispatchNotificationCount(
+  publishUnreadNotificationCount(
     (response.items ?? []).filter(
       (item) => !item.read && !deletedIDs.has(item.id),
     ).length,
   );
+}
+
+// Header 读取未读数：只读缓存，取数由登录后的预取负责，避免每次挂载都发请求。
+export function readUnreadNotificationCount(): number {
+  return unreadNotificationCountCache ?? 0;
+}
+
+// 退出登录后清空，避免下一个账号沿用上一个账号的红点状态。
+export function resetUnreadNotificationCount(): void {
+  unreadNotificationCountCache = null;
+  notificationCountRevision += 1;
 }
 
 // 统一由页面头部和客服按钮发送打开请求，保证客服浮层只维护一份交互状态。
@@ -4697,11 +4727,10 @@ export function ManuscriptSupportWidget() {
     : "zh-CN";
 
   function publishNotificationCount(count: number): void {
-    const normalized = Math.max(0, Math.trunc(count));
-    // 面板内的计数是权威值：标记之后，晚到的首屏预取结果会被丢弃。
+    // 面板内的计数是权威值：标记之后，晚到的首屏取数结果会被丢弃。
     notificationCountRevision += 1;
-    setNotificationUnreadCount(normalized);
-    dispatchNotificationCount(normalized);
+    setNotificationUnreadCount(Math.max(0, Math.trunc(count)));
+    publishUnreadNotificationCount(count);
   }
 
   useEffect(() => {

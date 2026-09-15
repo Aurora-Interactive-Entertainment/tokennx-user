@@ -1,0 +1,22 @@
+/* 支付宝前置模式把二维码页面加载进 iframe，加载完成前用等尺寸遮罩占住位置，避免出现空白屏。 */
+.payment-qr-frame-shell {
+  position: relative;
+}
+
+.payment-qr-frame-loading {
+  position: absolute;
+  inset: 0;
+  box-sizing: border-box;
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+  place-content: center;
+  justify-items: center;
+  /* 二维码页面本身是白底，遮罩同底色，加载完成时不会出现色块跳动；
+     深色模式下同样保持白底，与可扫码的二维码区域一致。 */
+  background: #fff;
+  color: #080808;
+  font-size: 13px;
+  line-height: 1.5;
+  text-align: center;
+}

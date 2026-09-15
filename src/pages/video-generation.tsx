@@ -6,7 +6,7 @@ import Dropdown from '@douyinfe/semi-ui/lib/es/dropdown'
 import type { RenderSingleSelectedItemFn } from '@douyinfe/semi-ui/lib/es/select'
 import Modal from '@/components/app-modal'
 import Toast from '@douyinfe/semi-ui/lib/es/toast'
-import { IconAlertTriangle, IconArrowUp, IconCheckCircleStroked, IconChevronDownStroked, IconChevronUpDown, IconClockStroked, IconClose, IconDeleteStroked, IconDownload, IconEditStroked, IconFilterStroked, IconHistory, IconImage, IconInfoCircle, IconLoading, IconMuteStroked, IconMoreStroked, IconPlus, IconRefresh, IconStop, IconVideo, IconVolume2 } from '@douyinfe/semi-icons'
+import { IconAlertTriangle, IconArrowUp, IconCheckCircleStroked, IconChevronDownStroked, IconChevronUpDown, IconClockStroked, IconClose, IconDeleteStroked, IconDownload, IconEditStroked, IconFilterStroked, IconHistory, IconImage, IconLoading, IconMuteStroked, IconMoreStroked, IconPlus, IconRefresh, IconStop, IconVideo, IconVolume2 } from '@douyinfe/semi-icons'
 import { EmptyPanel, PageTitle } from '@/components/common'
 import { appToast } from '@/components/app-toast'
 import { CompatInput as Input, CompatSelect as Select } from '@/components/semi-compat'
@@ -275,7 +275,7 @@ function VideoStage({ task, entry, modelName, submitting, onCancel, onRetry, onE
   const prompt = entry?.prompt ?? t('console.video.emptyTitle')
   const duration = entry?.duration ?? 0
   const modelLabel = entry?.modelName || modelName
-  const metaLabel = `${modelLabel}${duration ? ` · ${duration}${t('console.video.secondsShort')}` : ''}`
+  const promptTags = [modelLabel, duration ? `${duration}${t('console.video.secondsShort')}` : ''].filter(Boolean)
   const progress = task.progress ?? 0
   const isTerminal = videoTaskIsTerminal(task.status) || task.status === 'unknown'
   const isFailure = task.status === 'failed' || task.status === 'expired' || task.status === 'cancelled' || task.status === 'unknown'
@@ -283,11 +283,17 @@ function VideoStage({ task, entry, modelName, submitting, onCancel, onRetry, onE
     : task.status === 'succeeded' ? <div className="video-task-placeholder"><IconAlertTriangle aria-hidden="true" /><span>{t('console.video.resultUnavailable')}</span><small>{t('console.video.resultUnavailableHint')}</small></div>
       : isFailure ? <div className="video-task-error" role="alert"><span className="video-task-error-icon"><IconClose aria-hidden="true" /></span><p>{task.errorMessage ?? t('console.video.taskFailedHint')}</p>{task.requestId ? <code>{t('console.common.requestIdValue', { requestId: task.requestId })}</code> : null}</div>
         : <div className="video-task-progress" role="status" aria-label={statusLabel}><span className="video-loading-ring"><IconLoading /></span><div><strong>{statusLabel}</strong><p>{t('console.video.processingHint')}</p></div><div className="video-progress" role="progressbar" aria-label={t('console.video.progress')} aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress}><span style={{ width: `${progress}%` }} /></div><span className="video-task-progress-value">{progress > 0 ? `${progress}%` : t('console.video.progressPreparing')}</span></div>
-  return <article className={`video-task-card${isFailure ? ' is-failed' : ''}${task.status === 'succeeded' ? ' is-succeeded' : ''}`} data-task-id={task.taskId} aria-label={prompt}>
-    <header className="video-task-card-heading"><div><h2>{prompt}</h2><p>{metaLabel} <IconInfoCircle aria-hidden="true" /></p></div><span className={`video-task-status is-${task.status}${task.status === 'succeeded' ? ' video-status-success' : ''}`}>{task.status === 'succeeded' ? <IconCheckCircleStroked aria-hidden="true" /> : null}{statusLabel}</span></header>
-    <div className="video-task-card-body">{taskContent}</div>
-    <footer className="video-task-card-actions"><Button theme="outline" size="small" icon={<IconEditStroked />} onClick={onEdit}>{t('console.video.edit')}</Button><Button theme="outline" size="small" icon={<IconRefresh />} onClick={onRetry}>{t('console.video.retry')}</Button><Dropdown trigger="click" position="bottomLeft" showTick={false} contentClassName="video-task-more-dropdown" menu={[{ node: 'item', name: t('console.video.delete'), type: 'danger', icon: <IconDeleteStroked />, onClick: onDelete }]}><Button theme="outline" size="small" icon={<IconMoreStroked />} aria-label={t('console.video.moreActions')} title={t('console.video.moreActions')} /></Dropdown>{!isTerminal ? <Button theme="borderless" size="small" icon={<IconStop />} onClick={onCancel}>{task.status === 'cancelling' ? t('console.video.statusCancelling') : t('console.video.cancelGeneration')}</Button> : null}</footer>
-  </article>
+  // 一次生成按对话呈现：提问在上、结果在下；参数作为标签跟随提问，不进入结果区。
+  return <div className="video-chat">
+    <div className="video-chat-message video-chat-message--user">
+      <p className="video-chat-prompt">{prompt}</p>
+      {promptTags.length ? <div className="video-chat-tags">{promptTags.map((tag) => <span className="video-chat-tag" key={tag}>{tag}</span>)}</div> : null}
+    </div>
+    <article className="video-chat-message video-chat-message--assistant" data-task-id={task.taskId} aria-label={prompt}>
+      <div className="video-chat-body">{taskContent}</div>
+      <div className="video-chat-actions"><span className={`video-task-status is-${task.status}${task.status === 'succeeded' ? ' video-status-success' : ''}`}>{task.status === 'succeeded' ? <IconCheckCircleStroked aria-hidden="true" /> : null}{statusLabel}</span><Button theme="outline" size="small" icon={<IconEditStroked />} onClick={onEdit}>{t('console.video.edit')}</Button><Button theme="outline" size="small" icon={<IconRefresh />} onClick={onRetry}>{t('console.video.retry')}</Button><Dropdown trigger="click" position="bottomLeft" showTick={false} contentClassName="video-task-more-dropdown" menu={[{ node: 'item', name: t('console.video.delete'), type: 'danger', icon: <IconDeleteStroked />, onClick: onDelete }]}><Button theme="outline" size="small" icon={<IconMoreStroked />} aria-label={t('console.video.moreActions')} title={t('console.video.moreActions')} /></Dropdown>{!isTerminal ? <Button theme="borderless" size="small" icon={<IconStop />} onClick={onCancel}>{task.status === 'cancelling' ? t('console.video.statusCancelling') : t('console.video.cancelGeneration')}</Button> : null}</div>
+    </article>
+  </div>
 }
 
 export function VideoPage() {
@@ -355,11 +361,23 @@ export function VideoPage() {
   }, [])
 
   // 视频 Runtime 使用登录态隐藏试用额度，模型选择器仅展示当前空间目录中的视频模型。
-  const videoModels = useMemo(() => models.filter((model) => model.modality === 'video' && Boolean(modelAlias(model))), [models])
+  const videoModels = useMemo(() => {
+    // 模型目录按 alias 提交；重复 alias 会在下拉里生成选不中的重复项，这里按 alias 去重。
+    const seenAliases = new Set<string>()
+    return models.filter((model) => {
+      if (model.modality !== 'video') return false
+      const alias = modelAlias(model)
+      if (!alias || seenAliases.has(alias)) return false
+      seenAliases.add(alias)
+      return true
+    })
+  }, [models])
   const displayVideoModels = videoModels
   const selectedModel = findModelInList(displayVideoModels, modelID) ?? displayVideoModels[0]
   const selectedHistory = history.find((entry) => entry.id === selectedHistoryID)
   const operationBusy = submitting || polling || cancelling
+  // 轮询最长可持续数分钟，参数栏不应跟着锁死：只在提交/取消请求在途时锁，生成期间仍可准备下一轮的参数。
+  const paramsBusy = submitting || cancelling
   const canSubmit = Boolean(selectedModel && prompt.trim() && !operationBusy)
   // 生成中允许点击发送按钮取消任务；取消请求处理期间锁定按钮，空输入时禁止提交。
   const canCancel = submitting || Boolean(currentTask && taskIsActive(currentTask))
@@ -751,37 +769,37 @@ export function VideoPage() {
           <div className="video-composer-box">
             <div className={`video-composer-input-row${referenceMode === 'first-last' ? ' is-first-last' : ''}`}>
               {referenceMode === 'first-last' ? <div className="video-frame-upload-group">
-                <button className="video-reference-upload-card video-frame-upload-card video-frame-upload-card--first" type="button" aria-label={t('console.video.firstFrameUrlLabel')} onClick={() => firstFrameInputRef.current?.click()} disabled={operationBusy}>
+                <button className="video-reference-upload-card video-frame-upload-card video-frame-upload-card--first" type="button" aria-label={t('console.video.firstFrameUrlLabel')} onClick={() => firstFrameInputRef.current?.click()} disabled={paramsBusy}>
                   <span className="video-reference-upload-plus" aria-hidden="true"><IconPlus /></span>
                   <span>{t('console.video.firstFrameUrlLabel').replace(/ URL$/, '')}</span>
                 </button>
-                <button className="video-frame-upload-separator" type="button" aria-label={t('console.video.swapFrames')} onClick={swapFrameUrls} disabled={operationBusy}><IconChevronUpDown aria-hidden="true" /></button>
-                <button className="video-reference-upload-card video-frame-upload-card video-frame-upload-card--last" type="button" aria-label={t('console.video.lastFrameUrlLabel')} onClick={() => lastFrameInputRef.current?.click()} disabled={operationBusy}>
+                <button className="video-frame-upload-separator" type="button" aria-label={t('console.video.swapFrames')} onClick={swapFrameUrls} disabled={paramsBusy}><IconChevronUpDown aria-hidden="true" /></button>
+                <button className="video-reference-upload-card video-frame-upload-card video-frame-upload-card--last" type="button" aria-label={t('console.video.lastFrameUrlLabel')} onClick={() => lastFrameInputRef.current?.click()} disabled={paramsBusy}>
                   <span className="video-reference-upload-plus" aria-hidden="true"><IconPlus /></span>
                   <span>{t('console.video.lastFrameUrlLabel').replace(/ URL$/, '')}</span>
                 </button>
                 <input ref={firstFrameInputRef} className="video-reference-file-input video-frame-file-input" type="file" accept={VIDEO_REFERENCE_ACCEPT} onChange={(event) => handleFrameFile(event, 'first')} aria-label={t('console.video.firstFrameUrlLabel')} />
                 <input ref={lastFrameInputRef} className="video-reference-file-input video-frame-file-input" type="file" accept={VIDEO_REFERENCE_ACCEPT} onChange={(event) => handleFrameFile(event, 'last')} aria-label={t('console.video.lastFrameUrlLabel')} />
-                </div> : <button className="video-reference-upload-card" type="button" aria-label={`${t('console.video.referenceImage')} · ${t('console.video.uploadReference')}`} onClick={() => setReferenceVisible(true)} disabled={operationBusy}>
+                </div> : <button className="video-reference-upload-card" type="button" aria-label={`${t('console.video.referenceImage')} · ${t('console.video.uploadReference')}`} onClick={() => setReferenceVisible(true)} disabled={paramsBusy}>
                 <span className="video-reference-upload-plus" aria-hidden="true"><IconPlus /></span>
                 <span>{t('console.video.referenceImage')}</span>
               </button>}
               {inputReference ? <div className="video-reference-row">
                 {referenceUrl ? <span className="video-reference-chip video-reference-chip--url"><IconImage aria-hidden="true" /><span>{referenceUrl}</span><Button theme="borderless" size="small" icon={<IconClose />} aria-label={t('console.video.removeReference')} title={t('console.video.removeReference')} onClick={() => { setInputReference(''); setReferenceUrl(''); setReferenceName('') }} /></span> : <span className="video-reference-chip"><img src={inputReference} alt="" /><span>{referenceName || t('console.video.referenceImage')}</span><Button theme="borderless" size="small" icon={<IconClose />} aria-label={t('console.video.removeReference')} title={t('console.video.removeReference')} onClick={() => { setInputReference(''); setReferenceUrl(''); setReferenceName('') }} /></span>}
               </div> : null}
-              <Input.TextArea value={prompt} onChange={(value) => setPrompt(value.slice(0, VIDEO_PROMPT_MAX_LENGTH))} maxLength={VIDEO_PROMPT_MAX_LENGTH} rows={3} disabled={operationBusy} placeholder={selectedModel ? t('console.video.promptPlaceholder') : t('console.video.promptDisabledPlaceholder')} aria-label={t('console.video.promptLabel')} onKeyDown={(event) => { if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') { event.preventDefault(); if (canSubmit) void submitVideo() } }} />
+              <Input.TextArea value={prompt} onChange={(value) => setPrompt(value.slice(0, VIDEO_PROMPT_MAX_LENGTH))} maxLength={VIDEO_PROMPT_MAX_LENGTH} rows={3} disabled={paramsBusy} placeholder={selectedModel ? t('console.video.promptPlaceholder') : t('console.video.promptDisabledPlaceholder')} aria-label={t('console.video.promptLabel')} onKeyDown={(event) => { if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') { event.preventDefault(); if (canSubmit) void submitVideo() } }} />
             </div>
             <div className="video-composer-controls">
               <div className="video-control-group">
                 <div className="video-reference-picker">
-                  <Select className={`video-control-button video-reference-trigger${referenceMode === 'first-last' ? ' video-reference-trigger--first-last' : ''}`} value={referenceMode} aria-label={t('console.video.referenceImage')} arrowIcon={<IconChevronDownStroked />} dropdownClassName="video-reference-select-dropdown" innerTopSlot={<div className="video-popover-title">{t('console.video.generationMode')}</div>} renderSelectedItem={renderReferenceSelectedItem} onChange={(value) => { const nextMode = String(value) as 'reference' | 'first-last'; setReferenceMode(nextMode); setReferenceVisible(false) }} disabled={operationBusy}>
+                  <Select className={`video-control-button video-reference-trigger${referenceMode === 'first-last' ? ' video-reference-trigger--first-last' : ''}`} value={referenceMode} aria-label={t('console.video.referenceImage')} arrowIcon={<IconChevronDownStroked />} dropdownClassName="video-reference-select-dropdown" innerTopSlot={<div className="video-popover-title">{t('console.video.generationMode')}</div>} renderSelectedItem={renderReferenceSelectedItem} onChange={(value) => { const nextMode = String(value) as 'reference' | 'first-last'; setReferenceMode(nextMode); setReferenceVisible(false) }} disabled={paramsBusy}>
                     {/* 生成模式选项不显示默认选中勾选，避免图标、勾选和文字错位。 */}
                     <Select.Option value="reference" showTick={false}><span className="video-reference-option-icon"><IconImage aria-hidden="true" /></span><span>{t('console.video.referenceMode')}</span></Select.Option>
                     <Select.Option value="first-last" showTick={false}><span className="video-reference-option-icon"><IconVideo aria-hidden="true" /></span><span>{t('console.video.firstLastFrame')}</span></Select.Option>
                   </Select>
                 </div>
                 <div className="video-model-picker">
-                  <Select id="video-model" className="video-control-button video-model-trigger" dropdownClassName="video-model-select-dropdown" value={selectedModel ? modelAlias(selectedModel) : ''} placeholder={t('console.video.chooseModel')} arrowIcon={<IconChevronDownStroked />} position="topLeft" dropdownMatchSelectWidth={false} filter={false} aria-label={t('console.video.model')} onChange={(value) => { setModelID(String(value)); setRequestFailure(null) }} renderSelectedItem={() => selectedModel ? <><VideoModelLogo model={selectedModel} /><span className="video-model-trigger-label">{selectedModel.company}: {selectedModel.name}</span></> : null} renderOptionItem={({ value, selected }) => { const model = displayVideoModels.find((item) => modelAlias(item) === String(value)); if (!model) return displayVideoModels.length === 0 && String(value) === '' ? <div className="video-model-empty-option">{t('console.video.noModels')}</div> : null; return <div className={`video-model-option${selected ? ' is-selected' : ''}`}><VideoModelLogo model={model} /><span className="video-model-option-name">{model.company}: {model.name}</span><span className="video-model-advanced"><span className="video-model-premium-icon" aria-hidden="true">P</span><em>{t('console.video.advanced')}</em></span></div> }} disabled={operationBusy}><Select.Option value="" disabled={displayVideoModels.length === 0}>{displayVideoModels.length === 0 ? t('console.video.noModels') : t('console.video.chooseModel')}</Select.Option>{displayVideoModels.map((model) => <Select.Option key={model.id} value={modelAlias(model)}>{model.company}: {model.name}</Select.Option>)}</Select>
+                  <Select id="video-model" className="video-control-button video-model-trigger" dropdownClassName="video-model-select-dropdown" value={selectedModel ? modelAlias(selectedModel) : ''} placeholder={t('console.video.chooseModel')} arrowIcon={<IconChevronDownStroked />} position="topLeft" dropdownMatchSelectWidth={false} filter={false} aria-label={t('console.video.model')} onChange={(value) => { setModelID(String(value)); setRequestFailure(null) }} renderSelectedItem={() => selectedModel ? <><VideoModelLogo model={selectedModel} /><span className="video-model-trigger-label">{selectedModel.company}: {selectedModel.name}</span></> : null} renderOptionItem={({ value, selected }) => { const model = displayVideoModels.find((item) => modelAlias(item) === String(value)); if (!model) return displayVideoModels.length === 0 && String(value) === '' ? <div className="video-model-empty-option">{t('console.video.noModels')}</div> : null; return <div className={`video-model-option${selected ? ' is-selected' : ''}`}><VideoModelLogo model={model} /><span className="video-model-option-name">{model.company}: {model.name}</span><span className="video-model-advanced"><span className="video-model-premium-icon" aria-hidden="true">P</span><em>{t('console.video.advanced')}</em></span></div> }} disabled={paramsBusy}><Select.Option value="" disabled={displayVideoModels.length === 0}>{displayVideoModels.length === 0 ? t('console.video.noModels') : t('console.video.chooseModel')}</Select.Option>{displayVideoModels.map((model) => <Select.Option key={model.id} value={modelAlias(model)}>{model.company}: {model.name}</Select.Option>)}</Select>
                 </div>
                 <div className="video-aspect-picker">
                   <Select className="video-control-button video-aspect-trigger video-panel-select" value="settings" arrowIcon={<IconChevronDownStroked />} dropdownClassName="video-aspect-select-dropdown" aria-label={t('console.video.aspectRatio')} renderSelectedItem={() => <><IconFilterStroked aria-hidden="true" /><span>{aspectRatio} · {resolution}</span></>} innerTopSlot={<div className="video-aspect-popover video-select-panel"><div className="video-aspect-section"><strong>{t('console.video.aspectRatio')}</strong><div className="video-aspect-options">{VIDEO_ASPECT_OPTIONS.map((ratio) => <button type="button" className={aspectRatio === ratio ? 'is-selected' : ''} key={ratio} onClick={() => { setAspectRatio(ratio); setSize(sizeForVideoAspect(ratio, resolution)) }}><span className={`video-ratio-icon ratio-${ratio.replace(':', '-')}`} />{ratio}</button>)}</div></div><div className="video-aspect-section"><strong>{t('console.video.resolution')}</strong><div className="video-resolution-options">{['480P', '720P', '1080P'].map((nextResolution) => <button type="button" className={resolution === nextResolution ? 'is-selected' : ''} key={nextResolution} onClick={() => { setResolution(nextResolution); setSize(sizeForVideoAspect(aspectRatio, nextResolution)) }}>{nextResolution}</button>)}</div></div></div>}>
@@ -793,7 +811,7 @@ export function VideoPage() {
                     <Select.Option value="duration">{duration}{t('console.video.secondsShort')}</Select.Option>
                   </Select>
                 </div>
-                <button className={`video-control-button video-sound-trigger${soundEnabled ? ' is-active' : ''}`} type="button" onClick={() => setSoundEnabled((enabled) => !enabled)} disabled={operationBusy}>{soundEnabled ? <IconVolume2 aria-hidden="true" /> : <IconMuteStroked aria-hidden="true" />}<span>{t('console.video.sound')}</span></button>
+                <button className={`video-control-button video-sound-trigger${soundEnabled ? ' is-active' : ''}`} type="button" onClick={() => setSoundEnabled((enabled) => !enabled)} disabled={paramsBusy}>{soundEnabled ? <IconVolume2 aria-hidden="true" /> : <IconMuteStroked aria-hidden="true" />}<span>{t('console.video.sound')}</span></button>
               </div>
               <Button className="generation-send-button video-send-button" theme="solid" type="primary" icon={operationBusy ? <IconStop /> : <IconArrowUp />} aria-label={operationBusy ? (submitting ? t('console.video.cancelRequest') : t('console.video.cancelGeneration')) : t('console.video.generate')} title={operationBusy ? (submitting ? t('console.video.cancelRequest') : t('console.video.cancelGeneration')) : t('console.video.generate')} disabled={sendDisabled} loading={submitting} onClick={() => { if (submitting) cancelSubmission(); else if (currentTask && taskIsActive(currentTask)) void cancelCurrentTask(); else void submitVideo() }} />
             </div>
@@ -803,7 +821,7 @@ export function VideoPage() {
       </div>
     </section>
     <Modal title={referenceMode === 'reference' ? t('console.video.referenceMode') : t('console.video.firstLastFrame')} visible={referenceVisible} onCancel={() => setReferenceVisible(false)} onOk={() => setReferenceVisible(false)} okText={t('console.common.finish')} cancelText={t('console.common.cancel')}>
-      {referenceMode === 'reference' ? <div className="video-reference-dialog"><Input id="video-reference-url" value={referenceUrl} onChange={(value) => { setReferenceUrl(value); setInputReference(value.trim()); setReferenceName('') }} placeholder={t('console.video.referenceUrlPlaceholder')} aria-label={t('console.video.referenceUrlLabel')} disabled={operationBusy} /><input ref={referenceInputRef} className="video-reference-file-input" type="file" accept={VIDEO_REFERENCE_ACCEPT} onChange={handleReferenceFile} aria-label={t('console.video.referenceImage')} /><Button className="video-control-button" theme="borderless" icon={<IconImage />} onClick={() => referenceInputRef.current?.click()} disabled={operationBusy}>{t('console.video.referenceImage')}</Button></div> : <div className="video-reference-dialog"><Input id="video-first-frame-url" value={firstFrameUrl} onChange={(value) => { setFirstFrameUrl(value); setInputReference(value.trim()) }} placeholder={t('console.video.firstFrameUrlPlaceholder')} aria-label={t('console.video.firstFrameUrlLabel')} disabled={operationBusy} /><Input id="video-last-frame-url" value={lastFrameUrl} onChange={setLastFrameUrl} placeholder={t('console.video.lastFrameUrlPlaceholder')} aria-label={t('console.video.lastFrameUrlLabel')} disabled={operationBusy} /></div>}
+      {referenceMode === 'reference' ? <div className="video-reference-dialog"><Input id="video-reference-url" value={referenceUrl} onChange={(value) => { setReferenceUrl(value); setInputReference(value.trim()); setReferenceName('') }} placeholder={t('console.video.referenceUrlPlaceholder')} aria-label={t('console.video.referenceUrlLabel')} disabled={paramsBusy} /><input ref={referenceInputRef} className="video-reference-file-input" type="file" accept={VIDEO_REFERENCE_ACCEPT} onChange={handleReferenceFile} aria-label={t('console.video.referenceImage')} /><Button className="video-control-button" theme="borderless" icon={<IconImage />} onClick={() => referenceInputRef.current?.click()} disabled={paramsBusy}>{t('console.video.referenceImage')}</Button></div> : <div className="video-reference-dialog"><Input id="video-first-frame-url" value={firstFrameUrl} onChange={(value) => { setFirstFrameUrl(value); setInputReference(value.trim()) }} placeholder={t('console.video.firstFrameUrlPlaceholder')} aria-label={t('console.video.firstFrameUrlLabel')} disabled={paramsBusy} /><Input id="video-last-frame-url" value={lastFrameUrl} onChange={setLastFrameUrl} placeholder={t('console.video.lastFrameUrlPlaceholder')} aria-label={t('console.video.lastFrameUrlLabel')} disabled={paramsBusy} /></div>}
     </Modal>
   </div>
 }

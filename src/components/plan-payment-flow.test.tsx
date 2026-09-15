@@ -81,6 +81,10 @@ describe('套餐支付 HTTP 合同与页面联动', () => {
     expect(form.action).toBe(signedAction)
     expect(form.target).toMatch(/^alipay-payment-/)
     expect(screen.getByTitle('扫码支付')).toHaveStyle({ width: '200px', height: '200px' })
+    // 表单只是提交进了 iframe，渠道页面（含二维码图片）还没回来：这段时间必须由加载占位顶住，不能露出空白。
+    const qrLoading = screen.getByRole('status')
+    expect(qrLoading).toHaveClass('payment-qr-frame-loading')
+    expect(qrLoading).toHaveTextContent('正在处理，请稍候…')
 
     const paymentRequests = fetchMock.mock.calls.filter(([url]) => String(url).includes('/payment/orders'))
     expect(JSON.parse(String(paymentRequests[0][1]?.body))).toEqual({ plan_id: 'plan-public-id', quantity: 1 })

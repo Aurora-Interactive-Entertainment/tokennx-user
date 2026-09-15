@@ -120,6 +120,15 @@ describe('视频生成页面', () => {
     expect(document.querySelector('.video-workspace.experience-workbench')).toBeInTheDocument()
   })
 
+  it('模型目录里 alias 重复时只保留一条，避免下拉出现选不中的重复项', async () => {
+    // 两条记录 id 不同但 alias 相同；alias 是提交给后端的标识，重复会让下拉渲染出两个相同 value 的选项。
+    vi.mocked(useUserModels).mockReturnValue({ models: [videoModel(), videoModel({ id: 'cogvideo-copy', code: 'cogvideo-copy', name: 'CogVideo 副本' })], activities: [], total: null, page: null, pageSize: null, loading: false, error: '', refresh: vi.fn() })
+    renderVideoPage()
+
+    expect(await screen.findByRole('option', { name: '智谱AI: CogVideo' })).toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: '智谱AI: CogVideo 副本' })).not.toBeInTheDocument()
+  })
+
   it('模型接口没有数据时不展示伪造模型，并在选择器中显示空状态', async () => {
     vi.mocked(useUserModels).mockReturnValue({ models: [], activities: [], total: null, page: null, pageSize: null, loading: false, error: '', refresh: vi.fn() })
     renderVideoPage()
