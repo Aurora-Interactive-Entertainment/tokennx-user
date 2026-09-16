@@ -1,0 +1,43 @@
+/* 桌面端猫咪分布在统计区两侧，随统计区定位，避免标题换行后装饰错位。 */
+@media (min-width: 771px) {
+  .public-layout--manuscript-home .manuscript-digital-stats {
+    position: relative;
+  }
+
+  .public-layout--manuscript-home .manuscript-digital-stats::before,
+  .public-layout--manuscript-home .manuscript-digital-stats::after {
+    position: absolute;
+    display: block;
+    background: center / contain no-repeat;
+    content: '';
+    pointer-events: none;
+  }
+
+  .public-layout--manuscript-home .manuscript-digital-stats::before {
+    top: -32px;
+    left: calc(50% - 40vw);
+    width: 107.14px;
+    height: 102.08px;
+    background-image: url('../assets/figma-hero/mobile-hero-left.png');
+  }
+
+  .public-layout--manuscript-home .manuscript-digital-stats::after {
+    top: -32px;
+    right: max(0px, calc(50% - 449px));
+    width: 68.6px;
+    height: 66.82px;
+    background-image: url('../assets/figma-hero/mobile-hero-right.png');
+  }
+}
+
+/* 窄屏桌面两侧空间不足时上移装饰，确保不遮挡统计数字。 */
+@media (min-width: 771px) and (max-width: 1200px) {
+  .public-layout--manuscript-home .manuscript-digital-stats::before {
+    top: -108px;
+    left: 0;
+  }
+
+  .public-layout--manuscript-home .manuscript-digital-stats::after {
+    top: -76px;
+  }
+}

@@ -41,7 +41,7 @@ describe('套餐付款弹窗', () => {
     const checkbox = screen.getByRole('checkbox')
     fireEvent.click(agreement)
     const dialog = screen.getByRole('dialog', { name: '充值协议' })
-    expect(within(dialog).getByRole('heading', { name: 'Token NX 充值协议', level: 1 })).toBeInTheDocument()
+    expect(await within(dialog).findByRole('heading', { name: 'Token NX 充值协议', level: 1 })).toBeInTheDocument()
     expect(within(dialog).getByRole('heading', { name: '第六条 退款' })).toBeInTheDocument()
     expect(document.querySelector('.purchase-payment-content')?.closest('[role="dialog"]')).toHaveAttribute('inert')
     fireEvent.click(within(dialog).getByRole('button', { name: 'close' }))

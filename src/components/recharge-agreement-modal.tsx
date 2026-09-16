@@ -1,8 +1,15 @@
+import { lazy, Suspense } from "react";
 import { useTranslation } from "react-i18next";
 import AppModal from "./app-modal";
-import { MarkdownContent } from "./markdown-content";
 import rechargeAgreement from "@/content/legal/top-up-agreement.md?raw";
 import "./recharge-agreement-modal.css";
+
+// 仅阅读协议时加载 Markdown，避免支付入口把渲染器带入首页首屏依赖。
+const LazyMarkdownContent = lazy(() =>
+  import("./markdown-content").then((module) => ({
+    default: module.MarkdownContent,
+  })),
+);
 
 export default function RechargeAgreementModal({
   open,
@@ -23,10 +30,12 @@ export default function RechargeAgreementModal({
       footer={null}
       onCancel={onClose}
     >
-      <MarkdownContent
-        className="docs-markdown recharge-agreement-document"
-        content={rechargeAgreement}
-      />
+      <Suspense fallback={<div role="status">{t("console.common.loading")}</div>}>
+        <LazyMarkdownContent
+          className="docs-markdown recharge-agreement-document"
+          content={rechargeAgreement}
+        />
+      </Suspense>
     </AppModal>
   );
 }
