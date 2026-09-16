@@ -255,6 +255,25 @@
 }
 
 @media (max-width: 720px) {
+  /* 导出按内容宽度展示，避免继承移动端整行拉伸和通用按钮高度。 */
+  .trae-audit-page .trae-page-heading-action .trae-primary-button {
+    flex: 0 0 auto;
+    height: 32px;
+    min-height: 32px;
+    padding-inline: 10px;
+  }
+
+  /* 窄屏保留列内容所需宽度，由现有容器横向滚动，防止表头重叠和末列溢出。 */
+  .trae-audit-page .trae-audit-table {
+    min-width: 800px;
+    table-layout: auto;
+  }
+
+  .trae-audit-page .trae-audit-table th,
+  .trae-audit-page .trae-audit-table td {
+    width: auto;
+  }
+
   .trae-audit-page > .trae-toolbar .trae-select.semi-select,
   .trae-audit-page > .trae-toolbar .trae-date-picker.semi-datepicker {
     width: 100%;

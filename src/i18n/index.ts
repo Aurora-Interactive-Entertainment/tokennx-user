@@ -18,6 +18,12 @@ export const LANGUAGE_OPTIONS = [
 const resources = {
   'zh-CN': {
     translation: {
+      appUpdate: {
+        title: '有新版本可用',
+        description: '当前操作不会中断。请完成并保存后刷新，加载最新内容。',
+        refresh: '刷新更新',
+        later: '稍后再说',
+      },
       language: {
         label: '语言',
         toggle: '切换语言',
@@ -639,6 +645,12 @@ const resources = {
   },
   'en-US': {
     translation: {
+      appUpdate: {
+        title: 'An update is available',
+        description: 'Your current work will not be interrupted. Finish and save it before refreshing to load the latest version.',
+        refresh: 'Refresh to update',
+        later: 'Later',
+      },
       language: { label: 'Language', toggle: 'Switch language', current: 'English' },
       theme: { label: 'Theme', switch: 'Switch theme', light: 'Light theme', dark: 'Dark theme' },
       appError: {

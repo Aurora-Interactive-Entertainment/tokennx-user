@@ -621,7 +621,7 @@ html[data-theme="dark"] .quickstart-pdf-cancel-button:focus-visible:not(:disable
 }
 .quickstart-pdf-protocol-button {
   position: static;
-  padding-inline: 18px !important;
+  padding-inline: 18px;
 }
 .quickstart-pdf-protocol-button > span {
   display: block;
@@ -973,7 +973,7 @@ html[data-theme="light"] .quickstart-code-token.is-number {
 }
 @media (max-width: 720px) {
   .quickstart-pdf-page {
-    padding: 32px;
+    padding: 24px 16px;
   }
   .quickstart-pdf-intro {
     display: block;
@@ -982,12 +982,18 @@ html[data-theme="light"] .quickstart-code-token.is-number {
   .quickstart-pdf-intro p {
     margin-top: 8px;
   }
+  .quickstart-pdf-intro a {
+    display: inline-block;
+  }
   .quickstart-pdf-step-header {
     min-height: 58px;
     padding-inline: 14px;
   }
   .quickstart-pdf-step-toggle {
-    height: 58px;
+    /* 英文标题换行时由内容撑开高度，避免步骤文字被卡片裁切。 */
+    height: auto;
+    min-height: 58px;
+    padding-block: 10px;
   }
   .quickstart-pdf-step-title {
     gap: 8px;
@@ -1031,31 +1037,85 @@ html[data-theme="light"] .quickstart-code-token.is-number {
     padding: 14px;
   }
   .quickstart-pdf-api-selector {
-    align-items: center;
-    gap: 8px;
+    /* 协议与接口类型分行展示，所有选项在手机端直接可见。 */
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    overflow: visible;
   }
   .quickstart-pdf-protocol-tabs,
   .quickstart-pdf-api-mode-tabs {
-    width: max-content;
+    display: grid;
+    align-items: stretch;
+    width: 100%;
   }
   .quickstart-pdf-protocol-tabs {
-    flex: 0 0 auto;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
   .quickstart-pdf-protocol-tabs button {
-    flex: 0 0 auto;
-    min-width: max-content;
+    flex-direction: column;
+    justify-content: flex-start;
+    gap: 8px;
+    min-width: 0;
+    min-height: 84px;
+    padding: 12px 4px;
+    font-size: 12px;
+    line-height: 18px;
+  }
+  .quickstart-pdf-protocol-button > span {
+    max-width: 100%;
+    overflow: visible;
+    text-align: center;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .quickstart-pdf-protocol-icon {
+    margin-right: 0;
   }
   .quickstart-pdf-api-mode-tabs {
-    flex: 0 0 auto;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .quickstart-pdf-api-mode-tabs button {
-    flex: 0 0 auto;
-    min-width: max-content;
+    justify-content: center;
+    min-width: 0;
+    padding: 8px;
+    font-size: 12px;
+    line-height: 18px;
+    white-space: normal;
+    overflow-wrap: anywhere;
   }
   .quickstart-pdf-code-heading {
     align-items: flex-start;
     flex-direction: column;
     gap: 8px;
+  }
+  .quickstart-pdf-code-hint {
+    min-width: 0;
+    max-width: 100%;
+    line-height: 1.8;
+    overflow-wrap: anywhere;
+  }
+  /* 语言标签允许收缩，为复制按钮保留空间；长代码仍在代码块内滚动。 */
+  .quickstart-pdf-code-toolbar {
+    gap: 4px;
+    padding: 6px;
+  }
+  .quickstart-pdf-language-tabs {
+    flex: 1;
+    min-width: 0;
+    gap: 0;
+  }
+  .quickstart-pdf-language-tabs button {
+    flex: 1;
+    min-width: 0;
+    min-height: 36px;
+    padding-inline: 4px;
+    white-space: nowrap;
+  }
+  .quickstart-pdf-code-toolbar .semi-button {
+    flex: 0 0 auto;
+    padding-inline: 6px;
+    white-space: nowrap;
   }
 }
 
@@ -1063,10 +1123,12 @@ html[data-theme="light"] .quickstart-code-token.is-number {
 @media (min-width: 721px) and (max-width: 980px) {
   .quickstart-pdf-api-selector {
     align-items: stretch;
-    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 12px;
+    overflow: visible;
   }
   .quickstart-pdf-protocol-tabs,
   .quickstart-pdf-api-mode-tabs {
-    width: max-content;
+    flex-wrap: wrap;
   }
 }

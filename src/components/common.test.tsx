@@ -1017,6 +1017,16 @@ describe('公共 Header 布局', () => {
     expect(screen.getByRole('link', { name: i18n.t('footer.rechargeAgreement') })).toHaveAttribute('href', '/recharge-agreement')
     expect(document.querySelectorAll('#manuscript-footer-panel-footer-legal a')).toHaveLength(3)
     expect(screen.getByRole('contentinfo')).not.toHaveTextContent('Token NX, Inc.')
+    const filingLinks = [
+      { name: '贵公网安备52040002000234号', href: 'https://beian.mps.gov.cn/#/query/webSearch?code=52040002000234' },
+      { name: '黔ICP备2026012800号-2', href: 'https://beian.miit.gov.cn/#/Integrated/index' },
+    ]
+    for (const { name, href } of filingLinks) {
+      const link = screen.getByRole('link', { name })
+      expect(link).toHaveAttribute('href', href)
+      expect(link).toHaveAttribute('target', '_blank')
+      expect(link).toHaveAttribute('rel', 'noopener noreferrer')
+    }
     expect(screen.getByRole('link', { name: '商务合作：bd@tokennx.com' })).toHaveAttribute('href', 'mailto:bd@tokennx.com')
 
     await user.click(screen.getByRole('button', { name: '售前咨询：在线咨询' }))

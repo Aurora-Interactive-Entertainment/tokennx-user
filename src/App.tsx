@@ -29,6 +29,7 @@ import { SeoManager } from "@/seo/site-seo";
 import type { ConsoleRoutePath } from "@/routes/console-route-meta";
 import { syncSentryIdentity } from "@/observability/sentry";
 import { WechatCallbackPage } from "@/pages/wechat-callback";
+import { BuildUpdateNotice } from "@/components/build-update-notice";
 
 const loadPublicPages = () => import("@/pages/public");
 const loadInvitationPage = () => import("@/pages/join");
@@ -390,6 +391,7 @@ export default function App({ onBootReady }: { onBootReady: () => void }) {
     <BrowserRouter>
       <SeoManager />
       <ScrollToTop />
+      <BuildUpdateNotice />
       <AuthBootstrap>
         <>
           <AuthScopedStoreProvider>

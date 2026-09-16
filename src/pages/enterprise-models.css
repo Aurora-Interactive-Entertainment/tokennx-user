@@ -209,10 +209,13 @@
   color: var(--color-text-default);
 }
 
-.enterprise-model-switch {
+.enterprise-models-page .enterprise-model-switch {
+  /* 开关轨道固定为 36×20，避免移动端通用按钮的 44px 最小高度将其拉长。 */
+  box-sizing: border-box;
   display: inline-flex;
   width: 36px;
   height: 20px;
+  min-height: 20px;
   flex: 0 0 36px;
   align-items: center;
   padding: 2px;
@@ -668,6 +671,15 @@
   }
   .enterprise-model-state {
     gap: 4px;
+  }
+  .enterprise-models-page .enterprise-model-switch {
+    position: relative;
+  }
+  .enterprise-models-page .enterprise-model-switch::before {
+    /* 仅扩展透明点击区域，保持小开关的视觉尺寸和行内对齐。 */
+    position: absolute;
+    inset: -12px 0;
+    content: '';
   }
   .model-visibility-picker {
     grid-template-columns: 1fr;

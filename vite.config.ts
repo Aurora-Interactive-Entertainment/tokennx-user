@@ -1,4 +1,5 @@
 import { execFileSync } from 'node:child_process'
+import { readFileSync } from 'node:fs'
 import { fileURLToPath, URL } from 'node:url'
 import { semiTheming } from '@douyinfe/semi-vite-plugin'
 import { sentryVitePlugin } from '@sentry/vite-plugin'
@@ -34,8 +35,12 @@ function resolveBuildVersion(env: Record<string, string>): string {
 function buildVersionPlugin(version: string): Plugin {
   return {
     name: 'token-nx-build-version',
+    apply: 'build',
     transformIndexHtml(html: string) {
+      // 守卫独立维护但内联发布，避免它自身成为需要刷新才能更新的外部资源。
+      const guard = readFileSync(new URL('./src/runtime/build-version-guard.js', import.meta.url), 'utf8')
       return html.replaceAll(BUILD_VERSION_MARKER, version)
+        .replace('<!-- token-nx-build-guard -->', `<script>${guard}</script>`)
     },
     generateBundle() {
       this.emitFile({

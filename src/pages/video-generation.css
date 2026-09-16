@@ -95,20 +95,6 @@ html[data-theme="dark"] .video-console-page .video-composer-box {
   background: var(--color-bg-base-secondary);
 }
 
-@media (max-width: 760px) {
-  .video-console-page {
-    min-height: 0;
-    height: calc(100dvh - 106px);
-    padding-bottom: 12px;
-  }
-
-  .video-console-page .video-workspace,
-  .video-console-page > .empty-panel {
-    height: 100%;
-    min-height: 0;
-  }
-}
-
 /* 视频生成控件弹层按参考图统一为轻量白底、细边框和柔和阴影。 */
 .video-console-page .video-toolbar-actions {
   position: relative;
@@ -1085,34 +1071,6 @@ html[data-theme='light'] .video-console-page .video-reference-upload-card:focus-
 .video-console-page .video-aspect-popover::after,
 .video-console-page .video-duration-popover::after {
   display: none;
-}
-
-@media (max-width: 760px) {
-  .video-console-page .video-composer { width: calc(100% - 24px); }
-  .video-console-page .video-composer-box { min-height: 0; padding: 12px; }
-  .video-console-page .video-composer-input-row { height: 68px; }
-  .video-console-page .video-composer-controls { height: auto; min-height: 32px; align-items: stretch; flex-direction: column; }
-  .video-console-page .video-control-group { width: 100%; height: auto; flex-wrap: wrap; }
-  .video-console-page .video-model-trigger,
-  .video-console-page .video-model-trigger.semi-select {
-    flex: 1 1 180px;
-    width: min(100%, 360px);
-    min-width: 180px;
-    max-width: 100%;
-  }
-  .video-console-page .video-aspect-trigger.semi-select {
-    width: min(100%, 220px);
-    min-width: 157px;
-    max-width: 100%;
-  }
-  .video-console-page .video-model-trigger.semi-select .semi-select-selection-text,
-  .video-console-page .video-aspect-trigger.semi-select .semi-select-selection-text {
-    min-width: 0;
-    overflow: hidden;
-    flex: 1 1 auto;
-    text-overflow: ellipsis;
-  }
-  .video-console-page .video-send-button.semi-button { width: 100%; height: 36px; flex-basis: 36px; border-radius: 8px; }
 }
 
 html[data-theme='dark'] .video-console-page .video-composer-box {

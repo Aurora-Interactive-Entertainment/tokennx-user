@@ -510,16 +510,28 @@
   .trae-members-page > .trae-tabs::after { right: var(--trae-members-page-gutter); left: var(--trae-members-page-gutter); }
   .trae-members-page > .trae-members-workspace, .trae-members-page > .trae-department-editor { margin: 0 var(--trae-members-page-gutter) 24px; grid-template-columns: 1fr; }
   .trae-departments-management { margin: 16px var(--trae-members-page-gutter) 24px; }
-  .trae-members-page > .trae-members-workspace { column-gap: 0; }
+  /* 移动端展开、收起都保持单列，避免桌面收起规则恢复双列并触发横向动画。 */
+  .trae-members-page > .trae-members-workspace,
+  .trae-members-page > .trae-members-workspace.is-department-tree-collapsed { grid-template-columns: minmax(0, 1fr); column-gap: 0; transition: none; }
   .trae-members-page .trae-department-tree { padding-top: 0; border-right: 0; border-bottom: 1px solid var(--color-border-neutral-l1); }
   /* 根部门在窄屏占满可用宽度，避免仍保留桌面端 240px 的窄点击区域。 */
   .trae-members-page .trae-department-node.is-root { width: 100%; max-width: none; }
-  .trae-members-page .trae-department-tree.is-collapsed { width: auto; }
-  /* 移动端组织树是独立的栅格行，收起后移除内容，避免留下空白高度。 */
-  .trae-members-page .trae-department-tree.is-collapsed .trae-department-expanded-content { display: none; }
+  /* 收起后移除整行及底边框，避免空组织树继续参与移动端布局。 */
+  .trae-members-page .trae-department-tree.is-collapsed { display: none; }
   .trae-members-page .trae-members-table-panel { padding: 20px 0; }
   .trae-members-page .trae-members-table-panel::before { display: none; }
   .trae-members-page .trae-members-table-panel .trae-toolbar { flex-wrap: wrap; }
+  /* 标题按可用宽度换行，人数保持完整，展开按钮不会挤压长部门名称。 */
+  .trae-members-page .trae-members-selection-heading { height: auto; flex-wrap: wrap; gap: 8px 12px; }
+  .trae-members-page .trae-members-selection-heading h2 { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
+  .trae-members-page .trae-department-expand-button + h2 { max-width: calc(100% - 44px); }
+  .trae-members-page .trae-members-selection-heading > div { flex-wrap: wrap; gap: 8px 18px; }
+  .trae-members-page .trae-members-selection-heading > div > span { white-space: nowrap; }
+  /* 展开与收起入口统一尺寸，显式覆盖全局移动端按钮的最小高度。 */
+  .trae-members-page .trae-department-toolbar > button:first-child,
+  .trae-members-page .trae-department-expand-button { width: 32px; height: 32px; min-height: 32px; max-height: 32px; flex: 0 0 32px; }
+  .trae-members-page .trae-department-toolbar > button:first-child svg { transform: rotate(-90deg); }
+  .trae-members-page .trae-department-expand-button svg { transform: rotate(90deg); }
   .trae-subscription-page { width: 100%; }
 }
 

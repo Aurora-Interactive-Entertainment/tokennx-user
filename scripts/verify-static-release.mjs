@@ -136,6 +136,13 @@ async function verifyVersion() {
     ) {
       failures.push("version.json 缺少有效 version");
     }
+    const html = await readFile(join(DIST_DIR, "index.html"), "utf8");
+    const htmlVersion = html.match(/name="token-nx-build-version"\s+content="([^"]+)"/)?.[1];
+    // 入口与探针必须属于同次构建，且独立版本守卫必须已内联。
+    if (htmlVersion !== payload.version) failures.push("入口 HTML 与 version.json 版本不一致");
+    if (html.includes('<!-- token-nx-build-guard -->') || !html.includes('window.__TOKEN_NX_UPDATE_GUARD__ =')) {
+      failures.push("入口 HTML 缺少内联版本更新守卫");
+    }
   } catch {
     failures.push("发布目录缺少可解析的 version.json");
   }

@@ -421,7 +421,7 @@ describe('控制台模型接入页面', () => {
       accessToken: 'console-model-token',
       model: 'deepseek-public',
       messages: [{ role: 'user', content: '请返回真实结果' }],
-      temperature: 0.7,
+      temperature: 1,
       maxTokens: 2000,
     })
     expect(vi.mocked(streamChatCompletion).mock.calls[0]?.[0]).not.toHaveProperty('prompt')
@@ -493,6 +493,8 @@ describe('控制台模型接入页面', () => {
     await user.click(screen.getByRole('button', { name: '最大上下文设置' }))
     const parametersDialog = await screen.findByRole('dialog', { name: '模型参数' })
     expect(parametersDialog).toBeInTheDocument()
+    // 默认随机性直接显示在面板里，用户不打开面板时也必须按这个值发起请求。
+    expect(within(parametersDialog).getByLabelText('Temperature')).toHaveValue('1')
     await user.click(within(parametersDialog).getByRole('button', { name: 'cancel' }))
 
     await user.type(screen.getByLabelText('测试提示词'), '旧上下文问题')

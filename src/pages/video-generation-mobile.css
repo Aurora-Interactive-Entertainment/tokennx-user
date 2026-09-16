@@ -1,0 +1,309 @@
+/* 分组只在窄屏参与排版，桌面沿用原有控件顺序与尺寸。 */
+.video-primary-controls,
+.video-parameter-controls {
+  display: contents;
+}
+
+@media (max-width: 760px) {
+  /* 顶栏和移动导航均占用视口高度，剩余空间交给可滚动的记录区。 */
+  .console-content:has(.video-console-page) {
+    box-sizing: border-box;
+    display: flex;
+    height: calc(100dvh - var(--public-mobile-header-height, 72px));
+    min-height: 0;
+    flex: none;
+    flex-direction: column;
+    padding-top: 59px;
+  }
+
+  .console-content:has(.video-console-page) .console-top-breadcrumb {
+    display: none;
+  }
+
+  .console-page:has(.video-console-page) {
+    min-height: 0;
+    flex: 1;
+  }
+
+  .console-page:has(.video-console-page) > .video-console-page.page-stack {
+    height: 100%;
+    min-height: 0;
+    padding: 8px 0 max(8px, env(safe-area-inset-bottom));
+  }
+
+  .video-console-page .video-workspace {
+    height: 100%;
+    min-height: 0;
+  }
+
+  .video-console-page .video-toolbar {
+    box-sizing: border-box;
+    min-height: 44px;
+    flex: 0 0 44px;
+    padding: 0 10px;
+  }
+
+  .video-console-page .video-stage {
+    padding: 16px 12px;
+    scroll-padding-block: 16px;
+  }
+
+  .video-console-page .video-composer {
+    width: calc(100% - 16px);
+    flex: 0 0 auto;
+    margin: 0 auto 8px;
+  }
+
+  .video-console-page .video-composer-box {
+    min-height: 0;
+    padding: 10px;
+  }
+
+  .video-console-page .video-composer-input-row {
+    height: auto;
+    min-height: 64px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .video-console-page .video-reference-upload-card {
+    width: 44px;
+    height: 56px;
+    flex-basis: 44px;
+    margin: 0;
+    transform: none;
+    font-size: 10px;
+    line-height: 14px;
+  }
+
+  .video-console-page .video-frame-upload-group {
+    height: 56px;
+    gap: 2px;
+  }
+
+  .video-console-page .video-frame-upload-separator {
+    width: 20px;
+    flex-basis: 20px;
+  }
+
+  .video-console-page .video-composer-input-row .semi-input-textarea-wrapper {
+    width: 0;
+    min-width: 0;
+    flex: 1;
+  }
+
+  .video-console-page .video-composer-input-row .semi-input-textarea-wrapper,
+  .video-console-page .video-composer-input-row .semi-input-textarea {
+    height: 64px;
+    min-height: 64px;
+  }
+
+  .video-console-page .video-composer-input-row .semi-input-textarea {
+    /* 避免 iOS 聚焦输入框时因字号过小自动放大页面。 */
+    font-size: 16px;
+  }
+
+  /* 已选参考图单独占行，长链接不会覆盖提示词或挤压输入区域。 */
+  .video-console-page .video-reference-row {
+    position: static;
+    order: 1;
+    width: 100%;
+  }
+
+  .video-console-page .video-reference-chip {
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  .video-console-page .video-composer-controls {
+    display: grid;
+    height: auto;
+    grid-template-columns: minmax(0, 1fr) 40px;
+    gap: 8px;
+    margin-top: 8px;
+  }
+
+  .video-console-page .video-control-group {
+    display: contents;
+  }
+
+  .video-console-page .video-primary-controls {
+    display: grid;
+    min-width: 0;
+    grid-column: 1 / -1;
+    grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+    gap: 8px;
+  }
+
+  .video-console-page .video-parameter-controls {
+    display: grid;
+    min-width: 0;
+    grid-template-columns: minmax(0, 1fr) 68px 36px;
+    gap: 6px;
+  }
+
+  .video-console-page
+    :is(
+      .video-reference-picker,
+      .video-model-picker,
+      .video-aspect-picker,
+      .video-duration-picker
+    ) {
+    min-width: 0;
+  }
+
+  .video-console-page .video-control-button,
+  .video-console-page .video-control-button.semi-select {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    height: 40px;
+    min-height: 40px;
+    padding-inline: 8px;
+    gap: 0;
+    line-height: 40px;
+  }
+
+  .video-console-page .video-control-button.semi-select .semi-select-selection {
+    margin: 0;
+  }
+
+  .video-console-page
+    .video-control-button.semi-select
+    .semi-select-content-wrapper {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .video-console-page
+    .video-control-button.semi-select
+    .semi-select-selection-text {
+    min-width: 0;
+    overflow: hidden;
+    flex: 1;
+    text-overflow: ellipsis;
+  }
+
+  .video-console-page
+    .video-reference-trigger.semi-select
+    .semi-select-selection-text {
+    justify-content: flex-start;
+  }
+
+  .video-console-page
+    .video-control-button.semi-select
+    .semi-select-selection-text
+    > span:not(.semi-icon) {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .video-console-page .video-control-button.semi-select .semi-select-arrow {
+    margin-left: 4px;
+  }
+
+  .video-console-page
+    .video-duration-trigger
+    .semi-select-selection-text
+    > .semi-icon {
+    display: none;
+  }
+
+  .video-console-page .video-model-company {
+    display: none;
+  }
+
+  .video-console-page .video-sound-trigger {
+    justify-content: center;
+    padding: 0;
+  }
+
+  .video-console-page .video-sound-trigger > span:not(.semi-icon) {
+    display: none;
+  }
+
+  .video-console-page .video-send-button.semi-button {
+    width: 40px;
+    height: 40px;
+    min-height: 40px;
+    border-radius: 10px;
+  }
+
+  .video-console-page .video-history-panel {
+    top: 48px;
+    left: 8px;
+    width: calc(100% - 16px);
+    max-height: calc(100% - 64px);
+    box-sizing: border-box;
+    padding: 12px;
+  }
+
+  .video-console-page .video-record-group-title {
+    margin-bottom: 14px;
+    font-size: 20px;
+    line-height: 28px;
+  }
+
+  .video-console-page .video-record + .video-record,
+  .video-console-page .video-record-group + .video-record {
+    margin-top: 24px;
+  }
+
+  .video-console-page .video-record-meta {
+    flex-wrap: wrap;
+  }
+
+  .video-console-page .video-record-actions {
+    gap: 6px;
+    margin-top: 10px;
+  }
+
+  .video-console-page .video-record-actions .semi-button {
+    min-height: 36px;
+    height: auto;
+    padding-inline: 8px;
+    font-size: 12px;
+  }
+
+  /* Portal 内滑块也随面板收缩，避免固定 230px 宽度覆盖右侧秒数框。 */
+  .video-duration-select-dropdown .video-select-panel {
+    gap: 0 12px;
+  }
+
+  .video-duration-select-dropdown .video-duration-control,
+  .video-duration-select-dropdown .video-duration-control input[type="range"] {
+    width: 100%;
+  }
+
+  .video-duration-select-dropdown .video-duration-control {
+    height: auto;
+    min-height: 50px;
+  }
+
+  .video-duration-select-dropdown .video-duration-control input[type="range"] {
+    display: block;
+    min-height: 24px;
+  }
+}
+
+@media (max-width: 360px) {
+  /* 超窄屏保留比例与清晰度两项信息，使用上下排版替代整段省略。 */
+  .video-console-page .video-aspect-trigger.semi-select .video-aspect-label {
+    display: grid;
+    line-height: 15px;
+    font-size: 11px;
+  }
+
+  .video-console-page .video-aspect-separator,
+  .video-console-page
+    .video-aspect-trigger.semi-select
+    .semi-select-selection-text
+    > .semi-icon,
+  .video-console-page
+    .video-reference-trigger.semi-select
+    .video-reference-option-icon {
+    display: none;
+  }
+}

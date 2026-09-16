@@ -1,0 +1,32 @@
+/* 开票说明固定展示，标题采用普通文本，不再提供折叠交互。 */
+.invoice-faq {
+  overflow: hidden;
+  border: 1px solid var(--color-border-neutral-l1);
+  border-radius: var(--radius-8);
+  background: var(--color-bg-base-secondary);
+}
+
+.invoice-faq-title {
+  margin: 0;
+  padding: var(--spacing-16) var(--spacing-20);
+  color: var(--color-text-default);
+  font-size: 15px;
+  font-weight: 650;
+}
+
+.invoice-faq-body {
+  padding: 0 var(--spacing-20) var(--spacing-16);
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+@media (max-width: 680px) {
+  /* 账本导出与筛选控件保持紧凑高度，仅覆盖当前按钮，不影响桌面端。 */
+  .billing-ledger-section .billing-export-button.semi-button {
+    height: 32px;
+    min-height: 32px;
+    padding-inline: 10px;
+    font-size: 12px;
+  }
+}

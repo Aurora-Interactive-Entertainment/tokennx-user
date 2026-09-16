@@ -1,0 +1,24 @@
+/* 更新提示不锁定页面，保留当前表单和支付操作，样式复用主题变量。 */
+.build-update-notice {
+  position: fixed;
+  left: max(20px, env(safe-area-inset-left));
+  bottom: calc(88px + env(safe-area-inset-bottom));
+  z-index: 900;
+  box-sizing: border-box;
+  width: min(420px, calc(100% - 40px));
+  padding: 16px;
+  border: 1px solid var(--color-border-neutral-l2);
+  border-radius: 10px;
+  background: var(--color-bg-menu);
+  color: var(--color-text-default);
+  box-shadow: var(--shadow);
+}
+
+.build-update-notice strong { color: var(--color-text-default-hover); font-size: 14px; }
+.build-update-notice p { margin: 6px 0 14px; color: var(--color-text-secondary); font-size: 13px; line-height: 1.6; }
+.build-update-notice__actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+
+@media (max-width: 560px) {
+  .build-update-notice { right: max(12px, env(safe-area-inset-right)); left: max(12px, env(safe-area-inset-left)); width: auto; }
+  .build-update-notice__actions > button { flex: 1; }
+}

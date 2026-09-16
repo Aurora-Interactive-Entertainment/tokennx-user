@@ -106,9 +106,14 @@ describe('套餐支付 HTTP 合同与页面联动', () => {
     serverOrder = { ...serverOrder, status: 'paid', paid_at: null, version: '2' }
     await waitFor(() => expect(screen.queryByTitle('扫码支付')).toBeNull(), { timeout: 6000 })
     expect(onPaid).not.toHaveBeenCalled()
+    // 已支付但没回 paid_at 只是渠道收了钱，还不能说是购买完成。
+    expect(screen.queryByText('套餐购买成功，额度已到账')).toBeNull()
     serverOrder = { ...serverOrder, paid_at: Date.now(), paid_amount_yuan: '23.99', paid_amount_cent: '2399', version: '3' }
     await screen.findByText('套餐购买成功', undefined, { timeout: 6000 })
     expect(onPaid).toHaveBeenCalledOnce()
+    // 查单会反复下发同一个已入账订单，顶部提示只能出现一次。
+    expect(await screen.findByText('套餐购买成功，额度已到账')).toBeInTheDocument()
+    expect(screen.getAllByText('套餐购买成功，额度已到账')).toHaveLength(1)
     expect(screen.queryByRole('button', { name: '重试支付' })).toBeNull()
   })
 

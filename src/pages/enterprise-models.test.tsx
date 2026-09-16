@@ -139,6 +139,26 @@ beforeEach(() => {
 })
 
 describe('企业模型管理页面', () => {
+  it('英文厂商名的 GLM 和 Kimi 使用品牌图标，接口图标仍优先', async () => {
+    const models = [
+      { ...GPT_MODEL, id: 'glm-52', code: 'glm5.2', name: 'glm5.2', company: 'Zhipu AI' },
+      { ...GPT_MODEL, id: 'glm-53', code: 'glm5.3', name: 'glm5.3', company: 'Zhipu AI' },
+      { ...GPT_MODEL, id: 'kimi-3', code: 'kimi3', name: 'kimi3', company: 'Moonshot AI' },
+      { ...GPT_MODEL, id: 'seedance-25', code: 'seedance2.5', name: 'seedance2.5', company: 'Jimeng', modality: 'video' },
+      { ...GPT_MODEL, id: 'custom-glm', code: 'custom-glm', name: 'Custom GLM', company: 'Zhipu AI', icon_url: '/custom-model.svg' },
+    ]
+    getEnterpriseModelsMock.mockResolvedValue(modelPage(models))
+    renderPage()
+
+    for (const [name, title] of [['glm5.2', 'Zhipu'], ['glm5.3', 'Zhipu'], ['kimi3', 'MoonshotAI']]) {
+      const row = (await screen.findByText(name)).closest('tr')
+      expect(row?.querySelector('.model-logo svg title')).toHaveTextContent(title)
+    }
+    expect(screen.getByText('Custom GLM').closest('tr')?.querySelector('.model-logo img')).toHaveAttribute('src', '/custom-model.svg')
+    expect(screen.getByText('seedance2.5').closest('tr')?.querySelector('.model-logo img')?.getAttribute('src')).toContain('Seedance.svg')
+    expect(updateEnterpriseModelMock).not.toHaveBeenCalled()
+  })
+
   it('加载企业模型目录并按固定参数请求完整目录', async () => {
     renderPage()
 

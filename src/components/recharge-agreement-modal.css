@@ -1,0 +1,10 @@
+/* 协议正文复用文档样式，滚动与明暗主题由标准 AppModal 承接。 */
+.recharge-agreement-document {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.recharge-agreement-document h1 {
+  font-size: 24px;
+  line-height: 1.4;
+}

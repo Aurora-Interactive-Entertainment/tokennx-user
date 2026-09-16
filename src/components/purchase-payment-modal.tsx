@@ -1,6 +1,5 @@
-import { useEffect, useId, useState } from "react";
+import { cloneElement, isValidElement, useEffect, useId, useRef, useState, type HTMLAttributes } from "react";
 import { useTranslation } from "react-i18next";
-import { Link } from "react-router";
 import type { BillingContext } from "@/api/billing";
 import { isPaymentActive, isPaymentSettled } from "@/api/payment-flow";
 import Spin from "@douyinfe/semi-ui/lib/es/spin";
@@ -8,6 +7,7 @@ import { IconRefresh } from "@douyinfe/semi-icons";
 import { PaymentQRCode } from "./payment-qr-code";
 import { PaymentQRCodeFrame } from "./payment-qr-frame";
 import { PurchaseVerificationGate } from "./purchase-verification-gate";
+import RechargeAgreementModal from "./recharge-agreement-modal";
 import { usePlanPayment } from "./use-plan-payment";
 import AppModal from "@/components/app-modal";
 import { appToast } from "@/components/app-toast";
@@ -58,10 +58,21 @@ function PurchasePaymentContent({
 }: PurchasePaymentProps & { onRealNameRequired: () => void }) {
   const { t } = useTranslation();
   const [closing, setClosing] = useState(false);
+  const [agreementOpen, setAgreementOpen] = useState(false);
   const payment = usePlanPayment(context, planID, onPaid, onAuthFailure);
+  const copy = "console.purchasePage.paymentModal";
+  const paidNotified = useRef(false);
   useEffect(() => {
     if (payment.error) appToast.error(payment.error);
   }, [payment.error]);
+  useEffect(() => {
+    // 入账后弹窗会自动关闭，成功提示必须在这一刻给出，否则用户只看到弹窗无声消失。
+    // 查单会反复下发同一个已入账订单，用 ref 保证一次购买只提示一次。
+    if (paidNotified.current || !payment.order || !isPaymentSettled(payment.order))
+      return;
+    paidNotified.current = true;
+    appToast.success(t(`${copy}.paidNotice`));
+  }, [payment.order, t]);
   useEffect(() => {
     // 订单确认入账（paid_at 已回）后自动关闭支付弹窗：买完不该再留一个需要手动关闭的弹窗。
     // 已支付但尚未到账时继续查单，等入账确认后再关闭，避免提前切断状态确认。
@@ -74,7 +85,6 @@ function PurchasePaymentContent({
   }, [payment.realNameRequired, onRealNameRequired]);
   const radioName = useId();
   const { method, agreed } = payment;
-  const copy = "console.purchasePage.paymentModal";
   const isPlan = ["miniMax", "deepSeek", "seedance", "kimi", "glm"].includes(
     planName,
   );
@@ -109,11 +119,15 @@ function PurchasePaymentContent({
         // 保留组件直到退场动画完成，避免父组件立即卸载导致关闭生硬。
         onCancel={() => { if (!closing) void payment.close(() => setClosing(true)); }}
         afterClose={() => { if (closing) onClose(); }}
-        closeOnEsc={!closing && !payment.busy && !payment.realNameRequired}
+        closeOnEsc={!agreementOpen && !closing && !payment.busy && !payment.realNameRequired}
         maskClosable={false}
         closable={!payment.busy}
         width={520}
         aria-label={t(`${copy}.title`)}
+        // 阅读协议时保留底层支付会话，但让键盘和读屏只访问最上层弹窗。
+        modalRender={(node) => isValidElement<HTMLAttributes<HTMLDivElement>>(node)
+          ? cloneElement(node, { inert: agreementOpen, "aria-hidden": agreementOpen || undefined })
+          : node}
       >
         <div className="purchase-payment-content">
           <h2>{t(`${copy}.title`)}</h2>
@@ -219,14 +233,15 @@ function PurchasePaymentContent({
                   />
                   {t(`${copy}.readAgreement`)}
                 </label>
-                <Link to="/recharge-agreement" target="_blank" rel="noreferrer">
+                <button type="button" className="purchase-payment-agreement-link" onClick={() => setAgreementOpen(true)}>
                   {t(`${copy}.agreement`)}
-                </Link>
+                </button>
               </div>
             </div>
           </div>
         </div>
       </AppModal>
+      {agreementOpen && <RechargeAgreementModal open onClose={() => setAgreementOpen(false)} />}
     </>
   );
 }

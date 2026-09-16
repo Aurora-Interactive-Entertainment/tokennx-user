@@ -147,8 +147,8 @@ SEO 的 HTML、robots 和 sitemap 默认使用 `https://tokennx.cn`。发布到�
 
 线上服务器请采用版本目录或“资源先行、HTML 最后”的发布顺序：
 
-1. 将完整 `dist/assets/`（以及 `version.json`、其他 `public/` 静态文件）上传并校验成功；不要先删除仍可能被旧 HTML 引用的 hash 资源。
-2. 最后再替换 `index.html`；更推荐把完整产物放入新版本目录，校验通过后原子切换 `current` 软链接。切换后的目录要继续保留旧版本的 hash 资源（或使用共享 assets 目录），不要立即删除旧资源，以免已有缓存 HTML 找不到它们。
+1. 将完整 `dist/assets/` 和其他 `public/` 静态文件上传并校验成功；不要先删除仍可能被旧 HTML 引用的 hash 资源。
+2. 资源就绪后替换 `index.html`，最后发布配套的 `version.json`，避免版本探针先更新、入口尚未就绪就触发用户刷新。更推荐把完整产物放入新版本目录，校验通过后原子切换 `current` 软链接。切换后的目录要继续保留旧版本的 hash 资源（或使用共享 assets 目录），不要立即删除旧资源，以免已有缓存 HTML 找不到它们。
 3. 将 [`deploy/nginx/tokennx-user.conf`](deploy/nginx/tokennx-user.conf) 中的规则合并到站点 `server {}`：`/assets/` 使用 `try_files $uri =404`，HTML 入口使用 `no-store`，SPA 回退只能放在最后。若现有配置有全局 `error_page 404 /index.html`，必须移除它（或确认它不会继承到资源 location），不能让它把资源 404 再改写成入口 HTML。
 
 如果暂时不能做版本目录切换，可以在服务器上按下面顺序发布（不要加 `--delete`）：
@@ -156,9 +156,11 @@ SEO 的 HTML、robots 和 sitemap 默认使用 `https://tokennx.cn`。发布到�
 ```bash
 set -euo pipefail
 WEBROOT=/var/www/tokennx-user/current
-rsync -a --exclude='index.html' dist/ "$WEBROOT"/
+rsync -a --exclude='index.html' --exclude='version.json' dist/ "$WEBROOT"/
 install -m 0644 dist/index.html "$WEBROOT/index.html.next"
 mv -f "$WEBROOT/index.html.next" "$WEBROOT/index.html"
+install -m 0644 dist/version.json "$WEBROOT/version.json.next"
+mv -f "$WEBROOT/version.json.next" "$WEBROOT/version.json"
 ```
 
 修改 OpenResty/Nginx 后先执行 `nginx -t` 再 reload；若前面还有 CDN，还要清理已有的 `/`、`/index.html`、`/version.json` 以及曾被错误回退的 `/assets/*` 缓存，并确认 CDN 不会忽略源站的 `no-store`。
@@ -171,6 +173,8 @@ curl -sSI https://tokennx.cn/ | grep -i cache-control
 ```
 
 第一条必须返回 `404`（不能是 `200`，也不能返回入口 HTML）；入口响应不能带长期 `max-age`。若 CDN 另有缓存规则，也要同步设置 HTML 不缓存、hash 资源长期缓存。
+
+前端版本守卫在构建时内联到 HTML，首次访问、返回标签页、页面恢复及站内跳转会检查 `/version.json`；协议页跳转使用更短的检查间隔。公开浏览页可自动更新，已输入内容、可见弹窗和已启动的控制台页面会保留操作并显示更新提示。自动重试有 60 秒冷却，授权回调不会自动重载。该机制不能替代 CDN 的不缓存规则；开发服务器不启用，需通过生产构建预览验证。
 
 ### 本地预览构建结果
 

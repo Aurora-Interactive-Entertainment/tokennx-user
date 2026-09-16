@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom/vitest'
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import QRCode from 'qrcode'
@@ -13,7 +13,7 @@ import { PurchasePaymentModal } from './purchase-payment-modal'
 vi.mock('@/api/billing', async (original) => ({ ...await original<object>(), createBillingPaymentOrder: vi.fn(), startBillingPayment: vi.fn(), getBillingPaymentOrder: vi.fn() }))
 vi.mock('@/api/real-name', async (original) => ({ ...await original<object>(), getRealNameProfile: vi.fn() }))
 vi.mock('@/auth/token-storage', async (original) => ({ ...await original<object>(), getAccessToken: vi.fn() }))
-vi.mock('./app-toast', () => ({ appToast: { error: vi.fn() } }))
+vi.mock('./app-toast', () => ({ appToast: { error: vi.fn(), success: vi.fn() } }))
 vi.mock('qrcode', () => ({ default: { toCanvas: vi.fn().mockResolvedValue(undefined) } }))
 
 function expectNoPayment() {
@@ -31,6 +31,33 @@ describe('套餐付款弹窗', () => {
     vi.mocked(getRealNameProfile).mockResolvedValue({ status: 'verified' })
   })
   afterEach(cleanup)
+
+  it('原地阅读页脚同一份充值协议，关闭后保留支付会话且不自动同意或下单', async () => {
+    const onClose = vi.fn()
+    const onAuthFailure = vi.fn()
+    const openWindow = vi.spyOn(window, 'open')
+    render(<MemoryRouter><PurchasePaymentModal open planName="deepSeek" planID="plan-1" onClose={onClose} onAuthFailure={onAuthFailure} /></MemoryRouter>)
+    const agreement = await screen.findByRole('button', { name: '《充值协议》' })
+    const checkbox = screen.getByRole('checkbox')
+    fireEvent.click(agreement)
+    const dialog = screen.getByRole('dialog', { name: '充值协议' })
+    expect(within(dialog).getByRole('heading', { name: 'Token NX 充值协议', level: 1 })).toBeInTheDocument()
+    expect(within(dialog).getByRole('heading', { name: '第六条 退款' })).toBeInTheDocument()
+    expect(document.querySelector('.purchase-payment-content')?.closest('[role="dialog"]')).toHaveAttribute('inert')
+    fireEvent.click(within(dialog).getByRole('button', { name: 'close' }))
+    expect(screen.queryByRole('dialog', { name: '充值协议' })).toBeNull()
+    expect(screen.getByRole('checkbox')).toBe(checkbox)
+    expect(checkbox).not.toBeChecked()
+    expect(screen.getByRole('radio', { name: '微信支付' })).toBeChecked()
+    expect(openWindow).not.toHaveBeenCalled()
+    expect(onClose).not.toHaveBeenCalled()
+    expect(onAuthFailure).not.toHaveBeenCalled()
+    expect(getRealNameProfile).toHaveBeenCalledOnce()
+    expect(createBillingPaymentOrder).not.toHaveBeenCalled()
+    expect(startBillingPayment).not.toHaveBeenCalled()
+    expect(getBillingPaymentOrder).not.toHaveBeenCalled()
+    openWindow.mockRestore()
+  })
 
   it('关闭先执行退场动画，动画结束后才通知父组件卸载', async () => {
     const onClose = vi.fn()
@@ -78,7 +105,7 @@ describe('套餐付款弹窗', () => {
     render(<MemoryRouter><PurchasePaymentModal open planName="Max" planID="plan-1" onClose={vi.fn()} /></MemoryRouter>)
     const checkbox = await screen.findByRole('checkbox')
     expect(screen.getByRole('radio', { name: '微信支付' })).toBeChecked()
-    expect(screen.getByText('请先同意服务协议')).toBeInTheDocument()
+    expect(screen.getByText('请先同意充值协议')).toBeInTheDocument()
     expect(document.querySelector('.purchase-payment-qr canvas')).toBeNull()
     fireEvent.click(checkbox)
     await waitFor(() => expect(startBillingPayment).toHaveBeenCalledOnce())
@@ -90,7 +117,7 @@ describe('套餐付款弹窗', () => {
     expect(screen.getByLabelText('扫码支付')).toBeInTheDocument()
     expect(screen.getByRole('radio', { name: '支付宝支付' })).toBeEnabled()
     fireEvent.click(checkbox)
-    expect(screen.getByText('请先同意服务协议')).toBeInTheDocument()
+    expect(screen.getByText('请先同意充值协议')).toBeInTheDocument()
     expect(document.querySelector('.purchase-payment-qr canvas')).toBeNull()
     expect(screen.queryByRole('button', { name: '刷新支付状态' })).toBeNull()
   })

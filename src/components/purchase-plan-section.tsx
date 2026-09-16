@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { ProductPlanSummary } from '@/api/product-plans'
 import miniMaxBackground from '@/assets/figma-combo/minimax.png'
@@ -95,9 +95,10 @@ export default function PurchasePlanSection({
   onRetry: () => void
   onSelect: (plan: ProductPlanSummary) => void
 }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const groups = useMemo(() => planGroups(plans), [plans])
   const [activeGroup, setActiveGroup] = useState('all')
+  const tabsRef = useRef<HTMLDivElement>(null)
   const tabs = useMemo(() => ['all', ...groups], [groups])
   const cards = useMemo(() => activeGroup === 'all'
     ? plans
@@ -106,6 +107,21 @@ export default function PurchasePlanSection({
   useEffect(() => {
     if (!tabs.includes(activeGroup)) setActiveGroup('all')
   }, [activeGroup, tabs])
+
+  useEffect(() => {
+    const container = tabsRef.current
+    const active = container?.querySelector<HTMLButtonElement>('button.is-active')
+    if (!container || !active || container.scrollWidth <= container.clientWidth) return
+    if (!window.matchMedia('(max-width: 760px)').matches) return
+    // 与顶部套餐弹窗保持一致，仅横向居中选中项，避免带动页面纵向滚动。
+    const containerRect = container.getBoundingClientRect()
+    const activeRect = active.getBoundingClientRect()
+    container.scrollTo({
+      left: container.scrollLeft + activeRect.left - containerRect.left - container.clientLeft
+        - (container.clientWidth - activeRect.width) / 2,
+      behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+    })
+  }, [activeGroup, tabs, loading, error, i18n.language])
 
   if (loading) {
     return <section className="purchase-plans purchase-plan-state" role="status">{t('console.purchasePage.api.loading')}</section>
@@ -127,6 +143,7 @@ export default function PurchasePlanSection({
     <section className="purchase-plans" aria-label={t('console.purchasePage.tabs.all')}>
       <div
         className="purchase-plan-tabs"
+        ref={tabsRef}
         role="tablist"
         style={{
           '--purchase-tab-index': tabs.indexOf(activeGroup),

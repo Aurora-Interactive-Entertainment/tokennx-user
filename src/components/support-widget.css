@@ -1,3 +1,8 @@
+/* 桌面和移动端的发送按钮都与输入框中心对齐，输入框增高时也不贴底。 */
+.manuscript-support-composer .manuscript-support-send {
+  align-self: center;
+}
+
 /* 客服通知面板使用独立层级，通知列表不复用聊天消息的气泡样式。 */
 .manuscript-support-panel:has(.manuscript-support-notifications) {
   border-color: rgba(255, 255, 255, 0.18);
@@ -458,8 +463,36 @@ html[data-theme="light"]
 }
 
 @media (max-width: 680px) {
-  .manuscript-support-panel:has(.manuscript-support-notifications) {
-    padding: 12px;
+  /* 两个页签及过渡期间共用外层间距，避免旧通知内容卸载时面板突然收窄。 */
+  .manuscript-support-widget .manuscript-support-panel {
+    padding: 14px;
+  }
+
+  /* 页签高度与 40px 轨道一致，避免通用 44px 按钮规则让文字偏离选中背景。 */
+  .manuscript-support-tabs .manuscript-support-tab {
+    min-width: 0;
+    height: 40px;
+    min-height: 40px;
+    padding: 0 8px;
+    line-height: 20px;
+    white-space: nowrap;
+  }
+
+  /* 面板内部图标按钮按自身尺寸显示，保持图标居中和方形点击区域。 */
+  .manuscript-support-panel .manuscript-support-close {
+    min-height: 34px;
+  }
+
+  .manuscript-support-panel .manuscript-support-send {
+    min-height: 42px;
+  }
+
+  .manuscript-support-panel .manuscript-support-notification-back {
+    min-height: 32px;
+  }
+
+  .manuscript-support-panel .manuscript-support-notification-delete {
+    min-height: 28px;
   }
 
   .manuscript-support-notifications:has(

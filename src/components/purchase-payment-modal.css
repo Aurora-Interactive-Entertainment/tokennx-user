@@ -226,9 +226,13 @@
   margin: 0;
   accent-color: var(--payment-accent);
 }
-.purchase-payment-agreement a {
+.purchase-payment-agreement-link {
+  padding: 0;
+  border: 0;
   color: var(--payment-text);
-  text-decoration: none;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
 }
 html[data-theme="dark"] .purchase-payment-modal {
   --payment-text: #f4f5f7;

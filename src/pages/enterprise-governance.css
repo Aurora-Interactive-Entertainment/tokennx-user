@@ -42,6 +42,18 @@
   transform: none !important;
 }
 
+@media (max-width: 680px) {
+  /* 新增角色按钮保持方形，覆盖移动端通用最小高度，并与数量垂直居中。 */
+  .enterprise-governance-rail-tools .enterprise-governance-rail-add.semi-button {
+    width: 32px;
+    min-width: 32px;
+    height: 32px;
+    min-height: 32px;
+    flex: 0 0 32px;
+    padding: 0;
+  }
+}
+
 @media (max-width: 560px) {
   .app-modal.enterprise-governance-delete-dialog .semi-modal {
     width: min(100%, calc(100vw - 24px));

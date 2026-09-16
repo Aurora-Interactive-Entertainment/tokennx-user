@@ -5,6 +5,12 @@ declare const __TOKEN_NX_BUILD_VERSION__: string;
 
 interface Window {
   __TOKEN_NX_BUILD_VERSION__?: string;
+  __TOKEN_NX_UPDATE_GUARD__?: {
+    readonly pendingVersion: string;
+    check: (urgent?: boolean) => Promise<void>;
+    routeChanged: () => Promise<void>;
+    reload: () => boolean;
+  };
 }
 
 interface ImportMetaEnv {

@@ -183,7 +183,7 @@ export function ConsoleModelsPage() {
   </div>
 }
 
-const DEFAULT_TEMPERATURE = '0.7'
+const DEFAULT_TEMPERATURE = '1'
 const DEFAULT_MAX_TOKENS = '2000'
 const MIN_TEMPERATURE = 0
 const MAX_TEMPERATURE = 2

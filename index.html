@@ -4,45 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="token-nx-build-version" content="__TOKEN_NX_BUILD_VERSION_VALUE__" />
-    <script>
-      (() => {
-        // 源站没有下发 Cache-Control，浏览器会长时间持有旧 HTML，新版本上线后用户可能一直停在旧代码上。
-        // 这里用带时间戳的查询串探测固定地址 version.json（绕开缓存），版本不一致就换 URL 强制重载。
-        // 必须内联而不是放进 bundle：入口脚本 404 时 React 起不来，组件层的兜底接不到。
-        const BUILD_GUARD_KEY = 'token-nx:build-guard'
-        const meta = document.querySelector('meta[name="token-nx-build-version"]')
-        const selfVersion = meta && meta.getAttribute('content') ? meta.getAttribute('content').trim() : ''
-        // 占位符未被替换（异常构建）时拿不到可信版本号，不介入以免误判。
-        if (!selfVersion || selfVersion.indexOf('__TOKEN_NX') === 0) return
-        // 微信授权回调页一次性携带 code/state，重载会重放一次性授权码。
-        const query = new URLSearchParams(window.location.search)
-        if (query.has('code') && query.has('state')) return
-        try {
-          // 每个版本最多重载一次；重载后仍是旧版本说明缓存绕不过去，必须停下，否则会循环刷新。
-          if (window.sessionStorage.getItem(BUILD_GUARD_KEY) === selfVersion) return
-        } catch {
-          return
-        }
-        const controller = typeof AbortController === 'function' ? new AbortController() : null
-        const timeout = window.setTimeout(() => controller && controller.abort(), 8000)
-        fetch('/version.json?t=' + Date.now(), {
-          cache: 'no-store',
-          credentials: 'omit',
-          signal: controller ? controller.signal : undefined,
-        }).then((response) => (response.ok ? response.json() : undefined)).then((payload) => {
-          const latest = payload && typeof payload.version === 'string' ? payload.version.trim() : ''
-          if (!latest || latest === selfVersion) return
-          try {
-            window.sessionStorage.setItem(BUILD_GUARD_KEY, selfVersion)
-          } catch {
-            return
-          }
-          const url = new URL(window.location.href)
-          url.searchParams.set('__token_nx_build', latest)
-          window.location.replace(url.toString())
-        }).catch(() => { }).finally(() => window.clearTimeout(timeout))
-      })()
-    </script>
+    <!-- token-nx-build-guard -->
     <meta name="theme-color" content="#1a1b1d" />
     <meta name="description" content="Token NX 是合规的企业级大型 AI 算力聚合平台，聚合多家大模型算力，提供优质、低价的 API 接入与企业管理能力。" data-seo-managed="true" />
     <meta name="robots" content="index, follow" data-seo-managed="true" />

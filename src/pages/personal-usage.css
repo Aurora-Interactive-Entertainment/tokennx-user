@@ -149,7 +149,24 @@ html[data-theme="light"]
 .personal-usage-cue-download { display: inline-grid; width: 32px; height: 32px; margin-left: auto; place-items: center; padding: 0; border: 1px solid var(--color-border-neutral-l1); border-radius: 6px; color: var(--color-text-secondary); background: var(--color-bg-base-secondary); cursor: pointer; }
 .personal-usage-cue-download:hover { border-color: var(--color-border-neutral-l2); color: var(--color-text-default-hover); }
 .personal-usage-cue-download:disabled { cursor: not-allowed; opacity: 0.45; }
-.personal-usage-cue-table-wrap { min-width: 0; overflow-x: auto; border: 1px solid var(--color-border-neutral-l1); border-radius: 6px; background: var(--color-bg-base-secondary); }
+.personal-usage-cue-table-wrap { position: relative; min-width: 0; overflow-x: auto; border: 1px solid var(--color-border-neutral-l1); border-radius: 6px; background: var(--color-bg-base-secondary); }
+/* 加载提示脱离文档流；首次加载居中，后续刷新仅在角落提示，保持现有内容和滚动位置。 */
+.personal-usage-cue-feedback {
+  position: absolute;
+  inset: 42px 0 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+.personal-usage-cue-feedback.is-refreshing {
+  inset: 8px 8px auto auto;
+  max-width: calc(100% - 16px);
+}
+.personal-usage-cue-feedback .personal-usage-resource-status {
+  padding: 6px 10px;
+  border-radius: 4px;
+  background: var(--color-bg-base-secondary);
+}
 .personal-usage-cue-table { width: 100%; min-width: 0; border-collapse: collapse; table-layout: fixed; color: var(--color-text-default); }
 .personal-usage-cue-table th,
 .personal-usage-cue-table td { height: 48px; min-width: 0; box-sizing: border-box; padding: 0 12px; border-bottom: 1px solid var(--color-border-neutral-l1); color: var(--color-text-secondary); font-size: 11px; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -173,6 +190,21 @@ html[data-theme="light"]
 .personal-usage-cue-table th:nth-child(7),
 .personal-usage-cue-table td:nth-child(7) { width: 5%; text-align: right; }
 .personal-usage-cue-empty { display: grid; min-height: 230px; place-items: center; color: var(--color-text-tertiary); background: var(--color-bg-base-secondary); font-size: 13px; }
+@media (max-width: 680px) {
+  /* 覆盖移动端通用按钮最小高度，避免选中背景超出 32px 的日期筛选框。 */
+  .personal-usage-cue-toolbar .personal-usage-cue-range-buttons button {
+    height: 26px;
+    min-height: 26px;
+    white-space: nowrap;
+  }
+}
+@media (max-width: 560px) {
+  /* 按文案长度分配宽度，避免英文日期在窄屏等宽按钮内换行。 */
+  .personal-usage-cue-toolbar .personal-usage-cue-range-buttons button {
+    flex: 1 1 auto;
+    padding-inline: 4px;
+  }
+}
 @media (max-width: 560px) { .personal-usage-management-heading { align-items: stretch; flex-direction: column; } .personal-usage-key-select.semi-select { width: 100%; } }
 @media (max-width: 720px) { .personal-usage-board-heading { align-items: stretch; flex-direction: column; } .personal-usage-page .personal-usage-date-picker.semi-datepicker { width: 100%; min-width: 0; } .personal-usage-date-dropdown { width: min(440px, calc(100vw - 16px)); } .personal-usage-date-dropdown .semi-datepicker-quick-control { width: 104px; } .personal-usage-date-dropdown .semi-datepicker-month-grid { min-height: 276px; } .personal-usage-date-dropdown .semi-datepicker-month-grid-left,
   .personal-usage-date-dropdown .semi-datepicker-month-grid-right { flex-basis: 240px; min-height: 276px; } .personal-usage-date-dropdown .semi-datepicker-weekday-item,

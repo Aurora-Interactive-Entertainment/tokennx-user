@@ -17,3 +17,24 @@
 .trae-usage-page-official .trae-icon-button:disabled { cursor: not-allowed; opacity: 0.45; }
 @media (max-width: 820px) { .trae-usage-summary--official { grid-template-columns: 1fr; } }
 @media (max-width: 560px) { .trae-usage-account-stats { align-items: flex-start; flex-direction: column; gap: 6px; } }
+
+@media (max-width: 680px) {
+  /* 局部覆盖移动端通用按钮最小高度，让选中背景始终落在筛选框内。 */
+  .trae-usage-detail-toolbar .trae-usage-range-buttons button {
+    height: 26px;
+    min-height: 26px;
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 560px) {
+  /* 英文日期文案较长，窄屏压缩内边距并按内容分配空间，避免撑宽页面。 */
+  .trae-usage-detail-toolbar .trae-usage-range-buttons {
+    min-width: 0;
+  }
+
+  .trae-usage-detail-toolbar .trae-usage-range-buttons button {
+    flex: 1 1 auto;
+    padding-inline: 4px;
+  }
+}

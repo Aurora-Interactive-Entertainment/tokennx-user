@@ -327,7 +327,7 @@ function PersonalUsageRecords({
           <IconDownload aria-hidden="true" />
         </button>
       </div>
-      <div className="personal-usage-cue-table-wrap">
+      <div className="personal-usage-cue-table-wrap" aria-busy={loading}>
         <table className="personal-usage-cue-table">
           <thead>
             <tr>
@@ -358,14 +358,15 @@ function PersonalUsageRecords({
             ))}
           </tbody>
         </table>
-        {loading || error ? (
-          <ResourceStatus
-            loading={loading}
-            error={error}
-          />
-        ) : rows.length === 0 ? (
+        {/* 刷新时保留表格和空态占位，避免页面高度收缩后触发浏览器滚动修正。 */}
+        {rows.length === 0 ? (
           <div className="personal-usage-cue-empty">
-            {t("console.personalUsage.cue.empty")}
+            {data && !error ? t("console.personalUsage.cue.empty") : null}
+          </div>
+        ) : null}
+        {loading || error ? (
+          <div className={`personal-usage-cue-feedback${data ? " is-refreshing" : ""}`}>
+            <ResourceStatus loading={loading} error={error} />
           </div>
         ) : null}
       </div>

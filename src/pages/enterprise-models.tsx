@@ -833,6 +833,8 @@ function ModelsTable({
                     className="enterprise-model-badge"
                     model={{
                       company: model.company,
+                      name: model.name,
+                      code: model.code,
                       modality: normalizeModelModality(model.modality),
                       iconUrl: model.icon_url,
                     }}

@@ -55,7 +55,6 @@ import {
   IconMoonStroked,
   IconNoteMoneyStroked,
   IconPieChartStroked,
-  IconPlayCircle,
   IconRefresh,
   IconSearch,
   IconShieldStroked,
@@ -203,40 +202,8 @@ import {
   type SupportEmotionBallHandle,
 } from "./support-emotion-ball";
 import wechatIcon from "@/assets/figma-home/wechat.png";
-import deepseekLogo from "@lobehub/icons-static-svg/icons/deepseek-color.svg?raw";
-import anthropicLogo from "@lobehub/icons-static-svg/icons/claude-color.svg?raw";
-import openaiLogo from "@lobehub/icons-static-svg/icons/openai.svg?raw";
-import qwenLogo from "@lobehub/icons-static-svg/icons/qwen-color.svg?raw";
-import zhipuLogo from "@lobehub/icons-static-svg/icons/zhipu-color.svg?raw";
-import geminiLogo from "@lobehub/icons-static-svg/icons/gemini-color.svg?raw";
-import metaLogo from "@lobehub/icons-static-svg/icons/meta-color.svg?raw";
-import mistralLogo from "@lobehub/icons-static-svg/icons/mistral-color.svg?raw";
-import moonshotLogo from "@lobehub/icons-static-svg/icons/moonshot.svg?raw";
-import yiLogo from "@lobehub/icons-static-svg/icons/yi-color.svg?raw";
-import baichuanLogo from "@lobehub/icons-static-svg/icons/baichuan-color.svg?raw";
-import doubaoLogo from "@lobehub/icons-static-svg/icons/doubao-color.svg?raw";
-import midjourneyLogo from "@lobehub/icons-static-svg/icons/midjourney.svg?raw";
-import stabilityLogo from "@lobehub/icons-static-svg/icons/stability-color.svg?raw";
-
-const COMPANY_LOGOS: Record<string, string> = {
-  DeepSeek: deepseekLogo,
-  Anthropic: anthropicLogo,
-  OpenAI: openaiLogo,
-  阿里云: qwenLogo,
-  智谱AI: zhipuLogo,
-  Google: geminiLogo,
-  Meta: metaLogo,
-  "Mistral AI": mistralLogo,
-  月之暗面: moonshotLogo,
-  零一万物: yiLogo,
-  百川智能: baichuanLogo,
-  字节跳动: doubaoLogo,
-  Midjourney: midjourneyLogo,
-  "Stability AI": stabilityLogo,
-};
-
-const FALLBACK_MODEL_LOGO =
-  '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.7"></circle><path d="M5 12h14M12 5v14" fill="none" stroke="currentColor" stroke-width="1.7"></path></svg>';
+import { ModelLogo } from './model-logo';
+export { ModelLogo, type ModelLogoModel } from './model-logo';
 
 type PublicLink = {
   labelKey: string;
@@ -395,48 +362,6 @@ export function SectionHeading({
       </div>
       {action ? <div>{action}</div> : null}
     </div>
-  );
-}
-
-// 模型 logo 只取公司、图标地址和模态；企业模型目录等只拿到这三项的页面可以直接复用。
-export type ModelLogoModel = Pick<ModelRecord, "company" | "modality"> & {
-  iconUrl?: string;
-};
-
-export function ModelLogo({
-  model,
-  size = "default",
-  className = "",
-}: {
-  model: ModelLogoModel;
-  size?: "small" | "default" | "large";
-  className?: string;
-}) {
-  const companyClass = model.company.toLowerCase().replace(/[^a-z0-9]+/g, "-");
-  const logoMarkup = COMPANY_LOGOS[model.company];
-  const modalityIcon =
-    model.modality === "image" ? (
-      <IconImage />
-    ) : model.modality === "video" ? (
-      <IconVideo />
-    ) : model.modality === "audio" ? (
-      <IconPlayCircle />
-    ) : (
-      <span dangerouslySetInnerHTML={{ __html: FALLBACK_MODEL_LOGO }} />
-    );
-  return (
-    <span
-      className={`model-logo model-logo--${size} model-logo--${model.modality} model-logo--${companyClass}${className ? ` ${className}` : ""}`}
-      aria-hidden="true"
-    >
-      {model.iconUrl ? (
-        <img src={model.iconUrl} alt="" loading="lazy" />
-      ) : logoMarkup ? (
-        <span dangerouslySetInnerHTML={{ __html: logoMarkup }} />
-      ) : (
-        modalityIcon
-      )}
-    </span>
   );
 }
 
@@ -4686,14 +4611,25 @@ export function PublicFooter() {
             company: PUBLIC_COMPANY_INFO.name,
           })}
         </span>
-        <span className="manuscript-footer-filing-item">
+        {/* 备案链接在新标签页打开，保留当前页面。 */}
+        <a
+          className="manuscript-footer-filing-item"
+          href="https://beian.miit.gov.cn/#/Integrated/index"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
           <img src={manuscriptFilingIcpIcon} alt="" aria-hidden="true" />
           {PUBLIC_COMPANY_INFO.filing}
-        </span>
-        <span className="manuscript-footer-filing-item">
+        </a>
+        <a
+          className="manuscript-footer-filing-item"
+          href="https://beian.mps.gov.cn/#/query/webSearch?code=52040002000234"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
           <img src={manuscriptFilingSecurityIcon} alt="" aria-hidden="true" />
           {PUBLIC_COMPANY_INFO.securityFiling}
-        </span>
+        </a>
       </div>
       <ManuscriptSupportWidget />
     </footer>
