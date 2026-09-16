@@ -398,12 +398,17 @@ export function SectionHeading({
   );
 }
 
+// 模型 logo 只取公司、图标地址和模态；企业模型目录等只拿到这三项的页面可以直接复用。
+export type ModelLogoModel = Pick<ModelRecord, "company" | "modality"> & {
+  iconUrl?: string;
+};
+
 export function ModelLogo({
   model,
   size = "default",
   className = "",
 }: {
-  model: ModelRecord;
+  model: ModelLogoModel;
   size?: "small" | "default" | "large";
   className?: string;
 }) {

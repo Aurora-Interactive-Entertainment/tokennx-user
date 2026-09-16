@@ -478,6 +478,26 @@ describe('公开模型页面', () => {
     expect(document.querySelector('.manuscript-partner-grid a[data-copy="duplicate"]')).toBeNull()
   })
 
+  it('广告位标题是占位词变体时走兜底文案，正常标题不受影响', async () => {
+    vi.mocked(globalThis.fetch).mockResolvedValueOnce(new Response(JSON.stringify({
+      code: 0,
+      msg: 'success',
+      data: {
+        cards: [], promotion_models: [], news: [], partners: [],
+        ad_slots: [
+          { id: 'ad-placeholder', kind: 'ad_slot', status: 'active', sort_order: 1, pinned: false, data: { translations: { 'zh-CN': { title: '测试广告位', image_object_id: '01J00000000000000000000002', link_url: '/pricing' } } } },
+          { id: 'ad-real', kind: 'ad_slot', status: 'active', sort_order: 2, pinned: false, data: { translations: { 'zh-CN': { title: '双十一大促', image_object_id: '01J00000000000000000000003', link_url: '/pricing' } } } },
+        ],
+      },
+    }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
+    renderPage(<HomePage />, '/')
+
+    // 带后缀的占位词（「测试广告位」）也要命中兜底，不能把它写进替代文本。
+    expect(await screen.findByRole('link', { name: '邀请好友赢现金奖励' })).toBeInTheDocument()
+    // 正常标题原样保留，不能被占位词判定误伤。
+    expect(screen.getByRole('link', { name: '双十一大促' })).toBeInTheDocument()
+  })
+
   it('英文首页广告缺少英文图片字段时仍使用接口资源', async () => {
     await i18n.changeLanguage('en-US')
     vi.mocked(globalThis.fetch).mockResolvedValueOnce(new Response(JSON.stringify({

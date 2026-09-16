@@ -1,33 +1,33 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router";
+import { useNavigate, type NavigateFunction } from "react-router";
 import AppModal from "@/components/app-modal";
 import { LoginDialog } from "@/components/common";
 import { useAppSelector } from "@/store/hooks";
 import "./activity-campaign-modal.css";
 
 export type ActivityCampaign = {
-  /** 活动主视觉图片，接口返回后可直接替换默认视觉。 */
-  image?: string;
-  /** 接口明确返回的登录状态；未返回时回退到本地认证状态。 */
-  isLoggedIn?: boolean | null;
-  redirectPath?: string;
+  /** 活动主视觉图片，直接作为弹窗上半部分展示。 */
+  image: string;
+  /** 主视觉图片替代文案，未配置时回退到多语言标题。 */
   copy?: string;
-  confirmText?: string;
-  activityEndAt?: string;
+  /** 接口声明活动是否必须登录后领取；未返回时按本地登录态判断。 */
+  loginRequired?: boolean;
+  /** 主按钮跳转地址，同时支持站内路径与站外绝对地址。 */
+  targetUrl?: string;
+  /** 主按钮文案，未配置时回退到多语言默认值。 */
+  targetText?: string;
+  /** 活动结束时间（毫秒时间戳），未配置时不展示倒计时。 */
+  activityEndAt?: number;
 };
 
 export type ActivityCampaignModalProps = {
-  /** 接口暂未接入时使用默认活动稿；返回 null 可明确关闭活动展示。 */
-  campaign?: ActivityCampaign | null;
-  /** 后续接口可直接控制本次是否满足展示条件。 */
-  shouldDisplay?: boolean;
+  /** 仅在有可展示的活动数据时渲染，无数据时上层直接不挂载弹窗。 */
+  campaign: ActivityCampaign;
 };
 
 export const ACTIVITY_CAMPAIGN_CLOSED_DATE_KEY =
   "token-nx:activity-campaign:closed-date:v1";
-
-const DEFAULT_CAMPAIGN: ActivityCampaign = {};
 
 type ActivityStorage = Pick<Storage, "getItem" | "setItem">;
 
@@ -91,8 +91,6 @@ function pad(value: number): string {
   return String(Math.max(0, value)).padStart(2, "0");
 }
 
-const PREVIEW_COUNTDOWN_MS = (4 * 86400 + 9 * 3600 + 20 * 60 + 43) * 1000;
-
 export function getActivityCampaignCountdown(endAt: number, now: number): Countdown {
   const totalSeconds = Math.ceil(Math.max(0, endAt - now) / 1000);
   return {
@@ -103,69 +101,35 @@ export function getActivityCampaignCountdown(endAt: number, now: number): Countd
   };
 }
 
-function CampaignFallbackVisual({
-  copy,
-  autoIssued,
-}: {
-  copy: string;
-  autoIssued: string;
-}) {
-  const lines = copy
-    // 避免把英文千位分隔符（如 1,000）误切成两行。
-    .split(/[，；;\n]|,(?!\d)/)
-    .map((line) => line.trim())
-    .filter(Boolean);
-  const couponMatch = (lines[0] ?? "").match(/^(.*?)(¥\s*[\d,.]+)(.*)$/);
-  const highlightLine = lines.at(-1) ?? "";
-  const highlightMatch = highlightLine.match(/^(.*?)(\d[\d,]*)(.*)$/);
-  return (
-    <div className="activity-campaign-visual-fallback">
-      <div className="activity-campaign-stars" aria-hidden="true" />
-      <p>
-        {couponMatch ? (
-          <>
-            {couponMatch[1]}
-            <b className="activity-campaign-coupon-value">{couponMatch[2]}</b>
-            <span className="activity-campaign-coupon-label">
-              {couponMatch[3]}
-            </span>
-          </>
-        ) : (
-          (lines[0] ?? copy)
-        )}
-      </p>
-      {lines.slice(1, -1).map((line) => (
-        <div className="activity-campaign-visual-subline" key={line}>
-          {line}
-        </div>
-      ))}
-      {lines.length > 1 ? (
-        <strong>
-          {highlightMatch ? (
-            <>
-              <span className="activity-campaign-highlight-prefix">
-                {highlightMatch[1]}
-              </span>
-              <b className="activity-campaign-highlight-number">
-                {highlightMatch[2]}
-              </b>
-              <span className="activity-campaign-highlight-label">
-                {highlightMatch[3]}
-              </span>
-            </>
-          ) : (
-            highlightLine
-          )}
-        </strong>
-      ) : null}
-      <span>{autoIssued}</span>
-    </div>
-  );
+/** 站内地址换算成路由路径，站外地址保持绝对地址；地址非法时返回 null 表示不跳转。 */
+export function getActivityCampaignTarget(
+  url: string,
+  origin: string,
+): { href: string; external: boolean } | null {
+  try {
+    const target = new URL(url, origin);
+    if (target.origin === origin) {
+      return {
+        href: `${target.pathname}${target.search}${target.hash}`,
+        external: false,
+      };
+    }
+    return { href: target.toString(), external: true };
+  } catch {
+    return null;
+  }
+}
+
+function openCampaignTarget(url: string, navigate: NavigateFunction): void {
+  const target = getActivityCampaignTarget(url, window.location.origin);
+  if (!target) return;
+  // 站外地址不能交给路由，否则会被当成站内路径处理。
+  if (target.external) window.location.assign(target.href);
+  else navigate(target.href);
 }
 
 export function ActivityCampaignModal({
-  campaign = DEFAULT_CAMPAIGN,
-  shouldDisplay = true,
+  campaign,
 }: ActivityCampaignModalProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -173,26 +137,15 @@ export function ActivityCampaignModal({
   const [visible, setVisible] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
   const [now, setNow] = useState(() => Date.now());
-  // 预览只在挂载时确定结束时间，刷新后重置；后续优先使用接口返回的结束时间。
-  const [previewEndAt] = useState(() => now + PREVIEW_COUNTDOWN_MS);
   const loginTimerRef = useRef<number | undefined>(undefined);
-  const campaignAvailable = campaign !== null;
-  const data = { ...DEFAULT_CAMPAIGN, ...(campaign ?? {}) };
   const campaignCopy =
-    data.copy ?? t("console.purchasePage.activityModal.copy");
+    campaign.copy ?? t("console.purchasePage.activityModal.title");
 
   useEffect(() => {
-    if (!shouldDisplay || !campaignAvailable) {
-      if (loginTimerRef.current !== undefined) {
-        window.clearTimeout(loginTimerRef.current);
-        loginTimerRef.current = undefined;
-      }
-      setVisible(false);
-      setLoginOpen(false);
-      return;
-    }
-    setVisible(!hasClosedActivityCampaignToday());
-  }, [campaignAvailable, shouldDisplay]);
+    // 每日仅展示一次：当天已关闭过就不再弹出。
+    if (hasClosedActivityCampaignToday()) return;
+    setVisible(true);
+  }, []);
 
   useEffect(
     () => () => {
@@ -211,10 +164,13 @@ export function ActivityCampaignModal({
     return () => window.clearInterval(timer);
   }, [visible]);
 
-  const countdown = useMemo(() => {
-    const endAt = data.activityEndAt ? Date.parse(data.activityEndAt) : Number.NaN;
-    return getActivityCampaignCountdown(Number.isFinite(endAt) ? endAt : previewEndAt, now);
-  }, [data.activityEndAt, previewEndAt, now]);
+  const countdown = useMemo(
+    () =>
+      campaign.activityEndAt === undefined
+        ? null
+        : getActivityCampaignCountdown(campaign.activityEndAt, now),
+    [campaign.activityEndAt, now],
+  );
 
   const closeCampaign = useCallback((): void => {
     markActivityCampaignClosedToday();
@@ -222,11 +178,9 @@ export function ActivityCampaignModal({
   }, []);
 
   function handleConfirm(): void {
+    const loginRequired = campaign.loginRequired !== false;
     closeCampaign();
-    const requiresLogin =
-      data.isLoggedIn === false ||
-      (data.isLoggedIn == null && authStatus !== "authenticated");
-    if (requiresLogin) {
+    if (loginRequired && authStatus !== "authenticated") {
       // 先关闭活动弹窗，再拉起统一登录抽屉，避免两个遮罩叠加。
       if (loginTimerRef.current !== undefined) {
         window.clearTimeout(loginTimerRef.current);
@@ -237,7 +191,7 @@ export function ActivityCampaignModal({
       }, 180);
       return;
     }
-    if (data.redirectPath) navigate(data.redirectPath);
+    if (campaign.targetUrl) openCampaignTarget(campaign.targetUrl, navigate);
   }
 
   return (
@@ -254,14 +208,7 @@ export function ActivityCampaignModal({
       >
         <div className="activity-campaign-content">
           <div className="activity-campaign-visual">
-            {data.image ? (
-              <img src={data.image} alt={campaignCopy} />
-            ) : (
-              <CampaignFallbackVisual
-                copy={campaignCopy}
-                autoIssued={t("console.purchasePage.activityModal.autoIssued")}
-              />
-            )}
+            <img src={campaign.image} alt={campaignCopy} />
             <button
               className="activity-campaign-close"
               type="button"
@@ -274,26 +221,30 @@ export function ActivityCampaignModal({
             </button>
           </div>
           <div className="activity-campaign-body">
-            <h2>{t("console.purchasePage.activityModal.countdown")}</h2>
-            <div
-              className="activity-campaign-countdown"
-              aria-label={t("console.purchasePage.activityModal.countdown")}
-            >
-              {[
-                countdown.days,
-                countdown.hours,
-                countdown.minutes,
-                countdown.seconds,
-              ].map((value, index) => (
-                <span
-                  className="activity-campaign-time-group"
-                  key={`${index}-${value}`}
+            {countdown ? (
+              <>
+                <h2>{t("console.purchasePage.activityModal.countdown")}</h2>
+                <div
+                  className="activity-campaign-countdown"
+                  aria-label={t("console.purchasePage.activityModal.countdown")}
                 >
-                  <strong>{value}</strong>
-                  {index < 3 ? <i aria-hidden="true">:</i> : null}
-                </span>
-              ))}
-            </div>
+                  {[
+                    countdown.days,
+                    countdown.hours,
+                    countdown.minutes,
+                    countdown.seconds,
+                  ].map((value, index) => (
+                    <span
+                      className="activity-campaign-time-group"
+                      key={`${index}-${value}`}
+                    >
+                      <strong>{value}</strong>
+                      {index < 3 ? <i aria-hidden="true">:</i> : null}
+                    </span>
+                  ))}
+                </div>
+              </>
+            ) : null}
             <div className="activity-campaign-actions">
               <button
                 className="activity-campaign-button activity-campaign-button--secondary"
@@ -307,7 +258,7 @@ export function ActivityCampaignModal({
                 type="button"
                 onClick={handleConfirm}
               >
-                {data.confirmText ??
+                {campaign.targetText ??
                   t("console.purchasePage.activityModal.confirm")}
               </button>
             </div>
@@ -319,7 +270,7 @@ export function ActivityCampaignModal({
         onClose={() => setLoginOpen(false)}
         onSuccess={() => {
           setLoginOpen(false);
-          if (data.redirectPath) navigate(data.redirectPath);
+          if (campaign.targetUrl) openCampaignTarget(campaign.targetUrl, navigate);
         }}
       />
     </>

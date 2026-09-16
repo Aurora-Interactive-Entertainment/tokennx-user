@@ -3,6 +3,7 @@ import {
   ACTIVITY_CAMPAIGN_CLOSED_DATE_KEY,
   getActivityCampaignDateKey,
   getActivityCampaignCountdown,
+  getActivityCampaignTarget,
   hasClosedActivityCampaignToday,
   markActivityCampaignClosedToday,
 } from "./activity-campaign-modal";
@@ -65,5 +66,31 @@ describe("活动倒计时", () => {
   it("到期后保持为零，计时器延迟时仍按实际剩余时间计算", () => {
     expect(getActivityCampaignCountdown(10000, 7500).seconds).toBe("03");
     expect(getActivityCampaignCountdown(10000, 12000)).toEqual({ days: "00", hours: "00", minutes: "00", seconds: "00" });
+  });
+});
+
+describe("活动主按钮跳转地址", () => {
+  const origin = "https://tokennx.cn";
+
+  it("站内地址转成路由路径并保留查询与锚点", () => {
+    expect(getActivityCampaignTarget("/models?tab=new#top", origin)).toEqual({
+      href: "/models?tab=new#top",
+      external: false,
+    });
+    expect(getActivityCampaignTarget("https://tokennx.cn/pricing", origin)).toEqual({
+      href: "/pricing",
+      external: false,
+    });
+  });
+
+  it("站外地址保持完整绝对地址", () => {
+    expect(getActivityCampaignTarget("http://api.example.com/act", origin)).toEqual({
+      href: "http://api.example.com/act",
+      external: true,
+    });
+  });
+
+  it("非法地址不做跳转", () => {
+    expect(getActivityCampaignTarget("http://[invalid", origin)).toBeNull();
   });
 });

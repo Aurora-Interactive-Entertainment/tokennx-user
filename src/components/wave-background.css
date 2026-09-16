@@ -1,0 +1,56 @@
+/* 视频「正在创建」画框的波浪背景：蓝→粉→橙柔和波浪 + 缓慢漂移的光晕。
+   容器由调用方负责尺寸、圆角和裁切，这里只铺满并隔离层叠上下文。 */
+.wave-background {
+  position: absolute;
+  inset: 0;
+  isolation: isolate;
+  overflow: hidden;
+  background: linear-gradient(165deg, #a0dcff 0%, #f8c0c5 38%, #bdbbdd 64%, #36b1f7 100%);
+}
+
+.wave-background-art,
+.wave-background-fallback {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* 脚本接管前先隐藏 SVG，避免首帧闪一下未初始化的曲线。 */
+.wave-background-art { display: none; }
+.wave-background.is-ready .wave-background-art { display: block; }
+.wave-background.is-ready .wave-background-fallback { display: none; }
+
+/* 没有脚本（或系统要求减少动态效果）时仍有 CSS 备用动效，不会只剩一张静态渐变。 */
+.wave-background-fallback { overflow: hidden; }
+.wave-background-fallback > i {
+  position: absolute;
+  left: -20%;
+  display: block;
+  width: 140%;
+  height: 100%;
+  border-radius: 45%;
+  filter: blur(30px);
+  will-change: transform;
+  animation: wave-background-drift 7s ease-in-out infinite alternate;
+}
+.wave-background-fallback > i:nth-child(1) {
+  top: -40%;
+  background: linear-gradient(100deg, #9ddcff, #f6bdc7 45%, #ffad80);
+}
+.wave-background-fallback > i:nth-child(2) {
+  top: 65%;
+  background: linear-gradient(#a1d7ff, #31aff6 50%);
+  animation-delay: -4s;
+  animation-direction: alternate-reverse;
+}
+
+@keyframes wave-background-drift {
+  from { transform: translate(-8%, -14%) rotate(-12deg) scale(1.1); }
+  to   { transform: translate(8%, 14%) rotate(12deg) scale(1.03); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wave-background-fallback > i { animation: none; }
+}

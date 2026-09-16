@@ -90,6 +90,8 @@ export interface EnterpriseModel {
   code: string
   name: string
   company: string
+  // 模型广场同源的公司图标；旧部署暂不返回时页面按公司名兜底。
+  icon_url?: string
   modality: string
   capabilities: string[]
   enabled: boolean

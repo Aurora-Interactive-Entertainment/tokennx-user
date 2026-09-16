@@ -279,17 +279,22 @@
 .purchase-plan-content h3 {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 6px 8px;
+  gap: 8px;
   margin: 0 0 14px;
   font-size: 20px;
   font-weight: 700;
   line-height: 1.25;
 }
-/* 限购标签：粉橙渐变胶囊，紧跟套餐名之后靠右展示，后续由接口字段控制显隐。 */
+/* 套餐名单行截断，把右侧空间让给限购标签，标签才能紧跟标题而不是被挤到下一行。 */
+.purchase-plan-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* 限购标签：粉橙渐变胶囊，紧跟套餐名之后展示，由接口字段控制显隐。 */
 .purchase-plan-limit-tag {
   flex: 0 0 auto;
-  margin-left: auto;
   height: 22px;
   padding: 0 10px;
   border-radius: 11px;

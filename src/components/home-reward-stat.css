@@ -42,3 +42,15 @@ html[lang="en"] .public-layout--manuscript-home .manuscript-promotion .manuscrip
     font-size: 9px;
   }
 }
+
+/* 数字字号跟在卡片宽度上，但不放大到设计稿字号以上：设计稿卡宽 113.33px（去掉边框和内边距后 107.33px）
+   对应 100px 字号。窄断点下卡片变窄时数字同比例缩小，不会撑满卡片，也不影响下方的标签行。 */
+@supports (container-type: inline-size) {
+  .public-layout--manuscript-home .manuscript-promotion .manuscript-reward-stats .home-reward-stat {
+    container-type: inline-size;
+  }
+
+  .public-layout--manuscript-home .manuscript-promotion .manuscript-reward-stats .home-reward-stat__value {
+    font-size: calc(var(--home-reward-stat-scale, 1) * min(100px, 93.2cqw));
+  }
+}

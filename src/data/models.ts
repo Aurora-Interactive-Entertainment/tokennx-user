@@ -107,7 +107,7 @@ const USER_MODEL_UNKNOWN_DATA_LABEL = '暂无数据'
 
 const KNOWN_MODALITIES = new Set<ModelModality>(['text', 'image', 'video', 'audio', 'embedding', 'rerank', 'speech', 'transcription', 'multimodal'])
 
-function normalizeModelModality(value: string): ModelModality {
+export function normalizeModelModality(value: string): ModelModality {
   const normalized = value.trim().toLowerCase() as ModelModality
   return KNOWN_MODALITIES.has(normalized) ? normalized : 'other'
 }

@@ -13,7 +13,10 @@ export const PUBLIC_HOMEPAGE_PATH = '/api/homepage'
 export const PUBLIC_HOMEPAGE_ASSET_PATH = '/api/homepage/assets'
 export const PUBLIC_HOMEPAGE_STATS_PATH = '/api/homepage/stats'
 
-const PUBLIC_OBJECT_ID_PATTERN = /^[0-9A-HJKMNP-TV-Z]{26}$/
+const PUBLIC_OBJECT_ID_CHARS = '[0-9A-HJKMNP-TV-Z]{26}'
+const PUBLIC_OBJECT_ID_PATTERN = new RegExp(`^${PUBLIC_OBJECT_ID_CHARS}$`)
+// 运营后台会把公开资源写成带固定主机的地址，识别其中的对象 ID 后改由当前环境取图。
+const PUBLIC_HOMEPAGE_ASSET_URL_PATTERN = new RegExp(`/api/homepage/assets/(${PUBLIC_OBJECT_ID_CHARS})`)
 let initialHomepageRequestConsumed = false
 
 export type HomepageKind = 'card' | 'promotion_model' | 'ad_slot' | 'news' | 'partner' | 'popup'
@@ -114,6 +117,8 @@ export function getPublicHomepageMediaURL(value: unknown): string | undefined {
   if (typeof value !== 'string') return undefined
   const normalizedURL = value.trim()
   if (!normalizedURL || normalizedURL.startsWith('//')) return undefined
+  const objectID = normalizedURL.match(PUBLIC_HOMEPAGE_ASSET_URL_PATTERN)?.[1]
+  if (objectID) return getPublicHomepageAssetURL(objectID)
   return makeApiUrl(normalizedURL)
 }
 
@@ -122,7 +127,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function isHomepageKind(value: unknown): value is HomepageKind {
-  return value === 'card' || value === 'promotion_model' || value === 'ad_slot' || value === 'news' || value === 'partner'
+  return value === 'card' || value === 'promotion_model' || value === 'ad_slot' || value === 'news' || value === 'partner' || value === 'popup'
 }
 
 function parseHomepageModelPrice(value: unknown): HomepageModelPrice | null {

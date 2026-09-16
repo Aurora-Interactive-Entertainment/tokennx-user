@@ -2,12 +2,22 @@ import { describe, expect, it } from 'vitest'
 import { getHomeRewardStatScale } from './home-reward-stat'
 
 describe('首页奖励统计数字', () => {
-  it('两位以内保持原字号，超过两位后随位数增加持续缩小', () => {
-    const scales = ['00', '123', '1234', '12345'].map(getHomeRewardStatScale)
+  it('两位以内保持设计稿字号', () => {
+    expect(getHomeRewardStatScale('0')).toBe(1)
+    expect(getHomeRewardStatScale('22')).toBe(1)
+  })
 
-    expect(scales[0]).toBe(1)
-    expect(scales[1]).toBeLessThan(scales[0])
-    expect(scales[2]).toBeLessThan(scales[1])
-    expect(scales[3]).toBeLessThan(scales[2])
+  it('三位数与收益的四位数字同档，不再更大', () => {
+    // 收益展示的是四位数字（形如 0.00），三位数按同档字号渲染，避免相邻卡片数字一大一小。
+    expect(getHomeRewardStatScale('222')).toBe(getHomeRewardStatScale('0.00'))
+  })
+
+  it('位数更多时在同一档基础上继续缩小', () => {
+    const scales = ['222', '22222', '222222', '2222222'].map(getHomeRewardStatScale)
+
+    for (let index = 1; index < scales.length; index += 1) {
+      expect(scales[index]).toBeLessThan(scales[index - 1])
+    }
+    expect(scales.at(-1)).toBeGreaterThan(0)
   })
 })

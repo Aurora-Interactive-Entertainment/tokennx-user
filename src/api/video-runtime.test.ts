@@ -85,6 +85,15 @@ describe('视频任务运行时请求', () => {
     expect(new Headers(fetchMock.mock.calls[0]?.[1]?.headers).get('X-ThinkGo-User-Session')).toBe('1')
   })
 
+  it('把文档里的 cancelling 字面值也归一化为取消中，而不是兜底成状态未知', async () => {
+    // 取消视频任务.md 的响应示例就是 {"status":"cancelling"}；漏掉这个值会被当成 unknown，
+    // 前端会立刻渲染成失败卡并停止轮询。
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse({ task_id: 'task-4', status: 'cancelling' }))
+
+    await expect(cancelVideoTask('user-access-token', 'task-4')).resolves.toMatchObject({ taskId: 'task-4', status: 'cancelling' })
+    expect(fetchMock.mock.calls[0]?.[1]?.method).toBe('DELETE')
+  })
+
   it('拒绝缺少关键字段，并保留服务端错误的状态、错误码和请求号', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch')
     await expect(submitVideoGeneration({ ...DEFAULT_INPUT, accessToken: ' ' })).rejects.toMatchObject({ status: 401, code: 'invalid_user_session' })

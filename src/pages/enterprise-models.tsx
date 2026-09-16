@@ -39,12 +39,11 @@ import {
   type EnterpriseRequestError,
 } from './enterprise-console-shared';
 import AppModal from '@/components/app-modal';
+import { ModelLogo } from '@/components/common';
 import { appToast } from '@/components/app-toast';
+import { normalizeModelModality } from '@/data/models';
 import './enterprise-models.css';
 
-type DirectoryModel = EnterpriseModel & {
-  iconKey?: string;
-};
 type VisibilityScope = 'all' | 'partial';
 type SelectionKind = 'department' | 'person';
 type Department = {
@@ -84,32 +83,9 @@ async function loadAllEnterpriseModels(
   return { ...first, items };
 }
 
-function modelIcon(model: DirectoryModel): string {
-  if (model.iconKey === 'deepseek') return 'DS';
-  if (model.iconKey === 'minimax') return '〽';
-  if (model.iconKey === 'kimi') return 'K';
-  if (model.iconKey === 'qwen') return 'Q';
-  if (model.iconKey === 'glm') return 'Z';
-  return '◐';
-}
-
-function modelIconKey(model: EnterpriseModel): string | undefined {
-  const identity = `${model.code} ${model.company}`.toLowerCase();
-  if (identity.includes('deepseek')) return 'deepseek';
-  if (identity.includes('minimax')) return 'minimax';
-  if (identity.includes('kimi') || identity.includes('moonshot')) return 'kimi';
-  if (identity.includes('qwen')) return 'qwen';
-  if (identity.includes('glm') || identity.includes('智谱')) return 'glm';
-  if (identity.includes('doubao') || identity.includes('volcengine')) return 'doubao';
-  return undefined;
-}
-
 function normalizeDirectory(data: EnterpriseModelPage): EnterpriseModelPage {
   // 目录为空时如实展示空状态，不能注入本地演示模型覆盖后端结果。
-  const items = (Array.isArray(data.items) ? data.items : []).map((item) => ({
-    ...item,
-    iconKey: modelIconKey(item),
-  }));
+  const items = Array.isArray(data.items) ? data.items : [];
   return {
     ...data,
     items,
@@ -708,13 +684,13 @@ function ModelStateControl({
   onOpenVisibility,
   onMenuOpenChange,
 }: {
-  model: DirectoryModel;
+  model: EnterpriseModel;
   canManage: boolean;
   saving: boolean;
   scope: VisibilityScope;
   menuOpen: boolean;
-  onToggle: (model: DirectoryModel) => void;
-  onOpenVisibility: (model: DirectoryModel) => void;
+  onToggle: (model: EnterpriseModel) => void;
+  onOpenVisibility: (model: EnterpriseModel) => void;
   onMenuOpenChange: (modelID: string | null) => void;
 }) {
   const { t } = useTranslation();
@@ -815,12 +791,12 @@ function ModelsTable({
   onToggle,
   onOpenVisibility,
 }: {
-  items: DirectoryModel[];
+  items: EnterpriseModel[];
   canManage: boolean;
   savingModelID: string;
   scopes: Record<string, VisibilityScope>;
-  onToggle: (model: DirectoryModel) => void;
-  onOpenVisibility: (model: DirectoryModel) => void;
+  onToggle: (model: EnterpriseModel) => void;
+  onOpenVisibility: (model: EnterpriseModel) => void;
 }) {
   const { t } = useTranslation();
   const [openMenuModelID, setOpenMenuModelID] = useState<string | null>(null);
@@ -853,12 +829,14 @@ function ModelsTable({
             <tr key={model.id}>
               <td>
                 <div className="enterprise-model-identity">
-                  <span
-                    className={`enterprise-model-badge model-icon-${model.iconKey ?? 'default'}`}
-                    aria-hidden="true"
-                  >
-                    {modelIcon(model)}
-                  </span>
+                  <ModelLogo
+                    className="enterprise-model-badge"
+                    model={{
+                      company: model.company,
+                      modality: normalizeModelModality(model.modality),
+                      iconUrl: model.icon_url,
+                    }}
+                  />
                   <span>
                     <strong title={model.name}>{model.name}</strong>
                   </span>
@@ -893,7 +871,7 @@ function ModelsContent({ context }: { context: EnterpriseContext }) {
   const [error, setError] = useState<EnterpriseRequestError | null>(null);
   const [savingModelID, setSavingModelID] = useState('');
   const [reloadToken, setReloadToken] = useState(0);
-  const [openModel, setOpenModel] = useState<DirectoryModel | null>(null);
+  const [openModel, setOpenModel] = useState<EnterpriseModel | null>(null);
   const [scopes, setScopes] = useState<Record<string, VisibilityScope>>({});
   const [selections, setSelections] = useState<Record<string, VisibilitySelection>>({});
   const [visibilityDepartments, setVisibilityDepartments] = useState<Department[]>([]);
@@ -970,7 +948,7 @@ function ModelsContent({ context }: { context: EnterpriseContext }) {
     };
   }, [context.id, handleError, openModel]);
 
-  async function toggleModel(model: DirectoryModel): Promise<void> {
+  async function toggleModel(model: EnterpriseModel): Promise<void> {
     if (!canManage || savingModelID) return;
     setSavingModelID(model.id);
     try {
@@ -1049,7 +1027,7 @@ function ModelsContent({ context }: { context: EnterpriseContext }) {
     }
   }
   const directoryItems = useMemo(
-    () => (data?.items ?? []) as DirectoryModel[],
+    () => (data?.items ?? []) as EnterpriseModel[],
     [data],
   );
   return (

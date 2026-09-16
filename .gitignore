@@ -8,3 +8,4 @@ dist.zip
 .agents/
 skills-lock.json
 y7siWR
+.tmp-*

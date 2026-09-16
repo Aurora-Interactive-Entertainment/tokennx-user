@@ -25,6 +25,12 @@ describe('公开首页内容 API', () => {
     expect(getPublicHomepageMediaURL(undefined)).toBeUndefined()
   })
 
+  it('把其他主机的公开资源地址改回当前环境，避免固定主机失效', () => {
+    expect(getPublicHomepageMediaURL('http://api.example.com/api/homepage/assets/01M0EXCSCSZ3Q6PG39HAGEY36J')).toBe('/api/homepage/assets/01M0EXCSCSZ3Q6PG39HAGEY36J')
+    expect(getPublicHomepageMediaURL('https://api.example.com/api/homepage/assets/01M0EXCSCSZ3Q6PG39HAGEY36J?w=480')).toBe('/api/homepage/assets/01M0EXCSCSZ3Q6PG39HAGEY36J')
+    expect(getPublicHomepageMediaURL('http://api.example.com/api/homepage/assets/not-an-object-id')).toBe('http://api.example.com/api/homepage/assets/not-an-object-id')
+  })
+
   it('读取五类首页内容并将空数组响应归一化', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(response({
       cards: [{ id: 'card-1', kind: 'card', status: 'active', sort_order: 1, pinned: false, data: { translations: { 'zh-CN': { title: '能力' } } } }],
@@ -58,6 +64,19 @@ describe('公开首页内容 API', () => {
       news: [],
       partners: [],
       promotion: { usernames: [], invited_count: 0, visit_count: 0, total_reward_yuan: '0.000000000' },
+    })
+  })
+
+  it('把活动弹窗条目按 popup 类型解析，供首页按天展示活动', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(response({
+      popups: [
+        { id: 'popup-1', kind: 'popup', status: 'active', sort_order: 0, pinned: false, data: { cover_url: '/api/homepage/assets/popup-cover' } },
+        { id: 'wrong-kind', kind: 'card', status: 'active', sort_order: 0, pinned: false, data: { cover_url: '/api/homepage/assets/popup-cover' } },
+      ],
+    }))
+
+    await expect(getPublicHomepage()).resolves.toMatchObject({
+      popups: [{ id: 'popup-1', kind: 'popup', data: { cover_url: '/api/homepage/assets/popup-cover' } }],
     })
   })
 

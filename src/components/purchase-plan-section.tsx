@@ -35,6 +35,7 @@ function PurchasePlanCard({
   const tone = CARD_TONES[brandIndex >= 0 ? brandIndex : index % CARD_TONES.length]
   const fallback = CARD_BACKGROUNDS[brandIndex >= 0 ? brandIndex : index % CARD_BACKGROUNDS.length]
   const badge = planBonus(plan, i18n.language, t)
+  const name = planName(plan)
   const price = formatPlanPrice(plan.price?.price_cent)
   const disabled = !plan.can_purchase || selecting
   const buttonLabel = selecting
@@ -52,7 +53,8 @@ function PurchasePlanCard({
       {badge ? <span className="purchase-plan-badge">{badge}</span> : null}
       <div className="purchase-plan-content">
         <h3>
-          {planName(plan)}
+          {/* 名字单行截断，把右侧空间让给限购标签，保证标签紧跟标题而不换行。 */}
+          <span className="purchase-plan-name" title={name}>{name}</span>
           {/* 限购次数由登录后的列表决定。 */}
           {plan.purchase_limit > 0 && <span className="purchase-plan-limit-tag">{t('console.purchasePage.api.purchaseLimit', { count: plan.purchase_limit })}</span>}
         </h3>

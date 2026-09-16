@@ -334,6 +334,7 @@
   border: 1px solid #fff;
   border-radius: 10px;
   background: rgb(255 255 255 / 70%);
+  margin-bottom: 20px;
 }
 
 .purchase-subscription-plan-info > span {

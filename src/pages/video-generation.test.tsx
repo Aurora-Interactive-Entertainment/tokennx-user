@@ -68,11 +68,12 @@ vi.mock('@douyinfe/semi-icons', () => {
 })
 
 vi.mock('@/components/semi-compat', () => {
-  type InputProps = { id?: string; value?: string; onChange?: (value: string) => void; placeholder?: string; disabled?: boolean; maxLength?: number; rows?: number; className?: string; 'aria-label'?: string }
+  type KeyboardLike = { key: string; shiftKey: boolean; ctrlKey: boolean; metaKey: boolean; preventDefault: () => void }
+  type InputProps = { id?: string; value?: string; onChange?: (value: string) => void; onKeyDown?: (event: KeyboardLike) => void; placeholder?: string; disabled?: boolean; maxLength?: number; rows?: number; className?: string; 'aria-label'?: string }
   type SelectProps = { id?: string; value?: string | number; onChange?: (value: string) => void; disabled?: boolean; className?: string; children?: ReactNode; 'aria-label'?: string }
   type OptionProps = { value?: string | number; children?: ReactNode }
-  const MockInput = ({ id, value, onChange, placeholder, disabled, maxLength, className, 'aria-label': ariaLabel }: InputProps) => <input id={id} value={value ?? ''} placeholder={placeholder} disabled={disabled} maxLength={maxLength} className={className} aria-label={ariaLabel} onChange={(event) => onChange?.(event.currentTarget.value)} />
-  const MockTextArea = ({ id, value, onChange, placeholder, disabled, maxLength, rows, className, 'aria-label': ariaLabel }: InputProps) => <textarea id={id} value={value ?? ''} placeholder={placeholder} disabled={disabled} maxLength={maxLength} rows={rows} className={className} aria-label={ariaLabel} onChange={(event) => onChange?.(event.currentTarget.value)} />
+  const MockInput = ({ id, value, onChange, onKeyDown, placeholder, disabled, maxLength, className, 'aria-label': ariaLabel }: InputProps) => <input id={id} value={value ?? ''} placeholder={placeholder} disabled={disabled} maxLength={maxLength} className={className} aria-label={ariaLabel} onKeyDown={onKeyDown} onChange={(event) => onChange?.(event.currentTarget.value)} />
+  const MockTextArea = ({ id, value, onChange, onKeyDown, placeholder, disabled, maxLength, rows, className, 'aria-label': ariaLabel }: InputProps) => <textarea id={id} value={value ?? ''} placeholder={placeholder} disabled={disabled} maxLength={maxLength} rows={rows} className={className} aria-label={ariaLabel} onKeyDown={onKeyDown} onChange={(event) => onChange?.(event.currentTarget.value)} />
   const MockSelect = ({ id, value, onChange, disabled, className, children, 'aria-label': ariaLabel }: SelectProps) => <select id={id} value={value === undefined ? '' : String(value)} disabled={disabled} className={className} aria-label={ariaLabel} onChange={(event) => onChange?.(event.currentTarget.value)}>{children}</select>
   const MockOption = ({ value, children }: OptionProps) => <option value={value === undefined ? '' : String(value)}>{children}</option>
   return { CompatInput: Object.assign(MockInput, { TextArea: MockTextArea }), CompatSelect: Object.assign(MockSelect, { Option: MockOption }) }
@@ -163,6 +164,44 @@ describe('视频生成页面', () => {
     await waitFor(() => expect(getVideoTask).toHaveBeenCalledWith('user-access-token', 'task-video-1', expect.anything()), { timeout: 2_500 })
     expect(await screen.findByLabelText('视频生成结果')).toBeInTheDocument()
     expect(document.querySelector('.video-status-success')).toHaveTextContent('已完成')
+  })
+
+  it('提示词输入框按 Enter 直接提交，Shift + Enter 只换行', async () => {
+    const user = userEvent.setup()
+    // 用失败态避免轮询定时器干扰，只验证提交有没有被触发。
+    vi.mocked(submitVideoGeneration).mockResolvedValue({ ...pendingTask, status: 'failed', errorMessage: '算力资源不足' })
+    renderVideoPage()
+
+    await screen.findByRole('option', { name: /CogVideo/ })
+    const input = screen.getByLabelText('视频提示词')
+    await user.type(input, '海边日落')
+    await user.type(input, '{shift>}{enter}{/shift}')
+    expect(submitVideoGeneration).not.toHaveBeenCalled()
+
+    await user.type(input, '{enter}')
+    await waitFor(() => expect(submitVideoGeneration).toHaveBeenCalledTimes(1))
+  })
+
+  it('对已有服务端任务的记录点「重新生成」会换新的幂等键，避免被服务端回放成同一条旧任务', async () => {
+    const user = userEvent.setup()
+    // 失败态是终态，不需要等轮询，操作行里的「重新生成」立即可用。
+    vi.mocked(submitVideoGeneration).mockResolvedValue({ ...pendingTask, status: 'failed', errorMessage: '算力资源不足' })
+    renderVideoPage()
+
+    await screen.findByRole('option', { name: /CogVideo/ })
+    await user.type(screen.getByLabelText('视频提示词'), '一只小狗')
+    await user.click(screen.getByRole('button', { name: '生成视频' }))
+    await waitFor(() => expect(submitVideoGeneration).toHaveBeenCalledTimes(1))
+
+    await user.click(screen.getByRole('button', { name: '重新生成' }))
+    await waitFor(() => expect(submitVideoGeneration).toHaveBeenCalledTimes(2))
+
+    // 同一条记录重试必须换新键：沿用旧键的话服务端会按幂等直接返回那条旧任务，等于没重新生成。
+    const firstKey = vi.mocked(submitVideoGeneration).mock.calls[0]?.[0]?.idempotencyKey
+    const secondKey = vi.mocked(submitVideoGeneration).mock.calls[1]?.[0]?.idempotencyKey
+    expect(firstKey).toBeTruthy()
+    expect(secondKey).toBeTruthy()
+    expect(secondKey).not.toBe(firstKey)
   })
 
   it('取消任务使用 DELETE 契约并继续显示取消中的任务状态', async () => {

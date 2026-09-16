@@ -1,18 +1,21 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useSearchParams } from 'react-router'
+import { useNavigate, useSearchParams } from 'react-router'
 import Button from '@douyinfe/semi-ui/lib/es/button'
 import Dropdown from '@douyinfe/semi-ui/lib/es/dropdown'
 import type { RenderSingleSelectedItemFn } from '@douyinfe/semi-ui/lib/es/select'
 import Modal from '@/components/app-modal'
 import Toast from '@douyinfe/semi-ui/lib/es/toast'
-import { IconAlertTriangle, IconArrowUp, IconCheckCircleStroked, IconChevronDownStroked, IconChevronUpDown, IconClockStroked, IconClose, IconDeleteStroked, IconDownload, IconEditStroked, IconFilterStroked, IconHistory, IconImage, IconLoading, IconMuteStroked, IconMoreStroked, IconPlus, IconRefresh, IconStop, IconVideo, IconVolume2 } from '@douyinfe/semi-icons'
+import { IconAlertTriangle, IconArrowUp, IconCheckCircleStroked, IconChevronDownStroked, IconChevronUpDown, IconClockStroked, IconClose, IconDeleteStroked, IconDownload, IconEditStroked, IconFilterStroked, IconHistory, IconImage, IconInfoCircle, IconLoading, IconMuteStroked, IconMoreStroked, IconPlus, IconRefresh, IconStop, IconVideo, IconVolume2 } from '@douyinfe/semi-icons'
 import { EmptyPanel, PageTitle } from '@/components/common'
 import { appToast } from '@/components/app-toast'
 import { CompatInput as Input, CompatSelect as Select } from '@/components/semi-compat'
+import { WaveBackground } from '@/components/wave-background'
 import { cancelVideoTask, getVideoTask, submitVideoGeneration, videoTaskIsTerminal, VideoRuntimeError, type VideoTask, type VideoTaskStatus } from '@/api/video-runtime'
-import { getAccessToken } from '@/auth/token-storage'
-import { useAppSelector } from '@/store/hooks'
+import { getAccessToken, clearAuthTokens } from '@/auth/token-storage'
+import { isAuthenticationFailure } from '@/api/http'
+import { useAppDispatch, useAppSelector } from '@/store/hooks'
+import { invalidateAuth } from '@/store/auth-slice'
 import { useAppStore } from '@/data/app-state'
 import { findModelInList, modelAlias, type ModelRecord } from '@/data/models'
 import { useUserModels } from '@/data/user-models'
@@ -29,6 +32,8 @@ const VIDEO_POLL_INTERVAL_MS = 2_500
 const VIDEO_POLL_MAX_ATTEMPTS = 120
 const DEFAULT_VIDEO_DURATION = 5
 const DEFAULT_VIDEO_SIZE = '1280x720'
+// 提交阶段就失败、服务端还没生成 task_id 的记录用这个前缀，重试时可以安全复用原幂等键重放。
+const LOCAL_FAILURE_TASK_PREFIX = 'local-failed-'
 
 const VIDEO_DURATION_SLIDER_OPTIONS = [2, 5, 10, 15, 20, 25, 30] as const
 const VIDEO_ASPECT_OPTIONS = ['adaptive', '16:9', '4:3', '1:1', '3:4', '9:16'] as const
@@ -266,33 +271,117 @@ function VideoWorkspaceNotice({ items }: { items: VideoWorkspaceNoticeItem[] }) 
   </div>
 }
 
-function VideoStage({ task, entry, modelName, submitting, onCancel, onRetry, onEdit, onDelete }: { task: VideoTask | null; entry?: VideoHistoryEntry; modelName: string; submitting: boolean; onCancel: () => void; onRetry: () => void; onEdit: () => void; onDelete: () => void }) {
-  const { t } = useTranslation()
-  if (submitting && !task) return <div className="video-stage-state video-stage-state--loading" role="status" aria-label={t('console.video.submitting')}><span className="video-loading-ring"><IconLoading /></span><strong>{t('console.video.submitting')}</strong><p>{t('console.video.submittingHint')}</p><Button theme="borderless" size="small" icon={<IconStop />} onClick={onCancel}>{t('console.video.cancelRequest')}</Button></div>
-  if (!task) return <div className="video-stage-state video-stage-state--empty"><span className="video-stage-icon"><IconVideo aria-hidden="true" /></span><strong>{t('console.video.emptyTitle')}</strong><p>{t('console.video.emptyHint')}</p></div>
+// 记录按自然日分组，同一天的生成归到同一个日期标题下。
+function videoDayKey(date: Date): string {
+  return `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`
+}
 
-  const statusLabel = t(videoStatusLabelKey(task.status))
-  const prompt = entry?.prompt ?? t('console.video.emptyTitle')
-  const duration = entry?.duration ?? 0
-  const modelLabel = entry?.modelName || modelName
-  const promptTags = [modelLabel, duration ? `${duration}${t('console.video.secondsShort')}` : ''].filter(Boolean)
-  const progress = task.progress ?? 0
-  const isTerminal = videoTaskIsTerminal(task.status) || task.status === 'unknown'
-  const isFailure = task.status === 'failed' || task.status === 'expired' || task.status === 'cancelled' || task.status === 'unknown'
-  const taskContent = task.status === 'succeeded' && task.resultUrl ? <div className="video-task-result"><div className="video-result-frame"><video controls preload="metadata" poster={task.thumbnailUrl ?? undefined} src={task.resultUrl} aria-label={t('console.video.resultVideo')}><track kind="captions" /></video></div><a className="video-result-link" href={task.resultUrl} target="_blank" rel="noreferrer"><IconDownload aria-hidden="true" />{t('console.video.openResult')}</a></div>
-    : task.status === 'succeeded' ? <div className="video-task-placeholder"><IconAlertTriangle aria-hidden="true" /><span>{t('console.video.resultUnavailable')}</span><small>{t('console.video.resultUnavailableHint')}</small></div>
-      : isFailure ? <div className="video-task-error" role="alert"><span className="video-task-error-icon"><IconClose aria-hidden="true" /></span><p>{task.errorMessage ?? t('console.video.taskFailedHint')}</p>{task.requestId ? <code>{t('console.common.requestIdValue', { requestId: task.requestId })}</code> : null}</div>
-        : <div className="video-task-progress" role="status" aria-label={statusLabel}><span className="video-loading-ring"><IconLoading /></span><div><strong>{statusLabel}</strong><p>{t('console.video.processingHint')}</p></div><div className="video-progress" role="progressbar" aria-label={t('console.video.progress')} aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress}><span style={{ width: `${progress}%` }} /></div><span className="video-task-progress-value">{progress > 0 ? `${progress}%` : t('console.video.progressPreparing')}</span></div>
-  // 一次生成按对话呈现：提问在上、结果在下；参数作为标签跟随提问，不进入结果区。
-  return <div className="video-chat">
-    <div className="video-chat-message video-chat-message--user">
-      <p className="video-chat-prompt">{prompt}</p>
-      {promptTags.length ? <div className="video-chat-tags">{promptTags.map((tag) => <span className="video-chat-tag" key={tag}>{tag}</span>)}</div> : null}
-    </div>
-    <article className="video-chat-message video-chat-message--assistant" data-task-id={task.taskId} aria-label={prompt}>
-      <div className="video-chat-body">{taskContent}</div>
-      <div className="video-chat-actions"><span className={`video-task-status is-${task.status}${task.status === 'succeeded' ? ' video-status-success' : ''}`}>{task.status === 'succeeded' ? <IconCheckCircleStroked aria-hidden="true" /> : null}{statusLabel}</span><Button theme="outline" size="small" icon={<IconEditStroked />} onClick={onEdit}>{t('console.video.edit')}</Button><Button theme="outline" size="small" icon={<IconRefresh />} onClick={onRetry}>{t('console.video.retry')}</Button><Dropdown trigger="click" position="bottomLeft" showTick={false} contentClassName="video-task-more-dropdown" menu={[{ node: 'item', name: t('console.video.delete'), type: 'danger', icon: <IconDeleteStroked />, onClick: onDelete }]}><Button theme="outline" size="small" icon={<IconMoreStroked />} aria-label={t('console.video.moreActions')} title={t('console.video.moreActions')} /></Dropdown>{!isTerminal ? <Button theme="borderless" size="small" icon={<IconStop />} onClick={onCancel}>{task.status === 'cancelling' ? t('console.video.statusCancelling') : t('console.video.cancelGeneration')}</Button> : null}</div>
-    </article>
+function videoDayLabel(date: Date, language: string, today: string, yesterday: string): string {
+  const now = new Date()
+  if (videoDayKey(date) === videoDayKey(now)) return today
+  if (videoDayKey(date) === videoDayKey(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1))) return yesterday
+  return date.toLocaleDateString(language.startsWith('en') ? 'en-US' : 'zh-CN', { year: 'numeric', month: 'long', day: 'numeric' })
+}
+
+type VideoRecordGroup = { key: string; label: string; entries: VideoHistoryEntry[] }
+
+function videoRecordGroups(entries: VideoHistoryEntry[], language: string, today: string, yesterday: string): VideoRecordGroup[] {
+  // 按对话式排布：越旧越靠上，最新一条落在列表底部（entries 本身是最新在前，这里整体倒过来）。
+  return [...entries].reverse().reduce<VideoRecordGroup[]>((groups, entry) => {
+    const date = new Date(entry.createdAt)
+    const valid = !Number.isNaN(date.getTime())
+    const key = valid ? videoDayKey(date) : entry.createdAt
+    const current = groups[groups.length - 1]
+    if (current?.key === key) {
+      current.entries.push(entry)
+      return groups
+    }
+    groups.push({ key, label: valid ? videoDayLabel(date, language, today, yesterday) : entry.createdAt, entries: [entry] })
+    return groups
+  }, [])
+}
+
+type VideoRecordHandlers = {
+  onCancel: (entry: VideoHistoryEntry) => void
+  onRetry: (entry: VideoHistoryEntry) => void
+  onEdit: (entry: VideoHistoryEntry) => void
+  onDelete: (entry: VideoHistoryEntry) => void
+}
+
+function VideoRecordActions({ entry, statusLabel, succeeded, isActive, generating, handlers }: { entry: VideoHistoryEntry; statusLabel: string; succeeded: boolean; isActive: boolean; generating: boolean; handlers: VideoRecordHandlers }) {
+  const { t } = useTranslation()
+  const cancellingThis = entry.status === 'cancelling'
+  return <div className="video-record-actions">
+    {/* 终态在操作行标出结果；生成中把状态标在画面上，避免同一状态出现两遍。 */}
+    {!isActive ? <span className={`video-task-status is-${entry.status}${succeeded ? ' video-status-success' : ''}`}>{succeeded ? <IconCheckCircleStroked aria-hidden="true" /> : null}{statusLabel}</span> : null}
+    <Button theme="outline" size="small" icon={<IconEditStroked />} onClick={() => handlers.onEdit(entry)}>{t('console.video.edit')}</Button>
+    {/* 同一时刻只允许一个生成任务，已有任务在跑时「重新生成」开不了新任务，直接禁用而不是点了没反应。 */}
+    <Button theme="outline" size="small" icon={<IconRefresh />} disabled={generating} onClick={() => handlers.onRetry(entry)}>{t('console.video.retry')}</Button>
+    <Dropdown trigger="click" position="bottomLeft" showTick={false} contentClassName="video-task-more-dropdown" menu={[{ node: 'item', name: t('console.video.delete'), type: 'danger', icon: <IconDeleteStroked />, onClick: () => handlers.onDelete(entry) }]}><Button theme="outline" size="small" icon={<IconMoreStroked />} disabled={isActive} aria-label={t('console.video.moreActions')} title={t('console.video.moreActions')} /></Dropdown>
+    {/* 取消中已经发过 DELETE，重复点击只会再打一次接口。 */}
+    {isActive ? <Button theme="borderless" size="small" icon={<IconStop />} disabled={cancellingThis} onClick={() => handlers.onCancel(entry)}>{cancellingThis ? t('console.video.statusCancelling') : t('console.video.cancelGeneration')}</Button> : null}
+  </div>
+}
+
+function VideoRecordBody({ entry, statusLabel }: { entry: VideoHistoryEntry; statusLabel: string }) {
+  const { t } = useTranslation()
+  if (entry.status === 'succeeded') {
+    if (!entry.resultUrl) return <div className="video-task-placeholder"><IconAlertTriangle aria-hidden="true" /><span>{t('console.video.resultUnavailable')}</span><small>{t('console.video.resultUnavailableHint')}</small></div>
+    return <div className="video-task-result"><div className="video-result-frame"><video controls preload="metadata" poster={entry.thumbnailUrl ?? undefined} src={entry.resultUrl} aria-label={t('console.video.resultVideo')}><track kind="captions" /></video></div><a className="video-result-link" href={entry.resultUrl} target="_blank" rel="noreferrer"><IconDownload aria-hidden="true" />{t('console.video.openResult')}</a></div>
+  }
+  const progress = entry.progress ?? 0
+  // 用户主动取消不是故障，用中性提示而不是红色报错卡。
+  if (entry.status === 'cancelled') return <div className="video-task-placeholder"><IconStop aria-hidden="true" /><span>{t('console.video.statusCancelled')}</span></div>
+  if (entry.status === 'failed' || entry.status === 'expired' || entry.status === 'unknown') {
+    return <div className="video-task-error" role="alert"><span className="video-task-error-icon"><IconClose aria-hidden="true" /></span><p>{entry.errorMessage ?? t('console.video.taskFailedHint')}</p>{entry.requestId ? <code>{t('console.common.requestIdValue', { requestId: entry.requestId })}</code> : null}</div>
+  }
+  // 生成中先占住结果的位置：与成片同宽的 16:9 画框，左上角标状态。
+  return <div className="video-task-render" role="status" aria-label={statusLabel}>
+    <WaveBackground />
+    <span className="video-task-render-badge">{statusLabel}</span>
+    <div className="video-progress" role="progressbar" aria-label={t('console.video.progress')} aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress}><span style={{ width: `${progress}%` }} /></div>
+  </div>
+}
+
+function VideoRecord({ entry, generating, handlers }: { entry: VideoHistoryEntry; generating: boolean; handlers: VideoRecordHandlers }) {
+  const { t } = useTranslation()
+  const statusLabel = t(videoStatusLabelKey(entry.status))
+  const isActive = !videoTaskIsTerminal(entry.status) && entry.status !== 'unknown'
+  const succeeded = entry.status === 'succeeded'
+  return <article className="video-record" data-task-id={entry.taskId} aria-label={entry.prompt}>
+    <h3 className="video-record-prompt">{entry.prompt}</h3>
+    <p className="video-record-meta">{entry.modelName} · {entry.duration}{t('console.video.secondsShort')} <IconInfoCircle aria-hidden="true" /></p>
+    <div className="video-record-body"><VideoRecordBody entry={entry} statusLabel={statusLabel} /></div>
+    <VideoRecordActions entry={entry} statusLabel={statusLabel} succeeded={succeeded} isActive={isActive} generating={generating} handlers={handlers} />
+  </article>
+}
+
+function VideoTimeline({ entries, submitting, pendingPrompt, generating, onCancelSubmit, handlers }: { entries: VideoHistoryEntry[]; submitting: boolean; pendingPrompt: string; generating: boolean; onCancelSubmit: () => void; handlers: VideoRecordHandlers }) {
+  const { t, i18n } = useTranslation()
+  const timelineRef = useRef<HTMLDivElement>(null)
+  const recordCount = entries.length
+  useEffect(() => {
+    const node = timelineRef.current
+    // jsdom 不实现 scrollIntoView，先判存在；生产环境才有平滑滚动。
+    if (!node || typeof node.scrollIntoView !== 'function') return
+    // 最新的记录在列表底部；只在条数变化（新任务出现）时贴底，进度刷新不打断用户阅读。
+    node.scrollIntoView({ block: 'end', behavior: 'smooth' })
+  }, [recordCount])
+
+  if (!entries.length && !submitting) return <div className="video-stage-state video-stage-state--empty"><span className="video-stage-icon"><IconVideo aria-hidden="true" /></span><strong>{t('console.video.emptyTitle')}</strong><p>{t('console.video.emptyHint')}</p></div>
+  const groups = videoRecordGroups(entries, i18n.language, t('console.video.dateToday'), t('console.video.dateYesterday'))
+  return <div className="video-record-timeline" ref={timelineRef}>
+    {groups.map((group) => <section className="video-record-group" key={group.key}>
+      <h2 className="video-record-group-title">{group.label}</h2>
+      {group.entries.map((entry) => <VideoRecord key={entry.id} entry={entry} generating={generating} handlers={handlers} />)}
+    </section>)}
+    {/* 提交请求在途时先落一个占位记录，让新任务立刻出现在列表底部。 */}
+    {submitting ? <div className="video-record video-record--pending">
+      <h3 className="video-record-prompt">{pendingPrompt || t('console.video.emptyTitle')}</h3>
+      <p className="video-record-meta">{t('console.video.submitting')}</p>
+      <div className="video-record-body"><div className="video-task-render" role="status" aria-label={t('console.video.submitting')}><WaveBackground /><span className="video-task-render-badge">{t('console.video.submitting')}</span></div></div>
+      <div className="video-record-actions"><Button theme="borderless" size="small" icon={<IconStop />} onClick={onCancelSubmit}>{t('console.video.cancelRequest')}</Button></div>
+    </div> : null}
   </div>
 }
 
@@ -309,6 +398,8 @@ export function VideoPage() {
       ? null
       : ''
   const store = useAppStore()
+  const dispatch = useAppDispatch()
+  const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const { models, loading: modelsLoading, error: modelsError } = useUserModels()
 
@@ -345,10 +436,36 @@ export function VideoPage() {
   const lastFrameInputRef = useRef<HTMLInputElement>(null)
   const submitControllerRef = useRef<AbortController | null>(null)
   const submitAbortReasonRef = useRef<'user' | 'navigation' | null>(null)
-  const pollControllerRef = useRef<AbortController | null>(null)
+  // 记录列表里可以同时存在多条任务，轮询控制器按 taskId 各自持有：
+  // 对某一条做操作（取消/删除/查历史）不应中断其他任务的轮询，否则那条会永远停在「生成中」。
+  const pollControllersRef = useRef<Map<string, AbortController>>(new Map())
   const lastSubmissionRef = useRef<VideoSubmissionSnapshot | null>(null)
   const historyOwnerRef = useRef(userId)
   const historyHydratingRef = useRef(true)
+
+  function abortAllPolling(): void {
+    for (const controller of pollControllersRef.current.values()) controller.abort()
+    pollControllersRef.current.clear()
+  }
+
+  function stopPolling(taskId?: string): void {
+    if (taskId) {
+      pollControllersRef.current.get(taskId)?.abort()
+      pollControllersRef.current.delete(taskId)
+    } else {
+      abortAllPolling()
+    }
+    setPolling(pollControllersRef.current.size > 0)
+  }
+
+  // 登录态失效统一清理并回首页，避免停在原页反复失败（与对话页、模型广场一致）。
+  function redirectToLoginOnAuthFailure(error: unknown): boolean {
+    if (!isAuthenticationFailure(error)) return false
+    clearAuthTokens({ force: true })
+    dispatch(invalidateAuth())
+    navigate('/', { replace: true })
+    return true
+  }
 
   useEffect(() => {
     // 所有弹层都支持点击外部区域收起，避免遮挡工作区内容。
@@ -386,9 +503,8 @@ export function VideoPage() {
   useEffect(() => {
     submitAbortReasonRef.current = 'navigation'
     submitControllerRef.current?.abort()
-    pollControllerRef.current?.abort()
+    abortAllPolling()
     submitControllerRef.current = null
-    pollControllerRef.current = null
     setModelID(requestedModel)
     setCurrentTask(null)
     setSelectedHistoryID('')
@@ -398,7 +514,11 @@ export function VideoPage() {
     setRequestFailure(null)
     historyOwnerRef.current = userId
     historyHydratingRef.current = true
-    setHistory(readVideoHistory(userId).filter((entry) => entry.workspaceKey === workspaceKey))
+    const restored = readVideoHistory(userId).filter((entry) => entry.workspaceKey === workspaceKey)
+    setHistory(restored)
+    // 刷新或重新进入页面后，未完成的任务否则会一直停在「生成中」，这里主动续上轮询。
+    const pendingEntry = restored.find((entry) => !videoTaskIsTerminal(entry.status) && entry.status !== 'unknown')
+    if (pendingEntry && getAccessToken()?.trim()) void pollTask(historyTask(pendingEntry), pendingEntry)
     try {
       window.localStorage.removeItem(LEGACY_VIDEO_HISTORY_KEY)
     } catch {
@@ -429,7 +549,7 @@ export function VideoPage() {
   useEffect(() => () => {
     submitAbortReasonRef.current = 'navigation'
     submitControllerRef.current?.abort()
-    pollControllerRef.current?.abort()
+    abortAllPolling()
   }, [])
 
   function persistHistoryEntry(entry: VideoHistoryEntry): void {
@@ -456,7 +576,9 @@ export function VideoPage() {
   function createHistoryEntry(task: VideoTask, snapshot: VideoSubmissionSnapshot): VideoHistoryEntry {
     return {
       id: createHistoryID(workspaceKey, task.taskId), workspaceKey, taskId: task.taskId, modelId: snapshot.modelId, model: snapshot.model, modelName: snapshot.modelName,
-      prompt: snapshot.prompt, duration: snapshot.duration, size: snapshot.size, inputReference: isPersistableReference(snapshot.inputReference) ? snapshot.inputReference : null,
+      // 内存记录保留原始参考图（含本地文件转出的 data URL），重试/编辑时才拿得到；
+      // 落盘由 compactVideoHistoryEntry 负责裁掉超长的 data URL。
+      prompt: snapshot.prompt, duration: snapshot.duration, size: snapshot.size, inputReference: snapshot.inputReference || null,
       status: task.status, progress: task.progress, resultUrl: task.resultUrl, thumbnailUrl: task.thumbnailUrl, errorMessage: task.errorMessage, requestId: task.requestId, createdAt: new Date().toISOString(),
     }
   }
@@ -464,7 +586,7 @@ export function VideoPage() {
   function createSubmissionFailureTask(failure: VideoRequestFailure): VideoTask {
     // 提交阶段没有服务端 task_id 时也保留一张本地失败卡片，方便编辑和重试。
     return {
-      taskId: `local-failed-${Date.now()}`,
+      taskId: `${LOCAL_FAILURE_TASK_PREFIX}${Date.now()}`,
       status: 'failed',
       progress: null,
       resultUrl: null,
@@ -476,9 +598,10 @@ export function VideoPage() {
   }
 
   async function pollTask(initialTask: VideoTask, entry: VideoHistoryEntry): Promise<void> {
-    pollControllerRef.current?.abort()
+    const taskId = entry.taskId
+    pollControllersRef.current.get(taskId)?.abort()
     const controller = new AbortController()
-    pollControllerRef.current = controller
+    pollControllersRef.current.set(taskId, controller)
     setPolling(true)
     let task = initialTask
     let attempt = 0
@@ -500,14 +623,15 @@ export function VideoPage() {
       }
     } catch (error: unknown) {
       if (controller.signal.aborted) return
+      if (redirectToLoginOnAuthFailure(error)) return
       const failure = readVideoFailure(error, t('console.video.queryFailed'))
       const failedTask: VideoTask = { ...task, status: 'unknown', errorMessage: failure.message, requestId: failure.requestId ?? task.requestId }
       updateTask(failedTask, entry)
       setRequestFailure(failure)
     } finally {
-      if (pollControllerRef.current === controller) {
-        pollControllerRef.current = null
-        setPolling(false)
+      if (pollControllersRef.current.get(taskId) === controller) {
+        pollControllersRef.current.delete(taskId)
+        setPolling(pollControllersRef.current.size > 0)
       }
     }
   }
@@ -536,8 +660,7 @@ export function VideoPage() {
     if (submitting || polling || cancelling) return
     const snapshot = buildSubmissionSnapshot(retry)
     if (!snapshot) return
-    pollControllerRef.current?.abort()
-    setPolling(false)
+    stopPolling()
     setCurrentTask(null)
     setSelectedHistoryID('')
     setRequestFailure(null)
@@ -562,6 +685,7 @@ export function VideoPage() {
         setRequestFailure({ message: t('console.video.requestCancelled'), requestId: null })
         return
       }
+      if (redirectToLoginOnAuthFailure(error)) return
       const failure = readVideoFailure(error, t('console.video.submitFailed'))
       const failedTask = createSubmissionFailureTask(failure)
       const failedEntry = createHistoryEntry(failedTask, snapshot)
@@ -575,25 +699,33 @@ export function VideoPage() {
     }
   }
 
-  async function cancelCurrentTask(): Promise<void> {
-    if (!currentTask || !taskIsActive(currentTask) || cancelling) return
-    pollControllerRef.current?.abort()
-    setPolling(false)
+  async function cancelTask(entry: VideoHistoryEntry): Promise<void> {
+    if (cancelling || !taskIsActive(historyTask(entry))) return
+    // 只停这一条任务的轮询；顺手停掉别条会让它们永远停在「生成中」。
+    stopPolling(entry.taskId)
     setCancelling(true)
     setRequestFailure(null)
     try {
       const accessToken = getAccessToken()?.trim()
       if (!accessToken) throw new VideoRuntimeError(t('api.modelRuntime.accessTokenRequired'), 401, 'invalid_user_session', null)
-      const task = await cancelVideoTask(accessToken, currentTask.taskId)
-      const entry = history.find((item) => item.id === selectedHistoryID)
-      if (entry) updateTask(task, entry)
+      const task = await cancelVideoTask(accessToken, entry.taskId)
+      updateTask(task, entry)
       Toast.info(t('console.video.cancelRequested'))
-      if (entry && !videoTaskIsTerminal(task.status) && task.status !== 'unknown') void pollTask(task, entry)
+      if (!videoTaskIsTerminal(task.status) && task.status !== 'unknown') void pollTask(task, entry)
     } catch (error: unknown) {
-      setRequestFailure(readVideoFailure(error, t('console.video.cancelFailed')))
+      if (redirectToLoginOnAuthFailure(error)) return
+      // 取消失败时任务还在跑，必须让用户看到原因；有任务在跑时工作区横幅会被抑制，所以直接弹提示。
+      appToast.error(readVideoFailure(error, t('console.video.cancelFailed')).message)
+      if (taskIsActive(historyTask(entry))) void pollTask(historyTask(entry), entry)
     } finally {
       setCancelling(false)
     }
+  }
+
+  // 发送按钮在生成期间是“停止”，作用于当前跟踪的那条任务。
+  function cancelActiveTask(): void {
+    const entry = history.find((item) => item.taskId === currentTask?.taskId)
+    if (entry) void cancelTask(entry)
   }
 
   function cancelSubmission(): void {
@@ -609,9 +741,7 @@ export function VideoPage() {
     setCurrentTask(null)
   }
 
-  function editCurrent(): void {
-    const entry = history.find((item) => item.id === selectedHistoryID)
-    if (!entry) return
+  function editEntry(entry: VideoHistoryEntry): void {
     setPrompt(entry.prompt)
     setModelID(entry.model)
     setDuration(entry.duration)
@@ -627,23 +757,26 @@ export function VideoPage() {
     window.setTimeout(() => document.querySelector<HTMLTextAreaElement>('.video-composer-input-row textarea')?.focus(), 0)
   }
 
-  function deleteCurrent(): void {
-    const entryID = selectedHistoryID
-    if (!entryID) return
-    pollControllerRef.current?.abort()
-    setPolling(false)
-    const remaining = history.filter((entry) => entry.id !== entryID)
+  function deleteEntry(entry: VideoHistoryEntry): void {
+    // 在跑的任务删掉后，服务端任务还在跑但界面既看不到也取消不了，先要求用户取消。
+    if (taskIsActive(historyTask(entry))) {
+      appToast.error(t('console.video.deleteActiveHint'))
+      return
+    }
+    const entryID = entry.id
+    // 只停这一条的轮询，别条任务要继续更新。
+    stopPolling(entry.taskId)
+    const remaining = history.filter((item) => item.id !== entryID)
     setHistory(remaining)
-    writeVideoHistory(userId, [...remaining, ...readVideoHistory(userId).filter((entry) => entry.workspaceKey !== workspaceKey)])
-    setSelectedHistoryID('')
-    setCurrentTask(null)
+    writeVideoHistory(userId, [...remaining, ...readVideoHistory(userId).filter((item) => item.workspaceKey !== workspaceKey)])
+    if (selectedHistoryID === entryID) setSelectedHistoryID('')
+    if (currentTask?.taskId === entry.taskId) setCurrentTask(null)
     if (lastSubmissionRef.current?.historyId === entryID) lastSubmissionRef.current = null
   }
 
   function startNewGeneration(): void {
     if (operationBusy) return
-    pollControllerRef.current?.abort()
-    setPolling(false)
+    stopPolling()
     setRequestFailure(null)
     setCurrentTask(null)
     setSelectedHistoryID('')
@@ -664,8 +797,7 @@ export function VideoPage() {
   }
 
   function selectHistory(entry: VideoHistoryEntry): void {
-    pollControllerRef.current?.abort()
-    setPolling(false)
+    // 选一条历史不应该打断正在生成的任务，这里刻意不 abort 任何轮询。
     setRequestFailure(null)
     setSelectedHistoryID(entry.id)
     setCurrentTask(historyTask(entry))
@@ -678,13 +810,18 @@ export function VideoPage() {
     setInputReference(entry.inputReference ?? '')
     setReferenceUrl(entry.inputReference && isPersistableReference(entry.inputReference) ? entry.inputReference : '')
     setReferenceName(entry.inputReference ? t('console.video.referenceImage') : '')
-    if (getAccessToken()?.trim() && !videoTaskIsTerminal(entry.status) && entry.status !== 'unknown') void pollTask(historyTask(entry), entry)
+    // 终态不必再查；unknown（轮询超时或查询失败）要把本地状态当成进行中再查一次，
+    // 因为服务端很可能已经跑完了。
+    if (getAccessToken()?.trim() && !videoTaskIsTerminal(entry.status)) void pollTask({ ...historyTask(entry), status: 'processing' }, entry)
   }
 
-  function retryCurrent(): void {
-    const entry = history.find((item) => item.id === selectedHistoryID)
-    if (!entry) return
-    const snapshot = lastSubmissionRef.current?.historyId === entry.id ? lastSubmissionRef.current : {
+  function retryEntry(entry: VideoHistoryEntry): void {
+    // 只有「本地提交失败、服务端还没拿到 task_id」的记录才复用原幂等键做重放。
+    // 已经有服务端任务的记录必须换新键，否则服务端按幂等回放，返回的还是同一条旧任务。
+    const replay = entry.taskId.startsWith(LOCAL_FAILURE_TASK_PREFIX) && lastSubmissionRef.current?.historyId === entry.id
+      ? lastSubmissionRef.current
+      : null
+    const snapshot = replay ?? {
       model: entry.model, modelId: entry.modelId, modelName: entry.modelName, prompt: entry.prompt, duration: entry.duration, size: entry.size, inputReference: entry.inputReference ?? '', idempotencyKey: createIdempotencyKey(),
     }
     void submitVideo(snapshot)
@@ -764,7 +901,7 @@ export function VideoPage() {
             <button className="video-history-toggle" type="button" aria-label={t('console.video.historyTitle')} title={t('console.video.historyTitle')} onClick={() => setHistoryOpen((open) => !open)}><IconHistory /></button>
           </div>
         </header>
-        <main className="video-stage experience-content">{showWorkspaceNotices ? <VideoWorkspaceNotice items={workspaceNotices} /> : <VideoStage task={currentTask} entry={selectedHistory} modelName={selectedHistory?.modelName ?? selectedModel?.name ?? t('console.video.unnamedModel')} submitting={submitting} onCancel={currentTask && taskIsActive(currentTask) ? () => { void cancelCurrentTask() } : cancelSubmission} onRetry={retryCurrent} onEdit={editCurrent} onDelete={deleteCurrent} />}</main>
+        <main className="video-stage experience-content">{showWorkspaceNotices ? <VideoWorkspaceNotice items={workspaceNotices} /> : <VideoTimeline entries={history} submitting={submitting} pendingPrompt={prompt} generating={operationBusy} onCancelSubmit={cancelSubmission} handlers={{ onCancel: (entry) => { void cancelTask(entry) }, onRetry: retryEntry, onEdit: editEntry, onDelete: deleteEntry }} />}</main>
         <footer className="video-composer experience-composer">
           <div className="video-composer-box">
             <div className={`video-composer-input-row${referenceMode === 'first-last' ? ' is-first-last' : ''}`}>
@@ -787,7 +924,7 @@ export function VideoPage() {
               {inputReference ? <div className="video-reference-row">
                 {referenceUrl ? <span className="video-reference-chip video-reference-chip--url"><IconImage aria-hidden="true" /><span>{referenceUrl}</span><Button theme="borderless" size="small" icon={<IconClose />} aria-label={t('console.video.removeReference')} title={t('console.video.removeReference')} onClick={() => { setInputReference(''); setReferenceUrl(''); setReferenceName('') }} /></span> : <span className="video-reference-chip"><img src={inputReference} alt="" /><span>{referenceName || t('console.video.referenceImage')}</span><Button theme="borderless" size="small" icon={<IconClose />} aria-label={t('console.video.removeReference')} title={t('console.video.removeReference')} onClick={() => { setInputReference(''); setReferenceUrl(''); setReferenceName('') }} /></span>}
               </div> : null}
-              <Input.TextArea value={prompt} onChange={(value) => setPrompt(value.slice(0, VIDEO_PROMPT_MAX_LENGTH))} maxLength={VIDEO_PROMPT_MAX_LENGTH} rows={3} disabled={paramsBusy} placeholder={selectedModel ? t('console.video.promptPlaceholder') : t('console.video.promptDisabledPlaceholder')} aria-label={t('console.video.promptLabel')} onKeyDown={(event) => { if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') { event.preventDefault(); if (canSubmit) void submitVideo() } }} />
+              <Input.TextArea value={prompt} onChange={(value) => setPrompt(value.slice(0, VIDEO_PROMPT_MAX_LENGTH))} maxLength={VIDEO_PROMPT_MAX_LENGTH} rows={3} disabled={paramsBusy} placeholder={selectedModel ? t('console.video.promptPlaceholder') : t('console.video.promptDisabledPlaceholder')} aria-label={t('console.video.promptLabel')} onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); if (canSubmit) void submitVideo() } }} />
             </div>
             <div className="video-composer-controls">
               <div className="video-control-group">
@@ -799,21 +936,21 @@ export function VideoPage() {
                   </Select>
                 </div>
                 <div className="video-model-picker">
-                  <Select id="video-model" className="video-control-button video-model-trigger" dropdownClassName="video-model-select-dropdown" value={selectedModel ? modelAlias(selectedModel) : ''} placeholder={t('console.video.chooseModel')} arrowIcon={<IconChevronDownStroked />} position="topLeft" dropdownMatchSelectWidth={false} filter={false} aria-label={t('console.video.model')} onChange={(value) => { setModelID(String(value)); setRequestFailure(null) }} renderSelectedItem={() => selectedModel ? <><VideoModelLogo model={selectedModel} /><span className="video-model-trigger-label">{selectedModel.company}: {selectedModel.name}</span></> : null} renderOptionItem={({ value, selected }) => { const model = displayVideoModels.find((item) => modelAlias(item) === String(value)); if (!model) return displayVideoModels.length === 0 && String(value) === '' ? <div className="video-model-empty-option">{t('console.video.noModels')}</div> : null; return <div className={`video-model-option${selected ? ' is-selected' : ''}`}><VideoModelLogo model={model} /><span className="video-model-option-name">{model.company}: {model.name}</span><span className="video-model-advanced"><span className="video-model-premium-icon" aria-hidden="true">P</span><em>{t('console.video.advanced')}</em></span></div> }} disabled={paramsBusy}><Select.Option value="" disabled={displayVideoModels.length === 0}>{displayVideoModels.length === 0 ? t('console.video.noModels') : t('console.video.chooseModel')}</Select.Option>{displayVideoModels.map((model) => <Select.Option key={model.id} value={modelAlias(model)}>{model.company}: {model.name}</Select.Option>)}</Select>
+                  <Select id="video-model" className="video-control-button video-model-trigger" dropdownClassName="video-model-select-dropdown" value={selectedModel ? modelAlias(selectedModel) : ''} placeholder={t('console.video.chooseModel')} arrowIcon={<IconChevronDownStroked />} position="topLeft" dropdownMatchSelectWidth={false} filter={false} aria-label={t('console.video.model')} onChange={(value) => { setModelID(String(value)); setRequestFailure(null) }} renderSelectedItem={() => selectedModel ? <><VideoModelLogo model={selectedModel} /><span className="video-model-trigger-label">{selectedModel.company}: {selectedModel.name}</span></> : null} renderOptionItem={({ value, selected, focused, onClick, onMouseEnter }) => { const model = displayVideoModels.find((item) => modelAlias(item) === String(value)); if (!model) return displayVideoModels.length === 0 && String(value) === '' ? <div className="video-model-empty-option">{t('console.video.noModels')}</div> : null; /* Semi 通过 props 下发点击处理，不透传 onClick 就永远切换不了模型。 */ return <div className={`video-model-option${selected ? ' is-selected' : ''}${focused ? ' is-focused' : ''}`} onClick={onClick} onMouseEnter={onMouseEnter}><VideoModelLogo model={model} /><span className="video-model-option-name">{model.company}: {model.name}</span><span className="video-model-advanced"><span className="video-model-premium-icon" aria-hidden="true">P</span><em>{t('console.video.advanced')}</em></span></div> }} disabled={paramsBusy}><Select.Option value="" disabled={displayVideoModels.length === 0}>{displayVideoModels.length === 0 ? t('console.video.noModels') : t('console.video.chooseModel')}</Select.Option>{displayVideoModels.map((model) => <Select.Option key={model.id} value={modelAlias(model)}>{model.company}: {model.name}</Select.Option>)}</Select>
                 </div>
                 <div className="video-aspect-picker">
-                  <Select className="video-control-button video-aspect-trigger video-panel-select" value="settings" arrowIcon={<IconChevronDownStroked />} dropdownClassName="video-aspect-select-dropdown" aria-label={t('console.video.aspectRatio')} renderSelectedItem={() => <><IconFilterStroked aria-hidden="true" /><span>{aspectRatio} · {resolution}</span></>} innerTopSlot={<div className="video-aspect-popover video-select-panel"><div className="video-aspect-section"><strong>{t('console.video.aspectRatio')}</strong><div className="video-aspect-options">{VIDEO_ASPECT_OPTIONS.map((ratio) => <button type="button" className={aspectRatio === ratio ? 'is-selected' : ''} key={ratio} onClick={() => { setAspectRatio(ratio); setSize(sizeForVideoAspect(ratio, resolution)) }}><span className={`video-ratio-icon ratio-${ratio.replace(':', '-')}`} />{ratio}</button>)}</div></div><div className="video-aspect-section"><strong>{t('console.video.resolution')}</strong><div className="video-resolution-options">{['480P', '720P', '1080P'].map((nextResolution) => <button type="button" className={resolution === nextResolution ? 'is-selected' : ''} key={nextResolution} onClick={() => { setResolution(nextResolution); setSize(sizeForVideoAspect(aspectRatio, nextResolution)) }}>{nextResolution}</button>)}</div></div></div>}>
+                  <Select className="video-control-button video-aspect-trigger video-panel-select" value="settings" disabled={paramsBusy} arrowIcon={<IconChevronDownStroked />} dropdownClassName="video-aspect-select-dropdown" aria-label={t('console.video.aspectRatio')} renderSelectedItem={() => <><IconFilterStroked aria-hidden="true" /><span>{aspectRatio} · {resolution}</span></>} innerTopSlot={<div className="video-aspect-popover video-select-panel"><div className="video-aspect-section"><strong>{t('console.video.aspectRatio')}</strong><div className="video-aspect-options">{VIDEO_ASPECT_OPTIONS.map((ratio) => <button type="button" className={aspectRatio === ratio ? 'is-selected' : ''} key={ratio} onClick={() => { setAspectRatio(ratio); setSize(sizeForVideoAspect(ratio, resolution)) }}><span className={`video-ratio-icon ratio-${ratio.replace(':', '-')}`} />{ratio}</button>)}</div></div><div className="video-aspect-section"><strong>{t('console.video.resolution')}</strong><div className="video-resolution-options">{['480P', '720P', '1080P'].map((nextResolution) => <button type="button" className={resolution === nextResolution ? 'is-selected' : ''} key={nextResolution} onClick={() => { setResolution(nextResolution); setSize(sizeForVideoAspect(aspectRatio, nextResolution)) }}>{nextResolution}</button>)}</div></div></div>}>
                     <Select.Option value="settings">{aspectRatio} · {resolution}</Select.Option>
                   </Select>
                 </div>
                 <div className="video-duration-picker">
-                  <Select className="video-control-button video-duration-trigger video-panel-select" value="duration" arrowIcon={<IconChevronDownStroked />} dropdownClassName="video-duration-select-dropdown" aria-label={t('console.video.duration')} renderSelectedItem={() => <><IconClockStroked aria-hidden="true" /><span>{duration}{t('console.video.secondsShort')}</span></>} innerTopSlot={<div className="video-duration-popover video-select-panel"><strong>{t('console.video.durationSelect')}</strong><div className="video-duration-control"><input type="range" min="2" max="30" step="1" value={duration} onChange={(event) => setDuration(Number(event.target.value))} aria-label={t('console.video.duration')} /><div className="video-duration-ticks">{VIDEO_DURATION_SLIDER_OPTIONS.map((value) => <span key={value} style={{ left: `${((value - 2) / 28) * 100}%` }}>{value}</span>)}</div></div><label className="video-duration-number"><input type="number" min="2" max="30" value={duration} onChange={(event) => setDuration(Math.max(2, Math.min(30, Number(event.target.value) || 2)))} aria-label={t('console.video.duration')} /><span>{t('console.video.secondsShort')}</span></label></div>}>
+                  <Select className="video-control-button video-duration-trigger video-panel-select" value="duration" disabled={paramsBusy} arrowIcon={<IconChevronDownStroked />} dropdownClassName="video-duration-select-dropdown" aria-label={t('console.video.duration')} renderSelectedItem={() => <><IconClockStroked aria-hidden="true" /><span>{duration}{t('console.video.secondsShort')}</span></>} innerTopSlot={<div className="video-duration-popover video-select-panel"><strong>{t('console.video.durationSelect')}</strong><div className="video-duration-control"><input type="range" min="2" max="30" step="1" value={duration} onChange={(event) => setDuration(Number(event.target.value))} aria-label={t('console.video.duration')} /><div className="video-duration-ticks">{VIDEO_DURATION_SLIDER_OPTIONS.map((value) => <span key={value} style={{ left: `${((value - 2) / 28) * 100}%` }}>{value}</span>)}</div></div><label className="video-duration-number"><input type="number" min="2" max="30" step="1" key={duration} defaultValue={duration} onBlur={(event) => setDuration(Math.max(2, Math.min(30, Math.round(Number(event.target.value) || DEFAULT_VIDEO_DURATION))))} onKeyDown={(event) => { if (event.key === 'Enter') event.currentTarget.blur() }} aria-label={t('console.video.duration')} /><span>{t('console.video.secondsShort')}</span></label></div>}>
                     <Select.Option value="duration">{duration}{t('console.video.secondsShort')}</Select.Option>
                   </Select>
                 </div>
                 <button className={`video-control-button video-sound-trigger${soundEnabled ? ' is-active' : ''}`} type="button" onClick={() => setSoundEnabled((enabled) => !enabled)} disabled={paramsBusy}>{soundEnabled ? <IconVolume2 aria-hidden="true" /> : <IconMuteStroked aria-hidden="true" />}<span>{t('console.video.sound')}</span></button>
               </div>
-              <Button className="generation-send-button video-send-button" theme="solid" type="primary" icon={operationBusy ? <IconStop /> : <IconArrowUp />} aria-label={operationBusy ? (submitting ? t('console.video.cancelRequest') : t('console.video.cancelGeneration')) : t('console.video.generate')} title={operationBusy ? (submitting ? t('console.video.cancelRequest') : t('console.video.cancelGeneration')) : t('console.video.generate')} disabled={sendDisabled} loading={submitting} onClick={() => { if (submitting) cancelSubmission(); else if (currentTask && taskIsActive(currentTask)) void cancelCurrentTask(); else void submitVideo() }} />
+              <Button className="generation-send-button video-send-button" theme="solid" type="primary" icon={operationBusy ? <IconStop /> : <IconArrowUp />} aria-label={operationBusy ? (submitting ? t('console.video.cancelRequest') : t('console.video.cancelGeneration')) : t('console.video.generate')} title={operationBusy ? (submitting ? t('console.video.cancelRequest') : t('console.video.cancelGeneration')) : t('console.video.generate')} disabled={sendDisabled} loading={submitting} onClick={() => { if (submitting) cancelSubmission(); else if (currentTask && taskIsActive(currentTask)) cancelActiveTask(); else void submitVideo() }} />
             </div>
           </div>
           <div className="video-composer-hint"><span>{t('console.video.shortcut')}</span><span>{selectedModel ? t('console.video.resultHint') : t('console.video.chooseModelHint')}</span></div>

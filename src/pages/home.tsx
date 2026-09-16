@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { Link } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import Skeleton from '@douyinfe/semi-ui/lib/es/skeleton'
@@ -8,9 +8,9 @@ import promoModelLogo from '@/assets/figma-home/promo-model-logo.svg'
 import promoBannerArt from '@/assets/figma-home/promo-banner.png'
 import promoArticleArt from '@/assets/figma-home/promo-article.png'
 import '@/mobile-home.css'
-import { homepageEntryIsCurrent } from '@/utils/homepage-display'
+import { homepageEntryIsCurrent, homepageEntryMediaURL, homepageLocale, homepageMediaURL, homepagePopupCampaign, homepageTranslation } from '@/utils/homepage-display'
 import { ModelAvailability } from '@/components/model-availability'
-import { getPublicHomepage, getPublicHomepageAssetURL, getPublicHomepageMediaURL, getPublicHomepageStats, type HomepageDiscountKind, type HomepageEntry, type HomepagePromotionModel, type HomepageTranslation, type PublicHomepage } from '@/api/homepage'
+import { getPublicHomepage, getPublicHomepageStats, type HomepageDiscountKind, type HomepageEntry, type HomepagePromotionModel, type PublicHomepage } from '@/api/homepage'
 import { findModel, modelRouteKey, MODEL_CATALOG, type ModelAvailabilityHour, type ModelRecord } from '@/data/models'
 import { getAccessToken } from '@/auth/token-storage'
 import { useAppSelector } from '@/store/hooks'
@@ -64,14 +64,10 @@ const HOME_SCOREBOARD_DIGIT_DELAY = 70
 const HOME_SCOREBOARD_METRIC_COUNT = 2
 const HOME_STATS_POLL_INTERVAL = 60_000
 
-function homepageLocale(language: string): 'zh-CN' | 'en-US' {
-  return language.toLowerCase().startsWith('en') ? 'en-US' : 'zh-CN'
-}
-
-function homepageTranslation(entry: HomepageEntry, language: string): HomepageTranslation {
-  const locale = homepageLocale(language)
-  return entry.data.translations?.[locale] ?? entry.data.translations?.['zh-CN'] ?? entry.data.translations?.['en-US'] ?? {}
-}
+// 活动弹窗只在运营接口返回有效活动时才加载，不进入首页首屏依赖。
+const ActivityCampaignModal = lazy(() =>
+  import('@/components/activity-campaign-modal').then(({ ActivityCampaignModal: Modal }) => ({ default: Modal })),
+)
 
 function homepageHref(value: string | undefined, fallback: string): string {
   const normalized = value?.trim() ?? ''
@@ -105,38 +101,15 @@ function homepagePrice(value: string | number | undefined): string {
   return normalized.replace(/0+$/, '').replace(/\.$/, '')
 }
 
-function homepageMediaURL(objectID: string | undefined, fallbackURL: unknown): string | undefined {
-  return getPublicHomepageAssetURL(objectID) ?? getPublicHomepageMediaURL(fallbackURL)
-}
-
-function homepageString(value: unknown): string | undefined {
-  if (typeof value !== 'string') return undefined
-  const normalized = value.trim()
-  return normalized || undefined
-}
-
+// 占位文案判定。中文没有词边界，按包含匹配（「测试广告位」也要拦住）；
+// 英文按词边界匹配，否则 latest / contest 这类词会被误判；纯数字仍要求整串，
+// 否则任何带数字的正常标题（如 GLM5.3）都会进兜底。
 function isHomepagePlaceholder(value: string | undefined): boolean {
   const normalized = value?.trim().toLowerCase() ?? ''
-  return !normalized || /^(test|testing|todo|demo|待补充|测试|占位|待完善|\d+)$/.test(normalized)
-}
-
-// 首页运营条目在不同版本接口中可能把图片放在翻译字段或条目根字段，统一从接口数据解析。
-function homepageEntryMediaURL(entry: HomepageEntry, language: string): string | undefined {
-  const locale = homepageLocale(language)
-  const localizedContent = entry.data.translations?.[locale]
-  const fallbackLocale = locale === 'en-US' ? 'zh-CN' : 'en-US'
-  const fallbackContent = entry.data.translations?.[fallbackLocale]
-  const rootData = entry.data
-  const rootObjectID = homepageString(rootData.image_object_id)
-  const rootImageURL = homepageString(rootData.image_url) ?? homepageString(rootData.cover_url)
-  return homepageMediaURL(
-    homepageString(localizedContent?.image_object_id) ?? homepageString(fallbackContent?.image_object_id) ?? rootObjectID,
-    homepageString(localizedContent?.image_url)
-      ?? homepageString(localizedContent?.cover_url)
-      ?? homepageString(fallbackContent?.image_url)
-      ?? homepageString(fallbackContent?.cover_url)
-      ?? rootImageURL,
-  )
+  if (!normalized) return true
+  return /^\d+$/.test(normalized)
+    || /待补充|测试|占位|待完善/.test(normalized)
+    || /(?:^|[^a-z])(?:test(?:s|ing)?|todo|demo|placeholder)(?:[^a-z]|$)/.test(normalized)
 }
 
 function useHomeMetrics(): { tokenVolume: number; apiCalls: number; initialRequestFinished: boolean } {
@@ -817,6 +790,11 @@ export function HomePage({ onInitialScoreboardReady }: { onInitialScoreboardRead
     })
   }, [managedNews, i18n.language, t])
   const managedPartnerItems = useMemo(() => managedPartners(homepage, i18n.language), [homepage, i18n.language])
+  // 没有有效活动数据时保持为 null，首页不挂载活动弹窗。
+  const activityCampaign = useMemo(
+    () => homepagePopupCampaign(homepage?.popups, i18n.language, contentTime),
+    [homepage, i18n.language, contentTime],
+  )
   const partnerItems = managedPartnerItems
   const partnerRows = useMemo(() => {
     if (!partnerItems.length) return []
@@ -935,6 +913,11 @@ export function HomePage({ onInitialScoreboardReady }: { onInitialScoreboardRead
           <div className="manuscript-partner-grid" aria-label={t('home.rebuild.partnersTitle')} role={isHomepageLoading ? 'status' : undefined} aria-busy={isHomepageLoading || undefined}>{isHomepageLoading ? <><span className="public-sr-only">{t('home.rebuild.loadingPartners')}</span><HomePartnerSkeleton /></> : partnerRows.map((row, rowIndex) => <HomePartnerRow key={`partner-row-${rowIndex}`} partners={row} rowIndex={rowIndex} />)}</div>
         </section>
       </div>
+      {activityCampaign ? (
+        <Suspense fallback={null}>
+          <ActivityCampaignModal campaign={activityCampaign} />
+        </Suspense>
+      ) : null}
     </PublicLayout>
   )
 }

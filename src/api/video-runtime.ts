@@ -150,7 +150,9 @@ function normalizeStatus(value: unknown): VideoTaskStatus {
   if (['succeeded', 'success', 'completed', 'done'].includes(status)) return 'succeeded'
   if (['failed', 'failure', 'error'].includes(status)) return 'failed'
   if (['cancelled', 'canceled'].includes(status)) return 'cancelled'
-  if (status === 'cancel_requested') return 'cancelling'
+  // 取消接口按契约直接返回 status: "cancelling"，漏掉这个字面值会被兜底成 unknown，
+  // 表现成「取消成功却显示失败卡且不再轮询」。
+  if (['cancelling', 'canceling', 'cancel_requested', 'cancel_pending'].includes(status)) return 'cancelling'
   if (status === 'expired') return 'expired'
   return 'unknown'
 }
