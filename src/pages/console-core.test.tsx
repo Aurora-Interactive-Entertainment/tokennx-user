@@ -46,6 +46,7 @@ function activeApiKey(): UserApiKey {
     model_ids: [],
     models: [],
     tags: [],
+    ip_whitelist: [],
     billing_source: 'balance',
     limits: { enabled: true, cost_limit_yuan: null, used_amount_yuan: '0', rpm: null, tpm: null, concurrency: null },
     creator: { id: 'user-test', display_name: '测试用户', masked_phone: '138****0000' },

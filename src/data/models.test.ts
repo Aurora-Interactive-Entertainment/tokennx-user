@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { UserModelItem } from '@/api/user-models'
+import type { UserModelItem, UserModelPricingPeriod } from '@/api/user-models'
 import { filterModelRecords, filterModels, findModel, formatModelPrice, mapUserModels, MODEL_CATALOG, modelAlias, modelPermissionKey, priceSaving } from './models'
 
 describe('模型目录业务规则', () => {
@@ -74,6 +74,56 @@ describe('模型目录业务规则', () => {
     expect(thousand.throughput).toEqual({ value: 1.2, unit: 'K tokens' })
     expect(small.throughput).toEqual({ value: 999, unit: 'token' })
     expect(invalid.throughput).toEqual({ value: 0, unit: '暂无数据' })
+  })
+
+  it('完整保留峰谷时段和全部规则，并以扁平价格作为当前生效价', () => {
+    const periods: UserModelPricingPeriod[] = [
+      {
+        key: 'peak', name: '高峰', default: false, weekday_mask: 31, start_minute: 480, end_minute: 1200,
+        rules: [
+          { kind: 'token', meter_code: 'input_token', tier_no: 1, lower_bound: 0, upper_bound: 128000, unit_quantity: 1000000, unit_price_yuan: '1.234567890123456789', rounding_mode: 'half_even' },
+          { kind: 'token', meter_code: 'input_token', tier_no: 2, lower_bound: 128000, unit_quantity: 1000000, unit_price_yuan: '2.000000', rounding_mode: 'up' },
+          { kind: 'request', meter_code: 'image_generation', tier_no: 0, lower_bound: 0, unit_quantity: 1, unit_price_yuan: '0.00000001', rounding_mode: 'half_up', width: 1024, height: 768, quality_level: 'hd', conditions: { resolution: '1024x768' } },
+          { kind: 'usage', meter_code: 'video_seconds', tier_no: 0, lower_bound: 0, unit_quantity: 1, unit_price_yuan: '0.80', rounding_mode: 'down', duration_seconds: 5, conditions: { resolution: '720p' } },
+          { kind: 'tool', meter_code: 'web_search', tier_no: 0, lower_bound: 0, unit_quantity: 1000, unit_price_yuan: '0.00', rounding_mode: 'up', tool_code: 'web_search' },
+        ],
+      },
+      {
+        key: 'off-peak', name: '低谷', default: true, weekday_mask: 127, start_minute: 0, end_minute: 1440,
+        rules: [{ kind: 'token', meter_code: 'input_token', tier_no: 1, lower_bound: 0, unit_quantity: 1000000, unit_price_yuan: '0.50', rounding_mode: 'up' }],
+      },
+    ]
+    const prices = [{ meter_code: 'input_token', meter_kind: 'input_token', unit: 'token', currency: 'CNY', unit_quantity: 1000000, unit_price_yuan: '0.50', tier_no: 1, period_key: 'off-peak', rule_kind: 'token' as const }]
+    const [model] = mapUserModels([{
+      id: 'period-model', name: 'Period Model', company: 'Provider', modality: 'text', billing_mode: 'token',
+      description: '', capabilities: null, provider_count: 1, prices,
+      pricing_timezone: 'Asia/Shanghai', pricing_periods: periods, current_period_key: 'off-peak',
+    }])
+
+    expect(model.pricingTimezone).toBe('Asia/Shanghai')
+    expect(model.currentPeriodKey).toBe('off-peak')
+    expect(model.pricingPeriods).toEqual(periods)
+    expect(model.prices).toEqual(prices)
+    expect(model.tokenNxPrice).toMatchObject({ input: 0.5, inputRaw: '0.50', unit: '¥/M tokens' })
+    expect(model.pricingPeriods?.[0].rules[0].unit_price_yuan).toBe('1.234567890123456789')
+    expect(model.pricingPeriods?.[0].rules[1]).not.toHaveProperty('upper_bound')
+  })
+
+  it('兼容没有峰谷价字段的历史响应并保留新接口的空定价状态', () => {
+    const legacy: UserModelItem = {
+      id: 'legacy-model', name: 'Legacy Model', company: 'Provider', modality: 'text', billing_mode: 'token',
+      description: '', capabilities: null, provider_count: 1, prices: null,
+    }
+    const [oldModel, emptyModel] = mapUserModels([
+      legacy,
+      { ...legacy, id: 'empty-pricing-model', pricing_timezone: '', pricing_periods: [], current_period_key: '' },
+    ])
+
+    expect(oldModel).not.toHaveProperty('pricingTimezone')
+    expect(oldModel).not.toHaveProperty('pricingPeriods')
+    expect(oldModel).not.toHaveProperty('currentPeriodKey')
+    expect(emptyModel).toMatchObject({ pricingTimezone: '', pricingPeriods: [], currentPeriodKey: '' })
+    expect(emptyModel.tokenNxPrice).toEqual(oldModel.tokenNxPrice)
   })
 
   it('映射模型图标、标签、活动、输出上限和可用率统计', () => {

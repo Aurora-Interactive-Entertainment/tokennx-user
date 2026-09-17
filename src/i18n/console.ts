@@ -4,8 +4,15 @@ export const consoleResources = {
   "zh-CN": {
     console: {
       timePricing: {
-        title: "峰谷价", example: "示例", timezone: "北京时间",
-        peak: "峰时", offPeak: "谷时", note: "价格与时段仅作展示，以实际计费为准",
+        title: "峰谷价", timezone: "时区：{{timezone}}", current: "当前生效",
+        fallback: "其余时段适用（默认）", everyDay: "每天", weekdays: "周一至周五",
+        mon: "周一", tue: "周二", wed: "周三", thu: "周四", fri: "周五", sat: "周六", sun: "周日",
+        millionTokens: "百万 tokens", tokens: "tokens", requests: "次请求", units: "计量单位",
+        seconds: "秒", images: "张", characters: "字符",
+        tier: "阶梯 {{tier}}：{{range}} tokens", from: "{{lower}} 及以上",
+        width: "宽 {{value}} px", height: "高 {{value}} px", quality: "质量：{{value}}",
+        duration: "时长 {{value}} 秒", tool: "工具：{{value}}",
+        note: "当前时段以本次查询结果为准；阶梯价格按累进用量计费。",
       },
       nav: {
         modelUse: "模型使用",
@@ -701,7 +708,9 @@ export const consoleResources = {
         operatorHint: "创建后该密钥将分配给所选企业成员。",
         whitelist: "白名单",
         whitelistPlaceholder: "输入 IP 或 CIDR，例如：192.168.1.10, 10.0.0.0/24",
-        whitelistHint: "支持逗号、分号、换行或竖线分隔；",
+        whitelistHint: "支持逗号、分号、换行或竖线分隔，最多 64 条；留空不限制来源 IP。",
+        whitelistBulkHint: "最多 64 条；未修改时保留各密钥原白名单，修改后统一应用，清空则取消限制。",
+        whitelistTooMany: "白名单去重后最多允许 64 条规则",
         whitelistInvalid: "白名单地址格式无效：{{value}}",
         memberRequired: "请选择操作人",
         required: "必填",
@@ -2334,8 +2343,15 @@ export const consoleResources = {
   "en-US": {
     console: {
       timePricing: {
-        title: "Time-of-day pricing", example: "Demo", timezone: "UTC+8",
-        peak: "Peak", offPeak: "Off-peak", note: "Illustrative prices and hours; actual billing applies",
+        title: "Time-of-day pricing", timezone: "Time zone: {{timezone}}", current: "Current",
+        fallback: "All other times (default)", everyDay: "Every day", weekdays: "Mon–Fri",
+        mon: "Mon", tue: "Tue", wed: "Wed", thu: "Thu", fri: "Fri", sat: "Sat", sun: "Sun",
+        millionTokens: "M tokens", tokens: "tokens", requests: "requests", units: "units",
+        seconds: "seconds", images: "images", characters: "characters",
+        tier: "Tier {{tier}}: {{range}} tokens", from: "{{lower}} and above",
+        width: "Width {{value}} px", height: "Height {{value}} px", quality: "Quality: {{value}}",
+        duration: "Duration: {{value}} seconds", tool: "Tool: {{value}}",
+        note: "The current period reflects this query; tiered prices apply progressively by usage.",
       },
       nav: {
         modelUse: "Model access",
@@ -3064,7 +3080,9 @@ export const consoleResources = {
           "The key will be assigned to the selected enterprise member.",
         whitelist: "Whitelist",
         whitelistPlaceholder: "Enter IP or CIDR, for example: 192.168.1.10, 10.0.0.0/24",
-        whitelistHint: "Separate entries with commas, semicolons, new lines, or pipes; ",
+        whitelistHint: "Separate entries with commas, semicolons, new lines, or pipes. Up to 64 rules; leave blank to allow any source IP.",
+        whitelistBulkHint: "Up to 64 rules. Untouched lists are preserved; changes apply to all selected keys. Clearing removes IP restrictions.",
+        whitelistTooMany: "The whitelist allows up to 64 unique rules",
         whitelistInvalid: "Invalid whitelist address: {{value}}",
         memberRequired: "Select an operator",
         required: "Required",

@@ -48,12 +48,12 @@
 
 浏览器中的写操作使用隔离存储和完全模拟 API：实测自定义角色提交仍为 `finance_auditor`，部门提交为 `department-real`，竖屏视频实际参数为 `720x1280`。没有调用真实付款、生成或成员修改接口。
 
-最终日志位于 `C:/Users/Admin/AppData/Local/Temp/tokennx-fix-20260916-test-final.log`、`tokennx-fix-20260916-build-final.log`；覆盖率目录为 `tokennx-fix-20260916-coverage`，完整构建目录为 `tokennx-fix-20260916-release-final`。浏览器合成页面保留在已忽略的 `.tmp-audit-*-20260916` 目录中，不作为产品路由发布。
+最终日志位于 `C:/Users/Admin/AppData/Local/Temp/tokennx-fix-20260916-test-final.log`、`tokennx-fix-20260916-build-final.log`；覆盖率目录为 `tokennx-fix-20260916-coverage`，完整构建目录为 `tokennx-fix-20260916-release-final`。浏览器合成页面当时保存在已忽略的临时目录中，未作为产品路由发布；这些临时材料已按项目清理要求删除。
 
 ## 依赖与未覆盖边界
 
 - Vitest 与 coverage 从 4.1.10 更新到 4.1.11；nanoid 从 3.3.17 更新到 3.3.19。仅 10 个依赖节点版本变化，没有升级 Semi 或加入 overrides。完整测试、覆盖率和构建均在更新之后通过。
-- **依赖审计仍有 31 个受影响节点（1 high、30 moderate）**，均来自 Tiptap 核心两项公告及依赖链传播；这不等于 31 个已证实可利用漏洞。源码未找到 Tiptap/RichText/AIChatInput 的使用入口。两项公告对应的最低整体修复版本为 3.30.5，但需要同步 Tiptap 的精确 peer 版本，普通更新预演出现版本混用，故本轮保留该项，另行做整组升级和 Semi 回归。详见[属性注入公告](https://github.com/advisories/GHSA-cp6q-959q-f8rh)、[Markdown ReDoS 公告](https://github.com/advisories/GHSA-j95f-988m-3j2f)，本地结果在 `.tmp-audit-auth-20260916/dependency-audit-after.json`。
+- **依赖审计仍有 31 个受影响节点（1 high、30 moderate）**，均来自 Tiptap 核心两项公告及依赖链传播；这不等于 31 个已证实可利用漏洞。源码未找到 Tiptap/RichText/AIChatInput 的使用入口。两项公告对应的最低整体修复版本为 3.30.5，但需要同步 Tiptap 的精确 peer 版本，普通更新预演出现版本混用，故本轮保留该项，另行做整组升级和 Semi 回归。详见[属性注入公告](https://github.com/advisories/GHSA-cp6q-959q-f8rh)、[Markdown ReDoS 公告](https://github.com/advisories/GHSA-j95f-988m-3j2f)；当时的本地审计结果文件已按项目清理要求删除，上述验证结论保留。
 - **真实微信扫码、支付完成/退款、后端授权规则尚未端到端验证**。本轮验证了前端状态和请求契约，不能代替真实账号及支付沙箱联调。
 - F11 没有猜测“移出所有部门”的后端空值契约；仅禁止提交虚拟根。若需要该能力，应由后端明确 null/空字符串/专用操作的约定后实现。
 - 模型接口缺少英文描述时仍展示接口返回的原文，前端没有伪造翻译。手机英文订阅胶囊空间、其他历史体验问题继续列在原报告的优化部分。

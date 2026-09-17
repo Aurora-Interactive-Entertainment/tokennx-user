@@ -80,6 +80,7 @@ import { isAuthenticationFailure } from "@/api/http";
 import { invalidateAuth } from "@/store/auth-slice";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { formatApiTime, formatPersonOptionLabel, type ApiTimeValue } from "@/utils/format";
+import { parseApiKeyWhitelist } from "@/utils/api-key-whitelist";
 import {
   getInvitationOverview,
   type InvitationOverview,
@@ -100,6 +101,7 @@ type ApiKeyFormState = {
   name: string;
   tagsText: string;
   whitelistText: string;
+  whitelistEdited: boolean;
   memberID: string;
   expiresAt: number | null;
   scope: ApiKeyScope;
@@ -163,6 +165,7 @@ function emptyApiKeyForm(): ApiKeyFormState {
     name: "",
     tagsText: "",
     whitelistText: "",
+    whitelistEdited: false,
     memberID: "",
     expiresAt: null,
     scope: "all",
@@ -175,64 +178,6 @@ function emptyApiKeyForm(): ApiKeyFormState {
     tpm: "",
     concurrency: "",
   };
-}
-
-// 白名单暂未接入后端，先按常见的 IPv4/IPv6 地址及 CIDR 格式做前端校验。
-function isValidIPv4(value: string): boolean {
-  const parts = value.split(".");
-  return parts.length === 4 && parts.every((part) =>
-    /^\d{1,3}$/.test(part) && Number(part) <= 255,
-  );
-}
-
-function ipv6SegmentCount(value: string): number {
-  if (!value) return 0;
-  const groups = value.split(":");
-  let count = 0;
-  for (const group of groups) {
-    if (group.includes(".")) {
-      if (groups.indexOf(group) !== groups.length - 1 || !isValidIPv4(group)) {
-        return -1;
-      }
-      count += 2;
-      continue;
-    }
-    if (!/^[0-9a-f]{1,4}$/i.test(group)) return -1;
-    count += 1;
-  }
-  return count;
-}
-
-function isValidIPv6(value: string): boolean {
-  if (!value || value.includes(":::")) return false;
-  const compressionParts = value.split("::");
-  if (compressionParts.length > 2) return false;
-  if (compressionParts.length === 2) {
-    // “::” 至少压缩一个分段，因此未压缩部分必须少于 8 段。
-    const leftCount = ipv6SegmentCount(compressionParts[0]);
-    const rightCount = ipv6SegmentCount(compressionParts[1]);
-    return leftCount >= 0 && rightCount >= 0 && leftCount + rightCount < 8;
-  }
-  return ipv6SegmentCount(value) === 8;
-}
-
-function parseWhitelist(value: string): { entries: string[]; invalid: string | null } {
-  const entries = value
-    .split(/[,，;；|\n\r\t]+/)
-    .map((entry) => entry.trim())
-    .filter(Boolean);
-  const invalid = entries.find((entry) => {
-    const parts = entry.split("/");
-    if (parts.length > 2 || !parts[0]) return true;
-    const [address, prefix] = parts;
-    const ipv6 = address.includes(":");
-    const validAddress = ipv6 ? isValidIPv6(address) : isValidIPv4(address);
-    if (!validAddress) return true;
-    if (prefix === undefined) return false;
-    const maxPrefix = ipv6 ? 128 : 32;
-    return !/^\d{1,3}$/.test(prefix) || Number(prefix) > maxPrefix;
-  }) ?? null;
-  return { entries, invalid };
 }
 
 function apiDateLabel(value: ApiTimeValue | null): string {
@@ -655,8 +600,8 @@ export function ApiKeysPage({
     setForm({
       name: key.name,
       tagsText: key.tags.join(", "),
-      // 白名单尚未由接口返回，编辑旧密钥时保持为空，后续接入字段后再回填。
-      whitelistText: "",
+      whitelistText: key.ip_whitelist.join(", "),
+      whitelistEdited: false,
       memberID: "",
       expiresAt: key.expires_at,
       scope: key.scope,
@@ -685,6 +630,7 @@ export function ApiKeysPage({
       name: "",
       tagsText: "",
       whitelistText: "",
+      whitelistEdited: false,
       memberID: "",
       expiresAt: first.expires_at,
       scope: first.scope,
@@ -772,9 +718,13 @@ export function ApiKeysPage({
       Toast.warning(t("console.account.tagsInvalid"));
       return null;
     }
-    const whitelist = parseWhitelist(form.whitelistText);
+    const whitelist = parseApiKeyWhitelist(form.whitelistText);
     if (whitelist.invalid) {
       Toast.warning(t("console.account.whitelistInvalid", { value: whitelist.invalid }));
+      return null;
+    }
+    if (whitelist.tooMany) {
+      Toast.warning(t("console.account.whitelistTooMany"));
       return null;
     }
     let selectedModelIds = Array.from(new Set(form.modelIds));
@@ -844,6 +794,8 @@ export function ApiKeysPage({
     return {
       name: bulk ? "" : name,
       tags: bulk ? [] : tags,
+      // 批量编辑未触碰白名单时省略字段，保留每条密钥原有的来源限制。
+      ...(!bulk || form.whitelistEdited ? { ip_whitelist: whitelist.entries } : {}),
       ...(memberID ? { member_id: memberID } : {}),
       expires_at: expiryToRFC3339(form.expiresAt),
       scope,
@@ -854,7 +806,6 @@ export function ApiKeysPage({
       rpm,
       tpm,
       concurrency,
-      // 白名单仅完成前端采集和校验，接口字段就绪后再补入请求体。
     };
   }
 
@@ -868,6 +819,7 @@ export function ApiKeysPage({
           ? (await batchManageEnterpriseApiKeys(workspaceContext, {
               action: "update",
               items: [{ key_id: editingKey.id }],
+              ip_whitelist: input.ip_whitelist,
               scope: input.scope,
               model_ids: input.model_ids,
               billing_source: input.billing_source,
@@ -929,6 +881,7 @@ export function ApiKeysPage({
       ? await Promise.allSettled([batchManageEnterpriseApiKeys(workspaceContext, {
           action: "update",
           items: selected.map((key) => ({ key_id: key.id })),
+          ip_whitelist: input.ip_whitelist,
           scope: input.scope,
           model_ids: input.model_ids,
           billing_source: input.billing_source,
@@ -1977,24 +1930,24 @@ export function ApiKeysPage({
                   </Select>
                 </div>
               </div>
-              <div className="api-key-form-field api-key-whitelist-field api-key-advanced-inline-field">
-                <label className="field-label" htmlFor="key-whitelist">
-                  {t("console.account.whitelist")}
-                </label>
-                <Input
-                  id="key-whitelist"
-                  value={form.whitelistText}
-                  onChange={(value) => updateForm({ whitelistText: value })}
-                  placeholder={t("console.account.whitelistPlaceholder")}
-                  maxLength={2048}
-                  aria-describedby="key-whitelist-hint"
-                />
-                <span className="api-key-field-hint" id="key-whitelist-hint">
-                  {t("console.account.whitelistHint")}
-                </span>
-              </div>
             </>
           ) : null}
+          {/* 来源 IP 限制独立于额度和限流开关，关闭限流后仍允许查看和修改。 */}
+          <div className="api-key-form-field api-key-whitelist-field api-key-advanced-inline-field">
+            <label className="field-label" htmlFor="key-whitelist">
+              {t("console.account.whitelist")}
+            </label>
+            <Input
+              id="key-whitelist"
+              value={form.whitelistText}
+              onChange={(value) => updateForm({ whitelistText: value, whitelistEdited: true })}
+              placeholder={t("console.account.whitelistPlaceholder")}
+              aria-describedby="key-whitelist-hint"
+            />
+            <span className="api-key-field-hint" id="key-whitelist-hint">
+              {t(bulkEditing ? "console.account.whitelistBulkHint" : "console.account.whitelistHint")}
+            </span>
+          </div>
           <div className="api-key-form-field api-key-limit-switch-field">
             <label className="api-key-switch-row">
               <span>

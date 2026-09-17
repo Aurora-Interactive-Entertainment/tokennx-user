@@ -1,4 +1,4 @@
-import type { UserModelActivity, UserModelItem, UserModelPrice, UserModelTag } from '@/api/user-models'
+import type { UserModelActivity, UserModelItem, UserModelPrice, UserModelPricingPeriod, UserModelTag } from '@/api/user-models'
 import { formatDecimal } from '@/utils/format'
 
 export type ModelModality = 'text' | 'image' | 'video' | 'audio' | 'embedding' | 'rerank' | 'speech' | 'transcription' | 'multimodal' | 'other'
@@ -62,6 +62,9 @@ export interface ModelRecord {
   params?: Record<string, string[] | number[]>
   // 保留后端原始价格明细，视频价格示例可据此展示不同计费场景。
   prices?: UserModelPrice[]
+  pricingTimezone?: string
+  pricingPeriods?: UserModelPricingPeriod[]
+  currentPeriodKey?: string
 }
 
 export const MODEL_ALIAS_UNSET_LABEL = '未设置别名'
@@ -233,6 +236,10 @@ export function userModelToRecord(model: UserModelItem): ModelRecord {
     throughput: formatUserModelThroughput(model.total_tokens),
     ...(typeof model.max_tokens === 'number' && Number.isFinite(model.max_tokens) ? { maxOutput: formatContextWindow(model.max_tokens) } : {}),
     ...(model.prices?.length ? { prices: model.prices } : {}),
+    // 时段规则仅用于完整定价展示，当前价格仍以接口 prices 为准。
+    ...(model.pricing_timezone !== undefined ? { pricingTimezone: model.pricing_timezone } : {}),
+    ...(model.pricing_periods !== undefined ? { pricingPeriods: model.pricing_periods } : {}),
+    ...(model.current_period_key !== undefined ? { currentPeriodKey: model.current_period_key } : {}),
     ...(model.params ? { params: model.params } : {}),
   }
 }

@@ -1,39 +1,53 @@
 import { useTranslation } from 'react-i18next'
 import type { ModelRecord } from '@/data/models'
-import { BackofficeMoneyText as MoneyText } from './money'
+import { formatYuanExact } from '@/utils/format'
+import { pricingPeriodSchedule, pricingRuleDetails, pricingRuleLabel, pricingRuleUnit } from '@/utils/model-time-pricing'
 import './model-time-pricing.css'
 
-export function ModelTimePricing({ model }: { model: ModelRecord }) {
-  const { t } = useTranslation()
-  // 仅 DeepSeek 提供峰谷价；其余模型不渲染该区块。
-  if (model.company.trim().toLowerCase() !== 'deepseek') return null
+type TimePricingModel = Pick<ModelRecord, 'pricingPeriods' | 'pricingTimezone' | 'currentPeriodKey' | 'prices'>
 
-  // 接口尚未提供分时价格：仅用当前价格及五折价格预览排版，不参与计费。
-  const periods = [
-    { key: 'peak', time: '08:00–24:00', factor: 1 },
-    { key: 'offPeak', time: '00:00–08:00', factor: 0.5 },
-  ] as const
+export function ModelTimePricing({ model }: { model: TimePricingModel }) {
+  const { t } = useTranslation()
+  const periods = model.pricingPeriods ?? []
+  if (!periods.length) return null
 
   return (
     <div className="model-time-pricing">
       <div className="model-time-pricing-heading">
-        <span>{t('console.timePricing.title')} <small>{t('console.timePricing.example')}</small></span>
-        <span>{t('console.timePricing.timezone')}</span>
+        <span>{t('console.timePricing.title')}</span>
+        {model.pricingTimezone ? <span>{t('console.timePricing.timezone', { timezone: model.pricingTimezone })}</span> : null}
       </div>
       <div className="model-time-pricing-periods">
-        {periods.map(({ key, time, factor }) => (
-          <div className={`model-time-pricing-period model-time-pricing-period--${key}`} key={key}>
-            <div className="model-time-pricing-label"><b>{t(`console.timePricing.${key}`)}</b><span>{time}</span></div>
-            <div className="model-time-pricing-values">
-              {(['input', 'output'] as const).map((purpose) => {
-                const price = model.tokenNxPrice[purpose]
-                return <span key={purpose}>{t(`console.common.${purpose}`)} <strong><MoneyText value={price === undefined ? undefined : price * factor} withCurrency={false} /></strong></span>
-              })}
-            </div>
-          </div>
-        ))}
+        {periods.map((period) => {
+          // 当前时段由服务端按定价时区判定，避免浏览器本地时区造成偏差。
+          const current = period.key === model.currentPeriodKey
+          return (
+            <section className={`model-time-pricing-period${current ? ' is-current' : ''}`} key={period.key}>
+              <div className="model-time-pricing-label">
+                <b>{period.name || period.key}</b>
+                {current ? <span className="model-time-pricing-current">{t('console.timePricing.current')}</span> : null}
+              </div>
+              <div className="model-time-pricing-schedule">{pricingPeriodSchedule(period, t)}</div>
+              <ul className="model-time-pricing-rules">
+                {period.rules.map((rule, index) => {
+                  const details = pricingRuleDetails(rule, t)
+                  return (
+                    <li key={`${rule.meter_code}-${rule.tier_no}-${index}`}>
+                      <div className="model-time-pricing-value">
+                        <span>{pricingRuleLabel(rule, model.prices, t)}</span>
+                        {/* 完整规则保留原始金额精度，避免极小单价显示为零。 */}
+                        <span className="model-time-pricing-amount"><strong data-money-value={rule.unit_price_yuan}>{formatYuanExact(rule.unit_price_yuan)}</strong><small> / {pricingRuleUnit(rule, model.prices, t)}</small></span>
+                      </div>
+                      {details ? <div className="model-time-pricing-rule-details">{details}</div> : null}
+                    </li>
+                  )
+                })}
+              </ul>
+            </section>
+          )
+        })}
       </div>
-      <div className="model-time-pricing-note">{t('console.timePricing.note')} · {model.tokenNxPrice.unit}</div>
+      <div className="model-time-pricing-note">{t('console.timePricing.note')}</div>
     </div>
   )
 }

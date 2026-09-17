@@ -53,6 +53,7 @@ export interface UserApiKey {
   model_ids: string[];
   models: ApiKeyModel[];
   tags: string[];
+  ip_whitelist: string[];
   billing_source: ApiKeyBillingSource;
   limits: ApiKeyLimits;
   creator: ApiKeyCreator;
@@ -83,6 +84,8 @@ export interface UserApiKeySubscriptionModels {
 export interface UserApiKeyMutation {
   name: string;
   tags: string[];
+  // 更新时省略保留原规则，显式空数组清空；白名单独立于费用和限流开关。
+  ip_whitelist?: string[];
   member_id?: string;
   // 创建/更新请求按文档使用 UTC RFC3339 字符串；列表响应仍是 Unix 毫秒时间戳。
   expires_at: string | null;
@@ -118,6 +121,7 @@ export type EnterpriseApiKeyAction = "delete" | "disable" | "enable" | "update";
 export interface EnterpriseApiKeyBatchInput {
   action: EnterpriseApiKeyAction;
   items: Array<{ key_id: string }>;
+  ip_whitelist?: string[];
   scope?: ApiKeyScope;
   model_ids?: string[];
   billing_source?: ApiKeyBillingSource;
@@ -183,6 +187,9 @@ function normalizeApiKeyItem(value: unknown): UserApiKey {
     models: normalizeModelList(item.models),
     tags: Array.isArray(item.tags)
       ? item.tags.filter((tag): tag is string => typeof tag === "string")
+      : [],
+    ip_whitelist: Array.isArray(item.ip_whitelist)
+      ? item.ip_whitelist.filter((entry): entry is string => typeof entry === "string")
       : [],
   };
 }

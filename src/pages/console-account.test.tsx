@@ -21,6 +21,7 @@ const KEY_ITEM = {
   model_ids: [] as string[],
   models: [] as Array<{ id: string; alias: string; name: string; company: string }>,
   tags: ['演示'],
+  ip_whitelist: ['192.0.2.1/32', '2001:db8::/64'],
   billing_source: 'balance',
   limits: {
     enabled: true,
@@ -122,10 +123,16 @@ function mockApiKeyApi(config: {
       return apiResponse({ items: accountType === 'enterprise' && !config.enterpriseItems ? [] : items, available_models: config.availableModels ?? [{ id: 'gpt-4o', alias: 'gpt-public', name: 'GPT-4o', company: 'OpenAI' }] })
     }
     if (url.includes('/api/user/api-keys') && method === 'POST' && !url.includes('/enable') && !url.includes('/disable')) {
-      const body = JSON.parse(String(requestOptions?.body)) as { name: string }
-      const item = { ...structuredClone(KEY_ITEM), id: 'key-created', name: body.name, masked_key: 'nx_live_••••wxyz', secret: 'nx_live_created_persisted_secret', created_at: config.createdAtAsNumber ? Date.parse(KEY_ITEM.created_at) : KEY_ITEM.created_at } as unknown as typeof keyItem
+      const body = JSON.parse(String(requestOptions?.body)) as { name: string; ip_whitelist?: string[] }
+      const item = { ...structuredClone(KEY_ITEM), id: 'key-created', name: body.name, ip_whitelist: body.ip_whitelist ?? [], masked_key: 'nx_live_••••wxyz', secret: 'nx_live_created_persisted_secret', created_at: config.createdAtAsNumber ? Date.parse(KEY_ITEM.created_at) : KEY_ITEM.created_at } as unknown as typeof keyItem
       items = [item, ...items]
       return apiResponse({ item, secret: 'nx_live_created_persisted_secret' })
+    }
+    if (url.includes('/api/user/api-keys/') && method === 'PUT') {
+      const id = new URL(url, 'https://saas.example.com').pathname.split('/').at(-1)
+      const body = JSON.parse(String(requestOptions?.body))
+      items = items.map((item) => item.id === id ? { ...item, ...body, ip_whitelist: body.ip_whitelist ?? item.ip_whitelist } : item)
+      return apiResponse(items.find((item) => item.id === id))
     }
     if (url.includes('/enable') && method === 'POST') {
       items = items.map((item) => item.id === KEY_ID ? { ...item, status: 'active' } : item)
@@ -209,6 +216,76 @@ describe('密钥管理页面', () => {
   it('分页全选只修改当前页的选择状态', () => {
     expect(updateSelectedKeyIDs(['page-one-key'], ['page-two-key'], true)).toEqual(['page-one-key', 'page-two-key'])
     expect(updateSelectedKeyIDs(['page-one-key', 'page-two-key'], ['page-two-key'], false)).toEqual(['page-one-key'])
+  })
+
+  it('未启用费用限流时也提交白名单，并对混合分隔输入去重', async () => {
+    const user = userEvent.setup()
+    const { fetchMock } = mockApiKeyApi()
+    renderPage()
+    await user.click(await screen.findByRole('button', { name: /创建 API 密钥/ }))
+    await user.type(screen.getByLabelText('密钥名称'), '白名单密钥')
+    await user.type(screen.getByLabelText('白名单'), '192.0.2.1，192.0.2.1/32;2001:db8::1|10.0.0.7/24')
+    await user.click(screen.getByRole('button', { name: 'confirm' }))
+    await waitFor(() => expect(fetchMock.mock.calls.some(([, options]) => options?.method === 'POST')).toBe(true))
+    const request = fetchMock.mock.calls.find(([, options]) => options?.method === 'POST')
+    expect(JSON.parse(String(request?.[1]?.body))).toMatchObject({
+      ip_whitelist: ['192.0.2.1/32', '2001:db8::1/128', '10.0.0.7/24'],
+      limits_enabled: false,
+    })
+  })
+
+  it.each(['0.0.0.0/0', Array.from({ length: 65 }, (_, i) => `192.0.2.${i + 1}`).join(',')])('白名单无效时阻止创建请求：%s', async (value) => {
+    const user = userEvent.setup()
+    const { fetchMock } = mockApiKeyApi()
+    renderPage()
+    await user.click(await screen.findByRole('button', { name: /创建 API 密钥/ }))
+    await user.type(screen.getByLabelText('密钥名称'), '校验密钥')
+    fireEvent.change(screen.getByLabelText('白名单'), { target: { value } })
+    await user.click(screen.getByRole('button', { name: 'confirm' }))
+    expect(fetchMock.mock.calls.some(([, options]) => options?.method === 'POST')).toBe(false)
+    expect(screen.getByLabelText('白名单')).toHaveValue(value)
+  })
+
+  it.each([false, true])('编辑回显并保存白名单，显式清空=%s', async (clear) => {
+    const user = userEvent.setup()
+    const { fetchMock } = mockApiKeyApi({ limitsDisabled: true })
+    renderPage()
+    await user.click(await screen.findByRole('button', { name: '编辑 API 密钥' }))
+    const input = screen.getByLabelText('白名单')
+    expect(input).toHaveValue(KEY_ITEM.ip_whitelist.join(', '))
+    if (clear) await user.clear(input)
+    await user.click(screen.getByRole('button', { name: 'confirm' }))
+    await waitFor(() => expect(fetchMock.mock.calls.some(([, options]) => options?.method === 'PUT')).toBe(true))
+    const request = fetchMock.mock.calls.find(([, options]) => options?.method === 'PUT')
+    expect(JSON.parse(String(request?.[1]?.body)).ip_whitelist).toEqual(clear ? [] : KEY_ITEM.ip_whitelist)
+    // jsdom 不播放 CSS 动画，需要补发关闭动画事件才能卸载标准弹窗。
+    await waitFor(() => expect(document.querySelector('.semi-modal-content')).toHaveClass('semi-modal-content-animate-hide'))
+    fireEvent(document.querySelector('.semi-modal-content')!, new Event('webkitAnimationEnd', { bubbles: true }))
+    await waitFor(() => expect(screen.queryByLabelText('白名单')).not.toBeInTheDocument())
+    await user.click(screen.getByRole('button', { name: '编辑 API 密钥' }))
+    expect(screen.getByLabelText('白名单')).toHaveValue(clear ? '' : KEY_ITEM.ip_whitelist.join(', '))
+  })
+
+  it.each(['untouched', 'replace', 'clear'])('企业批量编辑正确区分白名单保留、替换和清空：%s', async (action) => {
+    const user = userEvent.setup()
+    window.localStorage.setItem('token-nx:user-front:v1', JSON.stringify({
+      activeWorkspaceId: 'enterprise-1',
+      workspaces: [{ id: 'enterprise-1', name: '示例企业', type: 'enterprise', role: 'owner' }],
+    }))
+    const fetchMock = mockEnterpriseKeyEditApi(structuredClone(KEY_ITEM))
+    renderPage(false, '/console/enterprise-api-keys', false, 'enterprise')
+    await user.click(await screen.findByRole('checkbox', { name: '选择密钥 默认密钥' }))
+    await user.click(screen.getByRole('button', { name: '批量编辑' }))
+    if (action !== 'untouched') {
+      await user.type(screen.getByLabelText('白名单'), '198.51.100.1')
+      if (action === 'clear') await user.clear(screen.getByLabelText('白名单'))
+    }
+    await user.click(screen.getByRole('button', { name: 'confirm' }))
+    await waitFor(() => expect(fetchMock.mock.calls.some(([, options]) => options?.method === 'POST')).toBe(true))
+    const request = fetchMock.mock.calls.find(([url, options]) => String(url).includes('/batch') && options?.method === 'POST')
+    const body = JSON.parse(String(request?.[1]?.body))
+    if (action === 'untouched') expect(body).not.toHaveProperty('ip_whitelist')
+    else expect(body.ip_whitelist).toEqual(action === 'clear' ? [] : ['198.51.100.1/32'])
   })
 
   it('标签筛选覆盖后续分页的数据，并支持清除筛选', async () => {
@@ -460,7 +537,7 @@ describe('密钥管理页面', () => {
       const requestURL = new URL(String(url), 'https://saas.example.com')
       return requestURL.pathname === `/api/user/api-keys/${KEY_ID}` && options?.method === 'PUT'
     })
-    expect(JSON.parse(String(putCall?.[1]?.body))).toMatchObject({ name: '本人更新密钥', expires_at: null })
+    expect(JSON.parse(String(putCall?.[1]?.body))).toMatchObject({ name: '本人更新密钥', expires_at: null, ip_whitelist: KEY_ITEM.ip_whitelist })
   })
 
   it('企业编辑他人密钥时禁用不支持的字段并使用批量更新接口', async () => {
@@ -485,6 +562,8 @@ describe('密钥管理页面', () => {
       return requestURL.pathname === '/api/user/enterprise/enterprise-1/api-keys/batch' && options?.method === 'POST'
     })).toBe(true))
     expect(fetchMock.mock.calls.some(([url, options]) => String(url).includes('/api/user/api-keys/') && options?.method === 'PUT')).toBe(false)
+    const request = fetchMock.mock.calls.find(([url, options]) => String(url).includes('/batch') && options?.method === 'POST')
+    expect(JSON.parse(String(request?.[1]?.body)).ip_whitelist).toEqual(KEY_ITEM.ip_whitelist)
   })
 
   // 订阅计费必须以订阅模型接口返回的集合为准，并在成功后自动全选。

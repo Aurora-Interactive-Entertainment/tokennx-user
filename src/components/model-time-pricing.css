@@ -7,20 +7,12 @@
 
 .model-time-pricing-heading,
 .model-time-pricing-label,
-.model-time-pricing-values {
+.model-time-pricing-value {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
   justify-content: space-between;
   gap: 4px 10px;
-}
-
-.model-time-pricing-heading small {
-  margin-left: 4px;
-  padding: 1px 5px;
-  border: 1px solid var(--color-border-neutral-l1);
-  border-radius: 4px;
-  font-size: 10px;
 }
 
 .model-time-pricing-periods {
@@ -36,6 +28,11 @@
   border: 1px solid var(--color-border-neutral-l1);
   border-radius: 6px;
   background: var(--color-bg-overlay-l2);
+  overflow-wrap: anywhere;
+}
+
+.model-time-pricing-period.is-current {
+  border-color: var(--color-brand);
 }
 
 .model-time-pricing-label b {
@@ -43,29 +40,44 @@
   font-weight: 500;
 }
 
-.model-time-pricing-period--offPeak .model-time-pricing-label b,
-.model-time-pricing-period--offPeak strong {
-  color: var(--color-success, #29966f);
+.model-time-pricing-current {
+  color: var(--color-brand);
+  font-size: 11px;
 }
 
-.model-time-pricing-values {
-  margin-top: 6px;
+.model-time-pricing-schedule {
+  margin-top: 4px;
 }
 
-.model-time-pricing-values > span {
-  white-space: nowrap;
+.model-time-pricing-rules {
+  display: grid;
+  gap: 8px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
 }
 
-.model-time-pricing-values strong {
+.model-time-pricing-amount {
+  font-variant-numeric: tabular-nums;
+}
+
+.model-time-pricing-amount strong {
   color: var(--color-text-default);
   font-weight: 600;
-  font-variant-numeric: tabular-nums;
+}
+
+.model-time-pricing-amount small {
+  font-size: inherit;
+}
+
+.model-time-pricing-rule-details,
+.model-time-pricing-note {
+  color: var(--color-text-tertiary);
+  font-size: 11px;
 }
 
 .model-time-pricing-note {
   margin-top: 6px;
-  color: var(--color-text-tertiary);
-  font-size: 11px;
 }
 
 @media (max-width: 480px) {
@@ -74,6 +86,6 @@
   }
 
   .model-time-pricing-period {
-    padding: 6px 8px;
+    padding: 8px 10px;
   }
 }

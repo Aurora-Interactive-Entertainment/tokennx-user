@@ -691,7 +691,6 @@ html[data-theme="dark"] .video-console-page .video-composer-box {
   color: var(--color-text-default);
 }
 .video-console-page .video-aspect-trigger { width: 157px; min-width: 157px; }
-.video-console-page .video-duration-trigger { width: 89px; min-width: 89px; }
 .video-console-page .video-sound-trigger {
   width: 75px;
   min-width: 75px;
@@ -1300,7 +1299,6 @@ html[data-theme='dark'] .video-console-page .video-composer-box {
 .video-console-page .video-reference-trigger.semi-select { width: 160px; min-width: 160px; }
 .video-console-page .video-model-trigger.semi-select { width: 220px; min-width: 220px; }
 .video-console-page .video-aspect-trigger.semi-select { width: 157px; min-width: 157px; }
-.video-console-page .video-duration-trigger.semi-select { width: 89px; min-width: 89px; }
 .video-console-page .video-model-trigger.semi-select .semi-select-selection,
 .video-console-page .video-model-trigger.semi-select .semi-select-selection-text { display: flex; height: 100%; align-items: center; gap: 8px; }
 .video-console-page .video-model-trigger.semi-select .video-model-logo { align-self: center; flex: 0 0 20px; }
@@ -1550,8 +1548,15 @@ html[data-theme='dark'] .video-console-page .video-composer-box {
   min-width: 174px;
   max-width: min(220px, calc(100vw - 32px));
 }
+/* 时长触发器同样按内容撑开：固定 89px 会把时钟图标和两位数的「24秒」一起裁掉。 */
+.video-console-page .video-duration-trigger.semi-select {
+  width: max-content;
+  min-width: 108px;
+  max-width: min(180px, calc(100vw - 32px));
+}
 .video-console-page .video-model-trigger.semi-select .semi-select-selection-text,
-.video-console-page .video-aspect-trigger.semi-select .semi-select-selection-text {
+.video-console-page .video-aspect-trigger.semi-select .semi-select-selection-text,
+.video-console-page .video-duration-trigger.semi-select .semi-select-selection-text {
   flex: 0 1 auto;
   overflow: visible;
   text-overflow: clip;

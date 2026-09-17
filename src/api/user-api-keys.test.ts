@@ -37,6 +37,7 @@ function lastRequest(fetchMock: FetchSpy): { url: string; options: RequestInit |
 const mutation = {
   name: '生产环境密钥',
   tags: ['生产', '前端'],
+  ip_whitelist: ['192.0.2.1/32', '2001:db8::/64'],
   expires_at: '2027-01-01T00:00:00.000Z',
   scope: 'all' as const,
   model_ids: [] as string[],
@@ -92,6 +93,7 @@ describe('用户 API 密钥接口封装', () => {
     await updateUserApiKey(enterpriseContext, 'key-1', mutation)
     expect(lastRequest(fetchMock).url).toBe('/api/user/api-keys/key-1?account_type=enterprise&enterprise_id=enterprise-1')
     expect(lastRequest(fetchMock).options?.method).toBe('PUT')
+    expect(JSON.parse(String(lastRequest(fetchMock).options?.body)).ip_whitelist).toEqual(mutation.ip_whitelist)
 
     await enableUserApiKey(enterpriseContext, 'key-1')
     expect(lastRequest(fetchMock).url).toBe('/api/user/api-keys/key-1/enable?account_type=enterprise&enterprise_id=enterprise-1')
@@ -149,6 +151,29 @@ describe('用户 API 密钥接口封装', () => {
     expect(result.items[0]?.model_ids).toEqual([])
     expect(result.items[0]?.tags).toEqual([])
     expect(result.items[0]?.models).toEqual([])
+    expect(result.items[0]?.ip_whitelist).toEqual([])
+  })
+
+  it('白名单在创建、列表、更新和启停响应中完整回传，并区分省略与清空', async () => {
+    const key = { id: 'key-1', ip_whitelist: mutation.ip_whitelist }
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => response({ ...key, item: key, items: [key] }))
+    expect((await createUserApiKey(personalContext, mutation)).item.ip_whitelist).toEqual(mutation.ip_whitelist)
+    expect((await createEnterpriseApiKey(enterpriseContext, mutation)).item.ip_whitelist).toEqual(mutation.ip_whitelist)
+    expect(JSON.parse(String(lastRequest(fetchMock).options?.body)).ip_whitelist).toEqual(mutation.ip_whitelist)
+    expect((await getUserApiKeys(personalContext)).items[0].ip_whitelist).toEqual(mutation.ip_whitelist)
+    expect((await getEnterpriseApiKeys(enterpriseContext)).items[0].ip_whitelist).toEqual(mutation.ip_whitelist)
+    expect((await updateUserApiKey(personalContext, 'key-1', mutation)).ip_whitelist).toEqual(mutation.ip_whitelist)
+    expect((await disableUserApiKey(personalContext, 'key-1')).ip_whitelist).toEqual(mutation.ip_whitelist)
+    expect((await enableUserApiKey(personalContext, 'key-1')).ip_whitelist).toEqual(mutation.ip_whitelist)
+
+    await updateUserApiKey(personalContext, 'key-1', { ...mutation, ip_whitelist: [] })
+    expect(JSON.parse(String(lastRequest(fetchMock).options?.body)).ip_whitelist).toEqual([])
+    await updateUserApiKey(personalContext, 'key-1', { ...mutation, ip_whitelist: undefined })
+    expect(JSON.parse(String(lastRequest(fetchMock).options?.body))).not.toHaveProperty('ip_whitelist')
+    await batchManageEnterpriseApiKeys(enterpriseContext, { action: 'update', items: [{ key_id: 'key-1' }], ip_whitelist: [] })
+    expect(JSON.parse(String(lastRequest(fetchMock).options?.body)).ip_whitelist).toEqual([])
+    await batchManageEnterpriseApiKeys(enterpriseContext, { action: 'update', items: [{ key_id: 'key-1' }] })
+    expect(JSON.parse(String(lastRequest(fetchMock).options?.body))).not.toHaveProperty('ip_whitelist')
   })
 
   it('查询订阅模型使用当前账户上下文并规范化无订阅响应', async () => {

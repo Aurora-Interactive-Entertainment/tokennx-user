@@ -29,6 +29,44 @@ export interface UserModelPrice {
   tier_no: number
   selector_meter_code?: string
   purpose?: string
+  period_key?: string
+  rule_kind?: UserModelPricingRule['kind']
+  lower_bound?: number
+  upper_bound?: number
+  width?: number
+  height?: number
+  quality_level?: string
+  duration_seconds?: number
+  conditions?: Record<string, string>
+  tool_code?: string
+}
+
+export interface UserModelPricingRule {
+  kind: 'token' | 'request' | 'usage' | 'tool'
+  meter_code: string
+  tier_no: number
+  lower_bound: number
+  upper_bound?: number
+  unit_quantity: number
+  // 金额保留接口原始字符串，避免在时段与阶梯透传时丢失精度。
+  unit_price_yuan: string
+  rounding_mode: 'up' | 'down' | 'half_up' | 'half_even'
+  width?: number
+  height?: number
+  quality_level?: string
+  duration_seconds?: number
+  tool_code?: string
+  conditions?: Record<string, string>
+}
+
+export interface UserModelPricingPeriod {
+  key: string
+  name: string
+  default: boolean
+  weekday_mask: number
+  start_minute: number
+  end_minute: number
+  rules: UserModelPricingRule[]
 }
 
 export interface UserModelItem {
@@ -50,6 +88,10 @@ export interface UserModelItem {
   provider_count: number
   total_tokens?: string | number
   prices: UserModelPrice[] | null
+  // 新接口必出；保持可选以兼容尚未提供结构化定价的历史响应。
+  pricing_timezone?: string
+  pricing_periods?: UserModelPricingPeriod[]
+  current_period_key?: string
   // 视频模型可选参数由目录接口透传，用于价格示例的分辨率/时长展示。
   params?: Record<string, string[] | number[]>
   availability?: {

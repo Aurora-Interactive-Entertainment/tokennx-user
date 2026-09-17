@@ -299,7 +299,13 @@ export function ModelDetailDrawer({ model, detail, loading, error, visible, onCl
               <PriceCell label={t('console.modelDetail.cacheHitPrice')} price={currentPrice(detailModel?.prices, 'cache_hit')} unavailableLabel={noDataLabel} />
               <PriceCell label={t('console.modelDetail.cacheCreatePrice')} price={currentPrice(detailModel?.prices, 'cache_creation')} unavailableLabel={noDataLabel} />
             </div>
-            <ModelTimePricing model={model} />
+            {/* 详情有新定价字段时整组采用，显式空数组表示已取消分时定价；旧接口才回退目录。 */}
+            <ModelTimePricing model={detailModel?.pricing_periods !== undefined ? {
+              pricingPeriods: detailModel.pricing_periods,
+              pricingTimezone: detailModel.pricing_timezone,
+              currentPeriodKey: detailModel.current_period_key,
+              prices: detailModel.prices ?? undefined,
+            } : model} />
           </section>
 
           <section className="model-detail-section" aria-labelledby="modelDetailInfoTitle">
