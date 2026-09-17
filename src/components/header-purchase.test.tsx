@@ -54,6 +54,20 @@ function AuthScopedHeader() {
 }
 
 describe('订阅入口完整数据流', () => {
+  it('企业顶部购买沿用企业主体，跳过个人实名检查', async () => {
+    const context = { account_type: 'enterprise' as const, enterprise_id: 'enterprise-catalog' }
+    const store = createAppStore()
+    store.dispatch({ type: 'auth/loginWithEmail/fulfilled', payload: user })
+    render(<MemoryRouter><Provider store={store}><HeaderPurchase context={context} /></Provider></MemoryRouter>)
+    await waitFor(() => expect(getProductPlans).toHaveBeenCalledWith(context, expect.any(Object)))
+    const modal = await openCatalog()
+    fireEvent.click(within(modal).getByRole('button', { name: 'DeepSeek套餐包 ¥2.99' }))
+    await screen.findByRole('heading', { name: '支付' })
+    expect(getRealNameProfile).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('checkbox'))
+    await waitFor(() => expect(createBillingPaymentOrder).toHaveBeenCalledWith(context, { plan_id: userPlanFixture.id, quantity: 1 }, expect.any(String), expect.any(Object)))
+  })
+
   it('页面挂载预加载且打开菜单不重复加载，登录后用新价格和真实 ID 继续购买', async () => {
     const store = createAppStore()
     render(<MemoryRouter><Provider store={store}><AuthScopedHeader /></Provider></MemoryRouter>)

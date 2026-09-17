@@ -117,8 +117,11 @@ html[data-theme="light"]
 .personal-usage-model-total,
 .personal-usage-model-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 52px; padding: 0 18px; }
 .personal-usage-model-total { min-height: 78px; flex: 0 0 78px; border-bottom: 1px solid var(--color-border-neutral-l1); color: var(--color-text-default); font-size: 13px; }
+/* 模型别名和金额按可用空间换行，避免长英文标识将另一侧内容挤出卡片。 */
+.personal-usage-model-total > span,
+.personal-usage-model-row > span { min-width: 0; overflow-wrap: anywhere; }
 .personal-usage-model-total strong,
-.personal-usage-model-row strong { color: var(--color-text-default-hover); font-size: 13px; font-weight: 500; white-space: nowrap; }
+.personal-usage-model-row strong { min-width: 0; color: var(--color-text-default-hover); font-size: 13px; font-weight: 500; overflow-wrap: anywhere; text-align: right; }
 .personal-usage-model-total strong small { color: var(--color-text-tertiary); font-size: 12px; font-weight: 400; }
 .personal-usage-model-total svg { margin-left: 4px; color: var(--color-text-tertiary); font-size: 13px; vertical-align: -2px; }
 .personal-usage-model-row { border-bottom: 1px solid var(--color-border-neutral-l1); color: var(--color-text-default); font-size: 13px; }

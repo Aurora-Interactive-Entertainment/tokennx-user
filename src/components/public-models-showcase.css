@@ -1,4 +1,5 @@
 .public-models-page { width: 100%; max-width: none; margin: -1px 0 0; padding: 0; background: var(--color-bg-base-default); }
+.models-showcase-card-price-unavailable { color: var(--models-muted); }
 .models-showcase { --models-surface: #111113; --models-panel: #1e1e20; --models-muted: #a3a3ab; --models-text: #fff; color: var(--models-text); background: var(--models-surface); }
 .models-showcase-hero { position: relative; height: 775px; min-height: 775px; overflow: hidden; isolation: isolate; }
 .models-showcase-hero-art, .models-showcase-hero-overlay { position: absolute; inset: 0; }
@@ -16,7 +17,8 @@
 .models-showcase-hero-copy > p:not(.models-showcase-hero-eyebrow) { --models-copy-blur: 10px; --models-copy-offset: 30px; animation-delay: 450ms; }
 .models-showcase-hero-copy > .models-showcase-hero-action { --models-copy-blur: 0px; --models-copy-offset: 30px; animation-delay: 650ms; }
 .models-showcase-hero-eyebrow { margin-bottom: 14px; color: #b9c5e9; font-size: 13px; letter-spacing: .08em; }
-.models-showcase-hero h1 { max-width: 543px; margin: 0; color: #fff; font-size: 56px; font-weight: 500; line-height: 1.5; letter-spacing: 0; white-space: nowrap; }
+/* 长模型名按文案区宽度折行，保持现有字号和轮播视觉。 */
+.models-showcase-hero h1 { max-width: 543px; margin: 0; color: #fff; font-size: 56px; font-weight: 500; line-height: 1.5; letter-spacing: 0; white-space: normal; overflow-wrap: anywhere; }
 .models-showcase-hero-copy > p:not(.models-showcase-hero-eyebrow) { max-width: 543px; margin-top: 16px; color: #fff; font-size: 16px; font-weight: 500; line-height: 1.7; }
 /* Match the Figma CTA without changing the carousel behavior or navigation target. */
 .models-showcase-hero-action { position: relative; z-index: 0; isolation: isolate; display: inline-flex; width: 185px; min-height: 48px; align-items: center; justify-content: center; overflow: hidden; margin-top: 40px; padding: 0 24px; border: 0; border-radius: 30px; color: #050505; background: linear-gradient(90deg, #ff9d18 0%, #ffbc3c 30%, #f35bff 100%); font-size: 25px; font-weight: 500; line-height: 1; transition: color 240ms ease; }
@@ -54,7 +56,8 @@
 .models-showcase-card-identity > span:last-child { min-width: 0; display: grid; gap: 3px; }
 .models-showcase-card-identity strong { overflow: hidden; font-size: 22px; font-weight: 400; text-overflow: ellipsis; white-space: nowrap; }
 .models-showcase-card-identity small { color: var(--models-muted); font-size: 14px; }
-.models-showcase-card-description { position: relative; z-index: 1; min-height: 34px; margin: 24px 0 20px; color: #8d8d96; font-size: 12px; line-height: 1.55; }
+/* 卡片保持固定高度，说明最多展示两行摘要，避免长内容覆盖下方报价。 */
+.models-showcase-card-description { position: relative; z-index: 1; display: -webkit-box; min-height: 34px; margin: 24px 0 20px; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow-wrap: anywhere; color: #8d8d96; font-size: 12px; line-height: 1.55; }
 .models-showcase-card-prices { position: relative; z-index: 1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: auto; }
 .models-showcase-card-prices > div { min-width: 0; height: 116px; display: grid; grid-template-rows: auto 1fr; padding: 14px 10px; border-radius: 2px; background: #353537; }
 .models-showcase-card-prices dt { color: #e2e2e7; font-size: 14px; }
@@ -64,6 +67,14 @@
 .models-showcase-card-price-original--placeholder { visibility: hidden; }
 .models-showcase-card-price-current { display: block; color: #8e62ff; font-size: 20px; font-variant-numeric: tabular-nums; font-weight: 400; line-height: 1; }
 .models-showcase-card-price-current-currency { margin-right: 2px; }
+/* 英文计费标题在桌面卡片也会换行，收回固定空白，让原价和现价留在原有 116px 格内。 */
+.models-showcase:lang(en) .models-showcase-card-prices dt { line-height: 1.2; }
+.models-showcase:lang(en) .models-showcase-card-prices dd { min-height: 0; grid-template-rows: 16px minmax(20px, 1fr); gap: 0; }
+.models-showcase:lang(en) .models-showcase-card-price-original { margin-top: 0; }
+.models-showcase:lang(en) .models-showcase-card-price-current { align-self: end; }
+/* 保持原卡片及价格格尺寸，多组真实报价在原区域内滚动查看。 */
+.models-showcase-card-prices--scroll { height: 116px; flex-shrink: 0; overflow: auto; }
+.models-showcase-card-price-context { overflow: hidden; text-overflow: ellipsis; text-decoration: none; white-space: nowrap; }
 .models-showcase-card-actions { position: absolute; z-index: 2; right: 18px; bottom: 14px; left: 22px; display: grid; grid-template-columns: repeat(2, minmax(0, 124px)); justify-content: center; gap: clamp(16px, 4.7vw, 56px); height: 34px; margin: 0; opacity: 0; transform: translateY(8px); transition: opacity .2s ease, transform .2s ease; }
 .models-showcase-card:hover .models-showcase-card-actions, .models-showcase-card:focus-within .models-showcase-card-actions { opacity: 1; transform: translateY(0); }
 .models-showcase-card-primary, .models-showcase-card-docs { display: inline-flex; align-items: center; justify-content: center; width: 100%; height: 34px; min-width: 0; padding: 0 10px; border-radius: 999px; font-size: 14px; font-weight: 500; line-height: 1; white-space: nowrap; }

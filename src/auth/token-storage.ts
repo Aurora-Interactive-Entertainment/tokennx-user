@@ -4,6 +4,7 @@ export const REFRESH_SESSION_KEY = 'token-nx:auth:refresh:v1'
 export const DEVICE_ID_KEY = 'token-nx:auth:device:v1'
 export const AUTH_SYNC_CHANNEL_NAME = 'token-nx:auth:sync:v1'
 export const AUTH_SYNC_STORAGE_KEY = 'token-nx:auth:event:v1'
+export const AUTH_SIGN_OUT_REVISION_KEY = 'token-nx:auth:signed-out-revision:v1'
 export const VERIFIED_PHONE_KEY = 'token-nx:auth:verified-phone:v1'
 
 const MAX_SEEN_EVENT_IDS = 1_000
@@ -53,6 +54,9 @@ export type AuthTokenChangeListener = (change: AuthTokenChange) => void
 let accessToken: string | null = null
 let accessTokenRefreshToken: string | null = null
 let lastKnownUser: AuthUser | undefined
+let lastAppliedRevision: SessionRevision | null = null
+// 保留少量旧访问令牌的账号归属，防止持有旧令牌的请求在切换账号后被重放。
+const accessTokenOwners = new Map<string, string>()
 let revisionClock = 0
 let eventSequence = 0
 let synchronizationInitialized = false
@@ -118,6 +122,7 @@ export function clearVerifiedPhone(): void {
 }
 
 function nextRevision(): SessionRevision {
+  revisionClock = Math.max(revisionClock, readSignedOutRevision()?.timestamp ?? 0)
   revisionClock = Math.max(revisionClock + 1, Date.now())
   return { timestamp: revisionClock, writerId: authTabId }
 }
@@ -125,6 +130,29 @@ function nextRevision(): SessionRevision {
 function compareRevision(left: SessionRevision, right: SessionRevision): number {
   if (left.timestamp !== right.timestamp) return left.timestamp - right.timestamp
   return left.writerId.localeCompare(right.writerId)
+}
+
+function readSignedOutRevision(): SessionRevision | null {
+  try {
+    const raw = storage()?.getItem(AUTH_SIGN_OUT_REVISION_KEY)
+    const parsed = normalizeRevision(raw ? JSON.parse(raw) : null)
+    return parsed.valid ? parsed.revision : null
+  } catch {
+    return null
+  }
+}
+
+function rememberAccessTokenOwner(token: string, user: AuthUser | undefined): void {
+  if (!user?.id) return
+  accessTokenOwners.set(token, user.id)
+  if (accessTokenOwners.size > 32) {
+    const oldest = accessTokenOwners.keys().next().value
+    if (oldest) accessTokenOwners.delete(oldest)
+  }
+}
+
+export function getAccessTokenUserId(token: string | null = accessToken): string | undefined {
+  return token ? accessTokenOwners.get(token) : undefined
 }
 
 function normalizeRevision(value: unknown): {
@@ -232,6 +260,12 @@ function applyRemoteChange(change: AuthTokenChange): void {
   const saved = storage()
   const current = parseStoredRefreshSession(saved?.getItem(REFRESH_SESSION_KEY) ?? null)?.session ?? null
   if (current && compareRevision(current.revision, change.revision) > 0) return
+  const signedOutRevision = readSignedOutRevision()
+  // 退出后即使共享 session 已删除，也不能接受排队中的旧刷新通知。
+  if (signedOutRevision && (compareRevision(signedOutRevision, change.revision) > 0 ||
+    (change.type === 'session-updated' && compareRevision(signedOutRevision, change.revision) === 0))) return
+  if (lastAppliedRevision && compareRevision(lastAppliedRevision, change.revision) >= 0) return
+  lastAppliedRevision = change.revision
 
   if (change.type === 'session-updated') {
     const session: StoredRefreshSession = {
@@ -243,6 +277,7 @@ function applyRemoteChange(change: AuthTokenChange): void {
     accessToken = change.accessToken as string
     accessTokenRefreshToken = session.refreshToken
     lastKnownUser = change.user
+    rememberAccessTokenOwner(accessToken, change.user)
     revisionClock = Math.max(revisionClock, change.revision.timestamp)
     notifyChange(change)
     return
@@ -252,6 +287,7 @@ function applyRemoteChange(change: AuthTokenChange): void {
   accessTokenRefreshToken = null
   lastKnownUser = undefined
   clearVerifiedPhone()
+  saved?.setItem(AUTH_SIGN_OUT_REVISION_KEY, JSON.stringify(change.revision))
   saved?.removeItem(REFRESH_SESSION_KEY)
   revisionClock = Math.max(revisionClock, change.revision.timestamp)
   notifyChange(change)
@@ -341,6 +377,8 @@ export function saveAuthTokens(result: AuthResult, options: SaveAuthTokensOption
   const current = peekRefreshSession()
   if (options.expectedRefreshToken !== undefined && current?.refreshToken !== options.expectedRefreshToken) return false
   if (options.expectedRevision && (!current || compareRevision(current.revision, options.expectedRevision) !== 0)) return false
+  // 已校验归属的令牌刷新允许服务端省略 user，沿用同一会话的用户信息。
+  const user = result.user ?? (options.expectedRefreshToken === accessTokenRefreshToken ? lastKnownUser : undefined)
   const session: StoredRefreshSession = {
     refreshToken: result.refresh_token,
     refreshExpiresAt: result.refresh_expires_at,
@@ -348,7 +386,9 @@ export function saveAuthTokens(result: AuthResult, options: SaveAuthTokensOption
   }
   accessToken = result.access_token
   accessTokenRefreshToken = session.refreshToken
-  lastKnownUser = result.user
+  lastKnownUser = user
+  rememberAccessTokenOwner(result.access_token, user)
+  lastAppliedRevision = session.revision
   storage()?.setItem(REFRESH_SESSION_KEY, JSON.stringify(session))
   publishChange(
     createChange(
@@ -357,7 +397,7 @@ export function saveAuthTokens(result: AuthResult, options: SaveAuthTokensOption
         accessToken: result.access_token,
         refreshToken: session.refreshToken,
         refreshExpiresAt: session.refreshExpiresAt,
-        user: result.user,
+        user,
       },
       session.revision
     )
@@ -392,10 +432,13 @@ export function clearAuthTokens(options: ClearAuthTokensOptions = {}): void {
   }
 
   const revision = nextRevision()
+  lastAppliedRevision = revision
   accessToken = null
   accessTokenRefreshToken = null
   lastKnownUser = undefined
   clearVerifiedPhone()
+  // 留下不含凭证的退出版本，供新标签页拒绝迟到的旧会话事件。
+  saved?.setItem(AUTH_SIGN_OUT_REVISION_KEY, JSON.stringify(revision))
   saved?.removeItem(REFRESH_SESSION_KEY)
   if (options.broadcast !== false) publishChange(createChange({ type: 'signed-out' }, revision))
   revisionClock = Math.max(revisionClock, revision.timestamp)

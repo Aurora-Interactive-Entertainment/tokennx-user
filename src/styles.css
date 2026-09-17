@@ -55,13 +55,14 @@
   box-sizing: border-box;
 }
 html {
-  min-width: 320px;
+  /* 最窄屏需扣除滚动条占位，避免 320px 固定下限撑出视口。 */
+  min-width: min(320px, 100%);
   background: var(--bg-base);
   scroll-behavior: smooth;
 }
 body {
   margin: 0;
-  min-width: 320px;
+  min-width: min(320px, 100%);
   min-height: 100vh;
   min-height: 100dvh;
   background: var(--bg-base);
@@ -1236,6 +1237,10 @@ html[data-theme="light"] .app-follow-tooltip {
   align-items: center;
   gap: 16px;
   min-width: 0;
+}
+.model-detail-identity > div {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 .model-detail-identity h1,
 .model-detail-identity h2 {
@@ -2945,6 +2950,7 @@ html[data-theme="light"] .app-follow-tooltip {
   margin-top: 5px;
   color: var(--text-primary);
   font-size: 12px;
+  overflow-wrap: anywhere;
 }
 .detail-action-grid {
   display: grid;
@@ -3656,7 +3662,7 @@ body {
 }
 
 body {
-  min-width: 320px;
+  min-width: min(320px, 100%);
   background: var(--color-bg-base-default);
   color: var(--color-text-default);
   /* 覆盖 Semi UI 运行时注入的 body 字体，统一使用项目基础字体。 */
@@ -3945,6 +3951,7 @@ body textarea {
   height: 44px;
   min-height: 44px;
   justify-content: center;
+  /* 对称内边距让头像与 hover 背景同心，导航边距由外层容器控制。 */
   padding: 6px;
   border-radius: 50%;
 }
@@ -4776,15 +4783,6 @@ body[theme-mode] {
   border-top-color: transparent;
   border-radius: 50%;
   animation: get-code-spinner-rotate 0.72s linear infinite;
-}
-.login-feedback {
-  margin: 0;
-  color: var(--color-text-secondary);
-  font-size: 13px;
-  line-height: 1.5;
-}
-.login-feedback[role="status"] {
-  color: var(--color-text-secondary);
 }
 .submit-btn {
   width: 100%;
@@ -10133,6 +10131,9 @@ html[data-theme="dark"] .generation-send-button.send-btn.is-running.semi-button:
   height: 14px;
 }
 .billing-balance-card > strong {
+  /* 大额数值按需换行，避免固定列宽下越出余额卡片。 */
+  min-width: 0;
+  overflow-wrap: anywhere;
   color: var(--color-text-default);
   font-size: 24px;
   font-weight: 650;
@@ -10392,6 +10393,8 @@ body:has(.billing-console-page) .semi-select-option-icon {
   line-height: 1.45;
 }
 .billing-metric-card .metric-value {
+  min-width: 0;
+  overflow-wrap: anywhere;
   margin-top: var(--spacing-12);
   color: var(--color-text-default);
   font-size: 24px;
@@ -13265,10 +13268,6 @@ html[data-theme="light"] .app-loading-screen__logo-shell .brand-logo-image {
   flex-basis: 132px;
   width: 132px;
 }
-.login-popover .login-feedback {
-  color: #ff9f9f;
-  font-size: 12px;
-}
 .login-popover .btn {
   height: 44px;
   border-radius: 25.5px;
@@ -13349,12 +13348,19 @@ html[data-theme="light"] .app-loading-screen__logo-shell .brand-logo-image {
   box-shadow: none;
   backdrop-filter: none;
 }
-/* 首页与其他页面共用全宽 Header 内层，并按 Figma 的 1920px 画板保留两侧 23px 边距。 */
+/* 公开页面共用全宽 Header，桌面端两侧统一保留 40px 边距。 */
 .public-header-inner {
   width: 100%;
   max-width: none;
   margin: 0;
-  padding-inline: 23px;
+  padding-inline: 40px;
+}
+@media (min-width: 1071px) {
+  /* 桌面端保留品牌宽度和完整的头像点击区，避免导航变窄时挤压。 */
+  .public-header .header-logo,
+  .public-header .user-menu-shell {
+    flex-shrink: 0;
+  }
 }
 .header-logo {
   min-width: 0;
@@ -13434,6 +13440,7 @@ html[data-theme="light"] .app-loading-screen__logo-shell .brand-logo-image {
 }
 .header-trial-badge {
   --header-trial-cycle: 4.5s;
+  --header-trial-copy-size: 18px;
   position: relative;
   display: grid;
   width: 112px;
@@ -13453,6 +13460,15 @@ html[data-theme="light"] .app-loading-screen__logo-shell .brand-logo-image {
     transform 0.22s ease,
     filter 0.22s ease;
 }
+/* 英文轮播文案较长，仅适配字号，保持胶囊尺寸、动效和角标位置。 */
+.header-trial-badge:lang(en) {
+  --header-trial-copy-size: 14px;
+}
+/* 英文为右上角 Free 标记预留文字空间，不移动原有角标。 */
+.header-trial-badge:lang(en) strong,
+.header-trial-badge:lang(en) .header-trial-subscription {
+  padding-inline-end: 12px;
+}
 .header-trial-badge:hover {
   filter: brightness(1.08);
   transform: translateY(-1px) scale(1.025);
@@ -13467,10 +13483,6 @@ html[data-theme="light"] .app-loading-screen__logo-shell .brand-logo-image {
 
 /* 宽屏首页按设计稿放大品牌区，移动端尺寸由 public-mobile-nav.css 独立控制。 */
 @media (min-width: 1281px) {
-  .public-header--home .public-header-inner {
-    padding-inline: 20px;
-  }
-
   .public-header--home .header-logo {
     width: 188px;
     flex: 0 0 188px;
@@ -13482,6 +13494,7 @@ html[data-theme="light"] .app-loading-screen__logo-shell .brand-logo-image {
   }
 
   .public-header--home .header-trial-badge {
+    --header-trial-copy-size: 18px;
     width: 140px;
     height: 35px;
     flex-basis: 140px;
@@ -13534,7 +13547,7 @@ html[data-theme="light"] .app-loading-screen__logo-shell .brand-logo-image {
   position: relative;
   z-index: 2;
   font-family: "Noto Sans SC", "Source Han Sans CN", sans-serif;
-  font-size: 18px;
+  font-size: var(--header-trial-copy-size);
   font-weight: 600;
   line-height: 1;
   background: linear-gradient(91deg, #fff 5.62%, #e792f6 96.81%);
@@ -13567,7 +13580,7 @@ html[data-theme="light"] .app-loading-screen__logo-shell .brand-logo-image {
   -webkit-backdrop-filter: blur(12px) saturate(125%);
   backdrop-filter: blur(12px) saturate(125%);
   font-family: "Noto Sans SC", "Source Han Sans CN", sans-serif;
-  font-size: 18px;
+  font-size: var(--header-trial-copy-size);
   font-weight: 600;
   line-height: 1;
   opacity: 0;
@@ -14005,12 +14018,13 @@ html[data-theme="light"] .public-header--home .header-notification-dot {
 
 @media (max-width: 1280px) {
   .public-header .header-nav {
-    gap: 18px;
+    /* 临近移动导航断点时收紧项目间距，避免内容挤占导航两侧留白。 */
+    gap: 0;
   }
   .public-header .header-actions,
   .public-header--home .public-header-actions {
-    gap: 24px;
-    margin-left: 24px;
+    gap: 16px;
+    margin-left: 20px;
   }
   .public-header .header-tools {
     gap: 18px;
@@ -20044,12 +20058,6 @@ html[data-performance="lite"]
 }
 :is(.login-popover, .login-card) .login-consent-notice a:hover {
   color: #7f52ff;
-}
-:is(.login-popover, .login-card) .login-feedback {
-  margin: 0 0 10px;
-  color: #ff4d58;
-  font-size: 12px;
-  line-height: 20px;
 }
 :is(.login-popover, .login-card) .login-separator {
   display: flex;

@@ -2,13 +2,17 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { LoginRequiredAction, ModelLogo } from '@/components/common'
-import type { PublicMarketCarousel } from '@/api/public-model-market'
+import type { PublicMarketCarousel, PublicMarketPrice } from '@/api/public-model-market'
 import type { ModelRecord } from '@/data/models'
+import { PublicModelPrices } from './public-model-prices'
+import { publicPath } from '@/routes/public-path'
 import modelCardArt from '@/assets/figma-home/model-card-art.png'
 import promoArticleArt from '@/assets/figma-home/promo-article.png'
 import promoBannerArt from '@/assets/figma-home/promo-banner.png'
 import { apiTimeToDate } from '@/utils/format'
 import './public-models-showcase.css'
+
+export type PublicShowcaseModel = ModelRecord & { marketPrices?: PublicMarketPrice[] }
 
 export type ModelsShowcaseGroup = {
   id: string
@@ -16,7 +20,7 @@ export type ModelsShowcaseGroup = {
   descriptionKey?: string
   title?: string
   description?: string
-  models: ModelRecord[]
+  models: PublicShowcaseModel[]
   carousels?: PublicMarketCarousel[]
 }
 
@@ -32,13 +36,8 @@ type ShowcaseSlide = {
 
 const SLIDE_INTERVAL = 5600
 const SLIDE_TRANSITION_DURATION = 1500
-const FALLBACK_SLIDES: ShowcaseSlide[] = [
-  { id: 'deepseek-v4', title: 'Deepseek V4 Pro', description: '新一代通用智能模型，面向复杂推理、代码和多模态任务。', image: promoBannerArt, tags: ['深度思考', '文本生成', '视频生成'], modelId: 'deepseek-public' },
-  { id: 'claude-sonnet', title: 'Claude Sonnet 4', description: '稳定的长上下文分析与结构化协作能力。', image: promoArticleArt, tags: ['文本生成'], modelId: 'claude-public' },
-  { id: 'gpt-4o', title: 'GPT-4o', description: '文本、视觉与音频在一条工作流中自然协同。', image: modelCardArt, tags: ['文本生成', '图片生成'], modelId: 'gpt-public' },
-  { id: 'qwen3', title: 'Qwen3 235B', description: '面向中文场景和代码任务的高性能大模型。', image: promoBannerArt, tags: ['文本生成'], modelId: 'qwen-public' },
-  { id: 'glm', title: 'GLM-4.5', description: '为开发者准备的快速、稳定、可控的推理能力。', image: promoArticleArt, tags: ['文本生成'], modelId: 'glm-public' },
-]
+// 保留原来五项默认配图的循环顺序，缺少图片时也不改变已有轮播外观。
+const FALLBACK_ART = [promoBannerArt, promoArticleArt, modelCardArt, promoBannerArt, promoArticleArt]
 
 function priceValue(model: ModelRecord, side: 'input' | 'output', source: 'tokenNxPrice' | 'officialPrice' = 'tokenNxPrice'): string {
   const value = model[source][side]
@@ -57,7 +56,7 @@ function carouselSlide(entry: PublicMarketCarousel, index: number, language: str
     id: entry.id,
     title: english ? entry.title_en || entry.title : entry.title,
     description: english ? entry.description_en || entry.description : entry.description,
-    image: entry.image_url || FALLBACK_SLIDES[index % FALLBACK_SLIDES.length].image,
+    image: entry.image_url || FALLBACK_ART[index % FALLBACK_ART.length],
     tags: english ? entry.tags_en || entry.tags : entry.tags,
     modelId: entry.model_id,
     modelName: entry.model_name,
@@ -66,7 +65,7 @@ function carouselSlide(entry: PublicMarketCarousel, index: number, language: str
 
 export function ModelsHeroCarousel({ carousels = [] }: { carousels?: PublicMarketCarousel[] }) {
   const { t, i18n } = useTranslation()
-  const slides = carousels.length ? carousels.map((entry, index) => carouselSlide(entry, index, i18n.resolvedLanguage ?? i18n.language)) : FALLBACK_SLIDES
+  const slides = carousels.map((entry, index) => carouselSlide(entry, index, i18n.resolvedLanguage ?? i18n.language))
   const [activeIndex, setActiveIndex] = useState(0)
   const [transitionSeed, setTransitionSeed] = useState(0)
   const [outgoingSlide, setOutgoingSlide] = useState<ShowcaseSlide | null>(null)
@@ -93,7 +92,8 @@ export function ModelsHeroCarousel({ carousels = [] }: { carousels?: PublicMarke
     return () => window.clearTimeout(transitionTimeoutRef.current)
   }, [outgoingSlide, transitionSeed])
 
-  const slide = slides[activeIndex] ?? FALLBACK_SLIDES[0]
+  const slide = slides[activeIndex] ?? slides[0]
+  if (!slide) return null
   // 跳转控制台模型广场时用 keyword 搜索参数定位模型，控制台搜索框会命中该字段。
   const slideReturnPath = slide.modelId ? `/console/models?keyword=${encodeURIComponent(slide.modelId)}` : '/console/models'
   const selectSlide = (index: number) => {
@@ -120,7 +120,7 @@ export function ModelsHeroCarousel({ carousels = [] }: { carousels?: PublicMarke
   </section>
 }
 
-export function ShowcaseModelCard({ model }: { model: ModelRecord }) {
+export function ShowcaseModelCard({ model }: { model: PublicShowcaseModel }) {
   const { t, i18n } = useTranslation()
   // 发布日期以模型接口为准；缺少日期时不显示虚构的统一日期。
   const launchDate = model.launchedAt ? apiTimeToDate(model.launchedAt) : null
@@ -128,14 +128,14 @@ export function ShowcaseModelCard({ model }: { model: ModelRecord }) {
   return <article className="models-showcase-card">
     <div className="models-showcase-card-head"><div className="models-showcase-card-identity"><ModelLogo model={model} className="models-showcase-card-logo" /><span><strong>{model.name}</strong>{launchDate ? <small>{t('public.models.releaseDate', { date: launchDate.toLocaleDateString(i18n.language, { year: 'numeric', month: 'long', day: 'numeric' }) })}</small> : null}</span></div></div>
     <p className="models-showcase-card-description">{model.description}</p>
-    <dl className="models-showcase-card-prices"><div><dt>{t('public.models.inputPrice')}</dt><dd>{hasDiscount(model, 'input') ? <del className="models-showcase-card-price-original"><span>{t('public.models.priceBase')}</span>{priceValue(model, 'input', 'officialPrice')}</del> : <span className="models-showcase-card-price-original models-showcase-card-price-original--placeholder" aria-hidden="true" />}<strong className="models-showcase-card-price-current"><span className="models-showcase-card-price-current-currency">{t('public.models.priceBase')}</span>{priceValue(model, 'input')}</strong></dd></div><div><dt>{t('public.models.outputPrice')}</dt><dd>{hasDiscount(model, 'output') ? <del className="models-showcase-card-price-original"><span>{t('public.models.priceBase')}</span>{priceValue(model, 'output', 'officialPrice')}</del> : <span className="models-showcase-card-price-original models-showcase-card-price-original--placeholder" aria-hidden="true" />}<strong className="models-showcase-card-price-current"><span className="models-showcase-card-price-current-currency">{t('public.models.priceBase')}</span>{priceValue(model, 'output')}</strong></dd></div></dl>
-    <div className="models-showcase-card-actions"><LoginRequiredAction className="models-showcase-card-primary" returnPath={modelReturnPath}>{t('public.models.tryNow')}</LoginRequiredAction><Link className="models-showcase-card-docs" to="/docs/01M0765G0JDT3JCZ6QQXNM40TX/token-nx-api-documentation">{t('public.models.apiDocs')}</Link></div>
+    {model.marketPrices ? <PublicModelPrices prices={model.marketPrices} /> : <dl className="models-showcase-card-prices"><div><dt>{t('public.models.inputPrice')}</dt><dd>{hasDiscount(model, 'input') ? <del className="models-showcase-card-price-original"><span>{t('public.models.priceBase')}</span>{priceValue(model, 'input', 'officialPrice')}</del> : <span className="models-showcase-card-price-original models-showcase-card-price-original--placeholder" aria-hidden="true" />}<strong className="models-showcase-card-price-current"><span className="models-showcase-card-price-current-currency">{t('public.models.priceBase')}</span>{priceValue(model, 'input')}</strong></dd></div><div><dt>{t('public.models.outputPrice')}</dt><dd>{hasDiscount(model, 'output') ? <del className="models-showcase-card-price-original"><span>{t('public.models.priceBase')}</span>{priceValue(model, 'output', 'officialPrice')}</del> : <span className="models-showcase-card-price-original models-showcase-card-price-original--placeholder" aria-hidden="true" />}<strong className="models-showcase-card-price-current"><span className="models-showcase-card-price-current-currency">{t('public.models.priceBase')}</span>{priceValue(model, 'output')}</strong></dd></div></dl>}
+    <div className="models-showcase-card-actions"><LoginRequiredAction className="models-showcase-card-primary" returnPath={modelReturnPath}>{t('public.models.tryNow')}</LoginRequiredAction><Link className="models-showcase-card-docs" to={publicPath('/docs/01M0765G0JDT3JCZ6QQXNM40TX/token-nx-api-documentation', i18n.language)}>{t('public.models.apiDocs')}</Link></div>
   </article>
 }
 
-export function ModelsShowcase({ groups }: { groups: ModelsShowcaseGroup[] }) {
+export function ModelsShowcase({ groups, carousels: suppliedCarousels }: { groups: ModelsShowcaseGroup[]; carousels?: PublicMarketCarousel[] }) {
   const { t } = useTranslation()
   const normalizedGroups = useMemo(() => groups.map((group) => ({ ...group, models: group.models.slice(0, 3) })), [groups])
-  const carousels = groups.flatMap((group) => group.carousels ?? [])
-  return <div className="models-showcase"><ModelsHeroCarousel carousels={carousels} /><div className="models-showcase-catalog"><h2 className="public-sr-only">{t('public.models.title')}</h2>{normalizedGroups.map((group) => <section className="models-showcase-group" aria-labelledby={`${group.id}-title`} key={group.id}><div className="models-showcase-group-head"><div><h3 id={`${group.id}-title`}>{group.title ?? (group.titleKey ? t(group.titleKey) : '')}</h3><p>{group.description ?? (group.descriptionKey ? t(group.descriptionKey) : '')}</p></div></div><div className="models-showcase-grid">{group.models.map((model) => <ShowcaseModelCard key={model.id} model={model} />)}</div></section>)}</div></div>
+  const carousels = suppliedCarousels ?? groups.flatMap((group) => group.carousels ?? [])
+  return <div className="models-showcase"><ModelsHeroCarousel carousels={carousels} /><div className="models-showcase-catalog"><h2 className="public-sr-only">{t('public.models.title')}</h2>{!normalizedGroups.length ? <p role="status">{t('public.models.empty')}</p> : null}{normalizedGroups.map((group) => <section className="models-showcase-group" aria-labelledby={`${group.id}-title`} key={group.id}><div className="models-showcase-group-head"><div><h3 id={`${group.id}-title`}>{group.title ?? (group.titleKey ? t(group.titleKey) : '')}</h3><p>{group.description ?? (group.descriptionKey ? t(group.descriptionKey) : '')}</p></div></div><div className="models-showcase-grid">{group.models.map((model) => <ShowcaseModelCard key={model.id} model={model} />)}</div></section>)}</div></div>
 }

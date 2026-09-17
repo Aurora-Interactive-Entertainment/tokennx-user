@@ -21,6 +21,14 @@ function apiResponse(data: unknown, status = 200, code = 0, msg = 'success'): Re
   })
 }
 
+function mockModelCatalog() {
+  return vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => apiResponse(String(input).includes('/api/model-market') ? {
+    version: 'smoke',
+    carousels: Array.from({ length: 5 }, (_, index) => ({ id: `slide-${index}`, status: 'active', sort_order: index, title: `推荐模型 ${index + 1}`, description: '真实目录测试数据', tags: [], model_id: `text-${index}` })),
+    topics: ['text', 'video', 'image'].map((modality, index) => ({ id: modality, status: 'active', sort_order: index, name: modality, model_ids: [], models: Array.from({ length: 3 }, (_, modelIndex) => ({ id: `${modality}-${modelIndex}`, name: index === 0 && modelIndex === 0 ? 'DeepSeek V3' : `${modality} ${modelIndex}`, company: 'Test', modality, prices: [] })) })),
+  } : { items: [], total: 0, page: 1, page_size: 100 }))
+}
+
 const authUser = {
   id: 'user-1',
   display_name: '测试用户',
@@ -204,8 +212,8 @@ describe('页面主链冒烟场景', () => {
 
     await user.click(screen.getByRole('button', { name: '打开客服' }))
     const supportDialog = await screen.findByRole('dialog', { name: '联系客服' })
-    expect(supportDialog).toHaveTextContent('Token NX 客服')
-    expect(supportDialog).toHaveTextContent('客服在线')
+    expect(supportDialog).toHaveTextContent('Token NX 自助助手')
+    expect(supportDialog).toHaveTextContent('不会创建人工工单')
     expect(screen.getByRole('textbox', { name: '输入消息' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '关闭客服' })).toBeInTheDocument()
     await user.click(document.body)
@@ -375,16 +383,18 @@ describe('页面主链冒烟场景', () => {
   })
 
   it('模型目录展示五张轮播和三组三张模型卡片', async () => {
+    mockModelCatalog()
     render(<MemoryRouter><Provider store={createAppStore()}><AppStoreProvider><ModelsPublicPage /></AppStoreProvider></Provider></MemoryRouter>)
-    expect(screen.getAllByRole('tab')).toHaveLength(5)
+    expect(await screen.findAllByRole('tab')).toHaveLength(5)
     expect(document.querySelectorAll('.models-showcase-card')).toHaveLength(9)
     expect(screen.getByText('DeepSeek V3')).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'DeepSeek V3' })).not.toBeInTheDocument()
   })
 
   it('模型目录包含文本、视频和图片三个分组', async () => {
+    mockModelCatalog()
     render(<MemoryRouter><Provider store={createAppStore()}><AppStoreProvider><ModelsPublicPage /></AppStoreProvider></Provider></MemoryRouter>)
-    expect(screen.getByRole('heading', { name: '文本模型' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: '文本模型' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: '视频模型' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: '图片模型' })).toBeInTheDocument()
   })

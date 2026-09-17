@@ -13,6 +13,8 @@ import { isApiError } from '@/api/http'
 import newsAuthorLogo from '@/assets/figma-header/X-16.png'
 import './news-list.css'
 import './news-detail.css'
+import { publicPath } from '@/routes/public-path'
+import { usePublicContentSeo } from '@/seo/site-seo'
 
 function formatNewsDate(timestamp: ApiTimeValue, language: string): string {
   const date = apiTimeToDate(timestamp)
@@ -34,7 +36,7 @@ function newsTags(article: NewsArticle, localizedNewsLabel: string): string[] {
 function NewsCard({ article, language, index, localizedNewsLabel }: { article: NewsArticle; language: string; index: number; localizedNewsLabel: string }) {
   const hasCover = Boolean(article.cover_image?.trim())
   return (
-    <Link to={`/news/${encodeURIComponent(article.id)}`} className="news-card">
+    <Link to={publicPath(`/news/${encodeURIComponent(article.id)}`, language)} className="news-card">
       <div className={`news-card-cover${hasCover ? '' : ' news-card-cover--fallback'}`} data-tone={index % 5}>
         {hasCover ? <img src={article.cover_image} alt="" loading="lazy" /> : <span aria-hidden="true">TOKEN NX</span>}
       </div>
@@ -135,6 +137,22 @@ export function NewsListPage() {
   )
 }
 
+function NewsDetailSkeleton() {
+  const { t } = useTranslation()
+  // 复用正文的间距结构，加载时保留返回入口，减少骨架屏切换后的布局跳动。
+  return (
+    <div className="news-detail-article news-detail-skeleton" aria-busy="true" aria-label={t('news.loadingLabel')}>
+      <div className="news-detail-header">
+        <div className="news-detail-meta"><Skeleton.Title style={{ width: 88, height: 27, margin: 0 }} /></div>
+        <Skeleton.Title style={{ width: '72%', height: 52, margin: 0 }} />
+        <div className="news-detail-summary"><Skeleton.Paragraph rows={2} /></div>
+        <div className="news-detail-byline"><Skeleton.Title style={{ width: 180, height: 27, margin: 0 }} /></div>
+      </div>
+      <div className="news-detail-content"><Skeleton.Paragraph rows={12} /></div>
+    </div>
+  )
+}
+
 export function NewsDetailPage() {
   const { t, i18n } = useTranslation()
   const { id } = useParams<{ id: string }>()
@@ -144,6 +162,7 @@ export function NewsDetailPage() {
   const [error, setError] = useState<{ message: string; requestId: string | null } | null>(null)
   const locale = i18n.language.toLowerCase().startsWith('en') ? 'en-US' as const : 'zh-CN' as const
   const localizedNewsLabel = t('news.title')
+  usePublicContentSeo(!loading && !error && article && article.id === id ? { title: article.title, description: article.description } : null)
 
   useEffect(() => {
     if (!id) return
@@ -160,15 +179,13 @@ export function NewsDetailPage() {
     return () => controller.abort()
   }, [id, locale, t])
 
-  if (loading) return <PublicLayout mainClassName="news-page--manuscript"><div className="news-detail-container"><div className="news-detail-skeleton"><Skeleton.Title style={{ width: '72%' }} /><Skeleton.Paragraph rows={2} /><Skeleton.Paragraph rows={12} /></div></div></PublicLayout>
-
-  if (error || !article) return <PublicLayout mainClassName="news-page--manuscript"><div className="news-detail-container"><div className="news-detail-state news-detail-error" role="alert"><h1>{t('news.notFound')}</h1><p>{error?.message || t('news.notFoundDescription')}</p><button type="button" onClick={() => navigate('/news')}>{t('news.backToList')}</button></div></div></PublicLayout>
-
   return (
     <PublicLayout mainClassName="news-page--manuscript">
       <div className="news-detail-container">
-        <Link to="/news" className="news-detail-back"><IconArrowLeft aria-hidden="true" /><span>{t('news.blog')}</span></Link>
-        <article className="news-detail-article">
+        <Link to={publicPath('/news', locale)} className="news-detail-back"><IconArrowLeft aria-hidden="true" /><span>{t('news.blog')}</span></Link>
+        {loading ? <NewsDetailSkeleton /> : error || !article ? (
+          <div className="news-detail-state news-detail-error" role="alert"><h1>{t('news.notFound')}</h1><p>{error?.message || t('news.notFoundDescription')}</p><button type="button" onClick={() => navigate(publicPath('/news', locale))}>{t('news.backToList')}</button></div>
+        ) : <article className="news-detail-article" key={`${id}-${locale}`}>
           <header className="news-detail-header">
             <div className="news-detail-meta">{newsTags(article, localizedNewsLabel).map((tag, index) => <span className="news-detail-category" key={`${tag}-${index}`}>{tag}</span>)}</div>
             <h1 className="news-detail-title">{article.title}</h1>
@@ -179,7 +196,7 @@ export function NewsDetailPage() {
             </div>
           </header>
           <div className="news-detail-content"><MarkdownContent className="docs-markdown" content={article.content_markdown ?? article.content} enhancedCodeBlocks allowHtml resolveImageUrl={resolveNewsContentImageUrl} /></div>
-        </article>
+        </article>}
       </div>
     </PublicLayout>
   )

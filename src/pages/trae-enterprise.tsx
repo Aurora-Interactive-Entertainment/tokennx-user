@@ -46,6 +46,7 @@ import {
   type EnterpriseContext,
   type EnterpriseDepartment,
   type EnterpriseMember,
+  type EnterpriseRoleOption,
   type EnterpriseVersion,
 } from "@/api/enterprise-console";
 import { EnterprisePageShell, useEnterpriseConsoleContext, useEnterpriseErrorHandler, EnterpriseError, EnterpriseLoading } from "./enterprise-console-shared";
@@ -76,6 +77,7 @@ type TraeMemberRow = {
   email: string;
   status: "active" | "pending" | "suspended";
   role: TraeMemberRole;
+  roleCode: string;
   account: string;
   joined: string;
   department: string;
@@ -86,15 +88,8 @@ type TraeMemberRow = {
 // 其他企业分析组件使用同一行模型；成员管理页本身只展示服务端返回的数据。
 const memberRows: TraeMemberRow[] = [];
 
-// 当前企业上下文尚未返回订阅席位明细，先沿用订阅页的演示配额展示。
-const TRAE_MEMBER_SEAT_SUMMARY = {
-  total: 10,
-  allOccupied: 4,
-  allCapacity: 10,
-} as const;
-
-function toTraeMemberRow(member: EnterpriseMember): TraeMemberRow {
-  const role = member.role === "owner" ? "owner" : member.role === "administrator" || member.role === "admin" ? "admin" : "member";
+function toTraeMemberRow(member: EnterpriseMember, roleOptions: EnterpriseRoleOption[] = []): TraeMemberRow {
+  const role = member.role === "owner" || roleOptions.some((option) => option.code === member.role && option.owner_role) ? "owner" : member.role === "administrator" || member.role === "admin" ? "admin" : "member";
   const department = member.department;
   return {
     id: member.id,
@@ -103,6 +98,8 @@ function toTraeMemberRow(member: EnterpriseMember): TraeMemberRow {
     // 兼容旧接口的 invited 值，页面与新接口统一使用 pending。
     status: member.status === "suspended" ? "suspended" : member.status === "pending" || member.status === "invited" ? "pending" : "active",
     role,
+    // 展示和提交保留服务端角色代码，保护操作所需的角色类别单独保存。
+    roleCode: member.role,
     account: member.join_source || "--",
     joined: formatApiTime(member.joined_at),
     department: department?.name || "--",
@@ -419,50 +416,6 @@ function hasNextSibling(nodes: TraeDepartmentNode[], targetID: string): boolean 
     if (hasNextSibling(children, targetID)) return true;
   }
   return false;
-}
-
-function moveDepartmentDown(
-  nodes: TraeDepartmentNode[],
-  nodeID: string,
-): TraeDepartmentNode[] {
-  let moved = false;
-  function swap(items: TraeDepartmentNode[]): TraeDepartmentNode[] {
-    const index = items.findIndex((item) => item.id === nodeID);
-    if (index >= 0 && index < items.length - 1) {
-      const next = [...items];
-      [next[index], next[index + 1]] = [next[index + 1], next[index]];
-      moved = true;
-      return next;
-    }
-    return items.map((item) =>
-      !moved && item.children
-        ? { ...item, children: swap(item.children) }
-        : item,
-    );
-  }
-  return moved ? nodes : swap(nodes);
-}
-
-function moveDepartmentUp(
-  nodes: TraeDepartmentNode[],
-  nodeID: string,
-): TraeDepartmentNode[] {
-  let moved = false;
-  function swap(items: TraeDepartmentNode[]): TraeDepartmentNode[] {
-    const index = items.findIndex((item) => item.id === nodeID);
-    if (index > 0) {
-      const next = [...items];
-      [next[index - 1], next[index]] = [next[index], next[index - 1]];
-      moved = true;
-      return next;
-    }
-    return items.map((item) =>
-      !moved && item.children
-        ? { ...item, children: swap(item.children) }
-        : item,
-    );
-  }
-  return moved ? nodes : swap(nodes);
 }
 
 function hasPreviousSibling(nodes: TraeDepartmentNode[], nodeID: string): boolean {
@@ -1118,8 +1071,8 @@ function TraeDepartmentPicker({
           className={`trae-department-picker-option${value === node.id ? " is-selected" : ""}${isDisabled ? " is-disabled" : ""}`}
           key={node.id}
           style={{ paddingLeft: `${10 + depth * 20}px` }}
-          aria-disabled={isDisabled}
         >
+          {/* 禁止选择不影响展开，禁用语义只放在下方的选项按钮上。 */}
           <span className="trae-department-picker-toggle">
             {hasChildren ? (
               <button
@@ -1293,6 +1246,7 @@ function TraeMemberActionDialog({
   action,
   members,
   nodes,
+  roleOptions,
   t,
   onClose,
   onComplete,
@@ -1300,18 +1254,25 @@ function TraeMemberActionDialog({
   action: TraeMemberAction;
   members: TraeMemberRow[];
   nodes: TraeDepartmentNode[];
+  roleOptions?: EnterpriseRoleOption[];
   t: Translate;
   onClose: () => void;
-  onComplete: (values: { departmentID?: string; role?: "admin" | "member" }) => void | Promise<void>;
+  onComplete: (values: { departmentID?: string; role?: string }) => void | Promise<void>;
 }) {
   const member = members[0];
   const memberCount = members.length;
-  const [departmentID, setDepartmentID] = useState("company");
-  const [role, setRole] = useState<"admin" | "member">(
-    member?.role === "member" ? "member" : "admin",
-  );
+  // 旧服务未提供目录时保留原内置选项；已返回目录时只允许其中的非所有者角色。
+  const assignableRoles = (roleOptions ?? [
+    { code: "administrator", name: t("traeEnterprise.memberDialogs.roleAdmin"), owner_role: false },
+    { code: "member", name: t("traeEnterprise.memberDialogs.roleMember"), owner_role: false },
+  ]).filter((option) => !option.owner_role && option.code !== "owner");
+  const [departmentID, setDepartmentID] = useState(member?.departmentID ?? "");
+  const [role, setRole] = useState(() => member?.roleCode === "admin" && !assignableRoles.some((option) => option.code === "admin") ? "administrator" : member?.roleCode ?? "");
+  const department = findTraeDepartmentNode(nodes, departmentID);
+  const selectionValid = action === "changeDepartment" ? Boolean(department && !department.isVirtual) : action !== "changeRole" || assignableRoles.some((option) => option.code === role);
   const title = t(`traeEnterprise.members.${action}`);
   const complete = async (close: () => void) => {
+    if (!selectionValid) return;
     await onComplete(action === "changeDepartment" ? { departmentID } : action === "changeRole" ? { role } : {});
     close();
   };
@@ -1320,7 +1281,7 @@ function TraeMemberActionDialog({
       <button className="trae-secondary-button" type="button" onClick={close}>
         {t("traeEnterprise.common.cancel")}
       </button>
-      <button className="trae-primary-button" type="button" onClick={() => void complete(close)}>
+      <button className="trae-primary-button" type="button" disabled={!selectionValid} onClick={() => void complete(close)}>
         {t("traeEnterprise.common.confirm")}
       </button>
     </div>
@@ -1338,6 +1299,8 @@ function TraeMemberActionDialog({
               value={departmentID}
               onChange={setDepartmentID}
               label={t("traeEnterprise.memberDialogs.department")}
+              // company 仅用于组织树展示，成员接口必须提交真实部门 ID。
+              disabledIDs={new Set(nodes.filter((node) => node.isVirtual).map((node) => node.id))}
             />
           </label>
           {actions(close)}
@@ -1387,20 +1350,13 @@ function TraeMemberActionDialog({
             : t("traeEnterprise.memberDialogs.roleBatchHint", { count: memberCount })}
         </p>
         <div className="trae-role-options" role="radiogroup">
-          <label className={`trae-role-option${role === "admin" ? " is-selected" : ""}`}>
-            <input type="radio" name="member-role" value="admin" checked={role === "admin"} onChange={() => setRole("admin")} />
+          {assignableRoles.map((option) => <label key={option.code} className={`trae-role-option${role === option.code ? " is-selected" : ""}`}>
+            <input type="radio" name="member-role" value={option.code} checked={role === option.code} onChange={() => setRole(option.code)} />
             <span>
-              <strong>{t("traeEnterprise.memberDialogs.roleAdmin")}</strong>
-              <small>{t("traeEnterprise.memberDialogs.roleAdminHint")}</small>
+              <strong>{enterpriseRoleLabel(option.code, assignableRoles)}</strong>
+              {option.code === "administrator" || option.code === "admin" ? <small>{t("traeEnterprise.memberDialogs.roleAdminHint")}</small> : option.code === "member" ? <small>{t("traeEnterprise.memberDialogs.roleMemberHint")}</small> : null}
             </span>
-          </label>
-          <label className={`trae-role-option${role === "member" ? " is-selected" : ""}`}>
-            <input type="radio" name="member-role" value="member" checked={role === "member"} onChange={() => setRole("member")} />
-            <span>
-              <strong>{t("traeEnterprise.memberDialogs.roleMember")}</strong>
-              <small>{t("traeEnterprise.memberDialogs.roleMemberHint")}</small>
-            </span>
-          </label>
+          </label>)}
         </div>
         {actions(close)}
       </div>}
@@ -1557,7 +1513,7 @@ function TraeEnterpriseMembersContent({ context }: { context: EnterpriseContext 
     loadAllEnterpriseMemberRows(context.id, selectedDepartmentID, debouncedQuery.trim(), status, controller.signal)
       .then((result) => {
         if (!active) return;
-        const rows = result.items.map(toTraeMemberRow).filter((row) => status === "all" || row.status === status);
+        const rows = result.items.map((member) => toTraeMemberRow(member, context.role_options)).filter((row) => status === "all" || row.status === status);
         setMembers(rows);
         setMemberTotal(result.total);
       })
@@ -1568,7 +1524,7 @@ function TraeEnterpriseMembersContent({ context }: { context: EnterpriseContext 
       })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; controller.abort(); };
-  }, [context.id, debouncedQuery, handleError, reloadToken, selectedDepartmentID, status]);
+  }, [context.id, context.role_options, debouncedQuery, handleError, reloadToken, selectedDepartmentID, status]);
   useEffect(() => {
     if (!memberMenu) return undefined;
     // Each action menu owns one ref, so clicks in any other page region dismiss it.
@@ -1632,8 +1588,8 @@ function TraeEnterpriseMembersContent({ context }: { context: EnterpriseContext 
       setMemberActionDialog({ action, members: selectedMembers });
       return;
     }
-    showTraeToast(t(`traeEnterprise.members.${action}`));
-    setSelectedMemberIDs([]);
+    // 邀请链接已有独立入口；按成员重发邀请尚无接口，不能伪造发送成功。
+    Toast.info(t("console.common.comingSoon", { name: t(`traeEnterprise.members.${action}`) }));
   }
   async function saveDepartment(name: string, parentID: string, nodeID?: string): Promise<boolean> {
     setLoadError(null);
@@ -1695,13 +1651,11 @@ function TraeEnterpriseMembersContent({ context }: { context: EnterpriseContext 
     },
     onMoveUp: (node: TraeDepartmentNode) => {
       if (node.isVirtual) return;
-      setDepartments((current) => moveDepartmentUp(current, node.id));
-      showTraeToast(t("traeEnterprise.departmentTable.moveUp"));
+      Toast.info(t("console.common.comingSoon", { name: t("traeEnterprise.departmentTable.moveUp") }));
     },
     onMoveDown: (node: TraeDepartmentNode) => {
       if (node.isVirtual) return;
-      setDepartments((current) => moveDepartmentDown(current, node.id));
-      showTraeToast(t("traeEnterprise.departmentTable.moveDown"));
+      Toast.info(t("console.common.comingSoon", { name: t("traeEnterprise.departmentTable.moveDown") }));
     },
   };
   async function confirmDeleteDepartment(close: () => void) {
@@ -1723,8 +1677,9 @@ function TraeEnterpriseMembersContent({ context }: { context: EnterpriseContext 
         <div className="trae-members-header-main">
           <h1>{t("traeEnterprise.members.title")}</h1>
           <div className="trae-members-header-stats" aria-label={t("traeEnterprise.members.seats")}>
-            <span>{t("traeEnterprise.members.seats")} <b>{TRAE_MEMBER_SEAT_SUMMARY.total}</b></span>
-            <span>{t("traeEnterprise.members.occupied")} <b>{TRAE_MEMBER_SEAT_SUMMARY.allOccupied}/{TRAE_MEMBER_SEAT_SUMMARY.allCapacity}</b></span>
+            {/* 接口尚未提供席位配额，未知值不能用演示数据冒充。 */}
+            <span>{t("traeEnterprise.members.seats")} <b>—</b></span>
+            <span>{t("traeEnterprise.members.occupied")} <b>—</b></span>
           </div>
         </div>
         <div className="trae-page-heading-action">
@@ -1881,7 +1836,7 @@ function TraeEnterpriseMembersContent({ context }: { context: EnterpriseContext 
                   },
                   {
                     title: t("traeEnterprise.members.role"),
-                    dataIndex: "role",
+                    dataIndex: "roleCode",
                     key: "role",
                     render: (value) => enterpriseRoleLabel(String(value), context.role_options),
                   },
@@ -1968,7 +1923,7 @@ function TraeEnterpriseMembersContent({ context }: { context: EnterpriseContext 
                                     ) {
                                       setMemberActionDialog({ action: actionKey, members: [member] });
                                     } else {
-                                      showTraeToast(t(`traeEnterprise.members.${actionKey}`));
+                                      Toast.info(t("console.common.comingSoon", { name: t(`traeEnterprise.members.${actionKey}`) }));
                                     }
                                   }}
                                 >
@@ -2027,16 +1982,8 @@ function TraeEnterpriseMembersContent({ context }: { context: EnterpriseContext 
             if (node.children?.length) setDepartmentDeleteBlockedNode(node);
             else setDepartmentDeleteNode(node);
           }}
-          onMoveDown={(node) => {
-            if (node.isVirtual) return;
-            setDepartments((current) => moveDepartmentDown(current, node.id));
-            showTraeToast(t("traeEnterprise.departmentTable.moveDown"));
-          }}
-          onMoveUp={(node) => {
-            if (node.isVirtual) return;
-            setDepartments((current) => moveDepartmentUp(current, node.id));
-            showTraeToast(t("traeEnterprise.departmentTable.moveUp"));
-          }}
+          onMoveDown={treeProps.onMoveDown}
+          onMoveUp={treeProps.onMoveUp}
         />
       ) : tab === "requests" ? (
         <TraeEnterpriseJoinRequests
@@ -2143,6 +2090,7 @@ function TraeEnterpriseMembersContent({ context }: { context: EnterpriseContext 
           nodes={departments}
           t={t}
           onClose={() => setMemberActionDialog(null)}
+          roleOptions={context.role_options}
           onComplete={async ({ departmentID, role }) => {
             try {
               for (const member of memberActionDialog.members) {
@@ -2156,7 +2104,7 @@ function TraeEnterpriseMembersContent({ context }: { context: EnterpriseContext 
                   await updateEnterpriseMemberRole(
                     { enterprise_id: context.id },
                     member.id,
-                    { role: role === "admin" ? "administrator" : "member", expected_version: member.version },
+                    { role, expected_version: member.version },
                   );
                 } else if (memberActionDialog.action === "removeMember") {
                   await removeEnterpriseMember({ enterprise_id: context.id }, member.id, member.version);

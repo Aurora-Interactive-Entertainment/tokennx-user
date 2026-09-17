@@ -70,7 +70,7 @@ describe("充值管理页面", () => {
             id: "enterprise-order-1",
             order_no: "ENTERPRISE-ORDER-1",
             status: "pending",
-            amount_yuan: "50.00",
+            amount_yuan: "200.00",
           });
         }
         if (
@@ -82,7 +82,7 @@ describe("充值管理页面", () => {
               id: "enterprise-order-1",
               order_no: "ENTERPRISE-ORDER-1",
               status: "paid",
-              amount_yuan: "50.00",
+              amount_yuan: "200.00",
             },
             transaction: { id: "enterprise-transaction-1" },
             form_html: "",
@@ -221,7 +221,9 @@ describe("充值管理页面", () => {
   });
 
   it("实时提示自定义充值金额错误并在满足最低金额后启用充值", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(apiResponse({ items: [], total: 0, page: 1, page_size: 10 }));
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => new URL(String(input), window.location.origin).pathname.endsWith('/wallet')
+      ? apiResponse({ wallet: { total_available_yuan: '0', paid_available_yuan: '0', debt_yuan: '0' } })
+      : apiResponse({ items: [], total: 0, page: 1, page_size: 10 }));
     render(
       <MemoryRouter initialEntries={["/console/recharge"]}>
         <Provider store={createAppStore()}>
@@ -280,18 +282,18 @@ describe("充值管理页面", () => {
       const orderMatch = url.pathname.match(/^\/api\/user\/payment\/orders\/(recharge-order-\d+)\/pay$/);
       if (url.pathname === "/api/user/payment/orders" && options?.method === "POST") {
         orderSequence += 1;
-        return apiResponse({ id: `recharge-order-${orderSequence}`, order_no: `RECHARGE-${orderSequence}`, status: "pending", amount_yuan: "50.00" });
+        return apiResponse({ id: `recharge-order-${orderSequence}`, order_no: `RECHARGE-${orderSequence}`, status: "pending", amount_yuan: "200.00" });
       }
       if (orderMatch && options?.method === "POST") {
-        return apiResponse({ order: { id: orderMatch[1], order_no: `RECHARGE-${orderMatch[1].split("-").at(-1)}`, status: "paying", amount_yuan: "50.00" }, transaction: { id: `transaction-${orderMatch[1]}` }, qr_code: `https://openapi.alipay.com/gateway.do?order=${orderMatch[1]}`, form_html: "" });
+        return apiResponse({ order: { id: orderMatch[1], order_no: `RECHARGE-${orderMatch[1].split("-").at(-1)}`, status: "paying", amount_yuan: "200.00" }, transaction: { id: `transaction-${orderMatch[1]}` }, qr_code: `https://openapi.alipay.com/gateway.do?order=${orderMatch[1]}`, form_html: "" });
       }
       if (url.pathname.match(/^\/api\/user\/payment\/orders\/recharge-order-\d+\/close$/) && options?.method === "POST") {
         closeCount += 1;
-        return apiResponse({ id: url.pathname.split("/").at(-2), order_no: `RECHARGE-${closeCount}`, status: "closed", amount_yuan: "50.00" });
+        return apiResponse({ id: url.pathname.split("/").at(-2), order_no: `RECHARGE-${closeCount}`, status: "closed", amount_yuan: "200.00" });
       }
       if (url.pathname.match(/^\/api\/user\/payment\/orders\/recharge-order-\d+$/)) {
         queryCount += 1;
-        return apiResponse({ id: url.pathname.split("/").at(-1), order_no: `RECHARGE-${queryCount}`, status: "paying", amount_yuan: "50.00" });
+        return apiResponse({ id: url.pathname.split("/").at(-1), order_no: `RECHARGE-${queryCount}`, status: "paying", amount_yuan: "200.00" });
       }
       throw new Error(`unexpected request: ${url.pathname}`);
     });

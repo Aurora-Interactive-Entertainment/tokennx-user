@@ -76,9 +76,9 @@ function PurchasePaymentContent({
   useEffect(() => {
     // 订单确认入账（paid_at 已回）后自动关闭支付弹窗：买完不该再留一个需要手动关闭的弹窗。
     // 已支付但尚未到账时继续查单，等入账确认后再关闭，避免提前切断状态确认。
-    if (!closing && payment.order && isPaymentSettled(payment.order))
+    if (!closing && !payment.busy && payment.order && isPaymentSettled(payment.order))
       void payment.close(() => setClosing(true));
-  }, [payment.order, closing]);
+  }, [payment.order, payment.busy, closing]);
   useEffect(() => {
     // 服务端再次要求实名时卸载支付会话，认证提示下面不保留支付弹窗或查单任务。
     if (payment.realNameRequired) onRealNameRequired();
@@ -157,6 +157,11 @@ function PurchasePaymentContent({
                   <span className="purchase-payment-consent" role="status">{t(`${copy}.agreementRequired`)}</span>
                 ) : payment.busy ? (
                   <div className="purchase-payment-loading" role="status"><Spin size="large" /><span>{t(`${copy}.processing`)}</span></div>
+                ) : payment.timedOut ? (
+                  <div className="purchase-payment-loading">
+                    <span role="status">{t("console.billing.paymentStatusUnknown")}</span>
+                    <button type="button" className="purchase-payment-qr-refresh" aria-label={t(`${copy}.refresh`)} title={t(`${copy}.refresh`)} onClick={payment.refresh} disabled={payment.querying}><IconRefresh aria-hidden="true" /></button>
+                  </div>
                 ) : payment.order?.status !== "paid" && payment.active && payment.qr ? (
                   <PaymentQRCode
                     value={payment.qr}
@@ -228,7 +233,7 @@ function PurchasePaymentContent({
                   <input
                     type="checkbox"
                     checked={agreed}
-                    disabled={payment.blocked || closing || Boolean(payment.order && isPaymentSettled(payment.order))}
+                    disabled={payment.blocked || payment.consentLocked || closing || Boolean(payment.order && isPaymentSettled(payment.order))}
                     onChange={(event) => void payment.setAgreed(event.target.checked)}
                   />
                   {t(`${copy}.readAgreement`)}

@@ -44,9 +44,13 @@ import { TraePagination } from '@/components/trae-pagination'
 import { BackofficeMoneyText as MoneyText } from '@/components/money'
 import { PaymentQRCodeFrame } from '@/components/payment-qr-frame'
 import { PaymentQRCode } from '@/components/payment-qr-code'
-import { isPaymentActive, isPaymentSettled, isPaymentOrderPollable, paymentCarrier } from '@/api/payment-flow'
+import { isPaymentActive, isPaymentSettled, isPaymentOrderPollable, paymentCarrier, paymentDeadline } from '@/api/payment-flow'
 import { useBillingPaymentPolling } from '@/components/use-billing-payment-polling'
 import { usePaymentExpiry } from '@/components/use-payment-expiry'
+import { usePaymentReturn } from '@/components/use-payment-return'
+import { clearPendingPaymentIntent, paymentIntentScope, readPendingPaymentIntent, writePendingPaymentIntent, type PendingPaymentIntent } from '@/api/pending-payment-intent'
+import { assertRechargePaymentOrder, assertBillingPaymentAttempt } from '@/api/plan-payment-validation'
+import { getAccessTokenUserId } from '@/auth/token-storage'
 import { CompatSelect as Select } from '@/components/semi-compat'
 import alipayIcon from '@/assets/payment-icons/alipay.svg'
 import wechatIcon from '@/assets/payment-icons/wechat.svg'
@@ -333,10 +337,10 @@ export function PaymentReturnNotice({ state, onRetry }: { state: ResourceState<B
   }, [state.error, state.status])
   if (state.status === 'idle') return null
   if (state.status === 'loading') return <BannerNotice><span>{i18n.t('console.billing.paymentQuerying')}</span></BannerNotice>
-  if (state.status === 'error') return null
+  if (state.status === 'error') return <BannerNotice tone="warning"><span className="billing-request-error-copy" role="alert"><strong>{state.error}</strong>{state.requestId ? <small>{i18n.t('console.common.requestId')}: {state.requestId}</small> : null}</span><Button size="small" theme="outline" onClick={onRetry}>{i18n.t('console.common.retry')}</Button></BannerNotice>
   if (!state.data) return null
   const copy = paymentOrderStatusCopy(state.data)
-  return <BannerNotice tone={copy.tone}><span className="billing-request-error-copy"><strong>{copy.label}</strong><small>{i18n.t('console.billing.paymentReturnOrder', { orderNo: state.data.order_no })}</small></span></BannerNotice>
+  return <BannerNotice tone={copy.tone}><span className="billing-request-error-copy"><strong>{copy.label}</strong><small>{i18n.t('console.billing.paymentReturnOrder', { orderNo: state.data.order_no })}</small></span>{isPaymentOrderPollable(state.data) || state.data.status === 'exception' ? <Button size="small" theme="outline" onClick={onRetry}>{i18n.t('console.billing.paymentRefresh')}</Button> : null}</BannerNotice>
 }
 
 function Metric({ label, value, note, tone = '', action, noteAsTooltip = false }: { label: string; value: ReactNode; note?: ReactNode; tone?: string; action?: ReactNode; noteAsTooltip?: boolean }) {
@@ -581,8 +585,16 @@ function AnalysisTab({ state, ledger, dateRange, apiKeyID, model, billingType, d
 // 充值表单独立复用在充值管理页面，费用页仅保留费用概览和发票页签。
 export function RechargeTab({ context, onOrderUpdated, onAuthFailure }: { context: BillingContext; onOrderUpdated: () => void; onAuthFailure: () => void }) {
   const navigate = useNavigate()
-  const [amount, setAmount] = useState('100')
-  const [selected, setSelected] = useState<number | null>(100)
+  const intentScope = paymentIntentScope(context, 'recharge')
+  const paymentUserID = getAccessTokenUserId()
+  const [restoredIntent] = useState(() => readPendingPaymentIntent(intentScope))
+  const intentRef = useRef<PendingPaymentIntent | null>(restoredIntent)
+  const [hasPendingIntent, setHasPendingIntent] = useState(Boolean(restoredIntent))
+  const [amount, setAmount] = useState(restoredIntent?.amountYuan ?? '100')
+  const [selected, setSelected] = useState<number | null>(() => {
+    const value = Number(restoredIntent?.amountYuan ?? '100')
+    return RECHARGE_OPTIONS.some((option) => option === value) ? value : null
+  })
   const [submitting, setSubmitting] = useState(false)
   const [paymentOrder, setPaymentOrder] = useState<BillingPaymentOrder | null>(null)
   const [paymentFormHTML, setPaymentFormHTML] = useState('')
@@ -594,13 +606,10 @@ export function RechargeTab({ context, onOrderUpdated, onAuthFailure }: { contex
   const [paymentQuerying, setPaymentQuerying] = useState(false)
   const [paymentRefreshToken, setPaymentRefreshToken] = useState(0)
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false)
-  const paymentOrderIdempotencyKeyRef = useRef<string | null>(null)
-  const paymentStartIdempotencyKeyRef = useRef<string | null>(null)
-  const pendingPaymentOrderIDRef = useRef<string | null>(null)
   const paymentSubmittingRef = useRef(false)
   const paymentControllerRef = useRef<AbortController | null>(null)
   const agreementAccepted = true
-  const [paymentMethod, setPaymentMethod] = useState<'alipay' | 'wechat'>('alipay')
+  const [paymentMethod, setPaymentMethod] = useState<'alipay' | 'wechat'>(restoredIntent?.channel ?? 'alipay')
   const [realNameDialogOpen, setRealNameDialogOpen] = useState(false)
 
   // 切换账务主体或离开充值页后，中止旧请求，避免旧订单继续发起支付。
@@ -618,82 +627,207 @@ export function RechargeTab({ context, onOrderUpdated, onAuthFailure }: { contex
     if (paymentQueryError) appToast.error(paymentQueryError)
   }, [paymentQueryError])
 
+  function saveIntent(intent: PendingPaymentIntent): void {
+    writePendingPaymentIntent(intentScope, intent)
+    const saved = readPendingPaymentIntent(intentScope)
+    if (saved && saved.id !== intent.id) throw new ApiError(i18n.t('console.billing.paymentStatusUnknown'), 409, 0, null)
+    intentRef.current = intent
+    setHasPendingIntent(true)
+  }
+
+  function currentIntent(): PendingPaymentIntent | null {
+    // 同一主体若另一个已挂载入口先保存了意图，提交前采用它，不能绕过存储的同一会话约束。
+    const saved = readPendingPaymentIntent(intentScope)
+    if (saved && saved.id !== intentRef.current?.id) {
+      intentRef.current = saved
+      setHasPendingIntent(true)
+      setAmount(saved.amountYuan!)
+      const value = Number(saved.amountYuan)
+      setSelected(RECHARGE_OPTIONS.some((option) => option === value) ? value : null)
+      setPaymentMethod(saved.channel)
+    }
+    if (saved) intentRef.current = saved
+    return saved ?? intentRef.current
+  }
+
+  function clearIntent(): void {
+    if (intentRef.current) clearPendingPaymentIntent(intentScope, intentRef.current.id)
+    intentRef.current = null
+    setHasPendingIntent(false)
+    currentIntent()
+  }
+
+  function makeIntent(previous?: PendingPaymentIntent): PendingPaymentIntent {
+    return { id: createIdempotencyKey('recharge-intent'), createKey: createIdempotencyKey('payment-order'), payKey: createIdempotencyKey('payment-start'), channel: previous?.channel ?? paymentMethod, orderID: null, amountYuan: previous?.amountYuan ?? amount.trim() }
+  }
+
+  function validateOrder(order: BillingPaymentOrder, previous: BillingPaymentOrder | null = null): void {
+    const intent = intentRef.current
+    const saved = readPendingPaymentIntent(intentScope)
+    if (saved && saved.id !== intent?.id) throw new ApiError(i18n.t('console.billing.paymentStatusUnknown'), 409, 0, null)
+    assertRechargePaymentOrder(order, context, previous, { amountYuan: intent?.amountYuan, orderID: intent?.orderID ?? undefined, userID: paymentUserID })
+  }
+
+  function isConfirmedTerminal(order: BillingPaymentOrder): boolean {
+    return ['closed', 'expired'].includes(order.status) || isPaymentSettled(order)
+  }
+
+  async function findIntentOrder(intent: PendingPaymentIntent, signal: AbortSignal): Promise<BillingPaymentOrder> {
+    // 未取得 ID 的请求只能原键、原金额重放，不能把“响应丢失”当成未创建。
+    const order = intent.orderID
+      ? await getBillingPaymentOrder(intent.orderID, { signal }, context)
+      : await createBillingPaymentOrder(context, { amount_yuan: intent.amountYuan! }, intent.createKey, { signal })
+    if (!signal.aborted) {
+      validateOrder(order)
+      saveIntent({ ...intent, orderID: order.id })
+    }
+    return order
+  }
+
+  async function finishOrder(order: BillingPaymentOrder, signal: AbortSignal): Promise<BillingPaymentOrder> {
+    let latest: BillingPaymentOrder
+    try {
+      latest = order.status === 'paid'
+        ? await getBillingPaymentOrder(order.id, { signal }, context)
+        : await closeBillingPaymentOrder(order.id, { signal }, context)
+    } catch (error) {
+      if (!isApiError(error) || ![140004, 170004].includes(error.code)) throw error
+      latest = await getBillingPaymentOrder(order.id, { signal }, context)
+    }
+    if (!signal.aborted) validateOrder(latest, order)
+    return latest
+  }
+
   async function closePaymentDialog(): Promise<void> {
     if (paymentSubmittingRef.current) return
     const orderToClose = paymentOrder
-    // 关闭二维码弹窗即结束本次支付会话，避免后台继续查单或复用旧二维码。
+    // 先确认订单已结束再关闭弹窗，网络失败不能让仍可支付的旧单失去跟踪。
     cancelPaymentPolling()
-    setPaymentDialogOpen(false)
-    setPaymentOrder(null)
-    setPaymentFormHTML('')
-    setPaymentQRCodeValue('')
-    setPaymentAttemptExpiresAt(null)
-    setPaymentFormError('')
-    setPaymentQueryError('')
     setPaymentQuerying(false)
-    if (!orderToClose || !isPaymentActive(orderToClose.status)) return
     // 关单完成前暂时锁住充值按钮，避免用户立即创建第二个未确认订单。
     paymentSubmittingRef.current = true
     const controller = new AbortController()
     paymentControllerRef.current = controller
     const { signal } = controller
+    let completed = false
     setSubmitting(true)
     try {
-      await closeBillingPaymentOrder(orderToClose.id, { signal }, context)
-      if (signal.aborted) return
-      paymentOrderIdempotencyKeyRef.current = null
-      paymentStartIdempotencyKeyRef.current = null
-      pendingPaymentOrderIDRef.current = null
-      onOrderUpdated()
+      if (orderToClose && !isConfirmedTerminal(orderToClose)) {
+        const latest = await finishOrder(orderToClose, signal)
+        if (signal.aborted) return
+        setPaymentOrder(latest)
+        if (!isConfirmedTerminal(latest)) throw new ApiError(i18n.t('console.billing.paymentStatusUnknown'), 409, 0, null)
+        onOrderUpdated()
+      }
+      clearIntent()
+      completed = true
+      setPaymentDialogOpen(false)
+      setPaymentOrder(null)
+      setPaymentFormHTML('')
+      setPaymentQRCodeValue('')
+      setPaymentAttemptExpiresAt(null)
+      setPaymentFormError('')
+      setPaymentQueryError('')
     } catch (error) {
       if (signal.aborted) return
       if (isAuthenticationFailure(error)) {
         onAuthFailure()
         return
       }
-      // 关单失败不阻塞用户继续操作，但保留错误提示，便于用户重新查询订单状态。
+      // 保留弹窗和原订单，用户仍可查单或再次关闭，不能改渠道后重复付款。
       Toast.warning(getBillingErrorMessage(error))
     } finally {
       paymentSubmittingRef.current = false
-      if (!signal.aborted) setSubmitting(false)
+      if (!signal.aborted) {
+        setSubmitting(false)
+        if (!completed) setPaymentRefreshToken((value) => value + 1)
+      }
+    }
+  }
+
+  function acceptQueriedOrder(latestOrder: BillingPaymentOrder): void {
+    validateOrder(latestOrder, paymentOrder)
+    setPaymentQueryError('')
+    setPaymentOrder(latestOrder)
+    if (isConfirmedTerminal(latestOrder)) {
+      clearIntent()
+      onOrderUpdated()
+    }
+  }
+
+  async function refreshPayment(): Promise<void> {
+    if (paymentSubmittingRef.current || paymentQuerying || !paymentOrder) return
+    setPaymentQueryError('')
+    if (isPaymentOrderPollable(paymentOrder)) { setPaymentRefreshToken((value) => value + 1); return }
+    // exception 不自动轮询，也不能当作已关闭；保留显式查单确认的恢复入口。
+    paymentSubmittingRef.current = true
+    setPaymentQuerying(true)
+    const controller = new AbortController()
+    paymentControllerRef.current = controller
+    try {
+      const latest = await getBillingPaymentOrder(paymentOrder.id, { signal: controller.signal }, context)
+      if (!controller.signal.aborted) acceptQueriedOrder(latest)
+    } catch (error) {
+      if (controller.signal.aborted) return
+      if (isAuthenticationFailure(error)) onAuthFailure()
+      else setPaymentQueryError(getBillingErrorMessage(error))
+    } finally {
+      paymentSubmittingRef.current = false
+      if (!controller.signal.aborted) setPaymentQuerying(false)
     }
   }
 
   const cancelPaymentPolling = useBillingPaymentPolling({
     context, order: paymentOrder, enabled: paymentDialogOpen, refreshToken: paymentRefreshToken, expired: paymentExpired,
-    onOrder: (latestOrder) => {
-      setPaymentQueryError('')
-      setPaymentOrder(latestOrder)
-      if (!isPaymentOrderPollable(latestOrder)) {
-        paymentOrderIdempotencyKeyRef.current = null
-        paymentStartIdempotencyKeyRef.current = null
-        pendingPaymentOrderIDRef.current = null
-        onOrderUpdated()
-      }
-    },
+    onOrder: acceptQueriedOrder,
     onError: (error) => { if (isAuthenticationFailure(error)) onAuthFailure(); else setPaymentQueryError(getBillingErrorMessage(error)) },
-    onTimeout: () => setPaymentQueryError(i18n.t('console.billing.paymentStatusUnknown')),
+    onTimeout: () => {
+      // 轮询单轮上限不能截断仍有效的订单，晚付款也必须继续确认到账。
+      const orderDeadline = paymentDeadline(paymentOrder?.expires_at)
+      if (orderDeadline !== null && Date.now() < orderDeadline) {
+        setPaymentRefreshToken((value) => value + 1)
+        return
+      }
+      setPaymentQueryError(i18n.t('console.billing.paymentStatusUnknown'))
+    },
     onQuerying: setPaymentQuerying,
   })
 
-  function choose(value: number): void {
-    paymentOrderIdempotencyKeyRef.current = null
-    paymentStartIdempotencyKeyRef.current = null
-    pendingPaymentOrderIDRef.current = null
-    setSelected(value)
-    setAmount(String(value))
+  async function changeSelection(nextAmount: string, nextSelected: number | null, nextMethod: 'alipay' | 'wechat'): Promise<void> {
+    if (paymentSubmittingRef.current || paymentDialogOpen || (nextAmount === amount && nextSelected === selected && nextMethod === paymentMethod)) return
+    const applySelection = () => { setAmount(nextAmount); setSelected(nextSelected); setPaymentMethod(nextMethod) }
+    const intent = currentIntent()
+    if (!intent) { applySelection(); return }
+    paymentSubmittingRef.current = true
+    setSubmitting(true)
+    const controller = new AbortController()
+    paymentControllerRef.current = controller
+    try {
+      let order = await findIntentOrder(intent, controller.signal)
+      if (controller.signal.aborted) return
+      if (!isConfirmedTerminal(order)) order = await finishOrder(order, controller.signal)
+      if (controller.signal.aborted) return
+      setPaymentOrder(order)
+      if (!isConfirmedTerminal(order)) {
+        setPaymentDialogOpen(true)
+        throw new ApiError(i18n.t('console.billing.paymentStatusUnknown'), 409, 0, null)
+      }
+      // 只有明确终态才能丢弃旧意图，支付失败后的换渠道/改金额也遵守此规则。
+      clearIntent()
+      if (isPaymentSettled(order)) { onOrderUpdated(); Toast.success(i18n.t('console.billing.paymentStatusPaid')) }
+      applySelection()
+    } catch (error) {
+      if (controller.signal.aborted) return
+      if (isAuthenticationFailure(error)) onAuthFailure()
+      else Toast.error(getBillingErrorMessage(error))
+    } finally {
+      paymentSubmittingRef.current = false
+      if (!controller.signal.aborted) setSubmitting(false)
+    }
   }
 
-  function choosePaymentMethod(method: 'alipay' | 'wechat'): void {
-    // 二维码弹窗打开后必须先关闭当前订单，再切换渠道；避免后台轮询和界面载体属于不同订单。
-    if (paymentSubmittingRef.current || paymentDialogOpen || method === paymentMethod) return
-    // 切换渠道后新建充值会话，避免支付失败或关单失败时把旧渠道订单交给新渠道。
-    // 同一渠道重试仍保留原订单和幂等键，防止网络重试重复下单。
-    paymentOrderIdempotencyKeyRef.current = null
-    paymentStartIdempotencyKeyRef.current = null
-    pendingPaymentOrderIDRef.current = null
-    setPaymentMethod(method)
-  }
+  function choose(value: number): void { void changeSelection(String(value), value, paymentMethod) }
+  function choosePaymentMethod(method: 'alipay' | 'wechat'): void { void changeSelection(amount, selected, method) }
 
   async function handleRecharge(): Promise<void> {
     const amountValidation = validateRechargeAmount(amount)
@@ -702,7 +836,7 @@ export function RechargeTab({ context, onOrderUpdated, onAuthFailure }: { contex
       Toast.error(i18n.t(amountValidation === 'required' ? 'console.billing.amountRequired' : amountValidation === 'minimum' ? 'console.billing.amountMinimum' : 'console.billing.amountInvalid'))
       return
     }
-    if (submitting || paymentSubmittingRef.current) return
+    if (submitting || paymentSubmittingRef.current || paymentDialogOpen) return
     paymentSubmittingRef.current = true
     const controller = new AbortController()
     paymentControllerRef.current = controller
@@ -716,32 +850,22 @@ export function RechargeTab({ context, onOrderUpdated, onAuthFailure }: { contex
     setPaymentFormError('')
     setPaymentQueryError('')
     try {
-      const createOrder = () => {
-        const key = paymentOrderIdempotencyKeyRef.current ?? createIdempotencyKey('payment-order')
-        paymentOrderIdempotencyKeyRef.current = key
-        return createBillingPaymentOrder(context, { amount_yuan: amount.trim() }, key, { signal })
-      }
-      let order = pendingPaymentOrderIDRef.current
-        ? await getBillingPaymentOrder(pendingPaymentOrderIDRef.current, { signal }, context)
-        : await createOrder()
+      let intent = currentIntent() ?? makeIntent()
+      saveIntent(intent)
+      let order = await findIntentOrder(intent, signal)
       if (signal.aborted) return
       // 关单响应丢失时旧订单可能已关闭；已关闭或过期订单必须重新创建，不能继续 /pay。
       if (['closed', 'expired'].includes(order.status)) {
-        paymentOrderIdempotencyKeyRef.current = null
-        paymentStartIdempotencyKeyRef.current = null
-        pendingPaymentOrderIDRef.current = null
-        order = await createOrder()
+        clearIntent()
+        intent = makeIntent(intent)
+        saveIntent(intent)
+        order = await findIntentOrder(intent, signal)
         if (signal.aborted) return
       }
-      pendingPaymentOrderIDRef.current = order.id
       // 支付响应丢失后先以查单结果为准；已支付但尚未到账时继续查单，不重复发起扣款。
       if (!isPaymentActive(order.status)) {
         setPaymentOrder(order)
-        if (!isPaymentOrderPollable(order)) {
-          paymentOrderIdempotencyKeyRef.current = null
-          paymentStartIdempotencyKeyRef.current = null
-          pendingPaymentOrderIDRef.current = null
-        }
+        if (isConfirmedTerminal(order)) clearIntent()
         if (isPaymentSettled(order)) {
           onOrderUpdated()
           Toast.success(i18n.t('console.billing.paymentStatusPaid'))
@@ -751,29 +875,27 @@ export function RechargeTab({ context, onOrderUpdated, onAuthFailure }: { contex
         return
       }
       // 支付、查单接口同样需要携带当前账务主体，否则企业订单会被路由到个人接口。
-      const startIdempotencyKey = paymentStartIdempotencyKeyRef.current ?? createIdempotencyKey('payment-start')
-      paymentStartIdempotencyKeyRef.current = startIdempotencyKey
       // 两种支付方式均显式发送当前渠道，避免依赖服务端默认渠道或旧交易信息。
-      const payment = await startBillingPayment(order.id, startIdempotencyKey, { signal, scene: 'pc', channel: paymentMethod }, context)
+      const payment = await startBillingPayment(order.id, intent.payKey, { signal, scene: 'pc', channel: intent.channel }, context)
       if (signal.aborted) return
+      validateOrder(payment.order, order)
+      assertBillingPaymentAttempt(payment, intent.channel)
       setPaymentOrder(payment.order)
-      if (!isPaymentOrderPollable(payment.order)) {
-        paymentOrderIdempotencyKeyRef.current = null
-        paymentStartIdempotencyKeyRef.current = null
-        pendingPaymentOrderIDRef.current = null
+      if (isConfirmedTerminal(payment.order)) clearIntent()
+      // 订单状态先于载体：已支付不再需要二维码，到账副作用也不能取决于二维码是否仍在响应中。
+      if (isPaymentSettled(payment.order)) {
+        onOrderUpdated()
+        Toast.success(i18n.t('console.billing.paymentStatusPaid'))
+        return
       }
-      const { qr: qrCodeValue, form: formHTML } = paymentCarrier(payment, paymentMethod)
+      if (!isPaymentActive(payment.order.status)) {
+        setPaymentDialogOpen(true)
+        return
+      }
+      const { qr: qrCodeValue, form: formHTML } = paymentCarrier(payment, intent.channel)
       setPaymentAttemptExpiresAt(payment.transaction?.expires_at ?? null)
       setPaymentQRCodeValue(qrCodeValue)
       if (!formHTML && !qrCodeValue) {
-        if (isPaymentSettled(payment.order)) {
-          paymentOrderIdempotencyKeyRef.current = null
-          paymentStartIdempotencyKeyRef.current = null
-          pendingPaymentOrderIDRef.current = null
-          onOrderUpdated()
-          Toast.success(i18n.t('console.billing.paymentStatusPaid'))
-          return
-        }
         throw new ApiError(i18n.t(paymentMethod === 'wechat' ? 'api.billing.wechatQRCodeInvalid' : 'api.billing.paymentFormInvalid'), 502, 0, null)
       }
       setPaymentFormHTML(formHTML)
@@ -797,7 +919,7 @@ export function RechargeTab({ context, onOrderUpdated, onAuthFailure }: { contex
   }
 
   const paymentCopy = paymentOrder ? paymentOrderStatusCopy(paymentOrder) : null
-  const paymentActive = paymentOrder ? isPaymentOrderPollable(paymentOrder) : false
+  const paymentActive = paymentOrder ? !isConfirmedTerminal(paymentOrder) : false
   const rechargeAmount = parseAmount(amount)
   const amountValidation = selected === null ? validateRechargeAmount(amount) : null
   const amountValidationMessage = amountValidation === 'required' ? i18n.t('console.billing.amountRequired') : amountValidation === 'minimum' ? i18n.t('console.billing.amountMinimum') : amountValidation === 'invalid' ? i18n.t('console.billing.amountInvalid') : ''
@@ -809,13 +931,14 @@ export function RechargeTab({ context, onOrderUpdated, onAuthFailure }: { contex
   return (
     <section className="billing-subpage billing-recharge-page">
       <div className="recharge-form-panel">
+        {hasPendingIntent && !submitting && !paymentDialogOpen ? <BannerNotice>{i18n.t('console.billing.unfinishedPayment')}</BannerNotice> : null}
         <div className="recharge-form-heading"><h2>{i18n.t('console.billing.chooseRechargeAmount')}</h2><p>{i18n.t('console.billing.rechargeInvoiceHint')}</p></div>
         <div className="recharge-form-row recharge-amount-row">
           <div className="recharge-form-label"><strong>{i18n.t('console.billing.rechargeAmount')}</strong><span className="recharge-required" aria-hidden="true">*</span></div>
           <div className="recharge-amount-content">
             <div className="recharge-options" id="rechargeOptions">
               {RECHARGE_OPTIONS.map((value) => <button type="button" className={`recharge-option${selected === value ? ' active' : ''}`} aria-pressed={selected === value} key={value} disabled={submitting} onClick={() => choose(value)}><span className="recharge-amount">{value} {i18n.t('console.billing.amountUnit')}</span><span className="recharge-selected-corner" aria-hidden="true">✓</span></button>)}
-              <label className={`recharge-option recharge-option-other${customAmountSelected ? ' active' : ''}`} htmlFor="rechargeCustomAmount"><input id="rechargeCustomAmount" disabled={submitting} aria-label={i18n.t('console.billing.otherAmount')} aria-describedby="rechargeAmountValidation" aria-invalid={amountValidation !== null} inputMode="decimal" type="text" value={selected === null ? amount : ''} onFocus={() => { if (selected !== null) { paymentOrderIdempotencyKeyRef.current = null; paymentStartIdempotencyKeyRef.current = null; pendingPaymentOrderIDRef.current = null; setSelected(null); setAmount('') } }} onChange={(event) => { paymentOrderIdempotencyKeyRef.current = null; paymentStartIdempotencyKeyRef.current = null; pendingPaymentOrderIDRef.current = null; setSelected(null); setAmount(sanitizeRechargeAmountInput(event.target.value)) }} placeholder={i18n.t('console.billing.otherAmountPlaceholder')} /><span className="recharge-selected-corner" aria-hidden="true">✓</span></label>
+              <label className={`recharge-option recharge-option-other${customAmountSelected ? ' active' : ''}`} htmlFor="rechargeCustomAmount"><input id="rechargeCustomAmount" disabled={submitting} aria-label={i18n.t('console.billing.otherAmount')} aria-describedby="rechargeAmountValidation" aria-invalid={amountValidation !== null} inputMode="decimal" type="text" value={selected === null ? amount : ''} onFocus={() => { if (selected !== null) void changeSelection('', null, paymentMethod) }} onChange={(event) => { void changeSelection(sanitizeRechargeAmountInput(event.target.value), null, paymentMethod) }} placeholder={i18n.t('console.billing.otherAmountPlaceholder')} /><span className="recharge-selected-corner" aria-hidden="true">✓</span></label>
             </div>
             {amountValidationMessage ? <p className="recharge-amount-validation" id="rechargeAmountValidation" role="alert">{amountValidationMessage}</p> : null}
           </div>
@@ -835,7 +958,7 @@ export function RechargeTab({ context, onOrderUpdated, onAuthFailure }: { contex
           <strong className="payment-qr-dialog-amount">{formatYuan(paymentOrder.amount_yuan, 2)}</strong>
           {paymentExpired && isPaymentActive(paymentOrder.status) ? <p role="status">{i18n.t('console.billing.paymentStatusExpired')}</p> : null}
           {isPaymentActive(paymentOrder.status) && !paymentExpired && (paymentQRCodeValue || paymentFormHTML) ? <><p className="payment-qr-hint">{paymentFrameHint}</p>{paymentQRCodeValue ? <PaymentQRCode value={paymentQRCodeValue} title={paymentFrameTitle} errorMessage={paymentCarrierError} onError={handlePaymentFormError} /> : <PaymentQRCodeFrame formHTML={paymentFormHTML} title={paymentFrameTitle} errorMessage={paymentCarrierError} loadingLabel={i18n.t('console.billing.paymentFrameLoading')} onError={handlePaymentFormError} />}</> : null}
-          {paymentActive ? <Button className="payment-qr-refresh-button" theme="outline" size="small" icon={<IconRefresh />} loading={paymentQuerying} disabled={!paymentActive || paymentQuerying} onClick={() => { setPaymentQueryError(''); setPaymentRefreshToken((value) => value + 1) }}>{i18n.t('console.billing.paymentRefresh')}</Button> : null}
+          {paymentActive ? <Button className="payment-qr-refresh-button" theme="outline" size="small" icon={<IconRefresh />} loading={paymentQuerying} disabled={!paymentActive || paymentQuerying || submitting} onClick={() => void refreshPayment()}>{i18n.t('console.billing.paymentRefresh')}</Button> : null}
         </div>
       </Modal> : null}
       <RealNameRequiredDialog
@@ -907,8 +1030,6 @@ export function BillingPage() {
   const invoiceDownloadLockRef = useRef(false)
   const [exportingLedger, setExportingLedger] = useState(false)
   const ledgerExportLockRef = useRef(false)
-  const [paymentReturnState, setPaymentReturnState] = useState<ResourceState<BillingPaymentOrder>>(resourceState())
-  const [paymentReturnRetryToken, setPaymentReturnRetryToken] = useState(0)
   const [balanceAlertOpen, setBalanceAlertOpen] = useState(false)
 
   // 兼容旧版费用页充值链接，保留订单参数后转到新的充值管理页面。
@@ -952,7 +1073,6 @@ export function BillingPage() {
     setDialogStep(1)
     setInvoiceFormErrors({})
     invoiceIdempotencyKeyRef.current = null
-    setPaymentReturnState(resourceState())
   }, [contextKey, requestedTab])
 
   useEffect(() => {
@@ -977,29 +1097,8 @@ export function BillingPage() {
     return () => controller.abort()
   }, [context.account_type, context.enterprise_id])
 
-  useEffect(() => {
-    if (!paymentReturnOrderID) {
-      setPaymentReturnState(resourceState())
-      return
-    }
-    const controller = new AbortController()
-    setActiveTab('overview')
-    setPaymentReturnState((previous) => ({ ...resourceState('loading'), data: previous.data }))
-    // 支付回跳查单沿用当前账务主体，企业订单不能落到个人接口。
-    void getBillingPaymentOrder(paymentReturnOrderID, { signal: controller.signal }, context).then((order) => {
-      if (controller.signal.aborted) return
-      setPaymentReturnState({ status: 'success', data: order, error: '', requestId: null })
-      setReloadToken((value) => value + 1)
-    }).catch((error: unknown) => {
-      if (controller.signal.aborted) return
-      if (isAuthenticationFailure(error)) {
-        handleAuthFailure()
-        return
-      }
-      setPaymentReturnState(loadError(error))
-    })
-    return () => controller.abort()
-  }, [context.account_type, context.enterprise_id, handleAuthFailure, loadError, paymentReturnOrderID, paymentReturnRetryToken])
+  const { state: paymentReturnState, retry: retryPaymentReturn } = usePaymentReturn({ context, orderID: paymentReturnOrderID, onAuthFailure: handleAuthFailure, onSettled: () => setReloadToken((value) => value + 1) })
+  useEffect(() => { if (paymentReturnOrderID) setActiveTab('overview') }, [paymentReturnOrderID])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -1243,5 +1342,5 @@ export function BillingPage() {
   if (activeTab === 'overview') content = <AnalysisTab state={analysisState} ledger={ledgerSection} dateRange={dateRange} apiKeyID={apiKeyID} model={model} billingType={billingType} departmentID={departmentID} memberID={memberID} departments={departments} members={members} directoryLoading={directoryLoading} directoryEnabled={context.account_type === 'enterprise'} filterCatalog={analysisFilters} onRecharge={() => navigate('/console/recharge')} onBalanceAlert={() => setBalanceAlertOpen(true)} onFilterChange={changeAnalysisFilter} onDateRangeChange={changeAnalysisDateRange} onRetry={() => setReloadToken((value) => value + 1)} />
   else content = <InvoiceTab state={invoiceState} invoiceTypes={getInvoiceDialogOptions(invoiceState.data, invoiceInformationState.data).invoiceTypes} invoiceInfoLoading={invoiceInformationState.status === 'loading' || invoiceInformationState.status === 'idle'} downloadingInvoiceID={downloadingInvoiceID} onRetry={() => setReloadToken((value) => value + 1)} onOpenDialog={openInvoiceDialog} onDownload={(item) => void downloadInvoice(item)} onPageChange={setInvoicePage} onPageSizeChange={(nextPageSize) => { setInvoicePageSize(nextPageSize); setInvoicePage(BILLING_FIRST_PAGE) }} page={invoicePage} pageSize={invoicePageSize} />
 
-  return <div className="page-stack billing-console-page"><PageTitle title={t('console.billing.title')} description={t('console.billing.description')} /><RequestFocus data={analysisState.data} requestId={requestedRecordId} /><PaymentReturnNotice state={paymentReturnState} onRetry={() => setPaymentReturnRetryToken((value) => value + 1)} /><ConsoleTabs items={BILLING_TABS.map(([itemKey, label]) => ({ itemKey, tab: t(label) }))} activeKey={activeTab} onChange={(value) => onTabChange(value as BillingTab)} ariaLabel={t('console.billing.title')} /><div className="billing-tab-panel" role="tabpanel" id={`panel-${activeTab}`} aria-labelledby={`tab-${activeTab}`}>{content}</div><BillingInvoiceDialog open={dialogOpen} form={invoiceForm} options={getInvoiceDialogOptions(invoiceState.data, invoiceInformationState.data)} errors={invoiceFormErrors} step={dialogStep} submitting={submittingInvoice} onClose={closeInvoiceDialog} onChange={updateInvoiceForm} onNext={nextInvoiceStep} onBack={() => { setDialogStep(1); setInvoiceFormErrors({}) }} onSubmit={() => void submitInvoice()} /><BalanceAlertDialog visible={balanceAlertOpen} onClose={() => setBalanceAlertOpen(false)} onAuthFailure={handleAuthFailure} /></div>
+  return <div className="page-stack billing-console-page"><PageTitle title={t('console.billing.title')} description={t('console.billing.description')} /><RequestFocus data={analysisState.data} requestId={requestedRecordId} /><PaymentReturnNotice state={paymentReturnState} onRetry={retryPaymentReturn} /><ConsoleTabs items={BILLING_TABS.map(([itemKey, label]) => ({ itemKey, tab: t(label) }))} activeKey={activeTab} onChange={(value) => onTabChange(value as BillingTab)} ariaLabel={t('console.billing.title')} /><div className="billing-tab-panel" role="tabpanel" id={`panel-${activeTab}`} aria-labelledby={`tab-${activeTab}`}>{content}</div><BillingInvoiceDialog open={dialogOpen} form={invoiceForm} options={getInvoiceDialogOptions(invoiceState.data, invoiceInformationState.data)} errors={invoiceFormErrors} step={dialogStep} submitting={submittingInvoice} onClose={closeInvoiceDialog} onChange={updateInvoiceForm} onNext={nextInvoiceStep} onBack={() => { setDialogStep(1); setInvoiceFormErrors({}) }} onSubmit={() => void submitInvoice()} /><BalanceAlertDialog visible={balanceAlertOpen} onClose={() => setBalanceAlertOpen(false)} onAuthFailure={handleAuthFailure} /></div>
 }

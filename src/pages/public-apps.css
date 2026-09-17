@@ -593,7 +593,8 @@ html[data-theme="light"] .apps-chart-state {
     -webkit-line-clamp: 2;
   }
   .apps-ranking-row > strong {
-    grid-column: 4;
+    /* 移动端沿用名称所在的第三列，避免生成额外列挤压内容。 */
+    grid-column: 3;
     margin-top: -18px;
     text-align: left;
   }

@@ -21,6 +21,7 @@ import {
 export { DEFAULT_CONSOLE_PATH, normalizeLoginReturnPath } from "@/auth/login-navigation";
 import type { TFunction } from "i18next";
 import { Link, Navigate, useLocation, useNavigate } from "react-router";
+import { publicPath } from "@/routes/public-path";
 import Avatar from "@douyinfe/semi-ui/lib/es/avatar";
 import Badge from "@douyinfe/semi-ui/lib/es/badge";
 import Button from "@douyinfe/semi-ui/lib/es/button";
@@ -1209,7 +1210,8 @@ export function LoginPanel({
   const [phoneRetryAfter, setPhoneRetryAfter] = useState(0);
   const [phoneCodeLoading, setPhoneCodeLoading] = useState(false);
   const [phoneLoginLoading, setPhoneLoginLoading] = useState(false);
-  const [feedback, setFeedback] = useState("");
+  // 表单只保留校验状态，反馈文案统一使用顶部消息提示，避免挤动登录布局。
+  const [phoneInvalid, setPhoneInvalid] = useState(false);
   const [bindingTicket, setBindingTicket] = useState("");
   const [bindingPhone, setBindingPhone] = useState("");
   const [bindingCode, setBindingCode] = useState("");
@@ -1230,7 +1232,8 @@ export function LoginPanel({
       setBindingCode("");
       setBindingCodeSent(false);
       setBindingRetryAfter(0);
-      setFeedback(t("login.bindingHint"));
+      setPhoneInvalid(false);
+      appToast.info(t("login.bindingHint"));
     },
   });
 
@@ -1275,7 +1278,7 @@ export function LoginPanel({
       navigate("/", { replace: true });
       return;
     }
-    setFeedback(readLoginError(error));
+    appToast.error(readLoginError(error));
   }
 
   function validatePhone(value: string): boolean {
@@ -1287,9 +1290,11 @@ export function LoginPanel({
       !validLength ||
       (LOGIN_DIAL_CODE.pattern && !LOGIN_DIAL_CODE.pattern.test(normalized))
     ) {
-      setFeedback(t("login.validationPhone"));
+      setPhoneInvalid(true);
+      appToast.warning(t("login.validationPhone"));
       return false;
     }
+    setPhoneInvalid(false);
     return true;
   }
 
@@ -1301,7 +1306,6 @@ export function LoginPanel({
     if (phoneRetryAfter > 0 || phoneCodeLoading || !validatePhone(currentPhone))
       return;
     setPhoneCodeLoading(true);
-    setFeedback("");
     try {
       const destination = currentPhone;
       await dispatch(
@@ -1313,7 +1317,7 @@ export function LoginPanel({
       setPhoneCodeSent(true);
       setPhoneRetryAfter(LOGIN_CODE_RETRY_SECONDS);
       savePhoneCodeCooldown(destination, LOGIN_DIAL_CODE.code);
-      setFeedback(
+      appToast.success(
         t("login.sentTo", {
           destination: maskLoginPhone(destination),
         }),
@@ -1335,11 +1339,10 @@ export function LoginPanel({
     if (destination !== phone) setPhone(destination);
     if (!validatePhone(destination)) return;
     if (!/^\d{6}$/.test(code)) {
-      setFeedback(t("login.validationCode"));
+      appToast.warning(t("login.validationCode"));
       return;
     }
     setPhoneLoginLoading(true);
-    setFeedback("");
     try {
       const user = await dispatch(
         loginWithPhone({ destination, code, inviteCode }),
@@ -1362,7 +1365,6 @@ export function LoginPanel({
     )
       return;
     setBindingCodeLoading(true);
-    setFeedback("");
     try {
       await dispatch(
         requestBindingCode({
@@ -1373,7 +1375,7 @@ export function LoginPanel({
       ).unwrap();
       setBindingCodeSent(true);
       setBindingRetryAfter(LOGIN_CODE_RETRY_SECONDS);
-      setFeedback(
+      appToast.success(
         t("login.sentTo", {
           destination: maskLoginPhone(bindingPhone),
         }),
@@ -1392,11 +1394,10 @@ export function LoginPanel({
     if (!bindingTicket || bindingLoading) return;
     if (!validatePhone(bindingPhone)) return;
     if (!/^\d{6}$/.test(bindingCode)) {
-      setFeedback(t("login.validationCode"));
+      appToast.warning(t("login.validationCode"));
       return;
     }
     setBindingLoading(true);
-    setFeedback("");
     try {
       const user = await dispatch(
         completeBinding({
@@ -1423,7 +1424,7 @@ export function LoginPanel({
       setBindingTicket("");
       setBindingCode("");
       setBindingCodeSent(false);
-      setFeedback("");
+      setPhoneInvalid(false);
       wechat.start();
       return;
     }
@@ -1432,7 +1433,7 @@ export function LoginPanel({
       setBindingCodeSent(false);
       setBindingRetryAfter(0);
     }
-    setFeedback(readLoginError(error));
+    appToast.error(readLoginError(error));
   }
 
   return (
@@ -1451,7 +1452,7 @@ export function LoginPanel({
             <LoginPhoneField
               id="login-phone"
               phone={phone}
-              invalid={feedback === t("login.validationPhone")}
+              invalid={phoneInvalid}
               onPhoneChange={setPhone}
               inputRef={phoneInputRef}
             />
@@ -1493,11 +1494,6 @@ export function LoginPanel({
               />
               <label htmlFor="login-remember">{t("login.rememberLogin")}</label>
             </div>
-            {feedback ? (
-              <p className="login-feedback" role="status" aria-live="polite">
-                {feedback}
-              </p>
-            ) : null}
             <LoginConsentNotice />
             <button
               className="btn btn-primary submit-btn login-capsule-action login-capsule-soft"
@@ -1519,7 +1515,7 @@ export function LoginPanel({
             type="button"
             onClick={() => {
               setTab("wechat");
-              setFeedback("");
+              setPhoneInvalid(false);
               wechat.start();
             }}
           >
@@ -1546,7 +1542,7 @@ export function LoginPanel({
               <LoginPhoneField
                 id="binding-phone"
                 phone={bindingPhone}
-                invalid={feedback === t("login.validationPhone")}
+                invalid={phoneInvalid}
                 onPhoneChange={setBindingPhone}
               />
               <div className="form-field code-field">
@@ -1591,11 +1587,6 @@ export function LoginPanel({
                   {t("login.rememberLogin")}
                 </label>
               </div>
-              {feedback ? (
-                <p className="login-feedback" role="status" aria-live="polite">
-                  {feedback}
-                </p>
-              ) : null}
               <LoginConsentNotice />
               <button
                 className="btn btn-primary submit-btn login-capsule-action"
@@ -1617,7 +1608,7 @@ export function LoginPanel({
                 onClick={() => {
                   setTab("phone");
                   setBindingTicket("");
-                  setFeedback("");
+                  setPhoneInvalid(false);
                 }}
               >
                 {t("login.backToPhone")}
@@ -1630,7 +1621,7 @@ export function LoginPanel({
               error={wechat.error}
               frameRef={wechat.frameRef}
               onRetry={wechat.start}
-              onBack={() => { setTab("phone"); setFeedback(""); }}
+              onBack={() => { setTab("phone"); setPhoneInvalid(false); }}
             />
           )}
         </div>
@@ -1803,11 +1794,16 @@ export function LoginRequiredAction({
   className = "",
 }: LoginRequiredActionProps) {
   const navigate = useNavigate();
+  const { i18n } = useTranslation();
   const [open, setOpen] = useState(false);
   const authStatus = useAppSelector((state) => state.auth.status);
   const requiresLogin = authStatus !== "authenticated";
   const safeReturnPath = normalizeLoginReturnPath(returnPath);
-  const fallbackPath = `/login?return=${encodeURIComponent(safeReturnPath)}`;
+  // 登录入口同样跟随公开页语言路径，避免英文站跳回中文 URL。
+  const fallbackPath = publicPath(
+    `/login?return=${encodeURIComponent(safeReturnPath)}`,
+    i18n.language,
+  );
 
   return (
     <>
@@ -1873,6 +1869,8 @@ export function ThemeToggleButton() {
 
 function LanguageToggleButton({ mobile = false }: { mobile?: boolean }) {
   const { t, i18n: translationI18n } = useTranslation();
+  const location = useLocation();
+  const navigate = useNavigate();
   const isEnglish = translationI18n.resolvedLanguage?.startsWith("en") ?? false;
   const nextLanguage = isEnglish ? "zh-CN" : "en-US";
 
@@ -1884,6 +1882,10 @@ function LanguageToggleButton({ mobile = false }: { mobile?: boolean }) {
       aria-label={t("language.toggle")}
       aria-pressed={isEnglish}
       onClick={() => {
+        // 先离开旧语言路由，避免 /en 的语言守卫把中文选择立即改回英文。
+        const current = `${location.pathname}${location.search}${location.hash}`;
+        const next = publicPath(current, nextLanguage);
+        if (next !== current) navigate(next, { replace: true });
         void translationI18n.changeLanguage(nextLanguage);
       }}
     >
@@ -1942,7 +1944,7 @@ export function PublicHeader({
   enterpriseAccess,
   unreadNotificationCount: providedUnreadNotificationCount,
 }: PublicHeaderProps = {}) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
   const store = useAppStore();
@@ -2031,7 +2033,7 @@ export function PublicHeader({
   const billingHoverCloseTimerRef = useRef<ReturnType<
     typeof setTimeout
   > | null>(null);
-  const currentPath = location.pathname;
+  const currentPath = location.pathname.replace(/^\/en(?=\/|$)/, '') || '/';
   const shownLoginSequenceRef = useRef(0);
   useEffect(() => {
     const user = auth.user;
@@ -2231,12 +2233,12 @@ export function PublicHeader({
       <Link
         key={`${link.path}-${link.labelKey}`}
         className={className}
-        to={link.path}
+        to={publicPath(link.path, i18n.language)}
         onClick={
           mobile
             ? (event) => {
                 event.preventDefault();
-                go(link.path);
+                go(publicPath(link.path, i18n.language));
               }
             : undefined
         }
@@ -2363,7 +2365,7 @@ export function PublicHeader({
           </button>
           <Link
             className="header-logo brand-link"
-            to="/"
+            to={publicPath('/', i18n.language)}
             aria-label={`${t("common.home")} Token NX`}
           >
             <img
@@ -4480,7 +4482,7 @@ export function requestSupportWidget(tab: SupportTab = "contact"): void {
 }
 
 export function PublicFooter() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [openManuscriptGroup, setOpenManuscriptGroup] = useState<string | null>(
     null,
   );
@@ -4545,7 +4547,7 @@ export function PublicFooter() {
                     ) : (
                       <Link
                         key={`${link.path}-${link.labelKey}`}
-                        to={link.path}
+                        to={publicPath(link.path, i18n.language)}
                       >
                         {t(link.labelKey)}
                       </Link>

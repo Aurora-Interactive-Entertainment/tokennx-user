@@ -17,6 +17,7 @@ interface PaymentPollingOptions {
   order: BillingPaymentOrder | null;
   enabled: boolean;
   refreshToken: number;
+  scopeKey?: string;
   expired?: boolean;
   onOrder: (order: BillingPaymentOrder) => void;
   onError: (error: unknown) => void;
@@ -26,7 +27,7 @@ interface PaymentPollingOptions {
 
 // 两个支付入口共用串行查单、退避、超时及取消逻辑；回调更新不会重启五分钟计时。
 export function useBillingPaymentPolling(options: PaymentPollingOptions) {
-  const { context, order, enabled, refreshToken, expired } = options;
+  const { context, order, enabled, refreshToken, expired, scopeKey } = options;
   const callbacks = useRef(options);
   callbacks.current = options;
   const controller = useRef<AbortController | null>(null);
@@ -92,6 +93,7 @@ export function useBillingPaymentPolling(options: PaymentPollingOptions) {
     refreshToken,
     expired,
     onlineToken,
+    scopeKey,
   ]);
   return cancel;
 }

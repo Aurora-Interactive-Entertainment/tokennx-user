@@ -173,6 +173,52 @@ describe('模型运行时请求', () => {
     })
   })
 
+  it.each([
+    'data: {"error":{"message":"上游生成失败","code":"upstream_error"}}\n\n',
+    'data: {"code":"upstream_error","msg":"上游生成失败"}\n\n',
+    'event: error\ndata: {"message":"上游生成失败","code":"upstream_error"}\n\n',
+  ])('保留流中错误及请求号，不把已收到的半条回答记为成功：%s', async (errorEvent) => {
+    const onDelta = vi.fn()
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(sseResponse([
+      'data: {"choices":[{"delta":{"content":"部分回答"}}]}\n\n',
+      errorEvent,
+      'data: [DONE]\n\n',
+    ], 'stream-error-request'))
+
+    await expect(streamChatCompletion({ ...DEFAULT_INPUT, onDelta })).rejects.toMatchObject({
+      message: '上游生成失败', code: 'upstream_error', requestId: 'stream-error-request',
+    })
+    expect(onDelta).toHaveBeenCalledWith('部分回答')
+  })
+
+  it('没有完成标记就结束的流报告中断，同时保留已收到的内容', async () => {
+    const onDelta = vi.fn()
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(sseResponse(['data: {"choices":[{"delta":{"content":"部分回答"}}]}\n\n']))
+
+    await expect(streamChatCompletion({ ...DEFAULT_INPUT, onDelta })).rejects.toMatchObject({ code: 'incomplete_stream', requestId: 'server-request-id' })
+    expect(onDelta).toHaveBeenCalledWith('部分回答')
+  })
+
+  it('兼容只有 finish_reason 的完成响应，并解析最后无空行的事件', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(sseResponse([
+      'data: {"choices":[{"delta":{"content":"完整回答"}}]}\n\n',
+      'data: {"choices":[{"delta":{},"finish_reason":"stop"}],"usage":{"prompt_tokens":1,"completion_tokens":2}}',
+    ]))
+    await expect(streamChatCompletion(DEFAULT_INPUT)).resolves.toMatchObject({ content: '完整回答', finishReason: 'stop', inputTokens: 1, outputTokens: 2 })
+  })
+
+  it('收到 DONE 后停止消费同批后续事件并释放响应流', async () => {
+    const cancel = vi.fn()
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) { controller.enqueue(new TextEncoder().encode('data: {"choices":[{"delta":{"content":"答案"}}]}\n\ndata: [DONE]\n\ndata: {broken}\n\n')) },
+      cancel,
+    })
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(body, { headers: { 'Content-Type': 'text/event-stream' } }))
+    await expect(streamChatCompletion(DEFAULT_INPUT)).resolves.toMatchObject({ content: '答案' })
+    expect(cancel).toHaveBeenCalledOnce()
+    expect(body.locked).toBe(false)
+  })
+
   it('把外部停止信号传递给底层请求', async () => {
     const controller = new AbortController()
     vi.spyOn(globalThis, 'fetch').mockImplementation((_input, options) => new Promise<Response>((_resolve, reject) => {

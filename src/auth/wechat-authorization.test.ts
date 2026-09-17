@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest'
-import { parseWechatCallbackSearch, parseWechatRedirectUri, readWechatCallback, wechatFrameUrl, WECHAT_CALLBACK_MESSAGE } from './wechat-authorization'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { parseWechatCallbackSearch, parseWechatRedirectUri, readWechatCallback, wechatCallbackTargetOrigins, wechatFrameUrl, WECHAT_CALLBACK_MESSAGE } from './wechat-authorization'
 import type { WechatQrResult } from '@/api/auth'
 
 const session: WechatQrResult = {
@@ -8,6 +8,26 @@ const session: WechatQrResult = {
   state: 'one-time_state', expires_at: Date.now() + 60000,
 }
 describe('微信官方参数及回调边界', () => {
+  afterEach(() => vi.unstubAllEnvs())
+
+  it.each(['', 'https://open.weixin.qq.com/connect/qrconnect'])('referrer 为 %s 时仅发送到固定可信站点', referrer => {
+    const targets = wechatCallbackTargetOrigins(referrer, 'https://tokennx.cn')
+    expect(targets).toEqual(['https://tokennx.cn', 'https://www.tokennx.cn'])
+    expect(targets).not.toContain('*')
+  })
+
+  it.each(['https://www.tokennx.cn/login', 'http://localhost:5173/login', 'http://127.0.0.1:4173/login', 'http://[::1]:5173/login'])('保留合法别名与回环联调 %s', referrer => {
+    expect(wechatCallbackTargetOrigins(referrer, 'https://tokennx.cn')).toEqual([new URL(referrer).origin])
+  })
+
+  it.each(['https://evil.example/login', 'https://tokennx.cn.evil.example/', 'https://localhost.evil.example/', 'javascript:alert(1)', 'not-a-url'])('拒绝非可信接收来源 %s', referrer => {
+    expect(wechatCallbackTargetOrigins(referrer, 'https://tokennx.cn')).toEqual([])
+  })
+
+  it('保留显式配置的站点 origin', () => {
+    vi.stubEnv('VITE_PUBLIC_SITE_ORIGIN', 'https://preview.tokennx.cn/')
+    expect(wechatCallbackTargetOrigins('https://preview.tokennx.cn/login', 'https://tokennx.cn')).toEqual(['https://preview.tokennx.cn'])
+  })
   it('读取回调查询参数并拒绝缺失或非法 state', () => {
     expect(parseWechatCallbackSearch('?code=wechat-code&state=one-time_state')).toEqual({ code: 'wechat-code', state: 'one-time_state' })
     expect(parseWechatCallbackSearch('?code=&state=one-time_state')).toBeNull()

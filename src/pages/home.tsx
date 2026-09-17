@@ -1,5 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { Link } from 'react-router'
+import { publicPath } from '@/routes/public-path'
 import { useTranslation } from 'react-i18next'
 import Skeleton from '@douyinfe/semi-ui/lib/es/skeleton'
 import { LoginRequiredAction, PublicLayout, ModelLogo } from '@/components/common'
@@ -469,7 +470,7 @@ function HomePartnerLogo({ partner }: { partner: HomePartner }) {
 
 // 每条轨道复制一份品牌序列，循环位移到半程时正好衔接下一份内容，保证滚动不会跳帧。
 function HomePartnerRow({ partners, rowIndex }: { partners: HomePartner[]; rowIndex: number }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const rowRef = useRef<HTMLDivElement>(null)
   const primarySequenceRef = useRef<HTMLDivElement>(null)
   const [shouldScroll, setShouldScroll] = useState(partners.length >= 6)
@@ -506,7 +507,7 @@ function HomePartnerRow({ partners, rowIndex }: { partners: HomePartner[]; rowIn
     <div className="manuscript-partner-sequence" ref={isDuplicate ? undefined : primarySequenceRef} aria-hidden={isDuplicate || undefined} data-sequence={isDuplicate ? 'duplicate' : 'primary'}>
       {partners.map((partner, partnerIndex) => {
         const partnerName = t(`public.home.partnerNames.${HOME_PARTNER_NAME_KEYS[partner.name]}`, { defaultValue: partner.name })
-        const href = homepageHref(partner.href, '/models')
+        const href = publicPath(homepageHref(partner.href, '/models'), i18n.language)
         // Partner artwork is the source of truth; keep the name available to assistive
         // technology without rendering it beside the logo.
         const content = <><HomePartnerLogo partner={partner} /><span className="public-sr-only">{partnerName}</span></>
@@ -545,10 +546,10 @@ function ManagedFeatureCard({ entry, index }: { entry: HomepageEntry; index: num
   const configuredPath = content.link_url?.trim()
   // 有后台目标时走统一登录态动作；旧数据缺少链接时保留兼容入口。
   const actionElement = featureIndex === 0
-    ? <a className="manuscript-feature-action" href={homepageNavigationHref('/models')}>{action}</a>
+    ? <a className="manuscript-feature-action" href={homepageNavigationHref(publicPath('/models', i18n.language))}>{action}</a>
     : configuredPath
       ? <LoginRequiredAction className="manuscript-feature-action" returnPath={configuredPath}>{action}</LoginRequiredAction>
-      : <a className="manuscript-feature-action" href={homepageNavigationHref(featureIndex === 1 ? '/models' : '/pricing')}>{action}</a>
+      : <a className="manuscript-feature-action" href={homepageNavigationHref(publicPath(featureIndex === 1 ? '/models' : '/pricing', i18n.language))}>{action}</a>
   return <article className="manuscript-feature-card">
     <div className="manuscript-feature-visual">{imageURL ? <img className="manuscript-feature-image" src={imageURL} alt="" aria-hidden="true" loading={index === 0 ? 'eager' : 'lazy'} fetchPriority={index === 0 ? 'high' : 'auto'} decoding="async" width={416} height={106} /> : <HomeFeatureArtwork priority={index === 0} />}<span>{index === 0 ? t('home.rebuild.featureModelsCount') : t('home.rebuild.featuresTitle')}</span></div>
     <div className="manuscript-feature-copy">
@@ -562,7 +563,7 @@ function ManagedFeatureCard({ entry, index }: { entry: HomepageEntry; index: num
 function ManagedNewsCard({ entry, newsIndex }: { entry: HomepageEntry; newsIndex: number }) {
   const { t, i18n } = useTranslation()
   // 资讯卡固定进入对应文章详情，忽略后台遗留的文档链接，避免离开文章阅读页。
-  const href = `/news/${encodeURIComponent(entry.id)}`
+  const href = publicPath(`/news/${encodeURIComponent(entry.id)}`, i18n.language)
   const title = t(`home.rebuild.news.${newsIndex}.title`)
   const description = t(`home.rebuild.news.${newsIndex}.description`)
   const coverURL = homepageEntryMediaURL(entry, i18n.language)
@@ -871,7 +872,7 @@ export function HomePage({ onInitialScoreboardReady }: { onInitialScoreboardRead
             <h1 id="homeTitle"><SplitTextReveal text={heroTitle} /><SplitTextReveal as="strong" text={heroSubtitle} delayOffset={Array.from(heroTitle).length} /></h1>
             <div className="manuscript-hero-actions">
               <HomeLiquidMetalQuickstartAction returnPath="/console/quickstart">{t('home.rebuild.primaryCta')}</HomeLiquidMetalQuickstartAction>
-              <Link className="btn btn-secondary manuscript-model-button" to="/models" aria-label={t('home.rebuild.secondaryCta')}><span>{t('home.rebuild.secondaryCta')}</span></Link>
+              <Link className="btn btn-secondary manuscript-model-button" to={publicPath('/models', i18n.language)} aria-label={t('home.rebuild.secondaryCta')}><span>{t('home.rebuild.secondaryCta')}</span></Link>
             </div>
             <div className="manuscript-digital-stats" role="list" aria-label={t('home.overview')}>
               <ManuscriptScoreboard metricId="token-volume" unit={t('home.rebuild.tokenVolumeUnit')} value={animatedTokenVolume} onInitialFlipComplete={handleTokenScoreboardReady} />

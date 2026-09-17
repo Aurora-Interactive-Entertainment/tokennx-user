@@ -332,6 +332,11 @@
   }
   .public-header-host .public-header--home .header-trial-badge strong,
   .public-header-host .public-header--home .header-trial-subscription { font-size: 12px; }
+  /* 小胶囊中的英文订阅文案需避让角标，保证整词可见。 */
+  .public-header-host .public-header--home .header-trial-badge:lang(en) .header-trial-subscription {
+    padding-inline-end: 24px;
+    font-size: 11px;
+  }
   .public-header-host .public-header--home .header-trial-free {
     top: -3px;
     right: -12px;

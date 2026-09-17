@@ -129,7 +129,8 @@ export function EnterpriseError({ message, requestId, onRetry }: { message: stri
   useEffect(() => {
     appToast.error(message)
   }, [message])
-  return null
+  // Toast 消失后仍保留错误原因和恢复入口，避免列表失败时只剩空白区域。
+  return <div className="enterprise-error-panel" role="alert"><strong>{message}</strong>{requestId ? <small>{t('console.common.requestId')}: {requestId}</small> : null}<Button theme="outline" onClick={onRetry}>{t('console.common.retry')}</Button></div>
 }
 
 export function EnterpriseEmpty({ title, description, action }: { title: string; description: string; action?: ReactNode }) {

@@ -11,7 +11,7 @@ function response(data: unknown, status = 200, code = 0, msg = 'success'): Respo
 
 describe('认证 HTTP 客户端', () => {
   beforeEach(() => vi.restoreAllMocks())
-  afterEach(() => { void i18n.changeLanguage('zh-CN') })
+  afterEach(() => { vi.useRealTimers(); void i18n.changeLanguage('zh-CN') })
 
   it('优先使用后端 Base URL，未设置时使用开发代理目标', () => {
     expect(resolveBackendBaseUrl(' https://api.example.com/ ', 'http://proxy.example.com')).toBe('https://api.example.com')
@@ -112,5 +112,98 @@ describe('认证 HTTP 客户端', () => {
     await vi.advanceTimersByTimeAsync(15_000)
     await rejection
     vi.useRealTimers()
+  })
+
+  it.each([200, 503])('收到 %s 响应头后仍可取消未完成的 JSON 正文', async status => {
+    const external = new AbortController()
+    let ready!: () => void
+    const headersReady = new Promise<void>(resolve => { ready = resolve })
+    const cancel = vi.fn()
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async () => {
+      ready()
+      return new Response(new ReadableStream({ cancel }), { status })
+    })
+    const request = fetchJson('/api/test', { signal: external.signal })
+    const rejection = expect(request).rejects.toMatchObject({ name: 'AbortError' })
+    await headersReady
+    await Promise.resolve()
+    external.abort()
+    await rejection
+    expect(cancel).toHaveBeenCalledOnce()
+  })
+
+  it('15 秒超时覆盖响应正文并保留 408 错误语义', async () => {
+    vi.useFakeTimers()
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(new ReadableStream()))
+    const request = fetchJson('/api/test')
+    const rejection = expect(request).rejects.toMatchObject({ name: 'ApiError', status: 408 })
+    await vi.advanceTimersByTimeAsync(15_000)
+    await rejection
+    expect(vi.getTimerCount()).toBe(0)
+  })
+
+  it('文件正文可以取消，完整下载保留内容和类型并释放超时', async () => {
+    vi.useFakeTimers()
+    const external = new AbortController()
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response(new ReadableStream(), { headers: { 'Content-Type': 'application/pdf' } }))
+    const pendingResponse = await fetchResponse('/api/file', { signal: external.signal })
+    const rejection = expect(pendingResponse.blob()).rejects.toMatchObject({ name: 'AbortError' })
+    external.abort()
+    await rejection
+    vi.mocked(fetch).mockResolvedValueOnce(new Response('pdf-content', { headers: { 'Content-Type': 'application/pdf' } }))
+    const complete = await fetchResponse('/api/file')
+    const blob = await complete.blob()
+    expect(blob.type).toBe('application/pdf')
+    expect(await blob.text()).toBe('pdf-content')
+    expect(vi.getTimerCount()).toBe(0)
+  })
+
+  it('持续接收数据的大文件允许总下载时间超过 15 秒', async () => {
+    vi.useFakeTimers()
+    let source!: ReadableStreamDefaultController<Uint8Array>
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(new ReadableStream<Uint8Array>({ start(controller) { source = controller } })))
+    const download = await fetchResponse('/api/file')
+    const completed = download.blob()
+    await vi.advanceTimersByTimeAsync(10_000)
+    source.enqueue(new TextEncoder().encode('first-'))
+    await vi.advanceTimersByTimeAsync(10_000)
+    source.enqueue(new TextEncoder().encode('second'))
+    source.close()
+    expect(await (await completed).text()).toBe('first-second')
+    expect(vi.getTimerCount()).toBe(0)
+  })
+
+  it('正文读完或底层出错后释放源响应的 reader 锁', async () => {
+    const source = new Response('complete')
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(source)
+    const complete = await fetchResponse('/api/file')
+    expect(await complete.text()).toBe('complete')
+    expect(source.body?.locked).toBe(false)
+
+    const failure = new Error('body connection failed')
+    const failedSource = new Response(new ReadableStream({ start(controller) { controller.error(failure) } }))
+    vi.mocked(fetch).mockResolvedValueOnce(failedSource)
+    const failed = await fetchResponse('/api/file')
+    await expect(failed.blob()).rejects.toBe(failure)
+    expect(failedSource.body?.locked).toBe(false)
+  })
+
+  it('调用方取消流或 AbortSignal 中止后释放源响应的 reader 锁', async () => {
+    const cancel = vi.fn()
+    const source = new Response(new ReadableStream({ cancel }))
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(source)
+    const response = await fetchResponse('/api/file')
+    await response.body!.cancel('download dismissed')
+    expect(cancel).toHaveBeenCalledWith('download dismissed')
+    expect(source.body?.locked).toBe(false)
+
+    const abortedSource = new Response(new ReadableStream())
+    vi.mocked(fetch).mockResolvedValueOnce(abortedSource)
+    const external = new AbortController()
+    const aborted = await fetchResponse('/api/file', { signal: external.signal })
+    const rejected = expect(aborted.blob()).rejects.toMatchObject({ name: 'AbortError' })
+    external.abort()
+    await rejected
+    expect(abortedSource.body?.locked).toBe(false)
   })
 })

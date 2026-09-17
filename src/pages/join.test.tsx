@@ -8,6 +8,7 @@ import type { EnterpriseInvitationPreview } from '@/api/enterprise-console'
 import { clearAuthTokens, saveAuthTokens } from '@/auth/token-storage'
 import { AppStoreProvider } from '@/data/app-state'
 import { createAppStore } from '@/store'
+import { hydrateAuth } from '@/store/auth-slice'
 import { JoinPage } from './join'
 
 vi.mock('@/api/enterprise-console', async () => {
@@ -55,7 +56,8 @@ function renderJoin(authenticated = false, token = 'join-token/abc') {
     saveAuthTokens(AUTH_RESULT)
     appStore.dispatch({ type: 'auth/loginWithEmail/fulfilled', payload: AUTH_RESULT.user })
   } else {
-    appStore.dispatch({ type: 'auth/hydrate/fulfilled', payload: null })
+    appStore.dispatch(hydrateAuth.pending('join-hydrate', undefined))
+    appStore.dispatch(hydrateAuth.fulfilled(null, 'join-hydrate', undefined))
   }
   return { appStore, ...render(<MemoryRouter initialEntries={[`/join?token=${encodeURIComponent(token)}`]}><Provider store={appStore}><AppStoreProvider><JoinPage /></AppStoreProvider></Provider></MemoryRouter>) }
 }

@@ -130,7 +130,8 @@ export async function fetchJson<T>(path: string, options: FetchJsonOptions = {})
 	let payload: Partial<ApiEnvelope<T>> | null = null
 	try {
 		payload = await response.json() as Partial<ApiEnvelope<T>>
-	} catch {
+	} catch (error) {
+    if (isApiError(error) || options.signal?.aborted || (error instanceof Error && error.name === 'AbortError')) throw error
 		throw createApiError(path, options, i18n.t('api.http.unreadableResponse'), response.status, 0, requestId)
 	}
 
@@ -140,6 +141,57 @@ export async function fetchJson<T>(path: string, options: FetchJsonOptions = {})
 		throw createApiError(path, options, error.message, response.status, payload.code ?? 0, requestId, error.apiMessage)
 	}
 	return payload.data as T
+}
+
+/** 正文流结束、失败或取消后才释放超时及外部取消监听，下载和 JSON 共用同一生命周期。 */
+function keepResponseAbortable(response: Response, signal: AbortSignal, cleanup: () => void, abortError: () => unknown, onProgress: () => void): Response {
+  if (!response.body) { cleanup(); return response }
+  const reader = response.body.getReader()
+  let finished = false
+  let onAbort: () => void
+  const finish = (): void => {
+    if (finished) return
+    finished = true
+    signal.removeEventListener('abort', onAbort)
+    cleanup()
+  }
+  const body = new ReadableStream<Uint8Array>({
+    start(controller) {
+      onAbort = () => {
+        if (finished) return
+        const error = abortError()
+        finish()
+        controller.error(error)
+        void reader.cancel(error).catch(() => {}).finally(() => reader.releaseLock())
+      }
+      signal.addEventListener('abort', onAbort, { once: true })
+      if (signal.aborted) onAbort()
+    },
+    async pull(controller) {
+      try {
+        const chunk = await reader.read()
+        if (finished) return
+        if (chunk.done) { finish(); reader.releaseLock(); controller.close() }
+        else { onProgress(); controller.enqueue(chunk.value) }
+      } catch (error) {
+        if (finished) return
+        finish()
+        reader.releaseLock()
+        controller.error(error)
+      }
+    },
+    async cancel(reason) {
+      finish()
+      // 取消同样释放源响应的 reader；不能只清理定时器而保留已关闭的流锁。
+      try { await reader.cancel(reason) } finally { reader.releaseLock() }
+    },
+  })
+  const wrapped = new Response(body, { status: response.status, statusText: response.statusText, headers: response.headers })
+  // 保留原始响应的来源信息；调用方仍可以正常使用 blob/json/text 和 clone。
+  Object.defineProperties(wrapped, {
+    url: { value: response.url }, redirected: { value: response.redirected }, type: { value: response.type },
+  })
+  return wrapped
 }
 
 // fetchResponse 保留认证请求的原始响应，供文件下载等非 JSON 接口复用统一超时和错误处理。
@@ -156,10 +208,24 @@ export async function fetchResponse(path: string, options: FetchJsonOptions = {}
 			removeExternalAbortListener = () => options.signal?.removeEventListener('abort', onExternalAbort)
 		}
 	}
-	const timeout = window.setTimeout(() => {
-		timedOut = true
-		controller.abort()
-	}, REQUEST_TIMEOUT_MS)
+  let timeout: number
+  const resetTimeout = (): void => {
+    window.clearTimeout(timeout)
+    timeout = window.setTimeout(() => {
+      timedOut = true
+      controller.abort()
+    }, REQUEST_TIMEOUT_MS)
+  }
+  resetTimeout()
+  const cleanup = (): void => {
+    window.clearTimeout(timeout)
+    removeExternalAbortListener?.()
+  }
+  const abortError = (): unknown => options.signal?.aborted
+    ? options.signal.reason ?? new DOMException('请求已取消', 'AbortError')
+    : timedOut
+      ? createApiError(path, options, i18n.t('api.http.timeout'), 408, 0, requestId)
+      : controller.signal.reason
   const headers = new Headers(options.headers)
   const isFormDataBody = typeof FormData !== 'undefined' && options.body instanceof FormData
   const requestId = createRequestId()
@@ -192,22 +258,25 @@ export async function fetchResponse(path: string, options: FetchJsonOptions = {}
       signal: controller.signal,
     })
   } catch (error) {
+    cleanup()
     // 调用方主动取消不应被误报为网络故障，页面卸载和用户点击停止都依赖该语义。
     if (options.signal?.aborted) throw error
     if (timedOut && error instanceof DOMException && error.name === 'AbortError') {
       throw createApiError(path, options, i18n.t('api.http.timeout'), 408, 0, requestId)
     }
     throw createApiError(path, options, i18n.t('api.http.networkFailure'), 0, 0, requestId)
-  } finally {
-    window.clearTimeout(timeout)
-		removeExternalAbortListener?.()
   }
+
+  // 正文使用无进展超时，持续传输的大文件不会因为总耗时超过 15 秒而失败。
+  resetTimeout()
+  response = keepResponseAbortable(response, controller.signal, cleanup, abortError, resetTimeout)
 
 	let payload: Partial<ApiEnvelope<unknown>> | null = null
 	if (response.ok) return response
 	try {
 		payload = await response.json() as Partial<ApiEnvelope<unknown>>
-	} catch {
+	} catch (error) {
+    if (isApiError(error) || options.signal?.aborted || (error instanceof Error && error.name === 'AbortError')) throw error
 		throw createApiError(path, options, i18n.t('api.http.unreadableResponse'), response.status, 0, response.headers.get('X-Request-ID') ?? requestId)
 	}
 

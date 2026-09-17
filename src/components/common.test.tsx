@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import Toast from '@douyinfe/semi-ui/lib/es/toast'
 import { MemoryRouter, useLocation } from 'react-router'
 import { Provider } from 'react-redux'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -7,7 +8,7 @@ import { limitDisplayNameLength, type UserProfile } from '@/api/profile'
 import { getEnterpriseContext, type EnterpriseContext } from '@/api/enterprise-console'
 import { AppStoreProvider } from '@/data/app-state'
 import { createAppStore } from '@/store'
-import { synchronizeAuthenticatedUser } from '@/store/auth-slice'
+import { hydrateAuth, synchronizeAuthenticatedUser } from '@/store/auth-slice'
 import { clearAuthTokens, getVerifiedPhone, saveAuthTokens, saveVerifiedPhone } from '@/auth/token-storage'
 import { activeNavKey, ConsoleLayout, consoleNavGroupsFor, DEFAULT_CONSOLE_PATH, isEnterpriseOwner, isEnterprisePermissionPath, LoginPanel, localizeConsoleLabel, normalizeLoginReturnPath, prefetchUnreadNotificationCount, PublicFooter, PublicHeader, PublicLayout, PUBLIC_LINKS, resetUnreadNotificationCount } from './common'
 import { NEW_ENTERPRISE_CREATE_PATH } from '@/api/enterprise-certification'
@@ -103,6 +104,7 @@ beforeEach(() => {
   getEnterpriseContextMock.mockResolvedValue(DEFAULT_ENTERPRISE_CONTEXT)
 })
 afterEach(() => {
+  Toast.destroyAll()
   vi.restoreAllMocks()
   window.localStorage.removeItem('token-nx:auth:phone-code-cooldown:v1')
   window.localStorage.removeItem('token-nx:email-onboarding-seen:email-onboarding-user')
@@ -124,6 +126,17 @@ it('未登录购买套餐先打开登录弹窗，关闭登录不会显示支付�
   await user.click(within(login).getByRole('button', { name: i18n.t('login.close') }))
   await waitFor(() => expect(screen.queryByRole('dialog', { name: i18n.t('login.dialogLabel') })).not.toBeInTheDocument())
   expect(screen.queryByRole('heading', { name: '支付' })).not.toBeInTheDocument()
+})
+
+it('公开页面语言切换同步URL，并保留查询参数', async () => {
+  await i18n.changeLanguage('en-US')
+  render(<MemoryRouter initialEntries={['/en/about?from=test']}><Provider store={createAppStore()}><AppStoreProvider><LocationProbe /><PublicHeader /></AppStoreProvider></Provider></MemoryRouter>)
+  await userEvent.click(screen.getAllByRole('button', { name: 'Switch language' })[0])
+  await waitFor(() => expect(screen.getByTestId('common-location')).toHaveTextContent('/about?from=test'))
+  expect(i18n.language).toBe('zh-CN')
+  await userEvent.click(screen.getAllByRole('button', { name: i18n.t('language.toggle') })[0])
+  await waitFor(() => expect(screen.getByTestId('common-location')).toHaveTextContent('/en/about?from=test'))
+  await i18n.changeLanguage('zh-CN')
 })
 
 it.each(['verified', 'unverified'])('公开购买入口先校验实名状态 %s，再决定是否展示支付弹窗', async (status) => {
@@ -587,7 +600,8 @@ describe('公共 Header 布局', () => {
         <Provider store={appStore}><AppStoreProvider><PublicHeader /></AppStoreProvider></Provider>
       </MemoryRouter>,
     )
-    appStore.dispatch({ type: 'auth/hydrate/fulfilled', payload: { id: 'user-1', display_name: '测试用户', avatar_url: '', locale: 'zh-CN', timezone: 'Asia/Shanghai', status: 'active', promt_required: true } })
+    appStore.dispatch(hydrateAuth.pending('header-hydrate', undefined))
+    appStore.dispatch(hydrateAuth.fulfilled({ id: 'user-1', display_name: '测试用户', avatar_url: '', locale: 'zh-CN', timezone: 'Asia/Shanghai', status: 'active', promt_required: true }, 'header-hydrate', undefined))
     expect(screen.queryByRole('dialog', { name: '绑定邮箱' })).not.toBeInTheDocument()
     view.unmount()
     render(

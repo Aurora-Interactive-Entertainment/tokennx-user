@@ -889,6 +889,8 @@ export function ImagePage() {
                 aria-label={t("console.image.promptLabel")}
                 disabled={generating}
                 onKeyDown={(event) => {
+                  // 输入法确认候选期间不触发发送快捷键。
+                  if (event.nativeEvent.isComposing || event.keyCode === 229) return;
                   if (event.key === "Enter" && !event.shiftKey) {
                     event.preventDefault();
                     createGeneration();

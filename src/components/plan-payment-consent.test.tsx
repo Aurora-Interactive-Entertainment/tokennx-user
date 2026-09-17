@@ -153,7 +153,7 @@ describe("套餐协议与渠道并发边界", () => {
     // 换渠道必须换单：旧渠道订单先关单，再为新渠道创建订单并更换下单幂等键。
     expect(closeBillingPaymentOrder).toHaveBeenCalledWith(
       "order-1",
-      {},
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
       context,
     );
     expect(createBillingPaymentOrder).toHaveBeenCalledTimes(2);
@@ -281,7 +281,7 @@ describe("套餐协议与渠道并发边界", () => {
     expect(result.current.active).toBe(false);
   });
 
-  it("关单失败不阻塞换渠道，仍为新渠道创建订单", async () => {
+  it("关单失败保留旧渠道和订单，不创建第二个支付订单", async () => {
     const switched = { ...pending, id: "order-2" };
     vi.mocked(createBillingPaymentOrder)
       .mockResolvedValueOnce(pending)
@@ -300,10 +300,12 @@ describe("套餐协议与渠道并发边界", () => {
       payment_url: "https://qr.alipay.com/test",
     } as BillingPaymentStartResult);
     await act(() => result.current.selectMethod("alipay"));
-    expect(result.current.method).toBe("alipay");
-    expect(result.current.qr).toBe("https://qr.alipay.com/test");
-    expect(createBillingPaymentOrder).toHaveBeenCalledTimes(2);
-    expect(vi.mocked(startBillingPayment).mock.calls[1][0]).toBe("order-2");
+    expect(result.current.method).toBe("wechat");
+    expect(result.current.qr).toBe(wechatQR);
+    expect(result.current.order?.id).toBe("order-1");
+    expect(result.current.error).toBeTruthy();
+    expect(createBillingPaymentOrder).toHaveBeenCalledOnce();
+    expect(startBillingPayment).toHaveBeenCalledOnce();
   });
 
   it("关单被拒时以查单结果确认旧订单状态，不凭关单失败直接重复下单", async () => {
@@ -324,11 +326,53 @@ describe("套餐协议与渠道并发边界", () => {
       transaction: { payment_product: "alipay_page" },
       payment_url: "https://qr.alipay.com/test",
     } as BillingPaymentStartResult);
-    // 查单仍返回待支付订单：确认后照常切换到支付宝。
+    // 查单仍返回待支付订单，不能把“查到了”误认为“已关闭”。
     await act(() => result.current.selectMethod("alipay"));
-    expect(getBillingPaymentOrder).toHaveBeenCalledWith("order-1", {}, context);
+    expect(getBillingPaymentOrder).toHaveBeenCalledWith("order-1", expect.objectContaining({ signal: expect.any(AbortSignal) }), context);
+    expect(result.current.method).toBe("wechat");
+    expect(result.current.error).toBeTruthy();
+    expect(createBillingPaymentOrder).toHaveBeenCalledOnce();
+  });
+
+  it("关单网络结果未知后重试，确认关闭才使用新幂等键创建新单", async () => {
+    const switched = { ...pending, id: "order-2" };
+    const { result } = renderHook(() => usePlanPayment(context, "plan-1"));
+    await act(() => result.current.setAgreed(true));
+    const firstKey = vi.mocked(createBillingPaymentOrder).mock.calls[0][2];
+    vi.mocked(closeBillingPaymentOrder).mockRejectedValueOnce(new TypeError("Failed to fetch"));
+    await act(() => result.current.selectMethod("alipay"));
+    expect(result.current.method).toBe("wechat");
+    expect(createBillingPaymentOrder).toHaveBeenCalledOnce();
+    vi.mocked(createBillingPaymentOrder).mockResolvedValue(switched);
+    vi.mocked(getBillingPaymentOrder).mockResolvedValue(switched);
+    vi.mocked(startBillingPayment).mockResolvedValue({ order: switched, transaction: { payment_product: "alipay_page" }, payment_url: "https://qr.alipay.com/test" } as BillingPaymentStartResult);
+    await act(() => result.current.selectMethod("alipay"));
     expect(result.current.method).toBe("alipay");
+    expect(result.current.order?.id).toBe("order-2");
     expect(createBillingPaymentOrder).toHaveBeenCalledTimes(2);
+    expect(vi.mocked(createBillingPaymentOrder).mock.calls[1][2]).not.toBe(firstKey);
+  });
+
+  it.each(["pending", "paying", "exception"])("关单返回 %s 时不能放弃旧订单", async (status) => {
+    const { result } = renderHook(() => usePlanPayment(context, "plan-1"));
+    await act(() => result.current.setAgreed(true));
+    vi.mocked(closeBillingPaymentOrder).mockResolvedValue({ ...pending, status });
+    await act(() => result.current.selectMethod("alipay"));
+    expect(result.current.method).toBe("wechat");
+    expect(result.current.order?.id).toBe("order-1");
+    expect(result.current.error).toBeTruthy();
+    expect(createBillingPaymentOrder).toHaveBeenCalledOnce();
+  });
+
+  it("关单冲突后的查单失败不会清除旧订单", async () => {
+    const { result } = renderHook(() => usePlanPayment(context, "plan-1"));
+    await act(() => result.current.setAgreed(true));
+    vi.mocked(closeBillingPaymentOrder).mockRejectedValue(new ApiError("状态变化", 409, 170004, null));
+    vi.mocked(getBillingPaymentOrder).mockRejectedValue(new TypeError("Failed to fetch"));
+    await act(() => result.current.selectMethod("alipay"));
+    expect(result.current.method).toBe("wechat");
+    expect(result.current.order?.id).toBe("order-1");
+    expect(createBillingPaymentOrder).toHaveBeenCalledOnce();
   });
 
   it("关单期间查单确认旧订单已支付时，不再为新渠道下单", async () => {

@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
 import { Provider } from 'react-redux'
@@ -70,11 +70,11 @@ vi.mock('@douyinfe/semi-icons', () => {
 vi.mock('@/components/semi-compat', () => {
   type KeyboardLike = { key: string; shiftKey: boolean; ctrlKey: boolean; metaKey: boolean; preventDefault: () => void }
   type InputProps = { id?: string; value?: string; onChange?: (value: string) => void; onKeyDown?: (event: KeyboardLike) => void; placeholder?: string; disabled?: boolean; maxLength?: number; rows?: number; className?: string; 'aria-label'?: string }
-  type SelectProps = { id?: string; value?: string | number; onChange?: (value: string) => void; disabled?: boolean; className?: string; children?: ReactNode; 'aria-label'?: string }
+  type SelectProps = { id?: string; value?: string | number; onChange?: (value: string) => void; disabled?: boolean; className?: string; children?: ReactNode; innerTopSlot?: ReactNode; 'aria-label'?: string }
   type OptionProps = { value?: string | number; children?: ReactNode }
   const MockInput = ({ id, value, onChange, onKeyDown, placeholder, disabled, maxLength, className, 'aria-label': ariaLabel }: InputProps) => <input id={id} value={value ?? ''} placeholder={placeholder} disabled={disabled} maxLength={maxLength} className={className} aria-label={ariaLabel} onKeyDown={onKeyDown} onChange={(event) => onChange?.(event.currentTarget.value)} />
   const MockTextArea = ({ id, value, onChange, onKeyDown, placeholder, disabled, maxLength, rows, className, 'aria-label': ariaLabel }: InputProps) => <textarea id={id} value={value ?? ''} placeholder={placeholder} disabled={disabled} maxLength={maxLength} rows={rows} className={className} aria-label={ariaLabel} onKeyDown={onKeyDown} onChange={(event) => onChange?.(event.currentTarget.value)} />
-  const MockSelect = ({ id, value, onChange, disabled, className, children, 'aria-label': ariaLabel }: SelectProps) => <select id={id} value={value === undefined ? '' : String(value)} disabled={disabled} className={className} aria-label={ariaLabel} onChange={(event) => onChange?.(event.currentTarget.value)}>{children}</select>
+  const MockSelect = ({ id, value, onChange, disabled, className, children, innerTopSlot, 'aria-label': ariaLabel }: SelectProps) => <><select id={id} value={value === undefined ? '' : String(value)} disabled={disabled} className={className} aria-label={ariaLabel} onChange={(event) => onChange?.(event.currentTarget.value)}>{children}</select>{innerTopSlot}</>
   const MockOption = ({ value, children }: OptionProps) => <option value={value === undefined ? '' : String(value)}>{children}</option>
   return { CompatInput: Object.assign(MockInput, { TextArea: MockTextArea }), CompatSelect: Object.assign(MockSelect, { Option: MockOption }) }
 })
@@ -182,6 +182,53 @@ describe('视频生成页面', () => {
     await waitFor(() => expect(submitVideoGeneration).toHaveBeenCalledTimes(1))
   })
 
+  it('中文输入法确认候选不会误提交，普通 Enter 仍正常提交', async () => {
+    vi.mocked(submitVideoGeneration).mockResolvedValue(succeededTask)
+    renderVideoPage()
+    const input = screen.getByLabelText('视频提示词')
+    fireEvent.change(input, { target: { value: '镜头向前移动' } })
+    fireEvent.compositionStart(input)
+    fireEvent.keyDown(input, { key: 'Enter', isComposing: true })
+    fireEvent.keyDown(input, { key: 'Enter', keyCode: 229 })
+    expect(submitVideoGeneration).not.toHaveBeenCalled()
+    fireEvent.compositionEnd(input)
+    fireEvent.keyDown(input, { key: 'Enter' })
+    await waitFor(() => expect(submitVideoGeneration).toHaveBeenCalledOnce())
+  })
+
+  it.each([
+    ['16:9', '720P', '1280x720'], ['16:9', '1080P', '1920x1080'],
+    ['9:16', '720P', '720x1280'], ['1:1', '1024P', '1024x1024'],
+  ])('原比例图标菜单选择 %s · %s 原样提交真实尺寸 %s', async (ratio, resolution, size) => {
+    const user = userEvent.setup()
+    vi.mocked(submitVideoGeneration).mockResolvedValue(succeededTask)
+    renderVideoPage()
+    const sizeSelect = screen.getByRole('combobox', { name: '比例' })
+    await user.click(screen.getByRole('button', { name: ratio }))
+    if (resolution !== '1024P') await user.click(screen.getByRole('button', { name: resolution }))
+    expect(within(sizeSelect).getByRole('option', { selected: true })).toHaveTextContent(`${ratio} · ${resolution}`)
+    await user.type(screen.getByLabelText('视频提示词'), '日落下的山川')
+    await user.click(screen.getByRole('button', { name: '生成视频' }))
+    await waitFor(() => expect(submitVideoGeneration).toHaveBeenCalledOnce())
+    expect(vi.mocked(submitVideoGeneration).mock.calls[0]?.[0].size).toBe(size)
+  })
+
+  it('保留全部原比例图标与清晰度排列，未支持选项不会伪装成其他尺寸', async () => {
+    const user = userEvent.setup()
+    renderVideoPage()
+    const ratioButtons = within(document.querySelector('.video-aspect-options')!).getAllByRole('button')
+    expect(ratioButtons.map((button) => button.textContent)).toEqual(['adaptive', '16:9', '4:3', '1:1', '3:4', '9:16'])
+    expect(document.querySelectorAll('.video-ratio-icon')).toHaveLength(6)
+    expect(within(document.querySelector('.video-resolution-options')!).getAllByRole('button').map((button) => button.textContent)).toEqual(['480P', '720P', '1080P'])
+    for (const option of ['adaptive', '4:3', '3:4', '480P']) expect(screen.getByRole('button', { name: option })).toBeDisabled()
+    await user.click(screen.getByRole('button', { name: '1080P' }))
+    await user.click(screen.getByRole('button', { name: '9:16' }))
+    expect(screen.getByRole('combobox', { name: '比例' })).toHaveTextContent('9:16 · 720P')
+    expect(screen.getByRole('button', { name: '1080P' })).toBeDisabled()
+    await user.click(screen.getByRole('button', { name: '1:1' }))
+    expect(screen.getByRole('combobox', { name: '比例' })).toHaveTextContent('1:1 · 1024P')
+  })
+
   it('对已有服务端任务的记录点「重新生成」会换新的幂等键，避免被服务端回放成同一条旧任务', async () => {
     const user = userEvent.setup()
     // 失败态是终态，不需要等轮询，操作行里的「重新生成」立即可用。
@@ -258,6 +305,23 @@ describe('视频生成页面', () => {
     expect(screen.getByRole('button', { name: '末帧 URL' })).toBeInTheDocument()
   })
 
+  it('首帧上传正常提交，未接入的末帧和声音保持明确禁用', async () => {
+    const user = userEvent.setup()
+    vi.mocked(submitVideoGeneration).mockResolvedValue(succeededTask)
+    renderVideoPage()
+    await user.selectOptions(screen.getByRole('combobox', { name: '参考图' }), 'first-last')
+    expect(screen.getByRole('button', { name: '首帧 URL' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: '末帧 URL' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: '声音' })).toBeDisabled()
+    const file = new File(['first-frame'], 'first.png', { type: 'image/png' })
+    await user.upload(screen.getByLabelText('首帧 URL', { selector: 'input' }), file)
+    await screen.findByText('first.png')
+    await user.type(screen.getByLabelText('视频提示词'), '根据首帧生成视频')
+    await user.click(screen.getByRole('button', { name: '生成视频' }))
+    await waitFor(() => expect(submitVideoGeneration).toHaveBeenCalledOnce())
+    expect(vi.mocked(submitVideoGeneration).mock.calls[0]?.[0].inputReference).toMatch(/^data:image\/png;base64,/)
+  })
+
   it('模型、比例和时长弹层按参考页交互并保持互斥', async () => {
     const user = userEvent.setup()
     renderVideoPage()
@@ -268,6 +332,7 @@ describe('视频生成页面', () => {
     await user.selectOptions(modelSelect, 'other-video-public')
     expect(modelSelect).toHaveValue('other-video-public')
     expect(screen.getByRole('combobox', { name: '比例' })).toHaveValue('settings')
+    expect(screen.getByRole('combobox', { name: '比例' })).toHaveTextContent('16:9 · 720P')
     expect(screen.getByRole('combobox', { name: '时长' })).toHaveValue('duration')
   })
 

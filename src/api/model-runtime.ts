@@ -156,6 +156,7 @@ function completionErrorMessage(value: unknown): { message: string; code: string
     value.message,
     value.detail,
     value.reason,
+    typeof value.error === 'string' ? value.error : '',
   ])
   const code = typeof error.code === 'string' ? error.code : typeof error.code === 'number' ? String(error.code) : null
   return { message: message || i18n.t('api.modelRuntime.requestFailed'), code }
@@ -163,6 +164,7 @@ function completionErrorMessage(value: unknown): { message: string; code: string
 
 function hasBusinessError(value: unknown): value is RecordValue {
   if (!isRecord(value)) return false
+  if (isRecord(value.error) || (typeof value.error === 'string' && value.error.trim())) return true
   if (typeof value.code === 'number') return value.code !== 0
   return typeof value.code === 'string' && value.code.trim() !== '' && value.code.trim() !== '0'
 }
@@ -189,19 +191,26 @@ function mergeUsage(current: ParsedCompletionPayload, next: ParsedCompletionPayl
   }
 }
 
-function parseStreamEvent(event: string): { done: boolean; payload: ParsedCompletionPayload } {
+function parseStreamEvent(event: string, requestId: string): { done: boolean; payload: ParsedCompletionPayload } {
   const data = event.split(/\r?\n/).filter((line) => line.startsWith('data:')).map((line) => line.slice(5).trimStart()).join('\n').trim()
   // SSE 保活注释或空事件不代表流结束，只有服务端明确发送 [DONE] 才结束回答。
   if (!data) return { done: false, payload: { content: '', reasoning: '', inputTokens: null, outputTokens: null, finishReason: null } }
   if (data === '[DONE]') return { done: true, payload: { content: '', reasoning: '', inputTokens: null, outputTokens: null, finishReason: null } }
+  let rawPayload: unknown
   try {
-    return { done: false, payload: parseCompletionPayload(JSON.parse(data) as unknown) }
+    rawPayload = JSON.parse(data) as unknown
   } catch {
-    throw new ModelRuntimeError(i18n.t('api.modelRuntime.invalidStream'), 502, 'invalid_stream', null)
+    throw new ModelRuntimeError(i18n.t('api.modelRuntime.invalidStream'), 502, 'invalid_stream', requestId)
   }
+  // HTTP 200 之后上游仍可能在流中报错，必须保留原因，不能把已有半条回答当成功。
+  if (hasBusinessError(rawPayload) || event.split(/\r?\n/).some((line) => /^event:\s*error\s*$/.test(line))) {
+    const error = completionErrorMessage(rawPayload)
+    throw new ModelRuntimeError(error.message, 200, error.code, requestId)
+  }
+  return { done: false, payload: parseCompletionPayload(rawPayload) }
 }
 
-async function readStreamResponse(response: Response, onDelta?: (delta: string) => void, onReasoningDelta?: (delta: string) => void): Promise<ParsedCompletionPayload> {
+async function readStreamResponse(response: Response, requestId: string, onDelta?: (delta: string) => void, onReasoningDelta?: (delta: string) => void): Promise<ParsedCompletionPayload> {
   if (!response.body) {
     const payload = parseCompletionPayload(await response.json() as unknown)
     onDelta?.(payload.content)
@@ -213,9 +222,10 @@ async function readStreamResponse(response: Response, onDelta?: (delta: string) 
   let buffer = ''
   let result: ParsedCompletionPayload = { content: '', reasoning: '', inputTokens: null, outputTokens: null, finishReason: null }
   let streamDone = false
+  let reachedEof = false
 
   const consumeEvent = (event: string): void => {
-    const parsed = parseStreamEvent(event)
+    const parsed = parseStreamEvent(event, requestId)
     if (parsed.done) {
       streamDone = true
       return
@@ -233,16 +243,27 @@ async function readStreamResponse(response: Response, onDelta?: (delta: string) 
     result = mergeUsage(result, parsed.payload)
   }
 
-  while (!streamDone) {
-    const chunk = await reader.read()
-    buffer += decoder.decode(chunk.value, { stream: !chunk.done })
-    const events = buffer.split(/\r?\n\r?\n/)
-    buffer = events.pop() ?? ''
-    events.forEach(consumeEvent)
-    if (chunk.done) break
+  try {
+    while (!streamDone) {
+      const chunk = await reader.read()
+      reachedEof = chunk.done
+      buffer += decoder.decode(chunk.value, { stream: !chunk.done })
+      const events = buffer.split(/\r?\n\r?\n/)
+      buffer = events.pop() ?? ''
+      for (const event of events) {
+        consumeEvent(event)
+        if (streamDone) break
+      }
+      if (chunk.done) break
+    }
+    if (!streamDone && buffer.trim()) consumeEvent(buffer)
+    // 兼容只返回 finish_reason 的服务；二者都没有的 EOF 属于中断，不能记成完成。
+    if (!streamDone && !result.finishReason) throw new ModelRuntimeError(i18n.t('api.modelRuntime.incompleteStream'), 502, 'incomplete_stream', requestId)
+    return result
+  } finally {
+    if (!reachedEof) await reader.cancel().catch(() => undefined)
+    reader.releaseLock()
   }
-  if (buffer.trim()) consumeEvent(buffer)
-  return result
 }
 
 function createRequestController(signal: AbortSignal | undefined): { controller: AbortController; clear: () => void } {
@@ -302,7 +323,7 @@ export async function streamChatCompletion(input: StreamChatCompletionInput): Pr
     const isEventStream = response.headers.get('Content-Type')?.toLowerCase().includes('text/event-stream')
     let payload: ParsedCompletionPayload
     if (isEventStream) {
-      payload = await readStreamResponse(response, input.onDelta, input.onReasoningDelta)
+      payload = await readStreamResponse(response, response.headers.get('X-Request-ID') ?? requestId, input.onDelta, input.onReasoningDelta)
     } else {
       const rawPayload: unknown = await response.json()
       if (hasBusinessError(rawPayload)) {

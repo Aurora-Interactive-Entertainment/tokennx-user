@@ -177,13 +177,14 @@ function readErrorMessage(payload: RecordValue): string | null {
   return message || null
 }
 
-function parsePayload(body: string): RecordValue {
+function parsePayload(body: string): RecordValue | null {
+  // 兼容只通过响应头提供任务 ID 的异步提交；非空但损坏的 JSON 仍明确报错。
   if (!body.trim()) return {}
   try {
     const parsed: unknown = JSON.parse(body)
-    return isRecord(parsed) ? parsed : {}
+    return isRecord(parsed) ? parsed : null
   } catch {
-    return {}
+    return null
   }
 }
 
@@ -195,7 +196,7 @@ function errorPayloadMessage(payload: RecordValue): { message: string; code: str
     || i18n.t('api.videoRuntime.requestFailed')
   const codeValue = error.code
   const code = typeof codeValue === 'string' ? codeValue : typeof codeValue === 'number' ? String(codeValue) : null
-  return { message, code }
+  return { message: message.slice(0, MAX_ERROR_BODY_LENGTH), code }
 }
 
 function hasBusinessError(payload: RecordValue): boolean {
@@ -206,12 +207,14 @@ function hasBusinessError(payload: RecordValue): boolean {
 async function requestVideoTask(path: string, options: RequestInit, requestId: string, fallbackTaskId = ''): Promise<VideoTask> {
   const response = await fetch(`${MODEL_API_BASE_URL}${path}`, options)
   const responseRequestId = response.headers.get('X-Request-ID') ?? requestId
-  const body = (await response.text()).slice(0, MAX_ERROR_BODY_LENGTH)
+  // 成功响应可能包含长提示词或 metadata，必须完整解析，仅裁剪展示用的错误文案。
+  const body = await response.text()
   const payload = parsePayload(body)
-  if (!response.ok || hasBusinessError(payload)) {
-    const error = errorPayloadMessage(payload)
+  if (!response.ok || (payload && hasBusinessError(payload))) {
+    const error = errorPayloadMessage(payload ?? {})
     throw new VideoRuntimeError(error.message, response.status, error.code, responseRequestId)
   }
+  if (!payload) throw new VideoRuntimeError(i18n.t('api.videoRuntime.invalidResponse'), 502, 'invalid_response', responseRequestId)
   const taskId = readTaskId(payload, response.headers.get('X-ThinkGo-Task-ID') ?? fallbackTaskId)
   if (!taskId) throw new VideoRuntimeError(i18n.t('api.videoRuntime.invalidResponse'), 502, 'task_id_missing', responseRequestId)
   return {

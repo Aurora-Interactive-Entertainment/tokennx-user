@@ -26,8 +26,10 @@ import { useTranslation } from 'react-i18next'
 import { formatRankingTokens, RankingRecentUsageChart } from '@/components/ranking-usage-chart'
 import { formatToolUsageTokens, ToolUsageClientsChart } from '@/components/tool-usage-chart'
 import { apiTimeToDate } from '@/utils/format'
-import { ModelsShowcase, type ModelsShowcaseGroup } from '@/components/public-models-showcase'
+import { ModelsShowcase, type ModelsShowcaseGroup, type PublicShowcaseModel } from '@/components/public-models-showcase'
 import { appToast } from '@/components/app-toast'
+import { usePublicContentSeo } from '@/seo/site-seo'
+import { publicPath } from '@/routes/public-path'
 
 function formatPublicPrice(price: ModelPrice): ReactNode {
   return <ModelPriceSummary price={price} />
@@ -91,7 +93,7 @@ function publicModelDescription(t: TFunction, modelId: string, description: stri
   return t(`public.modelDescriptions.${modelId}`, { defaultValue: description })
 }
 
-function publicMarketModelToRecord(model: PublicMarketModel): ModelRecord {
+function publicMarketModelToRecord(model: PublicMarketModel): PublicShowcaseModel {
   const input = model.prices.find((price) => price.meter_kind.toLowerCase().includes('input'))
   const output = model.prices.find((price) => price.meter_kind.toLowerCase().includes('output'))
   const numeric = (value: string | undefined) => { const parsed = Number(value); return Number.isFinite(parsed) ? parsed : undefined }
@@ -109,19 +111,12 @@ function publicMarketModelToRecord(model: PublicMarketModel): ModelRecord {
     description: model.description || '',
     officialPrice: { ...price },
     tokenNxPrice: { ...price },
+    marketPrices: model.prices,
     labels: [MODALITY_LABELS[modality] ?? modality],
     availability: { rate: 0, window: '暂无数据' },
     providerCount: 0,
     throughput: { value: 0, unit: '暂无数据' },
   }
-}
-
-function fallbackShowcaseGroups(): ModelsShowcaseGroup[] {
-  return [
-    { id: 'text', titleKey: 'public.models.groups.textTitle', descriptionKey: 'public.models.groups.textDescription', models: MODEL_CATALOG.slice(0, 3) },
-    { id: 'video', titleKey: 'public.models.groups.videoTitle', descriptionKey: 'public.models.groups.videoDescription', models: MODEL_CATALOG.slice(3, 6) },
-    { id: 'image', titleKey: 'public.models.groups.imageTitle', descriptionKey: 'public.models.groups.imageDescription', models: MODEL_CATALOG.slice(6, 9) },
-  ]
 }
 
 function publicMarketTopicTitleKey(topic: PublicMarketTopic): string | undefined {
@@ -133,25 +128,26 @@ function publicMarketTopicTitleKey(topic: PublicMarketTopic): string | undefined
 }
 
 export function ModelsPublicPage() {
-  const { i18n } = useTranslation()
+  const { t, i18n } = useTranslation()
   const [market, setMarket] = useState<PublicModelMarket | null>(null)
+  const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading')
+  const [retryToken, setRetryToken] = useState(0)
+  const locale = i18n.resolvedLanguage ?? i18n.language
   useEffect(() => {
     const controller = new AbortController()
+    setStatus('loading')
+    setMarket(null)
     void getPublicModelMarket(controller.signal)
       .then((value) => {
-        if (!controller.signal.aborted) setMarket(value)
+        if (!controller.signal.aborted) { setMarket(value); setStatus('success') }
       })
       .catch(() => {
-        if (!controller.signal.aborted) setMarket(null)
+        if (!controller.signal.aborted) setStatus('error')
       })
     return () => controller.abort()
-  }, [])
+  }, [locale, retryToken])
   const groups = useMemo<ModelsShowcaseGroup[]>(() => {
-    if (!market?.topics.length) {
-      const fallback = fallbackShowcaseGroups()
-      if (market?.carousels.length) fallback[0].carousels = market.carousels
-      return fallback
-    }
+    if (!market?.topics.length) return []
     const english = (i18n.resolvedLanguage ?? i18n.language).toLowerCase().startsWith('en')
     const modelById = new Map<string, PublicMarketModel>()
     market.carousels.forEach((carousel) => { if (carousel.model) modelById.set(carousel.model.id, carousel.model) })
@@ -166,14 +162,11 @@ export function ModelsPublicPage() {
         carousels: index === 0 ? market.carousels : [],
       }
     }).filter((group) => group.models.length > 0)
-    if (mappedGroups.length) return mappedGroups
-    const fallback = fallbackShowcaseGroups()
-    fallback[0].carousels = market.carousels
-    return fallback
+    return mappedGroups
   }, [i18n.language, i18n.resolvedLanguage, market])
   return (
     <PublicLayout mainClassName="public-models-page">
-      <ModelsShowcase groups={groups} />
+      {status === 'success' ? <ModelsShowcase groups={groups} carousels={market?.carousels} /> : <section className="public-section" role={status === 'error' ? 'alert' : 'status'} aria-busy={status === 'loading'}><h1>{t('public.models.title')}</h1><p>{t(status === 'error' ? 'api.models.loadFailed' : 'public.models.loading')}</p>{status === 'error' ? <button className="btn btn-secondary" type="button" onClick={() => setRetryToken((value) => value + 1)}>{t('public.pricing.retry')}</button> : null}</section>}
     </PublicLayout>
   )
 }
@@ -540,6 +533,8 @@ export function DocsPage() {
   const [collapsedHeadings, setCollapsedHeadings] = useState<Set<string>>(() => new Set())
   const [expandedDirectories, setExpandedDirectories] = useState<Set<string>>(() => new Set())
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
+  usePublicContentSeo(!treeLoading && !documentLoading && !error && currentDocument && currentDocument.id === publicId
+    ? { title: currentDocument.title } : null)
 
   const rootNodes = useMemo(() => tree.filter((node) => !node.parent_id), [tree])
   const childrenByParent = useMemo(() => buildDocsChildrenMap(tree), [tree])
@@ -563,6 +558,7 @@ export function DocsPage() {
     setTreeLoading(true)
     setError(null)
     void getPublicDocsTree(locale, controller.signal).then((nodes) => {
+      if (controller.signal.aborted) return
       setTree(nodes)
       setTreeLoading(false)
     }).catch((caught) => {
@@ -583,7 +579,7 @@ export function DocsPage() {
     if (treeLoading || error || !tree.length) return
     if (!publicId) {
       const firstDocument = rootNodes.flatMap((root) => documentDescendants(root.id, tree))[0]
-      if (firstDocument) navigate(publicDocumentHref(firstDocument), { replace: true })
+      if (firstDocument) navigate(publicDocumentHref(firstDocument, locale), { replace: true })
       return
     }
     if (!selectedNode) {
@@ -613,8 +609,8 @@ export function DocsPage() {
   }, [locale, selectedNode, t])
 
   useEffect(() => {
-    if (currentDocument && currentDocument.id === publicId && slug !== currentDocument.slug) navigate(publicDocumentHref(currentDocument), { replace: true })
-  }, [currentDocument, navigate, publicId, slug])
+    if (currentDocument && currentDocument.id === publicId && slug !== currentDocument.slug) navigate(publicDocumentHref(currentDocument, locale), { replace: true })
+  }, [currentDocument, locale, navigate, publicId, slug])
 
   useEffect(() => {
     setMobileSidebarOpen(false)
@@ -747,7 +743,7 @@ export function DocsPage() {
 export { PricingPage } from './public-pricing'
 
 export function StatusPage() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const platformKeys = ['openai', 'claude', 'console', 'billing'] as const
   return (
     <PublicLayout mainClassName="public-page">
@@ -755,14 +751,14 @@ export function StatusPage() {
       <section className="public-section"><div className="callout"><strong>{t('public.status.calloutTitle')}</strong><span>{t('public.status.calloutText')}</span></div></section>
       <section className="public-section" aria-labelledby="modelStatusTitle"><h2 id="modelStatusTitle">{t('public.status.modelTitle')}</h2><p>{t('public.status.modelDescription')}</p><div>{MODEL_CATALOG.map((model) => <div className="status-row" key={model.id}><span className="status-identity"><strong>{model.name}</strong><span>{publicCompanyLabel(t, model.company)}</span></span><span className="badge">{t('public.status.monitoringUnavailable')}</span></div>)}</div></section>
       <section className="public-section"><h2>{t('public.status.platformTitle')}</h2>{platformKeys.map((key) => <div className="status-row" key={key}><span>{t(`public.status.platform.${key}`)}</span><span className="badge">{t('public.status.monitoringUnavailable')}</span></div>)}</section>
-      <section className="public-section"><h2>{t('public.status.incidentTitle')}</h2><p>{t('public.status.incidentDescription')}</p><div className="public-actions"><Link className="btn btn-secondary" to="/docs">{t('public.status.viewErrors')}</Link></div></section>
+      <section className="public-section"><h2>{t('public.status.incidentTitle')}</h2><p>{t('public.status.incidentDescription')}</p><div className="public-actions"><Link className="btn btn-secondary" to={publicPath('/docs', i18n.language)}>{t('public.status.viewErrors')}</Link></div></section>
     </PublicLayout>
   )
 }
 
 export function AboutPage() {
-  const { t } = useTranslation()
-  return <PublicLayout mainClassName="public-page"><header className="public-page-head"><h1>{t('public.about.title')}</h1><p>{t('public.about.description')}</p></header><section className="public-section"><h2>{t('public.about.boundaryTitle')}</h2><div className="public-grid"><div className="public-grid-item"><h3>{t('public.about.catalogTitle')}</h3><p>{t('public.about.catalogDescription')}</p></div><div className="public-grid-item"><h3>{t('public.about.requestTitle')}</h3><p>{t('public.about.requestDescription')}</p></div><div className="public-grid-item"><h3>{t('public.about.upstreamTitle')}</h3><p>{t('public.about.upstreamDescription')}</p></div></div></section><section className="public-section"><h2>{t('public.about.stageTitle')}</h2><p>{t('public.about.stageDescription')}</p><div className="public-actions"><Link className="btn btn-primary" to="/models">{t('public.about.browseModels')}</Link><Link className="btn btn-secondary" to="/docs">{t('public.about.viewDocs')}</Link></div></section></PublicLayout>
+  const { t, i18n } = useTranslation()
+  return <PublicLayout mainClassName="public-page"><header className="public-page-head"><h1>{t('public.about.title')}</h1><p>{t('public.about.description')}</p></header><section className="public-section"><h2>{t('public.about.boundaryTitle')}</h2><div className="public-grid"><div className="public-grid-item"><h3>{t('public.about.catalogTitle')}</h3><p>{t('public.about.catalogDescription')}</p></div><div className="public-grid-item"><h3>{t('public.about.requestTitle')}</h3><p>{t('public.about.requestDescription')}</p></div><div className="public-grid-item"><h3>{t('public.about.upstreamTitle')}</h3><p>{t('public.about.upstreamDescription')}</p></div></div></section><section className="public-section"><h2>{t('public.about.stageTitle')}</h2><p>{t('public.about.stageDescription')}</p><div className="public-actions"><Link className="btn btn-primary" to={publicPath('/models', i18n.language)}>{t('public.about.browseModels')}</Link><Link className="btn btn-secondary" to={publicPath('/docs', i18n.language)}>{t('public.about.viewDocs')}</Link></div></section></PublicLayout>
 }
 
 export function ContactPage() {

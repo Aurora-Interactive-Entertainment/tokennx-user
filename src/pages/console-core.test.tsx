@@ -548,6 +548,67 @@ describe('控制台模型接入页面', () => {
     expect(await screen.findByRole('button', { name: '编辑失败消息' })).toBeInTheDocument()
   })
 
+  it('输入法确认候选不发送，结束组合后的普通 Enter 仍能发送', async () => {
+    vi.mocked(streamChatCompletion).mockResolvedValue({ content: '正常回复', reasoning: '', requestId: 'req-ime', inputTokens: 1, outputTokens: 1, finishReason: 'stop', latencyMs: 1 })
+    renderConsolePage(<PlaygroundPage />)
+    const input = await screen.findByLabelText('测试提示词')
+    fireEvent.change(input, { target: { value: '测试输入' } })
+    fireEvent.compositionStart(input)
+    fireEvent.keyDown(input, { key: 'Enter', isComposing: true })
+    fireEvent.keyDown(input, { key: 'Enter', keyCode: 229 })
+    expect(streamChatCompletion).not.toHaveBeenCalled()
+    fireEvent.compositionEnd(input)
+    fireEvent.keyDown(input, { key: 'Enter' })
+    await waitFor(() => expect(streamChatCompletion).toHaveBeenCalledOnce())
+    expect(vi.mocked(streamChatCompletion).mock.calls[0]?.[0].messages).toEqual([{ role: 'user', content: '测试输入' }])
+  })
+
+  it('多次清除上下文后编辑消息，只发送目标消息所在段的内容', async () => {
+    const user = userEvent.setup()
+    vi.mocked(streamChatCompletion).mockResolvedValue({ content: '模型回答', reasoning: '', requestId: 'req-segment', inputTokens: 1, outputTokens: 1, finishReason: 'stop', latencyMs: 1 })
+    renderConsolePage(<PlaygroundPage />)
+    const input = await screen.findByLabelText('测试提示词')
+    for (const prompt of ['旧敏感内容', '中间段内容', '当前段内容']) {
+      await user.type(input, prompt)
+      await user.click(screen.getByRole('button', { name: '发送' }))
+      await waitFor(() => expect(input).toBeEnabled())
+      if (prompt !== '当前段内容') {
+        await user.click(screen.getByRole('button', { name: '当前上下文 1 轮' }))
+        await user.click(screen.getByRole('button', { name: '清除上下文' }))
+      }
+    }
+    const editButtons = screen.getAllByRole('button', { name: '编辑消息' })
+    await user.click(editButtons[2])
+    await user.click(screen.getByRole('button', { name: '发送编辑后的消息' }))
+    await waitFor(() => expect(streamChatCompletion).toHaveBeenCalledTimes(4))
+    expect(vi.mocked(streamChatCompletion).mock.calls[3]?.[0].messages).toEqual([{ role: 'user', content: '当前段内容' }])
+
+    // 编辑历史分段仍沿用该段起点，不夹带更早段落，也不追加后面的内容。
+    await user.click(screen.getAllByRole('button', { name: '编辑消息' })[1])
+    await user.click(screen.getByRole('button', { name: '发送编辑后的消息' }))
+    await waitFor(() => expect(streamChatCompletion).toHaveBeenCalledTimes(5))
+    expect(vi.mocked(streamChatCompletion).mock.calls[4]?.[0].messages).toEqual([{ role: 'user', content: '中间段内容' }])
+  })
+
+  it('清除上下文后的失败重试不恢复旧消息', async () => {
+    const user = userEvent.setup()
+    const result = { content: '成功回复', reasoning: '', requestId: 'req-retry-context', inputTokens: 1, outputTokens: 1, finishReason: 'stop', latencyMs: 1 }
+    vi.mocked(streamChatCompletion).mockResolvedValueOnce(result).mockRejectedValueOnce(new ModelRuntimeError('本轮失败', 502, 'upstream_error', 'req-failure')).mockResolvedValueOnce(result)
+    renderConsolePage(<PlaygroundPage />)
+    await user.type(await screen.findByLabelText('测试提示词'), '已清除的内容')
+    await user.click(screen.getByRole('button', { name: '发送' }))
+    await screen.findByText('成功回复')
+    await user.click(screen.getByRole('button', { name: '当前上下文 1 轮' }))
+    await user.click(screen.getByRole('button', { name: '清除上下文' }))
+    await user.type(screen.getByLabelText('测试提示词'), '需要重试的问题')
+    await user.click(screen.getByRole('button', { name: '发送' }))
+    await screen.findByText('本轮失败')
+    const failedMessage = document.querySelector('.message.ai.is-failed') as HTMLElement
+    await user.click(within(failedMessage).getByRole('button', { name: '重来' }))
+    await waitFor(() => expect(streamChatCompletion).toHaveBeenCalledTimes(3))
+    expect(vi.mocked(streamChatCompletion).mock.calls[2]?.[0].messages).toEqual([{ role: 'user', content: '需要重试的问题' }])
+  })
+
   it('达到会话限制后禁用输入并提示开启新会话', async () => {
     const user = userEvent.setup()
     vi.mocked(streamChatCompletion).mockImplementation(async (input) => {

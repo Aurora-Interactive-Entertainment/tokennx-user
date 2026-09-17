@@ -6,7 +6,7 @@ import Dropdown from '@douyinfe/semi-ui/lib/es/dropdown'
 import type { RenderSingleSelectedItemFn } from '@douyinfe/semi-ui/lib/es/select'
 import Modal from '@/components/app-modal'
 import Toast from '@douyinfe/semi-ui/lib/es/toast'
-import { IconAlertTriangle, IconArrowUp, IconCheckCircleStroked, IconChevronDownStroked, IconChevronUpDown, IconClockStroked, IconClose, IconDeleteStroked, IconDownload, IconEditStroked, IconFilterStroked, IconHistory, IconImage, IconInfoCircle, IconLoading, IconMuteStroked, IconMoreStroked, IconPlus, IconRefresh, IconStop, IconVideo, IconVolume2 } from '@douyinfe/semi-icons'
+import { IconAlertTriangle, IconArrowUp, IconCheckCircleStroked, IconChevronDownStroked, IconChevronUpDown, IconClockStroked, IconClose, IconDeleteStroked, IconDownload, IconEditStroked, IconFilterStroked, IconHistory, IconImage, IconInfoCircle, IconLoading, IconMoreStroked, IconPlus, IconRefresh, IconStop, IconVideo, IconVolume2 } from '@douyinfe/semi-icons'
 import { EmptyPanel, PageTitle } from '@/components/common'
 import { appToast } from '@/components/app-toast'
 import { CompatInput as Input, CompatSelect as Select } from '@/components/semi-compat'
@@ -38,17 +38,12 @@ const LOCAL_FAILURE_TASK_PREFIX = 'local-failed-'
 
 const VIDEO_DURATION_SLIDER_OPTIONS = [2, 5, 10, 15, 20, 25, 30] as const
 const VIDEO_ASPECT_OPTIONS = ['adaptive', '16:9', '4:3', '1:1', '3:4', '9:16'] as const
-
-function sizeForVideoAspect(aspect: string, resolution: string): string {
-  if (aspect === '1:1') return '1024x1024'
-  if (aspect === '9:16' || aspect === '3:4') return '720x1280'
-  return resolution === '1080P' ? '1920x1080' : '1280x720'
-}
+// 沿用原比例和清晰度面板，仅将已有实际尺寸映射回对应选项。
 const VIDEO_SIZE_OPTIONS = [
-  { value: '1280x720', labelKey: 'console.video.sizeLandscape' },
-  { value: '1920x1080', labelKey: 'console.video.sizeLandscapeHd' },
-  { value: '720x1280', labelKey: 'console.video.sizePortrait' },
-  { value: '1024x1024', labelKey: 'console.video.sizeSquare' },
+  { value: '1280x720', aspect: '16:9', resolution: '720P' },
+  { value: '1920x1080', aspect: '16:9', resolution: '1080P' },
+  { value: '720x1280', aspect: '9:16', resolution: '720P' },
+  { value: '1024x1024', aspect: '1:1', resolution: '1024P' },
 ] as const
 
 type VideoHistoryEntry = {
@@ -414,6 +409,9 @@ export function VideoPage() {
   const [prompt, setPrompt] = useState('')
   const [duration, setDuration] = useState(DEFAULT_VIDEO_DURATION)
   const [size, setSize] = useState(DEFAULT_VIDEO_SIZE)
+  const selectedSize = VIDEO_SIZE_OPTIONS.find((option) => option.value === size)
+  const aspectRatio = selectedSize?.aspect ?? size
+  const resolution = selectedSize?.resolution ?? ''
   const [inputReference, setInputReference] = useState('')
   const [referenceUrl, setReferenceUrl] = useState('')
   const [referenceName, setReferenceName] = useState('')
@@ -421,9 +419,6 @@ export function VideoPage() {
   const [lastFrameUrl, setLastFrameUrl] = useState('')
   const [historyOpen, setHistoryOpen] = useState(false)
   const [referenceMode, setReferenceMode] = useState<'reference' | 'first-last'>('reference')
-  const [aspectRatio, setAspectRatio] = useState('adaptive')
-  const [resolution, setResolution] = useState('480P')
-  const [soundEnabled, setSoundEnabled] = useState(true)
   const [referenceVisible, setReferenceVisible] = useState(false)
   const [history, setHistory] = useState<VideoHistoryEntry[]>(() => readVideoHistory(userId).filter((entry) => entry.workspaceKey === workspaceKey))
   const [selectedHistoryID, setSelectedHistoryID] = useState('')
@@ -747,8 +742,6 @@ export function VideoPage() {
     setModelID(entry.model)
     setDuration(entry.duration)
     setSize(entry.size)
-    setResolution(entry.size === '1920x1080' ? '1080P' : '480P')
-    setAspectRatio(entry.size === '1024x1024' ? '1:1' : entry.size === '720x1280' ? '9:16' : '16:9')
     setInputReference(entry.inputReference ?? '')
     setReferenceUrl(entry.inputReference && isPersistableReference(entry.inputReference) ? entry.inputReference : '')
     setReferenceName(entry.inputReference ? t('console.video.referenceImage') : '')
@@ -789,8 +782,6 @@ export function VideoPage() {
     setLastFrameUrl('')
     setDuration(DEFAULT_VIDEO_DURATION)
     setSize(DEFAULT_VIDEO_SIZE)
-    setAspectRatio('adaptive')
-    setResolution('480P')
     setReferenceMode('reference')
     setHistoryOpen(false)
     setReferenceVisible(false)
@@ -806,8 +797,6 @@ export function VideoPage() {
     setPrompt(entry.prompt)
     setDuration(entry.duration)
     setSize(entry.size)
-    setResolution(entry.size === '1920x1080' ? '1080P' : '480P')
-    setAspectRatio(entry.size === '1024x1024' ? '1:1' : entry.size === '720x1280' ? '9:16' : '16:9')
     setInputReference(entry.inputReference ?? '')
     setReferenceUrl(entry.inputReference && isPersistableReference(entry.inputReference) ? entry.inputReference : '')
     setReferenceName(entry.inputReference ? t('console.video.referenceImage') : '')
@@ -831,6 +820,21 @@ export function VideoPage() {
   function swapFrameUrls(): void {
     setFirstFrameUrl(lastFrameUrl)
     setLastFrameUrl(firstFrameUrl)
+    // 预览状态与真正提交的参考图同步，不能交换后仍发送旧首帧。
+    setInputReference(lastFrameUrl)
+    setReferenceUrl(isPersistableReference(lastFrameUrl) ? lastFrameUrl : '')
+    setReferenceName(lastFrameUrl ? t('console.video.referenceImage') : '')
+  }
+
+  function selectAspectRatio(ratio: string): void {
+    const options = VIDEO_SIZE_OPTIONS.filter((option) => option.aspect === ratio)
+    const option = options.find((item) => item.resolution === resolution) ?? options[0]
+    if (option) setSize(option.value)
+  }
+
+  function selectResolution(nextResolution: string): void {
+    const option = VIDEO_SIZE_OPTIONS.find((item) => item.aspect === aspectRatio && item.resolution === nextResolution)
+    if (option) setSize(option.value)
   }
 
   function handleFrameFile(event: ChangeEvent<HTMLInputElement>, frame: 'first' | 'last'): void {
@@ -851,6 +855,8 @@ export function VideoPage() {
       if (frame === 'first') {
         setFirstFrameUrl(reader.result)
         setInputReference(reader.result)
+        setReferenceUrl('')
+        setReferenceName(file.name)
       } else {
         setLastFrameUrl(reader.result)
       }
@@ -911,13 +917,14 @@ export function VideoPage() {
                   <span className="video-reference-upload-plus" aria-hidden="true"><IconPlus /></span>
                   <span>{t('console.video.firstFrameUrlLabel').replace(/ URL$/, '')}</span>
                 </button>
-                <button className="video-frame-upload-separator" type="button" aria-label={t('console.video.swapFrames')} onClick={swapFrameUrls} disabled={paramsBusy}><IconChevronUpDown aria-hidden="true" /></button>
-                <button className="video-reference-upload-card video-frame-upload-card video-frame-upload-card--last" type="button" aria-label={t('console.video.lastFrameUrlLabel')} onClick={() => lastFrameInputRef.current?.click()} disabled={paramsBusy}>
+                <button className="video-frame-upload-separator" type="button" aria-label={t('console.video.swapFrames')} onClick={swapFrameUrls} disabled={paramsBusy || !firstFrameUrl || !lastFrameUrl} title={t('console.video.optionUnavailable')}><IconChevronUpDown aria-hidden="true" /></button>
+                {/* 当前请求契约只有一张参考图，末帧与声音尚未接入，避免可操作却不生效。 */}
+                <button className="video-reference-upload-card video-frame-upload-card video-frame-upload-card--last" type="button" aria-label={t('console.video.lastFrameUrlLabel')} title={t('console.video.optionUnavailable')} disabled>
                   <span className="video-reference-upload-plus" aria-hidden="true"><IconPlus /></span>
                   <span>{t('console.video.lastFrameUrlLabel').replace(/ URL$/, '')}</span>
                 </button>
                 <input ref={firstFrameInputRef} className="video-reference-file-input video-frame-file-input" type="file" accept={VIDEO_REFERENCE_ACCEPT} onChange={(event) => handleFrameFile(event, 'first')} aria-label={t('console.video.firstFrameUrlLabel')} />
-                <input ref={lastFrameInputRef} className="video-reference-file-input video-frame-file-input" type="file" accept={VIDEO_REFERENCE_ACCEPT} onChange={(event) => handleFrameFile(event, 'last')} aria-label={t('console.video.lastFrameUrlLabel')} />
+                <input ref={lastFrameInputRef} className="video-reference-file-input video-frame-file-input" type="file" accept={VIDEO_REFERENCE_ACCEPT} onChange={(event) => handleFrameFile(event, 'last')} aria-label={t('console.video.lastFrameUrlLabel')} disabled />
                 </div> : <button className="video-reference-upload-card" type="button" aria-label={`${t('console.video.referenceImage')} · ${t('console.video.uploadReference')}`} onClick={() => setReferenceVisible(true)} disabled={paramsBusy}>
                 <span className="video-reference-upload-plus" aria-hidden="true"><IconPlus /></span>
                 <span>{t('console.video.referenceImage')}</span>
@@ -925,7 +932,7 @@ export function VideoPage() {
               {inputReference ? <div className="video-reference-row">
                 {referenceUrl ? <span className="video-reference-chip video-reference-chip--url"><IconImage aria-hidden="true" /><span>{referenceUrl}</span><Button theme="borderless" size="small" icon={<IconClose />} aria-label={t('console.video.removeReference')} title={t('console.video.removeReference')} onClick={() => { setInputReference(''); setReferenceUrl(''); setReferenceName('') }} /></span> : <span className="video-reference-chip"><img src={inputReference} alt="" /><span>{referenceName || t('console.video.referenceImage')}</span><Button theme="borderless" size="small" icon={<IconClose />} aria-label={t('console.video.removeReference')} title={t('console.video.removeReference')} onClick={() => { setInputReference(''); setReferenceUrl(''); setReferenceName('') }} /></span>}
               </div> : null}
-              <Input.TextArea value={prompt} onChange={(value) => setPrompt(value.slice(0, VIDEO_PROMPT_MAX_LENGTH))} maxLength={VIDEO_PROMPT_MAX_LENGTH} rows={3} disabled={paramsBusy} placeholder={selectedModel ? t('console.video.promptPlaceholder') : t('console.video.promptDisabledPlaceholder')} aria-label={t('console.video.promptLabel')} onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); if (canSubmit) void submitVideo() } }} />
+              <Input.TextArea value={prompt} onChange={(value) => setPrompt(value.slice(0, VIDEO_PROMPT_MAX_LENGTH))} maxLength={VIDEO_PROMPT_MAX_LENGTH} rows={3} disabled={paramsBusy} placeholder={selectedModel ? t('console.video.promptPlaceholder') : t('console.video.promptDisabledPlaceholder')} aria-label={t('console.video.promptLabel')} onKeyDown={(event) => { if (event.nativeEvent.isComposing || event.keyCode === 229) return; if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); if (canSubmit) void submitVideo() } }} />
             </div>
             <div className="video-composer-controls">
               <div className="video-control-group">
@@ -943,8 +950,8 @@ export function VideoPage() {
                 </div>
                 <div className="video-parameter-controls">
                   <div className="video-aspect-picker">
-                    <Select className="video-control-button video-aspect-trigger video-panel-select" value="settings" disabled={paramsBusy} arrowIcon={<IconChevronDownStroked />} dropdownClassName="video-aspect-select-dropdown" aria-label={t('console.video.aspectRatio')} renderSelectedItem={() => <><IconFilterStroked aria-hidden="true" /><span className="video-aspect-label"><span>{aspectRatio}</span><span className="video-aspect-separator"> · </span><span>{resolution}</span></span></>} innerTopSlot={<div className="video-aspect-popover video-select-panel"><div className="video-aspect-section"><strong>{t('console.video.aspectRatio')}</strong><div className="video-aspect-options">{VIDEO_ASPECT_OPTIONS.map((ratio) => <button type="button" className={aspectRatio === ratio ? 'is-selected' : ''} key={ratio} onClick={() => { setAspectRatio(ratio); setSize(sizeForVideoAspect(ratio, resolution)) }}><span className={`video-ratio-icon ratio-${ratio.replace(':', '-')}`} />{ratio}</button>)}</div></div><div className="video-aspect-section"><strong>{t('console.video.resolution')}</strong><div className="video-resolution-options">{['480P', '720P', '1080P'].map((nextResolution) => <button type="button" className={resolution === nextResolution ? 'is-selected' : ''} key={nextResolution} onClick={() => { setResolution(nextResolution); setSize(sizeForVideoAspect(aspectRatio, nextResolution)) }}>{nextResolution}</button>)}</div></div></div>}>
-                      <Select.Option value="settings">{aspectRatio} · {resolution}</Select.Option>
+                    <Select className="video-control-button video-aspect-trigger video-panel-select" value="settings" disabled={paramsBusy} arrowIcon={<IconChevronDownStroked />} dropdownClassName="video-aspect-select-dropdown" aria-label={t('console.video.aspectRatio')} renderSelectedItem={() => <><IconFilterStroked aria-hidden="true" /><span className="video-aspect-label"><span>{aspectRatio}</span>{resolution ? <><span className="video-aspect-separator"> · </span><span>{resolution}</span></> : null}</span></>} innerTopSlot={<div className="video-aspect-popover video-select-panel"><div className="video-aspect-section"><strong>{t('console.video.aspectRatio')}</strong><div className="video-aspect-options">{VIDEO_ASPECT_OPTIONS.map((ratio) => { const available = VIDEO_SIZE_OPTIONS.some((option) => option.aspect === ratio); return <button type="button" className={aspectRatio === ratio ? 'is-selected' : ''} key={ratio} onClick={() => selectAspectRatio(ratio)} disabled={!available} title={!available ? t('console.video.optionUnavailable') : undefined}><span className={`video-ratio-icon ratio-${ratio.replace(':', '-')}`} />{ratio}</button> })}</div></div><div className="video-aspect-section"><strong>{t('console.video.resolution')}</strong><div className="video-resolution-options">{['480P', '720P', '1080P'].map((nextResolution) => { const available = VIDEO_SIZE_OPTIONS.some((option) => option.aspect === aspectRatio && option.resolution === nextResolution); return <button type="button" className={resolution === nextResolution ? 'is-selected' : ''} key={nextResolution} onClick={() => selectResolution(nextResolution)} disabled={!available} title={!available ? t('console.video.optionUnavailable') : undefined}>{nextResolution}</button> })}</div></div></div>}>
+                      <Select.Option value="settings">{aspectRatio}{resolution ? ` · ${resolution}` : ''}</Select.Option>
                     </Select>
                   </div>
                   <div className="video-duration-picker">
@@ -952,7 +959,7 @@ export function VideoPage() {
                       <Select.Option value="duration">{duration}{t('console.video.secondsShort')}</Select.Option>
                     </Select>
                   </div>
-                  <button className={`video-control-button video-sound-trigger${soundEnabled ? ' is-active' : ''}`} type="button" aria-label={t('console.video.sound')} aria-pressed={soundEnabled} title={t('console.video.sound')} onClick={() => setSoundEnabled((enabled) => !enabled)} disabled={paramsBusy}>{soundEnabled ? <IconVolume2 aria-hidden="true" /> : <IconMuteStroked aria-hidden="true" />}<span>{t('console.video.sound')}</span></button>
+                  <button className="video-control-button video-sound-trigger" type="button" aria-label={t('console.video.sound')} title={t('console.video.optionUnavailable')} disabled><IconVolume2 aria-hidden="true" /><span>{t('console.video.sound')}</span></button>
                 </div>
               </div>
               <Button className="generation-send-button video-send-button" theme="solid" type="primary" icon={operationBusy ? <IconStop /> : <IconArrowUp />} aria-label={operationBusy ? (submitting ? t('console.video.cancelRequest') : t('console.video.cancelGeneration')) : t('console.video.generate')} title={operationBusy ? (submitting ? t('console.video.cancelRequest') : t('console.video.cancelGeneration')) : t('console.video.generate')} disabled={sendDisabled} loading={submitting} onClick={() => { if (submitting) cancelSubmission(); else if (currentTask && taskIsActive(currentTask)) cancelActiveTask(); else void submitVideo() }} />
@@ -963,7 +970,7 @@ export function VideoPage() {
       </div>
     </section>
     <Modal title={referenceMode === 'reference' ? t('console.video.referenceMode') : t('console.video.firstLastFrame')} visible={referenceVisible} onCancel={() => setReferenceVisible(false)} onOk={() => setReferenceVisible(false)} okText={t('console.common.finish')} cancelText={t('console.common.cancel')}>
-      {referenceMode === 'reference' ? <div className="video-reference-dialog"><Input id="video-reference-url" value={referenceUrl} onChange={(value) => { setReferenceUrl(value); setInputReference(value.trim()); setReferenceName('') }} placeholder={t('console.video.referenceUrlPlaceholder')} aria-label={t('console.video.referenceUrlLabel')} disabled={paramsBusy} /><input ref={referenceInputRef} className="video-reference-file-input" type="file" accept={VIDEO_REFERENCE_ACCEPT} onChange={handleReferenceFile} aria-label={t('console.video.referenceImage')} /><Button className="video-control-button" theme="borderless" icon={<IconImage />} onClick={() => referenceInputRef.current?.click()} disabled={paramsBusy}>{t('console.video.referenceImage')}</Button></div> : <div className="video-reference-dialog"><Input id="video-first-frame-url" value={firstFrameUrl} onChange={(value) => { setFirstFrameUrl(value); setInputReference(value.trim()) }} placeholder={t('console.video.firstFrameUrlPlaceholder')} aria-label={t('console.video.firstFrameUrlLabel')} disabled={paramsBusy} /><Input id="video-last-frame-url" value={lastFrameUrl} onChange={setLastFrameUrl} placeholder={t('console.video.lastFrameUrlPlaceholder')} aria-label={t('console.video.lastFrameUrlLabel')} disabled={paramsBusy} /></div>}
+      {referenceMode === 'reference' ? <div className="video-reference-dialog"><Input id="video-reference-url" value={referenceUrl} onChange={(value) => { setReferenceUrl(value); setInputReference(value.trim()); setReferenceName('') }} placeholder={t('console.video.referenceUrlPlaceholder')} aria-label={t('console.video.referenceUrlLabel')} disabled={paramsBusy} /><input ref={referenceInputRef} className="video-reference-file-input" type="file" accept={VIDEO_REFERENCE_ACCEPT} onChange={handleReferenceFile} aria-label={t('console.video.referenceImage')} /><Button className="video-control-button" theme="borderless" icon={<IconImage />} onClick={() => referenceInputRef.current?.click()} disabled={paramsBusy}>{t('console.video.referenceImage')}</Button></div> : <div className="video-reference-dialog"><Input id="video-first-frame-url" value={firstFrameUrl} onChange={(value) => { setFirstFrameUrl(value); setInputReference(value.trim()) }} placeholder={t('console.video.firstFrameUrlPlaceholder')} aria-label={t('console.video.firstFrameUrlLabel')} disabled={paramsBusy} /><Input id="video-last-frame-url" value={lastFrameUrl} onChange={setLastFrameUrl} placeholder={t('console.video.lastFrameUrlPlaceholder')} aria-label={t('console.video.lastFrameUrlLabel')} title={t('console.video.optionUnavailable')} disabled /></div>}
     </Modal>
   </div>
 }

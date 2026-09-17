@@ -11,6 +11,7 @@ import { PurchaseHoverMenu } from './purchase-hover-menu'
 import { PurchaseSubscriptionModal } from './purchase-subscription-modal'
 import { PurchasePaymentModal } from './purchase-payment-modal'
 import type { BillingContext } from '@/api/billing'
+import { notifyPurchasedPlansChanged } from '@/api/purchased-plan-updates'
 
 // 顶部入口在页面挂载时预加载，弹窗只消费同一份目录，不重复请求。
 export function HeaderPurchase({ inviteCode, context = { account_type: 'personal' } }: { inviteCode?: string; context?: BillingContext }) {
@@ -56,9 +57,12 @@ export function HeaderPurchase({ inviteCode, context = { account_type: 'personal
     <LoginDialog open={loginPlanID !== null && !userKey && auth.status !== 'loading'} dialogId="purchase-login-dialog" inviteCode={inviteCode}
       onClose={() => dispatch(closePurchaseLogin())}
       onSuccess={() => { /* 登录成功由全局购买意图接续，避免页面重挂载后回调失效。 */ }} />
-    <PurchasePaymentModal open={Boolean(paymentPlan)} planID={paymentPlan?.id} planName={paymentPlan?.display_name || paymentPlan?.name || ''}
+    <PurchasePaymentModal open={Boolean(paymentPlan)} context={context} planID={paymentPlan?.id} planName={paymentPlan?.display_name || paymentPlan?.name || ''}
       priceCent={paymentPlan?.price.price_cent} validitySeconds={paymentPlan?.price.validity_seconds}
-      onClose={() => setSelected(null)} onCloseAll={() => { setSelected(null); setOpen(false) }} onPaid={catalog.reload}
+      onClose={() => setSelected(null)} onCloseAll={() => { setSelected(null); setOpen(false) }} onPaid={() => {
+        catalog.reload()
+        notifyPurchasedPlansChanged(auth.user?.id, context)
+      }}
       onAuthFailure={() => { setSelected(null); dispatch(invalidateAuth()); if (paymentPlan) dispatch(requestPurchaseLogin(paymentPlan.id)) }} />
   </>
 }

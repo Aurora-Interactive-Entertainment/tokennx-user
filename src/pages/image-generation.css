@@ -242,6 +242,12 @@
   font-size: 12px;
   line-height: 1.4;
 }
+/* 模型标识和错误详情可能包含无空格长串，局部换行避免撑破结果卡。 */
+.image-result-meta > span,
+.image-result-error p {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
 .image-result-info {
   display: inline-grid;
   width: 20px;
@@ -497,9 +503,11 @@
   font-size: 17px;
 }
 .image-add-reference span {
+  max-width: 100%;
   font-size: 10px;
   line-height: 14px;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 .image-add-reference:hover,
 .image-add-reference:focus-visible {
@@ -513,6 +521,7 @@
   transform: rotate(-2deg) scale(1.02);
 }
 .image-composer-main .semi-input-textarea-wrapper {
+  min-width: 0;
   flex: 1;
   border: 0;
   background: transparent !important;
@@ -533,14 +542,21 @@
 .image-selected-models {
   position: relative;
   min-width: 0;
+  max-width: calc(100% - 32px);
 }
 .image-model-trigger.semi-button {
+  max-width: 100%;
   min-height: 40px;
   height: 40px;
   padding: 0 10px;
   color: var(--color-text-default);
   border-radius: 8px;
   background: transparent !important;
+}
+/* 模型按钮先收缩内容层，再沿用名称的省略号，保留右侧发送按钮空间。 */
+.image-model-trigger.semi-button .semi-button-content {
+  min-width: 0;
+  max-width: 100%;
 }
 .image-model-trigger.semi-button:hover,
 .image-model-trigger.semi-button:focus,

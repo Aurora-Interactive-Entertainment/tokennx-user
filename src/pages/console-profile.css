@@ -52,12 +52,15 @@ html:has(.settings-console-page) {
 
 .settings-redesign-page .settings-page-inner {
   display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr);
   gap: 24px;
 }
 
 .settings-anchor-layout {
   display: grid;
   width: 100%;
+  min-width: 0;
   grid-template-columns: 208px minmax(0, 1fr);
   align-items: start;
   gap: 40px;
@@ -107,8 +110,15 @@ html:has(.settings-console-page) {
   display: grid;
   width: 100%;
   min-width: 0;
+  grid-template-columns: minmax(0, 1fr);
   grid-column: 2;
   gap: 52px;
+}
+
+/* 设置区块按容器宽度收缩，避免工作空间和英文文案的最小内容宽度撑大整列。 */
+.settings-anchor-content > .settings-section {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .settings-redesign-page .settings-section.settings-anchor-section {
@@ -292,6 +302,14 @@ html:has(.settings-console-page) {
   border-bottom: 0;
 }
 
+.settings-redesign-page .notification-row > span {
+  min-width: 0;
+}
+
+.settings-redesign-page .notification-row > .semi-switch {
+  flex: 0 0 auto;
+}
+
 .settings-redesign-page .notification-row strong {
   color: var(--color-text-default-hover);
   font-size: 15px;
@@ -311,6 +329,7 @@ html:has(.settings-console-page) {
 }
 
 .settings-redesign-page .workspace-item {
+  flex-wrap: wrap;
   min-height: 66px;
   padding: 13px 16px;
   border: 1px solid transparent;
@@ -342,14 +361,18 @@ html:has(.settings-console-page) {
 
 .settings-redesign-page .workspace-item-actions {
   display: flex;
-  flex: 0 0 auto;
+  max-width: 100%;
+  flex: 0 1 auto;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: flex-end;
   gap: 10px;
 }
 
 .settings-redesign-page .workspace-item-actions > span {
-  flex: 0 0 auto;
+  min-width: 0;
+  max-width: 100%;
+  flex: 0 1 auto;
   padding: 4px 10px;
   border: 1px solid var(--color-border-neutral-l2);
   border-radius: 999px;
@@ -362,6 +385,23 @@ html:has(.settings-console-page) {
 
 .settings-redesign-page .settings-card--workspace {
   padding-bottom: 24px;
+}
+
+/* 长操作文案只在空间不足时换行，保留按钮的颜色、间距和正常高度。 */
+.settings-redesign-page .settings-card > .semi-button,
+.settings-redesign-page .settings-actions > .semi-button,
+.settings-redesign-page .workspace-item-actions > .semi-button {
+  max-width: 100%;
+  height: auto;
+  white-space: normal;
+}
+
+.settings-redesign-page .settings-card > .semi-button .semi-button-content,
+.settings-redesign-page .settings-actions > .semi-button .semi-button-content,
+.settings-redesign-page .workspace-item-actions > .semi-button .semi-button-content {
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .settings-redesign-page .settings-card--security {

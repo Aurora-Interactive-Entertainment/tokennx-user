@@ -149,6 +149,27 @@ describe('充值管理微信支付回归', () => {
     expect(callsFor(fetchMock, '/pay')).toHaveLength(1)
   })
 
+  it('仍在订单有效期内时续接五分钟轮询，晚付款仍自动刷新余额', async () => {
+    const order = { ...ORDER, expires_at: Date.now() + 15 * 60 * 1000 }
+    let paid = false
+    const fetchMock = mockBackend({
+      create: () => response({ ...order, status: 'pending' }),
+      pay: () => paymentResponse({ order }),
+      query: () => response({ ...order, ...(paid ? { status: 'paid', paid_at: Date.now() } : {}) }),
+    })
+    await mountPage()
+    await click('立即充值')
+    await advance(5 * 60 * 1000)
+    expect(screen.getByLabelText('微信支付二维码')).toBeInTheDocument()
+    const queries = callsFor(fetchMock, `/${ORDER.id}`).length
+    paid = true
+    await advance(2000)
+    expect(callsFor(fetchMock, `/${ORDER.id}`).length).toBeGreaterThan(queries)
+    expect(screen.getByText('充值已到账')).toBeInTheDocument()
+    expect(callsFor(fetchMock, '/wallet')).toHaveLength(2)
+    expect(callsFor(fetchMock, '/orders')).toHaveLength(1)
+  })
+
   it.each(['closed', 'expired', 'exception'])('%s 终态隐藏二维码并停止轮询，不显示到账', async (status) => {
     const fetchMock = mockBackend({ query: () => response({ ...ORDER, status }) })
     await mountPage()
@@ -268,15 +289,16 @@ describe('充值管理微信支付回归', () => {
     for (const [input] of payments) expect(new URL(String(input), window.location.origin).searchParams.get('account_type')).toBe(type)
   })
 
-  it('支付宝弹窗关单失败后切微信，不再查询或支付旧订单', async () => {
+  it('支付宝关单失败后保留原弹窗和订单，确认关单后才允许换微信', async () => {
     let sequence = 0
+    let closeFails = true
     const fetchMock = mockBackend({
       create: () => response({ ...ORDER, id: `close-order-${++sequence}`, status: 'pending' }),
       pay: (id, init) => paymentResponse({
         order: { ...ORDER, id },
-        ...(JSON.parse(String(init?.body)).channel === 'wechat' ? {} : { qr_code: 'https://qr.alipay.com/close-test' }),
+        ...(JSON.parse(String(init?.body)).channel === 'wechat' ? {} : { qr_code: 'https://qr.alipay.com/close-test', transaction: { id: 'alipay-attempt', payment_product: 'alipay_page' } }),
       }),
-      close: () => response({}, 0, 503),
+      close: () => closeFails ? response({}, 0, 503) : response({ ...ORDER, id: 'close-order-1', status: 'closed' }),
     })
     await mountPage()
     await click('支付宝支付')
@@ -284,13 +306,71 @@ describe('充值管理微信支付回归', () => {
     expect(screen.getByLabelText('支付宝支付二维码')).toBeInTheDocument()
     await act(async () => { fireEvent.click(document.querySelector('.payment-qr-dialog .semi-modal-close')!) })
     const oldQueries = callsFor(fetchMock, '/close-order-1').length
+    expect(screen.getByLabelText('支付宝支付二维码')).toBeInTheDocument()
+    await click('微信')
+    await click('立即充值')
+    expect(callsFor(fetchMock, '/orders')).toHaveLength(1)
+    expect(callsFor(fetchMock, '/close-order-1/pay')).toHaveLength(1)
+    await advance(2000)
+    expect(callsFor(fetchMock, '/close-order-1').length).toBeGreaterThan(oldQueries)
+    closeFails = false
+    await act(async () => { fireEvent.click(document.querySelector('.payment-qr-dialog .semi-modal-close')!) })
+    expect(screen.queryByRole('dialog')).toBeNull()
     await click('微信')
     await click('立即充值')
     expect(screen.getByLabelText('微信支付二维码')).toBeInTheDocument()
     expect(screen.queryByLabelText('支付宝支付二维码')).toBeNull()
-    expect(callsFor(fetchMock, '/close-order-1')).toHaveLength(oldQueries)
     expect(callsFor(fetchMock, '/close-order-1/pay')).toHaveLength(1)
     expect(callsFor(fetchMock, '/close-order-2/pay')).toHaveLength(1)
+  })
+
+  it('无到期字段的订单轮询有界，超时后手动查单和关闭仍可用', async () => {
+    const fetchMock = mockBackend()
+    await mountPage()
+    await click('立即充值')
+    await advance(5 * 60 * 1000)
+    const count = callsFor(fetchMock, `/${ORDER.id}`).length
+    await advance(10000)
+    expect(callsFor(fetchMock, `/${ORDER.id}`)).toHaveLength(count)
+    await click(/刷新支付状态/)
+    expect(callsFor(fetchMock, `/${ORDER.id}`)).toHaveLength(count + 1)
+    await act(async () => { fireEvent.click(document.querySelector('.payment-qr-dialog .semi-modal-close')!) })
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(callsFor(fetchMock, '/close')).toHaveLength(1)
+  })
+
+  it('充值关单遇到已付款竞争时查单确认，不重复下单', async () => {
+    let paid = false
+    const fetchMock = mockBackend({
+      close: () => { paid = true; return response({}, 170004, 409) },
+      query: () => response({ ...ORDER, ...(paid ? { status: 'paid', paid_at: Date.now() } : {}) }),
+    })
+    await mountPage()
+    await click('立即充值')
+    await act(async () => { fireEvent.click(document.querySelector('.payment-qr-dialog .semi-modal-close')!) })
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(callsFor(fetchMock, '/orders')).toHaveLength(1)
+    expect(callsFor(fetchMock, '/wallet')).toHaveLength(2)
+  })
+
+  it.each(['pending', 'paid'])('关单返回未收敛状态 %s 时保留弹窗，之后可重试关闭', async (status) => {
+    let canClose = false
+    const unresolved = { ...ORDER, status, paid_at: null }
+    const fetchMock = mockBackend({
+      close: () => response(canClose ? { ...ORDER, status: 'closed' } : unresolved),
+      query: () => response(canClose ? { ...ORDER, status: 'closed' } : unresolved),
+    })
+    await mountPage()
+    await click('立即充值')
+    await act(async () => { fireEvent.click(document.querySelector('.payment-qr-dialog .semi-modal-close')!) })
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(callsFor(fetchMock, '/orders')).toHaveLength(1)
+    // Semi Modal 对同一关闭按钮有 100ms 防抖，模拟用户看到结果后再重试。
+    await act(async () => { await vi.advanceTimersByTimeAsync(101) })
+    canClose = true
+    await act(async () => { fireEvent.click(document.querySelector('.payment-qr-dialog .semi-modal-close')!) })
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(callsFor(fetchMock, '/orders')).toHaveLength(1)
   })
 
   it('关单请求进行中锁定渠道和提交，卸载后中止关单且忽略迟到响应', async () => {

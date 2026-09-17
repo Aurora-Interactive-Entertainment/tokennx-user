@@ -236,8 +236,18 @@ html[data-theme="light"] .real-name-required-icon::before {
   .real-name-required-actions .semi-button {
     min-width: 0;
     width: 50%;
-    height: 44px;
+    height: auto;
+    min-height: 44px;
+    padding-block: 8px;
     padding-inline: 8px;
     font-size: 14px;
+  }
+
+  /* 英文认证状态较长，按钮随换行增高，保持短文案原有的 44px 高度。 */
+  .real-name-required-actions .semi-button-content {
+    min-width: 0;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    line-height: 20px;
   }
 }

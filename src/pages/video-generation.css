@@ -522,15 +522,15 @@ html[data-theme="dark"] .video-console-page .video-composer-box {
   will-change: transform;
 }
 /* 参考图上传入口与图片生成页保持相同的悬浮、聚焦和按下反馈。 */
-.video-console-page .video-reference-upload-card:hover,
-.video-console-page .video-reference-upload-card:focus-visible {
+.video-console-page .video-reference-upload-card:not(:disabled):hover,
+.video-console-page .video-reference-upload-card:not(:disabled):focus-visible {
   border-color: var(--color-border-neutral-l2);
   color: var(--color-text-default);
   background: var(--color-bg-overlay-l2);
   box-shadow: 0 6px 16px rgb(0 0 0 / 10%);
   transform: rotate(-2deg) scale(1.06);
 }
-.video-console-page .video-reference-upload-card:active {
+.video-console-page .video-reference-upload-card:not(:disabled):active {
   transform: rotate(-2deg) scale(1.02);
 }
 .video-console-page .video-reference-upload-card:disabled {
@@ -563,9 +563,9 @@ html[data-theme="dark"] .video-console-page .video-composer-box {
 }
 .video-console-page .video-frame-upload-card--first { transform: rotate(-4deg); }
 .video-console-page .video-frame-upload-card--last { transform: rotate(4deg); }
-.video-console-page .video-frame-upload-card--last:hover,
-.video-console-page .video-frame-upload-card--last:focus-visible { transform: rotate(2deg) scale(1.06); }
-.video-console-page .video-frame-upload-card--last:active { transform: rotate(2deg) scale(1.02); }
+.video-console-page .video-frame-upload-card--last:not(:disabled):hover,
+.video-console-page .video-frame-upload-card--last:not(:disabled):focus-visible { transform: rotate(2deg) scale(1.06); }
+.video-console-page .video-frame-upload-card--last:not(:disabled):active { transform: rotate(2deg) scale(1.02); }
 .video-console-page .video-frame-upload-separator {
   display: inline-flex;
   width: 24px;
@@ -583,7 +583,7 @@ html[data-theme="dark"] .video-console-page .video-composer-box {
   line-height: 24px;
   text-align: center;
 }
-.video-console-page .video-frame-upload-separator:hover {
+.video-console-page .video-frame-upload-separator:not(:disabled):hover {
   color: var(--color-text-secondary);
   background: var(--color-bg-overlay-l1);
 }
@@ -706,7 +706,7 @@ html[data-theme="dark"] .video-console-page .video-composer-box {
   color: currentcolor;
   font-size: 16px;
 }
-.video-console-page .video-sound-trigger:hover {
+.video-console-page .video-sound-trigger:not(:disabled):hover {
   color: #666666;
   border-color: #d9d9d9;
   background: #eeeeee;
@@ -720,6 +720,11 @@ html[data-theme="dark"] .video-console-page .video-composer-box {
   color: #0078d4;
   border-color: #69c0ff;
   background: #d9f2ff;
+}
+/* 未接入的参数保留明确禁用态，不显示可点击反馈。 */
+.video-console-page .video-sound-trigger:disabled {
+  cursor: not-allowed;
+  opacity: .55;
 }
 .video-console-page .video-send-button.semi-button {
   width: 32px;
@@ -1021,7 +1026,7 @@ html[data-theme='dark'] .video-console-page .video-sound-trigger {
   border-color: var(--color-border-neutral-l2);
   background: var(--color-bg-base-tertiary);
 }
-html[data-theme='dark'] .video-console-page .video-sound-trigger:hover {
+html[data-theme='dark'] .video-console-page .video-sound-trigger:not(:disabled):hover {
   color: #e3e6ed;
   border-color: var(--color-border-neutral-l3);
   background: var(--color-bg-overlay-l3);
@@ -1057,13 +1062,13 @@ html[data-theme='dark'] .video-console-page .video-resolution-options,
 html[data-theme='dark'] .video-console-page .video-reference-upload-card {
   background: var(--color-bg-base-tertiary);
 }
-html[data-theme='dark'] .video-console-page .video-reference-upload-card:hover,
-html[data-theme='dark'] .video-console-page .video-reference-upload-card:focus-visible {
+html[data-theme='dark'] .video-console-page .video-reference-upload-card:not(:disabled):hover,
+html[data-theme='dark'] .video-console-page .video-reference-upload-card:not(:disabled):focus-visible {
   background: var(--color-bg-overlay-l2);
 }
 /* 浅色模式 hover 与图片生成页一致；用不透明合成色替代渐变叠加（background-image 无法过渡，会显得生硬），颜色随 background-color 平滑变化。 */
-html[data-theme='light'] .video-console-page .video-reference-upload-card:hover,
-html[data-theme='light'] .video-console-page .video-reference-upload-card:focus-visible {
+html[data-theme='light'] .video-console-page .video-reference-upload-card:not(:disabled):hover,
+html[data-theme='light'] .video-console-page .video-reference-upload-card:not(:disabled):focus-visible {
   /* 等效 --color-bg-overlay-l2（rgba(23,24,27,0.045)）叠加在图片页外壳近白底 #fefefe 上的合成色。 */
   background-color: color-mix(in srgb, rgb(23 24 27) 4.5%, #fefefe);
 }
@@ -1702,16 +1707,24 @@ html[data-theme='dark'] .video-duration-select-dropdown .video-select-panel {
   background: var(--video-popup-tertiary) !important;
 }
 
-.video-aspect-select-dropdown .video-aspect-options button:hover,
+.video-aspect-select-dropdown .video-aspect-options button:not(:disabled):hover,
 .video-aspect-select-dropdown .video-aspect-options button.is-selected {
   color: var(--video-popup-text-primary);
   background: var(--video-popup-selected) !important;
 }
 
-.video-aspect-select-dropdown .video-resolution-options button:hover,
+.video-aspect-select-dropdown .video-resolution-options button:not(:disabled):hover,
 .video-aspect-select-dropdown .video-resolution-options button.is-selected {
   color: var(--video-popup-text-primary);
   background: var(--video-popup-selected) !important;
+}
+
+/* 未接入的比例和清晰度只做禁用，不能看起来仍可点击；与声音按钮的禁用反馈保持一致。 */
+.video-aspect-select-dropdown .video-aspect-options button:disabled,
+.video-aspect-select-dropdown .video-resolution-options button:disabled {
+  color: var(--video-popup-text-tertiary);
+  cursor: not-allowed;
+  opacity: .55;
 }
 
 .video-duration-select-dropdown .video-duration-number {

@@ -4,6 +4,20 @@ import { CONSOLE_ROUTE_META } from '@/routes/console-route-meta'
 
 // SITE_ORIGIN 按运行环境推导（未配置时取当前站点），断言只校验路径拼装，不锁定域名。
 describe('site SEO metadata', () => {
+  it('公开正文加载成功后才设置真实标题、canonical并允许收录', () => {
+    for (const path of ['/docs/document-id/guide', '/news/article-id']) {
+      const pending = resolveSeo(path, 'zh-CN')
+      expect(pending.noindex).toBe(true)
+      expect(pending.copy.title).not.toContain('模型详情')
+      const loaded = resolveSeo(path, 'zh-CN', { title: '公开内容标题', description: '真实摘要' })
+      expect(loaded.noindex).toBe(false)
+      expect(loaded.copy.title).toBe('公开内容标题 - Token NX')
+      expect(loaded.copy.description).toBe('真实摘要')
+      expect(loaded.canonicalUrl).toBe(`${SITE_ORIGIN}${path}/`)
+      expect(resolveSeo(`/en${path}`, 'zh-CN', { title: 'Public article' }).canonicalUrl).toBe(`${SITE_ORIGIN}/en${path}/`)
+    }
+    expect(resolveSeo('/not-a-route', 'zh-CN', { title: 'Unknown' }).noindex).toBe(true)
+  })
   it('为全部控制台路由设置独立的双语标题并禁止索引', () => {
     for (const [path, meta] of Object.entries(CONSOLE_ROUTE_META)) {
       for (const [locale, title] of [['zh-CN', meta.zh], ['en-US', meta.en]]) {

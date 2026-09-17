@@ -509,6 +509,7 @@ export const consoleResources = {
       },
       video: {
         title: "视频生成",
+        optionUnavailable: "当前暂不支持此选项",
         description: "读取当前工作空间可见的视频模型",
         noModels: "当前空间暂无可用视频模型",
         noModelsHint: "请切换工作空间或联系管理员确认模型权限",
@@ -885,6 +886,7 @@ export const consoleResources = {
           "二维码在当前商家页面内展示，请使用支付宝扫码完成支付。",
         paymentFrameLoading: "正在加载支付二维码，请稍候…",
         paymentRefresh: "刷新支付状态",
+        unfinishedPayment: "发现未完成的支付，再次点击“立即充值”可确认支付状态。",
         paymentAmount: "支付金额",
         required: "必填",
         otherAmount: "其他金额",
@@ -2909,6 +2911,7 @@ export const consoleResources = {
       },
       video: {
         title: "Video generation",
+        optionUnavailable: "This option is not available yet.",
         description: "Read video models visible to the current workspace",
         noModels: "No video models are available in this workspace",
         noModelsHint:
@@ -3302,6 +3305,7 @@ export const consoleResources = {
           "The QR code is displayed on this merchant page. Scan it with Alipay to complete payment.",
         paymentFrameLoading: "Loading the payment QR code, please wait…",
         paymentRefresh: "Refresh payment status",
+        unfinishedPayment: "An unfinished payment was found. Select “Top up now” again to confirm its status.",
         paymentAmount: "Payment amount",
         required: "Required",
         otherAmount: "Other amount",

@@ -220,4 +220,41 @@ describe('已认证请求封装', () => {
     await expect(fetchAuthenticatedResponse('/api/user/profile', { signal: controller.signal })).rejects.toMatchObject({ name: 'AbortError' })
     expect(fetchMock).toHaveBeenCalledTimes(1)
   })
+
+  it('等待 401 期间切换账号时不把写入重放到新账号，也不清除新登录', async () => {
+    saveAuthTokens(authResult('account-a-access', 'account-a-refresh'))
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => {
+      const next = authResult('account-b-access', 'account-b-refresh')
+      next.user = { ...next.user!, id: 'user-2' }
+      saveAuthTokens(next)
+      return apiResponse(null, 401, 160001, '认证信息无效')
+    })
+    await expect(fetchAuthenticatedResponse('/api/user/profile/nickname', { method: 'PUT', body: { display_name: '账号 A 的昵称' } })).rejects.toMatchObject({ name: 'AbortError' })
+    expect(fetchMock).toHaveBeenCalledOnce()
+    expect(getAccessToken()).toBe('account-b-access')
+  })
+
+  it('显式传入旧账号令牌时也不能使用当前新账号自动重试', async () => {
+    saveAuthTokens(authResult('account-a-access', 'account-a-refresh'))
+    const next = authResult('account-b-access', 'account-b-refresh')
+    next.user = { ...next.user!, id: 'user-2' }
+    saveAuthTokens(next)
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(apiResponse(null, 401, 160001, '认证信息无效'))
+    await expect(getUserProfile('account-a-access')).rejects.toMatchObject({ name: 'AbortError' })
+    expect(fetchMock).toHaveBeenCalledOnce()
+    expect(getAccessToken()).toBe('account-b-access')
+  })
+
+  it('同账号刷新响应省略用户资料时仍可正常重试', async () => {
+    saveAuthTokens(authResult('old-access', 'old-refresh'))
+    const refresh = authResult('new-access', 'new-refresh')
+    delete refresh.user
+    const fetchMock = vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(apiResponse(null, 401, 160001, '认证信息无效'))
+      .mockResolvedValueOnce(apiResponse(refresh))
+      .mockResolvedValueOnce(apiResponse(PROFILE))
+    await expect(getUserProfile('old-access')).resolves.toEqual(PROFILE)
+    expect(fetchMock).toHaveBeenCalledTimes(3)
+    expect(getAccessToken()).toBe('new-access')
+  })
 })

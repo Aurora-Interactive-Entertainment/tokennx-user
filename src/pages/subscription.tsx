@@ -11,7 +11,8 @@ import { PageTitle } from "@/components/common";
 import { appToast } from "@/components/app-toast";
 import { useAppStore } from "@/data/app-state";
 import { invalidateAuth } from "@/store/auth-slice";
-import { useAppDispatch } from "@/store/hooks";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { subscribePurchasedPlansChanged } from "@/api/purchased-plan-updates";
 import { useNavigate } from "react-router";
 import { billingContextForWorkspace } from "./billing";
 import "@/subscription.css";
@@ -24,6 +25,7 @@ export function SubscriptionPage() {
   const { t } = useTranslation();
   const store = useAppStore();
   const dispatch = useAppDispatch();
+  const userID = useAppSelector(state => state.auth.user?.id);
   const navigate = useNavigate();
   const activeWorkspace = store.activeWorkspace;
   const context = useMemo(() => activeWorkspace ? billingContextForWorkspace(activeWorkspace) : null, [activeWorkspace?.id, activeWorkspace?.type]);
@@ -95,6 +97,10 @@ export function SubscriptionPage() {
   }, [context, dispatch, navigate]);
 
   useEffect(() => loadPurchasedPlans(), [loadPurchasedPlans]);
+
+  // 顶部购买弹窗不会卸载当前页面，确认到账后需要主动重取已购权益。
+  useEffect(() => context ? subscribePurchasedPlansChanged(userID, context, loadPurchasedPlans) : undefined,
+    [userID, context, loadPurchasedPlans]);
 
   // 刷新按钮会把 requestController 换成新的实例，卸载时不能只中断 effect 里那一个，否则最新请求会继续在卸载后写状态。
   useEffect(() => () => requestController.current?.abort(), []);

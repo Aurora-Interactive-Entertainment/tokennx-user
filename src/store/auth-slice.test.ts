@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { clearAuthTokens, getAccessToken, REFRESH_SESSION_KEY, saveAuthTokens } from '@/auth/token-storage'
 import type { AuthResult } from '@/api/auth'
 import { createAppStore } from './index'
-import { hydrateAuth, loginWithEmail, loginWithPhone, logoutAuth } from './auth-slice'
+import { hydrateAuth, invalidateAuth, loginWithEmail, loginWithPhone, logoutAuth, synchronizeAuthenticatedUser } from './auth-slice'
 
 function apiResponse(data: unknown, status = 200, code = 0, msg = 'success'): Response {
   return new Response(JSON.stringify({ code, msg, data }), {
@@ -158,5 +158,47 @@ describe('认证 Redux 状态', () => {
     expect(appStore.getState().auth).toMatchObject({ status: 'unauthenticated', user: null, error: null })
     expect(getAccessToken()).toBe('old-access')
     expect(window.localStorage.getItem(REFRESH_SESSION_KEY)).toContain('refresh-token')
+  })
+
+  it.each(['logout', 'switch-account'])('恢复登录的旧 /me 不能覆盖 %s 后的身份', async change => {
+    saveAuthTokens(authResult('old-access', 'old-refresh'))
+    let finishMe!: (response: Response) => void
+    let startedMe!: () => void
+    const meStarted = new Promise<void>(resolve => { startedMe = resolve })
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async input => {
+      if (String(input).endsWith('/api/auth/refresh')) return apiResponse(authResult('refreshed-access', 'refreshed-refresh'))
+      startedMe()
+      return new Promise<Response>(resolve => { finishMe = resolve })
+    })
+    const appStore = createAppStore()
+    const request = appStore.dispatch(hydrateAuth())
+    await meStarted
+    if (change === 'logout') {
+      clearAuthTokens({ force: true })
+      appStore.dispatch(invalidateAuth())
+    } else {
+      const next = authResult('next-access', 'next-refresh')
+      next.user = { ...next.user!, id: 'user-2' }
+      saveAuthTokens(next)
+      appStore.dispatch(synchronizeAuthenticatedUser(next.user!))
+    }
+    finishMe(apiResponse(authResult().user))
+    await request
+    expect(appStore.getState().auth).toMatchObject(change === 'logout'
+      ? { status: 'unauthenticated', user: null }
+      : { status: 'authenticated', user: { id: 'user-2' } })
+    expect(getAccessToken()).toBe(change === 'logout' ? null : 'next-access')
+  })
+
+  it('正常刷新广播不会阻止 /me 更新同账号资料', async () => {
+    saveAuthTokens(authResult('old-access', 'old-refresh'))
+    const appStore = createAppStore()
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async input => {
+      if (String(input).endsWith('/api/auth/refresh')) return apiResponse(authResult('refreshed-access', 'refreshed-refresh'))
+      appStore.dispatch(synchronizeAuthenticatedUser(authResult().user!))
+      return apiResponse({ ...authResult().user, display_name: '最新昵称' })
+    })
+    await appStore.dispatch(hydrateAuth()).unwrap()
+    expect(appStore.getState().auth.user?.display_name).toBe('最新昵称')
   })
 })

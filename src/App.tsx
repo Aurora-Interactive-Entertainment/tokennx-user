@@ -30,6 +30,8 @@ import type { ConsoleRoutePath } from "@/routes/console-route-meta";
 import { syncSentryIdentity } from "@/observability/sentry";
 import { WechatCallbackPage } from "@/pages/wechat-callback";
 import { BuildUpdateNotice } from "@/components/build-update-notice";
+import { CONSOLE_IMAGE_GENERATION_ENABLED } from "@/config/console-features";
+import siteI18n from "@/i18n";
 
 const loadPublicPages = () => import("@/pages/public");
 const loadInvitationPage = () => import("@/pages/join");
@@ -218,7 +220,8 @@ const consolePages: Record<ConsoleRoutePath, ReactNode> = {
   "models": <ConsoleModelsPage />,
   "models/:modelId": <ConsoleModelDetailPage />,
   "playground": <PlaygroundPage />,
-  "image": <ImagePage />,
+  // 未开放的功能同步限制直接路由，避免进入仅有模拟生成的页面。
+  "image": CONSOLE_IMAGE_GENERATION_ENABLED ? <ImagePage /> : <Navigate to={DEFAULT_CONSOLE_PATH} replace />,
   "video": <VideoPage />,
   "quickstart": <QuickstartPage />,
   "api-keys": <ApiKeysPage />,
@@ -297,10 +300,11 @@ export function AuthBootstrap({ children }: { children: ReactNode }) {
 }
 
 function EnglishLocaleRoute() {
-  const { i18n } = useTranslation();
+  const { pathname } = useLocation();
   useEffect(() => {
-    if (!i18n.language.startsWith("en")) void i18n.changeLanguage("en-US");
-  }, [i18n]);
+    // 只在进入英文路径时同步语言，切回中文时不能由尚未卸载的旧路由抢写。
+    if (!siteI18n.language.startsWith("en")) void siteI18n.changeLanguage("en-US");
+  }, [pathname]);
   return <Outlet />;
 }
 
@@ -355,15 +359,12 @@ function BootReadyWatcher({ onBootReady }: { onBootReady: () => void }) {
   return null;
 }
 
-function AuthScopedStoreProvider({ children }: { children: ReactNode }) {
+export function AuthScopedStoreProvider({ children }: { children: ReactNode }) {
   const auth = useAppSelector((state) => state.auth)
   const { i18n } = useTranslation()
   const { pathname } = useLocation()
-  const userId = auth.status === 'authenticated'
-    ? auth.user?.id ?? null
-    : auth.status === 'unauthenticated'
-      ? null
-      : ''
+  // 请求等待和失败不改变账号身份，避免登录表单被重建后丢失输入和错误提示。
+  const userId = auth.user?.id ?? null
 
   useEffect(() => {
     const consoleScope = pathname.startsWith('/console/trae-enterprise')
@@ -381,9 +382,8 @@ function AuthScopedStoreProvider({ children }: { children: ReactNode }) {
     })
   }, [i18n.language, pathname, userId])
 
-  // 账号作用域变化时重新挂载，避免 effect 刷新前短暂渲染上一个账号的历史。
-  const scopeKey = `${auth.status}:${auth.user?.id ?? ''}`
-  return <AppStoreProvider key={scopeKey} userId={userId}>{children}</AppStoreProvider>
+  // AppStoreProvider 内部按 userId 重建，继续隔离登录、退出和切换账号的数据。
+  return <AppStoreProvider userId={userId}>{children}</AppStoreProvider>
 }
 
 export default function App({ onBootReady }: { onBootReady: () => void }) {
@@ -443,10 +443,13 @@ export default function App({ onBootReady }: { onBootReady: () => void }) {
                 <Route path="news/:id" element={<NewsDetailPage />} />
                 <Route path="terms" element={<LegalPage kind="terms" />} />
                 <Route path="privacy" element={<LegalPage kind="privacy" />} />
+                <Route path="recharge-agreement" element={<LegalPage kind="recharge" />} />
                 <Route path="login" element={<LoginPage />} />
               </Route>
               <Route path="/console" element={<ConsoleOutlet />}>
                 <Route index element={<ConsoleHomeRedirect />} />
+                {/* 兼容仍被运营配置引用的旧成员入口。 */}
+                <Route path="members" element={<Navigate to="/console/trae-enterprise/users" replace />} />
                 {Object.entries(consolePages).map(([path, element]) => (
                   <Route key={path} path={path} element={element} />
                 ))}

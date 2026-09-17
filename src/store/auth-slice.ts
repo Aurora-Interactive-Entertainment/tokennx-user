@@ -1,7 +1,7 @@
 import { createAsyncThunk, createSlice, type PayloadAction } from '@reduxjs/toolkit'
 import { getCurrentUser, loginByEmail, loginByPhone, logout, sendBindingPhoneCode, sendEmailCode, sendPhoneCode, bindWechatPhone, type AuthResult, type AuthUser, type EmailCodeResult, type PhoneCodeResult } from '@/api/auth'
 import { AUTH_INVALID_CODE, isApiError, isAuthenticationFailure } from '@/api/http'
-import { clearAuthTokens, getAccessToken, readRefreshToken, saveAuthTokens } from '@/auth/token-storage'
+import { clearAuthTokens, getAccessToken, getAccessTokenUserId, readRefreshToken, saveAuthTokens } from '@/auth/token-storage'
 import { refreshAuthSession, withAuthSessionLock } from '@/auth/refresh-coordinator'
 import i18n from '@/i18n'
 
@@ -17,6 +17,8 @@ export interface AuthState {
   error: AuthOperationError | null
   /** 记录本标签页主动登录次数，用于区分登录成功与后台会话刷新。 */
   loginSequence: number
+  /** 只允许当前恢复请求提交，退出或主动登录后作废。 */
+  hydrationRequestId?: string
 }
 
 const initialState: AuthState = {
@@ -62,21 +64,30 @@ function completeAuth(result: AuthResult): AuthUser {
   return user
 }
 
-export const hydrateAuth = createAsyncThunk<AuthUser | null>('auth/hydrate', async () => {
+export const hydrateAuth = createAsyncThunk<AuthUser | null, void, { rejectValue: 'session-changed' }>('auth/hydrate', async (_, { rejectWithValue }) => {
   const refreshToken = readRefreshToken()
   if (!refreshToken) return null
+  let expectedRefreshToken = refreshToken
+  let expectedUserId = getAccessTokenUserId()
   try {
     const result = await refreshAuthSession(refreshToken)
     if (result.status !== 'succeeded' || result.binding_required || !result.user) throw new Error(i18n.t('api.auth.incomplete'))
+    expectedRefreshToken = result.refresh_token
+    expectedUserId = result.user.id
+    if (getAccessTokenUserId() !== expectedUserId) return rejectWithValue('session-changed')
     // 刷新会话也保留认证响应中的首次登录标记，避免恢复页面时丢失引导状态。
     const user = result.user
     const access = getAccessToken()
     const currentUser = access ? await getCurrentUser(access) : user
+    // /me 等待期间可能发生退出或换号，旧用户资料不能覆盖最新身份。
+    if (getAccessTokenUserId() !== expectedUserId || currentUser.id !== expectedUserId) return rejectWithValue('session-changed')
     return result.promt_required === undefined ? currentUser : { ...currentUser, promt_required: result.promt_required }
   } catch (error) {
+    if (readRefreshToken() !== expectedRefreshToken ||
+      (expectedUserId && getAccessTokenUserId() !== expectedUserId)) return rejectWithValue('session-changed')
     // Preserve the session on service/network failures; only a 401 proves that
     // the refresh token is no longer authorized.
-    if (isAuthenticationFailure(error)) clearAuthTokens({ expectedRefreshToken: refreshToken })
+    if (isAuthenticationFailure(error)) clearAuthTokens({ expectedRefreshToken })
     return null
   }
 })
@@ -159,12 +170,14 @@ const authSlice = createSlice({
     },
     // 令牌验证失败时清除前端认证状态，由调用方回到公开首页。
     invalidateAuth(state) {
+      state.hydrationRequestId = undefined
       state.status = 'unauthenticated'
       state.user = null
       state.error = null
     },
     // 其他标签页完成登录或刷新后，及时同步当前页面的用户状态。
     synchronizeAuthenticatedUser(state, action: PayloadAction<AuthUser>) {
+      if (state.user && state.user.id !== action.payload.id) state.hydrationRequestId = undefined
       state.status = 'authenticated'
       state.user = action.payload
       state.error = null
@@ -176,20 +189,30 @@ const authSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      .addCase(hydrateAuth.pending, (state) => { state.status = 'loading'; state.error = null })
-      .addCase(hydrateAuth.fulfilled, (state, action) => { state.status = action.payload ? 'authenticated' : 'unauthenticated'; state.user = action.payload; state.error = null })
-      .addCase(loginWithEmail.pending, (state) => { state.status = 'loading'; state.error = null })
+      .addCase(hydrateAuth.pending, (state, action) => { state.hydrationRequestId = action.meta.requestId; state.status = 'loading'; state.error = null })
+      .addCase(hydrateAuth.fulfilled, (state, action) => {
+        if (state.hydrationRequestId !== action.meta.requestId) return
+        state.hydrationRequestId = undefined
+        state.status = action.payload ? 'authenticated' : 'unauthenticated'; state.user = action.payload; state.error = null
+      })
+      .addCase(hydrateAuth.rejected, (state, action) => {
+        if (state.hydrationRequestId !== action.meta.requestId) return
+        state.hydrationRequestId = undefined
+        if (state.status === 'loading') { state.status = 'unauthenticated'; state.user = null }
+      })
+      .addCase(loginWithEmail.pending, (state) => { state.hydrationRequestId = undefined; state.status = 'loading'; state.error = null })
       .addCase(loginWithEmail.fulfilled, (state, action) => { state.status = 'authenticated'; state.user = action.payload; state.error = null; state.loginSequence += 1 })
       .addCase(loginWithEmail.rejected, (state, action) => { state.status = 'unauthenticated'; state.user = null; state.error = action.payload ?? { message: i18n.t('api.auth.emailLoginFailed'), code: 0, status: 0 } })
-      .addCase(loginWithPhone.pending, (state) => { state.status = 'loading'; state.error = null })
+      .addCase(loginWithPhone.pending, (state) => { state.hydrationRequestId = undefined; state.status = 'loading'; state.error = null })
       .addCase(loginWithPhone.fulfilled, (state, action) => { state.status = 'authenticated'; state.user = action.payload; state.error = null; state.loginSequence += 1 })
       .addCase(loginWithPhone.rejected, (state, action) => { state.status = 'unauthenticated'; state.user = null; state.error = action.payload ?? { message: i18n.t('api.auth.phoneLoginFailed'), code: 0, status: 0 } })
-      .addCase(completeWechatLogin.pending, (state) => { state.status = 'loading'; state.error = null })
+      .addCase(completeWechatLogin.pending, (state) => { state.hydrationRequestId = undefined; state.status = 'loading'; state.error = null })
       .addCase(completeWechatLogin.fulfilled, (state, action) => { state.status = 'authenticated'; state.user = action.payload; state.error = null; state.loginSequence += 1 })
       .addCase(completeWechatLogin.rejected, (state, action) => { state.status = 'unauthenticated'; state.user = null; state.error = action.payload ?? { message: i18n.t('api.auth.wechatLoginFailed'), code: 0, status: 0 } })
-      .addCase(completeBinding.pending, (state) => { state.status = 'loading'; state.error = null })
+      .addCase(completeBinding.pending, (state) => { state.hydrationRequestId = undefined; state.status = 'loading'; state.error = null })
       .addCase(completeBinding.fulfilled, (state, action) => { state.status = 'authenticated'; state.user = action.payload; state.error = null; state.loginSequence += 1 })
       .addCase(completeBinding.rejected, (state, action) => { state.status = 'unauthenticated'; state.user = null; state.error = action.payload ?? { message: i18n.t('api.auth.phoneBindingFailed'), code: 0, status: 0 } })
+      .addCase(logoutAuth.pending, (state) => { state.hydrationRequestId = undefined })
       .addCase(logoutAuth.fulfilled, (state) => { state.status = 'unauthenticated'; state.user = null; state.error = null })
       .addCase(logoutAuth.rejected, (state, action) => { state.status = 'unauthenticated'; state.user = null; state.error = action.payload ?? null })
   },

@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { AuthResult } from '@/api/auth'
 import {
   AUTH_SYNC_STORAGE_KEY,
+  AUTH_SIGN_OUT_REVISION_KEY,
   DEVICE_ID_KEY,
   REFRESH_SESSION_KEY,
   VERIFIED_PHONE_KEY,
@@ -154,7 +155,7 @@ describe('认证令牌存储', () => {
         newValue: JSON.stringify({
           type: 'session-updated',
           eventId: 'other-tab:1',
-          revision: { timestamp: Date.now() + 10, writerId: 'other-tab' },
+          revision: { timestamp: Date.now() + 10_000, writerId: 'other-tab' },
           accessToken: 'remote-access',
           refreshToken: 'remote-refresh',
           refreshExpiresAt: Date.UTC(2099, 1, 1),
@@ -166,6 +167,51 @@ describe('认证令牌存储', () => {
     expect(getAccessToken()).toBe('remote-access')
     expect(readRefreshToken()).toBe('remote-refresh')
     expect(listener).toHaveBeenCalledOnce()
+    unsubscribe()
+  })
+
+  it('退出后拒绝迟到的旧刷新事件，同时允许之后的新登录', () => {
+    saveAuthTokens(authResult())
+    const oldRevision = JSON.parse(String(localStorage.getItem(REFRESH_SESSION_KEY))).revision
+    clearAuthTokens({ force: true })
+    const signedOut = JSON.parse(String(localStorage.getItem(AUTH_SIGN_OUT_REVISION_KEY)))
+    window.dispatchEvent(new StorageEvent('storage', {
+      key: AUTH_SYNC_STORAGE_KEY,
+      newValue: JSON.stringify({ type: 'session-updated', eventId: 'late-refresh:1', revision: oldRevision, accessToken: 'old-access', refreshToken: 'old-refresh', refreshExpiresAt: Date.UTC(2099, 1, 1), user: authResult().user }),
+    }))
+    expect(getAccessToken()).toBeNull()
+    expect(readRefreshToken()).toBeNull()
+    saveAuthTokens(authResult({ access_token: 'new-login', refresh_token: 'new-refresh' }))
+    expect(getAccessToken()).toBe('new-login')
+    expect(JSON.parse(String(localStorage.getItem(REFRESH_SESSION_KEY))).revision.timestamp).toBeGreaterThan(signedOut.timestamp)
+  })
+
+  it('共享退出版本已写入时仍应用相同版本的退出通知', () => {
+    saveAuthTokens(authResult())
+    const current = JSON.parse(String(localStorage.getItem(REFRESH_SESSION_KEY))).revision
+    const revision = { timestamp: current.timestamp + 1, writerId: 'remote-signout' }
+    // 模拟另一个标签页先更新共享存储，然后通知当前标签页。
+    localStorage.setItem(AUTH_SIGN_OUT_REVISION_KEY, JSON.stringify(revision))
+    localStorage.removeItem(REFRESH_SESSION_KEY)
+    const listener = vi.fn()
+    const unsubscribe = subscribeAuthTokenChanges(listener)
+    window.dispatchEvent(new StorageEvent('storage', { key: AUTH_SYNC_STORAGE_KEY, newValue: JSON.stringify({ type: 'signed-out', eventId: 'remote-signout:1', revision }) }))
+    expect(getAccessToken()).toBeNull()
+    expect(listener).toHaveBeenCalledWith(expect.objectContaining({ type: 'signed-out' }))
+    unsubscribe()
+  })
+
+  it('持久化退出版本高于本页内存时也拒绝旧会话通知', () => {
+    saveAuthTokens(authResult())
+    const current = JSON.parse(String(localStorage.getItem(REFRESH_SESSION_KEY))).revision
+    const revision = { timestamp: current.timestamp + 100, writerId: 'remote-signout' }
+    localStorage.setItem(AUTH_SIGN_OUT_REVISION_KEY, JSON.stringify(revision))
+    localStorage.removeItem(REFRESH_SESSION_KEY)
+    const listener = vi.fn()
+    const unsubscribe = subscribeAuthTokenChanges(listener)
+    window.dispatchEvent(new StorageEvent('storage', { key: AUTH_SYNC_STORAGE_KEY, newValue: JSON.stringify({ type: 'session-updated', eventId: 'delayed-remote:1', revision: { ...revision, timestamp: revision.timestamp - 1 }, accessToken: 'stale-access', refreshToken: 'stale-refresh', refreshExpiresAt: Date.UTC(2099, 1, 1), user: authResult().user }) }))
+    expect(localStorage.getItem(REFRESH_SESSION_KEY)).toBeNull()
+    expect(listener).not.toHaveBeenCalled()
     unsubscribe()
   })
 

@@ -552,12 +552,15 @@
   font-size: 13px;
   font-weight: 500;
 }
+.model-visibility-people-list strong,
 .model-visibility-people-list small {
   overflow: hidden;
-  color: var(--color-text-tertiary);
-  font-size: 11px;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.model-visibility-people-list small {
+  color: var(--color-text-tertiary);
+  font-size: 11px;
 }
 .model-visibility-selected {
   display: flex;
@@ -627,6 +630,14 @@
 .model-visibility-selected-item:hover,
 .model-visibility-selected-item:focus-within {
   background: var(--color-bg-overlay-l2);
+}
+/* 先允许文本容器收缩，已有省略号规则才能生效，并为移除按钮保留空间。 */
+.model-visibility-selected-item > div {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.model-visibility-selected-item > button {
+  flex: 0 0 auto;
 }
 .model-visibility-selected-item strong,
 .model-visibility-selected-item small {

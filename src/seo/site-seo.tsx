@@ -107,6 +107,11 @@ const SEO_PAGES: Record<string, SeoPage> = {
     zh: { title: '隐私政策 - Token NX', description: '了解 Token NX 如何收集、使用、保存和保护账户信息、模型调用及相关服务数据。', heading: 'Token NX 隐私政策', summary: '本页面说明 Token NX 在提供账户、计费和模型调用服务时如何处理与保护必要数据。', breadcrumb: '隐私政策' },
     en: { title: 'Privacy Policy - Token NX', description: 'Understand how Token NX collects, uses, stores, and protects account information, call data, and related service data.', heading: 'Token NX Privacy Policy', summary: 'This page explains how Token NX handles and protects necessary data while providing accounts, billing, and model access.', breadcrumb: 'Privacy Policy' },
   },
+  '/recharge-agreement': {
+    schemaType: 'WebPage',
+    zh: { title: '充值协议 - Token NX', description: '阅读 Token NX 充值协议，了解充值金额、到账、退款和发票等相关规则。', heading: 'Token NX 充值协议', summary: '本页面说明 Token NX 账户充值的金额、到账、退款与发票等相关规则。', breadcrumb: '充值协议' },
+    en: { title: 'Recharge Agreement - Token NX', description: 'Read the Token NX recharge agreement covering top-up amounts, crediting, refunds, and invoices.', heading: 'Token NX Recharge Agreement', summary: 'This page explains the rules that apply to Token NX account top-ups, including amounts, crediting, refunds, and invoices.', breadcrumb: 'Recharge agreement' },
+  },
   '/docs': {
     schemaType: 'WebPage',
     zh: { title: '文档中心 - Token NX', description: '查阅 Token NX 使用指南、API 文档、接入方式与常见问题。', heading: 'Token NX 文档中心', summary: 'Token NX 文档中心提供从创建 API Key 到接入客户端、管理用量与账单的完整指引。', breadcrumb: '文档中心' },
@@ -174,18 +179,25 @@ function isNoindexPath(routePath: string): boolean {
   return routePath === '/login' || routePath === '/join' || routePath === '/invite' || routePath === '/home' || routePath.startsWith('/console')
 }
 
-export function resolveSeo(pathname: string, language: string): ResolvedSeo {
+export type PublicContentSeo = { title: string; description?: string }
+
+export function resolveSeo(pathname: string, language: string, content?: PublicContentSeo): ResolvedSeo {
   const routePath = normalizedPath(pathname)
   const locale: SeoLocale = isEnglishPath(pathname) || language.toLowerCase().startsWith('en') ? 'en-US' : 'zh-CN'
   const modelDetail = routePath.startsWith('/models/') && routePath !== '/models'
-  const page = SEO_PAGES[routePath]
-  const noindex = isNoindexPath(routePath) || (!page && !modelDetail)
+  const contentRoot = /^\/docs\/[^/]+(?:\/[^/]+)?$/.test(routePath) ? '/docs' : /^\/news\/[^/]+$/.test(routePath) ? '/news' : undefined
+  const page = SEO_PAGES[routePath] ?? (contentRoot ? SEO_PAGES[contentRoot] : undefined)
+  // 只有成功取得公开正文后才允许详情收录，加载失败或不存在的内容保持 noindex。
+  const noindex = isNoindexPath(routePath) || (!page && !modelDetail) || Boolean(contentRoot && !content?.title.trim())
   const consolePage = routePath === '/console' || routePath.startsWith('/console/')
   const consoleTitle = consoleRouteTitle(routePath, locale)
-  const copy = consolePage
+  const baseCopy = consolePage
     ? { title: `${consoleTitle} - ${SITE_NAME}`, heading: consoleTitle, breadcrumb: consoleTitle, description: '', summary: '' }
     : modelDetail ? MODEL_DETAIL_COPY[locale] : page?.[locale === 'en-US' ? 'en' : 'zh'] ?? MODEL_DETAIL_COPY[locale]
-  const routeForLanguage = modelDetail ? routePath : routePath
+  const copy = contentRoot && content?.title.trim()
+    ? { ...baseCopy, title: `${content.title.trim()} - ${SITE_NAME}`, heading: content.title.trim(), breadcrumb: content.title.trim(), description: content.description?.trim() || baseCopy.description }
+    : baseCopy
+  const routeForLanguage = routePath
   const canonical = noindex ? undefined : canonicalPath(routeForLanguage, locale)
   const canonicalUrl = canonical ? `${SITE_ORIGIN}${canonical}` : undefined
   const alternateUrls = canonical ? [
@@ -264,4 +276,16 @@ export function SeoManager(): null {
     applySeo(resolveSeo(location.pathname, i18n.resolvedLanguage ?? i18n.language))
   }, [i18n.language, i18n.resolvedLanguage, location.pathname])
   return null
+}
+
+// 详情页在数据成功或失败后更新元信息，不再沿用静态路由的模型详情占位标题。
+export function usePublicContentSeo(content: PublicContentSeo | null): void {
+  const { pathname } = useLocation()
+  const { i18n } = useTranslation()
+  const language = i18n.resolvedLanguage ?? i18n.language
+  const title = content?.title
+  const description = content?.description
+  useEffect(() => {
+    applySeo(resolveSeo(pathname, language, title ? { title, description } : undefined))
+  }, [pathname, language, title, description])
 }

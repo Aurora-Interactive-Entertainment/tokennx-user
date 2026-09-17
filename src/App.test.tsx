@@ -1,4 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import i18n from '@/i18n'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import { Provider } from 'react-redux'
 import { describe, expect, it, vi } from 'vitest'
@@ -10,6 +12,27 @@ import { PublicHeader } from '@/components/common'
 import App, { AuthBootstrap, ConsoleHomeRedirect, ConsoleOutlet } from './App'
 
 describe('控制台认证路由', () => {
+  it('英文路由切回中文时，旧路由守卫不会重新覆盖语言', async () => {
+    clearAuthTokens({ force: true, broadcast: false })
+    await i18n.changeLanguage('zh-CN')
+    const appStore = createAppStore()
+    appStore.dispatch(invalidateAuth())
+    const originalPath = window.location.pathname
+    window.history.pushState({}, '', '/en/about')
+    try {
+      render(<Provider store={appStore}><App onBootReady={vi.fn()} /></Provider>)
+      const toggle = await screen.findByRole('button', { name: 'Switch language' }, { timeout: 5000 })
+      await userEvent.click(toggle)
+      await waitFor(() => {
+        expect(window.location.pathname).toBe('/about')
+        expect(i18n.language).toBe('zh-CN')
+        expect(screen.getByRole('button', { name: '切换语言' })).toHaveAttribute('aria-pressed', 'false')
+      })
+    } finally {
+      window.history.replaceState({}, '', originalPath)
+      await i18n.changeLanguage('zh-CN')
+    }
+  }, 10000)
   it('登录失效访问控制台时直接回到首页', () => {
     const appStore = createAppStore()
     appStore.dispatch(invalidateAuth())

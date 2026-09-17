@@ -35,6 +35,21 @@
 .news-card-skeleton-cover { width: 100%; aspect-ratio: 1; }
 .news-card-skeleton-content { padding: 18px; }
 
+/* 返回列表时标题和卡片轻量入场；动画放在网格上，加载更多不会让已有卡片重复播放。 */
+.news-list-header, .news-list-grid, .news-list-load-more, .news-list-state { animation: news-list-enter .28s cubic-bezier(.22, 1, .36, 1) backwards; }
+.news-list-grid, .news-list-load-more, .news-list-state { animation-delay: .04s; }
+/* 与详情页保持一致，快速响应时避免骨架屏闪现。 */
+.news-list-skeleton { animation-delay: .12s; }
+
+@keyframes news-list-enter {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .news-list-header, .news-list-grid, .news-list-load-more, .news-list-state { animation: none; }
+}
+
 html[data-theme="light"] .news-page--manuscript { --news-ink: #17181b; --news-muted: #737780; --news-line: #dedede; --news-surface: #fff; --news-accent: #376bb4; background: #fff; }
 html[data-theme="light"] body:has(.news-page--manuscript) { background: #fff; }
 html[data-theme="light"] .news-card-cover { background: #f0f1f3; }

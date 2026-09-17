@@ -1,4 +1,4 @@
-import { clearAuthTokens, getAccessToken, readRefreshToken } from '@/auth/token-storage'
+import { clearAuthTokens, getAccessToken, getAccessTokenUserId, readRefreshToken } from '@/auth/token-storage'
 import { refreshAuthSession, type AuthenticatedSession } from '@/auth/refresh-coordinator'
 import { AUTH_INVALID_CODE, AUTH_UNAUTHORIZED_STATUS, ApiError, fetchJson, fetchResponse, isAuthenticationFailure, type FetchJsonOptions } from './http'
 import i18n from '@/i18n'
@@ -21,11 +21,20 @@ async function fetchAuthenticated<T>(path: string, options: FetchJsonOptions, re
 		throw new ApiError(i18n.t('api.auth.sessionExpired'), AUTH_UNAUTHORIZED_STATUS, AUTH_INVALID_CODE, null)
 	}
 
+  const requestUserId = getAccessTokenUserId(accessToken)
+  const assertSameAccount = (): void => {
+    // 刷新可以轮换令牌，但绝不能将旧账号的读写操作重放到新账号。
+    if (!requestUserId || getAccessTokenUserId() !== requestUserId) {
+      throw new DOMException(i18n.t('api.auth.sessionConflict'), 'AbortError')
+    }
+  }
+
 	try {
 		return await request(accessToken)
 	} catch (error) {
 	    if (!isAuthenticationFailure(error)) throw error
 	    throwIfAborted(options.signal)
+    assertSameAccount()
 
     // 其他标签页可能已经完成刷新，先重试同步到内存中的新访问令牌，避免再次轮换刷新令牌。
     const synchronizedAccessToken = getAccessToken()
@@ -35,6 +44,7 @@ async function fetchAuthenticated<T>(path: string, options: FetchJsonOptions, re
         return await request(synchronizedAccessToken)
       } catch (synchronizedError) {
         if (!isAuthenticationFailure(synchronizedError)) throw synchronizedError
+        assertSameAccount()
       }
     }
 
@@ -50,6 +60,7 @@ async function fetchAuthenticated<T>(path: string, options: FetchJsonOptions, re
     try {
       refreshed = await refreshAccessToken(refreshToken)
     } catch (refreshError) {
+      assertSameAccount()
       // A transient refresh failure is not proof that the session is expired.
       const refreshExpired = isAuthenticationFailure(refreshError)
       if (refreshExpired) clearAuthTokens({ expectedRefreshToken: refreshToken })
@@ -59,8 +70,10 @@ async function fetchAuthenticated<T>(path: string, options: FetchJsonOptions, re
 
 	try {
 		throwIfAborted(options.signal)
+		assertSameAccount()
 		return await request(refreshed.access_token)
 		} catch (retryError) {
+			assertSameAccount()
 			if (isAuthenticationFailure(retryError)) clearAuthTokens({ expectedRefreshToken: refreshed.refresh_token })
 			throw retryError
 		}

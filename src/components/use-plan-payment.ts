@@ -10,6 +10,13 @@ import {
   type BillingPaymentOrder,
 } from "@/api/billing";
 import { ApiError, isApiError, isAuthenticationFailure } from "@/api/http";
+import { getAccessTokenUserId } from "@/auth/token-storage";
+import {
+  clearPendingPaymentIntent,
+  paymentIntentScope,
+  readPendingPaymentIntent,
+  writePendingPaymentIntent,
+} from "@/api/pending-payment-intent";
 import {
   isPaymentActive,
   isPaymentOrderPollable,
@@ -37,12 +44,18 @@ export function usePlanPayment(
   onAuthFailure?: () => void,
 ) {
   const { t } = useTranslation();
+  const [initial] = useState(() => {
+    const scope = paymentIntentScope(context, "plan", planID);
+    return { scope, userID: getAccessTokenUserId() ?? undefined, intent: readPendingPaymentIntent(scope) };
+  });
   const [order, setOrder] = useState<BillingPaymentOrder | null>(null);
   const [qr, setQR] = useState("");
   const [form, setForm] = useState("");
   const [agreed, setAgreedState] = useState(false);
-  const [method, setMethod] = useState<PaymentChannel>("wechat");
+  const [method, setMethod] = useState<PaymentChannel>(initial.intent?.channel ?? "wechat");
   const [busy, setBusy] = useState(false);
+  const [exclusiveBusy, setExclusiveBusy] = useState(false);
+  const [timedOut, setTimedOut] = useState(false);
   const [querying, setQuerying] = useState(false);
   const [error, setError] = useState("");
   const [blocked, setBlocked] = useState(false);
@@ -56,13 +69,18 @@ export function usePlanPayment(
   const callbacks = useRef({ onPaid, onAuthFailure });
   callbacks.current = { onPaid, onAuthFailure };
   const session = useRef({
-    id: crypto.randomUUID(),
-    createKey: crypto.randomUUID(),
-    payKey: crypto.randomUUID(),
+    id: initial.intent?.id ?? crypto.randomUUID(),
+    createKey: initial.intent?.createKey ?? crypto.randomUUID(),
+    payKey: initial.intent?.payKey ?? crypto.randomUUID(),
+    orderID: initial.intent?.orderID ?? null as string | null,
+    amountYuan: initial.intent?.amountYuan,
+    creationStarted: Boolean(initial.intent),
+    intentClaimed: Boolean(initial.intent),
     order: null as BillingPaymentOrder | null,
-    channel: "wechat" as PaymentChannel,
+    channel: initial.intent?.channel ?? "wechat" as PaymentChannel,
     agreed: false,
     locked: false,
+    exclusive: false,
     alive: true,
     blocked: false,
     version: 0,
@@ -73,6 +91,38 @@ export function usePlanPayment(
   });
   const controller = useRef<AbortController | null>(null);
   const pollFailed = useRef(false);
+
+  function persistIntent() {
+    const state = session.current;
+    writePendingPaymentIntent(initial.scope, {
+      id: state.id, createKey: state.createKey, payKey: state.payKey,
+      channel: state.channel, orderID: state.orderID,
+      ...(state.amountYuan !== undefined ? { amountYuan: state.amountYuan } : {}),
+    });
+    if (initial.scope && readPendingPaymentIntent(initial.scope)?.id === state.id) state.intentClaimed = true;
+  }
+
+  function ownsIntent() {
+    const state = session.current;
+    if (!initial.scope || !state.intentClaimed) return true;
+    const current = readPendingPaymentIntent(initial.scope);
+    return current?.id === state.id && current.createKey === state.createKey
+      && current.payKey === state.payKey && current.channel === state.channel;
+  }
+
+  function expectedOrder() {
+    return { planID, userID: initial.userID, orderID: session.current.orderID ?? undefined, amountYuan: session.current.amountYuan };
+  }
+
+  function recoverIntent() {
+    const saved = readPendingPaymentIntent(initial.scope);
+    if (!saved || session.current.order) return;
+    // 另一个已挂载入口可能刚开始同一笔购买，发送请求前再次采用共享意图。
+    Object.assign(session.current, saved);
+    session.current.creationStarted = true;
+    session.current.intentClaimed = true;
+    setMethod(saved.channel);
+  }
 
   const transition = useCallback((to: PaymentPhase, reason?: unknown) => {
     const state = session.current;
@@ -133,8 +183,22 @@ export function usePlanPayment(
   );
 
   function acceptOrder(latest: BillingPaymentOrder) {
-    assertPlanPaymentOrder(latest, context, session.current.order);
+    assertPlanPaymentOrder(latest, context, session.current.order, expectedOrder());
+    if (isPaymentOrderPollable(latest) && !ownsIntent()) {
+      // 其他入口已结束或替换这笔意图，迟到查单不能复活旧意图与旧二维码。
+      setQR("");
+      setForm("");
+      setTimedOut(true);
+      return false;
+    }
     session.current.order = latest;
+    session.current.orderID = latest.id;
+    session.current.amountYuan = latest.amount_yuan;
+    if (isPaymentSettled(latest) || latest.status === "closed" || latest.status === "expired") {
+      clearPendingPaymentIntent(initial.scope, session.current.id);
+    } else {
+      persistIntent();
+    }
     setOrder(latest);
     if (!isPaymentActive(latest.status)) {
       setQR("");
@@ -148,16 +212,17 @@ export function usePlanPayment(
       }
     } else if (!isPaymentOrderPollable(latest))
       transition(latest.status as PaymentPhase);
+    return true;
   }
 
   const cancelPolling = useBillingPaymentPolling({
     context,
     order,
-    enabled: agreed && !busy && !blocked && !realNameRequired,
+    enabled: agreed && !busy && !blocked && !realNameRequired && !timedOut,
     refreshToken,
     expired,
     onOrder: (latest) => {
-      acceptOrder(latest);
+      if (!acceptOrder(latest)) return;
       // 查单恢复只清除查单错误，不能吞掉下单失败或支付载体异常。
       if (pollFailed.current || !isPaymentOrderPollable(latest)) setError("");
       if (isPaymentOrderPollable(latest))
@@ -184,6 +249,7 @@ export function usePlanPayment(
         return;
       }
       transition("timeout");
+      setTimedOut(true);
       setError(t("console.billing.paymentStatusUnknown"));
     },
     onQuerying: setQuerying,
@@ -202,7 +268,8 @@ export function usePlanPayment(
       state.alive &&
       state.agreed &&
       version === state.version &&
-      !abort.signal.aborted;
+      !abort.signal.aborted &&
+      ownsIntent();
     const { signal } = abort;
     setBusy(true);
     setQuerying(false);
@@ -212,9 +279,15 @@ export function usePlanPayment(
     try {
       if (!planID)
         throw new ApiError(t("api.billing.errors.170001"), 400, 170001, null);
+      recoverIntent();
+      // 先保存创建幂等键；即使服务端已创建但响应丢失，重进页面也能找回同一订单。
+      persistIntent();
+      recoverIntent();
+      setTimedOut(false);
       transition("creating");
-      const current = state.order
-        ? await getBillingPaymentOrder(state.order.id, { signal }, context)
+      if (!state.orderID) state.creationStarted = true;
+      const current = state.orderID
+        ? await getBillingPaymentOrder(state.orderID, { signal }, context)
         : await createBillingPaymentOrder(
             context,
             { plan_id: planID, quantity: 1 },
@@ -222,7 +295,7 @@ export function usePlanPayment(
             { signal },
           );
       if (!valid()) return;
-      acceptOrder(current);
+      if (!acceptOrder(current)) return;
       // 已付但尚未入账时只查单，不能重复发起支付；终态也不能自动创建新订单。
       if (!isPaymentActive(current.status)) return;
       transition("starting");
@@ -234,9 +307,9 @@ export function usePlanPayment(
         context,
       );
       if (!valid()) return;
-      assertPlanPaymentOrder(payment.order, context, state.order);
+      assertPlanPaymentOrder(payment.order, context, state.order, expectedOrder());
       assertPlanPaymentAttempt(payment, channel);
-      acceptOrder(payment.order);
+      if (!acceptOrder(payment.order)) return;
       if (!isPaymentActive(payment.order.status)) return;
       const carrier = paymentCarrier(payment, channel);
       if (!carrier.qr && !carrier.form)
@@ -267,7 +340,8 @@ export function usePlanPayment(
 
   async function setAgreed(checked: boolean) {
     const state = session.current;
-    if (state.agreed === checked || state.blocked) return;
+    // 创建/支付请求仍可取消；关单和换渠道必须完成收尾，不能被协议开关提前解锁。
+    if (state.agreed === checked || state.blocked || state.exclusive) return;
     state.agreed = checked;
     setAgreedState(checked);
     if (checked) {
@@ -288,33 +362,29 @@ export function usePlanPayment(
   }
 
   // 换渠道后旧订单不再使用：先关单，避免遗留一个还能被扫走的旧渠道二维码。
-  // 关单被拒通常说明订单已经被支付，必须以查单结果为准，返回 true 让调用方结束本次会话。
-  async function closeAbandonedOrder(previous: BillingPaymentOrder) {
+  // 仅已确认关闭/过期的订单允许换单；已支付或状态未知时必须保留原会话。
+  async function closeAbandonedOrder(previous: BillingPaymentOrder, signal: AbortSignal) {
     const state = session.current;
-    // 已支付但尚未入账的订单同样要收尾：继续查单确认，不能再发起第二笔支付。
-    const wasPaid = (latest: BillingPaymentOrder) => {
-      if (latest.status !== "paid") return false;
+    let latest: BillingPaymentOrder;
+    try {
+      latest = await closeBillingPaymentOrder(previous.id, { signal }, context);
+    } catch (reason) {
+      if (!isApiError(reason) || ![140004, 170004].includes(reason.code))
+        throw reason;
+      latest = await getBillingPaymentOrder(previous.id, { signal }, context);
+    }
+    // 关单期间的轮询可能已经确认到账，迟到的关单响应不能覆盖已支付状态。
+    if (!state.alive || signal.aborted || state.order?.status === "paid") return true;
+    assertPlanPaymentOrder(latest, context, previous, expectedOrder());
+    if (latest.status === "paid") {
       acceptOrder(latest);
       return true;
-    };
-    try {
-      return wasPaid(await closeBillingPaymentOrder(previous.id, {}, context));
-    } catch (reason) {
-      if (!state.alive) return false;
-      if (isAuthenticationFailure(reason)) {
-        state.blocked = true;
-        setBlocked(true);
-        callbacks.current.onAuthFailure?.();
-        return false;
-      }
-      if (!isApiError(reason) || ![140004, 170004].includes(reason.code))
-        return false;
-      try {
-        return wasPaid(await getBillingPaymentOrder(previous.id, {}, context));
-      } catch {
-        return false;
-      }
     }
+    if (latest.status === "closed" || latest.status === "expired") {
+      clearPendingPaymentIntent(initial.scope, state.id);
+      return false;
+    }
+    throw new ApiError(t("console.billing.paymentStatusUnknown"), 409, 0, null);
   }
 
   async function selectMethod(channel: PaymentChannel) {
@@ -322,31 +392,63 @@ export function usePlanPayment(
     if (
       state.locked ||
       state.blocked ||
+      !state.alive ||
       state.channel === channel ||
       (state.order && !isPaymentActive(state.order.status))
     )
       return;
-    const previous = state.order;
     // 支付尝试挂在订单上，整个切换过程必须独占会话，否则并发切换会互相覆盖订单。
     state.locked = true;
+    state.exclusive = true;
+    setExclusiveBusy(true);
+    const abort = new AbortController();
+    controller.current = abort;
     try {
+      recoverIntent();
+      let previous = state.order;
+      if (!previous && state.orderID) {
+        previous = await getBillingPaymentOrder(state.orderID, { signal: abort.signal }, context);
+        if (!state.alive || abort.signal.aborted || !ownsIntent()) return;
+        if (!acceptOrder(previous)) return;
+      }
+      if (!previous && state.creationStarted) {
+        // 创建结果未知不代表没有订单；先用原键找回并关单，再为新渠道换键。
+        if (!planID) throw new ApiError(t("api.billing.errors.170001"), 400, 170001, null);
+        previous = await createBillingPaymentOrder(context, { plan_id: planID, quantity: 1 }, state.createKey, { signal: abort.signal });
+        if (!state.alive || abort.signal.aborted || !ownsIntent()) return;
+        if (!acceptOrder(previous)) return;
+      }
       // 先收尾旧订单：它可能已经被支付，此时必须结束会话，不能把这次购买切到另一个渠道。
-      if (previous && (await closeAbandonedOrder(previous))) return;
+      if (previous?.status === "paid") return;
+      if (previous && !["closed", "expired"].includes(previous.status) && (await closeAbandonedOrder(previous, abort.signal))) return;
       // 关单期间查单也可能先确认支付成功，同样不能再为新渠道下单。
       if (state.order?.status === "paid") return;
       state.channel = channel;
       // 同一渠道网络重试保留订单和支付键；切换渠道必须换单，不能把已经带旧渠道支付尝试的订单交给新渠道。
       state.payKey = crypto.randomUUID();
-      state.createKey = crypto.randomUUID();
+      if (previous) {
+        state.id = crypto.randomUUID();
+        state.createKey = crypto.randomUUID();
+        state.creationStarted = false;
+        state.intentClaimed = false;
+      }
       state.order = null;
+      state.orderID = null;
+      state.amountYuan = undefined;
       setMethod(channel);
       setOrder(null);
       setQR("");
       setForm("");
       setAttemptExpiresAt(null);
       transition(state.phase);
+    } catch (reason) {
+      // 关单失败不能等同于关闭成功，保留订单及幂等键供查单或重试使用。
+      if (state.alive) handleError(reason);
+      return;
     } finally {
       state.locked = false;
+      state.exclusive = false;
+      if (state.alive) setExclusiveBusy(false);
     }
     if (state.agreed) await start();
   }
@@ -355,6 +457,8 @@ export function usePlanPayment(
     const state = session.current;
     if (state.locked) return;
     state.locked = true;
+    state.exclusive = true;
+    setExclusiveBusy(true);
     cancelPolling();
     controller.current?.abort();
     const abort = new AbortController();
@@ -364,7 +468,13 @@ export function usePlanPayment(
     setError("");
     transition("closing");
     try {
-      const current = state.order;
+      recoverIntent();
+      let current = state.order;
+      if (!current && state.orderID) {
+        current = await getBillingPaymentOrder(state.orderID, { signal: abort.signal }, context);
+        if (abort.signal.aborted || version !== state.version) return;
+        if (!acceptOrder(current)) return;
+      }
       if (current && isPaymentOrderPollable(current)) {
         let latest: BillingPaymentOrder;
         try {
@@ -390,7 +500,7 @@ export function usePlanPayment(
           );
         }
         if (abort.signal.aborted || version !== state.version) return;
-        acceptOrder(latest);
+        if (!acceptOrder(latest)) return;
         if (isPaymentOrderPollable(latest))
           throw new ApiError(
             t("console.billing.paymentStatusUnknown"),
@@ -410,6 +520,8 @@ export function usePlanPayment(
     } finally {
       if (version === state.version) {
         state.locked = false;
+        state.exclusive = false;
+        if (state.alive) setExclusiveBusy(false);
         if (state.alive) setBusy(false);
       }
     }
@@ -417,11 +529,13 @@ export function usePlanPayment(
 
   return {
     order,
-    qr: agreed && !expired && !blocked ? qr : "",
-    form: agreed && !expired && !blocked ? form : "",
+    qr: agreed && !expired && !blocked && !timedOut ? qr : "",
+    form: agreed && !expired && !blocked && !timedOut ? form : "",
     agreed,
     method,
-    busy,
+    busy: busy || exclusiveBusy,
+    consentLocked: exclusiveBusy,
+    timedOut,
     querying,
     error,
     realNameRequired,
@@ -442,6 +556,7 @@ export function usePlanPayment(
         return;
       cancelPolling();
       setError("");
+      setTimedOut(false);
       setRefreshToken((value) => value + 1);
     },
     active:

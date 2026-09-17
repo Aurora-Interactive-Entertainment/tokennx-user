@@ -143,4 +143,28 @@ describe('视频任务运行时请求', () => {
     expect(videoTaskIsTerminal('cancelled')).toBe(true)
     expect(new VideoRuntimeError('test', 500, 'test_error', 'request-1')).toBeInstanceOf(Error)
   })
+
+  it('完整解析超过 4096 字符的提交和查询响应，不丢失任务状态与结果', async () => {
+    const payload = { prompt: '提示'.repeat(5000), id: 'long-response-task', status: 'completed', result_url: 'https://cdn.example.com/long.mp4' }
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async () => jsonResponse(payload))
+
+    const expected = { taskId: 'long-response-task', status: 'succeeded', resultUrl: 'https://cdn.example.com/long.mp4' }
+    await expect(submitVideoGeneration(DEFAULT_INPUT)).resolves.toMatchObject(expected)
+    await expect(getVideoTask(DEFAULT_INPUT.accessToken, 'long-response-task')).resolves.toMatchObject(expected)
+  })
+
+  it('损坏的成功响应不能使用请求任务 ID 兜底成仍在生成', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('{broken', { status: 200, headers: { 'X-Request-ID': 'invalid-response-id' } }))
+    await expect(getVideoTask(DEFAULT_INPUT.accessToken, 'known-task')).rejects.toMatchObject({ code: 'invalid_response', status: 502, requestId: 'invalid-response-id' })
+  })
+
+  it('继续兼容只有任务 ID 响应头的异步提交', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('', { status: 202, headers: { 'X-ThinkGo-Task-ID': 'header-only-task' } }))
+    await expect(submitVideoGeneration(DEFAULT_INPUT)).resolves.toMatchObject({ taskId: 'header-only-task', status: 'pending' })
+  })
+
+  it('长错误响应仍能解析错误码，并只限制展示文案长度', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse({ metadata: 'x'.repeat(5000), error: { code: 'upstream_error', message: '错'.repeat(5000) } }, 502))
+    await expect(getVideoTask(DEFAULT_INPUT.accessToken, 'known-task')).rejects.toMatchObject({ code: 'upstream_error', status: 502, message: '错'.repeat(4096) })
+  })
 })

@@ -6,6 +6,32 @@ export const WECHAT_CALLBACK_MESSAGE = 'token-nx:wechat-callback'
 export const WECHAT_CALLBACK_PATH = '/weixin/callback'
 export const WECHAT_FORMAL_CALLBACK_ORIGIN = 'https://tokennx.cn'
 
+/** 只向明确受信任的站点发送授权码；微信跳转丢失 referrer 时逐一限定目标 origin。 */
+export function wechatCallbackTargetOrigins(referrer: string, currentOrigin = window.location.origin): string[] {
+  const trusted = new Set([currentOrigin, WECHAT_FORMAL_CALLBACK_ORIGIN, 'https://www.tokennx.cn'])
+  try {
+    const configured = import.meta.env.VITE_PUBLIC_SITE_ORIGIN?.trim()
+    if (configured) {
+      const url = new URL(configured)
+      if (['http:', 'https:'].includes(url.protocol) && !url.username && !url.password) trusted.add(url.origin)
+    }
+  } catch {
+    // 错误站点配置不能扩大回调消息的发送范围。
+  }
+  if (!referrer) return [...trusted]
+  try {
+    const source = new URL(referrer)
+    if (source.username || source.password || !['http:', 'https:'].includes(source.protocol)) return []
+    if (source.origin === WECHAT_AUTHORIZATION_ORIGIN) return [...trusted]
+    if (trusted.has(source.origin)) return [source.origin]
+    // 正式回调地址也用于本地联调，仅允许浏览器回环地址的精确 origin，不能泛化为任意开发域名。
+    if (['localhost', '127.0.0.1', '[::1]'].includes(source.hostname)) return [source.origin]
+  } catch {
+    // 无法解析的来源不具备接收一次性授权码的资格。
+  }
+  return []
+}
+
 export interface WechatCallbackPayload {
   code: string
   state: string

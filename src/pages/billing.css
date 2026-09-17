@@ -1,3 +1,8 @@
+/* 保留表头、日期和金额的完整单行展示，小屏复用账本容器横向滚动。 */
+.billing-ledger-scroll .ledger-table {
+  min-width: 920px;
+}
+
 /* 开票说明固定展示，标题采用普通文本，不再提供折叠交互。 */
 .invoice-faq {
   overflow: hidden;

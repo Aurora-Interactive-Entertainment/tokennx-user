@@ -52,6 +52,8 @@ function renderDocsPage(initialEntry = '/docs'): void {
           <Routes>
             <Route path="/docs" element={<DocsPage />} />
             <Route path="/docs/:publicId/:slug?" element={<DocsPage />} />
+            <Route path="/en/docs" element={<DocsPage />} />
+            <Route path="/en/docs/:publicId/:slug?" element={<DocsPage />} />
           </Routes>
         </AppStoreProvider>
       </Provider>
@@ -77,6 +79,14 @@ function mockPublicDocs(markdown = '# 快速开始\n\n## 使用 Token NX API\n\n
     }), { status: 200, headers: { 'Content-Type': 'application/json' } })
     return new Response(JSON.stringify({ code: 0, msg: 'success', data: {} }), { status: 200, headers: { 'Content-Type': 'application/json' } })
   })
+}
+
+function mockPublicMarket(): void {
+  vi.mocked(globalThis.fetch).mockImplementation(async (input) => new Response(JSON.stringify({ code: 0, msg: 'success', data: String(input).includes('/api/model-market') ? {
+    version: '1',
+    carousels: [0, 1].map((index) => ({ id: `slide-${index}`, status: 'active', sort_order: index, title: `推荐 ${index}`, title_en: `Featured ${index}`, description: '模型介绍', description_en: 'Model overview', tags: [], model_id: 'deepseek-chat' })),
+    topics: [{ id: 'text', status: 'active', sort_order: 0, name: '文本模型', name_en: 'Text models', model_ids: ['deepseek-chat'], models: [{ id: 'deepseek-chat', name: 'DeepSeek V3', company: 'DeepSeek', modality: 'text', prices: [{ meter_kind: 'input', unit: 'token', currency: 'CNY', unit_quantity: 1000000, unit_price_yuan: '2' }] }] }],
+  } : { cards: [], promotion_models: [], ad_slots: [], news: [], partners: [] } }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
 }
 
 function mockRankings(): ReturnType<typeof vi.spyOn> {
@@ -145,11 +155,12 @@ describe('公开模型页面', () => {
     expect(document.querySelectorAll('.manuscript-footer-qr-row .public-footer-qr')).toHaveLength(2)
   })
 
-  it('模型目录卡片展示模型名称，主按钮按模型 ID 跳转控制台模型广场', () => {
+  it('模型目录卡片展示模型名称，主按钮按模型 ID 跳转控制台模型广场', async () => {
+    mockPublicMarket()
     renderPage(<ModelsPublicPage />, '/models')
 
     // 详情页已收敛到控制台，卡片不再包裹详情链接，模型名以纯文本展示，主按钮负责跳转。
-    const showcaseCard = screen.getByText('DeepSeek V3').closest('.models-showcase-card') as HTMLElement
+    const showcaseCard = (await screen.findByText('DeepSeek V3')).closest('.models-showcase-card') as HTMLElement
     expect(within(showcaseCard).getByRole('link', { name: '立即体验' })).toHaveAttribute('href', '/login?return=%2Fconsole%2Fmodels%3Fkeyword%3Ddeepseek-chat')
     expect(screen.queryByText('deepseek-chat')).toBeNull()
   })
@@ -184,7 +195,18 @@ describe('公开模型页面', () => {
       expect(screen.getByRole('heading', { name: '快速开始' })).toBeInTheDocument()
       expect(screen.getByRole('complementary', { name: '本页目录' })).toHaveTextContent('使用 Token NX API')
       expect(screen.getByTestId('location')).toHaveTextContent(`/docs/${DOCS_DOCUMENT_ID}/quick-start`)
+      expect(document.title).toBe('快速开始 - Token NX')
+      expect(document.querySelector('meta[name="robots"]')).toHaveAttribute('content', 'index, follow')
     }, { timeout: 5000 })
+  })
+
+  it('英文文档自动选择与修正slug保留语言前缀', async () => {
+    await i18n.changeLanguage('en-US')
+    mockPublicDocs()
+    renderDocsPage('/en/docs')
+    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent(`/en/docs/${DOCS_DOCUMENT_ID}/quick-start`))
+    expect(await screen.findByRole('heading', { name: '快速开始' })).toBeInTheDocument()
+    expect(document.querySelector('link[rel="canonical"]')?.getAttribute('href')).toContain(`/en/docs/${DOCS_DOCUMENT_ID}/quick-start/`)
   })
 
   it('可以切换到多级子目录下的文档', async () => {
@@ -547,11 +569,12 @@ describe('公开模型页面', () => {
 
   it('英文环境渲染公开模型目录和模型动态字段', async () => {
     await i18n.changeLanguage('en-US')
+    mockPublicMarket()
     renderPage(<ModelsPublicPage />, '/models')
 
-    expect(screen.getByRole('heading', { name: 'Deepseek V4 Pro' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Featured 0' })).toBeInTheDocument()
     expect(screen.getByRole('tablist', { name: 'Featured model carousel' })).toBeInTheDocument()
-    expect(screen.getAllByRole('tab')).toHaveLength(5)
+    expect(screen.getAllByRole('tab')).toHaveLength(2)
     expect(screen.getByRole('heading', { name: 'Text models' })).toBeInTheDocument()
     expect(screen.getAllByText('Input / M Tokens').length).toBeGreaterThan(0)
     expect(screen.queryByText('模型目录')).toBeNull()

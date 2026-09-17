@@ -1,3 +1,8 @@
+.semi-toast-wrapper:has(.app-toast) {
+  /* 覆盖 Semi 的内联默认层级，确保消息高于登录遮罩和抽屉（最高 10003）。 */
+  z-index: 11000 !important;
+}
+
 .semi-toast.app-toast {
   margin-top: 76px;
   pointer-events: none;

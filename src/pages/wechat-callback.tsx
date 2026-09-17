@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { WECHAT_AUTHORIZATION_ORIGIN, WECHAT_CALLBACK_MESSAGE, parseWechatCallbackSearch } from '@/auth/wechat-authorization'
+import { WECHAT_CALLBACK_MESSAGE, parseWechatCallbackSearch, wechatCallbackTargetOrigins } from '@/auth/wechat-authorization'
 import './wechat-callback.css'
 
 type CallbackState = 'processing' | 'sent' | 'invalid' | 'standalone'
@@ -20,18 +20,14 @@ export function WechatCallbackPage() {
       return
     }
     const message = { type: WECHAT_CALLBACK_MESSAGE, ...payload }
+    const targets = wechatCallbackTargetOrigins(document.referrer)
+    if (targets.length === 0) {
+      setState('invalid')
+      return
+    }
     if (window.opener && !window.opener.closed) {
       // 顶层兜底窗口没有 parent iframe，通过 opener 把一次性授权码交回登录页。
-      let openerOrigin = '*'
-      try {
-        if (document.referrer) {
-          const referrerOrigin = new URL(document.referrer).origin
-          if (referrerOrigin !== WECHAT_AUTHORIZATION_ORIGIN) openerOrigin = referrerOrigin
-        }
-      } catch {
-        // 登录页仍会校验 origin、state 和 source，无法读取 referrer 时使用通配目标不放宽接收校验。
-      }
-      window.opener.postMessage(message, openerOrigin)
+      for (const origin of targets) window.opener.postMessage(message, origin)
       setState('sent')
       return
     }
@@ -39,18 +35,8 @@ export function WechatCallbackPage() {
       setState('standalone')
       return
     }
-    // 跨域本地联调时，回调页通过 referrer 得到发起二维码页面的精确 origin；生产同源时仍使用当前 origin。
-    let parentOrigin = '*'
-    try {
-      if (document.referrer) {
-        const referrerOrigin = new URL(document.referrer).origin
-        // 微信内部跳转的 referrer 可能仍是 open.weixin.qq.com，不能把消息发回微信页面。
-        if (referrerOrigin !== WECHAT_AUTHORIZATION_ORIGIN) parentOrigin = referrerOrigin
-      }
-    } catch {
-      // 无法读取 referrer 时仍允许一次性回调消息发送，登录页会继续校验 event.origin/source/state。
-    }
-    window.parent.postMessage(message, parentOrigin)
+    // 仅目标 origin 匹配的窗口能收到消息，保留同源、正式别名和显式回环联调流程。
+    for (const origin of targets) window.parent.postMessage(message, origin)
     setState('sent')
   }, [])
 

@@ -93,6 +93,13 @@
   min-width: 0;
 }
 
+/* 窄内容区的英文日期沿用日志表省略规则，完整时间仍可在详情中查看。 */
+.trae-audit-table td:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .trae-audit-table tbody tr:nth-child(even) td {
   background: var(--color-bg-overlay-l1);
 }

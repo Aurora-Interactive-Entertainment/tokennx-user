@@ -9,6 +9,7 @@ export interface PublicMarketPrice {
   currency: string
   unit_quantity: number
   unit_price_yuan: string
+  conditions?: Record<string, unknown>
 }
 
 export interface PublicMarketModel {
@@ -65,7 +66,15 @@ function invalidResponse(): ApiError {
 
 function parsePrice(value: unknown): PublicMarketPrice | null {
   if (!isRecord(value) || typeof value.meter_kind !== 'string' || typeof value.unit !== 'string' || typeof value.currency !== 'string' || typeof value.unit_quantity !== 'number' || typeof value.unit_price_yuan !== 'string') return null
-  return { meter_kind: value.meter_kind, unit: value.unit, currency: value.currency, unit_quantity: value.unit_quantity, unit_price_yuan: value.unit_price_yuan }
+  return {
+    meter_kind: value.meter_kind,
+    unit: value.unit,
+    currency: value.currency,
+    unit_quantity: value.unit_quantity,
+    unit_price_yuan: value.unit_price_yuan,
+    // 条件决定报价适用的规格，不能只保留金额而把不同档位显示成同一项。
+    ...(isRecord(value.conditions) ? { conditions: value.conditions } : {}),
+  }
 }
 
 function parseModel(value: unknown): PublicMarketModel | null {

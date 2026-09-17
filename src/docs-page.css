@@ -232,6 +232,17 @@ html[data-theme="light"] .docs-method-table > div {
   }
 }
 
+/* 移动导航切换前，英文产品名称可能先超宽，仅让当前导航区域横向滚动。 */
+@media (min-width: 761px) and (max-width: 820px) {
+  .docs-product-nav-inner {
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .docs-product-nav-inner::-webkit-scrollbar { display: none; }
+  .docs-product-nav a,
+  .docs-product-nav button { flex-shrink: 0; }
+}
+
 @media (max-width: 760px) {
   .docs-product-nav {
     height: 64px;

@@ -13,7 +13,7 @@
     "build:test": "tsc -b && vite build --mode staging && npm run size:check && npm run release:verify",
     "build:prod": "tsc -b && vite build --mode production && npm run size:check && npm run release:verify",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc -b --pretty false",
     "test": "vitest run --maxWorkers=4",
     "test:coverage": "vitest run --coverage --maxWorkers=4",
     "test:watch": "vitest",
@@ -54,12 +54,12 @@
     "@types/react": "19.2.17",
     "@types/react-dom": "19.2.3",
     "@vitejs/plugin-react": "6.0.4",
-    "@vitest/coverage-v8": "4.1.10",
+    "@vitest/coverage-v8": "4.1.11",
     "jsdom": "30.0.1",
     "prettier": "3.9.6",
     "typescript": "7.0.2",
     "vite": "8.1.5",
-    "vitest": "4.1.10"
+    "vitest": "4.1.11"
   },
   "allowScripts": {
     "@sentry/cli@2.58.6": true,

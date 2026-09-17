@@ -10,6 +10,7 @@ import { PurchasePaymentModal } from "@/components/purchase-payment-modal";
 import { useAppStore } from "@/data/app-state";
 import { invalidateAuth } from "@/store/auth-slice";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { notifyPurchasedPlansChanged } from "@/api/purchased-plan-updates";
 import { relativeTime } from "@/utils/format";
 import claudeCodeLogo from "@/assets/svg/Claudecode.svg";
 import geminiLogo from "@/assets/svg/gemini.svg";
@@ -373,7 +374,10 @@ export function PurchasePage({ activityMessages }: { activityMessages?: Purchase
         open={selectedPlan !== null}
         context={context}
         planID={selectedPlan?.id}
-        onPaid={catalog.reload}
+        onPaid={() => {
+          catalog.reload();
+          notifyPurchasedPlansChanged(auth.user?.id, context);
+        }}
         onAuthFailure={() => {
           dispatch(invalidateAuth());
           navigate("/", { replace: true });

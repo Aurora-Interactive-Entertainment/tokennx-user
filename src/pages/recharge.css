@@ -534,3 +534,15 @@ html[data-theme="light"] .recharge-console-page .recharge-confirm-button.semi-bu
     margin-left: 0;
   }
 }
+.recharge-wallet-error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-12);
+  color: var(--color-text-secondary);
+}
+
+.recharge-wallet-error > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}

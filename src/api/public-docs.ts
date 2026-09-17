@@ -1,4 +1,5 @@
 import i18n from '@/i18n'
+import { publicPath } from '@/routes/public-path'
 import { ApiError, fetchJson, makeApiUrl } from './http'
 
 export const PUBLIC_DOCS_TREE_PATH = '/api/docs/tree'
@@ -97,8 +98,8 @@ function parseDocument(value: unknown): PublicDocument {
   }
 }
 
-export function publicDocumentHref(document: Pick<PublicDocsNode, 'id' | 'slug'>): string {
-  return `/docs/${encodeURIComponent(document.id)}/${encodeURIComponent(document.slug)}`
+export function publicDocumentHref(document: Pick<PublicDocsNode, 'id' | 'slug'>, locale = i18n.resolvedLanguage ?? i18n.language): string {
+  return publicPath(`/docs/${encodeURIComponent(document.id)}/${encodeURIComponent(document.slug)}`, locale)
 }
 
 export function getPublicDocumentAssetUrl(objectId: string): string | undefined {
