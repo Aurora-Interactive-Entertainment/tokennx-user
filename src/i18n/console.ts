@@ -604,7 +604,6 @@ export const consoleResources = {
         retryKeyMismatch: "重试需要使用创建任务时的登录态，请确认仍处于同一账户",
         resultVideo: "视频生成结果",
         resultModel: "生成模型",
-        openResult: "在新窗口打开视频",
         resultUnavailable: "任务已完成但没有可用结果地址",
         resultUnavailableHint:
           "请查看用量明细或联系管理员确认 Runtime 返回内容",
@@ -2997,7 +2996,6 @@ export const consoleResources = {
           "Retry requires the sign-in session that created this task. Confirm that you are using the same account.",
         resultVideo: "Generated video result",
         resultModel: "Generation model",
-        openResult: "Open video in a new window",
         resultUnavailable: "The task completed without a usable result URL",
         resultUnavailableHint:
           "Inspect the usage detail or ask an administrator to verify the Runtime response",

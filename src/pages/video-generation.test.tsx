@@ -686,7 +686,11 @@ describe('视频生成页面', () => {
     renderVideoPage()
     await user.click(screen.getByRole('button', { name: '参考素材 · 添加参考素材' }))
     expect(screen.getByRole('dialog')).toHaveTextContent('参考素材')
-    expect(screen.getByLabelText('素材隐私说明')).toBeInTheDocument()
+    const privacy = screen.getByLabelText('素材隐私说明')
+    expect(privacy).toBeInTheDocument()
+    // 隐私说明改用与用量管理页一致的 semi 图标（本套件把图标 mock 成空组件），
+    // 这里确保按钮内不再有手写的文字感叹号。
+    expect(privacy.textContent).toBe('')
     expect(document.querySelector('input[type="file"]')).toBeNull()
     for (const name of ['图片', '视频', '音频']) expect(screen.getByRole('tab', { name })).toBeEnabled()
     for (const url of ['data:image/png;base64,YQ==', 'blob:https://example.com/local', 'https://user:secret@example.com/image.png']) {

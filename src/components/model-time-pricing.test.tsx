@@ -17,6 +17,13 @@ function period(overrides: Partial<UserModelPricingPeriod> = {}): UserModelPrici
   }
 }
 
+function fallbackPeriod(): UserModelPricingPeriod {
+  return period({
+    key: 'fallback', name: '常规低谷', default: true, weekday_mask: 127, start_minute: 0, end_minute: 1440,
+    rules: [{ ...inputRule, kind: 'usage', meter_code: 'fallback_usage', tier_no: 0, unit_quantity: 1, unit_price_yuan: '9.99' }],
+  })
+}
+
 function model(overrides: Partial<UserModelItem> = {}) {
   return userModelToRecord({
     id: 'custom-provider-model', name: 'Custom Provider Model', company: 'Custom Provider',
@@ -38,7 +45,29 @@ describe('目录真实峰谷定价', () => {
     expect(container).toBeEmptyDOMElement()
   })
 
-  it('按任意厂商的接口数据展示时区、工作日和默认兜底，并遵从服务端当前时段', () => {
+  it('只有一个定价时段时不展示峰谷价区块，即使包含多种计量规则', () => {
+    const { container } = render(<ModelTimePricing model={model({
+      current_period_key: 'business',
+      pricing_periods: [period({ rules: [inputRule, { ...inputRule, meter_code: 'output_token', unit_price_yuan: '1' }] })],
+    })} />)
+
+    expect(container).toBeEmptyDOMElement()
+  })
+
+  it('同名同价时段合并后仅剩一种定价时隐藏整个区块', () => {
+    const { container } = render(<ModelTimePricing model={model({
+      current_period_key: 'evening',
+      pricing_periods: [
+        period({ key: 'morning', name: '活动优惠', start_minute: 480, end_minute: 720 }),
+        period({ key: 'afternoon', name: ' 活动优惠 ', start_minute: 840, end_minute: 1080 }),
+        period({ key: 'evening', name: '活动优惠', start_minute: 1080, end_minute: 1440 }),
+      ],
+    })} />)
+
+    expect(container).toBeEmptyDOMElement()
+  })
+
+  it('按任意厂商的接口数据展示工作日和默认兜底，并遵从服务端当前时段', () => {
     render(<ModelTimePricing model={model({
       pricing_timezone: 'America/New_York', current_period_key: 'fallback',
       pricing_periods: [period(), period({
@@ -47,7 +76,6 @@ describe('目录真实峰谷定价', () => {
     })} />)
 
     expect(screen.getByText('峰谷价')).toBeInTheDocument()
-    expect(screen.getByText('时区：America/New_York')).toBeInTheDocument()
     expect(screen.getByText('周一至周五 · 08:00–20:00')).toBeInTheDocument()
     expect(screen.getByText('其余时段适用（默认）')).toBeInTheDocument()
     expect(screen.queryByText('每天 · 00:00–24:00')).toBeNull()
@@ -59,8 +87,8 @@ describe('目录真实峰谷定价', () => {
     render(<ModelTimePricing model={model({
       current_period_key: 'not-in-response',
       pricing_periods: [
-        period({ key: 'selected-days', weekday_mask: 65, start_minute: 1260, end_minute: 1440 }),
-        period({ key: 'every-day', weekday_mask: 127, start_minute: 0, end_minute: 480 }),
+        period({ key: 'selected-days', name: '指定日期', weekday_mask: 65, start_minute: 1260, end_minute: 1440 }),
+        period({ key: 'every-day', name: '每日定价', weekday_mask: 127, start_minute: 0, end_minute: 480 }),
       ],
     })} />)
 
@@ -103,12 +131,12 @@ describe('目录真实峰谷定价', () => {
 
   it('合并同名卡片时保留每种价格及计费规格对应的时间范围', () => {
     render(<ModelTimePricing model={model({ pricing_periods: [
-      period({ key: 'morning', name: '峰价', start_minute: 540, end_minute: 720 }),
-      period({ key: 'afternoon', name: '峰价', start_minute: 840, end_minute: 1080, rules: [{ ...inputRule, unit_price_yuan: '1.5' }] }),
-      period({ key: 'evening', name: '峰价', start_minute: 1080, end_minute: 1200, rules: [{ ...inputRule, rounding_mode: 'down' }] }),
+      period({ key: 'morning', name: '加速时段', start_minute: 540, end_minute: 720 }),
+      period({ key: 'afternoon', name: '加速时段', start_minute: 840, end_minute: 1080, rules: [{ ...inputRule, unit_price_yuan: '1.5' }] }),
+      period({ key: 'evening', name: '加速时段', start_minute: 1080, end_minute: 1200, rules: [{ ...inputRule, rounding_mode: 'down' }] }),
     ] })} />)
 
-    expect(screen.getAllByText('峰价')).toHaveLength(1)
+    expect(screen.getAllByText('加速时段')).toHaveLength(1)
     const morning = screen.getByText('周一至周五 · 09:00–12:00').closest('.model-time-pricing-rate-group')!
     const afternoon = screen.getByText('周一至周五 · 14:00–18:00').closest('.model-time-pricing-rate-group')!
     const evening = screen.getByText('周一至周五 · 18:00–20:00').closest('.model-time-pricing-rate-group')!
@@ -119,15 +147,37 @@ describe('目录真实峰谷定价', () => {
     expect(screen.getAllByRole('listitem')).toHaveLength(3)
   })
 
+  it('任意新增名称重复多次都聚合为一卡，保留全部时间范围及当前标记', () => {
+    render(<ModelTimePricing model={model({
+      current_period_key: 'late-night',
+      pricing_periods: [
+        period({ key: 'early', name: '弹性优惠', start_minute: 0, end_minute: 480 }),
+        period({ key: 'lunch', name: ' 弹性优惠 ', start_minute: 720, end_minute: 840 }),
+        period({ key: 'late-night', name: '弹性优惠', start_minute: 1200, end_minute: 1440 }),
+        fallbackPeriod(),
+      ],
+    })} />)
+
+    expect(screen.getAllByText('弹性优惠')).toHaveLength(1)
+    const custom = screen.getByText('弹性优惠').closest('section')!
+    expect(within(custom).getByText('周一至周五 · 00:00–08:00')).toBeInTheDocument()
+    expect(within(custom).getByText('周一至周五 · 12:00–14:00')).toBeInTheDocument()
+    expect(within(custom).getByText('周一至周五 · 20:00–24:00')).toBeInTheDocument()
+    expect(within(custom).getAllByRole('listitem')).toHaveLength(1)
+    expect(within(custom).getByText('当前生效')).toBeInTheDocument()
+    expect(within(screen.getByText('常规低谷').closest('section')!).queryByText('当前生效')).toBeNull()
+  })
+
   it('相同完整规则不因返回顺序或条件字段顺序不同而重复展示', () => {
     const first = { ...inputRule, conditions: { context_window: '128k', quality: 'high' } }
     const output = { ...inputRule, meter_code: 'output_token', unit_price_yuan: '8' }
     render(<ModelTimePricing model={model({ pricing_periods: [
       period({ key: 'morning', name: '峰价', start_minute: 540, end_minute: 720, rules: [first, output] }),
       period({ key: 'afternoon', name: '峰价', start_minute: 840, end_minute: 1080, rules: [output, { ...inputRule, conditions: { quality: 'high', context_window: '128k' } }] }),
+      fallbackPeriod(),
     ] })} />)
 
-    expect(screen.getAllByRole('listitem')).toHaveLength(2)
+    expect(within(screen.getByText('峰价').closest('section')!).getAllByRole('listitem')).toHaveLength(2)
     expect(screen.getByText('周一至周五 · 09:00–12:00')).toBeInTheDocument()
     expect(screen.getByText('周一至周五 · 14:00–18:00')).toBeInTheDocument()
     expect(screen.getByText(/context_window: 128k/)).toBeInTheDocument()
@@ -169,9 +219,9 @@ describe('目录真实峰谷定价', () => {
       { ...inputRule, upper_bound: 128000, unit_price_yuan: '0.000000000000000001' },
       { ...inputRule, tier_no: 2, lower_bound: 128000, unit_price_yuan: '1.234567890123456789' },
       { ...inputRule, meter_code: 'output_token', unit_price_yuan: '2.00' },
-    ] })] })} />)
+    ] }), fallbackPeriod()] })} />)
 
-    expect(screen.getAllByRole('listitem')).toHaveLength(3)
+    expect(within(screen.getByText('工作时段').closest('section')!).getAllByRole('listitem')).toHaveLength(3)
     expect(screen.getAllByText('输入 tokens')).toHaveLength(2)
     expect(screen.getByText('输出 tokens')).toBeInTheDocument()
     expect(screen.getByText('阶梯 1：0–128,000 tokens')).toBeInTheDocument()
@@ -187,7 +237,7 @@ describe('目录真实峰谷定价', () => {
       { ...inputRule, meter_code: 'cache_hit_token', unit_price_yuan: '0.04' },
       { ...inputRule, meter_code: 'output_token', lower_bound: 128000, unit_price_yuan: '8' },
       { ...inputRule, meter_code: 'cache_creation_input_token', upper_bound: 32000, unit_price_yuan: '0.5' },
-    ] })] })} />)
+    ] }), fallbackPeriod()] })} />)
 
     expect(screen.queryByText('阶梯 1：0 及以上 tokens')).toBeNull()
     expect(screen.getByText('¥0.25')).toBeInTheDocument()
@@ -203,7 +253,7 @@ describe('目录真实峰谷定价', () => {
       pricing_periods: [period({ rules: [
         { ...inputRule, kind: 'usage', meter_code: 'video_seconds', tier_no: 0, unit_quantity: 1, width: 1920, height: 1080, quality_level: 'hd', duration_seconds: 5, conditions: { resolution: '1080p', video_input: 'false' } },
         { ...inputRule, kind: 'tool', meter_code: 'search_calls', tier_no: 0, unit_quantity: 1000, tool_code: 'web_search', conditions: { search_context: 'high' } },
-      ] })],
+      ] }), fallbackPeriod()],
     })} />)
 
     const video = screen.getByText('video_seconds').closest('li')!
@@ -225,7 +275,7 @@ describe('目录真实峰谷定价', () => {
       pricing_periods: [period({ rules: [
         { ...inputRule, kind: 'usage', meter_code: 'custom_usage', tier_no: 0, unit_quantity: 50 },
         { ...inputRule, kind: 'usage', meter_code: 'custom_cached_input', tier_no: 0, unit_quantity: 10 },
-      ] })],
+      ] }), fallbackPeriod()],
     })} />)
 
     expect(screen.getByText('custom_usage').closest('li')).toHaveTextContent('/ 50 计量单位')
@@ -242,7 +292,6 @@ describe('目录真实峰谷定价', () => {
     await act(async () => { await i18n.changeLanguage('en-US') })
 
     expect(screen.getByText('Time-of-day pricing')).toBeInTheDocument()
-    expect(screen.getByText('Time zone: Asia/Shanghai')).toBeInTheDocument()
     expect(screen.getByText('Mon–Fri · 08:00–20:00')).toBeInTheDocument()
     expect(screen.getByText('All other times (default)')).toBeInTheDocument()
     expect(screen.getByText('Current')).toBeInTheDocument()

@@ -3,7 +3,7 @@ import type { KeyboardEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import Toast from '@douyinfe/semi-ui/lib/es/toast'
 import Tooltip from '@douyinfe/semi-ui/lib/es/tooltip'
-import { IconAlertTriangle, IconChevronUpDown, IconClose, IconImage, IconPlus, IconTick, IconVideo, IconVolume2 } from '@douyinfe/semi-icons'
+import { IconAlertTriangle, IconChevronUpDown, IconClose, IconImage, IconInfoCircle, IconPlus, IconTick, IconVideo, IconVolume2 } from '@douyinfe/semi-icons'
 import Modal from '@/components/app-modal'
 import { CompatInput as Input } from '@/components/semi-compat'
 import type { VideoReference } from '@/api/video-runtime'
@@ -136,7 +136,7 @@ export function VideoReferenceMedia({ value, options, mode, disabled, onChange, 
     </div>}
     <Modal width={560} title={<span className="video-reference-dialog-title"><span>{title}</span>
       <Tooltip className="app-info-tooltip video-reference-privacy-tooltip" content={t('console.video.referencePrivacyHint')} position="top" trigger="custom" visible={visible && (privacyHovered || privacyFocused)}>
-        <button type="button" className="video-reference-privacy" aria-label={t('console.video.referencePrivacyLabel')} onMouseEnter={() => setPrivacyHovered(true)} onMouseLeave={() => setPrivacyHovered(false)} onFocus={() => setPrivacyFocused(true)} onBlur={() => setPrivacyFocused(false)} onClick={() => setPrivacyFocused(true)}><span aria-hidden="true">!</span></button>
+        <button type="button" className="video-reference-privacy" aria-label={t('console.video.referencePrivacyLabel')} onMouseEnter={() => setPrivacyHovered(true)} onMouseLeave={() => setPrivacyHovered(false)} onFocus={() => setPrivacyFocused(true)} onBlur={() => setPrivacyFocused(false)} onClick={() => setPrivacyFocused(true)}><IconInfoCircle aria-hidden="true" /></button>
       </Tooltip>
     </span>} visible={visible} onCancel={() => setVisible(false)} onOk={confirmMedia} okButtonProps={{ disabled: disabled || (mode === 'reference' && maximum === 0) }} okText={t('console.common.finish')} cancelText={t('console.common.cancel')}>
       <div data-build-update-managed className="video-reference-dialog video-reference-urls-dialog">

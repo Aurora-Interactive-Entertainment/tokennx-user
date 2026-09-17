@@ -5,7 +5,7 @@ import Button from '@douyinfe/semi-ui/lib/es/button'
 import Dropdown from '@douyinfe/semi-ui/lib/es/dropdown'
 import type { RenderSingleSelectedItemFn } from '@douyinfe/semi-ui/lib/es/select'
 import Toast from '@douyinfe/semi-ui/lib/es/toast'
-import { IconAlertTriangle, IconArrowUp, IconCheckCircleStroked, IconChevronDownStroked, IconClose, IconDeleteStroked, IconDownload, IconEditStroked, IconHistory, IconImage, IconInfoCircle, IconLoading, IconMoreStroked, IconRefresh, IconStop, IconVideo, IconVolume2 } from '@douyinfe/semi-icons'
+import { IconAlertTriangle, IconArrowUp, IconCheckCircleStroked, IconChevronDownStroked, IconClose, IconDeleteStroked, IconEditStroked, IconHistory, IconImage, IconLoading, IconMoreStroked, IconRefresh, IconStop, IconVideo, IconVolume2 } from '@douyinfe/semi-icons'
 import { EmptyPanel, PageTitle } from '@/components/common'
 import { appToast } from '@/components/app-toast'
 import { CompatInput as Input, CompatSelect as Select } from '@/components/semi-compat'
@@ -349,7 +349,7 @@ function VideoRecordBody({ entry, statusLabel }: { entry: VideoHistoryEntry; sta
   const { t } = useTranslation()
   if (entry.status === 'succeeded') {
     if (!entry.resultUrl) return <div className="video-task-placeholder"><IconAlertTriangle aria-hidden="true" /><span>{t('console.video.resultUnavailable')}</span><small>{t('console.video.resultUnavailableHint')}</small></div>
-    return <div className="video-task-result"><div className="video-result-frame"><video controls preload="metadata" poster={entry.thumbnailUrl ?? undefined} src={entry.resultUrl} aria-label={t('console.video.resultVideo')}><track kind="captions" /></video></div><a className="video-result-link" href={entry.resultUrl} target="_blank" rel="noreferrer"><IconDownload aria-hidden="true" />{t('console.video.openResult')}</a></div>
+    return <div className="video-task-result"><div className="video-result-frame"><video controls preload="metadata" poster={entry.thumbnailUrl ?? undefined} src={entry.resultUrl} aria-label={t('console.video.resultVideo')}><track kind="captions" /></video></div></div>
   }
   const progress = entry.progress ?? 0
   // 用户主动取消不是故障，用中性提示而不是红色报错卡。
@@ -372,7 +372,7 @@ function VideoRecord({ entry, generating, handlers }: { entry: VideoHistoryEntry
   const succeeded = entry.status === 'succeeded'
   return <article className="video-record" data-task-id={entry.taskId} aria-label={entry.prompt}>
     <h3 className="video-record-prompt">{entry.prompt}</h3>
-    <p className="video-record-meta">{entry.modelName} · {entry.duration === -1 ? t('console.video.autoDuration') : `${entry.duration}${t('console.video.secondsShort')}`}{entry.resolution ? ` · ${entry.resolution.toUpperCase()}` : ''}{entry.ratio ? ` · ${entry.ratio === 'adaptive' ? t('console.video.adaptiveRatio') : entry.ratio}` : ''} <IconInfoCircle aria-hidden="true" /></p>
+    <p className="video-record-meta">{entry.modelName} · {entry.duration === -1 ? t('console.video.autoDuration') : `${entry.duration}${t('console.video.secondsShort')}`}{entry.resolution ? ` · ${entry.resolution.toUpperCase()}` : ''}{entry.ratio ? ` · ${entry.ratio === 'adaptive' ? t('console.video.adaptiveRatio') : entry.ratio}` : ''}</p>
     <div className="video-record-body"><VideoRecordBody entry={entry} statusLabel={statusLabel} /></div>
     <VideoRecordActions entry={entry} statusLabel={statusLabel} succeeded={succeeded} isActive={isActive} generating={generating} handlers={handlers} />
   </article>

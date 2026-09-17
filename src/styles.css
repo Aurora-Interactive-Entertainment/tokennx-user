@@ -8135,17 +8135,6 @@ html[data-theme="dark"] .generation-send-button.send-btn.is-running.semi-button:
   align-items: center;
   gap: var(--spacing-8);
 }
-.video-result-link {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--spacing-6);
-  color: var(--color-action-primary);
-  font-size: 12px;
-}
-.video-result-link:hover {
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
 .video-composer {
   width: min(860px, calc(100% - 48px));
 }

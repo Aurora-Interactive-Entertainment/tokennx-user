@@ -45,13 +45,13 @@ function PricingRules({ rules, prices }: { rules: UserModelPricingRule[]; prices
 export function ModelTimePricing({ model }: { model: TimePricingModel }) {
   const { t } = useTranslation()
   const groups = groupPricingPeriods(model.pricingPeriods ?? [])
-  if (!groups.length) return null
+  // 只有一种价格时与上方价格信息重复；同名但规则不同的多时段价格仍需保留。
+  if (!groups.length || (groups.length === 1 && groups[0].rates.length === 1)) return null
 
   return (
     <div className="model-time-pricing">
       <div className="model-time-pricing-heading">
         <span>{t('console.timePricing.title')}</span>
-        {model.pricingTimezone ? <span>{t('console.timePricing.timezone', { timezone: model.pricingTimezone })}</span> : null}
       </div>
       <div className="model-time-pricing-periods">
         {groups.map((group) => {

@@ -31,8 +31,15 @@ const baseModel: UserModelItem = {
   billing_mode: 'hybrid', description: '测试模型', capabilities: [], provider_count: 1, prices: [listPrice],
 }
 
+function withDefaultPeriod(period: UserModelPricingPeriod): UserModelPricingPeriod[] {
+  return [period, {
+    ...period, key: `${period.key}-default`, name: '默认报价', default: true,
+    weekday_mask: 127, start_minute: 0, end_minute: 1440,
+  }]
+}
+
 const model = userModelToRecord({
-  ...baseModel, pricing_periods: [listPeriod], pricing_timezone: 'Asia/Shanghai', current_period_key: listPeriod.key,
+  ...baseModel, pricing_periods: withDefaultPeriod(listPeriod), pricing_timezone: 'Asia/Shanghai', current_period_key: listPeriod.key,
 })
 
 function detailWith(overrides: Partial<UserModelItem> = {}): UserModelDetail {
@@ -63,7 +70,7 @@ function pricingPanel(container: HTMLElement): HTMLElement {
 beforeEach(async () => { await i18n.changeLanguage('zh-CN') })
 
 describe('模型详情分时定价数据一致性', () => {
-  it('详情到达后整组采用详情时段、时区、当前状态和计量单位', () => {
+  it('详情到达后整组采用详情时段、当前状态和计量单位', () => {
     const view = render(drawer(null))
     expect(pricingPanel(view.container)).toHaveTextContent('目录夜间价')
 
@@ -72,13 +79,12 @@ describe('模型详情分时定价数据一致性', () => {
       rules: [{ ...listPeriod.rules[0], unit_price_yuan: '0.000001' }],
     }
     view.rerender(drawer(detailWith({
-      pricing_periods: [detailPeriod], pricing_timezone: 'America/New_York', current_period_key: detailPeriod.key,
+      pricing_periods: withDefaultPeriod(detailPeriod), pricing_timezone: 'America/New_York', current_period_key: detailPeriod.key,
       prices: [{ ...listPrice, unit: 'image', unit_price_yuan: '0.000001' }],
     })))
 
     const panel = pricingPanel(view.container)
     expect(panel).toHaveTextContent('详情日间价')
-    expect(panel).toHaveTextContent('America/New_York')
     expect(panel).toHaveTextContent('08:00–20:00')
     expect(panel).toHaveTextContent('¥0.000001')
     expect(panel).toHaveTextContent(`1 ${i18n.t('console.timePricing.images')}`)
@@ -92,7 +98,6 @@ describe('模型详情分时定价数据一致性', () => {
     const view = render(drawer(detailWith({ prices: [{ ...listPrice, unit: 'image', unit_price_yuan: '99' }] })))
     const panel = pricingPanel(view.container)
     expect(panel).toHaveTextContent('目录夜间价')
-    expect(panel).toHaveTextContent('Asia/Shanghai')
     expect(panel).toHaveTextContent('00:00–08:00')
     expect(panel).toHaveTextContent('¥2')
     expect(panel).toHaveTextContent(`1 ${i18n.t('console.timePricing.seconds')}`)
@@ -108,9 +113,21 @@ describe('模型详情分时定价数据一致性', () => {
     expect(screen.queryByText('目录夜间价')).toBeNull()
   })
 
+  it('详情仅有一种定价时移除峰谷价，保留上方价格信息', () => {
+    const view = render(drawer(null))
+    expect(pricingPanel(view.container)).toHaveTextContent('目录夜间价')
+    view.rerender(drawer(detailWith({
+      pricing_periods: [{ ...listPeriod, default: true, start_minute: 0, end_minute: 1440 }],
+      pricing_timezone: 'UTC', current_period_key: listPeriod.key,
+    })))
+    expect(view.container.querySelector('.model-time-pricing')).toBeNull()
+    expect(screen.getByRole('region', { name: '价格信息' })).toBeInTheDocument()
+    expect(view.container.querySelectorAll('.model-detail-price-card')).toHaveLength(4)
+  })
+
   it('详情时段存在但同组字段为空时不借用目录时区、当前标记或价格单位', () => {
     const view = render(drawer(detailWith({
-      pricing_periods: [{ ...listPeriod, name: '详情独立规则' }],
+      pricing_periods: withDefaultPeriod({ ...listPeriod, name: '详情独立规则' }),
       pricing_timezone: '', current_period_key: '', prices: null,
     })))
     const panel = pricingPanel(view.container)

@@ -1,5 +1,7 @@
 .video-reference-image-control { flex: 0 0 auto; }
-.video-reference-dialog-title { display: inline-flex; align-items: center; gap: 4px; }
+/* 行盒与按钮高度不同时，基线对齐的结果随字体度量变化；固定按文字中线对齐，保证图标居中于标题。 */
+.video-reference-dialog-title { display: inline-flex; align-items: center; gap: 4px; vertical-align: middle; }
+/* 信息图标自带外圆并沿用 semi 默认字号，按钮只提供 28px 触控区和居中。 */
 .video-reference-privacy {
   display: inline-flex;
   align-items: center;
@@ -11,20 +13,7 @@
   border-radius: 50%;
   color: var(--color-text-secondary);
   background: transparent;
-  font-size: 12px;
-  line-height: 1;
   cursor: help;
-}
-/* 图标独立于触控按钮尺寸，避免移动端最小点击高度把圆形拉长。 */
-.video-reference-privacy > span {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  box-sizing: border-box;
-  width: 17px;
-  height: 17px;
-  border: 1.5px solid currentColor;
-  border-radius: 50%;
 }
 .app-info-tooltip.video-reference-privacy-tooltip.semi-tooltip-wrapper {
   height: auto;
