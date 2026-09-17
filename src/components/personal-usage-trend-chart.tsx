@@ -19,6 +19,7 @@ import { dateRangeToTrendQuery } from "./personal-usage-date-picker";
 import { useResolvedTheme } from "@/theme";
 import { getChartRenderer } from "@/components/chart-renderer";
 import { appToast } from "@/components/app-toast";
+import { RequestErrorPanel } from "@/components/request-error-panel";
 
 echarts.use([
   LineChart,
@@ -49,12 +50,14 @@ export function PersonalUsageTrendChart({
   const [data, setData] = useState<UsageTrendResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [reloadToken, setReloadToken] = useState(0);
   const query = useMemo(() => dateRangeToTrendQuery(dateRange), [dateRange]);
 
   useEffect(() => {
     const controller = new AbortController();
     setLoading(true);
     setError("");
+    setData(null);
     void getUsageTrend(context, query, controller.signal)
       .then(setData)
       .catch((reason: unknown) => {
@@ -65,7 +68,7 @@ export function PersonalUsageTrendChart({
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [context, query]);
+  }, [context, query, reloadToken]);
 
   useEffect(() => {
     if (!loading && error) appToast.error(error);
@@ -235,6 +238,7 @@ export function PersonalUsageTrendChart({
 
   return (
     <div className="personal-usage-line-wrap">
+      {error ? <RequestErrorPanel message={error} onRetry={() => setReloadToken((value) => value + 1)} /> : null}
       <div className="personal-usage-line-chart-shell">
         {loading ? (
           <div className="personal-usage-chart-status" role="status">

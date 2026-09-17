@@ -170,6 +170,11 @@ html[data-theme="light"]
   border-radius: 4px;
   background: var(--color-bg-base-secondary);
 }
+/* 错误面板内的重试按钮需要交互，加载浮层本身仍不拦截表格操作。 */
+.personal-usage-cue-feedback .request-error-panel {
+  pointer-events: auto;
+  max-width: calc(100% - 16px);
+}
 .personal-usage-cue-table { width: 100%; min-width: 0; border-collapse: collapse; table-layout: fixed; color: var(--color-text-default); }
 .personal-usage-cue-table th,
 .personal-usage-cue-table td { height: 48px; min-width: 0; box-sizing: border-box; padding: 0 12px; border-bottom: 1px solid var(--color-border-neutral-l1); color: var(--color-text-secondary); font-size: 11px; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

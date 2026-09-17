@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { appToast } from "@/components/app-toast";
+import { RequestErrorPanel } from "@/components/request-error-panel";
 import {
   getDailyTokenUsage,
   getDailyTokenUsageErrorMessage,
@@ -42,6 +43,7 @@ export function PersonalTokenHeatmap({
   const [items, setItems] = useState<DailyTokenUsageItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [reloadToken, setReloadToken] = useState(0);
   const heatmapScrollRef = useRef<HTMLDivElement>(null);
   const heatmapTrackRef = useRef<HTMLDivElement>(null);
 
@@ -59,7 +61,7 @@ export function PersonalTokenHeatmap({
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [context]);
+  }, [context, reloadToken]);
 
   useEffect(() => {
     if (!loading && error) appToast.error(error);
@@ -238,7 +240,7 @@ export function PersonalTokenHeatmap({
             <span className="console-loading-spinner" />
             {t("console.personalUsage.tokenHeatmap.loading")}
           </div>
-        ) : error ? null : (
+        ) : error ? <RequestErrorPanel message={error} onRetry={() => setReloadToken((value) => value + 1)} /> : (
           <div className="personal-token-heatmap-scroll" ref={heatmapScrollRef}>
             <div
               className="personal-token-heatmap-track"

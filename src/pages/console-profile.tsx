@@ -27,6 +27,7 @@ import { useAppDispatch, useAppSelector } from '@/store/hooks'
 import type { AuthUser } from '@/api/auth'
 import { useTranslation } from 'react-i18next'
 import { appToast as Toast } from '@/components/app-toast'
+import { RequestErrorPanel } from '@/components/request-error-panel'
 import { publishProfileUpdate, subscribeProfileUpdates } from '@/profile/profile-sync'
 import { AccountDeletionFlow } from '@/components/account-deletion-flow'
 import { enterpriseRoleLabel } from '@/utils/enterprise-labels'
@@ -85,6 +86,7 @@ export function SettingsPage() {
   const [savingPreference, setSavingPreference] = useState<NotificationPreferenceCode | null>(null)
   const [accountSettingsOpen, setAccountSettingsOpen] = useState(false)
   const [deactivateVisible, setDeactivateVisible] = useState(false)
+  const profileRequestVersion = useRef(0)
 
   const invalidateSession = useCallback((): void => {
     dispatch(invalidateAuth())
@@ -98,6 +100,7 @@ export function SettingsPage() {
   }, [invalidateSession])
 
   const loadProfile = useCallback(async (): Promise<void> => {
+    const version = ++profileRequestVersion.current
     setLoading(true)
     setError('')
     setProfile(null)
@@ -117,6 +120,7 @@ export function SettingsPage() {
         enterpriseWorkspace ? Promise.resolve<NotificationPreferences | null>(null) : getNotificationPreferences(accessToken),
         enterpriseWorkspace ? getEnterpriseContext({ enterprise_id: activeEnterpriseID }, { accessToken }) : Promise.resolve<EnterpriseContext | null>(null),
       ])
+      if (version !== profileRequestVersion.current) return
       const normalizedProfile = normalizeProfile(nextProfile)
       setProfile(normalizedProfile)
       setEnterprises(nextEnterprises)
@@ -125,14 +129,17 @@ export function SettingsPage() {
       // 首次加载也同步认证状态，确保 Header 与个人中心展示一致。
       dispatch(updateAuthenticatedUser(profileToAuthUser(normalizedProfile, authUserRef.current)))
     } catch (requestError) {
+      if (version !== profileRequestVersion.current) return
       if (!handleProfileError(requestError)) setError(getProfileErrorMessage(requestError))
     } finally {
-      setLoading(false)
+      if (version === profileRequestVersion.current) setLoading(false)
     }
   }, [activeEnterpriseID, enterpriseWorkspace, handleProfileError, invalidateSession, t])
 
   useEffect(() => {
     void loadProfile()
+    // 重试、切换空间或离开页面后，迟到的资料不能覆盖当前页面或更新登录用户。
+    return () => { profileRequestVersion.current++ }
   }, [loadProfile])
 
   useEffect(() => {
@@ -212,7 +219,12 @@ export function SettingsPage() {
     )
   }
 
-  if (!profile || (!enterpriseWorkspace && !preferences) || (enterpriseWorkspace && !enterpriseContext)) return null
+  if (!profile || (!enterpriseWorkspace && !preferences) || (enterpriseWorkspace && !enterpriseContext)) return (
+    <div className="page-stack settings-console-page settings-redesign-page">
+      <PageTitle title={t('profile.title')} description={t('profile.description')} />
+      <div className="settings-page-inner"><RequestErrorPanel message={error || t('profile.loadFailed')} onRetry={() => void loadProfile()} retrying={loading} /></div>
+    </div>
+  )
 
   return (
     <div className={`page-stack settings-console-page settings-redesign-page ${enterpriseWorkspace ? 'settings-redesign-page--enterprise' : 'settings-redesign-page--personal'}`}>

@@ -1037,7 +1037,7 @@ function ModelsContent({ context }: { context: EnterpriseContext }) {
       className="enterprise-models-directory"
       aria-label={t('console.enterprise.model.systemModels')}
     >
-      {error && !data ? (
+      {error ? (
         <EnterpriseError
           message={error.message}
           requestId={error.requestId}

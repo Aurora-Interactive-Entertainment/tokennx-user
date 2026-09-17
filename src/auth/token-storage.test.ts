@@ -8,6 +8,7 @@ import {
   VERIFIED_PHONE_KEY,
   clearAuthTokens,
   getAccessToken,
+  getAuthSessionSnapshot,
   getVerifiedPhone,
   getDeviceId,
   getDeviceName,
@@ -109,6 +110,9 @@ describe('认证令牌存储', () => {
       refreshExpiresAt: Date.UTC(2099, 1, 1),
     })
     expect(JSON.parse(String(window.localStorage.getItem(REFRESH_SESSION_KEY))).revision).toEqual({ timestamp: 0, writerId: '' })
+    const migratedId = getAuthSessionSnapshot()?.sessionId
+    expect(migratedId).toBeTruthy()
+    expect(getAuthSessionSnapshot()?.sessionId).toBe(migratedId)
   })
 
   it('清理认证时同时清除内存 access token 和持久化 refresh token', () => {
@@ -117,6 +121,31 @@ describe('认证令牌存储', () => {
 
     expect(getAccessToken()).toBeNull()
     expect(readRefreshToken()).toBeNull()
+  })
+
+  it('自动刷新保留会话标识，同账号主动重新登录生成新标识', () => {
+    saveAuthTokens(authResult())
+    const original = getAuthSessionSnapshot()!
+    saveAuthTokens(authResult({ access_token: 'rotated-access', refresh_token: 'rotated-refresh' }), { expectedRefreshToken: original.refreshToken, expectedRevision: original.revision })
+    expect(getAuthSessionSnapshot()?.sessionId).toBe(original.sessionId)
+    saveAuthTokens(authResult({ access_token: 'new-login-access', refresh_token: 'new-login-refresh' }))
+    expect(getAuthSessionSnapshot()?.sessionId).not.toBe(original.sessionId)
+  })
+
+  it('跨标签页刷新继承会话标识并传递刷新来源', () => {
+    saveAuthTokens(authResult())
+    const original = getAuthSessionSnapshot()!
+    const listener = vi.fn()
+    const unsubscribe = subscribeAuthTokenChanges(listener)
+    try {
+      window.dispatchEvent(new StorageEvent('storage', { key: AUTH_SYNC_STORAGE_KEY, newValue: JSON.stringify({
+        type: 'session-updated', eventId: 'remote-stable-session:1', revision: { timestamp: original.revision.timestamp + 1, writerId: 'remote-tab' },
+        accessToken: 'remote-access', refreshToken: 'remote-refresh', refreshExpiresAt: Date.UTC(2099, 1, 1), user: authResult().user,
+        sessionId: original.sessionId, isRefresh: true,
+      }) }))
+      expect(getAuthSessionSnapshot()).toMatchObject({ sessionId: original.sessionId, accessToken: 'remote-access', refreshToken: 'remote-refresh' })
+      expect(listener).toHaveBeenCalledWith(expect.objectContaining({ sessionId: original.sessionId, isRefresh: true }))
+    } finally { unsubscribe() }
   })
 
   it('旧标签页按旧 refresh token 清理时保留新会话', () => {

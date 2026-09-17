@@ -1,0 +1,45 @@
+.request-error-panel {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px;
+  border: 1px solid var(--color-border-neutral-l2);
+  border-radius: var(--radius-8, 8px);
+  color: var(--color-text-default);
+  background: var(--color-bg-base-secondary);
+}
+
+.request-error-panel__message {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+  font-size: 14px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.request-error-panel__message small {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+
+.request-error-panel > .semi-button {
+  flex: 0 0 auto;
+}
+
+@media (max-width: 560px) {
+  .request-error-panel {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .request-error-panel__message {
+    flex: 1 1 100%;
+  }
+
+  .request-error-panel > .semi-button {
+    min-height: 44px;
+  }
+}

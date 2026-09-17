@@ -28,6 +28,7 @@ import { formatToolUsageTokens, ToolUsageClientsChart } from '@/components/tool-
 import { apiTimeToDate } from '@/utils/format'
 import { ModelsShowcase, type ModelsShowcaseGroup, type PublicShowcaseModel } from '@/components/public-models-showcase'
 import { appToast } from '@/components/app-toast'
+import { RequestErrorPanel } from '@/components/request-error-panel'
 import { usePublicContentSeo } from '@/seo/site-seo'
 import { publicPath } from '@/routes/public-path'
 
@@ -191,6 +192,8 @@ export function RankingsPage() {
   const [recentLoading, setRecentLoading] = useState(true)
   const [leaderboardError, setLeaderboardError] = useState('')
   const [recentError, setRecentError] = useState('')
+  const [leaderboardReload, setLeaderboardReload] = useState(0)
+  const [recentReload, setRecentReload] = useState(0)
   useEffect(() => {
     const controller = new AbortController()
     setLeaderboardLoading(true)
@@ -199,7 +202,7 @@ export function RankingsPage() {
       if (!controller.signal.aborted) setLeaderboardError(reason instanceof Error ? reason.message : t('public.rankings.loadFailed'))
     }).finally(() => { if (!controller.signal.aborted) setLeaderboardLoading(false) })
     return () => controller.abort()
-  }, [t])
+  }, [leaderboardReload, t])
 
   useEffect(() => {
     if (leaderboardError) appToast.error(leaderboardError)
@@ -217,7 +220,7 @@ export function RankingsPage() {
       if (!controller.signal.aborted) setRecentError(reason instanceof Error ? reason.message : t('public.rankings.loadFailed'))
     }).finally(() => { if (!controller.signal.aborted) setRecentLoading(false) })
     return () => controller.abort()
-  }, [t])
+  }, [recentReload, t])
 
   function trendLabel(changeRate: number | null): string {
     if (changeRate === null) return t('public.rankings.noComparison')
@@ -240,13 +243,13 @@ export function RankingsPage() {
         <main className="ranking-content">
           <section id="top-models" className="ranking-top-section">
             <header><h1>{t('public.rankings.topTitle')}</h1><p>{t('public.rankings.topDescription')}</p></header>
-            <div className="ranking-chart-layout">{recentLoading && !recentUsage ? <div className="ranking-data-state" role="status">{t('public.rankings.loading')}</div> : recentUsage && recentUsage.weeks.length && recentUsage.items.length ? <RankingRecentUsageChart data={recentUsage} /> : <div className="ranking-data-state">{t('public.rankings.empty')}</div>}</div>
+            <div className="ranking-chart-layout">{recentError ? <RequestErrorPanel message={recentError} onRetry={() => setRecentReload((value) => value + 1)} /> : recentLoading && !recentUsage ? <div className="ranking-data-state" role="status">{t('public.rankings.loading')}</div> : recentUsage && recentUsage.weeks.length && recentUsage.items.length ? <RankingRecentUsageChart data={recentUsage} /> : <div className="ranking-data-state">{t('public.rankings.empty')}</div>}</div>
           </section>
 
           <section id="model-ranking" className="ranking-list-section">
             <div className="ranking-list-head"><div><h2>{t('public.rankings.leaderboardTitle')}</h2><p>{t('public.rankings.leaderboardDescription')}</p></div></div>
 
-            <div className="ranking-model-list" aria-live="polite">{leaderboardLoading && !leaderboard ? <div className="ranking-data-state" role="status">{t('public.rankings.loading')}</div> : leaderboard?.items.length ? leaderboard.items.map((model) => <article className="ranking-model-row" key={model.code}>
+            <div className="ranking-model-list" aria-live="polite">{leaderboardError ? <RequestErrorPanel message={leaderboardError} onRetry={() => setLeaderboardReload((value) => value + 1)} /> : leaderboardLoading && !leaderboard ? <div className="ranking-data-state" role="status">{t('public.rankings.loading')}</div> : leaderboard?.items.length ? leaderboard.items.map((model) => <article className="ranking-model-row" key={model.code}>
               <span className="ranking-model-number">{model.rank}.</span>
               <RankingModelLogo code={model.code} name={model.name} />
               <div className="ranking-model-name"><strong>{model.name}</strong><span>{t('public.rankings.architectureHint')}</span></div>
@@ -273,28 +276,42 @@ export function AppsPage() {
   const [leaderboard, setLeaderboard] = useState<ToolUsageLeaderboard | null>(null)
   const [yearLeaderboard, setYearLeaderboard] = useState<ToolUsageLeaderboard | null>(null)
   const [clients, setClients] = useState<ToolUsageClients | null>(null)
-  const [loadError, setLoadError] = useState('')
+  const [leaderboardError, setLeaderboardError] = useState('')
+  const [overviewError, setOverviewError] = useState('')
+  const [leaderboardReload, setLeaderboardReload] = useState(0)
+  const [overviewReload, setOverviewReload] = useState(0)
   const activeRangeLabel = t(`public.apps.ranges.${timeRange}`)
 
   useEffect(() => {
     const controller = new AbortController()
-    setLoadError('')
-    getToolUsageLeaderboard(timeRange === 'today' ? 'day' : timeRange, controller.signal).then(setLeaderboard).catch((reason: unknown) => { if (!controller.signal.aborted) setLoadError(reason instanceof Error ? reason.message : t('public.apps.loadFailed')) })
+    setLeaderboardError('')
+    // 周期切换后清理旧榜单，并忽略已取消请求，避免旧数据挂在新周期标题下。
+    setLeaderboard(null)
+    getToolUsageLeaderboard(timeRange === 'today' ? 'day' : timeRange, controller.signal).then((result) => {
+      if (!controller.signal.aborted) setLeaderboard(result)
+    }).catch((reason: unknown) => { if (!controller.signal.aborted) setLeaderboardError(reason instanceof Error ? reason.message : t('public.apps.loadFailed')) })
     return () => controller.abort()
-  }, [t, timeRange])
+  }, [leaderboardReload, t, timeRange])
 
   useEffect(() => {
     const controller = new AbortController()
-    Promise.all([getToolUsageLeaderboard('year', controller.signal), getToolUsageClients(controller.signal)]).then(([year, recent]) => { setYearLeaderboard(year); setClients(recent) }).catch((reason: unknown) => { if (!controller.signal.aborted) setLoadError(reason instanceof Error ? reason.message : t('public.apps.loadFailed')) })
+    setOverviewError('')
+    Promise.all([getToolUsageLeaderboard('year', controller.signal), getToolUsageClients(controller.signal)]).then(([year, recent]) => {
+      if (!controller.signal.aborted) { setYearLeaderboard(year); setClients(recent) }
+    }).catch((reason: unknown) => { if (!controller.signal.aborted) setOverviewError(reason instanceof Error ? reason.message : t('public.apps.loadFailed')) })
     return () => controller.abort()
-  }, [t])
+  }, [overviewReload, t])
 
   useEffect(() => {
-    if (loadError) appToast.error(loadError)
-  }, [loadError])
+    if (leaderboardError) appToast.error(leaderboardError)
+  }, [leaderboardError])
+
+  useEffect(() => {
+    if (overviewError) appToast.error(overviewError)
+  }, [overviewError])
 
   const popularItems = (yearLeaderboard?.items ?? []).slice(0, 4)
-  const rankingItems = (leaderboard?.items ?? []).slice(0, 20)
+  const rankingItems = (leaderboard?.period === (timeRange === 'today' ? 'day' : timeRange) ? leaderboard.items : []).slice(0, 20)
 
   return (
     <PublicLayout mainClassName="apps-page--manuscript">
@@ -304,18 +321,19 @@ export function AppsPage() {
           <p>{t('public.apps.description')}</p>
         </header>
 
+        {overviewError ? <RequestErrorPanel message={overviewError} onRetry={() => setOverviewReload((value) => value + 1)} /> : null}
         <section className="apps-popular-grid" aria-label={t('public.apps.popularLabel')}>
           {popularItems.map((item) => <article className="apps-popular-card" key={item.id}>
             <div className="apps-popular-title"><h2>{item.name}</h2><ToolUsageLogo logoUrl={item.logo_url} name={item.name} /></div>
             <p>{item.description}</p>
             <strong>{t('public.apps.tokenCount', { count: formatToolUsageTokens(item.total_tokens) })}</strong>
           </article>)}
-          {!yearLeaderboard ? (loadError ? null : <div className="apps-grid-state" role="status">{t('public.apps.loading')}</div>) : !popularItems.length ? <div className="apps-grid-state">{t('public.apps.empty')}</div> : null}
+          {!yearLeaderboard ? (overviewError ? null : <div className="apps-grid-state" role="status">{t('public.apps.loading')}</div>) : !popularItems.length ? <div className="apps-grid-state">{t('public.apps.empty')}</div> : null}
         </section>
 
         <section className="apps-chart-panel" aria-labelledby="appsChartTitle">
           <div className="apps-chart-heading"><h2 id="appsChartTitle">{t('public.apps.chartTitle')}</h2><span>{t('public.apps.pastSixMonths')}</span></div>
-          {clients?.weeks.length && clients.items.length ? <ToolUsageClientsChart data={clients} /> : clients ? <div className="apps-chart-state" role="status">{t('public.apps.empty')}</div> : loadError ? null : <div className="apps-chart-state" role="status">{t('public.apps.loading')}</div>}
+          {clients?.weeks.length && clients.items.length ? <ToolUsageClientsChart data={clients} /> : clients ? <div className="apps-chart-state" role="status">{t('public.apps.empty')}</div> : overviewError ? null : <div className="apps-chart-state" role="status">{t('public.apps.loading')}</div>}
         </section>
 
         <div className="apps-ranking-filter">
@@ -332,7 +350,7 @@ export function AppsPage() {
             <div><h2>{item.name}</h2><p>{item.description}</p></div>
             <strong>{t('public.apps.tokenCount', { count: formatToolUsageTokens(item.total_tokens) })}</strong>
           </article>)}
-          {!leaderboard ? (loadError ? null : <div className="apps-list-state" role="status">{t('public.apps.loading')}</div>) : !rankingItems.length ? <div className="apps-list-state">{t('public.apps.empty')}</div> : null}
+          {leaderboardError ? <RequestErrorPanel message={leaderboardError} onRetry={() => setLeaderboardReload((value) => value + 1)} /> : !leaderboard ? <div className="apps-list-state" role="status">{t('public.apps.loading')}</div> : !rankingItems.length ? <div className="apps-list-state">{t('public.apps.empty')}</div> : null}
         </section>
       </div>
     </PublicLayout>
@@ -527,6 +545,8 @@ export function DocsPage() {
   const [currentDocument, setCurrentDocument] = useState<PublicDocument | null>(null)
   const [treeLoading, setTreeLoading] = useState(true)
   const [documentLoading, setDocumentLoading] = useState(false)
+  const [treeReload, setTreeReload] = useState(0)
+  const [documentReload, setDocumentReload] = useState(0)
   const [error, setError] = useState<{ message: string; requestId: string | null } | null>(null)
   const [headings, setHeadings] = useState<DocsHeading[]>([])
   const [activeHeading, setActiveHeading] = useState('')
@@ -569,7 +589,7 @@ export function DocsPage() {
       setError({ message: caught instanceof Error ? caught.message : t('api.http.requestFailed'), requestId: isApiError(caught) ? caught.requestId : null })
     })
     return () => controller.abort()
-  }, [locale, t])
+  }, [locale, t, treeReload])
 
   useEffect(() => {
     if (error) appToast.error(error.message)
@@ -592,6 +612,7 @@ export function DocsPage() {
     if (!selectedNode) return
     const controller = new AbortController()
     setDocumentLoading(true)
+    setCurrentDocument(null)
     setError(null)
     void loadPublicDocument(selectedNode.id, locale, controller.signal).then((document) => {
       if (controller.signal.aborted) return
@@ -606,7 +627,7 @@ export function DocsPage() {
       setError({ message: caught instanceof Error ? caught.message : t('api.http.requestFailed'), requestId: isApiError(caught) ? caught.requestId : null })
     })
     return () => controller.abort()
-  }, [locale, selectedNode, t])
+  }, [documentReload, locale, selectedNode, t])
 
   useEffect(() => {
     if (currentDocument && currentDocument.id === publicId && slug !== currentDocument.slug) navigate(publicDocumentHref(currentDocument, locale), { replace: true })
@@ -727,6 +748,7 @@ export function DocsPage() {
           {currentDocument ? <div className="docs-article-toolbar docs-article-toolbar--desktop-copy"><button className="docs-copy-page" type="button" onClick={() => void copyMarkdown()}><CopyOutlineIcon />{t('public.docs.manuscript.copyPage')}</button></div> : null}
           {currentDocument ? <div className="docs-article-toolbar docs-article-toolbar--mobile-copy"><button className="docs-copy-page" type="button" onClick={() => void copyMarkdown()}><CopyOutlineIcon />{t('public.docs.manuscript.copyPage')}</button></div> : null}
           {loading && !currentDocument ? <div className="docs-state" role="status"><Skeleton placeholder={<><Skeleton.Title /><Skeleton.Paragraph rows={8} /></>} loading /></div> : null}
+          {error ? <RequestErrorPanel message={error.message} requestId={error.requestId} retrying={loading} onRetry={() => selectedNode ? setDocumentReload((value) => value + 1) : setTreeReload((value) => value + 1)} /> : null}
           {!loading && !error && !currentDocument && !tree.length ? <div className="docs-state"><h1>{t('public.docs.manuscript.noDocuments')}</h1></div> : null}
           {currentDocument ? <MarkdownContent className="docs-markdown" content={currentDocument.content_markdown} enhancedCodeBlocks resolveImageUrl={resolveDocsImageUrl} /> : null}
         </article>

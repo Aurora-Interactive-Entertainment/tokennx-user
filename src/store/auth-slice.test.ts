@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { clearAuthTokens, getAccessToken, REFRESH_SESSION_KEY, saveAuthTokens } from '@/auth/token-storage'
+import { clearAuthTokens, getAccessToken, REFRESH_SESSION_KEY, saveAuthTokens, subscribeAuthTokenChanges } from '@/auth/token-storage'
+import { refreshAuthSession } from '@/auth/refresh-coordinator'
+import { requestPurchaseLogin } from './purchase-intent-slice'
 import type { AuthResult } from '@/api/auth'
 import { createAppStore } from './index'
 import { hydrateAuth, invalidateAuth, loginWithEmail, loginWithPhone, logoutAuth, synchronizeAuthenticatedUser } from './auth-slice'
@@ -153,9 +155,9 @@ describe('认证 Redux 状态', () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(apiResponse(null, 503, 120001, 'service unavailable'))
     const appStore = createAppStore()
 
-    await appStore.dispatch(hydrateAuth()).unwrap()
+    await expect(appStore.dispatch(hydrateAuth()).unwrap()).rejects.toMatchObject({ error: { status: 503 } })
 
-    expect(appStore.getState().auth).toMatchObject({ status: 'unauthenticated', user: null, error: null })
+    expect(appStore.getState().auth).toMatchObject({ status: 'authenticated', user: { id: 'user-1' }, error: null, hydrationError: { message: 'service unavailable', status: 503 } })
     expect(getAccessToken()).toBe('old-access')
     expect(window.localStorage.getItem(REFRESH_SESSION_KEY)).toContain('refresh-token')
   })
@@ -200,5 +202,80 @@ describe('认证 Redux 状态', () => {
     })
     await appStore.dispatch(hydrateAuth()).unwrap()
     expect(appStore.getState().auth.user?.display_name).toBe('最新昵称')
+  })
+
+  it('首次恢复503保留refresh token并允许原地重试恢复身份', async () => {
+    window.localStorage.setItem(REFRESH_SESSION_KEY, JSON.stringify({ refreshToken: 'old-refresh', refreshExpiresAt: Date.UTC(2099, 1, 1) }))
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(apiResponse(null, 503, 0, '恢复服务暂不可用'))
+    const appStore = createAppStore()
+    await appStore.dispatch(hydrateAuth())
+    expect(appStore.getState().auth).toMatchObject({ status: 'restore-failed', user: null, hydrationError: { status: 503, message: '恢复服务暂不可用' } })
+    expect(window.localStorage.getItem(REFRESH_SESSION_KEY)).toContain('old-refresh')
+    fetchMock.mockResolvedValueOnce(apiResponse(authResult('new-access', 'new-refresh'))).mockResolvedValueOnce(apiResponse(authResult().user))
+    await appStore.dispatch(hydrateAuth()).unwrap()
+    expect(appStore.getState().auth).toMatchObject({ status: 'authenticated', user: { id: 'user-1' }, hydrationError: null })
+  })
+
+  it('refresh已成功而/me503时保持已验证的身份并保留错误重试入口', async () => {
+    window.localStorage.setItem(REFRESH_SESSION_KEY, JSON.stringify({ refreshToken: 'old-refresh', refreshExpiresAt: Date.UTC(2099, 1, 1) }))
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(apiResponse(authResult('new-access', 'new-refresh'))).mockResolvedValueOnce(apiResponse(null, 503, 0, '资料暂不可用'))
+    const appStore = createAppStore()
+    await appStore.dispatch(hydrateAuth())
+    expect(appStore.getState().auth).toMatchObject({ status: 'authenticated', user: { id: 'user-1' }, hydrationError: { message: '资料暂不可用' } })
+    expect(getAccessToken()).toBe('new-access')
+  })
+
+  it.each([[200, 'next-user'], [503, 'next-user'], [200, 'user-1'], [503, 'user-1']])('退出迟到%s时不清除新登录%s，包括同账号重登', async (status, nextUserId) => {
+    saveAuthTokens(authResult('old-access', 'old-refresh'))
+    const appStore = createAppStore()
+    appStore.dispatch(synchronizeAuthenticatedUser(authResult().user!))
+    let finishLogout!: (result: Response) => void
+    let markStarted!: () => void
+    const started = new Promise<void>(resolve => { markStarted = resolve })
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async input => {
+      if (String(input).endsWith('/logout')) { markStarted(); return new Promise<Response>(resolve => { finishLogout = resolve }) }
+      return apiResponse({ ...authResult('next-access', 'next-refresh'), user: { ...authResult().user, id: nextUserId } })
+    })
+    const pending = appStore.dispatch(logoutAuth())
+    await started
+    appStore.dispatch(requestPurchaseLogin('new-plan'))
+    await appStore.dispatch(loginWithPhone({ destination: '13800138000', code: '123456' })).unwrap()
+    finishLogout(apiResponse({}, Number(status), status === 200 ? 0 : 120001, '退出结果'))
+    expect(await pending.unwrap()).toBe(false)
+    expect(getAccessToken()).toBe('next-access')
+    expect(window.localStorage.getItem(REFRESH_SESSION_KEY)).toContain('next-refresh')
+    expect(appStore.getState().auth).toMatchObject({ status: 'authenticated', user: { id: nextUserId }, error: null })
+    expect(appStore.getState().purchaseIntent.resume).toEqual({ planID: 'new-plan', userID: nextUserId })
+  })
+
+  it('自动刷新先占锁时，随后点击退出仍使用轮换后的令牌成功退出', async () => {
+    saveAuthTokens(authResult('old-access', 'old-refresh'))
+    const appStore = createAppStore()
+    appStore.dispatch(synchronizeAuthenticatedUser(authResult().user!))
+    let finishRefresh!: (result: Response) => void
+    let markStarted!: () => void
+    const started = new Promise<void>(resolve => { markStarted = resolve })
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async input => {
+      if (String(input).endsWith('/refresh')) { markStarted(); return new Promise<Response>(resolve => { finishRefresh = resolve }) }
+      return apiResponse({})
+    })
+    // 验证刷新广播不会废弃退出的 Redux 提交；signed-out 留给 thunk 完成，额外覆盖无路由订阅情形。
+    const unsubscribe = subscribeAuthTokenChanges(change => {
+      if (change.user) appStore.dispatch(synchronizeAuthenticatedUser(change.user, change.isRefresh === true))
+    })
+    try {
+      const refreshing = refreshAuthSession('old-refresh')
+      await started
+      const pending = appStore.dispatch(logoutAuth())
+      finishRefresh(apiResponse(authResult('rotated-access', 'rotated-refresh')))
+      await refreshing
+      expect(await pending.unwrap()).toBe(true)
+      expect(fetchMock).toHaveBeenCalledTimes(2)
+      expect(String(fetchMock.mock.calls[1][0])).toContain('/api/auth/logout')
+      expect(new Headers(fetchMock.mock.calls[1][1]?.headers).get('Authorization')).toBe('Bearer rotated-access')
+      expect(getAccessToken()).toBeNull()
+      expect(window.localStorage.getItem(REFRESH_SESSION_KEY)).toBeNull()
+      expect(appStore.getState().auth).toMatchObject({ status: 'unauthenticated', user: null })
+    } finally { unsubscribe() }
   })
 })

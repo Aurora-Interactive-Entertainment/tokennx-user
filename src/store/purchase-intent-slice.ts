@@ -30,7 +30,9 @@ const purchaseIntentSlice = createSlice({
       state.loginPlanID = null
       state.loginInFlight = false
     })
-    builder.addMatcher(isAnyOf(invalidateAuth, logoutAuth.fulfilled, logoutAuth.rejected), state => {
+    builder.addMatcher(isAnyOf(invalidateAuth, logoutAuth.fulfilled, logoutAuth.rejected), (state, action) => {
+      // 旧退出请求发现账号已变化时，不得清空新账号正在接续的购买意图。
+      if (logoutAuth.fulfilled.match(action) && action.payload === false) return
       // 登出、会话失效或其他标签页换号都不能继承上一个购买意图。
       state.loginPlanID = null
       state.resume = null

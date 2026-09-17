@@ -18,6 +18,8 @@ interface StoredRefreshSession {
   refreshToken: string
   refreshExpiresAt: AuthTimestamp
   revision: SessionRevision
+  /** 自动轮换时保持不变，主动登录时重新生成，用于区分同账号的新会话。 */
+  sessionId: string
 }
 
 export interface AuthSessionSnapshot {
@@ -25,6 +27,7 @@ export interface AuthSessionSnapshot {
   refreshToken: string
   refreshExpiresAt: AuthTimestamp
   revision: SessionRevision
+  sessionId: string
   user: AuthUser | undefined
 }
 
@@ -36,6 +39,8 @@ export interface AuthTokenChange {
   refreshToken?: string
   refreshExpiresAt?: AuthTimestamp
   user?: AuthUser
+  sessionId?: string
+  isRefresh?: boolean
 }
 
 export interface ClearAuthTokensOptions {
@@ -183,8 +188,10 @@ function parseStoredRefreshSession(raw: string | null): { session: StoredRefresh
         refreshToken: value.refreshToken,
         refreshExpiresAt,
         revision: revision.revision,
+        // 旧存储缺少标识时生成并由读取函数立即写回，不能把所有旧账号归为同一会话。
+        sessionId: typeof value.sessionId === 'string' && value.sessionId ? value.sessionId : createIdentifier('session'),
       },
-      canonical: value.refreshExpiresAt === refreshExpiresAt && revision.valid,
+      canonical: value.refreshExpiresAt === refreshExpiresAt && revision.valid && typeof value.sessionId === 'string' && Boolean(value.sessionId),
     }
   } catch {
     return null
@@ -206,8 +213,11 @@ function readRefreshSession(): StoredRefreshSession | null {
 }
 
 function peekRefreshSession(): StoredRefreshSession | null {
-  const raw = storage()?.getItem(REFRESH_SESSION_KEY) ?? null
-  const session = parseStoredRefreshSession(raw)?.session ?? null
+  const saved = storage()
+  const raw = saved?.getItem(REFRESH_SESSION_KEY) ?? null
+  const parsed = parseStoredRefreshSession(raw)
+  if (parsed && !parsed.canonical) saved?.setItem(REFRESH_SESSION_KEY, JSON.stringify(parsed.session))
+  const session = parsed?.session ?? null
   if (session) revisionClock = Math.max(revisionClock, session.revision.timestamp)
   return session
 }
@@ -272,6 +282,7 @@ function applyRemoteChange(change: AuthTokenChange): void {
       refreshToken: change.refreshToken as string,
       refreshExpiresAt: change.refreshExpiresAt as AuthTimestamp,
       revision: change.revision,
+      sessionId: typeof change.sessionId === 'string' && change.sessionId ? change.sessionId : createIdentifier('session'),
     }
     saved?.setItem(REFRESH_SESSION_KEY, JSON.stringify(session))
     accessToken = change.accessToken as string
@@ -368,6 +379,7 @@ export function getAuthSessionSnapshot(): AuthSessionSnapshot | null {
     refreshToken: session.refreshToken,
     refreshExpiresAt: session.refreshExpiresAt,
     revision: session.revision,
+    sessionId: session.sessionId,
     user: isAccessTokenCurrent ? lastKnownUser : undefined,
   }
 }
@@ -383,6 +395,7 @@ export function saveAuthTokens(result: AuthResult, options: SaveAuthTokensOption
     refreshToken: result.refresh_token,
     refreshExpiresAt: result.refresh_expires_at,
     revision: nextRevision(),
+    sessionId: options.expectedRefreshToken !== undefined && current ? current.sessionId : createIdentifier('session'),
   }
   accessToken = result.access_token
   accessTokenRefreshToken = session.refreshToken
@@ -398,6 +411,8 @@ export function saveAuthTokens(result: AuthResult, options: SaveAuthTokensOption
         refreshToken: session.refreshToken,
         refreshExpiresAt: session.refreshExpiresAt,
         user,
+        sessionId: session.sessionId,
+        isRefresh: options.expectedRefreshToken !== undefined,
       },
       session.revision
     )

@@ -32,6 +32,7 @@ import { WechatCallbackPage } from "@/pages/wechat-callback";
 import { BuildUpdateNotice } from "@/components/build-update-notice";
 import { CONSOLE_IMAGE_GENERATION_ENABLED } from "@/config/console-features";
 import siteI18n from "@/i18n";
+import { RequestErrorPanel } from "@/components/request-error-panel";
 
 const loadPublicPages = () => import("@/pages/public");
 const loadInvitationPage = () => import("@/pages/join");
@@ -247,7 +248,12 @@ const consolePages: Record<ConsoleRoutePath, ReactNode> = {
 
 export function ConsoleOutlet() {
   const { t } = useTranslation();
-  const authStatus = useAppSelector((state) => state.auth.status);
+  const auth = useAppSelector((state) => state.auth);
+  const dispatch = useAppDispatch();
+  const authStatus = auth.status;
+  // 恢复失败仅阻止受保护页面；重试期间保留错误和禁用按钮，避免反复切换整页加载态。
+  if (authStatus === "restore-failed" || (!auth.user && auth.hydrationError))
+    return <div className="app-loading-screen"><RequestErrorPanel message={auth.hydrationError?.message || t("api.auth.requestFailed")} retrying={Boolean(auth.hydrationRequestId)} onRetry={() => { void dispatch(hydrateAuth()); }} /></div>;
   if (authStatus === "unknown" || authStatus === "loading")
     return <AppLoadingScreen label={t("console.common.checkingAuth")} />;
   if (authStatus !== "authenticated") return <Navigate replace to="/" />;
@@ -287,7 +293,7 @@ export function AuthBootstrap({ children }: { children: ReactNode }) {
           navigate("/", { replace: true });
           return;
         }
-        if (change.user) dispatch(synchronizeAuthenticatedUser(change.user));
+        if (change.user) dispatch(synchronizeAuthenticatedUser(change.user, change.isRefresh === true));
       }),
     [dispatch, navigate],
   );
@@ -296,6 +302,7 @@ export function AuthBootstrap({ children }: { children: ReactNode }) {
     if (authStatus === "unknown") void dispatch(hydrateAuth());
   }, [authStatus, dispatch]);
 
+  // 公开页由页头展示非阻断恢复提示，控制台是否可访问仅由 ConsoleOutlet 判断。
   return children;
 }
 

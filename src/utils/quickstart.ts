@@ -2,6 +2,7 @@ import { MODEL_API_BASE_URL } from '@/api/http'
 
 export type QuickstartProtocol = 'openai' | 'anthropic' | 'gemini'
 export type QuickstartLanguage = 'python' | 'node' | 'curl'
+export type QuickstartApiMode = 'chat' | 'responses'
 
 const QUICKSTART_PROTOCOLS = new Set<QuickstartProtocol>(['openai', 'anthropic', 'gemini'])
 const QUICKSTART_LANGUAGES = new Set<QuickstartLanguage>(['python', 'node', 'curl'])
@@ -14,23 +15,51 @@ export function normalizeQuickstartProtocol(value: string | null): QuickstartPro
 }
 
 export function normalizeQuickstartLanguage(value: string | null): QuickstartLanguage {
-  return QUICKSTART_LANGUAGES.has(value as QuickstartLanguage) ? value as QuickstartLanguage : 'python'
+  return QUICKSTART_LANGUAGES.has(value as QuickstartLanguage) ? value as QuickstartLanguage : 'curl'
+}
+
+export function normalizeQuickstartApiMode(value: string | null): QuickstartApiMode {
+  return value === 'responses' ? 'responses' : 'chat'
 }
 
 export function quickstartCodeSample({
   protocol,
   language,
   modelAlias,
+  apiMode = 'chat',
   endpoint = QUICKSTART_API_BASE_URL,
 }: {
   protocol: QuickstartProtocol
   language: QuickstartLanguage
   modelAlias: string
+  apiMode?: QuickstartApiMode
   endpoint?: string
 }): string {
   const baseEndpoint = endpoint.replace(/\/+$/, '')
   const rootEndpoint = baseEndpoint.replace(/\/v1$/i, '')
   const lineContinuation = '\\'
+
+  // 两种 OpenAI 接口共用样例入口，URL 中的接口模式与复制内容保持一致。
+  if (protocol === 'openai' && apiMode === 'responses') {
+    if (language === 'python') return [
+      'from openai import OpenAI', '', 'client = OpenAI(',
+      '    api_key="YOUR_TOKEN_NX_API_KEY",', `    base_url="${baseEndpoint}"`, ')', '',
+      'response = client.responses.create(', `    model="${modelAlias}",`, '    input="你好"', ')',
+      'print(response.output_text)',
+    ].join('\n')
+    if (language === 'node') return [
+      'import OpenAI from "openai";', '', 'const client = new OpenAI({',
+      '  apiKey: "YOUR_TOKEN_NX_API_KEY",', `  baseURL: "${baseEndpoint}"`, '});', '',
+      'const response = await client.responses.create({', `  model: "${modelAlias}",`, '  input: "你好"', '});',
+      'console.log(response.output_text);',
+    ].join('\n')
+    return [
+      `curl -X POST "${baseEndpoint}/responses" ${lineContinuation}`,
+      `  -H "Authorization: Bearer YOUR_TOKEN_NX_API_KEY" ${lineContinuation}`,
+      `  -H "Content-Type: application/json" ${lineContinuation}`,
+      `  -d '{"model":"${modelAlias}","input":"你好"}'`,
+    ].join('\n')
+  }
 
   if (protocol === 'openai' && language === 'python') {
     return [
@@ -68,7 +97,7 @@ export function quickstartCodeSample({
 
   if (protocol === 'openai') {
     return [
-      'curl ' + baseEndpoint + '/chat/completions ' + lineContinuation,
+      'curl -X POST "' + baseEndpoint + '/chat/completions" ' + lineContinuation,
       '  -H "Authorization: Bearer YOUR_TOKEN_NX_API_KEY" ' + lineContinuation,
       '  -H "Content-Type: application/json" ' + lineContinuation,
       '  -d \'{"model":"' + modelAlias + '","messages":[{"role":"user","content":"你好"}]}\'',
@@ -115,7 +144,7 @@ export function quickstartCodeSample({
 
   if (protocol === 'anthropic') {
     return [
-      'curl ' + baseEndpoint + '/messages ' + lineContinuation,
+      'curl -X POST "' + baseEndpoint + '/messages" ' + lineContinuation,
       '  -H "x-api-key: YOUR_TOKEN_NX_API_KEY" ' + lineContinuation,
       '  -H "anthropic-version: 2023-06-01" ' + lineContinuation,
       '  -H "Content-Type: application/json" ' + lineContinuation,

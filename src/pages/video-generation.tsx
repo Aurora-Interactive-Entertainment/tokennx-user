@@ -12,7 +12,7 @@ import { appToast } from '@/components/app-toast'
 import { CompatInput as Input, CompatSelect as Select } from '@/components/semi-compat'
 import { WaveBackground } from '@/components/wave-background'
 import { cancelVideoTask, getVideoTask, submitVideoGeneration, videoTaskIsTerminal, VideoRuntimeError, type VideoTask, type VideoTaskStatus } from '@/api/video-runtime'
-import { getAccessToken, clearAuthTokens } from '@/auth/token-storage'
+import { getAccessToken } from '@/auth/token-storage'
 import { isAuthenticationFailure } from '@/api/http'
 import { useAppDispatch, useAppSelector } from '@/store/hooks'
 import { invalidateAuth } from '@/store/auth-slice'
@@ -431,6 +431,7 @@ export function VideoPage() {
   const firstFrameInputRef = useRef<HTMLInputElement>(null)
   const lastFrameInputRef = useRef<HTMLInputElement>(null)
   const submitControllerRef = useRef<AbortController | null>(null)
+  const cancelControllerRef = useRef<AbortController | null>(null)
   const submitAbortReasonRef = useRef<'user' | 'navigation' | null>(null)
   // 记录列表里可以同时存在多条任务，轮询控制器按 taskId 各自持有：
   // 对某一条做操作（取消/删除/查历史）不应中断其他任务的轮询，否则那条会永远停在「生成中」。
@@ -457,9 +458,11 @@ export function VideoPage() {
   // 登录态失效统一清理并回首页，避免停在原页反复失败（与对话页、模型广场一致）。
   function redirectToLoginOnAuthFailure(error: unknown): boolean {
     if (!isAuthenticationFailure(error)) return false
-    clearAuthTokens({ force: true })
-    dispatch(invalidateAuth())
-    navigate('/', { replace: true })
+    // Runtime 已负责有归属的会话清理，页面只同步未认证状态，避免旧响应误清新账号。
+    if (!getAccessToken()) {
+      dispatch(invalidateAuth())
+      navigate('/', { replace: true })
+    }
     return true
   }
 
@@ -499,6 +502,7 @@ export function VideoPage() {
   useEffect(() => {
     submitAbortReasonRef.current = 'navigation'
     submitControllerRef.current?.abort()
+    cancelControllerRef.current?.abort()
     abortAllPolling()
     submitControllerRef.current = null
     setModelID(requestedModel)
@@ -545,6 +549,7 @@ export function VideoPage() {
   useEffect(() => () => {
     submitAbortReasonRef.current = 'navigation'
     submitControllerRef.current?.abort()
+    cancelControllerRef.current?.abort()
     abortAllPolling()
   }, [])
 
@@ -701,19 +706,24 @@ export function VideoPage() {
     stopPolling(entry.taskId)
     setCancelling(true)
     setRequestFailure(null)
+    const controller = new AbortController()
+    cancelControllerRef.current = controller
     try {
       const accessToken = getAccessToken()?.trim()
       if (!accessToken) throw new VideoRuntimeError(t('api.modelRuntime.accessTokenRequired'), 401, 'invalid_user_session', null)
-      const task = await cancelVideoTask(accessToken, entry.taskId)
+      const task = await cancelVideoTask(accessToken, entry.taskId, controller.signal)
+      if (controller.signal.aborted) return
       updateTask(task, entry)
       Toast.info(t('console.video.cancelRequested'))
       if (!videoTaskIsTerminal(task.status) && task.status !== 'unknown') void pollTask(task, entry)
     } catch (error: unknown) {
+      if (controller.signal.aborted || (error instanceof DOMException && error.name === 'AbortError')) return
       if (redirectToLoginOnAuthFailure(error)) return
       // 取消失败时任务还在跑，必须让用户看到原因；有任务在跑时工作区横幅会被抑制，所以直接弹提示。
       appToast.error(readVideoFailure(error, t('console.video.cancelFailed')).message)
       if (taskIsActive(historyTask(entry))) void pollTask(historyTask(entry), entry)
     } finally {
+      if (cancelControllerRef.current === controller) cancelControllerRef.current = null
       setCancelling(false)
     }
   }

@@ -87,6 +87,7 @@ export function ProfileContactDialog(props: ProfileContactDialogProps) {
   const [saving, setSaving] = useState(false)
   const sendingCode = useRef<Record<ContactPurpose, boolean>>({ current: false, new: false })
   const savingContact = useRef(false)
+  const sessionVersion = useRef(0)
 
   const isBound = props.currentContact.bound
   // 新值标签按渠道和绑定状态区分：邮箱首次绑定为"邮箱地址"，换绑时为"新邮箱地址"；手机号沿用通用文案。
@@ -98,6 +99,7 @@ export function ProfileContactDialog(props: ProfileContactDialogProps) {
     : t(isBound ? 'profile.contact.dialogEmailChange' : 'profile.contact.dialogEmailBind')
 
   useEffect(() => {
+    sessionVersion.current++
     if (!props.visible) return
     setValues(initialValues(props.currentDestination))
     setCodeStates(initialCodeStates())
@@ -105,6 +107,8 @@ export function ProfileContactDialog(props: ProfileContactDialogProps) {
     setSaving(false)
     sendingCode.current = { current: false, new: false }
     savingContact.current = false
+    // 关闭、切换联系方式或卸载后，旧请求不能再提示成功、写表单或关闭新弹窗。
+    return () => { sessionVersion.current++ }
   }, [props.visible, props.provider, props.currentContact.bound, props.currentDestination])
 
   const hasActiveCountdown = CONTACT_PURPOSES.some((purpose) => codeStates[purpose].retryAfter > 0)
@@ -156,7 +160,7 @@ export function ProfileContactDialog(props: ProfileContactDialogProps) {
   }
 
   async function sendCode(purpose: ContactPurpose): Promise<void> {
-    if (sendingCode.current[purpose] || codeStates[purpose].retryAfter > 0) return
+    if (!props.visible || savingContact.current || sendingCode.current[purpose] || codeStates[purpose].retryAfter > 0) return
     const field = destinationField(purpose)
     const error = contactDestinationError(values[field])
     if (error) {
@@ -172,6 +176,7 @@ export function ProfileContactDialog(props: ProfileContactDialogProps) {
       return
     }
     sendingCode.current[purpose] = true
+    const version = sessionVersion.current
     setCodeStates((previous) => ({ ...previous, [purpose]: { ...previous[purpose], loading: true } }))
     try {
       await sendProfileContactCode(props.accessToken, {
@@ -180,28 +185,31 @@ export function ProfileContactDialog(props: ProfileContactDialogProps) {
         destination: values[field].trim(),
         ...(props.provider === 'phone' ? { country_code: PROFILE_PHONE_COUNTRY_CODE } : {}),
       })
+      if (version !== sessionVersion.current) return
       setCodeStates((previous) => ({
         ...previous,
         [purpose]: { loading: false, retryAfter: PROFILE_DEFAULT_RETRY_SECONDS },
       }))
       appToast.success(t('profile.contact.codeSent'))
     } catch (error) {
+      if (version !== sessionVersion.current) return
       if (isAuthenticationFailure(error)) props.onAuthFailure()
       else appToast.error(contactRequestErrorMessage(error))
       setCodeStates((previous) => ({ ...previous, [purpose]: { ...previous[purpose], loading: false } }))
     } finally {
-      sendingCode.current[purpose] = false
+      if (version === sessionVersion.current) sendingCode.current[purpose] = false
     }
   }
 
   async function saveContact(): Promise<void> {
-    if (savingContact.current) return
+    if (!props.visible || savingContact.current) return
     if (!validateForm()) return
     if (!props.accessToken) {
       props.onAuthFailure()
       return
     }
     savingContact.current = true
+    const version = sessionVersion.current
     setSaving(true)
     try {
       const request = isBound
@@ -213,16 +221,26 @@ export function ProfileContactDialog(props: ProfileContactDialogProps) {
         }
         : { new_destination: values.newDestination.trim(), new_code: values.newCode.trim() }
       const profile = await updateProfileContact(props.accessToken, props.provider, request)
+      if (version !== sessionVersion.current) return
       if (props.provider === 'phone') saveVerifiedPhone(profile.id, values.newDestination)
       appToast.success(t('profile.contact.saved'))
       props.onSaved(profile)
     } catch (error) {
+      if (version !== sessionVersion.current) return
       if (isAuthenticationFailure(error)) props.onAuthFailure()
       else appToast.error(contactRequestErrorMessage(error))
     } finally {
-      savingContact.current = false
-      setSaving(false)
+      if (version === sessionVersion.current) {
+        savingContact.current = false
+        setSaving(false)
+      }
     }
+  }
+
+  function close(): void {
+    if (savingContact.current) return
+    sessionVersion.current++
+    props.onCancel()
   }
 
   function renderCodeControl(purpose: ContactPurpose): React.ReactNode {
@@ -237,6 +255,7 @@ export function ProfileContactDialog(props: ProfileContactDialogProps) {
           <Input
             id={`profile-${props.provider}-${field}`}
             value={values[field]}
+            disabled={saving}
             onChange={(value) => updateValue(field, value)}
             maxLength={PROFILE_VERIFICATION_CODE_LENGTH}
             inputMode="numeric"
@@ -250,7 +269,7 @@ export function ProfileContactDialog(props: ProfileContactDialogProps) {
           theme="outline"
           size="small"
           loading={state.loading}
-          disabled={state.loading || state.retryAfter > 0 || (purpose === 'current' && props.provider === 'phone' && !values.currentDestination)}
+          disabled={saving || state.loading || state.retryAfter > 0 || (purpose === 'current' && props.provider === 'phone' && !values.currentDestination)}
           onClick={() => { void sendCode(purpose) }}
         >
           {state.retryAfter > 0 ? t('profile.contact.retryAfter', { seconds: state.retryAfter }) : sendLabel}
@@ -270,14 +289,15 @@ export function ProfileContactDialog(props: ProfileContactDialogProps) {
       getPopupContainer={getContactModalContainer}
       maskClosable={!saving}
       closable={!saving}
+      closeOnEsc={!saving}
       footer={
         <div className="profile-dialog-footer">
           {/* 显式声明底部按钮主次类型，确保自定义 footer 也复用标准弹窗配色。 */}
-          <Button className="profile-secondary-button" theme="outline" type="tertiary" disabled={saving} onClick={props.onCancel}>{t('profile.contact.cancel')}</Button>
+          <Button className="profile-secondary-button" theme="outline" type="tertiary" disabled={saving} onClick={close}>{t('profile.contact.cancel')}</Button>
           <Button className="profile-primary-button" theme="solid" type="primary" loading={saving} disabled={saving} onClick={() => { void saveContact() }}>{t('profile.contact.save')}</Button>
         </div>
       }
-      onCancel={props.onCancel}
+      onCancel={close}
     >
       <div className={`profile-contact-dialog profile-contact-dialog--${props.provider} ${isBound ? 'is-bound' : 'is-unbound'}`}>
         {/* 首次绑定时没有原联系方式可展示，仅换绑（已绑定）才渲染当前值区块。 */}
@@ -288,6 +308,7 @@ export function ProfileContactDialog(props: ProfileContactDialogProps) {
               <Input
                 id={`profile-${props.provider}-current-destination`}
                 value={values.currentDestination}
+                disabled={saving}
                 onChange={(value) => updateValue('currentDestination', value)}
                 readonly={props.provider === 'phone'}
                 placeholder={t('profile.contact.currentDestinationPlaceholder')}
@@ -305,6 +326,7 @@ export function ProfileContactDialog(props: ProfileContactDialogProps) {
             <Input
               id={`profile-${props.provider}-new-destination`}
               value={values.newDestination}
+              disabled={saving}
               onChange={(value) => updateValue('newDestination', value)}
               placeholder={t(props.provider === 'phone' ? 'profile.contact.newDestinationPlaceholderPhone' : 'profile.contact.newDestinationPlaceholderEmail')}
               aria-invalid={Boolean(errors.newDestination)}

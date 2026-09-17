@@ -89,7 +89,7 @@ describe('展示格式与用量聚合', () => {
 
   it('按协议、语言和模型生成快速接入代码', () => {
     expect(normalizeQuickstartProtocol('invalid')).toBe('openai')
-    expect(normalizeQuickstartLanguage('invalid')).toBe('python')
+    expect(normalizeQuickstartLanguage('invalid')).toBe('curl')
     expect(quickstartCodeSample({ protocol: 'openai', language: 'python', modelAlias: 'deepseek-public' })).toContain('model="deepseek-public"')
     expect(quickstartCodeSample({ protocol: 'openai', language: 'node', modelAlias: 'gpt-public' })).toContain('baseURL')
     expect(quickstartCodeSample({ protocol: 'openai', language: 'curl', modelAlias: 'gpt-public' })).toContain('/chat/completions')

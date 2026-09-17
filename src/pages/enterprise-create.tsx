@@ -472,6 +472,7 @@ export function EnterpriseCreatePage() {
       setStartingFace(true);
       setFaceConfirmNotice(null);
       setErrorMessage("");
+      // 核验链接的失败由弹窗 notice 统一反馈，避免页面再弹一次相同错误。
       try {
         const result = await startEnterpriseFaceVerification(
           accessToken,
@@ -487,7 +488,6 @@ export function EnterpriseCreatePage() {
             title: t("console.enterpriseCreate.faceQrFailedTitle"),
             message,
           });
-          setErrorMessage(message);
         }
       } catch (error: unknown) {
         if (isAuthenticationFailure(error)) invalidateSession();
@@ -497,7 +497,6 @@ export function EnterpriseCreatePage() {
             title: t("console.enterpriseCreate.faceQrFailedTitle"),
             message,
           });
-          setErrorMessage(message);
         }
       } finally {
         setStartingFace(false);

@@ -308,4 +308,20 @@ describe('企业模型管理页面', () => {
     await waitFor(() => expect(getEnterpriseModelsMock).toHaveBeenCalledTimes(2))
     expect(await screen.findByRole('switch', { name: '启用 GPT-4o' })).toHaveAttribute('aria-checked', 'false')
   })
+
+  it('目录已有数据时刷新失败仍显示错误，并允许重试恢复最新版本', async () => {
+    const user = userEvent.setup()
+    getEnterpriseModelsMock.mockResolvedValueOnce(modelPage())
+      .mockRejectedValueOnce(new ApiError('模型刷新服务暂不可用', 503, 100003, 'request-refresh'))
+      .mockResolvedValueOnce(modelPage([{ ...GPT_MODEL, enabled: false, setting_version: 2 }]))
+    updateEnterpriseModelMock.mockRejectedValueOnce(new ApiError('版本冲突', 409, 140004, 'request-conflict'))
+    renderPage()
+
+    await user.click(await screen.findByRole('switch', { name: '禁用 GPT-4o' }))
+    const retry = await screen.findByRole('button', { name: '重试' })
+    expect(retry.closest('[role="alert"]')).toHaveTextContent('模型刷新服务暂不可用')
+    await user.click(retry)
+    expect(await screen.findByRole('switch', { name: '启用 GPT-4o' })).toHaveAttribute('aria-checked', 'false')
+    expect(getEnterpriseModelsMock).toHaveBeenCalledTimes(3)
+  })
 })

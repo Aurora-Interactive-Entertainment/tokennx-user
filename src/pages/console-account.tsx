@@ -37,6 +37,7 @@ import {
 import { TraeTableEmpty } from "@/components/trae-table-empty";
 import { TraePagination } from "@/components/trae-pagination";
 import { appToast } from "@/components/app-toast";
+import { RequestErrorPanel } from "@/components/request-error-panel";
 import { BackofficeMoneyText as MoneyText } from "@/components/money";
 import {
   CompatCard as Card,
@@ -2259,6 +2260,7 @@ export function InvitationsPage() {
   const [overview, setOverview] = useState<InvitationOverview | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [reloadToken, setReloadToken] = useState(0);
   const inviteLink = overview
     ? `${window.location.origin}/invite?invite_code=${encodeURIComponent(overview.invite_code)}`
     : "";
@@ -2266,6 +2268,7 @@ export function InvitationsPage() {
   useEffect(() => {
     const controller = new AbortController();
     setLoading(true);
+    setError("");
     getInvitationOverview({ signal: controller.signal })
       .then(setOverview)
       .catch((reason: unknown) => {
@@ -2281,7 +2284,7 @@ export function InvitationsPage() {
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [handleAuthFailure, navigate, t]);
+  }, [handleAuthFailure, navigate, reloadToken, t]);
 
   useEffect(() => {
     if (error) appToast.error(error);
@@ -2318,6 +2321,7 @@ export function InvitationsPage() {
           title={t("console.invitations.title")}
           description={t("console.invitations.description")}
         />
+        <RequestErrorPanel message={error || t("console.invitations.loadFailed")} onRetry={() => setReloadToken((value) => value + 1)} />
       </div>
     );
 

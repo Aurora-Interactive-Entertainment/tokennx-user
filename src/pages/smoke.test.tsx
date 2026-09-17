@@ -379,7 +379,7 @@ describe('页面主链冒烟场景', () => {
     expect(consentNotice?.compareDocumentPosition(loginButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(loginButton).toBeEnabled()
     await user.click(loginButton)
-    expect(screen.getByRole('status')).toHaveTextContent('请输入正确的手机号')
+    expect(screen.getByRole('alert', { name: 'warning type' })).toHaveTextContent('请输入正确的手机号')
   })
 
   it('模型目录展示五张轮播和三组三张模型卡片', async () => {
@@ -413,7 +413,7 @@ describe('页面主链冒烟场景', () => {
     expect(screen.getByRole('button', { name: '使用微信登录' }).querySelector('img')).toHaveAttribute('src', expect.stringContaining('wechat.png'))
     expect(screen.queryByLabelText('邮箱')).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '获取验证码' }))
-    expect(screen.getByRole('status')).toHaveTextContent('请输入正确的手机号')
+    expect(screen.getByRole('alert', { name: 'warning type' })).toHaveTextContent('请输入正确的手机号')
     await user.type(screen.getByLabelText('手机号'), '12345678901')
     await user.click(screen.getByRole('button', { name: '获取验证码' }))
     expect(fetchMock).not.toHaveBeenCalled()
@@ -444,7 +444,7 @@ describe('页面主链冒烟场景', () => {
     expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toMatchObject({ destination: '13800138000', country_code: '+86' })
   })
 
-  it('登录验证失败后清理会话并返回首页', async () => {
+  it('登录验证码401提示错误并保留当前页面和输入', async () => {
     const user = userEvent.setup()
     clearAuthTokens()
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
@@ -458,12 +458,30 @@ describe('页面主链冒烟场景', () => {
     await user.type(screen.getByLabelText('验证码'), '482915')
     await user.click(screen.getByRole('button', { name: '登录 / 注册' }))
 
-    expect(await screen.findByText('首页')).toBeInTheDocument()
+    expect(await screen.findByText('认证信息无效')).toBeInTheDocument()
+    expect(screen.getByLabelText('手机号')).toHaveValue('13800138000')
+    expect(screen.getByLabelText('验证码')).toHaveValue('482915')
+    expect(screen.queryByText('首页')).not.toBeInTheDocument()
     expect(fetchMock).toHaveBeenCalledTimes(1)
     expect(getAccessToken()).toBeNull()
   })
 
-  it('登录弹窗认证失败后关闭弹窗并返回首页', async () => {
+  it('发码401保留表单并提示，修改号码后可以再次请求', async () => {
+    const user = userEvent.setup()
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(apiResponse(null, 401, 160001, '该号码暂时无法发送验证码')).mockResolvedValueOnce(apiResponse({}))
+    renderLogin('/about')
+    await user.type(screen.getByLabelText('手机号'), '13800138000')
+    await user.click(screen.getByRole('button', { name: '获取验证码' }))
+    expect(await screen.findByText('该号码暂时无法发送验证码')).toBeInTheDocument()
+    expect(screen.getByLabelText('手机号')).toHaveValue('13800138000')
+    await user.clear(screen.getByLabelText('手机号'))
+    await user.type(screen.getByLabelText('手机号'), '13900139000')
+    await user.click(screen.getByRole('button', { name: '获取验证码' }))
+    expect(await screen.findByText('验证码已发送至 139****9000')).toBeInTheDocument()
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
+  it('登录弹窗验证码401保留弹窗和错误提示', async () => {
     const user = userEvent.setup()
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
       const url = String(input)
@@ -476,7 +494,9 @@ describe('页面主链冒烟场景', () => {
     await user.type(screen.getByLabelText('验证码'), '482915')
     await user.click(screen.getByRole('button', { name: '登录 / 注册' }))
 
-    expect(await screen.findByText('登录弹窗已关闭')).toBeInTheDocument()
+    expect(await screen.findByText('认证信息无效')).toBeInTheDocument()
+    expect(screen.queryByText('登录弹窗已关闭')).not.toBeInTheDocument()
+    expect(screen.getByLabelText('手机号')).toHaveValue('13800138000')
     expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 

@@ -548,6 +548,17 @@ describe('控制台模型接入页面', () => {
     expect(await screen.findByRole('button', { name: '编辑失败消息' })).toBeInTheDocument()
   })
 
+  it('模型目录加载失败后保留重试入口并恢复接口数据', async () => {
+    const user = userEvent.setup()
+    vi.mocked(globalThis.fetch).mockResolvedValueOnce(new Response(JSON.stringify({ code: 100003, msg: '模型目录暂不可用', data: {} }), { status: 503, headers: { 'Content-Type': 'application/json' } }))
+    renderConsolePage(<ConsoleModelsPage />)
+    const retry = await screen.findByRole('button', { name: '重试' })
+    expect(retry.closest('[role="alert"]')).toHaveTextContent('模型目录暂不可用')
+    await user.click(retry)
+    expect(await screen.findByText('后端 DeepSeek')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '重试' })).not.toBeInTheDocument()
+  })
+
   it('输入法确认候选不发送，结束组合后的普通 Enter 仍能发送', async () => {
     vi.mocked(streamChatCompletion).mockResolvedValue({ content: '正常回复', reasoning: '', requestId: 'req-ime', inputTokens: 1, outputTokens: 1, finishReason: 'stop', latencyMs: 1 })
     renderConsolePage(<PlaygroundPage />)
@@ -701,7 +712,11 @@ describe('控制台模型接入页面', () => {
 
   it('会话调用认证失效时清理令牌并跳转首页', async () => {
     const user = userEvent.setup()
-    vi.mocked(streamChatCompletion).mockRejectedValueOnce(new ModelRuntimeError('认证信息无效', 401, 'invalid_token', 'req-auth'))
+    vi.mocked(streamChatCompletion).mockImplementationOnce(async () => {
+      // Runtime 的401已完成刷新尝试和原会话清理，页面仅负责跳转。
+      clearAuthTokens()
+      throw new ModelRuntimeError('认证信息无效', 401, 'invalid_token', 'req-auth')
+    })
 
     renderConsolePage(<><PlaygroundPage /><CurrentPath /></>, ['/console/playground?model=deepseek-chat'])
     await user.type(await screen.findByLabelText('测试提示词'), '测试认证失效')

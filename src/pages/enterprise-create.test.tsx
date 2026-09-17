@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { clearAuthTokens, saveAuthTokens } from "@/auth/token-storage";
 import type { AuthResult } from "@/api/auth";
 import { ApiError } from "@/api/http";
+import { appToast } from "@/components/app-toast";
 import {
   confirmEnterpriseFaceVerification,
   getEnterpriseCertification,
@@ -454,6 +455,7 @@ describe("enterprise verification page", () => {
 
   it("keeps QR retry inside the dialog when face verification cannot start", async () => {
     const user = userEvent.setup();
+    const toastError = vi.spyOn(appToast, "error");
     getCertificationMock.mockResolvedValue(FACE_REQUIRED);
     startFaceMock.mockRejectedValue(new Error("face service unavailable"));
     renderPage();
@@ -462,6 +464,7 @@ describe("enterprise verification page", () => {
     const retryButton = await screen.findByRole("button", {
       name: i18n.t("console.enterpriseCreate.retryFaceQr"),
     });
+    expect(toastError).toHaveBeenCalledTimes(1);
     expect(
       screen.queryByRole("heading", { name: "法人扫码核验" }),
     ).not.toBeInTheDocument();

@@ -117,6 +117,7 @@ import {
   updateAuthenticatedUser,
 } from "@/store/auth-slice";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { AuthRecoveryNotice } from "@/auth/auth-recovery-notice";
 import {
   clearAuthTokens,
   getAccessToken,
@@ -1190,7 +1191,6 @@ function LoginPhoneField(props: LoginPhoneFieldProps) {
 
 export function LoginPanel({
   onSuccess,
-  onAuthFailure,
   inviteCode,
 }: {
   onSuccess: (user?: {
@@ -1221,7 +1221,6 @@ export function LoginPanel({
   const [bindingLoading, setBindingLoading] = useState(false);
   const phoneInputRef = useRef<HTMLInputElement>(null);
   const dispatch = useAppDispatch();
-  const navigate = useNavigate();
   const wechat = useWechatLogin({
     enabled: tab === "wechat",
     onSuccess,
@@ -1271,13 +1270,7 @@ export function LoginPanel({
   }
 
   function handleLoginError(error: unknown): void {
-    if (isAuthenticationFailure(error)) {
-      clearAuthTokens();
-      dispatch(invalidateAuth());
-      onAuthFailure?.();
-      navigate("/", { replace: true });
-      return;
-    }
+    // 登录和发码没有携带站点令牌；401 也可能只是验证码错误，应保留输入供重试。
     appToast.error(readLoginError(error));
   }
 
@@ -2428,14 +2421,18 @@ export function PublicHeader({
                       : undefined
                   }
                   onLogout={() => {
-                    void dispatch(logoutAuth()).finally(() => go("/"));
+                    void dispatch(logoutAuth()).then((action) => {
+                      if (!(logoutAuth.fulfilled.match(action) && action.payload === false)) go("/");
+                    });
                   }}
                 />
                 <button
                   className="public-mobile-logout"
                   type="button"
                   onClick={() => {
-                    void dispatch(logoutAuth()).finally(() => go("/"));
+                    void dispatch(logoutAuth()).then((action) => {
+                      if (!(logoutAuth.fulfilled.match(action) && action.payload === false)) go("/");
+                    });
                   }}
                 >
                   <span>{t("nav.logout")}</span>
@@ -2491,6 +2488,7 @@ export function PublicHeader({
           </div>
         </nav>
       </header>
+      <AuthRecoveryNotice />
       <AccountSettingsModal
         visible={accountSettingsOpen}
         onClose={() => setAccountSettingsOpen(false)}

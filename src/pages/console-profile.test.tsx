@@ -93,7 +93,7 @@ function authResult(): AuthResult {
   }
 }
 
-function mockProfileApi(config: { expireAccess?: boolean; refreshFails?: boolean; nicknameFailures?: number; phoneFailures?: number; emailFailures?: number; emailBound?: boolean; ownerEnterprises?: string[]; deletionPrecheck404?: boolean } = {}) {
+function mockProfileApi(config: { expireAccess?: boolean; refreshFails?: boolean; profileFailures?: number; missingPreferences?: number; nicknameFailures?: number; phoneFailures?: number; emailFailures?: number; emailBound?: boolean; ownerEnterprises?: string[]; deletionPrecheck404?: boolean } = {}) {
   let profile = structuredClone(PROFILE)
   if (config.emailBound) profile = { ...profile, email: { bound: true, masked_identifier: 'o***@example.com' } }
   let preferences = structuredClone(PREFERENCES)
@@ -101,6 +101,8 @@ function mockProfileApi(config: { expireAccess?: boolean; refreshFails?: boolean
   let nicknameFailures = config.nicknameFailures ?? 0
   let phoneFailures = config.phoneFailures ?? 0
   let emailFailures = config.emailFailures ?? 0
+  let profileFailures = config.profileFailures ?? 0
+  let missingPreferences = config.missingPreferences ?? 0
   const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, requestOptions) => {
     const url = String(input)
     const method = requestOptions?.method ?? 'GET'
@@ -110,14 +112,17 @@ function mockProfileApi(config: { expireAccess?: boolean; refreshFails?: boolean
       return apiResponse({ ...authResult(), access_token: 'refreshed-profile-token', refresh_token: 'rotated-profile-refresh' })
     }
     if (accessExpired && url.includes('/api/user/profile')) return apiResponse(null, 401, 110001, '认证信息无效')
-    if (url.endsWith('/api/user/profile') && method === 'GET') return apiResponse(profile)
+    if (url.endsWith('/api/user/profile') && method === 'GET') {
+      if (profileFailures-- > 0) return apiResponse(null, 503, 100007, '资料服务暂时不可用')
+      return apiResponse(profile)
+    }
     if (url.includes('/api/user/profile/enterprises?')) return apiResponse(ENTERPRISES)
     if (url.endsWith('/api/user/account-deletion/precheck')) {
       if (config.deletionPrecheck404) return apiResponse(null, 404, 0, 'Not Found')
       return apiResponse({ can_request: true, owner_enterprises: config.ownerEnterprises ?? [], member_count: ENTERPRISES.length, balance_policy: 'paid_balance_non_refundable' })
     }
     if (url.endsWith('/api/user/enterprise/01K0ENTERPRISEPUBLICIDEX01/context')) return apiResponse(ENTERPRISE_CONTEXT)
-    if (url.endsWith('/api/user/profile/notification-preferences') && method === 'GET') return apiResponse(preferences)
+    if (url.endsWith('/api/user/profile/notification-preferences') && method === 'GET') return apiResponse(missingPreferences-- > 0 ? null : preferences)
     if (url.endsWith('/api/user/profile/nickname') && method === 'PUT') {
       if (nicknameFailures > 0) {
         nicknameFailures -= 1
@@ -264,6 +269,31 @@ describe('个人设置页面', () => {
     expect(await screen.findByRole('heading', { name: '账户' })).toBeInTheDocument()
     expect(getAccessToken()).toBe('refreshed-profile-token')
     expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith('/api/auth/refresh'))).toBe(true)
+  })
+
+  it('资料暂时加载失败保留登录并提供重试入口，重试后恢复页面', async () => {
+    const user = userEvent.setup()
+    mockProfileApi({ profileFailures: 1 })
+    renderPage(true)
+    const retry = await screen.findByRole('button', { name: '重试' })
+    expect(getAccessToken()).toBe('profile-token')
+    expect(screen.getByTestId('location')).toHaveTextContent('/console/settings')
+    expect(screen.queryByRole('heading', { name: '账户' })).not.toBeInTheDocument()
+    await user.click(retry)
+    expect(await screen.findByRole('heading', { name: '账户' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '重试' })).not.toBeInTheDocument()
+  })
+
+  it('缺少设置资料时直接显示个人设置加载失败文案并可重试', async () => {
+    const user = userEvent.setup()
+    mockProfileApi({ missingPreferences: 1 })
+    renderPage()
+    const retry = await screen.findByRole('button', { name: '重试' })
+    expect(screen.getByRole('alert')).toHaveTextContent('个人设置加载失败')
+    expect(getAccessToken()).toBe('profile-token')
+    await user.click(retry)
+    expect(await screen.findByRole('heading', { name: '账户' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '重试' })).not.toBeInTheDocument()
   })
 
   it('资料接口和刷新令牌都认证失败时清理会话并返回首页', async () => {

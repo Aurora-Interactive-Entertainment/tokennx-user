@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { MODEL_API_BASE_URL } from '@/api/http'
-import { QUICKSTART_API_BASE_URL, normalizeQuickstartLanguage, normalizeQuickstartProtocol, quickstartCodeSample } from './quickstart'
+import { QUICKSTART_API_BASE_URL, normalizeQuickstartApiMode, normalizeQuickstartLanguage, normalizeQuickstartProtocol, quickstartCodeSample } from './quickstart'
 
 describe('快速接入代码样例', () => {
   it('使用模型运行时共用的配置 Base URL', () => {
@@ -13,8 +13,11 @@ describe('快速接入代码样例', () => {
     expect(normalizeQuickstartProtocol(null)).toBe('openai')
     expect(normalizeQuickstartProtocol('unsupported')).toBe('openai')
     expect(normalizeQuickstartProtocol('gemini')).toBe('gemini')
-    expect(normalizeQuickstartLanguage(null)).toBe('python')
-    expect(normalizeQuickstartLanguage('unsupported')).toBe('python')
+    expect(normalizeQuickstartLanguage(null)).toBe('curl')
+    expect(normalizeQuickstartLanguage('unsupported')).toBe('curl')
+    expect(normalizeQuickstartApiMode(null)).toBe('chat')
+    expect(normalizeQuickstartApiMode('unsupported')).toBe('chat')
+    expect(normalizeQuickstartApiMode('responses')).toBe('responses')
   })
 
   it('生成 OpenAI 三种语言的可执行请求地址', () => {
@@ -45,6 +48,28 @@ describe('快速接入代码样例', () => {
     expect(pythonSample).toContain('/v1/messages')
     expect(nodeSample).toContain('/v1/messages')
     expect([pythonSample, nodeSample, curlSample].every((sample) => sample.includes('YOUR_TOKEN_NX_API_KEY'))).toBe(true)
+  })
+
+  it.each(['curl', 'python', 'node'] as const)('Responses 的 %s 样例使用统一网关且不混用 Chat Completions', (language) => {
+    const sample = quickstartCodeSample({ protocol: 'openai', apiMode: 'responses', language, modelAlias: 'text-model', endpoint: 'https://gateway.example.com/v1/' })
+    expect(sample).toContain('https://gateway.example.com/v1')
+    expect(sample).toContain('text-model')
+    expect(sample).toContain(language === 'curl' ? '/responses' : 'client.responses.create')
+    expect(sample).not.toContain('chat.completions')
+    expect(sample).not.toContain('/chat/completions')
+  })
+
+  it.each([
+    { protocol: 'openai' as const, apiMode: 'chat' as const, path: '/v1/chat/completions', payloadKey: 'messages' },
+    { protocol: 'openai' as const, apiMode: 'responses' as const, path: '/v1/responses', payloadKey: 'input' },
+    { protocol: 'anthropic' as const, apiMode: 'chat' as const, path: '/v1/messages', payloadKey: 'messages' },
+    { protocol: 'gemini' as const, apiMode: 'chat' as const, path: '/v1beta/models/text-model:generateContent', payloadKey: 'contents' },
+  ])('$protocol / $apiMode 的 cURL 统一显式 POST、引号与有效 JSON', ({ protocol, apiMode, path, payloadKey }) => {
+    const sample = quickstartCodeSample({ protocol, apiMode, language: 'curl', modelAlias: 'text-model', endpoint: 'https://gateway.example.com/v1/' })
+    expect(sample.split('\n')[0]).toBe(`curl -X POST "https://gateway.example.com${path}" \\`)
+    expect(sample).toContain('-H "Content-Type: application/json"')
+    const payload = sample.match(/  -d '(.*)'$/)?.[1]
+    expect(JSON.parse(payload!)).toHaveProperty(payloadKey)
   })
 
   it('生成 Gemini 官方 SDK 和 REST 请求样例', () => {

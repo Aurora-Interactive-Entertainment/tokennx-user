@@ -11,6 +11,7 @@ import { IconAlertTriangle, IconArrowLeft, IconArrowRight, IconArrowUp, IconChev
 import { CopyOutlineIcon } from "@/components/copy-outline-icon";
 import { EmptyPanel, ModelCard, ModelLogo, PageTitle } from '@/components/common'
 import { appToast } from '@/components/app-toast'
+import { RequestErrorPanel } from '@/components/request-error-panel'
 import { ModelDetailDrawer } from '@/components/model-detail-drawer'
 import { MarkdownContent } from '@/components/markdown-content'
 import { BackofficeMoneyText as MoneyText } from '@/components/money'
@@ -60,7 +61,7 @@ export function ConsoleModelsPage() {
   // 关键词搜索由后端完成，此时不能启用服务端分页参数（结果集已被检索过滤）。
   // 模型类型同样不能交给后端过滤：服务端只返回当前类型的模型，分类计数会因此丢掉其他类型的数量。
   const canUseServerPagination = category === 'all' && !debouncedKeyword && company === 'all' && priceFilter === 'all' && sort === 'default'
-  const { models: userModels, activities, total: apiTotal, page: apiPage, pageSize: apiPageSize, loading, error } = useUserModels({ activityId: activityId || undefined, ...(debouncedKeyword ? { keyword: debouncedKeyword } : {}), ...(canUseServerPagination ? { page, pageSize } : {}) })
+  const { models: userModels, activities, total: apiTotal, page: apiPage, pageSize: apiPageSize, loading, error, refresh } = useUserModels({ activityId: activityId || undefined, ...(debouncedKeyword ? { keyword: debouncedKeyword } : {}), ...(canUseServerPagination ? { page, pageSize } : {}) })
   const [detailModel, setDetailModel] = useState<ModelRecord | null>(null)
   const requestedDetailState = useUserModelDetail(requestedModelAlias)
   const detailState = useUserModelDetail(requestedModelAlias ?? (detailModel ? modelAlias(detailModel) : null))
@@ -157,6 +158,7 @@ export function ConsoleModelsPage() {
   return <div className="page-stack models-console-page">
     <PageTitle title={t('console.models.title')} description={t('console.models.description')} />
     {loading ? <EmptyPanel title={t('console.common.loadingModels')} description={t('console.common.readingModels')} /> : null}
+    {error ? <RequestErrorPanel message={error} onRetry={refresh} retrying={loading} /> : null}
     {!loading && !error ? <>
     <div className="models-toolbar">
       <Input className="app-standard-input models-search-input" size="large" prefix={<IconSearch aria-hidden="true" />} value={query} onChange={(value) => updateFilter(() => setQuery(value))} placeholder={t('console.models.searchPlaceholder')} aria-label={t('console.models.searchPlaceholder').replace('...', '')} showClear />
@@ -379,7 +381,7 @@ export function PlaygroundPage() {
     if (!canContinueConversation && !replacingCompleteAttempt) { Toast.warning(t('console.playground.newSessionLimit')); return }
     const accessToken = getAccessToken()
     if (!accessToken) {
-      clearAuthTokens({ force: true })
+      clearAuthTokens()
       dispatch(invalidateAuth())
       navigate('/', { replace: true })
       return
@@ -470,9 +472,11 @@ export function PlaygroundPage() {
         return
       }
       if (error instanceof ModelRuntimeError && error.status === 401) {
-        clearAuthTokens({ force: true })
-        dispatch(invalidateAuth())
-        navigate('/', { replace: true })
+        // Runtime 已按原会话清理；迟到的页面回调不能再清掉刚同步的新登录。
+        if (!getAccessToken()) {
+          dispatch(invalidateAuth())
+          navigate('/', { replace: true })
+        }
         return
       }
       const message = modelErrorMessage(error, t)

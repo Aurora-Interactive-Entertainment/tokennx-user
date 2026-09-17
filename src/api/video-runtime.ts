@@ -1,4 +1,5 @@
-import { MODEL_API_BASE_URL } from './http'
+import { MODEL_API_BASE_URL, isApiError } from './http'
+import { withAuthenticatedSession } from './authenticated'
 import i18n, { getActiveLanguage } from '@/i18n'
 
 const VIDEO_TASK_PATH = '/videos'
@@ -205,7 +206,20 @@ function hasBusinessError(payload: RecordValue): boolean {
 }
 
 async function requestVideoTask(path: string, options: RequestInit, requestId: string, fallbackTaskId = ''): Promise<VideoTask> {
-  const response = await fetch(`${MODEL_API_BASE_URL}${path}`, options)
+  const originalHeaders = new Headers(options.headers)
+  const accessToken = originalHeaders.get('Authorization')?.replace(/^Bearer\s+/i, '')
+  const response = await withAuthenticatedSession({ accessToken, signal: options.signal }, async (currentAccessToken) => {
+    const headers = new Headers(originalHeaders)
+    headers.set('Authorization', `Bearer ${currentAccessToken}`)
+    // 保留请求号和提交幂等键，只重试尚未成功创建/查询/取消任务的 HTTP 401。
+    const attemptedResponse = await fetch(`${MODEL_API_BASE_URL}${path}`, { ...options, headers })
+    if (!attemptedResponse.ok) {
+      const payload = parsePayload(await attemptedResponse.text())
+      const error = errorPayloadMessage(payload ?? {})
+      throw new VideoRuntimeError(error.message, attemptedResponse.status, error.code, attemptedResponse.headers.get('X-Request-ID') ?? requestId)
+    }
+    return attemptedResponse
+  })
   const responseRequestId = response.headers.get('X-Request-ID') ?? requestId
   // 成功响应可能包含长提示词或 metadata，必须完整解析，仅裁剪展示用的错误文案。
   const body = await response.text()
@@ -264,9 +278,11 @@ export async function submitVideoGeneration(input: VideoGenerationInput): Promis
     }, requestId)
   } catch (error) {
     if (error instanceof VideoRuntimeError) throw error
+    if (isApiError(error)) throw new VideoRuntimeError(error.message, error.status, String(error.code), error.requestId)
     // 调用方主动取消与请求超时使用不同语义，避免停止生成后误报超时。
     if (input.signal?.aborted) throw error
     if (error instanceof DOMException && error.name === 'AbortError') {
+      if (!requestController.controller.signal.aborted) throw error
       throw new VideoRuntimeError(i18n.t('api.videoRuntime.timeout'), 408, 'request_timeout', requestId)
     }
     throw new VideoRuntimeError(i18n.t('api.videoRuntime.networkFailure'), 0, 'network_error', requestId)
@@ -297,8 +313,10 @@ export async function getVideoTask(accessToken: string, taskId: string, signal?:
     }, requestId, normalizedTaskId)
   } catch (error) {
     if (error instanceof VideoRuntimeError) throw error
+    if (isApiError(error)) throw new VideoRuntimeError(error.message, error.status, String(error.code), error.requestId)
     if (signal?.aborted) throw error
     if (error instanceof DOMException && error.name === 'AbortError') {
+      if (!requestController.controller.signal.aborted) throw error
       throw new VideoRuntimeError(i18n.t('api.videoRuntime.timeout'), 408, 'request_timeout', requestId)
     }
     throw new VideoRuntimeError(i18n.t('api.videoRuntime.networkFailure'), 0, 'network_error', requestId)
@@ -329,8 +347,10 @@ export async function cancelVideoTask(accessToken: string, taskId: string, signa
     }, requestId, normalizedTaskId)
   } catch (error) {
     if (error instanceof VideoRuntimeError) throw error
+    if (isApiError(error)) throw new VideoRuntimeError(error.message, error.status, String(error.code), error.requestId)
     if (signal?.aborted) throw error
     if (error instanceof DOMException && error.name === 'AbortError') {
+      if (!requestController.controller.signal.aborted) throw error
       throw new VideoRuntimeError(i18n.t('api.videoRuntime.timeout'), 408, 'request_timeout', requestId)
     }
     throw new VideoRuntimeError(i18n.t('api.videoRuntime.networkFailure'), 0, 'network_error', requestId)

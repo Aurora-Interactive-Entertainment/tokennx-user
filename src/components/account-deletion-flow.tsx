@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { TFunction } from 'i18next'
 import Button from '@douyinfe/semi-ui/lib/es/button'
 import Modal from '@/components/app-modal'
@@ -51,6 +51,9 @@ export function AccountDeletionFlow({ visible, profile, enterprises, onClose, on
   const [retryAfter, setRetryAfter] = useState(0)
   const [sending, setSending] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const sessionVersion = useRef(0)
+  const inputs = useRef({ enterprises, onClose, onAuthFailure })
+  inputs.current = { enterprises, onClose, onAuthFailure }
 
   const phoneBound = Boolean(profile?.phone.bound)
   const emailBound = Boolean(profile?.email.bound)
@@ -60,9 +63,10 @@ export function AccountDeletionFlow({ visible, profile, enterprises, onClose, on
   ], [emailBound, phoneBound])
 
   const checkBeforeDeletion = useCallback(async (): Promise<void> => {
+    const version = sessionVersion.current
     const accessToken = getAccessToken()
     if (!accessToken) {
-      onAuthFailure()
+      inputs.current.onAuthFailure()
       return
     }
     setChecking(true)
@@ -74,7 +78,10 @@ export function AccountDeletionFlow({ visible, profile, enterprises, onClose, on
       } catch (error) {
         // 部分旧版后端尚未发布 precheck 路由，使用企业关系接口完成同等阻断判断，避免用户被 404 卡死。
         if (!isApiError(error) || error.status !== 404) throw error
-        membershipResult = await getProfileEnterprises(accessToken).catch(() => enterprises)
+        membershipResult = await getProfileEnterprises(accessToken).catch((error: unknown) => {
+          if (isAuthenticationFailure(error)) throw error
+          return inputs.current.enterprises
+        })
         const ownerEnterprises = membershipResult.filter((item) => item.owner && item.member_status !== 'closed').map((item) => item.enterprise_name)
         result = {
           can_request: ownerEnterprises.length === 0,
@@ -82,24 +89,36 @@ export function AccountDeletionFlow({ visible, profile, enterprises, onClose, on
           member_count: membershipResult.length,
           balance_policy: 'paid_balance_non_refundable',
         }
-        setOwnerMemberships(membershipResult.filter((item) => item.owner))
       }
       // 检查通过后再读取企业关系，用于展示企业统一社会信用代码；失败时不阻断注销主流程。
-      if (!membershipResult) membershipResult = await getProfileEnterprises(accessToken).catch(() => enterprises)
+      if (!membershipResult) membershipResult = await getProfileEnterprises(accessToken).catch((error: unknown) => {
+        if (isAuthenticationFailure(error)) throw error
+        return inputs.current.enterprises
+      })
+      if (version !== sessionVersion.current) return
       setOwnerMemberships(membershipResult.filter((item) => item.owner))
       setPrecheck(result)
       if (result.owner_enterprises.length > 0) setStep('enterprise')
       else if (result.can_request) setStep('confirm')
-      else appToast.error(t('api.profile.accountDeletionConflict'))
+      else {
+        appToast.error(t('api.profile.accountDeletionConflict'))
+        inputs.current.onClose()
+      }
     } catch (error: unknown) {
-      if (isAuthenticationFailure(error)) onAuthFailure()
-      else appToast.error(getProfileErrorMessage(error))
+      if (version !== sessionVersion.current) return
+      if (isAuthenticationFailure(error)) inputs.current.onAuthFailure()
+      else {
+        appToast.error(getProfileErrorMessage(error))
+        // 预检阶段没有可操作弹窗，失败后释放外层开关，允许从原入口再次发起。
+        inputs.current.onClose()
+      }
     } finally {
-      setChecking(false)
+      if (version === sessionVersion.current) setChecking(false)
     }
-  }, [enterprises, onAuthFailure, t])
+  }, [t])
 
   useEffect(() => {
+    sessionVersion.current++
     if (!visible) return
     setStep('checking')
     setPrecheck(null)
@@ -107,11 +126,13 @@ export function AccountDeletionFlow({ visible, profile, enterprises, onClose, on
     setCode('')
     setCodeSent(false)
     setRetryAfter(0)
+    setSending(false)
     setSubmitting(false)
     const savedPhone = profile?.id ? getVerifiedPhone(profile.id) : null
     setProvider(savedPhone && phoneBound ? 'phone' : availableProviders[0] ?? 'phone')
     setDestination(savedPhone && phoneBound ? savedPhone : '')
     void checkBeforeDeletion()
+    return () => { sessionVersion.current++ }
   }, [availableProviders, checkBeforeDeletion, phoneBound, profile?.id, visible])
 
   useEffect(() => {
@@ -122,6 +143,7 @@ export function AccountDeletionFlow({ visible, profile, enterprises, onClose, on
 
   function closeFlow(): void {
     if (checking || sending || submitting) return
+    sessionVersion.current++
     setStep('checking')
     onClose()
   }
@@ -135,6 +157,7 @@ export function AccountDeletionFlow({ visible, profile, enterprises, onClose, on
       return
     }
     if (sending || retryAfter > 0) return
+    const version = sessionVersion.current
     setSending(true)
     try {
       await sendProfileContactCode(accessToken, {
@@ -143,36 +166,42 @@ export function AccountDeletionFlow({ visible, profile, enterprises, onClose, on
         destination: normalizedDestination,
         ...(provider === 'phone' ? { country_code: PROFILE_PHONE_COUNTRY_CODE } : {}),
       })
+      if (version !== sessionVersion.current) return
       setCodeSent(true)
       setRetryAfter(PROFILE_DEFAULT_RETRY_SECONDS)
       appToast.success(t('profile.security.deleteContactCodeSent'))
     } catch (error: unknown) {
+      if (version !== sessionVersion.current) return
       if (isAuthenticationFailure(error)) onAuthFailure()
       else appToast.error(getProfileErrorMessage(error))
     } finally {
-      setSending(false)
+      if (version === sessionVersion.current) setSending(false)
     }
   }
 
   async function submitDeletion(): Promise<void> {
+    if (submitting) return
     const accessToken = getAccessToken()
     if (!accessToken) return onAuthFailure()
     if (!isValidContactDestination(provider, destination) || !isValidVerificationCode(code)) {
       appToast.error(t('profile.security.deleteContactCodeInvalid'))
       return
     }
+    const version = sessionVersion.current
     setSubmitting(true)
     try {
       await requestAccountDeletion(accessToken, { confirm: true, provider_code: provider, destination: destination.trim(), code: code.trim() })
+      if (version !== sessionVersion.current) return
       // 只有服务端返回成功后才清理令牌，避免网络超时造成不可重试的误判。
       clearAuthTokens({ force: true })
       appToast.success(t('profile.security.deleteSuccess'))
       onSuccess()
     } catch (error: unknown) {
+      if (version !== sessionVersion.current) return
       if (isAuthenticationFailure(error)) onAuthFailure()
       else appToast.error(getProfileErrorMessage(error))
     } finally {
-      setSubmitting(false)
+      if (version === sessionVersion.current) setSubmitting(false)
     }
   }
 
@@ -220,7 +249,7 @@ export function AccountDeletionFlow({ visible, profile, enterprises, onClose, on
       <div className="account-deletion-contact-body">
         <p>{t('profile.security.deleteContactDescription')}</p>
         {availableProviders.length > 1 ? <div className="account-deletion-provider-switch" role="tablist" aria-label={t('profile.security.deleteContactTitle')}>
-          {availableProviders.map((item) => <button type="button" role="tab" aria-selected={provider === item} className={provider === item ? 'is-active' : ''} key={item} onClick={() => { setProvider(item); setDestination(''); setCode(''); setCodeSent(false) }}>{item === 'phone' ? t('profile.security.deleteContactProviderPhone') : t('profile.security.deleteContactProviderEmail')}</button>)}
+          {availableProviders.map((item) => <button type="button" role="tab" aria-selected={provider === item} className={provider === item ? 'is-active' : ''} key={item} disabled={sending || submitting} onClick={() => { setProvider(item); setDestination(''); setCode(''); setCodeSent(false) }}>{item === 'phone' ? t('profile.security.deleteContactProviderPhone') : t('profile.security.deleteContactProviderEmail')}</button>)}
         </div> : null}
         <label>{contactLabel}<input value={destination} disabled={sending || submitting} onChange={(event) => setDestination(event.target.value)} autoComplete="off" inputMode={provider === 'phone' ? 'tel' : 'email'} /></label>
         <div className="account-deletion-code-row"><label>{t('profile.security.deleteContactCode')}<input value={code} disabled={!codeSent || submitting} onChange={(event) => setCode(event.target.value.replace(/\D/g, '').slice(0, 6))} inputMode="numeric" placeholder={t('profile.security.deleteContactCodePlaceholder')} /></label><Button theme="outline" size="small" loading={sending} disabled={sending || submitting || retryAfter > 0} onClick={() => void sendCode()}>{retryAfter > 0 ? t('profile.security.deleteContactResend', { seconds: retryAfter }) : t('profile.security.deleteContactSend')}</Button></div>

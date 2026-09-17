@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef } from 'react'
 import SemiModal, { type ModalReactProps } from '@douyinfe/semi-ui/lib/es/modal'
+import { retainModalPageStyle } from './modal-page-state'
 import './app-modal.css'
 
 const defaultModalContainer = () => document.getElementById('app-mount') ?? document.body
@@ -23,13 +24,13 @@ export default function AppModal(props: ModalReactProps) {
     let frameOne = 0
     let frameTwo = 0
     let timer = 0
+    let releaseScrollBehavior: (() => void) | undefined
     const restore = () => {
-      const root = document.documentElement
-      const previousScrollBehavior = root.style.scrollBehavior
-      root.style.scrollBehavior = 'auto'
+      releaseScrollBehavior = retainModalPageStyle('scroll-behavior', 'auto')
       window.scrollTo({ left: position.left, top: position.top, behavior: 'instant' as ScrollBehavior })
       frameTwo = window.requestAnimationFrame(() => {
-        root.style.scrollBehavior = previousScrollBehavior
+        releaseScrollBehavior?.()
+        releaseScrollBehavior = undefined
         if (!props.visible) openingScrollPosition.current = null
       })
     }
@@ -48,16 +49,15 @@ export default function AppModal(props: ModalReactProps) {
       window.clearTimeout(timer)
       window.cancelAnimationFrame(frameOne)
       window.cancelAnimationFrame(frameTwo)
+      // 快速关闭或卸载可能取消恢复帧，清理时也必须释放临时滚动样式。
+      releaseScrollBehavior?.()
     }
   }, [props.visible])
 
   useLayoutEffect(() => {
     if (!props.visible || typeof document === 'undefined') return
     const pageWidth = document.body.getBoundingClientRect().width
-    document.documentElement.style.setProperty('--modal-page-width', `${pageWidth}px`)
-    return () => {
-      document.documentElement.style.removeProperty('--modal-page-width')
-    }
+    return retainModalPageStyle('--modal-page-width', `${pageWidth}px`)
   }, [props.visible])
 
   const getPopupContainer = props.getPopupContainer ?? defaultModalContainer

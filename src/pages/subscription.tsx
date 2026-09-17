@@ -9,6 +9,7 @@ import { getBillingErrorMessage } from "@/api/billing";
 import { isAuthenticationFailure } from "@/api/http";
 import { PageTitle } from "@/components/common";
 import { appToast } from "@/components/app-toast";
+import { RequestErrorPanel } from "@/components/request-error-panel";
 import { useAppStore } from "@/data/app-state";
 import { invalidateAuth } from "@/store/auth-slice";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
@@ -116,7 +117,8 @@ export function SubscriptionPage() {
         title={t("console.subscriptionPage.title")}
         actions={<Button theme="borderless" onClick={loadPurchasedPlans} loading={loading} aria-label={t("console.subscriptionPage.refresh")}>↻</Button>}
       />
-      {loading ? null : subscribedModels.length > 0 ? (
+      {/* 加载失败与确实未订阅分开呈现，避免把接口错误误导成需要重新购买。 */}
+      {error ? <RequestErrorPanel message={error} onRetry={loadPurchasedPlans} retrying={loading} /> : loading ? null : subscribedModels.length > 0 ? (
         <div className="subscription-overview-grid subscription-models-only" aria-label={t("console.subscriptionPage.currentSection")}>
           {subscribedModels.map((model, index) => <SubscriptionUsageCard key={`${model.name}-${index}`} model={model} />)}
         </div>

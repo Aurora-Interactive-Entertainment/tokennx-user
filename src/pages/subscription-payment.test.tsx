@@ -34,6 +34,18 @@ beforeEach(() => {
 })
 
 describe('套餐到账后的已购权益同步', () => {
+  it('权益查询失败展示重试入口而非空订阅，恢复后显示真实套餐', async () => {
+    vi.mocked(getPurchasedProductPlans)
+      .mockRejectedValueOnce(new Error('offline'))
+      .mockResolvedValue({ items: [{ id: 'existing-entitlement', models: [{ model_name: '已有套餐模型', entitlement_mode: 'token_quota', token_quota_total: '1000', token_quota_remaining: '1000' }] }], total: 1, page: 1, page_size: 100 } as never)
+    render(<MemoryRouter><Provider store={createAppStore()}><SubscriptionPage /></Provider></MemoryRouter>)
+    const error = await screen.findByRole('alert')
+    expect(document.querySelector('.subscription-empty-state')).toBeNull()
+    fireEvent.click(within(error).getByRole('button', { name: '重试' }))
+    expect(await screen.findByRole('heading', { name: '已有套餐模型' })).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
   it('其他账号或主体的通知不刷新，当前主体通知刷新，卸载后停止监听', async () => {
     const store = createAppStore()
     store.dispatch({ type: 'auth/loginWithEmail/fulfilled', payload: { id: 'synthetic-user', display_name: 'Synthetic user', status: 'active' } })

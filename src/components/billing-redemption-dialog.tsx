@@ -27,15 +27,17 @@ export function BillingRedemptionDialog({ visible, onClose, onSuccess, onAuthFai
     }
   }, [visible])
 
-  useEffect(() => {
-    if (error) Toast.error(error)
-  }, [error])
+  function showError(message: string): void {
+    setError(message)
+    // 用户每次主动提交都应收到反馈，不能依赖相同错误字符串触发状态变化。
+    Toast.error(message)
+  }
 
   async function submit(): Promise<void> {
     if (submitting) return
     const normalized = code.trim()
     if (!/^[A-Za-z0-9]{12}$/.test(normalized)) {
-      setError(i18n.t('console.billing.redeemCodeInvalid'))
+      showError(i18n.t('console.billing.redeemCodeInvalid'))
       return
     }
     setSubmitting(true)
@@ -50,7 +52,7 @@ export function BillingRedemptionDialog({ visible, onClose, onSuccess, onAuthFai
         onAuthFailure?.()
         return
       }
-      setError(getBillingErrorMessage(reason))
+      showError(getBillingErrorMessage(reason))
     } finally {
       setSubmitting(false)
     }

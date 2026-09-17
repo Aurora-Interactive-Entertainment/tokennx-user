@@ -7,6 +7,7 @@ import Spin from '@douyinfe/semi-ui/lib/es/spin'
 import { PublicLayout } from '@/components/common'
 import { MarkdownContent } from '@/components/markdown-content'
 import { appToast } from '@/components/app-toast'
+import { RequestErrorPanel } from '@/components/request-error-panel'
 import { getNewsList, getNewsDetail, resolveNewsContentImageUrl, type NewsArticle, type NewsDetail } from '@/api/news'
 import { apiTimeToDate, apiTimeToISOString, type ApiTimeValue } from '@/utils/format'
 import { isApiError } from '@/api/http'
@@ -77,11 +78,13 @@ export function NewsListPage() {
   const [page, setPage] = useState(1)
   const [error, setError] = useState<string | null>(null)
   const requestVersion = useRef(0)
+  const lastRequest = useRef({ page: 1, append: false })
   const locale = i18n.language.toLowerCase().startsWith('en') ? 'en-US' as const : 'zh-CN' as const
   const localizedNewsLabel = t('news.title')
 
   const loadNews = useCallback(async (pageNum: number, append = false) => {
     const version = ++requestVersion.current
+    lastRequest.current = { page: pageNum, append }
     if (append) setLoadingMore(true)
     else setLoading(true)
     setError(null)
@@ -122,6 +125,7 @@ export function NewsListPage() {
           <p className="news-list-subtitle">{t('news.subtitle')}</p>
         </header>
 
+        {error ? <RequestErrorPanel message={error} retrying={loading || loadingMore} onRetry={() => void loadNews(lastRequest.current.page, lastRequest.current.append)} /> : null}
         {loading && !articles.length ? <NewsListSkeleton /> : articles.length ? (
           <>
             <div className="news-list-grid">{articles.map((article, index) => <NewsCard key={article.id} article={article} language={i18n.language} index={index} localizedNewsLabel={localizedNewsLabel} />)}</div>
@@ -131,7 +135,7 @@ export function NewsListPage() {
               </button> : <p className="news-list-end">{t('news.noMore')}</p>}
             </div>
           </>
-        ) : <div className="news-list-state"><h2>{t('news.empty')}</h2><p>{t('news.emptyDescription')}</p></div>}
+        ) : !error ? <div className="news-list-state"><h2>{t('news.empty')}</h2><p>{t('news.emptyDescription')}</p></div> : null}
       </div>
     </PublicLayout>
   )
@@ -159,6 +163,7 @@ export function NewsDetailPage() {
   const navigate = useNavigate()
   const [article, setArticle] = useState<NewsDetail | null>(null)
   const [loading, setLoading] = useState(true)
+  const [reloadToken, setReloadToken] = useState(0)
   const [error, setError] = useState<{ message: string; requestId: string | null } | null>(null)
   const locale = i18n.language.toLowerCase().startsWith('en') ? 'en-US' as const : 'zh-CN' as const
   const localizedNewsLabel = t('news.title')
@@ -177,14 +182,14 @@ export function NewsDetailPage() {
       setError({ message: caught instanceof Error ? caught.message : t('api.http.requestFailed'), requestId: isApiError(caught) ? caught.requestId : null })
     })
     return () => controller.abort()
-  }, [id, locale, t])
+  }, [id, locale, reloadToken, t])
 
   return (
     <PublicLayout mainClassName="news-page--manuscript">
       <div className="news-detail-container">
         <Link to={publicPath('/news', locale)} className="news-detail-back"><IconArrowLeft aria-hidden="true" /><span>{t('news.blog')}</span></Link>
         {loading ? <NewsDetailSkeleton /> : error || !article ? (
-          <div className="news-detail-state news-detail-error" role="alert"><h1>{t('news.notFound')}</h1><p>{error?.message || t('news.notFoundDescription')}</p><button type="button" onClick={() => navigate(publicPath('/news', locale))}>{t('news.backToList')}</button></div>
+          <div className="news-detail-state news-detail-error"><h1>{t(error ? 'news.title' : 'news.notFound')}</h1>{error ? <RequestErrorPanel message={error.message} requestId={error.requestId} onRetry={() => setReloadToken((value) => value + 1)} /> : <p>{t('news.notFoundDescription')}</p>}<button type="button" onClick={() => navigate(publicPath('/news', locale))}>{t('news.backToList')}</button></div>
         ) : <article className="news-detail-article" key={`${id}-${locale}`}>
           <header className="news-detail-header">
             <div className="news-detail-meta">{newsTags(article, localizedNewsLabel).map((tag, index) => <span className="news-detail-category" key={`${tag}-${index}`}>{tag}</span>)}</div>

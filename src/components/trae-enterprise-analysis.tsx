@@ -540,6 +540,8 @@ export function TraeEnterpriseAnalysis({ context }: AnalysisProps) {
     return [addDays(today, -29), today];
   });
   const [members, setMembers] = useState<EnterpriseMember[]>([]);
+  const [membersError, setMembersError] = useState<EnterpriseRequestError | null>(null);
+  const [membersReloadToken, setMembersReloadToken] = useState(0);
   const [data, setData] = useState<EnterpriseAnalyticsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<EnterpriseRequestError | null>(null);
@@ -547,16 +549,18 @@ export function TraeEnterpriseAnalysis({ context }: AnalysisProps) {
 
   useEffect(() => {
     const controller = new AbortController();
+    setMembersError(null);
     getAllEnterpriseMembers(
       { enterprise_id: context.id },
       { signal: controller.signal },
     )
       .then(setMembers)
       .catch((reason: unknown) => {
-        if (!controller.signal.aborted) handleError(reason);
+        // 成员筛选目录独立失败时仍保留统计内容，同时提供目录重试入口。
+        if (!controller.signal.aborted) setMembersError(handleError(reason));
       });
     return () => controller.abort();
-  }, [context.id, handleError]);
+  }, [context.id, handleError, membersReloadToken]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -639,6 +643,8 @@ export function TraeEnterpriseAnalysis({ context }: AnalysisProps) {
         </Select>
         <TraeDateRangePicker value={dateRange} onChange={setDateRange} />
       </div>
+
+      {membersError ? <EnterpriseError message={membersError.message} requestId={membersError.requestId} onRetry={() => setMembersReloadToken((value) => value + 1)} /> : null}
 
       {error ? (
         <EnterpriseError

@@ -264,7 +264,7 @@ describe('视频生成页面', () => {
     await waitFor(() => expect(submitVideoGeneration).toHaveBeenCalledTimes(1))
     await user.click(within(screen.getByRole('article')).getByRole('button', { name: '取消生成' }))
 
-    await waitFor(() => expect(cancelVideoTask).toHaveBeenCalledWith('user-access-token', 'task-video-1'))
+    await waitFor(() => expect(cancelVideoTask).toHaveBeenCalledWith('user-access-token', 'task-video-1', expect.any(AbortSignal)))
     await waitFor(() => expect(getVideoTask).toHaveBeenCalledWith('user-access-token', 'task-video-1', expect.anything()), { timeout: 2_500 })
     expect(screen.getByRole('status', { name: '取消中' })).toBeInTheDocument()
   })

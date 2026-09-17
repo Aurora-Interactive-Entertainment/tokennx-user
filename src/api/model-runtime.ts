@@ -1,4 +1,5 @@
-import { MODEL_API_BASE_URL } from './http'
+import { MODEL_API_BASE_URL, isApiError } from './http'
+import { withAuthenticatedSession } from './authenticated'
 import i18n, { getActiveLanguage } from '@/i18n'
 
 const CHAT_COMPLETIONS_PATH = '/chat/completions'
@@ -297,28 +298,32 @@ export async function streamChatCompletion(input: StreamChatCompletionInput): Pr
   }
 
   try {
-    const response = await fetch(`${MODEL_API_BASE_URL}${CHAT_COMPLETIONS_PATH}`, {
-      method: 'POST',
-      credentials: 'omit',
-      signal: requestController.controller.signal,
-      headers: {
-        Accept: 'text/event-stream, application/json',
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-        'X-ThinkGo-User-Session': '1',
-        'X-Request-ID': requestId,
-        'X-App-Lang': getActiveLanguage(),
-      },
-      body: JSON.stringify({
-        model: input.model,
-        messages,
-        temperature: input.temperature,
-        max_tokens: input.maxTokens,
-        stream: true,
-        stream_options: { include_usage: true },
-      }),
+    // 只重试 HTTP 401；成功响应之后的 SSE/JSON 读取始终只有一次，避免重复生成计费。
+    const response = await withAuthenticatedSession({ accessToken, signal: requestController.controller.signal }, async (currentAccessToken) => {
+      const attemptedResponse = await fetch(`${MODEL_API_BASE_URL}${CHAT_COMPLETIONS_PATH}`, {
+        method: 'POST',
+        credentials: 'omit',
+        signal: requestController.controller.signal,
+        headers: {
+          Accept: 'text/event-stream, application/json',
+          Authorization: `Bearer ${currentAccessToken}`,
+          'Content-Type': 'application/json',
+          'X-ThinkGo-User-Session': '1',
+          'X-Request-ID': requestId,
+          'X-App-Lang': getActiveLanguage(),
+        },
+        body: JSON.stringify({
+          model: input.model,
+          messages,
+          temperature: input.temperature,
+          max_tokens: input.maxTokens,
+          stream: true,
+          stream_options: { include_usage: true },
+        }),
+      })
+      if (!attemptedResponse.ok) throw await readErrorResponse(attemptedResponse, requestId)
+      return attemptedResponse
     })
-    if (!response.ok) throw await readErrorResponse(response, requestId)
 
     const isEventStream = response.headers.get('Content-Type')?.toLowerCase().includes('text/event-stream')
     let payload: ParsedCompletionPayload
@@ -342,11 +347,12 @@ export async function streamChatCompletion(input: StreamChatCompletionInput): Pr
       latencyMs: Math.max(0, Math.round(performance.now() - startedAt)),
     }
   } catch (error) {
+    if (input.signal?.aborted) throw error
+    if (requestController.controller.signal.aborted) throw new ModelRuntimeError(i18n.t('api.modelRuntime.timeout'), 408, 'request_timeout', requestId)
     if (error instanceof ModelRuntimeError) throw error
-    if (error instanceof DOMException && error.name === 'AbortError') {
-      if (input.signal?.aborted) throw error
-      throw new ModelRuntimeError(i18n.t('api.modelRuntime.timeout'), 408, 'request_timeout', requestId)
-    }
+    if (isApiError(error)) throw new ModelRuntimeError(error.message, error.status, String(error.code), error.requestId)
+    // 会话换号主动中止也保留 AbortError，不能误显示成超时或清除新账号。
+    if (error instanceof DOMException && error.name === 'AbortError') throw error
     throw new ModelRuntimeError(i18n.t('api.modelRuntime.networkFailure'), 0, 'network_error', requestId)
   } finally {
     requestController.clear()

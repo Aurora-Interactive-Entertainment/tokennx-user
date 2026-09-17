@@ -13,13 +13,14 @@ function throwIfAborted(signal?: AbortSignal | null): void {
   throw signal.reason ?? new DOMException('请求已取消', 'AbortError')
 }
 
-async function fetchAuthenticated<T>(path: string, options: FetchJsonOptions, request: (accessToken: string) => Promise<T>): Promise<T> {
-	throwIfAborted(options.signal)
-	const accessToken = options.accessToken ?? getAccessToken()
+// Runtime 只把尚未成功接收响应的 HTTP 阶段放入此函数，不能重放已开始生成的正文流。
+export async function withAuthenticatedSession<T>(options: Pick<FetchJsonOptions, 'accessToken' | 'signal'>, request: (accessToken: string) => Promise<T>): Promise<T> {
+  throwIfAborted(options.signal)
+  const accessToken = options.accessToken ?? getAccessToken()
   if (!accessToken) {
     clearAuthTokens()
-		throw new ApiError(i18n.t('api.auth.sessionExpired'), AUTH_UNAUTHORIZED_STATUS, AUTH_INVALID_CODE, null)
-	}
+    throw new ApiError(i18n.t('api.auth.sessionExpired'), AUTH_UNAUTHORIZED_STATUS, AUTH_INVALID_CODE, null)
+  }
 
   const requestUserId = getAccessTokenUserId(accessToken)
   const assertSameAccount = (): void => {
@@ -29,18 +30,18 @@ async function fetchAuthenticated<T>(path: string, options: FetchJsonOptions, re
     }
   }
 
-	try {
-		return await request(accessToken)
-	} catch (error) {
-	    if (!isAuthenticationFailure(error)) throw error
-	    throwIfAborted(options.signal)
+  try {
+    return await request(accessToken)
+  } catch (error) {
+    if (!isAuthenticationFailure(error)) throw error
+    throwIfAborted(options.signal)
     assertSameAccount()
 
     // 其他标签页可能已经完成刷新，先重试同步到内存中的新访问令牌，避免再次轮换刷新令牌。
     const synchronizedAccessToken = getAccessToken()
     if (synchronizedAccessToken && synchronizedAccessToken !== accessToken) {
       try {
-	        throwIfAborted(options.signal)
+        throwIfAborted(options.signal)
         return await request(synchronizedAccessToken)
       } catch (synchronizedError) {
         if (!isAuthenticationFailure(synchronizedError)) throw synchronizedError
@@ -48,43 +49,44 @@ async function fetchAuthenticated<T>(path: string, options: FetchJsonOptions, re
       }
     }
 
-	    const refreshToken = readRefreshToken()
+    const refreshToken = readRefreshToken()
     if (!refreshToken) {
       clearAuthTokens()
       throw error
     }
 
     // 认证失败只自动刷新一次，刷新失败或重试仍认证失败才清理会话。
-	    throwIfAborted(options.signal)
-	    let refreshed: AuthenticatedSession
+    throwIfAborted(options.signal)
+    let refreshed: AuthenticatedSession
     try {
       refreshed = await refreshAccessToken(refreshToken)
     } catch (refreshError) {
+      throwIfAborted(options.signal)
       assertSameAccount()
       // A transient refresh failure is not proof that the session is expired.
       const refreshExpired = isAuthenticationFailure(refreshError)
       if (refreshExpired) clearAuthTokens({ expectedRefreshToken: refreshToken })
       if (!refreshExpired) throw refreshError
       throw error
-	}
+    }
 
-	try {
-		throwIfAborted(options.signal)
-		assertSameAccount()
-		return await request(refreshed.access_token)
-		} catch (retryError) {
-			assertSameAccount()
-			if (isAuthenticationFailure(retryError)) clearAuthTokens({ expectedRefreshToken: refreshed.refresh_token })
-			throw retryError
-		}
-	}
+    try {
+      throwIfAborted(options.signal)
+      assertSameAccount()
+      return await request(refreshed.access_token)
+    } catch (retryError) {
+      assertSameAccount()
+      if (isAuthenticationFailure(retryError)) clearAuthTokens({ expectedRefreshToken: refreshed.refresh_token })
+      throw retryError
+    }
+  }
 }
 
 export function fetchAuthenticatedJson<T>(path: string, options: FetchJsonOptions = {}): Promise<T> {
-	return fetchAuthenticated(path, options, (accessToken) => fetchJson<T>(path, { ...options, accessToken }))
+  return withAuthenticatedSession(options, (accessToken) => fetchJson<T>(path, { ...options, accessToken }))
 }
 
 // 二进制接口复用同一套令牌刷新和并发刷新控制。
 export function fetchAuthenticatedResponse(path: string, options: FetchJsonOptions = {}): Promise<Response> {
-	return fetchAuthenticated(path, options, (accessToken) => fetchResponse(path, { ...options, accessToken }))
+  return withAuthenticatedSession(options, (accessToken) => fetchResponse(path, { ...options, accessToken }))
 }

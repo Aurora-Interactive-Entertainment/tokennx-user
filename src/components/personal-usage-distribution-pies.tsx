@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { appToast } from "@/components/app-toast";
+import { RequestErrorPanel } from "@/components/request-error-panel";
 import * as echarts from "echarts/core";
 import { PieChart } from "echarts/charts";
 import { TooltipComponent } from "echarts/components";
@@ -367,6 +368,7 @@ export function PersonalUsageDistributionPies({
   } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [reloadToken, setReloadToken] = useState(0);
   const query = useMemo(() => dateRangeToTrendQuery(dateRange), [dateRange]);
 
   useEffect(() => {
@@ -387,7 +389,7 @@ export function PersonalUsageDistributionPies({
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [context, query]);
+  }, [context, query, reloadToken]);
 
   useEffect(() => {
     if (!loading && error) appToast.error(error);
@@ -407,6 +409,8 @@ export function PersonalUsageDistributionPies({
     ),
     [data?.requests.tool_distribution, data?.tokens.tool_distribution],
   );
+  // 两张分布图共用同一次请求，只保留一个错误提示和重试入口。
+  if (error && !loading) return <RequestErrorPanel message={error} onRetry={() => setReloadToken((value) => value + 1)} />;
   return (
     <div className="personal-usage-pie-grid">
       <DistributionPie

@@ -108,13 +108,13 @@ describe('模型运行时请求', () => {
 
   it('将服务端错误转换为带状态、错误码和 Request ID 的运行时错误', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ error: { message: 'API Key 无效', code: 'invalid_api_key' } }), {
-      status: 401,
+      status: 403,
       headers: { 'Content-Type': 'application/json', 'X-Request-ID': 'error-request-id' },
     }))
 
     await expect(streamChatCompletion(DEFAULT_INPUT)).rejects.toMatchObject({
       name: 'ModelRuntimeError',
-      status: 401,
+      status: 403,
       code: 'invalid_api_key',
       message: 'API Key 无效',
       requestId: 'error-request-id',
