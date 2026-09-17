@@ -19,6 +19,7 @@ import { invalidateAuth } from '@/store/auth-slice'
 import { useAppStore } from '@/data/app-state'
 import { findModelInList, modelAlias, type ModelRecord } from '@/data/models'
 import { useUserModels } from '@/data/user-models'
+import { useBuildUpdateBlocker } from '@/runtime/use-build-update-blocker'
 import { workspaceContextFor, workspaceContextKey, type WorkspaceAccountContext } from '@/utils/workspace'
 import { LEGACY_VIDEO_HISTORY_KEY, VIDEO_SESSION_HISTORY_KEY, readUserSessionHistory, writeUserSessionHistory } from '@/utils/ephemeral-history'
 import './video-generation.css'
@@ -83,6 +84,20 @@ type VideoRequestFailure = {
   requestId: string | null
 }
 
+type VideoDraft = Pick<VideoSubmissionSnapshot, 'model' | 'prompt' | 'duration' | 'size' | 'inputReference'> & {
+  referenceMode: 'reference' | 'first-last'
+  firstFrameUrl: string
+  lastFrameUrl: string
+}
+
+function emptyVideoDraft(model: string): VideoDraft {
+  return { model, prompt: '', duration: DEFAULT_VIDEO_DURATION, size: DEFAULT_VIDEO_SIZE, inputReference: '', referenceMode: 'reference', firstFrameUrl: '', lastFrameUrl: '' }
+}
+
+function sameVideoDraft(left: VideoDraft, right: VideoDraft): boolean {
+  return (Object.keys(left) as Array<keyof VideoDraft>).every((key) => left[key] === right[key])
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
@@ -140,8 +155,8 @@ function compactVideoHistoryEntry(entry: VideoHistoryEntry): VideoHistoryEntry {
   }
 }
 
-function writeVideoHistory(userId: string | null, entries: VideoHistoryEntry[]): void {
-  writeUserSessionHistory(VIDEO_SESSION_HISTORY_KEY, userId, entries.map(compactVideoHistoryEntry), VIDEO_HISTORY_LIMIT)
+function writeVideoHistory(userId: string | null, entries: VideoHistoryEntry[]): boolean {
+  return writeUserSessionHistory(VIDEO_SESSION_HISTORY_KEY, userId, entries.map(compactVideoHistoryEntry), VIDEO_HISTORY_LIMIT)
 }
 
 function workspaceKeyFor(context: WorkspaceAccountContext): string {
@@ -421,12 +436,16 @@ export function VideoPage() {
   const [referenceMode, setReferenceMode] = useState<'reference' | 'first-last'>('reference')
   const [referenceVisible, setReferenceVisible] = useState(false)
   const [history, setHistory] = useState<VideoHistoryEntry[]>(() => readVideoHistory(userId).filter((entry) => entry.workspaceKey === workspaceKey))
+  const [savedHistory, setSavedHistory] = useState(history)
   const [selectedHistoryID, setSelectedHistoryID] = useState('')
   const [currentTask, setCurrentTask] = useState<VideoTask | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [polling, setPolling] = useState(false)
   const [cancelling, setCancelling] = useState(false)
   const [requestFailure, setRequestFailure] = useState<VideoRequestFailure | null>(null)
+  const [submittedDraft, setSubmittedDraft] = useState<VideoDraft | null>(null)
+  const [readingReferences, setReadingReferences] = useState(0)
+  const initialModelRef = useRef<string | null>(null)
   const referenceInputRef = useRef<HTMLInputElement>(null)
   const firstFrameInputRef = useRef<HTMLInputElement>(null)
   const lastFrameInputRef = useRef<HTMLInputElement>(null)
@@ -498,6 +517,16 @@ export function VideoPage() {
   // 生成中允许点击发送按钮取消任务；取消请求处理期间锁定按钮，空输入时禁止提交。
   const canCancel = submitting || Boolean(currentTask && taskIsActive(currentTask))
   const sendDisabled = cancelling || (!canCancel && !canSubmit)
+  const currentModelAlias = selectedModel ? modelAlias(selectedModel) : ''
+  if (initialModelRef.current === null && currentModelAlias && !modelsLoading) initialModelRef.current = currentModelAlias
+  const currentDraft: VideoDraft = { model: currentModelAlias, prompt: prompt.trim(), duration, size, inputReference: inputReference.trim(), referenceMode, firstFrameUrl, lastFrameUrl }
+  // 提交成功后提示词仍留在输入框，以历史保存时的快照区分下一轮草稿；本地图片无法写入历史，始终保护。
+  const hasUnsavedDraft = !sameVideoDraft(currentDraft, submittedDraft ?? emptyVideoDraft(initialModelRef.current ?? currentModelAlias))
+    || [inputReference, firstFrameUrl, lastFrameUrl].some((value) => value.trim() && (!isPersistableReference(value) || value.length > 4_096))
+  useBuildUpdateBlocker(operationBusy || readingReferences > 0 || hasUnsavedDraft || Boolean(requestFailure)
+    || (history.length > 0 && history !== savedHistory)
+    || Boolean(currentTask && ['failed', 'expired', 'unknown'].includes(currentTask.status))
+    || history.some((entry) => taskIsActive(historyTask(entry))))
 
   useEffect(() => {
     submitAbortReasonRef.current = 'navigation'
@@ -513,9 +542,12 @@ export function VideoPage() {
     setCancelling(false)
     setRequestFailure(null)
     historyOwnerRef.current = userId
+    setSubmittedDraft(null)
+    initialModelRef.current = null
     historyHydratingRef.current = true
     const restored = readVideoHistory(userId).filter((entry) => entry.workspaceKey === workspaceKey)
     setHistory(restored)
+    setSavedHistory(restored)
     // 刷新或重新进入页面后，未完成的任务否则会一直停在「生成中」，这里主动续上轮询。
     const pendingEntry = restored.find((entry) => !videoTaskIsTerminal(entry.status) && entry.status !== 'unknown')
     if (pendingEntry && getAccessToken()?.trim()) void pollTask(historyTask(pendingEntry), pendingEntry)
@@ -534,7 +566,8 @@ export function VideoPage() {
     }
     // 页面只维护当前工作空间的列表，写回时合并同一用户的其他工作空间历史。
     const otherWorkspaceEntries = readVideoHistory(userId).filter((entry) => entry.workspaceKey !== workspaceKey)
-    writeVideoHistory(userId, [...history, ...otherWorkspaceEntries])
+    // 历史写入失败时继续保护内存结果，避免版本更新把尚未落盘的视频信息清掉。
+    if (writeVideoHistory(userId, [...history, ...otherWorkspaceEntries])) setSavedHistory(history)
   }, [history, userId, workspaceKey])
 
   useEffect(() => {
@@ -661,6 +694,7 @@ export function VideoPage() {
     if (submitting || polling || cancelling) return
     const snapshot = buildSubmissionSnapshot(retry)
     if (!snapshot) return
+    const draftAtSubmission = currentDraft
     stopPolling()
     setCurrentTask(null)
     setSelectedHistoryID('')
@@ -678,6 +712,11 @@ export function VideoPage() {
       const storedSnapshot = { ...snapshot, historyId: entry.id }
       lastSubmissionRef.current = storedSnapshot
       updateTask(task, entry)
+      // 重试历史记录时不能把输入框里另一份新草稿也标为已保存。
+      if ((task.status === 'succeeded' || taskIsActive(task))
+        && snapshot.model === draftAtSubmission.model && snapshot.prompt === draftAtSubmission.prompt
+        && snapshot.duration === draftAtSubmission.duration && snapshot.size === draftAtSubmission.size
+        && snapshot.inputReference === draftAtSubmission.inputReference) setSubmittedDraft(draftAtSubmission)
       Toast.success(task.status === 'succeeded' ? t('console.video.generated') : t('console.video.taskSubmitted'))
       if (!videoTaskIsTerminal(task.status) && task.status !== 'unknown') void pollTask(task, entry)
     } catch (error: unknown) {
@@ -740,6 +779,7 @@ export function VideoPage() {
   }
 
   function clearHistory(): void {
+    setSubmittedDraft(null)
     const allEntries = readVideoHistory(userId).filter((entry) => entry.workspaceKey !== workspaceKey)
     writeVideoHistory(userId, allEntries)
     setHistory([])
@@ -748,6 +788,7 @@ export function VideoPage() {
   }
 
   function editEntry(entry: VideoHistoryEntry): void {
+    setSubmittedDraft(null)
     setPrompt(entry.prompt)
     setModelID(entry.model)
     setDuration(entry.duration)
@@ -774,12 +815,16 @@ export function VideoPage() {
     setHistory(remaining)
     writeVideoHistory(userId, [...remaining, ...readVideoHistory(userId).filter((item) => item.workspaceKey !== workspaceKey)])
     if (selectedHistoryID === entryID) setSelectedHistoryID('')
-    if (currentTask?.taskId === entry.taskId) setCurrentTask(null)
+    if (currentTask?.taskId === entry.taskId) {
+      setCurrentTask(null)
+      setSubmittedDraft(null)
+    }
     if (lastSubmissionRef.current?.historyId === entryID) lastSubmissionRef.current = null
   }
 
   function startNewGeneration(): void {
     if (operationBusy) return
+    setSubmittedDraft(emptyVideoDraft(currentModelAlias))
     stopPolling()
     setRequestFailure(null)
     setCurrentTask(null)
@@ -799,6 +844,7 @@ export function VideoPage() {
   }
 
   function selectHistory(entry: VideoHistoryEntry): void {
+    setSubmittedDraft({ ...currentDraft, model: entry.model, prompt: entry.prompt, duration: entry.duration, size: entry.size, inputReference: entry.inputReference ?? '' })
     // 选一条历史不应该打断正在生成的任务，这里刻意不 abort 任何轮询。
     setRequestFailure(null)
     setSelectedHistoryID(entry.id)
@@ -860,6 +906,8 @@ export function VideoPage() {
       return
     }
     const reader = new FileReader()
+    setReadingReferences((count) => count + 1)
+    reader.onloadend = () => setReadingReferences((count) => Math.max(0, count - 1))
     reader.onload = () => {
       if (typeof reader.result !== 'string') return
       if (frame === 'first') {
@@ -888,6 +936,8 @@ export function VideoPage() {
       return
     }
     const reader = new FileReader()
+    setReadingReferences((count) => count + 1)
+    reader.onloadend = () => setReadingReferences((count) => Math.max(0, count - 1))
     reader.onload = () => {
       if (typeof reader.result !== 'string') return
       setInputReference(reader.result)
@@ -907,7 +957,7 @@ export function VideoPage() {
   // 已有任务时优先保留结果卡片，提交/轮询错误直接展示在卡片内，保证仍可编辑、重试和删除。
   const showWorkspaceNotices = workspaceNotices.length > 0 && !submitting && !currentTask
 
-  return <div className="page-stack video-console-page">
+  return <div data-build-update-managed className="page-stack video-console-page">
     <PageTitle title={t('console.video.title')} description={t('console.video.pageDescription')} />
     <section className="video-workspace experience-workbench" aria-label={t('console.video.workspace')}>
       <VideoHistoryPanel entries={history} selectedID={selectedHistoryID} onSelect={selectHistory} onClear={clearHistory} onNew={startNewGeneration} disabled={operationBusy} open={historyOpen} />
@@ -960,12 +1010,12 @@ export function VideoPage() {
                 </div>
                 <div className="video-parameter-controls">
                   <div className="video-aspect-picker">
-                    <Select className="video-control-button video-aspect-trigger video-panel-select" value="settings" disabled={paramsBusy} arrowIcon={<IconChevronDownStroked />} dropdownClassName="video-aspect-select-dropdown" aria-label={t('console.video.aspectRatio')} renderSelectedItem={() => <><IconFilterStroked aria-hidden="true" /><span className="video-aspect-label"><span>{aspectRatio}</span>{resolution ? <><span className="video-aspect-separator"> · </span><span>{resolution}</span></> : null}</span></>} innerTopSlot={<div className="video-aspect-popover video-select-panel"><div className="video-aspect-section"><strong>{t('console.video.aspectRatio')}</strong><div className="video-aspect-options">{VIDEO_ASPECT_OPTIONS.map((ratio) => { const available = VIDEO_SIZE_OPTIONS.some((option) => option.aspect === ratio); return <button type="button" className={aspectRatio === ratio ? 'is-selected' : ''} key={ratio} onClick={() => selectAspectRatio(ratio)} disabled={!available} title={!available ? t('console.video.optionUnavailable') : undefined}><span className={`video-ratio-icon ratio-${ratio.replace(':', '-')}`} />{ratio}</button> })}</div></div><div className="video-aspect-section"><strong>{t('console.video.resolution')}</strong><div className="video-resolution-options">{['480P', '720P', '1080P'].map((nextResolution) => { const available = VIDEO_SIZE_OPTIONS.some((option) => option.aspect === aspectRatio && option.resolution === nextResolution); return <button type="button" className={resolution === nextResolution ? 'is-selected' : ''} key={nextResolution} onClick={() => selectResolution(nextResolution)} disabled={!available} title={!available ? t('console.video.optionUnavailable') : undefined}>{nextResolution}</button> })}</div></div></div>}>
+                    <Select className="video-control-button video-aspect-trigger video-panel-select" value="settings" disabled={paramsBusy} arrowIcon={<IconChevronDownStroked />} dropdownClassName="video-aspect-select-dropdown" aria-label={t('console.video.aspectRatio')} renderSelectedItem={() => <><IconFilterStroked aria-hidden="true" /><span className="video-aspect-label"><span>{aspectRatio}</span>{resolution ? <><span className="video-aspect-separator"> · </span><span>{resolution}</span></> : null}</span></>} innerTopSlot={<div data-build-update-managed className="video-aspect-popover video-select-panel"><div className="video-aspect-section"><strong>{t('console.video.aspectRatio')}</strong><div className="video-aspect-options">{VIDEO_ASPECT_OPTIONS.map((ratio) => { const available = VIDEO_SIZE_OPTIONS.some((option) => option.aspect === ratio); return <button type="button" className={aspectRatio === ratio ? 'is-selected' : ''} key={ratio} onClick={() => selectAspectRatio(ratio)} disabled={!available} title={!available ? t('console.video.optionUnavailable') : undefined}><span className={`video-ratio-icon ratio-${ratio.replace(':', '-')}`} />{ratio}</button> })}</div></div><div className="video-aspect-section"><strong>{t('console.video.resolution')}</strong><div className="video-resolution-options">{['480P', '720P', '1080P'].map((nextResolution) => { const available = VIDEO_SIZE_OPTIONS.some((option) => option.aspect === aspectRatio && option.resolution === nextResolution); return <button type="button" className={resolution === nextResolution ? 'is-selected' : ''} key={nextResolution} onClick={() => selectResolution(nextResolution)} disabled={!available} title={!available ? t('console.video.optionUnavailable') : undefined}>{nextResolution}</button> })}</div></div></div>}>
                       <Select.Option value="settings">{aspectRatio}{resolution ? ` · ${resolution}` : ''}</Select.Option>
                     </Select>
                   </div>
                   <div className="video-duration-picker">
-                    <Select className="video-control-button video-duration-trigger video-panel-select" value="duration" disabled={paramsBusy} arrowIcon={<IconChevronDownStroked />} dropdownClassName="video-duration-select-dropdown" aria-label={t('console.video.duration')} renderSelectedItem={() => <><IconClockStroked aria-hidden="true" /><span>{duration}{t('console.video.secondsShort')}</span></>} innerTopSlot={<div className="video-duration-popover video-select-panel"><strong>{t('console.video.durationSelect')}</strong><div className="video-duration-control"><input type="range" min="2" max="30" step="1" value={duration} onChange={(event) => setDuration(Number(event.target.value))} aria-label={t('console.video.duration')} /><div className="video-duration-ticks">{VIDEO_DURATION_SLIDER_OPTIONS.map((value) => <span key={value} style={{ left: `${((value - 2) / 28) * 100}%` }}>{value}</span>)}</div></div><label className="video-duration-number"><input type="number" min="2" max="30" step="1" key={duration} defaultValue={duration} onBlur={(event) => setDuration(Math.max(2, Math.min(30, Math.round(Number(event.target.value) || DEFAULT_VIDEO_DURATION))))} onKeyDown={(event) => { if (event.key === 'Enter') event.currentTarget.blur() }} aria-label={t('console.video.duration')} /><span>{t('console.video.secondsShort')}</span></label></div>}>
+                    <Select className="video-control-button video-duration-trigger video-panel-select" value="duration" disabled={paramsBusy} arrowIcon={<IconChevronDownStroked />} dropdownClassName="video-duration-select-dropdown" aria-label={t('console.video.duration')} renderSelectedItem={() => <><IconClockStroked aria-hidden="true" /><span>{duration}{t('console.video.secondsShort')}</span></>} innerTopSlot={<div data-build-update-managed className="video-duration-popover video-select-panel"><strong>{t('console.video.durationSelect')}</strong><div className="video-duration-control"><input type="range" min="2" max="30" step="1" value={duration} onChange={(event) => setDuration(Number(event.target.value))} aria-label={t('console.video.duration')} /><div className="video-duration-ticks">{VIDEO_DURATION_SLIDER_OPTIONS.map((value) => <span key={value} style={{ left: `${((value - 2) / 28) * 100}%` }}>{value}</span>)}</div></div><label className="video-duration-number"><input type="number" min="2" max="30" step="1" key={duration} defaultValue={duration} onBlur={(event) => setDuration(Math.max(2, Math.min(30, Math.round(Number(event.target.value) || DEFAULT_VIDEO_DURATION))))} onKeyDown={(event) => { if (event.key === 'Enter') event.currentTarget.blur() }} aria-label={t('console.video.duration')} /><span>{t('console.video.secondsShort')}</span></label></div>}>
                       <Select.Option value="duration">{duration}{t('console.video.secondsShort')}</Select.Option>
                     </Select>
                   </div>
@@ -980,7 +1030,7 @@ export function VideoPage() {
       </div>
     </section>
     <Modal title={referenceMode === 'reference' ? t('console.video.referenceMode') : t('console.video.firstLastFrame')} visible={referenceVisible} onCancel={() => setReferenceVisible(false)} onOk={() => setReferenceVisible(false)} okText={t('console.common.finish')} cancelText={t('console.common.cancel')}>
-      {referenceMode === 'reference' ? <div className="video-reference-dialog"><Input id="video-reference-url" value={referenceUrl} onChange={(value) => { setReferenceUrl(value); setInputReference(value.trim()); setReferenceName('') }} placeholder={t('console.video.referenceUrlPlaceholder')} aria-label={t('console.video.referenceUrlLabel')} disabled={paramsBusy} /><input ref={referenceInputRef} className="video-reference-file-input" type="file" accept={VIDEO_REFERENCE_ACCEPT} onChange={handleReferenceFile} aria-label={t('console.video.referenceImage')} /><Button className="video-control-button" theme="borderless" icon={<IconImage />} onClick={() => referenceInputRef.current?.click()} disabled={paramsBusy}>{t('console.video.referenceImage')}</Button></div> : <div className="video-reference-dialog"><Input id="video-first-frame-url" value={firstFrameUrl} onChange={(value) => { setFirstFrameUrl(value); setInputReference(value.trim()) }} placeholder={t('console.video.firstFrameUrlPlaceholder')} aria-label={t('console.video.firstFrameUrlLabel')} disabled={paramsBusy} /><Input id="video-last-frame-url" value={lastFrameUrl} onChange={setLastFrameUrl} placeholder={t('console.video.lastFrameUrlPlaceholder')} aria-label={t('console.video.lastFrameUrlLabel')} title={t('console.video.optionUnavailable')} disabled /></div>}
+      {referenceMode === 'reference' ? <div data-build-update-managed className="video-reference-dialog"><Input id="video-reference-url" value={referenceUrl} onChange={(value) => { setReferenceUrl(value); setInputReference(value.trim()); setReferenceName('') }} placeholder={t('console.video.referenceUrlPlaceholder')} aria-label={t('console.video.referenceUrlLabel')} disabled={paramsBusy} /><input ref={referenceInputRef} className="video-reference-file-input" type="file" accept={VIDEO_REFERENCE_ACCEPT} onChange={handleReferenceFile} aria-label={t('console.video.referenceImage')} /><Button className="video-control-button" theme="borderless" icon={<IconImage />} onClick={() => referenceInputRef.current?.click()} disabled={paramsBusy}>{t('console.video.referenceImage')}</Button></div> : <div data-build-update-managed className="video-reference-dialog"><Input id="video-first-frame-url" value={firstFrameUrl} onChange={(value) => { setFirstFrameUrl(value); setInputReference(value.trim()) }} placeholder={t('console.video.firstFrameUrlPlaceholder')} aria-label={t('console.video.firstFrameUrlLabel')} disabled={paramsBusy} /><Input id="video-last-frame-url" value={lastFrameUrl} onChange={setLastFrameUrl} placeholder={t('console.video.lastFrameUrlPlaceholder')} aria-label={t('console.video.lastFrameUrlLabel')} title={t('console.video.optionUnavailable')} disabled /></div>}
     </Modal>
   </div>
 }

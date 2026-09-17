@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { canStartPlaygroundRound, PLAYGROUND_MAX_ROUNDS } from '@/utils/playground'
-import { LEGACY_PLAYGROUND_HISTORY_KEY, LEGACY_VIDEO_HISTORY_KEY, PLAYGROUND_SESSION_HISTORY_KEY, readUserSessionHistory, writeUserSessionHistory } from '@/utils/ephemeral-history'
+import { useBuildUpdateBlocker } from '@/runtime/use-build-update-blocker'
+import { LEGACY_PLAYGROUND_HISTORY_KEY, LEGACY_VIDEO_HISTORY_KEY, PLAYGROUND_SESSION_HISTORY_KEY, SESSION_HISTORY_MAX_ENTRIES, readUserSessionHistory, writeUserSessionHistory } from '@/utils/ephemeral-history'
 const LEGACY_STORAGE_KEY = 'token-nx:user-front:v1'
 const USER_STORAGE_KEY_PREFIX = 'token-nx:user-front:v2:'
 
@@ -275,6 +276,7 @@ function createId(prefix: string): string {
 }
 
 export interface AppStoreValue extends AppSnapshot {
+  playgroundHistorySaved: boolean
   activeWorkspace: Workspace
   selectedModelId: string
   setSelectedModelId: (modelId: string) => void
@@ -312,6 +314,9 @@ function AppStoreProviderWithUser({ children, userId }: AppStoreProviderWithUser
   const [playgroundSessions, setPlaygroundSessions] = useState<PlaygroundSession[]>(() => userId === undefined
     ? loadLegacyPlaygroundSessions()
     : readUserSessionHistory(PLAYGROUND_SESSION_HISTORY_KEY, userId, isPlaygroundSession))
+  const [savedPlaygroundSessions, setSavedPlaygroundSessions] = useState(playgroundSessions)
+  // 对话历史跨页面保留；即使离开生成页，也不能刷新丢掉仅存于内存的回复。
+  useBuildUpdateBlocker(playgroundSessions.length > 0 && playgroundSessions !== savedPlaygroundSessions)
   const playgroundOwnerRef = useRef(userId)
   const playgroundHydratingRef = useRef(userId !== undefined)
 
@@ -335,11 +340,15 @@ function AppStoreProviderWithUser({ children, userId }: AppStoreProviderWithUser
         playgroundHydratingRef.current = false
         return
       }
-      writeUserSessionHistory(PLAYGROUND_SESSION_HISTORY_KEY, userId, playgroundSessions.map(compactPlaygroundSession))
+      const compacted = playgroundSessions.map(compactPlaygroundSession)
+      const saved = writeUserSessionHistory(PLAYGROUND_SESSION_HISTORY_KEY, userId, compacted)
+      // 完整回复可能超过历史裁剪上限，不能因缩略版落盘就允许自动刷新丢失原文。
+      if (saved && playgroundSessions.length <= SESSION_HISTORY_MAX_ENTRIES && JSON.stringify(compacted) === JSON.stringify(playgroundSessions)) setSavedPlaygroundSessions(playgroundSessions)
       return
     }
     try {
       localStorage.setItem(LEGACY_PLAYGROUND_HISTORY_KEY, JSON.stringify(playgroundSessions))
+      setSavedPlaygroundSessions(playgroundSessions)
     } catch {
       // 存储不可用时继续保留内存会话。
     }
@@ -536,6 +545,7 @@ function AppStoreProviderWithUser({ children, userId }: AppStoreProviderWithUser
   const value = useMemo<AppStoreValue>(() => ({
     ...snapshot,
     playgroundSessions,
+    playgroundHistorySaved: playgroundSessions === savedPlaygroundSessions,
     activeWorkspace,
     selectedModelId,
     setSelectedModelId,
@@ -549,7 +559,7 @@ function AppStoreProviderWithUser({ children, userId }: AppStoreProviderWithUser
     deletePlaygroundAttempt,
     clearPlaygroundContext,
     updateProfile,
-  }), [snapshot, playgroundSessions, activeWorkspace, selectedModelId, switchWorkspace, replaceEnterpriseWorkspaces, createApiKey, disableApiKey, deleteApiKey, runPlayground, recordPlaygroundFailure, deletePlaygroundAttempt, clearPlaygroundContext, updateProfile])
+  }), [snapshot, playgroundSessions, savedPlaygroundSessions, activeWorkspace, selectedModelId, switchWorkspace, replaceEnterpriseWorkspaces, createApiKey, disableApiKey, deleteApiKey, runPlayground, recordPlaygroundFailure, deletePlaygroundAttempt, clearPlaygroundContext, updateProfile])
 
   return <AppStoreContext.Provider value={value}>{children}</AppStoreContext.Provider>
 }

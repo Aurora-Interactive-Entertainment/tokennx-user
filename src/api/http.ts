@@ -1,5 +1,6 @@
 import i18n, { getActiveLanguage } from '@/i18n'
 import { reportCriticalApiFailure } from '@/observability/sentry'
+import { blockBuildUpdate } from '@/runtime/build-update'
 
 const DEFAULT_API_BASE_URL = 'http://127.0.0.1:8081'
 const REQUEST_TIMEOUT_MS = 15000
@@ -217,9 +218,11 @@ export async function fetchResponse(path: string, options: FetchJsonOptions = {}
     }, REQUEST_TIMEOUT_MS)
   }
   resetTimeout()
+  let releaseBuildUpdate = () => {}
   const cleanup = (): void => {
     window.clearTimeout(timeout)
     removeExternalAbortListener?.()
+    releaseBuildUpdate()
   }
   const abortError = (): unknown => options.signal?.aborted
     ? options.signal.reason ?? new DOMException('请求已取消', 'AbortError')
@@ -249,6 +252,8 @@ export async function fetchResponse(path: string, options: FetchJsonOptions = {}
       : JSON.stringify(options.body)
 
 	let response: Response
+  // 写请求从发送到正文消费结束都不能被自动更新打断，包括登录、保存与支付。
+  if (!['GET', 'HEAD', 'OPTIONS'].includes((options.method ?? 'GET').toUpperCase())) releaseBuildUpdate = blockBuildUpdate()
   try {
     response = await fetch(makeApiUrl(path), {
       ...options,

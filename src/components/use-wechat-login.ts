@@ -6,6 +6,7 @@ import { isApiError } from '@/api/http'
 import { clearAuthTokens } from '@/auth/token-storage'
 import { authError, completeWechatLogin, invalidateAuth } from '@/store/auth-slice'
 import { useAppDispatch } from '@/store/hooks'
+import { useBuildUpdateBlocker } from '@/runtime/use-build-update-blocker'
 
 export type WechatLoginView = 'idle' | 'loading' | 'pending' | 'completing' | 'binding' | 'expired' | 'error'
 
@@ -23,6 +24,8 @@ export function useWechatLogin(options: {
   const frameRef = useRef<HTMLIFrameElement>(null)
   const latest = useRef({ ...options, t })
   latest.current = { ...options, t }
+  // 扫码和兑换使用同一个一次性会话，不能在用户手机确认期间自动换页。
+  useBuildUpdateBlocker(options.enabled && ['loading', 'pending', 'completing', 'binding'].includes(view))
 
   useEffect(() => {
     if (!options.enabled || !attempt) return

@@ -6,6 +6,7 @@ import { sentryVitePlugin } from '@sentry/vite-plugin'
 import react from '@vitejs/plugin-react'
 import { defineConfig, loadEnv, type Plugin } from 'vite'
 import { siteMetadataPlugin } from './build/site-metadata'
+import { isValidBuildVersion, normalizeBuildVersion } from './build/build-version'
 
 const CHUNK_SIZE_WARNING_LIMIT_KB = 600
 const BUILD_VERSION_MARKER = '__TOKEN_NX_BUILD_VERSION_VALUE__'
@@ -25,7 +26,7 @@ function gitCommit(): string {
 // 版本优先由发布流水线指定；本地或未配置流水线时使用构建时间和提交号，保证每次产物都可识别。
 function resolveBuildVersion(env: Record<string, string>): string {
   const explicit = process.env.VITE_BUILD_VERSION?.trim() || env.VITE_BUILD_VERSION?.trim() || process.env.BUILD_VERSION?.trim() || env.BUILD_VERSION?.trim()
-  const normalizedExplicit = safeVersionPart(explicit || '')
+  const normalizedExplicit = normalizeBuildVersion(explicit || '')
   if (normalizedExplicit) return normalizedExplicit
   const commit = safeVersionPart(process.env.GIT_COMMIT_SHA?.trim() || process.env.GITHUB_SHA?.trim() || process.env.CI_COMMIT_SHA?.trim() || gitCommit())
   const timestamp = new Date().toISOString().replace(/[-:TZ.]/g, '').slice(0, 14)
@@ -33,6 +34,7 @@ function resolveBuildVersion(env: Record<string, string>): string {
 }
 
 function buildVersionPlugin(version: string): Plugin {
+  if (!isValidBuildVersion(version)) throw new Error('构建版本必须以字母或数字开头，仅包含字母、数字、点、下划线、连字符，且不超过 160 字符')
   return {
     name: 'token-nx-build-version',
     apply: 'build',

@@ -1,6 +1,6 @@
 import { act, render, screen } from '@testing-library/react'
 import { useEffect } from 'react'
-import { describe, expect, it, beforeEach } from 'vitest'
+import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest'
 import { AppStoreProvider, useAppStore } from './app-state'
 
 function StoreProbe({ onReady }: { onReady: (store: ReturnType<typeof useAppStore>) => void }) {
@@ -10,6 +10,27 @@ function StoreProbe({ onReady }: { onReady: (store: ReturnType<typeof useAppStor
 }
 
 describe('工作空间本地状态', () => {
+  afterEach(() => { vi.restoreAllMocks(); delete window.__TOKEN_NX_UPDATE_GUARD__ })
+
+  it('历史写入失败后离开生成页仍保护内存结果，成功保存后解除', () => {
+    const holders = new Set<object>()
+    window.__TOKEN_NX_UPDATE_GUARD__ = {
+      pendingVersion: '', check: vi.fn(), routeChanged: vi.fn(), reload: vi.fn(),
+      blockReload: () => { const token = {}; holders.add(token); return () => { holders.delete(token) } },
+    }
+    const storage = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new DOMException('quota', 'QuotaExceededError') })
+    let store: ReturnType<typeof useAppStore> | undefined
+    const view = render(<AppStoreProvider userId="user-a"><StoreProbe onReady={value => { store = value }} /></AppStoreProvider>)
+    act(() => { store?.runPlayground({ modelId: 'deepseek-chat', prompt: '问题', response: '尚未保存的回复' }) })
+    expect(holders.size).toBe(1)
+    view.rerender(<AppStoreProvider userId="user-a"><span>其他页面</span></AppStoreProvider>)
+    expect(holders.size).toBe(1)
+    storage.mockRestore()
+    act(() => { store?.runPlayground({ modelId: 'deepseek-chat', prompt: '另一个问题', response: '回复' }) })
+    expect(holders.size).toBe(0)
+    view.unmount()
+  })
+
   beforeEach(() => {
     window.localStorage.clear()
     window.sessionStorage.clear()
@@ -125,6 +146,7 @@ describe('工作空间本地状态', () => {
     let userAStore: ReturnType<typeof useAppStore> | undefined
     const firstRender = render(<AppStoreProvider userId="user-a"><StoreProbe onReady={(value) => { userAStore = value }} /></AppStoreProvider>)
     act(() => { userAStore?.runPlayground({ modelId: 'deepseek-chat', prompt: '仅用户 A 可见', response: '私密回复' }) })
+    expect(userAStore?.playgroundHistorySaved).toBe(true)
     expect(window.localStorage.getItem('token-nx:session-history:playground:v1')).toContain('user-a')
     expect(window.localStorage.getItem('token-nx:playground:v1')).toBeNull()
     firstRender.unmount()
@@ -148,6 +170,16 @@ describe('工作空间本地状态', () => {
     expect(userBStore?.phone).toBe('137****7000')
     expect(window.localStorage.getItem('token-nx:user-front:v2:user-a')).toContain('用户 A')
     expect(window.localStorage.getItem('token-nx:user-front:v2:user-b')).toBeNull()
+  })
+
+  it('历史只保存缩略回复时，完整内存结果仍标记为未落盘', () => {
+    let store: ReturnType<typeof useAppStore> | undefined
+    render(<AppStoreProvider userId="user-long-reply"><StoreProbe onReady={(value) => { store = value }} /></AppStoreProvider>)
+    act(() => { store?.runPlayground({ modelId: 'deepseek-chat', prompt: '长回复', response: '文'.repeat(16_001) }) })
+    expect(store?.playgroundHistorySaved).toBe(false)
+    expect(store?.playgroundSessions[0]?.response).toHaveLength(16_001)
+    const saved = JSON.parse(String(window.localStorage.getItem('token-nx:session-history:playground:v1')))
+    expect(saved.entries[0].response).toHaveLength(16_000)
   })
 
   it('清除上下文保留同一条历史会话并重置轮次', () => {

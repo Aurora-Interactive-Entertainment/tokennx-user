@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
 import { Provider } from 'react-redux'
@@ -11,6 +11,9 @@ import type { ModelRecord } from '@/data/models'
 import { cancelVideoTask, getVideoTask, submitVideoGeneration } from '@/api/video-runtime'
 import { clearAuthTokens, saveAuthTokens } from '@/auth/token-storage'
 import { useUserModels } from '@/data/user-models'
+import { synchronizeAuthenticatedUser } from '@/store/auth-slice'
+import { VIDEO_SESSION_HISTORY_KEY } from '@/utils/ephemeral-history'
+import { useBuildUpdateBlocker } from '@/runtime/use-build-update-blocker'
 import { VideoPage } from './video-generation'
 
 vi.mock('@/api/video-runtime', () => {
@@ -22,6 +25,7 @@ vi.mock('@/api/video-runtime', () => {
 })
 
 vi.mock('@/data/user-models', () => ({ useUserModels: vi.fn() }))
+vi.mock('@/runtime/use-build-update-blocker', () => ({ useBuildUpdateBlocker: vi.fn() }))
 
 vi.mock('@/components/common', () => ({ BannerNotice: () => null, EmptyPanel: () => null, PageTitle: () => null }))
 
@@ -92,7 +96,9 @@ const processingTask: VideoTask = { ...pendingTask, status: 'processing', progre
 const succeededTask: VideoTask = { ...pendingTask, status: 'succeeded', progress: 100, resultUrl: 'https://cdn.example.com/video-1.mp4' }
 
 function renderVideoPage(): void {
-  render(<MemoryRouter initialEntries={['/console/video']}><Provider store={createAppStore()}><AppStoreProvider><VideoPage /></AppStoreProvider></Provider></MemoryRouter>)
+  const appStore = createAppStore()
+  appStore.dispatch(synchronizeAuthenticatedUser({ id: 'video-user', display_name: '视频测试用户', avatar_url: '', locale: 'zh-CN', timezone: 'Asia/Shanghai', status: 'active' }))
+  render(<MemoryRouter initialEntries={['/console/video']}><Provider store={appStore}><AppStoreProvider><VideoPage /></AppStoreProvider></Provider></MemoryRouter>)
 }
 
 describe('视频生成页面', () => {
@@ -107,6 +113,140 @@ describe('视频生成页面', () => {
   afterEach(() => {
     clearAuthTokens({ force: true })
     vi.restoreAllMocks()
+  })
+
+  it('视频草稿、提交和轮询保护刷新，成功历史里的提示词不会永久阻塞', async () => {
+    const user = userEvent.setup()
+    let complete!: (value: VideoTask) => void
+    vi.mocked(submitVideoGeneration).mockResolvedValue(pendingTask)
+    vi.mocked(getVideoTask).mockImplementation(() => new Promise((resolve) => { complete = resolve }))
+    renderVideoPage()
+    const input = screen.getByLabelText('视频提示词')
+    expect(input.closest('[data-build-update-managed]')).not.toBeNull()
+    expect(vi.mocked(useBuildUpdateBlocker).mock.lastCall?.[0]).toBe(false)
+    await user.type(input, '已保存的视频提示词')
+    expect(vi.mocked(useBuildUpdateBlocker).mock.lastCall?.[0]).toBe(true)
+    await user.click(screen.getByRole('button', { name: '生成视频' }))
+    await waitFor(() => expect(getVideoTask).toHaveBeenCalledOnce(), { timeout: 2_500 })
+    expect(vi.mocked(useBuildUpdateBlocker).mock.lastCall?.[0]).toBe(true)
+    await act(async () => complete(succeededTask))
+    expect(input).toHaveValue('已保存的视频提示词')
+    expect(vi.mocked(useBuildUpdateBlocker).mock.lastCall?.[0]).toBe(false)
+    await user.type(input, '下一轮')
+    expect(vi.mocked(useBuildUpdateBlocker).mock.lastCall?.[0]).toBe(true)
+  })
+
+  it('轮询期间新写的提示词不会被旧任务完成误标为已保存', async () => {
+    const user = userEvent.setup()
+    let complete!: (value: VideoTask) => void
+    vi.mocked(submitVideoGeneration).mockResolvedValue(pendingTask)
+    vi.mocked(getVideoTask).mockImplementation(() => new Promise((resolve) => { complete = resolve }))
+    renderVideoPage()
+    await user.type(screen.getByLabelText('视频提示词'), '原始提示词')
+    await user.click(screen.getByRole('button', { name: '生成视频' }))
+    await waitFor(() => expect(getVideoTask).toHaveBeenCalledOnce(), { timeout: 2_500 })
+    fireEvent.change(screen.getByLabelText('视频提示词'), { target: { value: '准备下一轮' } })
+    await act(async () => complete(succeededTask))
+    expect(vi.mocked(useBuildUpdateBlocker).mock.lastCall?.[0]).toBe(true)
+    await user.click(screen.getByRole('button', { name: '新生成' }))
+    expect(vi.mocked(useBuildUpdateBlocker).mock.lastCall?.[0]).toBe(false)
+  })
+
+  it('只改模型参数也保护刷新，失败仍保护，主动新建才释放', async () => {
+    const user = userEvent.setup()
+    vi.mocked(submitVideoGeneration).mockRejectedValue(new Error('视频临时失败'))
+    renderVideoPage()
+    const duration = screen.getByRole('slider', { name: '时长' })
+    expect(duration.closest('[data-build-update-managed]')).not.toBeNull()
+    fireEvent.change(duration, { target: { value: '10' } })
+    expect(vi.mocked(useBuildUpdateBlocker).mock.lastCall?.[0]).toBe(true)
+    await user.selectOptions(screen.getByRole('combobox', { name: '视频模型' }), 'other-video-public')
+    expect(vi.mocked(useBuildUpdateBlocker).mock.lastCall?.[0]).toBe(true)
+    await user.type(screen.getByLabelText('视频提示词'), '失败草稿')
+    await user.click(screen.getByRole('button', { name: '生成视频' }))
+    await screen.findByText('视频临时失败')
+    expect(vi.mocked(useBuildUpdateBlocker).mock.lastCall?.[0]).toBe(true)
+    await user.click(screen.getByRole('button', { name: '新生成' }))
+    expect(vi.mocked(useBuildUpdateBlocker).mock.lastCall?.[0]).toBe(false)
+  })
+
+  it('本地参考图即使生成成功也保留保护，避免刷新丢失未持久化的图像', async () => {
+    const user = userEvent.setup()
+    vi.mocked(submitVideoGeneration).mockResolvedValue(succeededTask)
+    renderVideoPage()
+    await user.selectOptions(screen.getByRole('combobox', { name: '参考图' }), 'first-last')
+    await user.upload(screen.getByLabelText('首帧 URL', { selector: 'input' }), new File(['reference'], 'keep.png', { type: 'image/png' }))
+    await screen.findByText('keep.png')
+    await user.type(screen.getByLabelText('视频提示词'), '本地首帧生成')
+    await user.click(screen.getByRole('button', { name: '生成视频' }))
+    await screen.findByLabelText('视频生成结果')
+    expect(vi.mocked(useBuildUpdateBlocker).mock.lastCall?.[0]).toBe(true)
+    await user.click(screen.getByRole('button', { name: '新生成' }))
+    expect(vi.mocked(useBuildUpdateBlocker).mock.lastCall?.[0]).toBe(false)
+  })
+
+  it('参考图读取尚未结束时保护刷新，读取结束且未产生草稿后释放', async () => {
+    const user = userEvent.setup()
+    let pendingReader!: FileReader
+    vi.spyOn(FileReader.prototype, 'readAsDataURL').mockImplementation(function (this: FileReader) { pendingReader = this })
+    renderVideoPage()
+    await user.click(screen.getByRole('button', { name: '参考图 · 上传参考图' }))
+    expect(screen.getByLabelText('参考图 URL').closest('[data-build-update-managed]')).not.toBeNull()
+    await user.upload(screen.getByLabelText('参考图', { selector: 'input' }), new File(['reference'], 'reading.png', { type: 'image/png' }))
+    expect(vi.mocked(useBuildUpdateBlocker).mock.lastCall?.[0]).toBe(true)
+    await act(async () => {
+      pendingReader.dispatchEvent(new ProgressEvent('error'))
+      pendingReader.dispatchEvent(new ProgressEvent('loadend'))
+    })
+    expect(vi.mocked(useBuildUpdateBlocker).mock.lastCall?.[0]).toBe(false)
+  })
+
+  it('历史重试成功不能把另一份未提交提示词标成已保存', async () => {
+    const user = userEvent.setup()
+    vi.mocked(submitVideoGeneration).mockResolvedValue(succeededTask)
+    renderVideoPage()
+    await user.type(screen.getByLabelText('视频提示词'), '历史中的提示词')
+    await user.click(screen.getByRole('button', { name: '生成视频' }))
+    await screen.findByLabelText('视频生成结果')
+    expect(vi.mocked(useBuildUpdateBlocker).mock.lastCall?.[0]).toBe(false)
+    fireEvent.change(screen.getByLabelText('视频提示词'), { target: { value: '另一份新草稿' } })
+    await user.click(screen.getByRole('button', { name: '重新生成' }))
+    await waitFor(() => expect(submitVideoGeneration).toHaveBeenCalledTimes(2))
+    expect(vi.mocked(useBuildUpdateBlocker).mock.lastCall?.[0]).toBe(true)
+  })
+
+  it('取消视频任务期间保护刷新，取消完成后释放已经记录的提示词', async () => {
+    const user = userEvent.setup()
+    let completeCancel!: (value: VideoTask) => void
+    vi.mocked(submitVideoGeneration).mockResolvedValue(processingTask)
+    vi.mocked(getVideoTask).mockImplementation(() => new Promise(() => {}))
+    vi.mocked(cancelVideoTask).mockImplementation(() => new Promise((resolve) => { completeCancel = resolve }))
+    renderVideoPage()
+    await user.type(screen.getByLabelText('视频提示词'), '取消已记录任务')
+    await user.click(screen.getByRole('button', { name: '生成视频' }))
+    await waitFor(() => expect(submitVideoGeneration).toHaveBeenCalledOnce())
+    await user.click(within(document.querySelector('article')!).getByRole('button', { name: '取消生成' }))
+    expect(vi.mocked(useBuildUpdateBlocker).mock.lastCall?.[0]).toBe(true)
+    await act(async () => completeCancel({ ...processingTask, status: 'cancelled' }))
+    expect(vi.mocked(useBuildUpdateBlocker).mock.lastCall?.[0]).toBe(false)
+  })
+
+  it('视频历史无法落盘时，生成成功也继续保护内存里的结果', async () => {
+    const user = userEvent.setup()
+    vi.mocked(submitVideoGeneration).mockResolvedValue(succeededTask)
+    const originalSetItem = Storage.prototype.setItem
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (this: Storage, key, value) {
+      if (key === VIDEO_SESSION_HISTORY_KEY) throw new DOMException('存储配额不足', 'QuotaExceededError')
+      originalSetItem.call(this, key, value)
+    })
+    renderVideoPage()
+    await user.type(screen.getByLabelText('视频提示词'), '结果只能保存在内存')
+    await user.click(screen.getByRole('button', { name: '生成视频' }))
+    await screen.findByLabelText('视频生成结果')
+    expect(window.localStorage.getItem(VIDEO_SESSION_HISTORY_KEY)).toBeNull()
+    expect(vi.mocked(useBuildUpdateBlocker).mock.lastCall?.[0]).toBe(true)
+    await user.click(screen.getByRole('button', { name: '新生成' }))
+    expect(vi.mocked(useBuildUpdateBlocker).mock.lastCall?.[0]).toBe(true)
   })
 
   it('不依赖 API Key，展示当前空间目录中的全部视频模型', async () => {
@@ -164,6 +304,7 @@ describe('视频生成页面', () => {
     await waitFor(() => expect(getVideoTask).toHaveBeenCalledWith('user-access-token', 'task-video-1', expect.anything()), { timeout: 2_500 })
     expect(await screen.findByLabelText('视频生成结果')).toBeInTheDocument()
     expect(document.querySelector('.video-status-success')).toHaveTextContent('已完成')
+    await waitFor(() => expect(vi.mocked(useBuildUpdateBlocker).mock.lastCall?.[0]).toBe(false))
   })
 
   it('提示词输入框按 Enter 直接提交，Shift + Enter 只换行', async () => {

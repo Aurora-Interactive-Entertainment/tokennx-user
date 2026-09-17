@@ -1,5 +1,6 @@
 import { readFile, readdir, stat } from "node:fs/promises";
 import { join, resolve, sep } from "node:path";
+import { isValidBuildVersion } from "../build/build-version.ts";
 
 // 构建完成后校验发布目录，尽早发现“HTML 已更新但引用资源没上传”的不完整产物。
 const DIST_DIR = resolve(process.argv[2] ?? "dist");
@@ -129,12 +130,9 @@ async function verifyVersion() {
     const payload = JSON.parse(
       await readFile(join(DIST_DIR, "version.json"), "utf8"),
     );
-    if (
-      !payload ||
-      typeof payload.version !== "string" ||
-      !payload.version.trim()
-    ) {
-      failures.push("version.json 缺少有效 version");
+    // 非空仍可能被浏览器守卫忽略，发布前按同一完整格式拒绝错误探针。
+    if (!isValidBuildVersion(payload?.version)) {
+      failures.push("version.json 的 version 格式无效：必须以字母或数字开头，仅包含字母、数字、点、下划线、连字符，且不超过 160 字符");
     }
     const html = await readFile(join(DIST_DIR, "index.html"), "utf8");
     const htmlVersion = html.match(/name="token-nx-build-version"\s+content="([^"]+)"/)?.[1];

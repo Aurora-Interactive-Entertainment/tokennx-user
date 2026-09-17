@@ -20,9 +20,9 @@ const resources = {
     translation: {
       appUpdate: {
         title: '有新版本可用',
-        description: '当前操作不会中断。请完成并保存后刷新，加载最新内容。',
+        description: '完成操作、保存内容并关闭弹窗后，页面会自动更新。立即刷新前请确认已保存内容。',
         refresh: '刷新更新',
-        later: '稍后再说',
+        later: '知道了',
       },
       language: {
         label: '语言',
@@ -647,9 +647,9 @@ const resources = {
     translation: {
       appUpdate: {
         title: 'An update is available',
-        description: 'Your current work will not be interrupted. Finish and save it before refreshing to load the latest version.',
+        description: 'The page will update automatically once your work is saved and dialogs are closed. Save any changes before refreshing now.',
         refresh: 'Refresh to update',
-        later: 'Later',
+        later: 'Got it',
       },
       language: { label: 'Language', toggle: 'Switch language', current: 'English' },
       theme: { label: 'Theme', switch: 'Switch theme', light: 'Light theme', dark: 'Dark theme' },

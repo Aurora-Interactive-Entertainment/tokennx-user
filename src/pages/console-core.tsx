@@ -26,6 +26,7 @@ import { canStartPlaygroundRound, limitPlaygroundPrompt, PLAYGROUND_MAX_INPUT_CH
 import { clearAuthTokens, getAccessToken } from '@/auth/token-storage'
 import { invalidateAuth } from '@/store/auth-slice'
 import { useAppDispatch } from '@/store/hooks'
+import { useBuildUpdateBlocker } from '@/runtime/use-build-update-blocker'
 import { DEFAULT_MODEL_PAGE_SIZE, CONSOLE_MODEL_CATEGORIES, MODEL_PAGE_SIZES, MODEL_PRICE_FILTERS, MODEL_SORTS, filterAndSortModels, modelCategoryCounts, paginateModels, type ModelCategory, type ModelPriceFilter, type ModelSort } from '@/utils/model-filters'
 import { QuickstartGuide } from '@/components/quickstart-guide'
 import './playground.css'
@@ -272,6 +273,7 @@ export function PlaygroundPage() {
   const [contextMenuVisible, setContextMenuVisible] = useState(false)
   const [temperature, setTemperature] = useState(DEFAULT_TEMPERATURE)
   const [maxTokens, setMaxTokens] = useState(DEFAULT_MAX_TOKENS)
+  const [submittedParameters, setSubmittedParameters] = useState({ temperature: DEFAULT_TEMPERATURE, maxTokens: DEFAULT_MAX_TOKENS })
   const [activePrompt, setActivePrompt] = useState('')
   const [streamingResponse, setStreamingResponse] = useState('')
   const [streamingReasoning, setStreamingReasoning] = useState('')
@@ -296,6 +298,11 @@ export function PlaygroundPage() {
     [models],
   )
   const selectedModel = findModelInList(selectableModels, modelId) ?? selectableModels[0]
+
+  // 已完成的对话有历史记录；未发送、原位编辑、失败重试和新改的参数仍需留在当前页面。
+  useBuildUpdateBlocker(running || Boolean(prompt.trim()) || Boolean(editingUserAttemptId)
+    || temperature !== submittedParameters.temperature || maxTokens !== submittedParameters.maxTokens
+    || selectedSession?.messages.at(-1)?.status === 'failed')
 
   useEffect(() => {
     if (modelsError) appToast.error(modelsError)
@@ -449,6 +456,8 @@ export function PlaygroundPage() {
         latency: result.latencyMs,
       })
       setSelectedSessionId(session.id)
+      // 使用发起请求时的参数，生成期间另改的值不能被误标为已提交。
+      setSubmittedParameters({ temperature, maxTokens })
       setPrompt('')
       setActivePrompt('')
       setStreamingResponse('')
@@ -649,7 +658,7 @@ export function PlaygroundPage() {
 
   const centerMessageState = !selectedSession && !activePrompt
 
-  return <div className={`page-stack playground-console-page${historyCollapsed ? ' is-history-collapsed' : ''}`}>
+  return <div data-build-update-managed className={`page-stack playground-console-page${historyCollapsed ? ' is-history-collapsed' : ''}`}>
     <section className="playground-shell" aria-label={t('console.playground.title')}>
       <aside className="history-panel" aria-labelledby="history-title">
         <div className="history-heading">
@@ -683,7 +692,7 @@ export function PlaygroundPage() {
         </div>
       </div>
     </section>
-    <Modal title={t('console.playground.parameters')} visible={paramsVisible} onCancel={() => setParamsVisible(false)} onOk={() => setParamsVisible(false)} okText={t('console.playground.done')} cancelText={t('console.common.cancel')}><div className="params-dialog"><label className="field-label" htmlFor="temperature">{t('console.playground.temperature')}</label><Input id="temperature" value={temperature} onChange={setTemperature} suffix={t('console.playground.randomness')} inputMode="decimal" /><span className="params-field-hint">{t('console.playground.parameterRange', { min: MIN_TEMPERATURE, max: MAX_TEMPERATURE })}</span><label className="field-label" htmlFor="max-tokens">{t('console.playground.maxTokens')}</label><Input id="max-tokens" value={maxTokens} onChange={(value) => setMaxTokens(value.replace(/\D/g, ''))} suffix="tokens" inputMode="numeric" /><span className="params-field-hint">{t('console.playground.tokenRange', { min: MIN_MAX_TOKENS, max: MAX_MAX_TOKENS })}</span></div></Modal>
+    <Modal title={t('console.playground.parameters')} visible={paramsVisible} onCancel={() => setParamsVisible(false)} onOk={() => setParamsVisible(false)} okText={t('console.playground.done')} cancelText={t('console.common.cancel')}><div data-build-update-managed className="params-dialog"><label className="field-label" htmlFor="temperature">{t('console.playground.temperature')}</label><Input id="temperature" value={temperature} onChange={setTemperature} suffix={t('console.playground.randomness')} inputMode="decimal" /><span className="params-field-hint">{t('console.playground.parameterRange', { min: MIN_TEMPERATURE, max: MAX_TEMPERATURE })}</span><label className="field-label" htmlFor="max-tokens">{t('console.playground.maxTokens')}</label><Input id="max-tokens" value={maxTokens} onChange={(value) => setMaxTokens(value.replace(/\D/g, ''))} suffix="tokens" inputMode="numeric" /><span className="params-field-hint">{t('console.playground.tokenRange', { min: MIN_MAX_TOKENS, max: MAX_MAX_TOKENS })}</span></div></Modal>
   </div>
 }
 

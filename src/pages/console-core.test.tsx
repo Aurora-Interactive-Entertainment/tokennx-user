@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { within } from '@testing-library/react'
 import { MemoryRouter, useLocation } from 'react-router'
@@ -10,6 +10,8 @@ import { MODEL_API_BASE_URL, ModelRuntimeError, streamChatCompletion } from '@/a
 import type { UserApiKey } from '@/api/user-api-keys'
 import { clearAuthTokens, saveAuthTokens } from '@/auth/token-storage'
 import type { AuthResult } from '@/api/auth'
+import { useBuildUpdateBlocker } from '@/runtime/use-build-update-blocker'
+import { PLAYGROUND_SESSION_HISTORY_KEY } from '@/utils/ephemeral-history'
 import { apiKeySupportsModel, ConsoleModelsPage, PlaygroundPage, QuickstartPage } from './console-core'
 
 function CurrentPath() {
@@ -22,14 +24,16 @@ function CurrentLocation() {
   return <output data-testid="current-location">{location.pathname}{location.search}</output>
 }
 
-function renderConsolePage(page: React.ReactNode, initialEntries: string[] = ['/console']): void {
-  render(<MemoryRouter initialEntries={initialEntries}><Provider store={createAppStore()}><AppStoreProvider>{page}</AppStoreProvider></Provider></MemoryRouter>)
+function renderConsolePage(page: React.ReactNode, initialEntries: string[] = ['/console'], userId?: string): void {
+  render(<MemoryRouter initialEntries={initialEntries}><Provider store={createAppStore()}><AppStoreProvider userId={userId}>{page}</AppStoreProvider></Provider></MemoryRouter>)
 }
 
 vi.mock('@/api/model-runtime', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/api/model-runtime')>()
   return { ...actual, streamChatCompletion: vi.fn() }
 })
+
+vi.mock('@/runtime/use-build-update-blocker', () => ({ useBuildUpdateBlocker: vi.fn() }))
 
 function activeApiKey(): UserApiKey {
   return {
@@ -162,6 +166,8 @@ describe('控制台模型接入页面', () => {
   afterEach(() => {
     vi.restoreAllMocks()
     vi.unstubAllGlobals()
+    vi.mocked(useBuildUpdateBlocker).mockReset()
+    delete window.__TOKEN_NX_UPDATE_GUARD__
   })
 
   it('按 API Key 范围判断模型权限，全部范围允许文本模型，指定范围只允许授权模型', () => {
@@ -361,6 +367,85 @@ describe('控制台模型接入页面', () => {
     expect(await screen.findByText('未找到匹配模型')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '清除筛选' }))
     expect(await screen.findByText('12 个模型')).toBeInTheDocument()
+  })
+
+  it('对话草稿和生成过程阻止版本刷新，成功保存后释放，原位编辑重新保护', async () => {
+    const user = userEvent.setup()
+    let complete!: (value: Awaited<ReturnType<typeof streamChatCompletion>>) => void
+    vi.mocked(streamChatCompletion).mockImplementation(() => new Promise((resolve) => { complete = resolve }))
+    renderConsolePage(<PlaygroundPage />)
+    const input = await screen.findByLabelText('测试提示词')
+    expect(vi.mocked(useBuildUpdateBlocker).mock.lastCall?.[0]).toBe(false)
+    expect(input.closest('[data-build-update-managed]')).not.toBeNull()
+    await user.type(input, '保存这一轮')
+    expect(vi.mocked(useBuildUpdateBlocker).mock.lastCall?.[0]).toBe(true)
+    await user.click(screen.getByRole('button', { name: '发送' }))
+    expect(vi.mocked(useBuildUpdateBlocker).mock.lastCall?.[0]).toBe(true)
+    await act(async () => complete({ content: '已保存的回复', reasoning: '', requestId: 'req-build', inputTokens: 2, outputTokens: 3, finishReason: 'stop', latencyMs: 12 }))
+    expect(input).toHaveValue('')
+    expect(vi.mocked(useBuildUpdateBlocker).mock.lastCall?.[0]).toBe(false)
+    await user.click(screen.getByRole('button', { name: '编辑消息' }))
+    expect(vi.mocked(useBuildUpdateBlocker).mock.lastCall?.[0]).toBe(true)
+  })
+
+  it('参数编辑独立保护，成功请求仅释放本次提交的参数', async () => {
+    const user = userEvent.setup()
+    let complete!: (value: Awaited<ReturnType<typeof streamChatCompletion>>) => void
+    vi.mocked(streamChatCompletion).mockImplementation(() => new Promise((resolve) => { complete = resolve }))
+    renderConsolePage(<PlaygroundPage />)
+    await user.click(await screen.findByRole('button', { name: '当前上下文 0 轮' }))
+    await user.click(screen.getByRole('button', { name: '最大上下文设置' }))
+    const parameter = screen.getByLabelText('Temperature')
+    expect(parameter.closest('[data-build-update-managed]')).not.toBeNull()
+    fireEvent.change(parameter, { target: { value: '0.5' } })
+    expect(vi.mocked(useBuildUpdateBlocker).mock.lastCall?.[0]).toBe(true)
+    await user.click(within(screen.getByRole('dialog', { name: '模型参数' })).getByRole('button', { name: 'cancel' }))
+    await user.type(screen.getByLabelText('测试提示词'), '使用新参数')
+    await user.click(screen.getByRole('button', { name: '发送' }))
+    await user.click(screen.getByRole('button', { name: '当前上下文 0 轮' }))
+    await user.click(screen.getByRole('button', { name: '最大上下文设置' }))
+    fireEvent.change(screen.getByLabelText('Temperature'), { target: { value: '0.8' } })
+    await act(async () => complete({ content: '参数回复', reasoning: '', requestId: 'req-build-param', inputTokens: 2, outputTokens: 3, finishReason: 'stop', latencyMs: 12 }))
+    expect(vi.mocked(useBuildUpdateBlocker).mock.lastCall?.[0]).toBe(true)
+    fireEvent.change(screen.getByLabelText('Temperature'), { target: { value: '0.5' } })
+    expect(vi.mocked(useBuildUpdateBlocker).mock.lastCall?.[0]).toBe(false)
+  })
+
+  it('失败轮保留刷新保护，主动新建会话后释放', async () => {
+    const user = userEvent.setup()
+    vi.mocked(streamChatCompletion).mockRejectedValue(new Error('临时不可用'))
+    renderConsolePage(<PlaygroundPage />)
+    await user.type(await screen.findByLabelText('测试提示词'), '失败后保留')
+    await user.click(screen.getByRole('button', { name: '发送' }))
+    await waitFor(() => expect(screen.getByLabelText('测试提示词')).toHaveValue(''))
+    expect(vi.mocked(useBuildUpdateBlocker).mock.lastCall?.[0]).toBe(true)
+    await user.click(screen.getByRole('button', { name: '创建新对话' }))
+    expect(vi.mocked(useBuildUpdateBlocker).mock.lastCall?.[0]).toBe(false)
+  })
+
+  it('对话历史写入被禁用时保留完整内存回复的刷新保护', async () => {
+    const user = userEvent.setup()
+    const actual = await vi.importActual<typeof import('@/runtime/use-build-update-blocker')>('@/runtime/use-build-update-blocker')
+    vi.mocked(useBuildUpdateBlocker).mockImplementation(actual.useBuildUpdateBlocker)
+    const holders = new Set<object>()
+    window.__TOKEN_NX_UPDATE_GUARD__ = {
+      pendingVersion: '', check: vi.fn(), routeChanged: vi.fn(), reload: vi.fn(),
+      blockReload: () => { const token = {}; holders.add(token); return () => { holders.delete(token) } },
+    }
+    vi.mocked(streamChatCompletion).mockResolvedValue({ content: '仅内存中存在的回复', reasoning: '', requestId: 'req-memory-only', inputTokens: 2, outputTokens: 3, finishReason: 'stop', latencyMs: 12 })
+    const originalSetItem = Storage.prototype.setItem
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (this: Storage, key, value) {
+      if (key === PLAYGROUND_SESSION_HISTORY_KEY) throw new DOMException('存储写入被禁用', 'SecurityError')
+      originalSetItem.call(this, key, value)
+    })
+    renderConsolePage(<PlaygroundPage />, ['/console'], 'user-test')
+    await user.type(await screen.findByLabelText('测试提示词'), '请保留内存回复')
+    await user.click(screen.getByRole('button', { name: '发送' }))
+    await screen.findByText('仅内存中存在的回复')
+    expect(screen.getByLabelText('测试提示词')).toHaveValue('')
+    expect(holders.size).toBe(1)
+    await user.click(screen.getByRole('button', { name: '创建新对话' }))
+    expect(holders.size).toBe(1)
   })
 
   it('直接展示用户模型接口返回的文本模型，不再显示 API Key 控件', async () => {

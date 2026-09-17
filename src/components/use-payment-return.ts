@@ -5,6 +5,7 @@ import { isPaymentSettled } from '@/api/payment-flow'
 import { assertBillingPaymentOrderIdentity } from '@/api/plan-payment-validation'
 import { getAccessTokenUserId } from '@/auth/token-storage'
 import { useBillingPaymentPolling } from './use-billing-payment-polling'
+import { useBuildUpdateBlocker } from '@/runtime/use-build-update-blocker'
 import i18n from '@/i18n'
 
 export interface PaymentReturnState {
@@ -31,6 +32,9 @@ export function usePaymentReturn({ context, orderID, onAuthFailure, onSettled }:
   const queryTarget = useMemo(() => normalizedID ? { id: normalizedID, status: 'pending', paid_at: null } as BillingPaymentOrder : null, [key])
   const fallback: PaymentReturnState = { status: normalizedID ? 'loading' : 'idle', data: null, error: '', requestId: null }
   const state = snapshot?.key === key ? snapshot.state : fallback
+  // 回跳参数会保留到 URL 中；只有当前主体查证的终态才允许自动更新，超时后仍需用户重试或离开。
+  const confirmedTerminal = state.data && (isPaymentSettled(state.data) || ['closed', 'expired'].includes(state.data.status))
+  useBuildUpdateBlocker(Boolean(normalizedID && !confirmedTerminal))
   useBillingPaymentPolling({
     context, order: queryTarget, enabled: Boolean(normalizedID), refreshToken, scopeKey: key,
     onOrder: (order) => {

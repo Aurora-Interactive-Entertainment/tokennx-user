@@ -35,6 +35,7 @@ import {
 } from "@/observability/payment-log";
 import { useBillingPaymentPolling } from "./use-billing-payment-polling";
 import { usePaymentExpiry } from "./use-payment-expiry";
+import { useBuildUpdateBlocker } from "@/runtime/use-build-update-blocker";
 
 // 协议、渠道和幂等信息属于同一支付会话，所有异步结果都必须通过版本校验。
 export function usePlanPayment(
@@ -91,6 +92,11 @@ export function usePlanPayment(
   });
   const controller = useRef<AbortController | null>(null);
   const pollFailed = useRef(false);
+  // 未知创建结果、待支付、已付未入账和查单超时都不代表订单结束；保留当前会话直到确认终态或离开入口。
+  const unfinishedPayment = session.current.creationStarted && (!order || (
+    !isPaymentSettled(order) && !["closed", "expired"].includes(order.status)
+  ));
+  useBuildUpdateBlocker(busy || exclusiveBusy || querying || unfinishedPayment);
 
   function persistIntent() {
     const state = session.current;

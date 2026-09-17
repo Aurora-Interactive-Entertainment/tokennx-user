@@ -12,6 +12,7 @@ import {
   type RefObject,
 } from "react";
 import { createPortal } from "react-dom";
+import { useBuildUpdateBlocker } from "@/runtime/use-build-update-blocker";
 import { CONSOLE_IMAGE_GENERATION_ENABLED } from "@/config/console-features";
 import {
   DEFAULT_CONSOLE_PATH,
@@ -4647,6 +4648,8 @@ export function ManuscriptSupportWidget() {
     useState<SupportTabTransitionDirection>("forward");
   const [draft, setDraft] = useState("");
   const [replying, setReplying] = useState(false);
+  // 客服收起后仍保留草稿，不能随弹窗 DOM 卸载一起解除保护。
+  useBuildUpdateBlocker(Boolean(draft.trim()) || replying);
   const [notifications, setNotifications] = useState<UserNotification[]>([]);
   const [selectedNotification, setSelectedNotification] =
     useState<UserNotification | null>(null);

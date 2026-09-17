@@ -9,15 +9,17 @@ beforeEach(async () => {
   window.__TOKEN_NX_UPDATE_GUARD__ = {
     pendingVersion: 'new', check: vi.fn().mockResolvedValue(undefined),
     routeChanged: vi.fn().mockResolvedValue(undefined), reload: vi.fn().mockReturnValue(true),
+    blockReload: vi.fn(() => vi.fn()),
   }
 })
 afterEach(() => { delete window.__TOKEN_NX_UPDATE_GUARD__ })
 
-it('新版本提示由用户主动刷新，稍后关闭不会刷新', () => {
+it('提示说明自动更新，关闭提示本身不会触发手动刷新', () => {
   render(<MemoryRouter><BuildUpdateNotice /></MemoryRouter>)
   expect(screen.getByText('有新版本可用')).toBeInTheDocument()
   expect(window.__TOKEN_NX_UPDATE_GUARD__?.routeChanged).toHaveBeenCalledTimes(1)
-  fireEvent.click(screen.getByRole('button', { name: '稍后再说' }))
+  expect(screen.getByText(/页面会自动更新/)).toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: '知道了' }))
   expect(screen.queryByText('有新版本可用')).not.toBeInTheDocument()
   expect(window.__TOKEN_NX_UPDATE_GUARD__?.reload).not.toHaveBeenCalled()
 })

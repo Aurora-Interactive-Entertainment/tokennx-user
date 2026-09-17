@@ -77,10 +77,10 @@ export function writeUserSessionHistory<T>(
   userId: string | null | undefined,
   entries: readonly T[],
   maxEntries = SESSION_HISTORY_MAX_ENTRIES,
-): void {
+): boolean {
   const normalizedUserId = normalizeUserId(userId)
   const storage = getHistoryStorage()
-  if (!normalizedUserId || !storage) return
+  if (!normalizedUserId || !storage) return false
 
   const boundedMaxEntries = Number.isFinite(maxEntries)
     ? Math.max(0, Math.floor(maxEntries))
@@ -103,11 +103,13 @@ export function writeUserSessionHistory<T>(
         continue
       }
       try { storage.removeItem(key) } catch { /* 存储完全不可用时忽略 */ }
-      return
+      return false
     }
     if (serializedSize(serialized) <= SESSION_HISTORY_MAX_BYTES || keepCount === 0) {
       try {
         storage.setItem(key, serialized)
+        // 调用方可据此保留仅在内存中的结果；容量降级不能被当作完整保存。
+        return keepCount === boundedEntries.length
       } catch {
         // 浏览器配额不足时退化为更小的历史集合，不影响当前页面内存状态。
         if (keepCount > 0) {
@@ -117,8 +119,9 @@ export function writeUserSessionHistory<T>(
         // 连空集合也无法写入时移除旧值，避免超限数据继续占用本地空间。
         try { storage.removeItem(key) } catch { /* 存储完全不可用时忽略 */ }
       }
-      return
+      return false
     }
     keepCount -= 1
   }
+  return false
 }

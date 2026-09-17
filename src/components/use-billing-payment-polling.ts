@@ -5,6 +5,7 @@ import {
   type BillingPaymentOrder,
 } from "@/api/billing";
 import { isAuthenticationFailure } from "@/api/http";
+import { blockBuildUpdate } from "@/runtime/build-update";
 import {
   isPaymentOrderPollable,
   PAYMENT_STATUS_POLL_INTERVAL_MS,
@@ -54,6 +55,9 @@ export function useBillingPaymentPolling(options: PaymentPollingOptions) {
         return;
       }
       callbacks.current.onQuerying?.(true);
+      // 同步保护本次查单；取消时立即释放，避免未返回的旧请求长期阻塞其他入口更新。
+      const releaseBuildUpdate = blockBuildUpdate();
+      abort.signal.addEventListener("abort", releaseBuildUpdate, { once: true });
       try {
         const latest = await getBillingPaymentOrder(
           order.id,
@@ -70,6 +74,8 @@ export function useBillingPaymentPolling(options: PaymentPollingOptions) {
         if (isAuthenticationFailure(error)) return;
         failures++;
       } finally {
+        abort.signal.removeEventListener("abort", releaseBuildUpdate);
+        releaseBuildUpdate();
         if (!abort.signal.aborted) callbacks.current.onQuerying?.(false);
       }
       timer = setTimeout(

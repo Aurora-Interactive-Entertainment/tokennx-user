@@ -24,7 +24,7 @@ describe('用户历史存储', () => {
   })
 
   it('只允许同一用户读取并清除账号不匹配的数据', () => {
-    writeUserSessionHistory(PLAYGROUND_SESSION_HISTORY_KEY, 'user-a', [{ id: '1', content: '私密内容' }])
+    expect(writeUserSessionHistory(PLAYGROUND_SESSION_HISTORY_KEY, 'user-a', [{ id: '1', content: '私密内容' }])).toBe(true)
     expect(readUserSessionHistory(PLAYGROUND_SESSION_HISTORY_KEY, 'user-a', isTestEntry)).toEqual([
       { id: '1', content: '私密内容' },
     ])
@@ -33,7 +33,7 @@ describe('用户历史存储', () => {
   })
 
   it('未登录时不读取也不写入历史', () => {
-    writeUserSessionHistory(PLAYGROUND_SESSION_HISTORY_KEY, null, [{ id: '1', content: '内容' }])
+    expect(writeUserSessionHistory(PLAYGROUND_SESSION_HISTORY_KEY, null, [{ id: '1', content: '内容' }])).toBe(false)
     expect(window.localStorage.getItem(PLAYGROUND_SESSION_HISTORY_KEY)).toBeNull()
     expect(readUserSessionHistory(PLAYGROUND_SESSION_HISTORY_KEY, '', isTestEntry)).toEqual([])
   })
@@ -52,7 +52,7 @@ describe('用户历史存储', () => {
       id: String(index),
       content: `${index}-${'x'.repeat(100_000)}`,
     }))
-    writeUserSessionHistory(PLAYGROUND_SESSION_HISTORY_KEY, 'user-a', entries)
+    expect(writeUserSessionHistory(PLAYGROUND_SESSION_HISTORY_KEY, 'user-a', entries)).toBe(false)
     const raw = window.localStorage.getItem(PLAYGROUND_SESSION_HISTORY_KEY)
     expect(raw).not.toBeNull()
     expect(String(raw).length * 2).toBeLessThanOrEqual(SESSION_HISTORY_MAX_BYTES)

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
+import { useBuildUpdateBlocker } from '@/runtime/use-build-update-blocker'
 import Button from '@douyinfe/semi-ui/lib/es/button'
 import Switch from '@douyinfe/semi-ui/lib/es/switch'
 import {
@@ -87,6 +88,7 @@ export function SettingsPage() {
   const [accountSettingsOpen, setAccountSettingsOpen] = useState(false)
   const [deactivateVisible, setDeactivateVisible] = useState(false)
   const profileRequestVersion = useRef(0)
+  useBuildUpdateBlocker(Boolean(savingPreference))
 
   const invalidateSession = useCallback((): void => {
     dispatch(invalidateAuth())
@@ -250,7 +252,8 @@ export function SettingsPage() {
               <h2 id="profile-notification-title">{t('profile.notifications.title')}</h2>
               <p>{t('profile.notifications.description')}</p>
             </header>
-            <div className="settings-card settings-card--notifications">
+            {/* 开关即时保存，由请求状态保护更新，无需把已保存的选择当成草稿。 */}
+            <div className="settings-card settings-card--notifications" data-build-update-managed>
               <div className="notification-list">
                 {preferenceItems.map(({ code, item }) => {
                   const definition = isNotificationPreferenceCode(code) ? PREFERENCE_DEFINITIONS[code] : null

@@ -48,6 +48,7 @@ import { isPaymentActive, isPaymentSettled, isPaymentOrderPollable, paymentCarri
 import { useBillingPaymentPolling } from '@/components/use-billing-payment-polling'
 import { usePaymentExpiry } from '@/components/use-payment-expiry'
 import { usePaymentReturn } from '@/components/use-payment-return'
+import { useBuildUpdateBlocker } from '@/runtime/use-build-update-blocker'
 import { clearPendingPaymentIntent, paymentIntentScope, readPendingPaymentIntent, writePendingPaymentIntent, type PendingPaymentIntent } from '@/api/pending-payment-intent'
 import { assertRechargePaymentOrder, assertBillingPaymentAttempt } from '@/api/plan-payment-validation'
 import { getAccessTokenUserId } from '@/auth/token-storage'
@@ -610,7 +611,13 @@ export function RechargeTab({ context, onOrderUpdated, onAuthFailure }: { contex
   const paymentControllerRef = useRef<AbortController | null>(null)
   const agreementAccepted = true
   const [paymentMethod, setPaymentMethod] = useState<'alipay' | 'wechat'>(restoredIntent?.channel ?? 'alipay')
+  const [savedPaymentSelection, setSavedPaymentSelection] = useState(() => ({ amount: restoredIntent?.amountYuan ?? '100', channel: restoredIntent?.channel ?? 'alipay' }))
   const [realNameDialogOpen, setRealNameDialogOpen] = useState(false)
+  const hasUnsavedPaymentSelection = amount !== savedPaymentSelection.amount || paymentMethod !== savedPaymentSelection.channel
+  // 未完成意图含创建响应丢失场景；轮询超时仍保留保护，退出页面后由幂等意图支持恢复。
+  useBuildUpdateBlocker(submitting || paymentQuerying || hasPendingIntent || hasUnsavedPaymentSelection || Boolean(
+    paymentOrder && !isPaymentSettled(paymentOrder) && !['closed', 'expired'].includes(paymentOrder.status),
+  ))
 
   // 切换账务主体或离开充值页后，中止旧请求，避免旧订单继续发起支付。
   useEffect(() => () => paymentControllerRef.current?.abort(), [])
@@ -680,6 +687,8 @@ export function RechargeTab({ context, onOrderUpdated, onAuthFailure }: { contex
     if (!signal.aborted) {
       validateOrder(order)
       saveIntent({ ...intent, orderID: order.id })
+      // 选择已由同金额、同渠道的订单承接；结束这笔支付后只保护随后尚未提交的新选择。
+      setSavedPaymentSelection({ amount: intent.amountYuan!, channel: intent.channel })
     }
     return order
   }
@@ -938,7 +947,7 @@ export function RechargeTab({ context, onOrderUpdated, onAuthFailure }: { contex
           <div className="recharge-amount-content">
             <div className="recharge-options" id="rechargeOptions">
               {RECHARGE_OPTIONS.map((value) => <button type="button" className={`recharge-option${selected === value ? ' active' : ''}`} aria-pressed={selected === value} key={value} disabled={submitting} onClick={() => choose(value)}><span className="recharge-amount">{value} {i18n.t('console.billing.amountUnit')}</span><span className="recharge-selected-corner" aria-hidden="true">✓</span></button>)}
-              <label className={`recharge-option recharge-option-other${customAmountSelected ? ' active' : ''}`} htmlFor="rechargeCustomAmount"><input id="rechargeCustomAmount" disabled={submitting} aria-label={i18n.t('console.billing.otherAmount')} aria-describedby="rechargeAmountValidation" aria-invalid={amountValidation !== null} inputMode="decimal" type="text" value={selected === null ? amount : ''} onFocus={() => { if (selected !== null) void changeSelection('', null, paymentMethod) }} onChange={(event) => { void changeSelection(sanitizeRechargeAmountInput(event.target.value), null, paymentMethod) }} placeholder={i18n.t('console.billing.otherAmountPlaceholder')} /><span className="recharge-selected-corner" aria-hidden="true">✓</span></label>
+              <label className={`recharge-option recharge-option-other${customAmountSelected ? ' active' : ''}`} htmlFor="rechargeCustomAmount"><input id="rechargeCustomAmount" data-build-update-managed disabled={submitting} aria-label={i18n.t('console.billing.otherAmount')} aria-describedby="rechargeAmountValidation" aria-invalid={amountValidation !== null} inputMode="decimal" type="text" value={selected === null ? amount : ''} onFocus={() => { if (selected !== null) void changeSelection('', null, paymentMethod) }} onChange={(event) => { void changeSelection(sanitizeRechargeAmountInput(event.target.value), null, paymentMethod) }} placeholder={i18n.t('console.billing.otherAmountPlaceholder')} /><span className="recharge-selected-corner" aria-hidden="true">✓</span></label>
             </div>
             {amountValidationMessage ? <p className="recharge-amount-validation" id="rechargeAmountValidation" role="alert">{amountValidationMessage}</p> : null}
           </div>
