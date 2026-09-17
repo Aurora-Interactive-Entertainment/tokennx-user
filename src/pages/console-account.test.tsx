@@ -181,10 +181,13 @@ function renderPage(observeLocation = false, initialEntry = '/console/api-keys',
 }
 
 // 企业编辑测试覆盖专用接口与当前成员通用 PUT 的分流，避免误把不可编辑字段静默丢弃。
-function mockEnterpriseKeyEditApi(key: typeof KEY_ITEM) {
+function mockEnterpriseKeyEditApi(key: typeof KEY_ITEM, subscriptionModels: typeof KEY_ITEM.models = []) {
   const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, requestOptions) => {
     const url = new URL(String(input), 'https://saas.example.com')
     const method = requestOptions?.method ?? 'GET'
+    if (url.pathname === '/api/user/api-keys/subscription-models') {
+      return apiResponse({ has_subscription: subscriptionModels.length > 0, models: subscriptionModels })
+    }
     if (url.pathname === '/api/user/models') return apiResponse({ items: [] })
     if (url.pathname === '/api/user/enterprise/enterprise-1/departments') return apiResponse({ items: [], total: 0, page: 1, page_size: 20 })
     if (url.pathname === '/api/user/enterprise/enterprise-1/members') {
@@ -614,6 +617,117 @@ describe('密钥管理页面', () => {
 
     expect(await screen.findByText('当前没有可用的订阅模型')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'confirm' })).toBeDisabled()
+  })
+
+  it.each([
+    { title: '保留原有子集', selected: ['sub-model-a'], available: ['sub-model-a', 'sub-model-b'], expected: ['sub-model-a'] },
+    { title: '剔除已退出订阅的模型', selected: ['sub-model-a', 'sub-model-b'], available: ['sub-model-b', 'sub-model-c'], expected: ['sub-model-b'] },
+  ])('编辑订阅密钥仅改名称时$title，不扩大模型权限', async ({ selected, available, expected }) => {
+    const user = userEvent.setup()
+    const models = available.map((id) => ({ id, alias: id, name: id, company: '订阅厂商' }))
+    const key = { ...structuredClone(KEY_ITEM), billing_source: 'subscription', scope: 'selected', model_ids: selected }
+    const { fetchMock } = mockApiKeyApi({ items: [key], subscription: { hasSubscription: true, models } })
+    renderPage()
+
+    await user.click(await screen.findByRole('button', { name: '编辑 API 密钥' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'confirm' })).toBeEnabled())
+    expect(screen.getByText(`已选 ${expected.length} 个`)).toBeInTheDocument()
+    const nameInput = screen.getByLabelText('密钥名称')
+    await user.clear(nameInput)
+    await user.type(nameInput, '只修改密钥名称')
+    await user.click(screen.getByRole('button', { name: 'confirm' }))
+
+    await waitFor(() => expect(fetchMock.mock.calls.some(([, options]) => options?.method === 'PUT')).toBe(true))
+    const request = fetchMock.mock.calls.find(([, options]) => options?.method === 'PUT')
+    expect(JSON.parse(String(request?.[1]?.body))).toMatchObject({ name: '只修改密钥名称', billing_source: 'subscription', scope: 'selected', model_ids: expected })
+  })
+
+  it.each([
+    { title: '原模型全部退出订阅', selected: ['removed-model'], hasSubscription: true, subscriptionError: false },
+    { title: '原指定模型集合为空', selected: [], hasSubscription: true, subscriptionError: false },
+    { title: '订阅权益失效', selected: ['sub-model-a'], hasSubscription: false, subscriptionError: false },
+    { title: '订阅目录查询失败', selected: ['sub-model-a'], hasSubscription: true, subscriptionError: true },
+  ])('编辑订阅密钥在$title时禁止提交，不自动授权其他模型', async ({ selected, hasSubscription, subscriptionError }) => {
+    const user = userEvent.setup()
+    const key = { ...structuredClone(KEY_ITEM), billing_source: 'subscription', scope: 'selected', model_ids: selected }
+    const { fetchMock } = mockApiKeyApi({ items: [key], subscription: { hasSubscription, models: [{ id: 'sub-model-a', alias: 'sub-a', name: '订阅模型 A', company: '订阅厂商' }] }, subscriptionError })
+    renderPage()
+
+    await user.click(await screen.findByRole('button', { name: '编辑 API 密钥' }))
+    await waitFor(() => expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/subscription-models'))).toBe(true))
+    // 等目录返回后的反馈，避免把请求中的暂时禁用误当作验证通过。
+    await screen.findByText(subscriptionError ? '订阅查询失败' : !hasSubscription ? '当前没有可用的订阅模型' : /已选|请选择订阅模型/)
+    expect(screen.getByRole('button', { name: 'confirm' })).toBeDisabled()
+    expect(fetchMock.mock.calls.some(([, options]) => options?.method === 'PUT')).toBe(false)
+  })
+
+  it('原模型退出订阅后，用户显式选择新的可用模型可以继续保存', async () => {
+    const user = userEvent.setup()
+    const key = { ...structuredClone(KEY_ITEM), billing_source: 'subscription', scope: 'selected', model_ids: ['removed-model'] }
+    const { fetchMock } = mockApiKeyApi({ items: [key], subscription: { hasSubscription: true, models: [{ id: 'sub-model-a', alias: 'sub-a', name: '订阅模型 A', company: '订阅厂商' }] } })
+    renderPage()
+    await user.click(await screen.findByRole('button', { name: '编辑 API 密钥' }))
+    await screen.findByText('已选 0 个')
+    expect(screen.getByRole('button', { name: 'confirm' })).toBeDisabled()
+    fireEvent.click(document.querySelector('#key-models') as HTMLElement)
+    await user.click(screen.getByRole('option', { name: /订阅模型 A/ }))
+    await user.click(screen.getByRole('button', { name: 'confirm' }))
+    await waitFor(() => expect(fetchMock.mock.calls.some(([, options]) => options?.method === 'PUT')).toBe(true))
+    const request = fetchMock.mock.calls.find(([, options]) => options?.method === 'PUT')
+    expect(JSON.parse(String(request?.[1]?.body)).model_ids).toEqual(['sub-model-a'])
+  })
+
+  it('订阅选择提示数量随手动取消更新，选空仍沿用原提交校验', async () => {
+    const user = userEvent.setup()
+    const models = ['sub-model-a', 'sub-model-b'].map((id) => ({ id, alias: id, name: id, company: '订阅厂商' }))
+    const key = { ...structuredClone(KEY_ITEM), billing_source: 'subscription', scope: 'selected', model_ids: ['sub-model-a'] }
+    const { fetchMock } = mockApiKeyApi({ items: [key], subscription: { hasSubscription: true, models } })
+    renderPage()
+    await user.click(await screen.findByRole('button', { name: '编辑 API 密钥' }))
+    await screen.findByText('已选 1 个')
+    fireEvent.click(document.querySelector('#key-models') as HTMLElement)
+    await user.click(screen.getByRole('option', { name: /sub-model-a/ }))
+    expect(screen.getByText('已选 0 个')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'confirm' })).toBeDisabled()
+    await user.click(screen.getByRole('option', { name: /sub-model-b/ }))
+    expect(screen.getByText('已选 1 个')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'confirm' }))
+    await waitFor(() => expect(fetchMock.mock.calls.some(([, options]) => options?.method === 'PUT')).toBe(true))
+    const request = fetchMock.mock.calls.find(([, options]) => options?.method === 'PUT')
+    expect(JSON.parse(String(request?.[1]?.body)).model_ids).toEqual(['sub-model-b'])
+  })
+
+  it('编辑订阅密钥显式切回余额再选订阅时仍默认全选当前订阅模型', async () => {
+    const user = userEvent.setup()
+    const models = ['sub-model-a', 'sub-model-b'].map((id) => ({ id, alias: id, name: id, company: '订阅厂商' }))
+    const key = { ...structuredClone(KEY_ITEM), billing_source: 'subscription', scope: 'selected', model_ids: ['sub-model-a'] }
+    const { fetchMock } = mockApiKeyApi({ items: [key], subscription: { hasSubscription: true, models } })
+    renderPage()
+    await user.click(await screen.findByRole('button', { name: '编辑 API 密钥' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'confirm' })).toBeEnabled())
+    await user.click(screen.getByRole('radio', { name: '按余额消耗' }))
+    await user.click(screen.getByRole('radio', { name: '按订阅消耗' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'confirm' })).toBeEnabled())
+    await user.click(screen.getByRole('button', { name: 'confirm' }))
+    await waitFor(() => expect(fetchMock.mock.calls.some(([, options]) => options?.method === 'PUT')).toBe(true))
+    const request = fetchMock.mock.calls.find(([, options]) => options?.method === 'PUT')
+    expect(JSON.parse(String(request?.[1]?.body)).model_ids).toEqual(['sub-model-a', 'sub-model-b'])
+  })
+
+  it('企业批量编辑订阅密钥加载目录时保留表单原有模型子集', async () => {
+    const user = userEvent.setup()
+    window.localStorage.setItem('token-nx:user-front:v1', JSON.stringify({ activeWorkspaceId: 'enterprise-1', workspaces: [{ id: 'enterprise-1', name: '示例企业', type: 'enterprise', role: 'owner' }] }))
+    const models = ['sub-model-a', 'sub-model-b'].map((id) => ({ id, alias: id, name: id, company: '订阅厂商' }))
+    const key = { ...structuredClone(KEY_ITEM), billing_source: 'subscription', scope: 'selected', model_ids: ['sub-model-a'] }
+    const fetchMock = mockEnterpriseKeyEditApi(key, models)
+    renderPage(false, '/console/enterprise-api-keys', false, 'enterprise')
+    await user.click(await screen.findByRole('checkbox', { name: '选择密钥 默认密钥' }))
+    await user.click(screen.getByRole('button', { name: '批量编辑' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'confirm' })).toBeEnabled())
+    await user.click(screen.getByRole('button', { name: 'confirm' }))
+    await waitFor(() => expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/batch'))).toBe(true))
+    const request = fetchMock.mock.calls.find(([url]) => String(url).includes('/batch'))
+    expect(JSON.parse(String(request?.[1]?.body))).toMatchObject({ action: 'update', model_ids: ['sub-model-a'] })
   })
 
   it('历史密钥没有完整值时不回退复制脱敏文本', async () => {

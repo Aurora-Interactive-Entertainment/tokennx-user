@@ -8,7 +8,6 @@ import { RequestErrorPanel } from "@/components/request-error-panel";
 import {
   getPersonalUsageErrorMessage,
   getUsageFilters,
-  getUsageModels,
   getUsageSummary,
   getUsageRecords,
   type PersonalUsageContext,
@@ -17,6 +16,7 @@ import {
   type UsageSummaryResponse,
   type UsageRecordsResponse,
 } from "@/api/personal-usage";
+import { loadAllUsageModels } from "@/api/personal-usage-models";
 import { TraePagination } from "./trae-pagination";
 import {
   addLocalDays,
@@ -97,13 +97,15 @@ function PersonalUsageOverview({
         { range: "30d", ...(apiKeyID ? { api_key_id: apiKeyID } : {}) },
         controller.signal,
       ),
-      getUsageModels(
+      loadAllUsageModels(
         context,
         { range: "30d", ...(apiKeyID ? { api_key_id: apiKeyID } : {}) },
         controller.signal,
       ),
     ])
       .then(([summaryResponse, modelsResponse]) => {
+        // 切换 API Key / 主体后，已取消的旧分页及摘要不能覆盖当前列表。
+        if (controller.signal.aborted) return;
         setSummary(summaryResponse);
         setModels(modelsResponse);
       })

@@ -4,7 +4,7 @@ import { MemoryRouter } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createAppStore } from '@/store'
 import { useAppDispatch, useAppSelector } from '@/store/hooks'
-import { invalidateAuth } from '@/store/auth-slice'
+import { invalidateAuth, loginWithEmail } from '@/store/auth-slice'
 import { getProductPlans, getPublicProductPlans } from '@/api/product-plans'
 import { getRealNameProfile } from '@/api/real-name'
 import { createBillingPaymentOrder, startBillingPayment } from '@/api/billing'
@@ -18,11 +18,12 @@ vi.mock('./common', () => ({
   LoginDialog: ({ open, onSuccess, onClose }: { open: boolean; onSuccess: () => void; onClose: () => void }) => {
     const dispatch = useAppDispatch()
     return open ? <button onClick={async () => {
-      dispatch({ type: 'auth/loginWithEmail/pending' })
+      const loginArgs = { destination: 'catalog@example.com', code: '123456' }
+      dispatch(loginWithEmail.pending('header-login', loginArgs))
       await Promise.resolve()
       // 保存令牌先触发本标签页的用户同步，随后登录 thunk 才 fulfilled。
       dispatch({ type: 'auth/synchronizeAuthenticatedUser', payload: user })
-      dispatch({ type: 'auth/loginWithEmail/fulfilled', payload: user })
+      dispatch(loginWithEmail.fulfilled(user, 'header-login', loginArgs))
       onSuccess()
       onClose()
     }}>测试登录成功</button> : null

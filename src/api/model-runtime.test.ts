@@ -137,6 +137,32 @@ describe('模型运行时请求', () => {
     })
   })
 
+  it('完整解析附加信息超过展示限制的错误 JSON，保留原因、错误码和请求号', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({
+      error: { message: '余额不足', code: 'insufficient_balance' },
+      metadata: 'x'.repeat(5_000),
+    }), {
+      status: 403,
+      headers: { 'X-Request-ID': 'long-error-request' },
+    }))
+
+    await expect(streamChatCompletion(DEFAULT_INPUT)).rejects.toMatchObject({
+      status: 403, code: 'insufficient_balance', message: '余额不足', requestId: 'long-error-request',
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('仅截短过长的错误展示文案，不破坏完整错误对象', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({
+      msg: '错'.repeat(5_000),
+      error: { message: '备用文案', code: 'upstream_error' },
+    }), { status: 500 }))
+
+    await expect(streamChatCompletion(DEFAULT_INPUT)).rejects.toMatchObject({
+      status: 500, code: 'upstream_error', message: '错'.repeat(4_096),
+    })
+  })
+
   it('兼容成功 HTTP 状态下返回的标准业务错误体', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({
       code: 170008,

@@ -115,10 +115,20 @@ const pendingTask: VideoTask = { taskId: 'task-video-1', status: 'pending', prog
 const processingTask: VideoTask = { ...pendingTask, status: 'processing', progress: 38 }
 const succeededTask: VideoTask = { ...pendingTask, status: 'succeeded', progress: 100, resultUrl: 'https://cdn.example.com/video-1.mp4' }
 
-function renderVideoPage(): void {
+function renderVideoPage(): ReturnType<typeof createAppStore> {
   const appStore = createAppStore()
   appStore.dispatch(synchronizeAuthenticatedUser({ id: 'video-user', display_name: '视频测试用户', avatar_url: '', locale: 'zh-CN', timezone: 'Asia/Shanghai', status: 'active' }))
   render(<MemoryRouter initialEntries={['/console/video']}><Provider store={appStore}><AppStoreProvider><VideoPage /></AppStoreProvider></Provider></MemoryRouter>)
+  return appStore
+}
+
+function saveVideoRecoveryHistory(tasks: Array<Pick<VideoTask, 'taskId' | 'status'>>, userId = 'video-user'): void {
+  // 沿用正式历史格式，覆盖旧记录没有幂等键和多个任务恢复的场景。
+  window.localStorage.setItem(VIDEO_SESSION_HISTORY_KEY, JSON.stringify({ version: 1, userId, entries: tasks.map((task, index) => ({
+    ...pendingTask, ...task, id: `personal:personal:${task.taskId}`, workspaceKey: 'personal:personal',
+    modelId: 'cogvideo', model: 'cogvideo-public', modelName: 'CogVideo', prompt: task.taskId,
+    duration: 5, size: '1280x720', inputReference: null, createdAt: new Date(Date.UTC(2026, 0, 2, 0, 0, -index)).toISOString(),
+  })) }))
 }
 
 describe('视频生成页面', () => {
@@ -133,6 +143,118 @@ describe('视频生成页面', () => {
   afterEach(() => {
     clearAuthTokens({ force: true })
     vi.restoreAllMocks()
+  })
+
+  it.each([false, true])('视频恢复：提交响应丢失后重试复用原幂等键，重新进入=%s', async (reenter) => {
+    const user = userEvent.setup()
+    vi.mocked(submitVideoGeneration).mockRejectedValueOnce(new Error('任务号返回前断网')).mockResolvedValue(succeededTask)
+    renderVideoPage()
+    fireEvent.change(screen.getByLabelText('视频提示词'), { target: { value: '不能重复创建的视频' } })
+    await user.click(screen.getByRole('button', { name: '生成视频' }))
+    await screen.findByText('任务号返回前断网')
+    const originalKey = vi.mocked(submitVideoGeneration).mock.calls[0][0].idempotencyKey
+    if (reenter) { cleanup(); renderVideoPage() }
+    await user.click(screen.getByRole('button', { name: '重新生成' }))
+    await waitFor(() => expect(submitVideoGeneration).toHaveBeenCalledTimes(2))
+    expect(vi.mocked(submitVideoGeneration).mock.calls[1][0].idempotencyKey).toBe(originalKey)
+    expect(screen.getByLabelText('视频生成结果')).toBeInTheDocument()
+  })
+
+  it('视频恢复：旧失败历史没有幂等键仍可重试，新增失败记录保留新键', async () => {
+    const user = userEvent.setup()
+    saveVideoRecoveryHistory([{ taskId: 'local-failed-legacy', status: 'failed' }])
+    vi.mocked(submitVideoGeneration).mockRejectedValue(new Error('仍然断网'))
+    renderVideoPage()
+    await user.click(screen.getByRole('button', { name: '重新生成' }))
+    await screen.findByText('仍然断网')
+    const newKey = vi.mocked(submitVideoGeneration).mock.calls[0][0].idempotencyKey
+    expect(newKey).toBeTruthy()
+    const saved = JSON.parse(window.localStorage.getItem(VIDEO_SESSION_HISTORY_KEY)!) as { entries: Array<{ errorMessage: string; idempotencyKey?: string }> }
+    expect(saved.entries.find((entry) => entry.errorMessage === '仍然断网')?.idempotencyKey).toBe(newKey)
+  })
+
+  it('视频恢复：成功历史保存原键，但重进后的重新生成使用新键', async () => {
+    const user = userEvent.setup()
+    vi.mocked(submitVideoGeneration).mockResolvedValue(succeededTask)
+    renderVideoPage()
+    fireEvent.change(screen.getByLabelText('视频提示词'), { target: { value: '明确生成另一条视频' } })
+    await user.click(screen.getByRole('button', { name: '生成视频' }))
+    await screen.findByLabelText('视频生成结果')
+    const originalKey = vi.mocked(submitVideoGeneration).mock.calls[0][0].idempotencyKey
+    cleanup()
+    renderVideoPage()
+    await user.click(screen.getByRole('button', { name: '重新生成' }))
+    await waitFor(() => expect(submitVideoGeneration).toHaveBeenCalledTimes(2))
+    expect(vi.mocked(submitVideoGeneration).mock.calls[1][0].idempotencyKey).not.toBe(originalKey)
+  })
+
+  it('视频恢复：全部未完成历史自动查询，终态及未知状态不会被自动重放', async () => {
+    saveVideoRecoveryHistory([
+      { taskId: '恢复甲', status: 'pending' }, { taskId: '恢复乙', status: 'processing' }, { taskId: '恢复丙', status: 'cancelling' },
+      { taskId: '已成功', status: 'succeeded' }, { taskId: '已失败', status: 'failed' }, { taskId: '已取消', status: 'cancelled' },
+      { taskId: '已过期', status: 'expired' }, { taskId: '未知', status: 'unknown' },
+    ])
+    vi.mocked(getVideoTask).mockImplementation(async (_token, taskId) => ({ ...succeededTask, taskId }))
+    renderVideoPage()
+    await waitFor(() => expect(getVideoTask).toHaveBeenCalledTimes(3), { timeout: 2_500 })
+    expect(vi.mocked(getVideoTask).mock.calls.map((call) => call[1]).sort()).toEqual(['恢复丙', '恢复乙', '恢复甲'].sort())
+    for (const taskId of ['恢复甲', '恢复乙', '恢复丙']) expect(within(screen.getByRole('article', { name: taskId })).getByLabelText('视频生成结果')).toBeInTheDocument()
+    expect(submitVideoGeneration).not.toHaveBeenCalled()
+  })
+
+  it('视频恢复：重复选择正在查询的历史不会取消或重复请求', async () => {
+    const user = userEvent.setup()
+    saveVideoRecoveryHistory([{ taskId: '查询中的任务', status: 'processing' }])
+    let complete!: (value: VideoTask) => void
+    vi.mocked(getVideoTask).mockImplementation(() => new Promise((resolve) => { complete = resolve }))
+    renderVideoPage()
+    await waitFor(() => expect(getVideoTask).toHaveBeenCalledOnce(), { timeout: 2_500 })
+    const signal = vi.mocked(getVideoTask).mock.calls[0][2]!
+    const historyButton = within(document.querySelector('.video-history-panel')!).getByRole('button', { name: /查询中的任务/ })
+    await user.click(historyButton)
+    await user.click(historyButton)
+    expect(signal.aborted).toBe(false)
+    await act(async () => complete({ ...succeededTask, taskId: '查询中的任务' }))
+    expect(getVideoTask).toHaveBeenCalledOnce()
+    expect(screen.getByLabelText('视频生成结果')).toBeInTheDocument()
+  })
+
+  it('视频恢复：后台任务完成不抢走当前历史选择，停止仍作用于选中任务', async () => {
+    const user = userEvent.setup()
+    saveVideoRecoveryHistory([{ taskId: '后台任务', status: 'processing' }, { taskId: '选中任务', status: 'processing' }])
+    const completions = new Map<string, (value: VideoTask) => void>()
+    vi.mocked(getVideoTask).mockImplementation((_token, taskId) => new Promise((resolve) => { completions.set(taskId, resolve) }))
+    vi.mocked(cancelVideoTask).mockResolvedValue({ ...pendingTask, taskId: '选中任务', status: 'cancelled' })
+    renderVideoPage()
+    await waitFor(() => expect(getVideoTask).toHaveBeenCalledTimes(2), { timeout: 2_500 })
+    await user.click(within(document.querySelector('.video-history-panel')!).getByRole('button', { name: /选中任务/ }))
+    await act(async () => completions.get('后台任务')!({ ...succeededTask, taskId: '后台任务' }))
+    expect(document.querySelector('.video-history-item.is-active')).toHaveTextContent('选中任务')
+    expect(screen.getByLabelText('视频提示词')).toHaveValue('选中任务')
+    await user.click(document.querySelector<HTMLButtonElement>('.video-send-button')!)
+    await waitFor(() => expect(cancelVideoTask).toHaveBeenCalledWith('user-access-token', '选中任务', expect.any(AbortSignal)))
+    await waitFor(() => expect(screen.getByRole('article', { name: '选中任务' })).toHaveTextContent('已取消'))
+    const savedAfterCancel = window.localStorage.getItem(VIDEO_SESSION_HISTORY_KEY)
+    await act(async () => completions.get('选中任务')!({ ...succeededTask, taskId: '选中任务' }))
+    expect(window.localStorage.getItem(VIDEO_SESSION_HISTORY_KEY)).toBe(savedAfterCancel)
+    expect(getVideoTask).toHaveBeenCalledTimes(2)
+  })
+
+  it.each(['unmount', 'account'] as const)('视频恢复：%s 会中止查询且忽略取消后的迟到成功', async (change) => {
+    saveVideoRecoveryHistory([{ taskId: '旧账号任务', status: 'processing' }])
+    let complete!: (value: VideoTask) => void
+    vi.mocked(getVideoTask).mockImplementation(() => new Promise((resolve) => { complete = resolve }))
+    const appStore = renderVideoPage()
+    await waitFor(() => expect(getVideoTask).toHaveBeenCalledOnce(), { timeout: 2_500 })
+    const signal = vi.mocked(getVideoTask).mock.calls[0][2]!
+    if (change === 'unmount') cleanup()
+    else await act(async () => { appStore.dispatch(synchronizeAuthenticatedUser({ id: 'new-video-user', display_name: '新账号', avatar_url: '', locale: 'zh-CN', timezone: 'Asia/Shanghai', status: 'active' })) })
+    expect(signal.aborted).toBe(true)
+    const savedAfterChange = window.localStorage.getItem(VIDEO_SESSION_HISTORY_KEY)
+    await act(async () => complete({ ...succeededTask, taskId: '旧账号任务' }))
+    expect(window.localStorage.getItem(VIDEO_SESSION_HISTORY_KEY)).toBe(savedAfterChange)
+    expect(screen.queryByRole('article', { name: '旧账号任务' })).not.toBeInTheDocument()
+    expect(getVideoTask).toHaveBeenCalledOnce()
   })
 
   it('视频草稿、提交和轮询保护刷新，成功历史里的提示词不会永久阻塞', async () => {

@@ -4,7 +4,7 @@ import i18n, { getActiveLanguage } from '@/i18n'
 
 const CHAT_COMPLETIONS_PATH = '/chat/completions'
 const DEFAULT_MODEL_REQUEST_TIMEOUT_MS = 120_000
-const MAX_ERROR_BODY_LENGTH = 4_096
+const MAX_ERROR_MESSAGE_LENGTH = 4_096
 
 export { MODEL_API_BASE_URL }
 
@@ -171,7 +171,8 @@ function hasBusinessError(value: unknown): value is RecordValue {
 }
 
 async function readErrorResponse(response: Response, requestId: string): Promise<ModelRuntimeError> {
-  const body = (await response.text()).slice(0, MAX_ERROR_BODY_LENGTH)
+  // 先解析完整错误结构，避免截断附加字段后连带丢失错误码；只限制最终展示文案。
+  const body = await response.text()
   let payload: unknown = null
   try {
     payload = body ? JSON.parse(body) : null
@@ -179,7 +180,7 @@ async function readErrorResponse(response: Response, requestId: string): Promise
     payload = null
   }
   const error = completionErrorMessage(payload)
-  return new ModelRuntimeError(error.message, response.status, error.code, response.headers.get('X-Request-ID') ?? requestId)
+  return new ModelRuntimeError(error.message.slice(0, MAX_ERROR_MESSAGE_LENGTH), response.status, error.code, response.headers.get('X-Request-ID') ?? requestId)
 }
 
 function mergeUsage(current: ParsedCompletionPayload, next: ParsedCompletionPayload): ParsedCompletionPayload {

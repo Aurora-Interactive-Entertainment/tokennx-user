@@ -35,7 +35,7 @@ const VIDEO_POLL_INTERVAL_MS = 2_500
 const VIDEO_POLL_MAX_ATTEMPTS = 120
 const DEFAULT_VIDEO_DURATION = 5
 const DEFAULT_VIDEO_SIZE = '1280x720'
-// 提交阶段就失败、服务端还没生成 task_id 的记录用这个前缀，重试时可以安全复用原幂等键重放。
+// 提交失败、尚未拿到服务端 task_id 的记录用这个前缀，重试时复用原键找回可能已创建的任务。
 const LOCAL_FAILURE_TASK_PREFIX = 'local-failed-'
 
 // 旧模型与新目录校验共用同一组尺寸，避免界面和请求限制分叉。
@@ -57,6 +57,8 @@ type VideoHistoryEntry = {
   references?: VideoReference[]
   missingReferences?: boolean
   referenceCount?: number
+  /** 创建响应丢失时，重新进入页面仍用原键找回任务；旧历史可缺省。 */
+  idempotencyKey?: string
   status: VideoTaskStatus
   progress: number | null
   resultUrl: string | null
@@ -80,7 +82,6 @@ type VideoSubmissionSnapshot = {
   videoOptions?: UserVideoOptions
   missingReferences?: boolean
   idempotencyKey: string
-  historyId?: string
 }
 
 type VideoRequestFailure = {
@@ -125,6 +126,7 @@ function isVideoHistoryEntry(value: unknown): value is VideoHistoryEntry {
     && (value.inputReference === null || typeof value.inputReference === 'string')
     && (value.ratio === undefined || typeof value.ratio === 'string')
     && (value.resolution === undefined || typeof value.resolution === 'string')
+    && (value.idempotencyKey === undefined || (typeof value.idempotencyKey === 'string' && value.idempotencyKey.trim().length > 0 && value.idempotencyKey.length <= 512))
     && (value.references === undefined || (Array.isArray(value.references) && value.references.every((item) => isRecord(item) && ['image', 'video', 'audio'].includes(String(item.type)) && typeof item.url === 'string' && (item.role === undefined || ['reference_image', 'first_frame', 'last_frame', 'reference_video', 'reference_audio'].includes(String(item.role))))))
     && isVideoTaskStatus(value.status)
     && (value.progress === null || (typeof value.progress === 'number' && Number.isFinite(value.progress)))
@@ -457,6 +459,8 @@ export function VideoPage() {
   const [history, setHistory] = useState<VideoHistoryEntry[]>(() => readVideoHistory(userId).filter((entry) => entry.workspaceKey === workspaceKey))
   const [savedHistory, setSavedHistory] = useState(history)
   const [selectedHistoryID, setSelectedHistoryID] = useState('')
+  const selectedHistoryIDRef = useRef(selectedHistoryID)
+  selectedHistoryIDRef.current = selectedHistoryID
   const [currentTask, setCurrentTask] = useState<VideoTask | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [polling, setPolling] = useState(false)
@@ -470,7 +474,6 @@ export function VideoPage() {
   // 记录列表里可以同时存在多条任务，轮询控制器按 taskId 各自持有：
   // 对某一条做操作（取消/删除/查历史）不应中断其他任务的轮询，否则那条会永远停在「生成中」。
   const pollControllersRef = useRef<Map<string, AbortController>>(new Map())
-  const lastSubmissionRef = useRef<VideoSubmissionSnapshot | null>(null)
   const historyOwnerRef = useRef(userId)
   const historyHydratingRef = useRef(true)
 
@@ -598,9 +601,13 @@ export function VideoPage() {
     const restored = readVideoHistory(userId).filter((entry) => entry.workspaceKey === workspaceKey)
     setHistory(restored)
     setSavedHistory(restored)
-    // 刷新或重新进入页面后，未完成的任务否则会一直停在「生成中」，这里主动续上轮询。
-    const pendingEntry = restored.find((entry) => !videoTaskIsTerminal(entry.status) && entry.status !== 'unknown')
-    if (pendingEntry && getAccessToken()?.trim()) void pollTask(historyTask(pendingEntry), pendingEntry)
+    // 恢复所有在途任务；默认跟踪第一条，其他任务只在后台更新各自的历史。
+    const pendingEntries = restored.filter((entry) => !videoTaskIsTerminal(entry.status) && entry.status !== 'unknown')
+    if (pendingEntries.length && getAccessToken()?.trim()) {
+      setCurrentTask(historyTask(pendingEntries[0]))
+      setSelectedHistoryID(pendingEntries[0].id)
+      for (const entry of pendingEntries) void pollTask(historyTask(entry), entry)
+    }
     try {
       window.localStorage.removeItem(LEGACY_VIDEO_HISTORY_KEY)
     } catch {
@@ -650,9 +657,14 @@ export function VideoPage() {
     persistHistoryEntry(entry)
   }
 
-  function updateTask(task: VideoTask, entry: VideoHistoryEntry): void {
-    setCurrentTask(task)
-    setSelectedHistoryID(entry.id)
+  function updateTask(task: VideoTask, entry: VideoHistoryEntry, select = true): void {
+    if (select) {
+      setCurrentTask(task)
+      setSelectedHistoryID(entry.id)
+    } else {
+      // 后台任务完成不能抢走用户选择，否则发送栏的停止按钮会取消另一条任务。
+      setCurrentTask((current) => current?.taskId === entry.taskId ? task : current)
+    }
     updateHistoryEntry(taskFromHistory(task, entry))
   }
 
@@ -663,12 +675,13 @@ export function VideoPage() {
       // 落盘由 compactVideoHistoryEntry 负责裁掉超长的 data URL。
       prompt: snapshot.prompt, duration: snapshot.duration, size: snapshot.size, inputReference: snapshot.inputReference || null,
       ratio: snapshot.ratio, resolution: snapshot.resolution, references: snapshot.references,
+      idempotencyKey: snapshot.idempotencyKey,
       status: task.status, progress: task.progress, resultUrl: task.resultUrl, thumbnailUrl: task.thumbnailUrl, errorMessage: task.errorMessage, requestId: task.requestId, createdAt: new Date().toISOString(),
     }
   }
 
   function createSubmissionFailureTask(failure: VideoRequestFailure): VideoTask {
-    // 提交阶段没有服务端 task_id 时也保留一张本地失败卡片，方便编辑和重试。
+    // 提交阶段尚未收到服务端 task_id 时保留失败卡片，方便用原幂等键恢复。
     return {
       taskId: `${LOCAL_FAILURE_TASK_PREFIX}${Date.now()}`,
       status: 'failed',
@@ -683,7 +696,8 @@ export function VideoPage() {
 
   async function pollTask(initialTask: VideoTask, entry: VideoHistoryEntry): Promise<void> {
     const taskId = entry.taskId
-    pollControllersRef.current.get(taskId)?.abort()
+    // 恢复与手动选历史可能同时请求同一任务，已有轮询继续工作，避免重复 GET 或不断重置延时。
+    if (pollControllersRef.current.has(taskId)) return
     const controller = new AbortController()
     pollControllersRef.current.set(taskId, controller)
     setPolling(true)
@@ -698,20 +712,22 @@ export function VideoPage() {
         const accessToken = getAccessToken()?.trim()
         if (!accessToken) throw new VideoRuntimeError(t('api.modelRuntime.accessTokenRequired'), 401, 'invalid_user_session', null)
         task = await getVideoTask(accessToken, task.taskId, controller.signal)
-        updateTask(task, entry)
+        // 中止后已经排队的成功响应仍可能到达，不能写回旧页面或覆盖取消操作的结果。
+        if (controller.signal.aborted || pollControllersRef.current.get(taskId) !== controller) return
+        updateTask(task, entry, false)
       }
       if (!controller.signal.aborted && !videoTaskIsTerminal(task.status) && task.status !== 'unknown') {
         const timeoutTask: VideoTask = { ...task, status: 'unknown', errorMessage: t('console.video.pollingTimeout') }
-        updateTask(timeoutTask, entry)
-        setRequestFailure({ message: t('console.video.pollingTimeout'), requestId: task.requestId })
+        updateTask(timeoutTask, entry, false)
+        if (selectedHistoryIDRef.current === entry.id) setRequestFailure({ message: t('console.video.pollingTimeout'), requestId: task.requestId })
       }
     } catch (error: unknown) {
       if (controller.signal.aborted) return
       if (redirectToLoginOnAuthFailure(error)) return
       const failure = readVideoFailure(error, t('console.video.queryFailed'))
       const failedTask: VideoTask = { ...task, status: 'unknown', errorMessage: failure.message, requestId: failure.requestId ?? task.requestId }
-      updateTask(failedTask, entry)
-      setRequestFailure(failure)
+      updateTask(failedTask, entry, false)
+      if (selectedHistoryIDRef.current === entry.id) setRequestFailure(failure)
     } finally {
       if (pollControllersRef.current.get(taskId) === controller) {
         pollControllersRef.current.delete(taskId)
@@ -769,14 +785,11 @@ export function VideoPage() {
     submitAbortReasonRef.current = null
     const controller = new AbortController()
     submitControllerRef.current = controller
-    lastSubmissionRef.current = snapshot
     try {
       const accessToken = getAccessToken()?.trim()
       if (!accessToken) throw new VideoRuntimeError(t('api.modelRuntime.accessTokenRequired'), 401, 'invalid_user_session', null)
       const task = await submitVideoGeneration({ ...snapshot, accessToken, signal: controller.signal })
       const entry = createHistoryEntry(task, snapshot)
-      const storedSnapshot = { ...snapshot, historyId: entry.id }
-      lastSubmissionRef.current = storedSnapshot
       updateTask(task, entry)
       // 重试历史记录时不能把输入框里另一份新草稿也标为已保存。
       if ((task.status === 'succeeded' || taskIsActive(task))
@@ -796,8 +809,6 @@ export function VideoPage() {
       const failure = readVideoFailure(error, t('console.video.submitFailed'))
       const failedTask = createSubmissionFailureTask(failure)
       const failedEntry = createHistoryEntry(failedTask, snapshot)
-      const storedSnapshot = { ...snapshot, historyId: failedEntry.id }
-      lastSubmissionRef.current = storedSnapshot
       updateTask(failedTask, failedEntry)
       setRequestFailure(null)
     } finally {
@@ -920,7 +931,6 @@ export function VideoPage() {
       setCurrentTask(null)
       setSubmittedDraft(null)
     }
-    if (lastSubmissionRef.current?.historyId === entryID) lastSubmissionRef.current = null
   }
 
   function startNewGeneration(): void {
@@ -939,7 +949,6 @@ export function VideoPage() {
     resetModelParameters(videoOptions)
     setReferenceMode('reference')
     setHistoryOpen(false)
-    lastSubmissionRef.current = null
   }
 
   function selectHistory(entry: VideoHistoryEntry): void {
@@ -957,13 +966,11 @@ export function VideoPage() {
   }
 
   function retryEntry(entry: VideoHistoryEntry): void {
-    // 只有「本地提交失败、服务端还没拿到 task_id」的记录才复用原幂等键做重放。
+    // 只有「本地提交失败、尚未收到 task_id」的记录才复用原幂等键恢复。
     // 已经有服务端任务的记录必须换新键，否则服务端按幂等回放，返回的还是同一条旧任务。
-    const replay = entry.taskId.startsWith(LOCAL_FAILURE_TASK_PREFIX) && lastSubmissionRef.current?.historyId === entry.id
-      ? lastSubmissionRef.current
-      : null
-    const snapshot = replay ?? {
-      model: entry.model, modelId: entry.modelId, modelName: entry.modelName, prompt: entry.prompt, duration: entry.duration, size: entry.size, inputReference: entry.inputReference ?? '', idempotencyKey: createIdempotencyKey(),
+    const idempotencyKey = entry.taskId.startsWith(LOCAL_FAILURE_TASK_PREFIX) ? entry.idempotencyKey : undefined
+    const snapshot: VideoSubmissionSnapshot = {
+      model: entry.model, modelId: entry.modelId, modelName: entry.modelName, prompt: entry.prompt, duration: entry.duration, size: entry.size, inputReference: entry.inputReference ?? '', idempotencyKey: idempotencyKey ?? createIdempotencyKey(),
       ratio: entry.ratio, resolution: entry.resolution, references: entry.references, missingReferences: entry.missingReferences,
     }
     void submitVideo(snapshot)

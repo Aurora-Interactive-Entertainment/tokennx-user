@@ -465,16 +465,19 @@ export function ApiKeysPage({
           hasSubscription: value.has_subscription,
           models,
         });
-        // 查询成功后自动全选订阅模型；用户随后可以在下拉框中取消部分模型。
-        setForm((previous) =>
-          previous.billingSource === "subscription"
-            ? {
-                ...previous,
-                scope: models.length ? "selected" : "all",
-                modelIds: models.map((model) => model.id),
-              }
-            : previous,
-        );
+        setForm((previous) => {
+          if (previous.billingSource !== "subscription") return previous;
+          const availableModelIDs = new Set(models.map((model) => model.id));
+          // 编辑时仅保留仍有订阅权益的原模型，不能因刷新目录扩大授权；创建或显式切换计费仍默认全选。
+          const modelIds = previous.scope === "selected"
+            ? previous.modelIds.filter((id) => availableModelIDs.has(id))
+            : [...availableModelIDs];
+          return {
+            ...previous,
+            scope: modelIds.length ? "selected" : previous.scope,
+            modelIds,
+          };
+        });
       })
       .catch((error: unknown) => {
         if (!active || controller.signal.aborted) return;
@@ -1896,7 +1899,7 @@ export function ApiKeysPage({
                           ? t("console.account.subscriptionModelsEmpty")
                           : form.modelIds.length > 256
                             ? t("console.account.subscriptionModelLimit")
-                            : t("console.account.selectedCount", { count: subscriptionModels.models.length })}
+                            : t("console.account.selectedCount", { count: form.modelIds.length })}
                   </BannerNotice>
                 ) : null}
                 <div className="api-key-model-picker">

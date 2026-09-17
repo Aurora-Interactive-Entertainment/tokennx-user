@@ -18,6 +18,8 @@ export interface AuthState {
   error: AuthOperationError | null
   /** 记录本标签页主动登录次数，用于区分登录成功与后台会话刷新。 */
   loginSequence: number
+  /** 只允许当前登录请求提交失败，避免迟到错误覆盖新会话或新的登录。 */
+  loginRequestId?: string
   /** 只允许当前恢复请求提交，退出或主动登录后作废。 */
   hydrationRequestId?: string
   /** 后台恢复失败单独保存，不覆盖登录表单错误，也不伪造退出状态。 */
@@ -209,6 +211,7 @@ const authSlice = createSlice({
     },
     // 令牌验证失败时清除前端认证状态，由调用方回到公开首页。
     invalidateAuth(state) {
+      state.loginRequestId = undefined
       state.hydrationRequestId = undefined
       state.hydrationError = null
       state.logoutRequestId = undefined
@@ -219,6 +222,8 @@ const authSlice = createSlice({
     // 其他标签页完成登录或刷新后，及时同步当前页面的用户状态。
     synchronizeAuthenticatedUser: {
       reducer(state, action: PayloadAction<AuthUser, string, { isRefresh: boolean }>) {
+        // 已同步的身份优先于旧登录错误；本地保存令牌的同步不影响随后 fulfilled 的成功交接。
+        state.loginRequestId = undefined
         if (state.user && state.user.id !== action.payload.id) state.hydrationRequestId = undefined
         state.hydrationError = null
         // 自动刷新不取消已经点击的退出；主动登录同步会废弃旧退出的状态提交。
@@ -255,19 +260,35 @@ const authSlice = createSlice({
           state.hydrationError = { message: i18n.t('api.auth.requestFailed'), code: 0, status: 0 }
         }
       })
-      .addCase(loginWithEmail.pending, (state) => { state.hydrationRequestId = undefined; state.hydrationError = null; state.logoutRequestId = undefined; state.status = 'loading'; state.error = null })
-      .addCase(loginWithEmail.fulfilled, (state, action) => { state.status = 'authenticated'; state.user = action.payload; state.error = null; state.loginSequence += 1 })
-      .addCase(loginWithEmail.rejected, (state, action) => { state.status = 'unauthenticated'; state.user = null; state.error = action.payload ?? { message: i18n.t('api.auth.emailLoginFailed'), code: 0, status: 0 } })
-      .addCase(loginWithPhone.pending, (state) => { state.hydrationRequestId = undefined; state.hydrationError = null; state.logoutRequestId = undefined; state.status = 'loading'; state.error = null })
-      .addCase(loginWithPhone.fulfilled, (state, action) => { state.status = 'authenticated'; state.user = action.payload; state.error = null; state.loginSequence += 1 })
-      .addCase(loginWithPhone.rejected, (state, action) => { state.status = 'unauthenticated'; state.user = null; state.error = action.payload ?? { message: i18n.t('api.auth.phoneLoginFailed'), code: 0, status: 0 } })
-      .addCase(completeWechatLogin.pending, (state) => { state.hydrationRequestId = undefined; state.hydrationError = null; state.logoutRequestId = undefined; state.status = 'loading'; state.error = null })
-      .addCase(completeWechatLogin.fulfilled, (state, action) => { state.status = 'authenticated'; state.user = action.payload; state.error = null; state.loginSequence += 1 })
-      .addCase(completeWechatLogin.rejected, (state, action) => { state.status = 'unauthenticated'; state.user = null; state.error = action.payload ?? { message: i18n.t('api.auth.wechatLoginFailed'), code: 0, status: 0 } })
-      .addCase(completeBinding.pending, (state) => { state.hydrationRequestId = undefined; state.hydrationError = null; state.logoutRequestId = undefined; state.status = 'loading'; state.error = null })
-      .addCase(completeBinding.fulfilled, (state, action) => { state.status = 'authenticated'; state.user = action.payload; state.error = null; state.loginSequence += 1 })
-      .addCase(completeBinding.rejected, (state, action) => { state.status = 'unauthenticated'; state.user = null; state.error = action.payload ?? { message: i18n.t('api.auth.phoneBindingFailed'), code: 0, status: 0 } })
-      .addCase(logoutAuth.pending, (state, action) => { state.hydrationRequestId = undefined; state.logoutRequestId = action.meta.requestId })
+      .addCase(loginWithEmail.pending, (state, action) => { state.loginRequestId = action.meta.requestId; state.hydrationRequestId = undefined; state.hydrationError = null; state.logoutRequestId = undefined; state.status = 'loading'; state.error = null })
+      .addCase(loginWithEmail.fulfilled, (state, action) => { state.loginRequestId = undefined; state.status = 'authenticated'; state.user = action.payload; state.error = null; state.loginSequence += 1 })
+      .addCase(loginWithEmail.rejected, (state, action) => {
+        if (state.loginRequestId !== action.meta.requestId) return
+        state.loginRequestId = undefined
+        state.status = 'unauthenticated'; state.user = null; state.error = action.payload ?? { message: i18n.t('api.auth.emailLoginFailed'), code: 0, status: 0 }
+      })
+      .addCase(loginWithPhone.pending, (state, action) => { state.loginRequestId = action.meta.requestId; state.hydrationRequestId = undefined; state.hydrationError = null; state.logoutRequestId = undefined; state.status = 'loading'; state.error = null })
+      .addCase(loginWithPhone.fulfilled, (state, action) => { state.loginRequestId = undefined; state.status = 'authenticated'; state.user = action.payload; state.error = null; state.loginSequence += 1 })
+      .addCase(loginWithPhone.rejected, (state, action) => {
+        if (state.loginRequestId !== action.meta.requestId) return
+        state.loginRequestId = undefined
+        state.status = 'unauthenticated'; state.user = null; state.error = action.payload ?? { message: i18n.t('api.auth.phoneLoginFailed'), code: 0, status: 0 }
+      })
+      .addCase(completeWechatLogin.pending, (state, action) => { state.loginRequestId = action.meta.requestId; state.hydrationRequestId = undefined; state.hydrationError = null; state.logoutRequestId = undefined; state.status = 'loading'; state.error = null })
+      .addCase(completeWechatLogin.fulfilled, (state, action) => { state.loginRequestId = undefined; state.status = 'authenticated'; state.user = action.payload; state.error = null; state.loginSequence += 1 })
+      .addCase(completeWechatLogin.rejected, (state, action) => {
+        if (state.loginRequestId !== action.meta.requestId) return
+        state.loginRequestId = undefined
+        state.status = 'unauthenticated'; state.user = null; state.error = action.payload ?? { message: i18n.t('api.auth.wechatLoginFailed'), code: 0, status: 0 }
+      })
+      .addCase(completeBinding.pending, (state, action) => { state.loginRequestId = action.meta.requestId; state.hydrationRequestId = undefined; state.hydrationError = null; state.logoutRequestId = undefined; state.status = 'loading'; state.error = null })
+      .addCase(completeBinding.fulfilled, (state, action) => { state.loginRequestId = undefined; state.status = 'authenticated'; state.user = action.payload; state.error = null; state.loginSequence += 1 })
+      .addCase(completeBinding.rejected, (state, action) => {
+        if (state.loginRequestId !== action.meta.requestId) return
+        state.loginRequestId = undefined
+        state.status = 'unauthenticated'; state.user = null; state.error = action.payload ?? { message: i18n.t('api.auth.phoneBindingFailed'), code: 0, status: 0 }
+      })
+      .addCase(logoutAuth.pending, (state, action) => { state.loginRequestId = undefined; state.hydrationRequestId = undefined; state.logoutRequestId = action.meta.requestId })
       .addCase(logoutAuth.fulfilled, (state, action) => {
         if (state.logoutRequestId !== action.meta.requestId) return
         state.logoutRequestId = undefined

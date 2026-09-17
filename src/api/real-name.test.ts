@@ -1,4 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import i18n from '@/i18n'
 import { ApiError } from './http'
 import { confirmRealName, getRealNameErrorMessage, getRealNameProfile, submitRealName, type RealNameProfile } from './real-name'
 
@@ -11,6 +12,17 @@ function response(data: RealNameProfile): Response {
 
 describe('实名认证 API 封装', () => {
   beforeEach(() => vi.restoreAllMocks())
+  afterEach(async () => { await i18n.changeLanguage('zh-CN') })
+
+  it.each([
+    { language: 'zh-CN', expired: '认证单据已过期，请重新发起认证', faceFailed: '人脸认证未通过，请重新发起认证' },
+    { language: 'en', expired: 'The verification request expired. Start again.', faceFailed: 'Face verification failed. Start again.' },
+  ])('$language 对认证单据过期和人脸失败提供译文，并优先保留服务端文案', async ({ language, expired, faceFailed }) => {
+    await i18n.changeLanguage(language)
+    expect(getRealNameErrorMessage(new ApiError('server', 409, 110022, null))).toBe(expired)
+    expect(getRealNameErrorMessage(new ApiError('server', 409, 110023, null))).toBe(faceFailed)
+    expect(getRealNameErrorMessage(new ApiError('服务端认证原因', 409, 110023, null, '服务端认证原因'))).toBe('服务端认证原因')
+  })
 
   it('读取认证状态并提交实名资料', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(response({ status: 'unverified' }))

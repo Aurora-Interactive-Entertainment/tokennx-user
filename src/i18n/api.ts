@@ -49,6 +49,8 @@ export const apiResources = {
         unavailable: '实名认证服务暂时不可用，请稍后重试',
         stateChanged: '认证状态发生变化，请刷新后重试',
         sessionExpired: '登录状态已失效，请重新登录',
+        expired: '认证单据已过期，请重新发起认证',
+        faceFailed: '人脸认证未通过，请重新发起认证',
       },
       models: {
         loadFailed: '模型目录加载失败，请稍后重试',
@@ -226,6 +228,8 @@ export const apiResources = {
         unavailable: 'The real-name verification service is temporarily unavailable. Try again later.',
         stateChanged: 'The verification status changed. Refresh and try again.',
         sessionExpired: 'Your session has expired. Please sign in again.',
+        expired: 'The verification request expired. Start again.',
+        faceFailed: 'Face verification failed. Start again.',
       },
       models: {
         loadFailed: 'Unable to load the model catalog. Try again later.',

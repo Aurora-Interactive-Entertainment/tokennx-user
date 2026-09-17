@@ -4,7 +4,7 @@ import { completeBinding, completeWechatLogin, invalidateAuth, loginWithEmail, l
 // 登录会重新挂载页面，只在当前应用内暂存套餐 ID；价格与购买资格必须重新查询。
 const purchaseIntentSlice = createSlice({
   name: 'purchaseIntent',
-  initialState: { loginPlanID: null as string | null, loginInFlight: false, resume: null as { planID: string; userID: string } | null },
+  initialState: { loginPlanID: null as string | null, loginInFlight: false, loginRequestId: undefined as string | undefined, resume: null as { planID: string; userID: string } | null },
   reducers: {
     requestPurchaseLogin(state, action: PayloadAction<string>) {
       state.loginPlanID = action.payload
@@ -19,16 +19,21 @@ const purchaseIntentSlice = createSlice({
       if (!state.loginInFlight) state.loginPlanID = null
       if (state.resume?.userID !== action.payload.id) state.resume = null
     })
-    builder.addMatcher(isAnyOf(loginWithEmail.pending, loginWithPhone.pending, completeWechatLogin.pending, completeBinding.pending), state => {
+    builder.addMatcher(isAnyOf(loginWithEmail.pending, loginWithPhone.pending, completeWechatLogin.pending, completeBinding.pending), (state, action) => {
       state.loginInFlight = true
+      state.loginRequestId = action.meta.requestId
     })
-    builder.addMatcher(isAnyOf(loginWithEmail.rejected, loginWithPhone.rejected, completeWechatLogin.rejected, completeBinding.rejected), state => {
+    builder.addMatcher(isAnyOf(loginWithEmail.rejected, loginWithPhone.rejected, completeWechatLogin.rejected, completeBinding.rejected), (state, action) => {
+      // 旧失败不能结束后发登录，否则其令牌同步会误清尚待接续的套餐。
+      if (state.loginRequestId !== action.meta.requestId) return
       state.loginInFlight = false
+      state.loginRequestId = undefined
     })
     builder.addMatcher(isAnyOf(loginWithEmail.fulfilled, loginWithPhone.fulfilled, completeWechatLogin.fulfilled, completeBinding.fulfilled), (state, action) => {
       if (state.loginPlanID) state.resume = { planID: state.loginPlanID, userID: action.payload.id }
       state.loginPlanID = null
       state.loginInFlight = false
+      state.loginRequestId = undefined
     })
     builder.addMatcher(isAnyOf(invalidateAuth, logoutAuth.fulfilled, logoutAuth.rejected), (state, action) => {
       // 旧退出请求发现账号已变化时，不得清空新账号正在接续的购买意图。
@@ -37,6 +42,7 @@ const purchaseIntentSlice = createSlice({
       state.loginPlanID = null
       state.resume = null
       state.loginInFlight = false
+      state.loginRequestId = undefined
     })
   },
 })
