@@ -125,7 +125,15 @@ export function VideoParameterControls({ options, duration, aspectRatio, resolut
             <div className="video-duration-ticks">{ticks.map((value) => <span key={value} style={{ left: `${positionForDuration(value)}%` }}>{value}</span>)}</div>
           </div>
           <label className="video-duration-number">
-            <input type="number" min={minDuration} max={maxDuration} step="1" key={duration} defaultValue={manualDuration} disabled={disabled || automatic || minDuration === maxDuration} onBlur={(event) => { event.currentTarget.value = String(commitDuration(event.currentTarget.value)) }} onKeyDown={(event) => { if (event.key === 'Enter') event.currentTarget.blur() }} aria-label={t('console.video.duration')} />
+            <input type="number" min={minDuration} max={maxDuration} step="1" key={duration} defaultValue={manualDuration} disabled={disabled || automatic || minDuration === maxDuration} onBlur={(event) => { event.currentTarget.value = String(commitDuration(event.currentTarget.value)) }} onChange={(event) => {
+              // 时长只接受整数秒：粘贴等路径可能带入小数，只保留整数部分，不等失焦再静默改写。
+              const sanitized = event.currentTarget.value.split(/[.,]/)[0]
+              if (sanitized !== event.currentTarget.value) event.currentTarget.value = sanitized
+            }} onKeyDown={(event) => {
+              // 输入过程中就拦掉小数点、逗号和指数键，界面上不会先出现小数再被改写。
+              if (['.', ',', 'e', 'E', '+', '-'].includes(event.key)) { event.preventDefault(); return }
+              if (event.key === 'Enter') event.currentTarget.blur()
+            }} aria-label={t('console.video.duration')} />
             <span>s</span>
           </label>
         </div>}
