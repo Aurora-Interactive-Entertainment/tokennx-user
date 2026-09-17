@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { AuthResult } from './auth'
 import { getUserProfile } from './profile'
-import { fetchAuthenticatedResponse } from './authenticated'
-import { clearAuthTokens, getAccessToken, REFRESH_SESSION_KEY, saveAuthTokens } from '@/auth/token-storage'
+import { fetchAuthenticatedJson, fetchAuthenticatedResponse } from './authenticated'
+import { clearAuthTokens, getAccessToken, readRefreshToken, REFRESH_SESSION_KEY, saveAuthTokens } from '@/auth/token-storage'
+import { isAuthenticationFailure } from './http'
 
 function apiResponse(data: unknown, status = 200, code = 0, msg = 'success'): Response {
   return new Response(JSON.stringify({ code, msg, data }), {
@@ -46,7 +47,8 @@ describe('已认证请求封装', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
     window.localStorage.clear()
-    clearAuthTokens()
+    window.sessionStorage.clear()
+    clearAuthTokens({ force: true, broadcast: false })
   })
 
 	it('个人中心请求认证失败后刷新令牌并重试原请求', async () => {
@@ -161,7 +163,7 @@ describe('已认证请求封装', () => {
       if (url.endsWith('/api/user/profile')) {
         profileAttempts += 1
         if (profileAttempts === 1) {
-          saveAuthTokens(authResult('synced-access', 'synced-refresh'))
+          saveAuthTokens(authResult('synced-access', 'synced-refresh'), { expectedRefreshToken: 'old-refresh' })
           return apiResponse(null, 401, 110001, '认证信息无效')
         }
         return apiResponse(PROFILE)
@@ -256,5 +258,90 @@ describe('已认证请求封装', () => {
     await expect(getUserProfile('old-access')).resolves.toEqual(PROFILE)
     expect(fetchMock).toHaveBeenCalledTimes(3)
     expect(getAccessToken()).toBe('new-access')
+  })
+
+  it('刷新成功后业务接口仍返回 401 时保留长期会话，并阻止页面误判退出', async () => {
+    saveAuthTokens(authResult('old-access', 'old-refresh'))
+    const fetchMock = vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(apiResponse(null, 401, 160001, '访问令牌已过期'))
+      .mockResolvedValueOnce(apiResponse(authResult('new-access', 'new-refresh')))
+      .mockResolvedValueOnce(apiResponse(null, 401, 170099, '当前接口暂不接受该凭证'))
+    const error: unknown = await getUserProfile('old-access').catch(error => error)
+    expect(error).toMatchObject({ status: 401, code: 170099, message: '当前接口暂不接受该凭证', apiMessage: '当前接口暂不接受该凭证' })
+    expect(isAuthenticationFailure(error)).toBe(false)
+    expect(readRefreshToken()).toBe('new-refresh')
+    expect(getAccessToken()).toBe('new-access')
+    expect(fetchMock).toHaveBeenCalledTimes(3)
+  })
+
+  function storeRefreshOnly(): void {
+    window.localStorage.setItem(REFRESH_SESSION_KEY, JSON.stringify({
+      refreshToken: 'stored-refresh', refreshExpiresAt: Date.UTC(2099, 1, 1),
+      revision: { timestamp: Date.now(), writerId: 'stored-tab' }, sessionId: 'stored-session',
+    }))
+  }
+
+  it('页面恢复时只有 refresh token 也会先恢复访问令牌，再发送原请求', async () => {
+    storeRefreshOnly()
+    const refresh = authResult('new-access', 'new-refresh')
+    delete refresh.user
+    const fetchMock = vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(apiResponse(refresh))
+      .mockResolvedValueOnce(apiResponse(PROFILE))
+    await expect(fetchAuthenticatedJson('/api/auth/me')).resolves.toEqual(PROFILE)
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(String(fetchMock.mock.calls[0][0])).toContain('/api/auth/refresh')
+    expect(new Headers(fetchMock.mock.calls[1][1]?.headers).get('Authorization')).toBe('Bearer new-access')
+    expect(readRefreshToken()).toBe('new-refresh')
+  })
+
+  it('无访问令牌时的恢复服务异常保留长期会话，不发原业务请求', async () => {
+    storeRefreshOnly()
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(apiResponse(null, 503, 120001, '暂时不可用'))
+    await expect(fetchAuthenticatedJson('/api/auth/me')).rejects.toMatchObject({ status: 503 })
+    expect(readRefreshToken()).toBe('stored-refresh')
+    expect(fetchMock).toHaveBeenCalledOnce()
+  })
+
+  it('无访问令牌时刷新端明确返回 401 才删除对应长期会话', async () => {
+    storeRefreshOnly()
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(apiResponse(null, 401, 160001, '会话已被撤销'))
+    const error: unknown = await fetchAuthenticatedJson('/api/auth/me').catch(error => error)
+    expect(error).toMatchObject({ status: 401 })
+    expect(isAuthenticationFailure(error)).toBe(true)
+    expect(readRefreshToken()).toBeNull()
+  })
+
+  it('从 refresh 恢复成功后的首次业务 401 不会连续刷新或要求重新登录', async () => {
+    storeRefreshOnly()
+    const refresh = authResult('new-access', 'new-refresh')
+    delete refresh.user
+    const fetchMock = vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(apiResponse(refresh))
+      .mockResolvedValueOnce(apiResponse(null, 401, 170099, '资料服务拒绝访问'))
+    const error: unknown = await fetchAuthenticatedJson('/api/auth/me').catch(error => error)
+    expect(error).toMatchObject({ status: 401, code: 170099, message: '资料服务拒绝访问' })
+    expect(isAuthenticationFailure(error)).toBe(false)
+    expect(readRefreshToken()).toBe('new-refresh')
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
+  it('显式传入归属未知的旧令牌时，不能拿当前会话续期和重放', async () => {
+    saveAuthTokens(authResult('current-access', 'current-refresh'))
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(apiResponse(null, 401, 160001, '凭证无效'))
+    await expect(getUserProfile('unknown-access')).rejects.toMatchObject({ name: 'AbortError' })
+    expect(fetchMock).toHaveBeenCalledOnce()
+    expect(readRefreshToken()).toBe('current-refresh')
+  })
+
+  it('同账号主动重新登录也会作废之前会话的续期重试', async () => {
+    saveAuthTokens(authResult('old-access', 'old-refresh'))
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => {
+      saveAuthTokens(authResult('login-access', 'login-refresh'))
+      return apiResponse(null, 401, 160001, '凭证无效')
+    })
+    await expect(getUserProfile('old-access')).rejects.toMatchObject({ name: 'AbortError' })
+    expect(fetchMock).toHaveBeenCalledOnce()
+    expect(readRefreshToken()).toBe('login-refresh')
   })
 })

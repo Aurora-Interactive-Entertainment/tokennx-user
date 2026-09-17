@@ -146,9 +146,11 @@ function sessionFromSnapshot(snapshot: AuthSessionSnapshot | null): Authenticate
     status: 'succeeded',
     binding_required: false,
     access_token: snapshot.accessToken,
+    access_expires_at: snapshot.accessExpiresAt,
     refresh_token: snapshot.refreshToken,
     refresh_expires_at: snapshot.refreshExpiresAt,
     user: snapshot.user,
+    promt_required: snapshot.promtRequired,
   }
 }
 
@@ -171,7 +173,12 @@ async function waitForSynchronizedSession(previousRefreshToken: string): Promise
     }
     const check = (): void => {
       const current = getAuthSessionSnapshot()
-      if (current?.refreshToken !== previousRefreshToken) finish(sessionFromSnapshot(current))
+      if (!current) finish(null)
+      else if (current.refreshToken !== previousRefreshToken) {
+        // localStorage 比访问令牌广播先到时继续等待，避免刚拿到新刷新令牌就再次轮换。
+        const session = sessionFromSnapshot(current)
+        if (session) finish(session)
+      }
     }
     const unsubscribe = subscribeAuthTokenChanges(check)
     const poll = setInterval(check, SESSION_SYNC_POLL_MS)

@@ -29,7 +29,7 @@ import { SeoManager } from "@/seo/site-seo";
 import type { ConsoleRoutePath } from "@/routes/console-route-meta";
 import { syncSentryIdentity } from "@/observability/sentry";
 import { WechatCallbackPage } from "@/pages/wechat-callback";
-import { BuildUpdateNotice } from "@/components/build-update-notice";
+import { BuildVersionSync } from "@/runtime/build-version-sync";
 import { CONSOLE_IMAGE_GENERATION_ENABLED } from "@/config/console-features";
 import siteI18n from "@/i18n";
 import { RequestErrorPanel } from "@/components/request-error-panel";
@@ -398,7 +398,7 @@ export default function App({ onBootReady }: { onBootReady: () => void }) {
     <BrowserRouter>
       <SeoManager />
       <ScrollToTop />
-      <BuildUpdateNotice />
+      <BuildVersionSync />
       <AuthBootstrap>
         <>
           <AuthScopedStoreProvider>

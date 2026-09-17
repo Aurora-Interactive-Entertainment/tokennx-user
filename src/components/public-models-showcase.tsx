@@ -5,6 +5,7 @@ import { LoginRequiredAction, ModelLogo } from '@/components/common'
 import type { PublicMarketCarousel, PublicMarketPrice } from '@/api/public-model-market'
 import type { ModelRecord } from '@/data/models'
 import { PublicModelPrices } from './public-model-prices'
+import type { PublicPriceSources } from '@/utils/public-model-prices'
 import { publicPath } from '@/routes/public-path'
 import modelCardArt from '@/assets/figma-home/model-card-art.png'
 import promoArticleArt from '@/assets/figma-home/promo-article.png'
@@ -12,7 +13,7 @@ import promoBannerArt from '@/assets/figma-home/promo-banner.png'
 import { apiTimeToDate } from '@/utils/format'
 import './public-models-showcase.css'
 
-export type PublicShowcaseModel = ModelRecord & { marketPrices?: PublicMarketPrice[] }
+export type PublicShowcaseModel = ModelRecord & { marketPrices?: PublicMarketPrice[] } & Omit<PublicPriceSources, 'prices'>
 
 export type ModelsShowcaseGroup = {
   id: string
@@ -128,7 +129,7 @@ export function ShowcaseModelCard({ model }: { model: PublicShowcaseModel }) {
   return <article className="models-showcase-card">
     <div className="models-showcase-card-head"><div className="models-showcase-card-identity"><ModelLogo model={model} className="models-showcase-card-logo" /><span><strong>{model.name}</strong>{launchDate ? <small>{t('public.models.releaseDate', { date: launchDate.toLocaleDateString(i18n.language, { year: 'numeric', month: 'long', day: 'numeric' }) })}</small> : null}</span></div></div>
     <p className="models-showcase-card-description">{model.description}</p>
-    {model.marketPrices ? <PublicModelPrices prices={model.marketPrices} /> : <dl className="models-showcase-card-prices"><div><dt>{t('public.models.inputPrice')}</dt><dd>{hasDiscount(model, 'input') ? <del className="models-showcase-card-price-original"><span>{t('public.models.priceBase')}</span>{priceValue(model, 'input', 'officialPrice')}</del> : <span className="models-showcase-card-price-original models-showcase-card-price-original--placeholder" aria-hidden="true" />}<strong className="models-showcase-card-price-current"><span className="models-showcase-card-price-current-currency">{t('public.models.priceBase')}</span>{priceValue(model, 'input')}</strong></dd></div><div><dt>{t('public.models.outputPrice')}</dt><dd>{hasDiscount(model, 'output') ? <del className="models-showcase-card-price-original"><span>{t('public.models.priceBase')}</span>{priceValue(model, 'output', 'officialPrice')}</del> : <span className="models-showcase-card-price-original models-showcase-card-price-original--placeholder" aria-hidden="true" />}<strong className="models-showcase-card-price-current"><span className="models-showcase-card-price-current-currency">{t('public.models.priceBase')}</span>{priceValue(model, 'output')}</strong></dd></div></dl>}
+    {model.marketPrices ? <PublicModelPrices prices={model.marketPrices} templatePrices={model.templatePrices} templatePricingPeriods={model.templatePricingPeriods} templatePricingTimezone={model.templatePricingTimezone} /> : <dl className="models-showcase-card-prices"><div><dt>{t('public.models.inputPrice')}</dt><dd>{hasDiscount(model, 'input') ? <del className="models-showcase-card-price-original"><span>{t('public.models.priceBase')}</span>{priceValue(model, 'input', 'officialPrice')}</del> : <span className="models-showcase-card-price-original models-showcase-card-price-original--placeholder" aria-hidden="true" />}<strong className="models-showcase-card-price-current"><span className="models-showcase-card-price-current-currency">{t('public.models.priceBase')}</span>{priceValue(model, 'input')}</strong></dd></div><div><dt>{t('public.models.outputPrice')}</dt><dd>{hasDiscount(model, 'output') ? <del className="models-showcase-card-price-original"><span>{t('public.models.priceBase')}</span>{priceValue(model, 'output', 'officialPrice')}</del> : <span className="models-showcase-card-price-original models-showcase-card-price-original--placeholder" aria-hidden="true" />}<strong className="models-showcase-card-price-current"><span className="models-showcase-card-price-current-currency">{t('public.models.priceBase')}</span>{priceValue(model, 'output')}</strong></dd></div></dl>}
     <div className="models-showcase-card-actions"><LoginRequiredAction className="models-showcase-card-primary" returnPath={modelReturnPath}>{t('public.models.tryNow')}</LoginRequiredAction><Link className="models-showcase-card-docs" to={publicPath('/docs/01M0765G0JDT3JCZ6QQXNM40TX/token-nx-api-documentation', i18n.language)}>{t('public.models.apiDocs')}</Link></div>
   </article>
 }

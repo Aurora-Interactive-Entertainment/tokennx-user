@@ -69,6 +69,22 @@ export interface UserModelPricingPeriod {
   rules: UserModelPricingRule[]
 }
 
+export interface UserVideoOptions {
+  family?: string
+  ratios?: string[]
+  resolutions?: string[]
+  min_duration?: number
+  max_duration?: number
+  default_duration?: number
+  default_resolution?: string
+  auto_duration?: boolean
+  max_images?: number
+  max_videos?: number
+  max_audios?: number
+  requires_prompt?: boolean
+  output_meter?: string
+}
+
 export interface UserModelItem {
   id: string
   code?: string
@@ -94,6 +110,8 @@ export interface UserModelItem {
   current_period_key?: string
   // 视频模型可选参数由目录接口透传，用于价格示例的分辨率/时长展示。
   params?: Record<string, string[] | number[]>
+  // 视频参数与素材限制以目录接口为准；可选以兼容尚未升级的模型。
+  video_options?: UserVideoOptions | null
   availability?: {
     rate?: number
     sample_count?: number

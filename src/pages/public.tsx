@@ -26,6 +26,7 @@ import { useTranslation } from 'react-i18next'
 import { formatRankingTokens, RankingRecentUsageChart } from '@/components/ranking-usage-chart'
 import { formatToolUsageTokens, ToolUsageClientsChart } from '@/components/tool-usage-chart'
 import { apiTimeToDate } from '@/utils/format'
+import { selectPublicModelPrices } from '@/utils/public-model-prices'
 import { ModelsShowcase, type ModelsShowcaseGroup, type PublicShowcaseModel } from '@/components/public-models-showcase'
 import { appToast } from '@/components/app-toast'
 import { RequestErrorPanel } from '@/components/request-error-panel'
@@ -95,8 +96,11 @@ function publicModelDescription(t: TFunction, modelId: string, description: stri
 }
 
 function publicMarketModelToRecord(model: PublicMarketModel): PublicShowcaseModel {
-  const input = model.prices.find((price) => price.meter_kind.toLowerCase().includes('input'))
-  const output = model.prices.find((price) => price.meter_kind.toLowerCase().includes('output'))
+  const sources = { prices: model.prices, templatePrices: model.template_prices, templatePricingPeriods: model.template_pricing_periods, templatePricingTimezone: model.template_pricing_timezone }
+  const inputQuotes = selectPublicModelPrices(sources, 'input')
+  const outputQuotes = selectPublicModelPrices(sources, 'output')
+  const input = inputQuotes.current
+  const output = outputQuotes.current
   const numeric = (value: string | undefined) => { const parsed = Number(value); return Number.isFinite(parsed) ? parsed : undefined }
   const modality = (['text', 'image', 'video', 'audio', 'multimodal', 'embedding', 'rerank', 'speech', 'transcription'].includes(model.modality) ? model.modality : 'other') as ModelModality
   const price = { input: numeric(input?.unit_price_yuan), inputRaw: input?.unit_price_yuan, output: numeric(output?.unit_price_yuan), outputRaw: output?.unit_price_yuan, unit: input?.unit || output?.unit || '1M tokens' }
@@ -110,9 +114,13 @@ function publicMarketModelToRecord(model: PublicMarketModel): PublicShowcaseMode
     launchedAt: model.launched_at,
     capabilities: [],
     description: model.description || '',
-    officialPrice: { ...price },
+    // 原价只取官方接口报价，不能再把销售价复制成原价。
+    officialPrice: { input: numeric(inputQuotes.original?.unit_price_yuan), inputRaw: inputQuotes.original?.unit_price_yuan, output: numeric(outputQuotes.original?.unit_price_yuan), outputRaw: outputQuotes.original?.unit_price_yuan, unit: price.unit },
     tokenNxPrice: { ...price },
     marketPrices: model.prices,
+    templatePrices: model.template_prices,
+    templatePricingPeriods: model.template_pricing_periods,
+    templatePricingTimezone: model.template_pricing_timezone,
     labels: [MODALITY_LABELS[modality] ?? modality],
     availability: { rate: 0, window: '暂无数据' },
     providerCount: 0,

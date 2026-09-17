@@ -1,4 +1,4 @@
-import type { UserModelActivity, UserModelItem, UserModelPrice, UserModelPricingPeriod, UserModelTag } from '@/api/user-models'
+import type { UserModelActivity, UserModelItem, UserModelPrice, UserModelPricingPeriod, UserModelTag, UserVideoOptions } from '@/api/user-models'
 import { formatDecimal } from '@/utils/format'
 
 export type ModelModality = 'text' | 'image' | 'video' | 'audio' | 'embedding' | 'rerank' | 'speech' | 'transcription' | 'multimodal' | 'other'
@@ -60,6 +60,7 @@ export interface ModelRecord {
   throughput: ModelThroughput
   maxOutput?: string
   params?: Record<string, string[] | number[]>
+  videoOptions?: UserVideoOptions | null
   // 保留后端原始价格明细，视频价格示例可据此展示不同计费场景。
   prices?: UserModelPrice[]
   pricingTimezone?: string
@@ -241,6 +242,8 @@ export function userModelToRecord(model: UserModelItem): ModelRecord {
     ...(model.pricing_periods !== undefined ? { pricingPeriods: model.pricing_periods } : {}),
     ...(model.current_period_key !== undefined ? { currentPeriodKey: model.current_period_key } : {}),
     ...(model.params ? { params: model.params } : {}),
+    // 保留显式的 false、0 和空数组，不能用真值判断扩大模型能力。
+    ...(model.video_options !== undefined ? { videoOptions: model.video_options } : {}),
   }
 }
 

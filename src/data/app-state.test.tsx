@@ -15,7 +15,7 @@ describe('工作空间本地状态', () => {
   it('历史写入失败后离开生成页仍保护内存结果，成功保存后解除', () => {
     const holders = new Set<object>()
     window.__TOKEN_NX_UPDATE_GUARD__ = {
-      pendingVersion: '', check: vi.fn(), routeChanged: vi.fn(), reload: vi.fn(),
+      pendingVersion: '', check: vi.fn(), routeChanged: vi.fn(),
       blockReload: () => { const token = {}; holders.add(token); return () => { holders.delete(token) } },
     }
     const storage = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new DOMException('quota', 'QuotaExceededError') })

@@ -17,6 +17,49 @@ const PURPOSE_LABELS: Record<string, string> = {
   cache_creation: 'console.modelDetail.cacheCreatePrice',
 }
 
+interface PricingPeriodGroup {
+  key: string
+  name: string
+  periods: UserModelPricingPeriod[]
+  rates: { periods: UserModelPricingPeriod[]; rules: UserModelPricingRule[] }[]
+}
+
+function pricingRulesKey(rules: UserModelPricingRule[]): string {
+  // 比较完整规则并忽略字段、条件和规则的顺序，不能只凭单价合并不同计费规格。
+  const signatures = rules.map((rule) => {
+    const conditions = Object.fromEntries(Object.entries(rule.conditions ?? {}).sort(([a], [b]) => a.localeCompare(b)))
+    const fields = Object.entries({ ...rule, conditions }).sort(([a], [b]) => a.localeCompare(b))
+    return JSON.stringify(Object.fromEntries(fields))
+  })
+  return JSON.stringify(signatures.sort())
+}
+
+export function groupPricingPeriods(periods: UserModelPricingPeriod[]): PricingPeriodGroup[] {
+  const groups = new Map<string, PricingPeriodGroup>()
+  for (const period of periods) {
+    const name = period.name.trim()
+    // 未命名时段按各自 key 保留，避免把互不相关的规则聚到同一卡片。
+    const key = name ? `name:${name}` : `key:${period.key}`
+    let group = groups.get(key)
+    if (!group) {
+      group = { key, name, periods: [], rates: [] }
+      groups.set(key, group)
+    }
+    group.periods.push(period)
+    const signature = pricingRulesKey(period.rules)
+    const rate = group.rates.find((item) => pricingRulesKey(item.rules) === signature)
+    if (rate) rate.periods.push(period)
+    else group.rates.push({ periods: [period], rules: period.rules })
+  }
+  return [...groups.values()]
+}
+
+export function pricingPeriodName(name: string, t: TFunction): string {
+  if (name === '默认时间段' || name === '谷价') return t('console.timePricing.offPeak')
+  if (name === '峰价') return t('console.timePricing.peak')
+  return name
+}
+
 function minuteLabel(minute: number): string {
   // 1440 表示当天结束的 24:00，不能转换为次日 00:00。
   return `${String(Math.floor(minute / 60)).padStart(2, '0')}:${String(minute % 60).padStart(2, '0')}`
@@ -50,9 +93,9 @@ export function pricingRuleUnit(rule: UserModelPricingRule, prices: UserModelPri
   return `${formatNumber(rule.unit_quantity)} ${label}`
 }
 
-export function pricingRuleDetails(rule: UserModelPricingRule, t: TFunction): string {
+export function pricingRuleDetails(rule: UserModelPricingRule, t: TFunction, { showTier = true }: { showTier?: boolean } = {}): string {
   const details: string[] = []
-  if (rule.tier_no > 0) {
+  if (showTier && rule.tier_no > 0) {
     const lower = formatNumber(rule.lower_bound)
     const range = rule.upper_bound === undefined ? t('console.timePricing.from', { lower }) : `${lower}–${formatNumber(rule.upper_bound)}`
     details.push(t('console.timePricing.tier', { tier: rule.tier_no, range }))

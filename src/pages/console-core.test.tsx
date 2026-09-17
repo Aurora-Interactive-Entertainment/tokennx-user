@@ -326,7 +326,7 @@ describe('控制台模型接入页面', () => {
     expect(screen.getByText('98.5%')).toBeInTheDocument()
     expect(screen.getByText('7,237,576')).toBeInTheDocument()
     expect(document.querySelectorAll('.model-detail-chart-bars')).toHaveLength(1)
-    expect(document.querySelectorAll('.model-detail-chart-line')).toHaveLength(2)
+    expect(document.querySelectorAll('.model-metric-chart')).toHaveLength(2)
     const activityBars = Array.from(document.querySelectorAll<HTMLElement>('.model-detail-chart-bars > span'))
     expect(activityBars.length).toBeGreaterThan(0)
     expect(activityBars.every((bar) => bar.tabIndex === 0 && bar.dataset.tooltip)).toBe(true)
@@ -430,7 +430,7 @@ describe('控制台模型接入页面', () => {
     vi.mocked(useBuildUpdateBlocker).mockImplementation(actual.useBuildUpdateBlocker)
     const holders = new Set<object>()
     window.__TOKEN_NX_UPDATE_GUARD__ = {
-      pendingVersion: '', check: vi.fn(), routeChanged: vi.fn(), reload: vi.fn(),
+      pendingVersion: '', check: vi.fn(), routeChanged: vi.fn(),
       blockReload: () => { const token = {}; holders.add(token); return () => { holders.delete(token) } },
     }
     vi.mocked(streamChatCompletion).mockResolvedValue({ content: '仅内存中存在的回复', reasoning: '', requestId: 'req-memory-only', inputTokens: 2, outputTokens: 3, finishReason: 'stop', latencyMs: 12 })

@@ -197,9 +197,7 @@ function isMobileDevice(): boolean {
   return mobileUserAgent || compactTouchLayout;
 }
 function isRealNameLoginExpired(error: unknown): boolean {
-  return isApiError(error)
-    ? error.status === 401
-    : isAuthenticationFailure(error);
+  return isAuthenticationFailure(error);
 }
 function readStoredSession(userId: string): StoredRealNameSession | null {
   try {

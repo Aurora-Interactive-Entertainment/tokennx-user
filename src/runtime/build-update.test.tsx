@@ -8,7 +8,7 @@ afterEach(() => { delete window.__TOKEN_NX_UPDATE_GUARD__ })
 it('多个组件与 StrictMode 均独立释放操作保护，卸载不遗留保护', () => {
   const leases = new Set<object>()
   window.__TOKEN_NX_UPDATE_GUARD__ = {
-    pendingVersion: '', check: vi.fn(), reload: vi.fn(), routeChanged: vi.fn(),
+    pendingVersion: '', check: vi.fn(), routeChanged: vi.fn(),
     blockReload: () => {
       const lease = {}
       leases.add(lease)

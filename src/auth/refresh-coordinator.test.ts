@@ -1,7 +1,8 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { AuthResult } from '@/api/auth'
 import { clearAuthTokens, getAccessToken, readRefreshToken, saveAuthTokens } from './token-storage'
 import { refreshAuthSession, withAuthSessionLock } from './refresh-coordinator'
+import * as tokenStorage from './token-storage'
 
 function apiResponse(data: unknown): Response {
   return new Response(JSON.stringify({ code: 0, msg: 'success', data }), {
@@ -36,6 +37,8 @@ describe('跨标签刷新协调器', () => {
     clearAuthTokens()
   })
 
+  afterEach(() => { vi.restoreAllMocks(); vi.useRealTimers() })
+
   it('刷新响应返回期间会话变化时不覆盖新标签页会话', async () => {
     saveAuthTokens(authResult('old-access', 'old-refresh'))
     let resolveRefresh: ((response: Response) => void) | undefined
@@ -61,12 +64,14 @@ describe('跨标签刷新协调器', () => {
 
   it('发现其他标签页已经完成刷新时直接采用新访问令牌', async () => {
     saveAuthTokens(authResult('old-access', 'old-refresh'))
-    saveAuthTokens(authResult('new-access', 'new-refresh'))
+    saveAuthTokens({ ...authResult('new-access', 'new-refresh'), promt_required: true })
     const fetchMock = vi.spyOn(globalThis, 'fetch')
 
     await expect(refreshAuthSession('old-refresh')).resolves.toMatchObject({
       access_token: 'new-access',
+      access_expires_at: Date.UTC(2099, 0, 1, 0, 15),
       refresh_token: 'new-refresh',
+      promt_required: true,
     })
     expect(fetchMock).not.toHaveBeenCalled()
   })
@@ -93,5 +98,40 @@ describe('跨标签刷新协调器', () => {
     releaseFirst?.()
     await Promise.all([first, second])
     expect(order).toEqual(['first-start', 'first-end', 'second'])
+  })
+
+  it('共享刷新令牌已变化但访问令牌广播尚未到达时，确实等待同步而不重复轮换', async () => {
+    vi.useFakeTimers()
+    saveAuthTokens(authResult('old-access', 'old-refresh'))
+    const original = tokenStorage.getAuthSessionSnapshot()!
+    let snapshot: tokenStorage.AuthSessionSnapshot = { ...original, refreshToken: 'synced-refresh', accessToken: null, user: undefined }
+    vi.spyOn(tokenStorage, 'getAuthSessionSnapshot').mockImplementation(() => snapshot)
+    const fetchMock = vi.spyOn(globalThis, 'fetch')
+    const pending = refreshAuthSession('old-refresh')
+    await vi.advanceTimersByTimeAsync(500)
+    expect(fetchMock).not.toHaveBeenCalled()
+
+    snapshot = { ...snapshot, accessToken: 'synced-access', user: original.user }
+    await vi.advanceTimersByTimeAsync(25)
+    await expect(pending).resolves.toMatchObject({ access_token: 'synced-access', refresh_token: 'synced-refresh' })
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('等待访问令牌广播超时后仅用最新刷新令牌恢复一次', async () => {
+    vi.useFakeTimers()
+    saveAuthTokens(authResult('old-access', 'old-refresh'))
+    const original = tokenStorage.getAuthSessionSnapshot()!
+    const snapshot: tokenStorage.AuthSessionSnapshot = { ...original, refreshToken: 'synced-refresh', accessToken: null, user: undefined }
+    vi.spyOn(tokenStorage, 'getAuthSessionSnapshot').mockReturnValue(snapshot)
+    const saveMock = vi.spyOn(tokenStorage, 'saveAuthTokens').mockReturnValue(true)
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(apiResponse(authResult('latest-access', 'latest-refresh')))
+    const pending = refreshAuthSession('old-refresh')
+    await vi.advanceTimersByTimeAsync(1_999)
+    expect(fetchMock).not.toHaveBeenCalled()
+    await vi.advanceTimersByTimeAsync(1)
+    await expect(pending).resolves.toMatchObject({ access_token: 'latest-access', refresh_token: 'latest-refresh' })
+    expect(fetchMock).toHaveBeenCalledOnce()
+    expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toMatchObject({ refresh_token: 'synced-refresh' })
+    expect(saveMock).toHaveBeenCalledWith(expect.anything(), { expectedRefreshToken: 'synced-refresh', expectedRevision: snapshot.revision })
   })
 })

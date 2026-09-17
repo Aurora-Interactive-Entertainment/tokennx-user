@@ -1,8 +1,9 @@
 import { createAsyncThunk, createSlice, type PayloadAction } from '@reduxjs/toolkit'
 import { getCurrentUser, loginByEmail, loginByPhone, logout, sendBindingPhoneCode, sendEmailCode, sendPhoneCode, bindWechatPhone, type AuthResult, type AuthUser, type EmailCodeResult, type PhoneCodeResult } from '@/api/auth'
-import { AUTH_INVALID_CODE, isApiError, isAuthenticationFailure } from '@/api/http'
-import { clearAuthTokens, getAccessToken, getAccessTokenUserId, getAuthSessionSnapshot, readRefreshToken, saveAuthTokens } from '@/auth/token-storage'
-import { refreshAuthSession, withAuthSessionLock } from '@/auth/refresh-coordinator'
+import { AUTH_INVALID_CODE, isApiError } from '@/api/http'
+import { withAuthenticatedSession } from '@/api/authenticated'
+import { clearAuthTokens, getAccessToken, getAuthSessionSnapshot, readRefreshToken, saveAuthTokens, updateAuthSessionUser } from '@/auth/token-storage'
+import { withAuthSessionLock } from '@/auth/refresh-coordinator'
 import i18n from '@/i18n'
 
 export interface AuthOperationError {
@@ -68,34 +69,47 @@ function completeAuth(result: AuthResult): AuthUser {
 }
 
 export const hydrateAuth = createAsyncThunk<AuthUser | null, void, { rejectValue: 'session-changed' | { error: AuthOperationError; user: AuthUser | null } }>('auth/hydrate', async (_, { rejectWithValue }) => {
-  const refreshToken = readRefreshToken()
-  if (!refreshToken) return null
-  let expectedRefreshToken = refreshToken
-  let expectedUserId = getAccessTokenUserId()
-  let verifiedUser = getAuthSessionSnapshot()?.user ?? null
+  if (!readRefreshToken()) return null
+  const requestedSession = getAuthSessionSnapshot()
+  if (!requestedSession) return null
+  let accessToVerify = requestedSession.accessToken
+  let responseAccessToken: string | null = null
   try {
-    const result = await refreshAuthSession(refreshToken)
-    if (result.status !== 'succeeded' || result.binding_required || !result.user) throw new Error(i18n.t('api.auth.incomplete'))
-    expectedRefreshToken = result.refresh_token
-    expectedUserId = result.user.id
-    if (getAccessTokenUserId() !== expectedUserId) return rejectWithValue('session-changed')
-    // 刷新会话也保留认证响应中的首次登录标记，避免恢复页面时丢失引导状态。
-    const user = result.user
-    verifiedUser = result.promt_required === undefined ? user : { ...user, promt_required: result.promt_required }
-    const access = getAccessToken()
-    const currentUser = access ? await getCurrentUser(access) : user
-    // /me 等待期间可能发生退出或换号，旧用户资料不能覆盖最新身份。
-    if (getAccessTokenUserId() !== expectedUserId || currentUser.id !== expectedUserId) return rejectWithValue('session-changed')
-    return result.promt_required === undefined ? currentUser : { ...currentUser, promt_required: result.promt_required }
-  } catch (error) {
-    if (readRefreshToken() !== expectedRefreshToken ||
-      (expectedUserId && getAccessTokenUserId() !== expectedUserId)) return rejectWithValue('session-changed')
-    // 网络和服务异常允许重试；刷新已验证的身份不能因资料接口暂时失败而丢失。
-    if (isAuthenticationFailure(error)) {
-      clearAuthTokens({ expectedRefreshToken })
-      return null
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      // 页面重建先复用现有访问令牌；缺少令牌或 /me 返回 401 时由统一管道续期。
+      const currentUser = await withAuthenticatedSession({ accessToken: accessToVerify ?? undefined }, async access => {
+        responseAccessToken = access
+        return getCurrentUser(access)
+      })
+      const currentSession = getAuthSessionSnapshot()
+      // 同账号重新登录也属于新会话，迟到的 /me 不能覆盖新登录的身份。
+      if (!currentSession || currentSession.sessionId !== requestedSession.sessionId) return rejectWithValue('session-changed')
+      if (currentSession.accessToken !== responseAccessToken) {
+        // 其他标签页续期时保留最新已验证身份；未带用户则仅补查一次新令牌，不能无限追逐轮换。
+        if (currentSession.user) return currentSession.user
+        if (attempt === 0 && currentSession.accessToken) {
+          accessToVerify = currentSession.accessToken
+          continue
+        }
+        return rejectWithValue('session-changed')
+      }
+      if (!currentUser?.id || (currentSession.user && currentUser.id !== currentSession.user.id)) throw new Error(i18n.t('api.auth.incomplete'))
+      const promtRequired = currentSession.promtRequired ?? currentSession.user?.promt_required
+      const user = promtRequired === undefined
+        ? currentUser
+        : { ...currentUser, promt_required: promtRequired }
+      // 刷新接口可以省略 user，只有 /me 验证成功后才为当前访问令牌登记用户归属。
+      if (!responseAccessToken || !updateAuthSessionUser(user, responseAccessToken)) return rejectWithValue('session-changed')
+      return user
     }
-    return rejectWithValue({ error: authError(error), user: verifiedUser })
+    return rejectWithValue('session-changed')
+  } catch (error) {
+    const currentSession = getAuthSessionSnapshot()
+    // 只有统一认证流程确认长期会话失效并清除后，才恢复为未登录。
+    if (!currentSession) return null
+    if (currentSession.sessionId !== requestedSession.sessionId) return rejectWithValue('session-changed')
+    // /me、网络或服务临时失败均保留已验证身份，不能把业务 401 当成刷新令牌失效。
+    return rejectWithValue({ error: authError(error), user: currentSession.user ?? requestedSession.user ?? null })
   }
 })
 

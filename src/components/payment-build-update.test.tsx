@@ -41,7 +41,7 @@ beforeEach(() => {
   saveAuthTokens({ status: 'succeeded', binding_required: false, access_token: 'build-token', refresh_token: 'build-refresh', refresh_expires_at: Date.UTC(2099, 0, 1), user: { id: 'build-user', display_name: '测试用户', avatar_url: '', locale: 'zh-CN', timezone: 'Asia/Shanghai', status: 'active' } })
   // 通过真实 bridge 和 hook 接入独立租约，检查组件之间不会误释放彼此的保护。
   window.__TOKEN_NX_UPDATE_GUARD__ = {
-    pendingVersion: 'new-build', check: async () => {}, routeChanged: async () => {}, reload: () => holders.size === 0,
+    pendingVersion: 'new-build', check: async () => {}, routeChanged: async () => {},
     blockReload: () => {
       const holder = Symbol('payment')
       holders.add(holder)
@@ -200,7 +200,7 @@ describe('支付期间的自动版本更新保护', () => {
     expect(holders.size).toBe(0)
   })
 
-  it('未提交的新渠道和预设金额均受保护，回到原选择后可自动更新', async () => {
+  it('未提交的新渠道和预设金额均受保护，回到原选择后解除保护', async () => {
     render(<MemoryRouter><RechargeTab context={context} onOrderUpdated={noop} onAuthFailure={noop} /></MemoryRouter>)
     await act(async () => fireEvent.click(screen.getByRole('button', { name: '微信' })))
     expect(holders.size).toBeGreaterThan(0)

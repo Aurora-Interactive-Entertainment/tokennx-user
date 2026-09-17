@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { clearAuthTokens, getAccessToken, REFRESH_SESSION_KEY, saveAuthTokens, subscribeAuthTokenChanges } from '@/auth/token-storage'
+import { AUTH_SYNC_STORAGE_KEY, clearAuthTokens, getAccessToken, getAccessTokenUserId, getAuthSessionSnapshot, readRefreshToken, REFRESH_SESSION_KEY, saveAuthTokens, subscribeAuthTokenChanges } from '@/auth/token-storage'
 import { refreshAuthSession } from '@/auth/refresh-coordinator'
 import { requestPurchaseLogin } from './purchase-intent-slice'
 import type { AuthResult } from '@/api/auth'
@@ -30,6 +30,15 @@ function authResult(accessToken = 'access-token', refreshToken = 'refresh-token'
       status: 'active',
     },
   }
+}
+
+function announceRemoteRefresh(accessToken: string, refreshToken: string, user?: AuthResult['user']): void {
+  const current = getAuthSessionSnapshot()!
+  window.dispatchEvent(new StorageEvent('storage', { key: AUTH_SYNC_STORAGE_KEY, newValue: JSON.stringify({
+    type: 'session-updated', eventId: `hydrate-remote:${accessToken}`, isRefresh: true,
+    sessionId: current.sessionId, revision: { timestamp: current.revision.timestamp + 1, writerId: 'hydrate-remote' },
+    accessToken, refreshToken, refreshExpiresAt: Date.UTC(2099, 1, 1), user,
+  }) }))
 }
 
 describe('认证 Redux 状态', () => {
@@ -106,6 +115,142 @@ describe('认证 Redux 状态', () => {
     expect(new Headers(fetchMock.mock.calls[1][1]?.headers).get('Authorization')).toBe('Bearer new-access')
   })
 
+  it('页面重建和再次恢复复用有效 access，不反复轮换三十天 refresh', async () => {
+    saveAuthTokens(authResult('existing-access', 'existing-refresh'))
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async input => {
+      expect(String(input)).toContain('/api/auth/me')
+      return apiResponse({ ...authResult().user, display_name: '最新资料' })
+    })
+
+    for (let reload = 0; reload < 2; reload += 1) {
+      const appStore = createAppStore()
+      await appStore.dispatch(hydrateAuth()).unwrap()
+      expect(appStore.getState().auth).toMatchObject({ status: 'authenticated', user: { display_name: '最新资料' } })
+    }
+
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(getAccessToken()).toBe('existing-access')
+    expect(readRefreshToken()).toBe('existing-refresh')
+  })
+
+  it('refresh 响应省略 user 时仍通过 /me 恢复身份及访问令牌归属', async () => {
+    window.localStorage.setItem(REFRESH_SESSION_KEY, JSON.stringify({ refreshToken: 'old-refresh', refreshExpiresAt: Date.UTC(2099, 1, 1) }))
+    const refreshResult = { ...authResult('no-user-access', 'no-user-refresh'), user: undefined, promt_required: true }
+    const fetchMock = vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(apiResponse(refreshResult))
+      .mockResolvedValueOnce(apiResponse(authResult().user))
+    const appStore = createAppStore()
+
+    await appStore.dispatch(hydrateAuth()).unwrap()
+
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(appStore.getState().auth).toMatchObject({ status: 'authenticated', user: { id: 'user-1', promt_required: true } })
+    expect(getAccessTokenUserId('no-user-access')).toBe('user-1')
+    expect(readRefreshToken()).toBe('no-user-refresh')
+  })
+
+  it('已有 access 的 /me 返回 401 时统一续期一次并恢复资料', async () => {
+    saveAuthTokens(authResult('old-access', 'old-refresh'))
+    const fetchMock = vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(apiResponse(null, 401, 100004, '访问令牌过期'))
+      .mockResolvedValueOnce(apiResponse(authResult('new-access', 'new-refresh')))
+      .mockResolvedValueOnce(apiResponse({ ...authResult().user, display_name: '续期后的资料' }))
+    const appStore = createAppStore()
+
+    await appStore.dispatch(hydrateAuth()).unwrap()
+
+    expect(fetchMock.mock.calls.map(([input]) => new URL(String(input), 'https://example.com').pathname)).toEqual(['/api/auth/me', '/api/auth/refresh', '/api/auth/me'])
+    expect(appStore.getState().auth).toMatchObject({ status: 'authenticated', user: { display_name: '续期后的资料' } })
+    expect(readRefreshToken()).toBe('new-refresh')
+  })
+
+  it('refresh 成功后 /me 仍返回 401 时保留会话和已验证身份供重试', async () => {
+    saveAuthTokens(authResult('old-access', 'old-refresh'))
+    const fetchMock = vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(apiResponse(null, 401, 100004, '访问令牌过期'))
+      .mockResolvedValueOnce(apiResponse(authResult('new-access', 'new-refresh')))
+      .mockResolvedValueOnce(apiResponse(null, 401, 100004, '资料服务认证暂不可用'))
+    const appStore = createAppStore()
+
+    await expect(appStore.dispatch(hydrateAuth()).unwrap()).rejects.toMatchObject({ error: { status: 401 } })
+
+    expect(fetchMock).toHaveBeenCalledTimes(3)
+    expect(appStore.getState().auth).toMatchObject({ status: 'authenticated', user: { id: 'user-1' }, hydrationError: { message: '资料服务认证暂不可用', status: 401 } })
+    expect(getAccessToken()).toBe('new-access')
+    expect(readRefreshToken()).toBe('new-refresh')
+    fetchMock.mockResolvedValueOnce(apiResponse(authResult().user))
+    await appStore.dispatch(hydrateAuth()).unwrap()
+    expect(fetchMock).toHaveBeenCalledTimes(4)
+    expect(appStore.getState().auth.hydrationError).toBeNull()
+  })
+
+  it('refresh 无 user 且 /me 暂时失败时保留长期会话，重试成功后再展示受保护身份', async () => {
+    window.localStorage.setItem(REFRESH_SESSION_KEY, JSON.stringify({ refreshToken: 'old-refresh', refreshExpiresAt: Date.UTC(2099, 1, 1) }))
+    const fetchMock = vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(apiResponse({ ...authResult('unverified-access', 'unverified-refresh'), user: undefined }))
+      .mockResolvedValueOnce(apiResponse(null, 503, 120001, '资料暂不可用'))
+    const appStore = createAppStore()
+
+    await appStore.dispatch(hydrateAuth())
+
+    expect(appStore.getState().auth).toMatchObject({ status: 'restore-failed', user: null, hydrationError: { status: 503 } })
+    expect(readRefreshToken()).toBe('unverified-refresh')
+    expect(getAccessTokenUserId('unverified-access')).toBeUndefined()
+    fetchMock.mockResolvedValueOnce(apiResponse(authResult().user))
+    await appStore.dispatch(hydrateAuth()).unwrap()
+    expect(fetchMock).toHaveBeenCalledTimes(3)
+    expect(appStore.getState().auth).toMatchObject({ status: 'authenticated', user: { id: 'user-1' }, hydrationError: null })
+    expect(getAccessTokenUserId('unverified-access')).toBe('user-1')
+  })
+
+  it.each([false, true])('/me 等待期间跨标签轮换带用户=%s 时采用最新身份，未带用户仅补查新 access', async knownUser => {
+    window.localStorage.setItem(REFRESH_SESSION_KEY, JSON.stringify({ refreshToken: 'cold-refresh', refreshExpiresAt: Date.UTC(2099, 1, 1) }))
+    const firstAccess = `cold-first-access-${knownUser}`
+    const remoteAccess = `cold-remote-access-${knownUser}`
+    const latestUser = { ...authResult().user!, display_name: '最新已验证资料' }
+    let finishMe!: (response: Response) => void
+    let markStarted!: () => void
+    const started = new Promise<void>(resolve => { markStarted = resolve })
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, options) => {
+      if (String(input).endsWith('/refresh')) return apiResponse({ ...authResult(firstAccess, 'first-refresh'), user: undefined })
+      if (new Headers(options?.headers).get('Authorization') === `Bearer ${firstAccess}`) {
+        markStarted()
+        return new Promise<Response>(resolve => { finishMe = resolve })
+      }
+      expect(new Headers(options?.headers).get('Authorization')).toBe(`Bearer ${remoteAccess}`)
+      return apiResponse(latestUser)
+    })
+    const appStore = createAppStore()
+    const hydration = appStore.dispatch(hydrateAuth())
+    await started
+
+    announceRemoteRefresh(remoteAccess, 'remote-refresh', knownUser ? latestUser : undefined)
+    finishMe(apiResponse({ ...authResult().user, display_name: '迟到的旧资料' }))
+    await hydration.unwrap()
+
+    expect(appStore.getState().auth).toMatchObject({ status: 'authenticated', user: latestUser, hydrationError: null })
+    expect(getAuthSessionSnapshot()?.user).toEqual(latestUser)
+    expect(getAccessToken()).toBe(remoteAccess)
+    expect(fetchMock).toHaveBeenCalledTimes(knownUser ? 2 : 3)
+  })
+
+  it('跨标签持续轮换且未带用户时最多补查一次，不无限追逐新访问令牌', async () => {
+    saveAuthTokens({ ...authResult('bounded-first-access', 'bounded-first-refresh'), user: undefined })
+    let requests = 0
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => {
+      requests += 1
+      announceRemoteRefresh(`bounded-remote-access-${requests}`, `bounded-remote-refresh-${requests}`)
+      return apiResponse(authResult().user)
+    })
+    const appStore = createAppStore()
+
+    await expect(appStore.dispatch(hydrateAuth()).unwrap()).rejects.toBe('session-changed')
+
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(readRefreshToken()).toBe('bounded-remote-refresh-2')
+    expect(getAuthSessionSnapshot()?.user).toBeUndefined()
+  })
+
   it('刷新会话时保留顶层 promt_required 首次登录标记', async () => {
     window.localStorage.setItem(REFRESH_SESSION_KEY, JSON.stringify({ refreshToken: 'old-refresh', refreshExpiresAt: Date.UTC(2099, 1, 1) }))
     const refreshResult = { ...authResult('new-access', 'new-refresh'), promt_required: true }
@@ -150,7 +295,7 @@ describe('认证 Redux 状态', () => {
     expect(appStore.getState().auth.status).toBe('unauthenticated')
   })
 
-  it('keeps local session tokens when refresh service is unavailable', async () => {
+  it('已有访问令牌而资料服务暂不可用时保留已验证身份和会话', async () => {
     saveAuthTokens(authResult('old-access', 'refresh-token'))
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(apiResponse(null, 503, 120001, 'service unavailable'))
     const appStore = createAppStore()
@@ -162,7 +307,7 @@ describe('认证 Redux 状态', () => {
     expect(window.localStorage.getItem(REFRESH_SESSION_KEY)).toContain('refresh-token')
   })
 
-  it.each(['logout', 'switch-account'])('恢复登录的旧 /me 不能覆盖 %s 后的身份', async change => {
+  it.each(['logout', 'switch-account', 'same-account-login'])('恢复登录的旧 /me 不能覆盖 %s 后的身份', async change => {
     saveAuthTokens(authResult('old-access', 'old-refresh'))
     let finishMe!: (response: Response) => void
     let startedMe!: () => void
@@ -180,7 +325,7 @@ describe('认证 Redux 状态', () => {
       appStore.dispatch(invalidateAuth())
     } else {
       const next = authResult('next-access', 'next-refresh')
-      next.user = { ...next.user!, id: 'user-2' }
+      next.user = { ...next.user!, id: change === 'same-account-login' ? 'user-1' : 'user-2', display_name: '新登录资料' }
       saveAuthTokens(next)
       appStore.dispatch(synchronizeAuthenticatedUser(next.user!))
     }
@@ -188,7 +333,7 @@ describe('认证 Redux 状态', () => {
     await request
     expect(appStore.getState().auth).toMatchObject(change === 'logout'
       ? { status: 'unauthenticated', user: null }
-      : { status: 'authenticated', user: { id: 'user-2' } })
+      : { status: 'authenticated', user: { id: change === 'same-account-login' ? 'user-1' : 'user-2', display_name: '新登录资料' } })
     expect(getAccessToken()).toBe(change === 'logout' ? null : 'next-access')
   })
 

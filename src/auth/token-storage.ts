@@ -1,4 +1,5 @@
 import { isAuthTimestamp, type AuthResult, type AuthTimestamp, type AuthUser } from '@/api/auth'
+import { clearAccessSessionCache, readAccessSessionCache, saveAccessSessionCache } from './access-session-cache'
 
 export const REFRESH_SESSION_KEY = 'token-nx:auth:refresh:v1'
 export const DEVICE_ID_KEY = 'token-nx:auth:device:v1'
@@ -24,11 +25,13 @@ interface StoredRefreshSession {
 
 export interface AuthSessionSnapshot {
   accessToken: string | null
+  accessExpiresAt?: AuthTimestamp
   refreshToken: string
   refreshExpiresAt: AuthTimestamp
   revision: SessionRevision
   sessionId: string
   user: AuthUser | undefined
+  promtRequired?: boolean
 }
 
 export interface AuthTokenChange {
@@ -36,11 +39,13 @@ export interface AuthTokenChange {
   eventId: string
   revision: SessionRevision
   accessToken?: string
+  accessExpiresAt?: AuthTimestamp
   refreshToken?: string
   refreshExpiresAt?: AuthTimestamp
   user?: AuthUser
   sessionId?: string
   isRefresh?: boolean
+  promtRequired?: boolean
 }
 
 export interface ClearAuthTokensOptions {
@@ -58,7 +63,9 @@ export type AuthTokenChangeListener = (change: AuthTokenChange) => void
 
 let accessToken: string | null = null
 let accessTokenRefreshToken: string | null = null
+let accessExpiresAt: AuthTimestamp | undefined
 let lastKnownUser: AuthUser | undefined
+let lastKnownPromtRequired: boolean | undefined
 let lastAppliedRevision: SessionRevision | null = null
 // 保留少量旧访问令牌的账号归属，防止持有旧令牌的请求在切换账号后被重放。
 const accessTokenOwners = new Map<string, string>()
@@ -156,7 +163,7 @@ function rememberAccessTokenOwner(token: string, user: AuthUser | undefined): vo
   }
 }
 
-export function getAccessTokenUserId(token: string | null = accessToken): string | undefined {
+export function getAccessTokenUserId(token: string | null = getAccessToken()): string | undefined {
   return token ? accessTokenOwners.get(token) : undefined
 }
 
@@ -287,8 +294,11 @@ function applyRemoteChange(change: AuthTokenChange): void {
     saved?.setItem(REFRESH_SESSION_KEY, JSON.stringify(session))
     accessToken = change.accessToken as string
     accessTokenRefreshToken = session.refreshToken
+    accessExpiresAt = change.accessExpiresAt
     lastKnownUser = change.user
+    lastKnownPromtRequired = typeof change.promtRequired === 'boolean' ? change.promtRequired : change.user?.promt_required
     rememberAccessTokenOwner(accessToken, change.user)
+    cacheAccessSession(session)
     revisionClock = Math.max(revisionClock, change.revision.timestamp)
     notifyChange(change)
     return
@@ -296,7 +306,10 @@ function applyRemoteChange(change: AuthTokenChange): void {
 
   accessToken = null
   accessTokenRefreshToken = null
+  accessExpiresAt = undefined
   lastKnownUser = undefined
+  lastKnownPromtRequired = undefined
+  clearAccessSessionCache()
   clearVerifiedPhone()
   saved?.setItem(AUTH_SIGN_OUT_REVISION_KEY, JSON.stringify(change.revision))
   saved?.removeItem(REFRESH_SESSION_KEY)
@@ -367,21 +380,63 @@ export function subscribeAuthTokenChanges(listener: AuthTokenChangeListener): ()
 }
 
 export function getAccessToken(): string | null {
+  if (!accessToken) restoreAccessSession(peekRefreshSession())
   return accessToken
+}
+
+function cacheAccessSession(session: StoredRefreshSession): void {
+  if (!accessToken || !accessExpiresAt) {
+    clearAccessSessionCache()
+    return
+  }
+  // 短期访问令牌仅保存在当前标签页，重载后先验证身份，避免每次改代码都轮换长期凭证。
+  saveAccessSessionCache({
+    accessToken, accessExpiresAt, user: lastKnownUser, promtRequired: lastKnownPromtRequired,
+    sessionId: session.sessionId, revision: session.revision,
+  })
+}
+
+function restoreAccessSession(session: StoredRefreshSession | null): void {
+  if (accessToken) return
+  if (!session) { clearAccessSessionCache(); return }
+  const signedOut = readSignedOutRevision()
+  if (signedOut && compareRevision(signedOut, session.revision) >= 0) { clearAccessSessionCache(); return }
+  const cached = readAccessSessionCache(session)
+  if (!cached) return
+  accessToken = cached.accessToken
+  accessTokenRefreshToken = session.refreshToken
+  accessExpiresAt = cached.accessExpiresAt
+  lastKnownUser = cached.user
+  lastKnownPromtRequired = cached.promtRequired
+  lastAppliedRevision = session.revision
+  rememberAccessTokenOwner(accessToken, lastKnownUser)
 }
 
 export function getAuthSessionSnapshot(): AuthSessionSnapshot | null {
   const session = peekRefreshSession()
   if (!session) return null
+  restoreAccessSession(session)
   const isAccessTokenCurrent = accessTokenRefreshToken === session.refreshToken
   return {
     accessToken: isAccessTokenCurrent ? accessToken : null,
+    accessExpiresAt: isAccessTokenCurrent ? accessExpiresAt : undefined,
     refreshToken: session.refreshToken,
     refreshExpiresAt: session.refreshExpiresAt,
     revision: session.revision,
     sessionId: session.sessionId,
     user: isAccessTokenCurrent ? lastKnownUser : undefined,
+    promtRequired: isAccessTokenCurrent ? lastKnownPromtRequired : undefined,
   }
+}
+
+export function updateAuthSessionUser(user: AuthUser, expectedAccessToken: string): boolean {
+  const current = getAuthSessionSnapshot()
+  if (!current || current.accessToken !== expectedAccessToken || (lastKnownUser && lastKnownUser.id !== user.id)) return false
+  // /me 验证成功后补齐用户归属；刷新接口可只返回令牌，不能因此把有效会话判为失败。
+  lastKnownUser = lastKnownPromtRequired === undefined ? user : { ...user, promt_required: lastKnownPromtRequired }
+  rememberAccessTokenOwner(expectedAccessToken, lastKnownUser)
+  cacheAccessSession(current)
+  return true
 }
 
 export function saveAuthTokens(result: AuthResult, options: SaveAuthTokensOptions = {}): boolean {
@@ -390,7 +445,9 @@ export function saveAuthTokens(result: AuthResult, options: SaveAuthTokensOption
   if (options.expectedRefreshToken !== undefined && current?.refreshToken !== options.expectedRefreshToken) return false
   if (options.expectedRevision && (!current || compareRevision(current.revision, options.expectedRevision) !== 0)) return false
   // 已校验归属的令牌刷新允许服务端省略 user，沿用同一会话的用户信息。
-  const user = result.user ?? (options.expectedRefreshToken === accessTokenRefreshToken ? lastKnownUser : undefined)
+  const inheritedUser = result.user ?? (options.expectedRefreshToken === accessTokenRefreshToken ? lastKnownUser : undefined)
+  const promtRequired = result.promt_required ?? inheritedUser?.promt_required
+  const user = inheritedUser && promtRequired !== undefined ? { ...inheritedUser, promt_required: promtRequired } : inheritedUser
   const session: StoredRefreshSession = {
     refreshToken: result.refresh_token,
     refreshExpiresAt: result.refresh_expires_at,
@@ -399,20 +456,25 @@ export function saveAuthTokens(result: AuthResult, options: SaveAuthTokensOption
   }
   accessToken = result.access_token
   accessTokenRefreshToken = session.refreshToken
+  accessExpiresAt = result.access_expires_at
   lastKnownUser = user
+  lastKnownPromtRequired = promtRequired
   rememberAccessTokenOwner(result.access_token, user)
   lastAppliedRevision = session.revision
   storage()?.setItem(REFRESH_SESSION_KEY, JSON.stringify(session))
+  cacheAccessSession(session)
   publishChange(
     createChange(
       {
         type: 'session-updated',
         accessToken: result.access_token,
+        accessExpiresAt,
         refreshToken: session.refreshToken,
         refreshExpiresAt: session.refreshExpiresAt,
         user,
         sessionId: session.sessionId,
         isRefresh: options.expectedRefreshToken !== undefined,
+        promtRequired,
       },
       session.revision
     )
@@ -441,7 +503,10 @@ export function clearAuthTokens(options: ClearAuthTokensOptions = {}): void {
     if (ownsExpectedAccessToken) {
       accessToken = null
       accessTokenRefreshToken = null
+      accessExpiresAt = undefined
       lastKnownUser = undefined
+      lastKnownPromtRequired = undefined
+      clearAccessSessionCache()
     }
     return
   }
@@ -450,7 +515,10 @@ export function clearAuthTokens(options: ClearAuthTokensOptions = {}): void {
   lastAppliedRevision = revision
   accessToken = null
   accessTokenRefreshToken = null
+  accessExpiresAt = undefined
   lastKnownUser = undefined
+  lastKnownPromtRequired = undefined
+  clearAccessSessionCache()
   clearVerifiedPhone()
   // 留下不含凭证的退出版本，供新标签页拒绝迟到的旧会话事件。
   saved?.setItem(AUTH_SIGN_OUT_REVISION_KEY, JSON.stringify(revision))

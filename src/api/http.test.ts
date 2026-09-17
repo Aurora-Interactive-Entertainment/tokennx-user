@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import i18n from '@/i18n'
-import { ApiError, fetchJson, fetchResponse, isAuthenticationFailure, resolveBackendBaseUrl } from './http'
+import { ApiError, fetchJson, fetchResponse, isAuthenticationFailure, isHttpUnauthorized, preserveAuthSession, resolveBackendBaseUrl } from './http'
 
 function response(data: unknown, status = 200, code = 0, msg = 'success'): Response {
   return new Response(JSON.stringify({ code, msg, data }), {
@@ -112,6 +112,26 @@ describe('认证 HTTP 客户端', () => {
     await vi.advanceTimersByTimeAsync(15_000)
     await rejection
     vi.useRealTimers()
+  })
+
+  it('已确认保留会话的 401 仍保留原始错误信息，但不再要求页面退出登录', () => {
+    const error = new ApiError('当前业务接口拒绝访问', 401, 160001, 'request-1', '当前业务接口拒绝访问')
+    preserveAuthSession(error)
+    expect(isHttpUnauthorized(error)).toBe(true)
+    expect(isAuthenticationFailure(error)).toBe(false)
+    expect(error).toMatchObject({ status: 401, code: 160001, message: '当前业务接口拒绝访问', apiMessage: '当前业务接口拒绝访问', requestId: 'request-1' })
+    expect(isAuthenticationFailure(new ApiError('会话已撤销', 401, 160001, null))).toBe(true)
+  })
+
+  it('热更新重建 HTTP 模块后仍识别旧请求留下的会话保留标记', async () => {
+    const error = Object.freeze(new ApiError('业务接口拒绝访问', 401, 170099, 'request-before-hmr'))
+    preserveAuthSession(error)
+    vi.resetModules()
+    const reloadedHttp = await import('./http')
+    expect(reloadedHttp.isHttpUnauthorized(error)).toBe(true)
+    expect(reloadedHttp.isAuthenticationFailure(error)).toBe(false)
+    expect(reloadedHttp.isAuthenticationFailure(new reloadedHttp.ApiError('刷新令牌已撤销', 401, 160001, null))).toBe(true)
+    expect(error.status).toBe(401)
   })
 
   it.each([200, 503])('收到 %s 响应头后仍可取消未完成的 JSON 正文', async status => {

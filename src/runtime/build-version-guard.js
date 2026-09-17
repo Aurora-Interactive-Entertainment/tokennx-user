@@ -11,7 +11,8 @@
   let pendingVersion = ''
   let pathname = window.location.pathname
   let navigating = false
-  let reloadTimer = 0
+  let routeSequence = 0
+  let activitySequence = 0
   const blockers = new Set()
   const editedFields = new Set()
   const originalValues = new WeakMap()
@@ -19,12 +20,8 @@
 
   function isAuthCallback() {
     const url = new URL(window.location.href)
-    // 授权码只能消费一次，自动和手动更新都不能重放回调。
+    // 授权码只能消费一次，版本更新不能自动重放回调。
     return url.pathname === '/weixin/callback' || (url.searchParams.has('code') && url.searchParams.has('state'))
-  }
-
-  function notify() {
-    window.dispatchEvent(new CustomEvent('token-nx:update-available'))
   }
 
   function canAutoReload() {
@@ -73,18 +70,9 @@
     return editedFields.size > 0
   }
 
-  function scheduleReload() {
-    if (!pendingVersion || navigating || reloadTimer) return
-    // 留出提交状态和弹窗关闭动画的时间，并在操作结束后自动重试；不重复请求探针。
-    reloadTimer = window.setTimeout(() => {
-      reloadTimer = 0
-      if (!reload()) scheduleReload()
-    }, 1_000)
-  }
-
-  function reload(manual = false) {
+  function reload() {
     if (!pendingVersion || navigating || isAuthCallback()) return false
-    if (!manual && !canAutoReload()) return false
+    if (!canAutoReload()) return false
     const url = new URL(window.location.href)
     const now = Date.now()
     let lastAttempt = 0
@@ -96,7 +84,7 @@
     }
     // URL 时间戳同时用于绕过旧 HTML 缓存和存储不可用时的刷新循环保护。
     lastAttempt = Math.max(lastAttempt, Number(url.searchParams.get('__token_nx_retry_at')) || 0)
-    if (!manual && now - lastAttempt < retryInterval) return false
+    if (now - lastAttempt < retryInterval) return false
     try {
       window.sessionStorage.setItem(storageKey, JSON.stringify({ from: selfVersion, to: pendingVersion, at: now }))
     } catch {
@@ -111,19 +99,13 @@
 
   function applyVersion(version) {
     pendingVersion = version === selfVersion ? '' : version
-    if (pendingVersion) scheduleReload()
-    else { window.clearTimeout(reloadTimer); reloadTimer = 0 }
-    notify()
   }
 
   function check(urgent = false) {
     if (isAuthCallback() || document.visibilityState === 'hidden' || navigating) return Promise.resolve()
     if (inFlight) return inFlight
-    // 协议入口最多每 5 秒检查一次，其他触发共享 30 秒节流与在途请求。
-    if (Date.now() - lastCheck < (urgent ? 5_000 : checkInterval)) {
-      if (pendingVersion) { scheduleReload(); notify() }
-      return Promise.resolve()
-    }
+    // 页面切换最多每 5 秒检查一次，后台探测共享 30 秒节流与在途请求。
+    if (Date.now() - lastCheck < (urgent ? 5_000 : checkInterval)) return Promise.resolve()
     lastCheck = Date.now()
     const controller = new AbortController()
     const timeout = window.setTimeout(() => controller.abort(), 8_000)
@@ -145,19 +127,34 @@
   window.__TOKEN_NX_UPDATE_GUARD__ = {
     get pendingVersion() { return isAuthCallback() ? '' : pendingVersion },
     check,
-    reload: () => reload(true),
     blockReload() {
       const token = {}
+      activitySequence++
       blockers.add(token)
-      return () => { blockers.delete(token); scheduleReload() }
+      return () => { blockers.delete(token) }
     },
     routeChanged() {
+      // 首次挂载、查询参数和锚点变化都不代表离开当前页面，不能借此刷新。
+      if (pathname === window.location.pathname) return check()
       pathname = window.location.pathname
-      notify()
-      return check(/^\/(?:en\/)?(?:terms|privacy|recharge-agreement)\/?$/.test(pathname))
+      const sequence = ++routeSequence
+      const activity = activitySequence
+      const target = window.location.href
+      const startedAt = Date.now()
+      const safeAtNavigation = canAutoReload()
+      if (safeAtNavigation && reload()) return Promise.resolve()
+      return check(true).then(() => {
+        // 只在本次切页的短暂窗口尝试一次；慢响应、用户新操作或受保护状态都留待下次切页。
+        if (safeAtNavigation && sequence === routeSequence && activity === activitySequence
+          && target === window.location.href && Date.now() - startedAt <= 1_000) reload()
+      })
     },
   }
 
+  // 新交互会取消当前切页等待中的刷新资格，不干预事件本身或正常浏览器刷新。
+  for (const event of ['pointerdown', 'keydown', 'input', 'change', 'submit', 'wheel', 'touchstart']) {
+    document.addEventListener(event, () => { activitySequence++ }, { capture: true, passive: true })
+  }
   document.addEventListener('focusin', rememberField, true)
   document.addEventListener('beforeinput', rememberField, true)
   document.addEventListener('input', editField, true)
@@ -166,7 +163,7 @@
   window.addEventListener('focus', () => { void check() })
   window.addEventListener('online', () => { void check() })
   window.addEventListener('pageshow', () => { void check() })
-  // 页面一直停留在前台也能发现发布，后台时 check 会直接跳过。
+  // 定时检测仅静默记录新版，停留当前页、恢复焦点或操作结束都不会触发刷新。
   window.setInterval(() => { void check() }, checkInterval)
   void check()
 })()

@@ -18,7 +18,7 @@ it('客服草稿收起后继续保护更新，清空或卸载时只释放自己�
   })
   window.__TOKEN_NX_UPDATE_GUARD__ = {
     pendingVersion: 'next-build', check: vi.fn().mockResolvedValue(undefined),
-    routeChanged: vi.fn().mockResolvedValue(undefined), reload: vi.fn().mockReturnValue(true),
+    routeChanged: vi.fn().mockResolvedValue(undefined),
     blockReload,
   }
   const view = render(<MemoryRouter><ManuscriptSupportWidget /></MemoryRouter>)

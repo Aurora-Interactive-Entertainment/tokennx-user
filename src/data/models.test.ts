@@ -140,4 +140,27 @@ describe('模型目录业务规则', () => {
     expect(model.tags).toEqual([{ label: '推荐', color: '#2563EB' }])
     expect(model.availability).toMatchObject({ rate: 99.5, window: '48h', sampleCount: 200, successCount: 199 })
   })
+
+  it('透传视频能力并保留禁止上传、可选提示词和空枚举', () => {
+    const legacy: UserModelItem = {
+      id: 'video-model', name: 'Video Model', company: 'Provider', modality: 'video', billing_mode: 'token',
+      description: '', capabilities: null, provider_count: 1, prices: null,
+    }
+    const videoOptions = {
+      family: 'seedance', ratios: [], resolutions: ['480p', '720p', '1080p'], min_duration: 4, max_duration: 30,
+      default_duration: -1, default_resolution: '1080p', auto_duration: true, max_images: 0, max_videos: 10,
+      max_audios: 0, requires_prompt: false, output_meter: 'output_token',
+    }
+    const [oldModel, configuredModel, emptyModel, nullModel] = mapUserModels([
+      legacy,
+      { ...legacy, video_options: videoOptions },
+      { ...legacy, video_options: {} },
+      { ...legacy, video_options: null },
+    ])
+
+    expect(oldModel).not.toHaveProperty('videoOptions')
+    expect(configuredModel.videoOptions).toEqual(videoOptions)
+    expect(emptyModel.videoOptions).toEqual({})
+    expect(nullModel.videoOptions).toBeNull()
+  })
 })

@@ -1102,6 +1102,8 @@ html[data-theme='dark'] .video-console-page .video-composer-box {
 .video-console-page .video-record-timeline {
   width: min(930px, 100%);
   margin: 0 auto;
+  /* 列表贴底时给最后一条记录留出与输入区的呼吸空间。 */
+  padding-bottom: 24px;
   color: var(--color-text-default);
 }
 .video-console-page .video-record-group + .video-record-group { margin-top: 40px; }

@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { useNavigate } from 'react-router'
 import { useTranslation } from 'react-i18next'
-import type { CSSProperties, ReactNode } from 'react'
+import type { CSSProperties } from 'react'
 import type { TFunction } from 'i18next'
 import Button from '@douyinfe/semi-ui/lib/es/button'
 import SideSheet from '@douyinfe/semi-ui/lib/es/sideSheet'
@@ -11,6 +11,7 @@ import { localizeConsoleLabel, ModelLogo } from './common'
 import { BackofficeMoneyText as MoneyText } from './money'
 import './model-detail-drawer.css'
 import { ModelTimePricing } from './model-time-pricing'
+import { MetricChartEmpty, ModelMetricChartCard } from './model-metric-chart'
 import { CopyOutlineIcon } from './copy-outline-icon'
 import type { UserModelDetail, UserModelMetricPoint, UserModelPrice, UserModelTag } from '@/api/user-models'
 import { modelAlias, modelRouteKey, type ModelPrice, type ModelRecord } from '@/data/models'
@@ -109,13 +110,9 @@ function currentPrice(prices: UserModelPrice[] | null | undefined, purpose: stri
   return matching.find((price) => price.tier_no === tier)
 }
 
-function unavailableChart(title: string, description: string): ReactNode {
-  return <div className="model-detail-chart-empty" role="img" aria-label={title}><span>{description}</span></div>
-}
-
 function MetricBarChart({ title, points, unit, unavailableLabel }: { title: string; points: UserModelMetricPoint[]; unit: string; unavailableLabel: string }) {
   const values = points.map((point) => point.value).filter((value): value is number => value !== null && Number.isFinite(value))
-  if (!values.length) return unavailableChart(title, unavailableLabel)
+  if (!values.length) return <MetricChartEmpty title={title} description={unavailableLabel} />
   const maximum = Math.max(...values, 0)
   return (
     <div className="model-detail-chart-bars" role="img" aria-label={title}>
@@ -127,54 +124,6 @@ function MetricBarChart({ title, points, unit, unavailableLabel }: { title: stri
         const tooltip = `${label}: ${value === null ? unavailableLabel : `${formatNumber(value)} ${unit}`}`
         return <span className={value === null ? 'is-missing' : ''} key={point.timestamp} title={tooltip} tabIndex={0} aria-label={tooltip} data-tooltip={tooltip}><i style={style}><b aria-hidden="true">{tooltip}</b></i><small>{label}</small></span>
       })}
-    </div>
-  )
-}
-
-type LinePoint = { x: number; y: number; point: UserModelMetricPoint; label: string }
-
-function lineChartPoints(points: UserModelMetricPoint[]): Array<LinePoint | null> {
-  const presentValues = points.map((point) => point.value).filter((value): value is number => value !== null && Number.isFinite(value))
-  if (!presentValues.length) return points.map(() => null)
-  const minimum = Math.min(...presentValues)
-  const maximum = Math.max(...presentValues)
-  const range = maximum - minimum
-  return points.map((point, index) => {
-    if (point.value === null || !Number.isFinite(point.value)) return null
-    const x = points.length <= 1 ? 350 : 20 + (index * 660) / (points.length - 1)
-    const y = range === 0 ? 75 : 130 - ((point.value - minimum) / range) * 110
-    return { x, y, point, label: new Date(point.timestamp).toISOString().slice(5, 10) }
-  })
-}
-
-function lineSegments(points: Array<LinePoint | null>): LinePoint[][] {
-  const segments: LinePoint[][] = []
-  let current: LinePoint[] = []
-  points.forEach((point) => {
-    if (point) {
-      current.push(point)
-      return
-    }
-    if (current.length) segments.push(current)
-    current = []
-  })
-  if (current.length) segments.push(current)
-  return segments
-}
-
-function MetricLineChart({ title, points, unit, unavailableLabel }: { title: string; points: UserModelMetricPoint[]; unit: string; unavailableLabel: string }) {
-  const chartPoints = lineChartPoints(points)
-  const presentPoints = chartPoints.filter((point): point is LinePoint => point !== null)
-  if (!presentPoints.length) return unavailableChart(title, unavailableLabel)
-  const segments = lineSegments(chartPoints)
-  return (
-    <div className="model-detail-chart-line" role="img" aria-label={title}>
-      <svg viewBox="0 0 700 150" preserveAspectRatio="none" aria-hidden="true">
-        {[20, 75, 130].map((y) => <line className="model-detail-chart-grid-line" x1="20" x2="680" y1={y} y2={y} key={y} />)}
-        {segments.map((segment, index) => segment.length > 1 ? <polyline points={segment.map((point) => `${point.x},${point.y}`).join(' ')} key={index} /> : null)}
-        {presentPoints.map((item) => <circle cx={item.x} cy={item.y} r="4" key={item.point.timestamp}><title>{`${item.label}: ${formatNumber(item.point.value ?? 0)} ${unit}`}</title></circle>)}
-      </svg>
-      <div className="model-detail-chart-line-labels">{points.map((point) => <small key={point.timestamp}>{new Date(point.timestamp).toISOString().slice(5, 10)}</small>)}</div>
     </div>
   )
 }
@@ -326,8 +275,8 @@ export function ModelDetailDrawer({ model, detail, loading, error, visible, onCl
               <MetricBarChart title={t('console.modelDetail.activityChart')} points={metrics?.activity?.points ?? []} unit={metrics?.activity?.unit ?? ''} unavailableLabel={noDataLabel} />
             </div>
             <div className="model-detail-chart-grid">
-              <figure className="model-detail-chart-card"><figcaption><strong>{t('console.modelDetail.throughput')}</strong><span>{metrics?.throughput?.unit ?? 'tokens/s'}</span></figcaption><MetricLineChart title={t('console.modelDetail.throughputChart')} points={metrics?.throughput?.points ?? []} unit={metrics?.throughput?.unit ?? 'tokens/s'} unavailableLabel={noDataLabel} /></figure>
-              <figure className="model-detail-chart-card"><figcaption><strong>{t('console.modelDetail.firstTokenLatency')}</strong><span>{metrics?.first_token_latency?.unit ?? 'ms'}</span></figcaption><MetricLineChart title={t('console.modelDetail.firstTokenLatencyChart')} points={metrics?.first_token_latency?.points ?? []} unit={metrics?.first_token_latency?.unit ?? 'ms'} unavailableLabel={noDataLabel} /></figure>
+              <ModelMetricChartCard label={t('console.modelDetail.throughput')} title={t('console.modelDetail.throughputChart')} series={metrics?.throughput} unit="tokens/s" />
+              <ModelMetricChartCard label={t('console.modelDetail.firstTokenLatency')} title={t('console.modelDetail.firstTokenLatencyChart')} series={metrics?.first_token_latency} unit="ms" />
             </div>
             <div className="model-detail-metrics">
               <div><span>{t('console.modelDetail.recentAvailability')}</span><strong className={availabilityReady ? 'model-detail-availability' : ''}>{availabilityLabel}</strong><small>{windowLabel}</small></div>

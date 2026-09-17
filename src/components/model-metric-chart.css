@@ -1,0 +1,19 @@
+/* echarts 需要容器有确定高度；168px 与下方指标卡和原手写折线图保持一致。 */
+.model-metric-chart {
+  width: 100%;
+  height: 168px;
+}
+
+.model-metric-statistic {
+  margin-left: 6px;
+  color: var(--color-text-secondary);
+  font-size: 10px;
+  font-weight: 400;
+}
+
+/* 提高选择器优先级，避免后加载的全局双列规则覆盖窄屏布局。 */
+@media (max-width: 720px) {
+  .model-detail-panel .model-detail-chart-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

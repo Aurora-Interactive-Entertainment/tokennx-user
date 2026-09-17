@@ -1,0 +1,157 @@
+.video-reference-image-control { flex: 0 0 auto; }
+.video-reference-dialog-title { display: inline-flex; align-items: center; gap: 4px; }
+.video-reference-privacy {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  color: var(--color-text-secondary);
+  background: transparent;
+  font-size: 12px;
+  line-height: 1;
+  cursor: help;
+}
+/* 图标独立于触控按钮尺寸，避免移动端最小点击高度把圆形拉长。 */
+.video-reference-privacy > span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 17px;
+  height: 17px;
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+}
+.app-info-tooltip.video-reference-privacy-tooltip.semi-tooltip-wrapper {
+  height: auto;
+  max-width: min(300px, calc(100vw - 32px));
+  padding: 6px 10px;
+  line-height: 1.6;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.video-reference-privacy:focus-visible { outline: 2px solid var(--color-text-secondary); outline-offset: 3px; }
+.video-reference-urls-dialog { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+
+.video-reference-tabs {
+  display: flex;
+  gap: 24px;
+  border-bottom: 1px solid var(--color-border-neutral-l1);
+}
+.video-reference-tabs > button {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 0 12px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  cursor: pointer;
+}
+.video-reference-tabs > button[aria-selected='true'] {
+  border-bottom-color: var(--color-action-primary);
+  color: var(--color-action-primary);
+}
+.video-reference-tabs > button:disabled { opacity: .45; cursor: not-allowed; }
+.video-reference-tab-count { font-size: 12px; font-variant-numeric: tabular-nums; }
+.video-reference-url-editor {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--color-border-neutral-l2);
+  border-radius: var(--radius-8, 8px);
+  background: var(--color-bg-base-default);
+}
+.video-reference-url-editor:focus-within { border-color: var(--color-action-primary); }
+.video-reference-url-editor textarea {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 154px;
+  max-height: 270px;
+  margin: 0;
+  padding: 12px 14px 42px;
+  resize: vertical;
+  border: 0;
+  border-radius: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--color-text-default);
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.7;
+}
+.video-reference-url-editor textarea::placeholder { color: var(--color-text-tertiary); }
+.video-reference-editor-footer {
+  /* 计数覆盖在预留底部空间内，让原生拖拽手柄贴住整个输入区的右下角。 */
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  pointer-events: none;
+  padding: 0 14px 12px;
+  color: var(--color-text-tertiary);
+  font-size: 12px;
+  line-height: 18px;
+}
+.video-reference-editor-count { flex-shrink: 0; font-variant-numeric: tabular-nums; }
+.video-reference-url-editor.has-error { border-color: color-mix(in srgb, var(--danger) 75%, var(--color-border-neutral-l2)); }
+.video-reference-editor-count.is-over-limit,
+.video-reference-feedback.is-error { color: var(--danger); }
+/* 提示占用固定的一行空间，错误替换说明，不额外撑开一段正文。 */
+.video-reference-feedback {
+  display: flex;
+  min-height: 20px;
+  align-items: flex-start;
+  gap: 6px;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  line-height: 20px;
+}
+.video-reference-feedback > .semi-icon { flex: 0 0 14px; margin-top: 3px; font-size: 14px; }
+.video-reference-feedback > span { min-width: 0; overflow-wrap: anywhere; }
+
+/* 已确认的素材直接反馈在原卡片内，不挤占提示词输入区。 */
+.video-reference-card-wrap { position: relative; }
+.video-reference-card-wrap.has-media .video-reference-upload-card {
+  border-style: solid;
+  color: var(--color-text-default);
+  background: var(--color-bg-base-secondary);
+}
+.video-reference-card-wrap .video-reference-clear {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  display: flex;
+  width: 22px;
+  height: 22px;
+  min-height: 22px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid var(--color-border-neutral-l2);
+  border-radius: 50%;
+  background: var(--color-bg-base-default);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+.video-reference-clear .semi-icon { font-size: 12px; }
+.video-reference-tabs > button:focus-visible,
+.video-reference-clear:focus-visible { outline: 2px solid var(--color-action-primary); outline-offset: 2px; }
+
+@media (max-width: 520px) {
+  .video-reference-tabs { gap: 12px; }
+  .video-reference-tabs > button { flex: 1; gap: 6px; font-size: 13px; }
+  .video-reference-tab-count { font-size: 11px; }
+  .video-reference-url-editor textarea { min-height: 166px; }
+  .video-reference-editor-footer { font-size: 11px; }
+  .video-reference-feedback { min-height: 40px; font-size: 12px; }
+}

@@ -1,6 +1,8 @@
 import { MODEL_API_BASE_URL, isApiError } from './http'
 import { withAuthenticatedSession } from './authenticated'
 import i18n, { getActiveLanguage } from '@/i18n'
+import type { UserVideoOptions } from './user-models'
+import { normalizeVideoOptions, validateVideoParameters } from '@/utils/video-options'
 
 const VIDEO_TASK_PATH = '/videos'
 const VIDEO_REQUEST_TIMEOUT_MS = 30_000
@@ -9,13 +11,23 @@ const MAX_PROMPT_LENGTH = 8_000
 
 export type VideoTaskStatus = 'pending' | 'processing' | 'cancelling' | 'succeeded' | 'failed' | 'cancelled' | 'expired' | 'unknown'
 
+export interface VideoReference {
+  type: 'image' | 'video' | 'audio'
+  url: string
+  role?: 'reference_image' | 'first_frame' | 'last_frame' | 'reference_video' | 'reference_audio'
+}
+
 export interface VideoGenerationInput {
   /** 登录态访问令牌；视频 Runtime 不再接受 API Key。 */
   accessToken: string
   model: string
   prompt: string
   duration: number
-  size: string
+  size?: string
+  resolution?: string
+  ratio?: string
+  videoOptions?: UserVideoOptions | null
+  references?: VideoReference[]
   inputReference?: string
   idempotencyKey: string
   signal?: AbortSignal
@@ -112,6 +124,12 @@ function readResultUrl(payload: RecordValue): string | null {
   for (const record of candidateRecords(payload)) {
     const directUrl = readFirstText(record, urlKeys)
     if (directUrl) return directUrl
+    // Seedance 原生任务结果把成片地址放在 content 中。
+    const content = isRecord(record.content) ? record.content : undefined
+    if (content) {
+      const contentUrl = readFirstText(content, urlKeys)
+      if (contentUrl) return contentUrl
+    }
     const metadata = isRecord(record.metadata) ? record.metadata : undefined
     if (metadata) {
       const metadataUrl = readFirstText(metadata, urlKeys)
@@ -126,6 +144,11 @@ function readThumbnailUrl(payload: RecordValue): string | null {
   for (const record of candidateRecords(payload)) {
     const thumbnail = readFirstText(record, thumbnailKeys)
     if (thumbnail) return thumbnail
+    const content = isRecord(record.content) ? record.content : undefined
+    if (content) {
+      const contentThumbnail = readFirstText(content, [...thumbnailKeys, 'last_frame_url'])
+      if (contentThumbnail) return contentThumbnail
+    }
     const metadata = isRecord(record.metadata) ? record.metadata : undefined
     if (metadata) {
       const metadataThumbnail = readFirstText(metadata, thumbnailKeys)
@@ -247,19 +270,106 @@ export function videoTaskIsTerminal(status: VideoTaskStatus): boolean {
   return status === 'succeeded' || status === 'failed' || status === 'cancelled' || status === 'expired'
 }
 
+function invalidVideoRequest(): VideoRuntimeError {
+  return new VideoRuntimeError(i18n.t('api.videoRuntime.invalidRequest'), 400, 'invalid_request', null)
+}
+
+function isValidReferenceUrl(url: string, type: VideoReference['type']): boolean {
+  // 本地图片沿用 Data URL；音视频须提供服务端可访问的地址，不能提交浏览器 blob 地址。
+  if (type === 'image' && /^data:image\/(?:png|jpeg|webp|gif);base64,[a-z\d+/]+={0,2}$/i.test(url)) return true
+  try {
+    const parsed = new URL(url)
+    return ['https:', 'http:'].includes(parsed.protocol) && Boolean(parsed.hostname) && !parsed.username && !parsed.password
+  } catch {
+    return false
+  }
+}
+
+function normalizeReferences(input: VideoGenerationInput): Required<VideoReference>[] {
+  const references: Required<VideoReference>[] = []
+  const allowedRoles: Record<VideoReference['type'], VideoReference['role'][]> = {
+    image: ['reference_image', 'first_frame', 'last_frame'],
+    video: ['reference_video'],
+    audio: ['reference_audio'],
+  }
+  for (const reference of input.references ?? []) {
+    const type = reference.type
+    const url = reference.url.trim()
+    const role = reference.role ?? `reference_${type}`
+    if (!Object.hasOwn(allowedRoles, type) || !allowedRoles[type].includes(role) || !isValidReferenceUrl(url, type)) throw invalidVideoRequest()
+    if (!references.some((item) => item.type === type && item.url === url && item.role === role)) references.push({ type, url, role })
+  }
+  const inputReference = input.inputReference?.trim()
+  // 调用方迁移期间可能同时携带旧字段；同一张图不能重复进入 content 或超额计数。
+  if (inputReference && !references.some((item) => item.type === 'image' && item.url === inputReference)) {
+    if (!isValidReferenceUrl(inputReference, 'image')) throw invalidVideoRequest()
+    references.push({ type: 'image', url: inputReference, role: 'reference_image' })
+  }
+  const firstFrameCount = references.filter((item) => item.role === 'first_frame').length
+  const lastFrameCount = references.filter((item) => item.role === 'last_frame').length
+  const hasFrames = firstFrameCount > 0 || lastFrameCount > 0
+  // 首尾帧与全模态参考是互斥任务；尾帧必须搭配唯一首帧。
+  if (firstFrameCount > 1 || lastFrameCount > 1 || (lastFrameCount > 0 && firstFrameCount === 0)
+    || (hasFrames && references.some((item) => item.role.startsWith('reference_')))) throw invalidVideoRequest()
+  // 请求层再次防止混传，涵盖旧历史数据及 inputReference 与新素材并存的迁移场景。
+  if (new Set(references.map((item) => item.type)).size > 1) throw invalidVideoRequest()
+  return references
+}
+
+function createVideoPayload(input: VideoGenerationInput, model: string, prompt: string): Record<string, unknown> {
+  const options = normalizeVideoOptions(input.videoOptions)
+  const references = normalizeReferences(input)
+  const resolution = input.resolution?.trim() ?? options.defaultResolution
+  const ratio = input.ratio?.trim() ?? options.defaultRatio
+  const size = input.size?.trim()
+  if (options.hasVideoOptions && validateVideoParameters({
+    prompt,
+    duration: input.duration,
+    size,
+    resolution,
+    ratio,
+    imageCount: references.filter((item) => item.type === 'image').length,
+    videoCount: references.filter((item) => item.type === 'video').length,
+    audioCount: references.filter((item) => item.type === 'audio').length,
+  }, options)) throw invalidVideoRequest()
+  if (!options.hasVideoOptions && (!prompt || !Number.isInteger(input.duration) || input.duration <= 0 || !size)) throw invalidVideoRequest()
+
+  const payload: Record<string, unknown> = { model, prompt, duration: input.duration, seconds: String(input.duration) }
+  if (options.hasVideoOptions) {
+    // 分辨率档位与比例交由后端组合，不能同时携带上一个模型遗留的精确像素尺寸。
+    if (resolution) payload.resolution = resolution
+    if (ratio) payload.ratio = ratio
+  } else {
+    payload.size = size
+  }
+  if (references.length) {
+    if (options.hasVideoOptions && options.family === 'seedance') {
+      // 原生 content 自身携带同一份提示词，避免素材数组覆盖适配器构造内容后丢失文本。
+      payload.metadata = { content: [
+        ...(prompt ? [{ type: 'text', text: prompt }] : []),
+        ...references.map(({ type, url, role }) => ({ type: `${type}_url`, [`${type}_url`]: { url }, role })),
+      ] }
+    } else {
+      // 未确认原生素材协议的历史模型继续使用单图字段，不猜测多素材的字段映射。
+      if (references.length !== 1 || references[0].type !== 'image' || references[0].role !== 'reference_image') throw invalidVideoRequest()
+      payload.input_reference = references[0].url
+    }
+  }
+  return payload
+}
+
 export async function submitVideoGeneration(input: VideoGenerationInput): Promise<VideoTask> {
   const accessToken = input.accessToken.trim()
   const model = input.model.trim()
   const prompt = input.prompt.trim()
   const idempotencyKey = input.idempotencyKey.trim()
   if (!accessToken) throw new VideoRuntimeError(i18n.t('api.modelRuntime.accessTokenRequired'), 401, 'invalid_user_session', null)
-  if (!model || !prompt || prompt.length > MAX_PROMPT_LENGTH || !Number.isInteger(input.duration) || input.duration <= 0 || !input.size.trim() || !idempotencyKey) {
-    throw new VideoRuntimeError(i18n.t('api.videoRuntime.invalidRequest'), 400, 'invalid_request', null)
+  if (!model || prompt.length > MAX_PROMPT_LENGTH || !idempotencyKey) {
+    throw invalidVideoRequest()
   }
+  const payload = createVideoPayload(input, model, prompt)
   const requestId = createRequestId()
   const requestController = createRequestController(input.signal)
-  const payload: Record<string, unknown> = { model, prompt, duration: input.duration, seconds: String(input.duration), size: input.size.trim() }
-  if (input.inputReference?.trim()) payload.input_reference = input.inputReference.trim()
   try {
     return await requestVideoTask(VIDEO_TASK_PATH, {
       method: 'POST',

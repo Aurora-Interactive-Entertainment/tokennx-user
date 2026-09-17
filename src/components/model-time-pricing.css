@@ -1,13 +1,12 @@
 .model-time-pricing {
   margin-top: 12px;
-  color: var(--color-text-secondary);
+  color: var(--app-theme-text-secondary);
   font-size: 12px;
   line-height: 18px;
 }
 
 .model-time-pricing-heading,
-.model-time-pricing-label,
-.model-time-pricing-value {
+.model-time-pricing-label {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
@@ -18,74 +17,122 @@
 .model-time-pricing-periods {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-  margin-top: 8px;
+  gap: var(--spacing-8);
+  margin-top: var(--spacing-8);
 }
 
 .model-time-pricing-period {
   min-width: 0;
-  padding: 10px 12px;
-  border: 1px solid var(--color-border-neutral-l1);
-  border-radius: 6px;
-  background: var(--color-bg-overlay-l2);
+  padding: var(--spacing-12);
+  border: 1px solid var(--app-theme-border-subtle);
+  border-radius: var(--radius-6);
+  /* 与详情抽屉中的价格卡片共用背景层级，随深浅主题切换。 */
+  background: var(--app-theme-bg-elevated);
   overflow-wrap: anywhere;
 }
 
 .model-time-pricing-period.is-current {
-  border-color: var(--color-brand);
+  border-color: var(--color-border-neutral-l1);
+}
+
+.model-time-pricing-header {
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--app-theme-border-subtle);
 }
 
 .model-time-pricing-label b {
-  color: var(--color-text-default);
-  font-weight: 500;
+  color: var(--app-theme-text-default);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 20px;
 }
 
 .model-time-pricing-current {
-  color: var(--color-brand);
+  color: var(--app-theme-brand);
   font-size: 11px;
 }
 
 .model-time-pricing-schedule {
   margin-top: 4px;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+/* 同名时段价格不同时保留各自规则，并在卡片内分隔，避免混淆适用时间。 */
+.model-time-pricing-rate-group + .model-time-pricing-rate-group {
+  margin-top: 12px;
+  padding-top: 8px;
+  border-top: 1px solid var(--app-theme-border-subtle);
 }
 
 .model-time-pricing-rules {
   display: grid;
-  gap: 8px;
-  margin: 10px 0 0;
+  gap: 12px;
+  margin: 12px 0 0;
   padding: 0;
   list-style: none;
 }
 
+.model-time-pricing-value {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 8px;
+}
+
+.model-time-pricing-rule-info {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--app-theme-text-default);
+  font-size: 12px;
+  line-height: 18px;
+}
+
 .model-time-pricing-amount {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 0 4px;
+  max-width: 100%;
+  margin-left: auto;
+  text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
 .model-time-pricing-amount strong {
-  color: var(--color-text-default);
+  min-width: 0;
+  color: var(--app-theme-text-default);
+  font-size: 14px;
   font-weight: 600;
+  line-height: 20px;
 }
 
 .model-time-pricing-amount small {
-  font-size: inherit;
+  color: var(--app-theme-text-tertiary);
+  font-size: 11px;
+  line-height: 18px;
 }
 
 .model-time-pricing-rule-details,
 .model-time-pricing-note {
-  color: var(--color-text-tertiary);
+  color: var(--app-theme-text-tertiary);
   font-size: 11px;
 }
 
-.model-time-pricing-note {
-  margin-top: 6px;
+.model-time-pricing-rule-details {
+  margin-top: 4px;
+  line-height: 18px;
 }
 
-@media (max-width: 480px) {
+.model-time-pricing-note {
+  margin-top: 10px;
+}
+
+/* 窄屏改为单列；长价格与英文单位允许换行，不裁掉计费信息。 */
+@media (max-width: 560px) {
   .model-time-pricing-periods {
     grid-template-columns: 1fr;
-  }
-
-  .model-time-pricing-period {
-    padding: 8px 10px;
   }
 }

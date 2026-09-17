@@ -8083,10 +8083,10 @@ html[data-theme="dark"] .generation-send-button.send-btn.is-running.semi-button:
   width: 100%;
   overflow: hidden;
   aspect-ratio: 16 / 9;
-  border: 1px solid var(--color-border-neutral-l1);
   border-radius: var(--radius-8);
-  background: #090b0e;
+  /* 不设边框和底色：圆角裁切处会露出深色底，成片看起来像套了一层黑框。 */
 }
+/* 深色底只留在视频元素上，供非 16:9 成片做信箱留边。 */
 .video-result-frame video {
   display: block;
   width: 100%;
@@ -8476,6 +8476,7 @@ html[data-theme="dark"] .generation-send-button.send-btn.is-running.semi-button:
 .model-detail-info-grid,
 .model-detail-metrics {
   display: grid;
+  margin-top: 8px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--spacing-8);
 }

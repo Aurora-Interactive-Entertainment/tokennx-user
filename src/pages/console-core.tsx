@@ -21,6 +21,7 @@ import { useAppStore, type PlaygroundMessage, type PlaygroundSession } from '@/d
 import { findModelInList, mapUserModels, modelAlias, type ModelRecord } from '@/data/models'
 import { useUserModelDetail, useUserModels } from '@/data/user-models'
 import { ModelRuntimeError, streamChatCompletion, type ChatCompletionMessage } from '@/api/model-runtime'
+import { isAuthenticationFailure } from '@/api/http'
 import { formatNumber } from '@/utils/format'
 import { canStartPlaygroundRound, limitPlaygroundPrompt, PLAYGROUND_MAX_INPUT_CHARACTERS } from '@/utils/playground'
 import { clearAuthTokens, getAccessToken } from '@/auth/token-storage'
@@ -480,7 +481,7 @@ export function PlaygroundPage() {
         setRetryingAttemptId('')
         return
       }
-      if (error instanceof ModelRuntimeError && error.status === 401) {
+      if (isAuthenticationFailure(error)) {
         // Runtime 已按原会话清理；迟到的页面回调不能再清掉刚同步的新登录。
         if (!getAccessToken()) {
           dispatch(invalidateAuth())

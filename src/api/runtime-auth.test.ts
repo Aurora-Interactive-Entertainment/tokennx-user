@@ -3,6 +3,7 @@ import type { AuthResult } from './auth'
 import { streamChatCompletion } from './model-runtime'
 import { cancelVideoTask, getVideoTask, submitVideoGeneration } from './video-runtime'
 import { clearAuthTokens, getAccessToken, readRefreshToken, saveAuthTokens } from '@/auth/token-storage'
+import { isAuthenticationFailure } from './http'
 
 function session(access = 'old-access', refresh = 'old-refresh', user = 'user-1'): AuthResult {
   return { status: 'succeeded', binding_required: false, access_token: access, refresh_token: refresh, refresh_expires_at: Date.UTC(2099, 0, 1), user: { id: user, display_name: user, avatar_url: '' } }
@@ -46,12 +47,14 @@ describe('模型和视频的登录会话恢复', () => {
     expect(readRefreshToken()).toBe('old-refresh')
   })
 
-  it.each(Object.entries(calls))('%s 重试仍401才清除原会话', async (_kind, run) => {
+  it.each(Object.entries(calls))('%s 刷新成功但业务仍401时保留登录，原错误交给页面展示', async (_kind, run) => {
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(unauthorized()).mockResolvedValueOnce(refreshed()).mockResolvedValueOnce(unauthorized())
-    await expect(run()).rejects.toMatchObject({ status: 401 })
+    const error: unknown = await run().catch(error => error)
+    expect(error).toMatchObject({ status: 401, code: 'expired', message: '令牌过期' })
+    expect(isAuthenticationFailure(error)).toBe(false)
     expect(fetchMock).toHaveBeenCalledTimes(3)
-    expect(getAccessToken()).toBeNull()
-    expect(readRefreshToken()).toBeNull()
+    expect(getAccessToken()).toBe('new-access')
+    expect(readRefreshToken()).toBe('new-refresh')
   })
 
   it.each(Object.entries(calls))('%s 的旧401不会重放或清除另一账号', async (_kind, run) => {

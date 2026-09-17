@@ -9,7 +9,6 @@ interface Window {
     readonly pendingVersion: string;
     check: (urgent?: boolean) => Promise<void>;
     routeChanged: () => Promise<void>;
-    reload: () => boolean;
     blockReload: () => () => void;
   };
 }

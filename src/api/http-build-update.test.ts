@@ -6,7 +6,7 @@ const leases = new Set<object>()
 beforeEach(() => {
   leases.clear()
   window.__TOKEN_NX_UPDATE_GUARD__ = {
-    pendingVersion: '', check: vi.fn(), reload: vi.fn(), routeChanged: vi.fn(),
+    pendingVersion: '', check: vi.fn(), routeChanged: vi.fn(),
     blockReload: () => {
       const lease = {}
       leases.add(lease)

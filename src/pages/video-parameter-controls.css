@@ -1,0 +1,216 @@
+/* 参数面板的独立覆盖优先于页面旧样式，能力变化不再改变选项位置。 */
+.video-aspect-select-dropdown.video-aspect-options-dropdown .video-aspect-options {
+  grid-template-columns: minmax(60px, 1.4fr) repeat(6, minmax(0, 1fr));
+  height: auto;
+}
+
+.video-aspect-select-dropdown.video-aspect-options-dropdown .video-resolution-options {
+  flex-wrap: wrap;
+  max-width: 100%;
+  height: auto;
+}
+
+.video-duration-select-dropdown.video-duration-options-dropdown {
+  --video-duration-track: #eeeeee;
+  --video-duration-fill: #c7c7c7;
+  --video-duration-thumb: #3b3b3b;
+  --video-duration-mark: #d9d9d9;
+  width: min(376px, calc(100vw - 32px)) !important;
+  min-width: min(376px, calc(100vw - 32px)) !important;
+}
+
+.video-duration-select-dropdown.video-duration-options-dropdown .video-select-panel {
+  width: 100%;
+  min-height: 99px;
+  grid-template-columns: minmax(0, 1fr) 90px;
+  gap: 0 24px;
+  padding: 14px 16px 12px;
+}
+
+.video-duration-select-dropdown.video-duration-options-dropdown .video-duration-heading {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 0;
+  min-height: 20px;
+  gap: 12px;
+  margin-bottom: 9px;
+}
+
+.video-duration-select-dropdown.video-duration-options-dropdown .video-duration-heading > strong {
+  color: var(--video-popup-text-secondary);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 20px;
+}
+
+.video-duration-select-dropdown.video-duration-options-dropdown .video-duration-auto {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 6px;
+  color: var(--video-popup-text-secondary);
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.video-duration-select-dropdown.video-duration-options-dropdown .video-duration-control {
+  width: 100%;
+  height: 44px;
+  min-height: 0;
+  padding-top: 0;
+}
+
+.video-duration-select-dropdown.video-duration-options-dropdown .video-duration-range {
+  position: relative;
+  width: 100%;
+  height: 24px;
+}
+
+/* 轨道、刻度与原生滑块分层，保留键盘操作并让已选长度跟随真实秒数。 */
+.video-duration-select-dropdown.video-duration-options-dropdown .video-duration-range::before {
+  position: absolute;
+  inset: 7px 0;
+  border-radius: 999px;
+  background: linear-gradient(to right, var(--video-duration-fill) 0 var(--video-duration-progress), var(--video-duration-track) var(--video-duration-progress) 100%);
+  content: '';
+}
+
+.video-duration-select-dropdown.video-duration-options-dropdown .video-duration-track-marks {
+  position: absolute;
+  z-index: 1;
+  inset: 9px 4px auto;
+  height: 6px;
+  pointer-events: none;
+}
+
+.video-duration-select-dropdown.video-duration-options-dropdown .video-duration-track-marks > span {
+  position: absolute;
+  width: 2px;
+  height: 6px;
+  border-radius: 1px;
+  background: var(--video-duration-mark);
+  transform: translateX(-50%);
+}
+
+.video-duration-select-dropdown.video-duration-options-dropdown .video-duration-control input[type='range'] {
+  position: relative;
+  z-index: 2;
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  height: 24px;
+  min-height: 24px;
+  margin: 0;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.video-duration-select-dropdown.video-duration-options-dropdown .video-duration-control input[type='range']::-webkit-slider-runnable-track {
+  height: 10px;
+  border-radius: 999px;
+  background: transparent;
+}
+
+.video-duration-select-dropdown.video-duration-options-dropdown .video-duration-control input[type='range']::-webkit-slider-thumb {
+  width: 8px;
+  height: 16px;
+  margin-top: -3px;
+  border: 0;
+  border-radius: 4px;
+  appearance: none;
+  background: var(--video-duration-thumb);
+}
+
+.video-duration-select-dropdown.video-duration-options-dropdown .video-duration-control input[type='range']::-moz-range-track {
+  height: 10px;
+  border-radius: 999px;
+  background: transparent;
+}
+
+.video-duration-select-dropdown.video-duration-options-dropdown .video-duration-control input[type='range']::-moz-range-progress {
+  background: transparent;
+}
+
+.video-duration-select-dropdown.video-duration-options-dropdown .video-duration-control input[type='range']::-moz-range-thumb {
+  width: 8px;
+  height: 16px;
+  border: 0;
+  border-radius: 4px;
+  background: var(--video-duration-thumb);
+}
+
+.video-duration-select-dropdown.video-duration-options-dropdown .video-duration-ticks {
+  width: calc(100% - 8px);
+  height: 16px;
+  margin: 3px 4px 0;
+  color: var(--video-popup-text-secondary);
+  font-size: 11px;
+  line-height: 16px;
+}
+
+.video-duration-select-dropdown.video-duration-options-dropdown .video-duration-ticks span::before {
+  display: none;
+}
+
+.video-duration-select-dropdown.video-duration-options-dropdown .video-duration-ticks span:first-child,
+.video-duration-select-dropdown.video-duration-options-dropdown .video-duration-ticks span:last-child {
+  transform: translateX(-50%);
+}
+
+.video-duration-select-dropdown.video-duration-options-dropdown .video-duration-number {
+  width: 90px;
+  height: 40px;
+  padding-inline: 12px;
+  border: 0;
+  border-radius: 8px;
+}
+
+.video-duration-select-dropdown.video-duration-options-dropdown .video-duration-number input {
+  color: var(--video-popup-text-primary);
+  font-size: 13px;
+}
+
+.video-duration-select-dropdown.video-duration-options-dropdown .video-duration-number span {
+  color: var(--video-popup-text-secondary);
+  font-size: 12px;
+}
+
+.video-duration-select-dropdown.video-duration-options-dropdown .video-duration-range.is-automatic,
+.video-duration-select-dropdown.video-duration-options-dropdown .video-duration-number:has(input:disabled) {
+  opacity: .55;
+}
+
+.video-duration-select-dropdown.video-duration-options-dropdown input:disabled {
+  cursor: not-allowed;
+}
+
+html[data-theme='dark'] .video-duration-select-dropdown.video-duration-options-dropdown {
+  --video-duration-track: #494949;
+  --video-duration-fill: #777777;
+  --video-duration-thumb: #ededed;
+  --video-duration-mark: #a5a5a5;
+}
+
+html[data-theme='dark'] .video-duration-select-dropdown.video-duration-options-dropdown .video-duration-control input[type='range']::-webkit-slider-thumb {
+  background: var(--video-duration-thumb);
+}
+
+@media (max-width: 520px) {
+  .video-duration-select-dropdown.video-duration-options-dropdown .video-select-panel {
+    grid-template-columns: minmax(0, 1fr) 84px;
+    gap: 0 18px;
+    padding-inline: 16px;
+  }
+
+  .video-duration-select-dropdown.video-duration-options-dropdown .video-duration-number {
+    width: 84px;
+    padding-inline: 12px;
+  }
+
+  .video-duration-select-dropdown.video-duration-options-dropdown .video-duration-heading > strong {
+    font-size: 13px;
+  }
+}

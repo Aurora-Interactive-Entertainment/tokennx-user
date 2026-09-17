@@ -295,11 +295,25 @@ export function isApiError(error: unknown): error is ApiError {
   return error instanceof ApiError
 }
 
-export function isAuthenticationFailure(error: unknown): boolean {
-  // Only an HTTP 401 means that the account session is no longer authorized.
-  // Business error codes can be reused by login/form APIs and must not log out a user.
-  if (isApiError(error)) return error.status === AUTH_UNAUTHORIZED_STATUS
+// 页面级弱集合跨开发热更新保留，也兼容冻结的错误对象，不改变原始 HTTP 信息。
+const preservedErrorsKey = Symbol.for('token-nx:auth:preserved-session-errors')
+const authErrorScope = globalThis as typeof globalThis & Record<symbol, unknown>
+const existingPreservedErrors = authErrorScope[preservedErrorsKey]
+const preservedSessionErrors = existingPreservedErrors instanceof WeakSet ? existingPreservedErrors : new WeakSet<object>()
+authErrorScope[preservedErrorsKey] = preservedSessionErrors
+
+// 原始 HTTP 状态只用于认证层决定是否续期，不能直接证明长期会话已经失效。
+export function isHttpUnauthorized(error: unknown): boolean {
   if (!error || typeof error !== 'object') return false
   const candidate = error as { status?: unknown }
   return candidate.status === AUTH_UNAUTHORIZED_STATUS
+}
+
+export function preserveAuthSession(error: unknown): void {
+  if (error && typeof error === 'object') preservedSessionErrors.add(error)
+}
+
+export function isAuthenticationFailure(error: unknown): boolean {
+  // 续期已成功后，业务接口自己的 401 只展示原始错误，不能让页面再次清除登录状态。
+  return isHttpUnauthorized(error) && !preservedSessionErrors.has(error as object)
 }

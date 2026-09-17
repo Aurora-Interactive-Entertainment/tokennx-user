@@ -18,10 +18,21 @@ vi.mock('@/components/common', () => ({
 const catalog: PublicModelMarket = {
   version: '1', carousels: [],
   topics: [{ id: 'text', status: 'active', sort_order: 0, name: '文本模型', model_ids: ['live-model'], models: [{ id: 'live-model', alias: 'live-model', name: 'Live model', company: 'Example', modality: 'text', description: '接口返回的说明', prices: [
-    { meter_kind: 'input', unit: 'token', currency: 'CNY', unit_quantity: 1000, unit_price_yuan: '0.002' },
-    { meter_kind: 'output', unit: 'token', currency: 'USD', unit_quantity: 1000000, unit_price_yuan: '4.0001' },
+    { meter_code: 'cache_read_token', meter_kind: 'cache_read_token', unit: 'token', currency: 'CNY', unit_quantity: 1000000, unit_price_yuan: '1.6' },
+    { meter_code: 'input_token', meter_kind: 'input', unit: 'token', currency: 'CNY', unit_quantity: 1000, unit_price_yuan: '0.002', tier_no: 1, lower_bound: 0 },
+    { meter_code: 'output_token', meter_kind: 'output', unit: 'token', currency: 'USD', unit_quantity: 1000000, unit_price_yuan: '4.0001', tier_no: 1, lower_bound: 0 },
     { meter_kind: 'video', unit: 'second', currency: 'CNY', unit_quantity: 1, unit_price_yuan: '0.000001' },
-  ] }] }],
+  ], template_pricing_timezone: 'Asia/Shanghai', template_pricing_periods: [{
+    key: 'default', name: '默认原价', default: true, weekday_mask: 127, start_minute: 0, end_minute: 1440,
+    rules: [
+      { kind: 'token', meter_code: 'input_token', tier_no: 1, lower_bound: 0, unit_quantity: 1000, unit_price_yuan: '0.003', rounding_mode: 'up' },
+      { kind: 'token', meter_code: 'output_token', tier_no: 1, lower_bound: 0, unit_quantity: 1000000, unit_price_yuan: '9.500000000000', rounding_mode: 'up' },
+    ],
+  }], template_prices: [{
+    meter_type: 'output_token', meter_unit: 'token', tier_no: 1, tier_condition_meter: '', tier_lower_bound: '0', tier_upper_bound: '',
+    currency: 'USD', unit_quantity: 1000000, unit_price: '6.500000000000', price_type_description: '', discount_description: '',
+    discount_validity: '', limited_free: false, source_url: '', captured_on: '',
+  }] }] }],
 }
 
 beforeEach(async () => { vi.resetAllMocks(); await i18n.changeLanguage('zh-CN') })
@@ -44,16 +55,22 @@ describe('公开模型真实数据与计费单位', () => {
     expect(screen.queryByRole('alert')).toBeNull()
   })
 
-  it('保留原始数量、币种和按秒价格，不误标每百万', async () => {
+  it('卡片只展示接口输入输出原价和现价，保留数量、币种并过滤额外计费项', async () => {
     vi.mocked(getPublicModelMarket).mockResolvedValue(catalog)
     renderCatalog()
     const card = (await screen.findByText('Live model')).closest('article')!
     expect(within(card).getByText('输入 / 1000 token')).toBeInTheDocument()
     expect(within(card).getByText('输出 / M Tokens')).toBeInTheDocument()
-    expect(card).toHaveTextContent('¥0.002')
-    expect(card).toHaveTextContent('USD4.0001')
-    expect(card).toHaveTextContent('使用价格 / second')
-    expect(card).toHaveTextContent('¥0.000001')
+    const input = within(card).getByText('输入 / 1000 token').closest('div')!
+    const output = within(card).getByText('输出 / M Tokens').closest('div')!
+    expect(input.querySelector('del')).toHaveTextContent('¥0.003')
+    expect(input.querySelector('strong')).toHaveTextContent('¥0.002')
+    expect(output.querySelector('del')).toHaveTextContent('¥9.5')
+    expect(output.querySelector('strong')).toHaveTextContent('USD4.0001')
+    expect(card.querySelectorAll('dt')).toHaveLength(2)
+    expect(card).not.toHaveTextContent('缓存命中')
+    expect(card).not.toHaveTextContent('使用价格 / second')
+    expect(card).not.toHaveTextContent('¥0.000001')
   })
 
   it('空目录展示空状态而非示例模型', async () => {
