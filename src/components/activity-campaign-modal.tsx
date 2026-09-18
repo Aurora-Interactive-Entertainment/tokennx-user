@@ -135,6 +135,7 @@ export function ActivityCampaignModal({
   const authStatus = useAppSelector((state) => state.auth.status);
   const [visible, setVisible] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
+  const [loginPending, setLoginPending] = useState(false);
   const [pendingTarget, setPendingTarget] =
     useState<ReturnType<typeof getActivityCampaignTarget>>(null);
   const [now, setNow] = useState(() => Date.now());
@@ -155,11 +156,11 @@ export function ActivityCampaignModal({
   }, []);
 
   useEffect(() => {
-    if (!pendingTarget) return;
+    if (!loginPending) return;
     // 等活动弹窗关闭后再打开项目统一登录抽屉，避免两个遮罩叠加。
     const timer = window.setTimeout(() => setLoginOpen(true), 180);
     return () => window.clearTimeout(timer);
-  }, [pendingTarget]);
+  }, [loginPending]);
 
   useEffect(() => {
     if (!visible) return undefined;
@@ -183,14 +184,15 @@ export function ActivityCampaignModal({
   }, []);
 
   function handleConfirm(): void {
-    if (!target || !canDisplay) return;
+    if (!canDisplay) return;
     closeCampaign();
     if (authStatus !== "authenticated") {
-      // 可见性与领取登录分开处理，并锁定本次点击目标，避免接口刷新后跳错活动。
+      // 未配置跳转地址时仍保留领取入口；登录完成后仅关闭，不跳到无关页面。
       setPendingTarget(target);
+      setLoginPending(true);
       return;
     }
-    openTarget(target);
+    if (target) openTarget(target);
   }
 
   function openTarget(destination: NonNullable<typeof target>): void {
@@ -201,6 +203,7 @@ export function ActivityCampaignModal({
 
   const closeLogin = useCallback(() => {
     setLoginOpen(false);
+    setLoginPending(false);
     setPendingTarget(null);
   }, []);
 
@@ -261,9 +264,7 @@ export function ActivityCampaignModal({
                   </div>
                 </>
               ) : null}
-              <div
-                className={`activity-campaign-actions${target ? "" : " activity-campaign-actions--single"}`}
-              >
+              <div className="activity-campaign-actions">
                 <button
                   className="activity-campaign-button activity-campaign-button--secondary"
                   type="button"
@@ -271,16 +272,14 @@ export function ActivityCampaignModal({
                 >
                   {t("console.purchasePage.activityModal.later")}
                 </button>
-                {target ? (
-                  <button
-                    className="activity-campaign-button activity-campaign-button--primary"
-                    type="button"
-                    onClick={handleConfirm}
-                  >
-                    {campaign.targetText ??
-                      t("console.purchasePage.activityModal.confirm")}
-                  </button>
-                ) : null}
+                <button
+                  className="activity-campaign-button activity-campaign-button--primary"
+                  type="button"
+                  onClick={handleConfirm}
+                >
+                  {campaign.targetText ??
+                    t("console.purchasePage.activityModal.confirm")}
+                </button>
               </div>
             </div>
           </div>

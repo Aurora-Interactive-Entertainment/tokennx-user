@@ -168,11 +168,6 @@
   margin-top: 25px;
 }
 
-/* 没有跳转地址时，仅保留原有关闭操作并居中。 */
-.activity-campaign-actions.activity-campaign-actions--single {
-  grid-template-columns: minmax(0, 171px);
-}
-
 /* 活动未配置结束时间时按钮成为正文首个子元素，用外边距让它保持在正文中间。 */
 .activity-campaign-body > .activity-campaign-actions:first-child {
   margin-top: 59px;

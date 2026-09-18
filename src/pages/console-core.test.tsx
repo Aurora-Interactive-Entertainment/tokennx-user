@@ -468,6 +468,8 @@ describe('控制台模型接入页面', () => {
     expect(await screen.findByRole('option', { name: /后端 DeepSeek/ })).toBeInTheDocument()
     expect(screen.getByRole('option', { name: /后端 Qwen/ })).toBeInTheDocument()
     expect(screen.queryByRole('option', { name: /后端 Vision/ })).toBeNull()
+    await user.click(modelSelect)
+    await waitFor(() => expect(screen.queryByRole('option', { name: /后端 DeepSeek/ })).toBeNull())
   })
 
   it('从模型广场跳转后保留 URL 指定的模型', async () => {

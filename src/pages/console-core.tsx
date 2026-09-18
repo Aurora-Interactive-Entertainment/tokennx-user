@@ -275,6 +275,8 @@ export function PlaygroundPage() {
   const [selectedSessionId, setSelectedSessionId] = useState('')
   const [historyCollapsed, setHistoryCollapsed] = useState(false)
   const [composerExpanded, setComposerExpanded] = useState(false)
+  const [modelSelectorOpen, setModelSelectorOpen] = useState(false)
+  const [modelSelectorVersion, setModelSelectorVersion] = useState(0)
   const [paramsVisible, setParamsVisible] = useState(false)
   const [contextMenuVisible, setContextMenuVisible] = useState(false)
   const [temperature, setTemperature] = useState(DEFAULT_TEMPERATURE)
@@ -678,9 +680,15 @@ export function PlaygroundPage() {
         <div className="playground-header">
           <div className="playground-actions">
             <label className="sr-only" htmlFor="playground-model">{t('console.playground.chooseModel')}</label>
-            <div className="model-picker">
+            <div className="model-picker" onClick={() => {
+              // Semi 的选择器在部分版本中再次点击只会聚焦输入框；重挂载当前控件确保能关闭已展开的选项层。
+              if (modelSelectorOpen) {
+                setModelSelectorOpen(false)
+                setModelSelectorVersion((value) => value + 1)
+              }
+            }}>
               {selectedModel ? <ModelLogo model={selectedModel} className="model-picker-logo" /> : null}
-              <Select className="playground-model-select" id="playground-model" aria-label={t('console.playground.chooseModel')} value={selectedModel ? modelAlias(selectedModel) : ''} onChange={(value) => { const nextModelAlias = String(value); setModelId(nextModelAlias); store.setSelectedModelId(nextModelAlias); setSelectedSessionId(''); setEditingAttemptId(''); setEditingUserAttemptId(''); setEditingUserPrompt(''); setRetryingAttemptId('') }} disabled={selectableModels.length === 0} renderSelectedItem={() => (selectedModel ? modelOptionLabel(selectedModel) : '')}>{selectableModels.map((model) => <Select.Option key={model.id} value={modelAlias(model)} label={<span className="playground-model-option"><ModelLogo model={model} className="playground-model-option-logo" /><span className="playground-model-option-label">{modelOptionLabel(model)}</span></span>} />)}</Select>
+              <Select key={modelSelectorVersion} className="playground-model-select" id="playground-model" aria-label={t('console.playground.chooseModel')} value={selectedModel ? modelAlias(selectedModel) : ''} clickToHide onDropdownVisibleChange={setModelSelectorOpen} onChange={(value) => { const nextModelAlias = String(value); setModelId(nextModelAlias); store.setSelectedModelId(nextModelAlias); setSelectedSessionId(''); setEditingAttemptId(''); setEditingUserAttemptId(''); setEditingUserPrompt(''); setRetryingAttemptId('') }} disabled={selectableModels.length === 0} renderSelectedItem={() => (selectedModel ? modelOptionLabel(selectedModel) : '')}>{selectableModels.map((model) => <Select.Option key={model.id} value={modelAlias(model)} label={<span className="playground-model-option"><ModelLogo model={model} className="playground-model-option-logo" /><span className="playground-model-option-label">{modelOptionLabel(model)}</span></span>} />)}</Select>
             </div>
             <Button className="icon-button" theme="borderless" icon={<IconSetting />} aria-label={t('console.playground.modelParams')} title={t('console.playground.modelParams')} onClick={() => setParamsVisible(true)} disabled={!selectedModel} />
           </div>

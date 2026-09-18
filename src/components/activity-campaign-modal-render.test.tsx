@@ -27,11 +27,19 @@ beforeEach(async () => {
 })
 
 describe('活动弹窗接口展示规则', () => {
-  it.each([undefined, ' ', 'http://[invalid', 'javascript:alert(1)'])('无有效 url 时保留封面和关闭操作：%s', (targetUrl) => {
+  it.each([undefined, ' ', 'http://[invalid', 'javascript:alert(1)'])('无有效 url 时仍保留领取入口：%s', (targetUrl) => {
     render(view({ image: '/cover.png', targetUrl }))
     expect(screen.getByRole('img')).toHaveAttribute('src', '/cover.png')
     expect(screen.getByRole('button', { name: '再想想' })).toBeVisible()
-    expect(screen.queryByRole('button', { name: '立即领取' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '立即领取' })).toBeVisible()
+  })
+
+  it('无跳转地址时点击领取仍可登录，登录后不跳到无关页面', async () => {
+    render(view({ image: '/cover.png' }))
+    fireEvent.click(screen.getByRole('button', { name: '立即领取' }))
+    await screen.findByRole('dialog', { name: '活动登录' })
+    fireEvent.click(screen.getByRole('button', { name: '完成登录' }))
+    expect(screen.getByTestId('location').textContent).toBe('/')
   })
 
   it('已登录用户直接跳转，缺省文案沿用默认值', () => {
