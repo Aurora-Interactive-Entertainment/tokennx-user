@@ -250,8 +250,8 @@ describe('控制台导航路径匹配', () => {
     expect(navigation.querySelectorAll('.console-nav-link .console-nav-icon')).toHaveLength(navigation.querySelectorAll('.console-nav-link').length)
     await userEvent.setup().click(within(navigation).getByRole('button', { name: '兑换码' }))
     const redemption = await screen.findByRole('dialog', { name: '兑换码' })
-    expect(redemption).toHaveTextContent('兑换码可通过官方活动获取，详情请咨询客服。')
-    expect(redemption).toHaveTextContent('兑换仅适用于个人账户')
+    expect(within(redemption).getByRole('img', { name: /兑换码来自官方活动，仅适用于个人账户/ })).toBeInTheDocument()
+    expect(redemption).not.toHaveTextContent('兑换成功后，赠送余额会立即到账。')
   })
 
   it('Header 消息图标打开全局客服并默认切换到通知栏目', async () => {
@@ -404,7 +404,7 @@ describe('控制台导航路径匹配', () => {
       const navigation = screen.getByRole('navigation', { name: '控制台导航' })
       await userEvent.setup().click(within(navigation).getByRole('button', { name: '兑换码' }))
       const redemption = await screen.findByRole('dialog', { name: '兑换码' })
-      expect(redemption).toHaveTextContent('兑换仅适用于个人账户，余额将计入个人空间。')
+      expect(within(redemption).getByRole('img', { name: /兑换成功后余额计入个人空间/ })).toBeInTheDocument()
     } finally {
       if (previousSnapshot === null) {
         window.localStorage.removeItem('token-nx:user-front:v1')

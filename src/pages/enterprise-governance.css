@@ -42,6 +42,15 @@
   transform: none !important;
 }
 
+/* 新增角色按钮默认透明，只在悬停时给底色，避免面板头部常驻一块色块。 */
+.enterprise-governance-rail-tools .enterprise-governance-rail-add.semi-button {
+  background: transparent;
+}
+
+.enterprise-governance-rail-tools .enterprise-governance-rail-add.semi-button:hover {
+  background: var(--color-bg-overlay-l2);
+}
+
 @media (max-width: 680px) {
   /* 新增角色按钮保持方形，覆盖移动端通用最小高度，并与数量垂直居中。 */
   .enterprise-governance-rail-tools .enterprise-governance-rail-add.semi-button {

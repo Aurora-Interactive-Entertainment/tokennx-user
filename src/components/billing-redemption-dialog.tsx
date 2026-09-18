@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import Toast from '@douyinfe/semi-ui/lib/es/toast'
+import Tooltip from '@douyinfe/semi-ui/lib/es/tooltip'
+import { IconInfoCircle } from '@douyinfe/semi-icons'
 import Modal from '@/components/app-modal'
 import { getBillingErrorMessage, redeemBillingCode, type BillingRedemptionResult } from '@/api/billing'
 import { isAuthenticationFailure } from '@/api/http'
@@ -33,11 +35,17 @@ export function BillingRedemptionDialog({ visible, onClose, onSuccess, onAuthFai
     Toast.error(message)
   }
 
+  function validate(value: string): string {
+    if (!value) return i18n.t('console.billing.redeemCodeRequired')
+    return /^[A-Za-z0-9]{12}$/.test(value) ? '' : i18n.t('console.billing.redeemCodeInvalid')
+  }
+
   async function submit(): Promise<void> {
     if (submitting) return
     const normalized = code.trim()
-    if (!/^[A-Za-z0-9]{12}$/.test(normalized)) {
-      showError(i18n.t('console.billing.redeemCodeInvalid'))
+    const validationError = validate(normalized)
+    if (validationError) {
+      showError(validationError)
       return
     }
     setSubmitting(true)
@@ -61,7 +69,25 @@ export function BillingRedemptionDialog({ visible, onClose, onSuccess, onAuthFai
   return (
     <Modal
       className="billing-redemption-modal"
-      title={i18n.t('console.billing.redeemCodeTitle')}
+      title={(
+        <span className="billing-redemption-title" aria-label={i18n.t('console.billing.redeemCodeTitle')}>
+          <span>{i18n.t('console.billing.redeemCodeTitle')}</span>
+          <Tooltip
+            className="app-info-tooltip billing-redemption-tooltip"
+            content={i18n.t('console.billing.redeemCodeHelp')}
+            position="top"
+          >
+            <span
+              className="app-info-icon-trigger billing-redemption-info-trigger"
+              role="img"
+              tabIndex={0}
+              aria-label={i18n.t('console.billing.redeemCodeHelp')}
+            >
+              <IconInfoCircle className="app-info-icon" aria-hidden="true" />
+            </span>
+          </Tooltip>
+        </span>
+      )}
       visible={visible}
       onCancel={() => { if (!submitting) onClose() }}
       onOk={() => { void submit() }}
@@ -70,34 +96,40 @@ export function BillingRedemptionDialog({ visible, onClose, onSuccess, onAuthFai
       okButtonProps={{ loading: submitting, disabled: submitting }}
     >
       <div className="billing-redemption-form">
-        <input
-          id="billing-redemption-code"
-          className={`billing-redemption-input${error ? ' is-invalid' : ''}`}
-          value={code}
-          maxLength={12}
-          autoComplete="off"
-          inputMode="text"
-          aria-invalid={Boolean(error)}
-          aria-label={i18n.t('console.billing.redeemCodeTitle')}
-          aria-describedby="billing-redemption-hint billing-redemption-source"
-          placeholder={i18n.t('console.billing.redeemCodePlaceholder')}
-          onChange={(event) => {
-            setCode(event.target.value.replace(/[^A-Za-z0-9]/g, '').slice(0, 12))
-            if (error) setError('')
-          }}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter') {
-              event.preventDefault()
-              void submit()
-            }
-          }}
-        />
-        <p className="billing-redemption-hint" id="billing-redemption-hint">
-          {i18n.t('console.billing.redeemCodeHint')}
-        </p>
-        <p className="billing-redemption-hint" id="billing-redemption-source">
-          {i18n.t('console.billing.redeemCodeSource')}
-        </p>
+        <div className="billing-redemption-field">
+          {/* 弹窗标题已经写明「兑换码」，字段标签只留给读屏，避免同一屏出现两行同名文案。 */}
+          <label className="billing-redemption-sr-label" htmlFor="billing-redemption-code">
+            {i18n.t('console.billing.redeemCodeTitle')}
+          </label>
+          <input
+            id="billing-redemption-code"
+            className={`billing-redemption-input${error ? ' is-invalid' : ''}`}
+            value={code}
+            maxLength={12}
+            autoComplete="off"
+            inputMode="text"
+            required
+            aria-required="true"
+            aria-invalid={Boolean(error)}
+            aria-describedby={error ? 'billing-redemption-error' : undefined}
+            placeholder={i18n.t('console.billing.redeemCodePlaceholder')}
+            onChange={(event) => {
+              setCode(event.target.value.replace(/[^A-Za-z0-9]/g, '').slice(0, 12))
+              if (error) setError('')
+            }}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') {
+                event.preventDefault()
+                void submit()
+              }
+            }}
+          />
+          {error ? (
+            <span className="billing-redemption-error" id="billing-redemption-error" role="alert">
+              {error}
+            </span>
+          ) : null}
+        </div>
       </div>
     </Modal>
   )

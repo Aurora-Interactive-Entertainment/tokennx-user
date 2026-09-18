@@ -19044,7 +19044,7 @@ html[data-theme="light"] .manuscript-support-notification-copy time {
 }
 .enterprise-governance-rail-item[aria-current="true"],
 .enterprise-governance-rail-item.is-selected {
-  border-color: var(--color-border-neutral-l2);
+  /* border-color: var(--color-border-neutral-l2); */
   background: var(--color-bg-overlay-l3);
   color: var(--color-text-default);
 }
