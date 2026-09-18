@@ -3,15 +3,13 @@ import type { TFunction } from 'i18next'
 import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-router'
 import Toast from '@douyinfe/semi-ui/lib/es/toast'
 import Skeleton from '@douyinfe/semi-ui/lib/es/skeleton'
-import { IconBookOpenStroked, IconChevronDown, IconCodeStroked, IconCustomerSupportStroked, IconFile, IconShieldStroked } from '@douyinfe/semi-icons'
+import { IconBookOpenStroked, IconChevronDown, IconCodeStroked, IconCustomerSupportStroked, IconShieldStroked } from '@douyinfe/semi-icons'
 import { CopyOutlineIcon } from "@/components/copy-outline-icon";
 import { LoginPanel, LoginRequiredAction, ManuscriptSupportWidget, PublicLayout, ModelLogo, requestSupportWidget } from '@/components/common'
 import { resolveLoginDestination } from '@/auth/login-navigation'
 import '@/docs-page.css'
 import './public-apps.css'
 import './public-rankings.css'
-import { ModelPriceSummary } from '@/components/money'
-import { ModelAvailability } from '@/components/model-availability'
 import { MarkdownContent } from '@/components/markdown-content'
 import { CompatSelect as Select } from '@/components/semi-compat'
 import { getModelUsageLeaderboard, getRecentModelUsage, type ModelUsageLeaderboard, type RecentModelUsage } from '@/api/model-rankings'
@@ -19,23 +17,16 @@ import { getToolUsageClients, getToolUsageLeaderboard, type ToolUsageClients, ty
 import { getPublicDocument, getPublicDocumentAssetUrl, getPublicDocsTree, publicDocumentHref, type PublicDocument, type PublicDocsLocale, type PublicDocsNode } from '@/api/public-docs'
 import { getPublicModelMarket, type PublicMarketModel, type PublicMarketTopic, type PublicModelMarket } from '@/api/public-model-market'
 import { isApiError } from '@/api/http'
-import { findModelInList, modelAlias, MODEL_CATALOG, MODALITY_LABELS, type ModelModality, type ModelPrice, type ModelRecord } from '@/data/models'
-import { useAppSelector } from '@/store/hooks'
-import { QUICKSTART_API_BASE_URL, quickstartCodeSample } from '@/utils/quickstart'
+import { findModelInList, MODEL_CATALOG, MODALITY_LABELS, type ModelModality } from '@/data/models'
 import { useTranslation } from 'react-i18next'
 import { formatRankingTokens, RankingRecentUsageChart } from '@/components/ranking-usage-chart'
 import { formatToolUsageTokens, ToolUsageClientsChart } from '@/components/tool-usage-chart'
-import { apiTimeToDate } from '@/utils/format'
 import { selectPublicModelPrices } from '@/utils/public-model-prices'
 import { ModelsShowcase, type ModelsShowcaseGroup, type PublicShowcaseModel } from '@/components/public-models-showcase'
 import { appToast } from '@/components/app-toast'
 import { RequestErrorPanel } from '@/components/request-error-panel'
 import { usePublicContentSeo } from '@/seo/site-seo'
 import { publicPath } from '@/routes/public-path'
-
-function formatPublicPrice(price: ModelPrice): ReactNode {
-  return <ModelPriceSummary price={price} />
-}
 
 // 文档产品导航根据目录标题匹配语义化图标，接口、隐私和支持入口各自使用专属图标。
 function docsProductIcon(node: Pick<PublicDocsNode, 'title' | 'slug'>): ReactNode {
@@ -62,37 +53,9 @@ const PUBLIC_COMPANY_KEYS: Record<string, string> = {
   OpenAI: 'openai',
   'Stability AI': 'stability',
 }
-const PUBLIC_CAPABILITY_KEYS: Record<string, string> = {
-  对话: 'conversation',
-  代码: 'code',
-  推理: 'reasoning',
-  分析: 'analysis',
-  视觉: 'vision',
-  音频: 'audio',
-  长文本: 'longText',
-  创作: 'creation',
-  图像生成: 'imageGeneration',
-  风格化: 'stylization',
-  视频生成: 'videoGeneration',
-  语音合成: 'speechSynthesis',
-  高清: 'hd',
-}
 function publicCompanyLabel(t: TFunction, company: string): string {
   const key = PUBLIC_COMPANY_KEYS[company]
   return key ? t(`public.companies.${key}`, { defaultValue: company }) : company
-}
-
-function publicCapabilityLabel(t: TFunction, capability: string): string {
-  const key = PUBLIC_CAPABILITY_KEYS[capability]
-  return key ? t(`public.modelCapabilities.${key}`, { defaultValue: capability }) : capability
-}
-
-function publicModalityLabel(t: TFunction, modality: ModelModality): string {
-  return t(`public.modalities.${modality}`, { defaultValue: MODALITY_LABELS[modality] })
-}
-
-function publicModelDescription(t: TFunction, modelId: string, description: string): string {
-  return t(`public.modelDescriptions.${modelId}`, { defaultValue: description })
 }
 
 function publicMarketModelToRecord(model: PublicMarketModel): PublicShowcaseModel {
@@ -824,7 +787,6 @@ export { LegalPage } from './legal'
 export function LoginPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const authUser = useAppSelector((state) => state.auth.user)
   const returnPath = resolveLoginDestination(searchParams.get('return'))
   // 登录页没有公共页脚，仍然需要保留全局客服入口。
   return <div className="login-page"><div className="login-card"><LoginPanel onSuccess={() => navigate(returnPath, { replace: true })} /></div><ManuscriptSupportWidget /></div>

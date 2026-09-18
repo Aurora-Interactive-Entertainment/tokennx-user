@@ -342,6 +342,22 @@ describe('用户费用管理页面', () => {
     expect(screen.queryByText('¥99.999733')).toBeNull()
   })
 
+  it('充值额度按累计充值取数，不用可用余额顶替', async () => {
+    renderBilling({ analysisWallet: { paid_available_yuan: '503.845908800', recharge_amount_yuan: '10.000000000', total_available_yuan: '503.845908800', total_balance_yuan: '1002.464803200' } })
+    expect((await screen.findAllByText('账户余额')).length).toBeGreaterThan(0)
+    const rechargeCard = document.querySelectorAll('.billing-balance-card')[1] as HTMLElement
+    expect(within(rechargeCard).getByText('¥10.0000')).toBeInTheDocument()
+    expect(within(rechargeCard).queryByText('¥503.8459')).toBeNull()
+  })
+
+  it('后端未返回累计充值时充值额度显示为未知金额，不用可用余额顶替', async () => {
+    renderBilling()
+    expect((await screen.findAllByText('账户余额')).length).toBeGreaterThan(0)
+    const rechargeCard = document.querySelectorAll('.billing-balance-card')[1] as HTMLElement
+    expect(within(rechargeCard).getByText('--')).toBeInTheDocument()
+    expect(within(rechargeCard).queryByText('¥100.0000')).toBeNull()
+  })
+
   it('额度明细和积分优先使用分析接口直接返回的字段', async () => {
     renderBilling({
       analysisQuota: {

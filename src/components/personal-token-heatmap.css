@@ -115,7 +115,8 @@
   height: var(--heatmap-cell);
 }
 .personal-token-heatmap-cell:hover {
-  border-color: var(--color-text-default-hover);
+  /* 悬停只做轻微加深，不抢热力图本身的色阶。 */
+  border-color: var(--color-border-neutral-l3);
   outline: 1px solid var(--color-bg-base-secondary);
   outline-offset: -2px;
 }

@@ -59,7 +59,7 @@ import { useAppStore, type Workspace } from '@/data/app-state'
 import { invalidateAuth } from '@/store/auth-slice'
 import { useAppDispatch } from '@/store/hooks'
 import i18n from '@/i18n'
-import { BACKOFFICE_MONEY_DISPLAY_DECIMAL_PLACES, formatApiTime, formatCount, formatPersonOptionLabel, formatYuan, formatYuanExact, isZeroYuan } from '@/utils/format'
+import { BACKOFFICE_MONEY_DISPLAY_DECIMAL_PLACES, formatApiTime, formatCount, formatPersonOptionLabel, formatYuan, formatYuanExact, isZeroYuan, type MoneyValue } from '@/utils/format'
 import { addLocalDays, endOfLocalDay, startOfLocalDay } from '@/utils/date-range'
 import { createExportTask, downloadExportTask, getExportErrorMessage, saveExportResponse, waitForExportTask } from '@/api/exports'
 import { BillingCostCharts } from '@/components/billing-cost-charts'
@@ -395,7 +395,7 @@ function safeAmount(value: string | number | undefined | null): number {
   return Number.isFinite(amount) && amount >= 0 ? amount : 0
 }
 
-function PlainMoney({ value, negative = false }: { value: string; negative?: boolean }) {
+function PlainMoney({ value, negative = false }: { value: MoneyValue; negative?: boolean }) {
   const display = formatYuan(value, BACKOFFICE_MONEY_DISPLAY_DECIMAL_PLACES)
   const exact = formatYuanExact(value)
   // 余额卡片会用省略号截断超长金额，title 保证 hover 时仍能看到完整数值。
@@ -435,7 +435,7 @@ function AccountBalanceSection({ wallet, metrics, onRecharge, onBalanceAlert }: 
       </article>
       <article className="billing-balance-card">
         <div className="billing-balance-card-heading"><span>{i18n.t('console.billing.rechargeBalance')}</span><BillingSectionInfo content={i18n.t('console.billing.rechargeBalanceHint')} /></div>
-        <strong><PlainMoney value={wallet.paid_available_yuan} /></strong>
+        <strong><PlainMoney value={wallet.recharge_amount_yuan} /></strong>
       </article>
       <article className="billing-balance-card">
         <div className="billing-balance-card-heading"><span>{i18n.t('console.billing.rewardBalance')}</span><BillingSectionInfo content={i18n.t('console.billing.rewardBalanceHint')} /></div>

@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { clearAuthTokens, saveAuthTokens } from '@/auth/token-storage'
 import type { AuthResult } from './auth'
 import { ApiError } from './http'
-import { getAllUserModels, getUserModelDetail, getUserModels, getUserModelsErrorMessage } from './user-models'
+import { getAllUserModels, getUserModelDetail, getUserModels, getUserModelsErrorMessage, type UserModelParameterConfig } from './user-models'
 
 function response(data: unknown, status = 200, code = 0, msg = 'success'): Response {
   return new Response(JSON.stringify({ code, msg, data }), {
@@ -112,5 +112,37 @@ describe('用户模型目录接口封装', () => {
       '/api/user/models?account_type=personal&page=1&page_size=100',
       '/api/user/models?account_type=personal&page=2&page_size=100',
     ])
+  })
+
+  it('目录和详情完整保留参数合同、可空集合、显式零值和字符串版本', async () => {
+    const parameterConfig: UserModelParameterConfig = {
+      schema_version: 1,
+      video: {
+        modes: ['text_to_video'], resolutions: ['720p'], ratios: null, sizes: null,
+        durations: { values: [5, 10], auto: false }, defaults: {},
+        media: { min_total: 0, max_total: 0, roles: null },
+        generate_audio: { supported: false, default: false },
+        controls: { priority: { supported: true, min: 0, max: 9, default: 0 }, watermark: { supported: false } },
+        rules: [{ resolution: '720p', media: { min_total: 0, max_total: 0, roles: null } }],
+      },
+      text: { temperature: { supported: true, min: 0, max: 2, default: 0 }, reasoning: { supported: true, default_enabled: false } },
+    }
+    const model = {
+      id: 'configured-model', name: '配置模型', company: '厂商', modality: 'video', billing_mode: 'usage', description: '', capabilities: null, provider_count: 1, prices: null,
+      parameter_config: parameterConfig, parameter_version: '9007199254740993001',
+    }
+    const detail = { model, tags: [], specifications: { input_modalities: ['text'], output_modalities: ['video'], capability_limits: {} }, metrics: {} }
+    vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(response({ items: [model], activities: [], total: 1, page: 1, page_size: 20 }))
+      .mockResolvedValueOnce(response(detail))
+
+    const catalog = await getUserModels({ account_type: 'personal' })
+    const modelDetail = await getUserModelDetail(model.id, { account_type: 'personal' })
+    expect(catalog.items[0].parameter_config).toEqual(parameterConfig)
+    expect(catalog.items[0].parameter_version).toBe('9007199254740993001')
+    expect(modelDetail.model.parameter_config).toEqual(parameterConfig)
+    expect(modelDetail.model.parameter_version).toBe('9007199254740993001')
+    expect(catalog.items[0]).not.toHaveProperty('video_options')
+    expect(catalog.items[0].parameter_config?.video?.controls?.watermark).not.toHaveProperty('default')
   })
 })

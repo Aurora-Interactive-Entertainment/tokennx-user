@@ -36,13 +36,6 @@
     min-height: 0;
   }
 
-  .video-console-page .video-toolbar {
-    box-sizing: border-box;
-    min-height: 44px;
-    flex: 0 0 44px;
-    padding: 0 10px;
-  }
-
   .video-console-page .video-stage {
     padding: 16px 12px;
     scroll-padding-block: 16px;

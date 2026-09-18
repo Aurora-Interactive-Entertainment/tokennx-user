@@ -25,14 +25,10 @@ import {
   IconMinusCircleStroked,
   IconPlus,
   IconPlusCircleStroked,
-  IconSearch,
 } from "@douyinfe/semi-icons";
 import {
   BannerNotice,
-  MetricCard,
-  ModelLogo,
   PageTitle,
-  SectionHeading,
 } from "@/components/common";
 import { TraeTableEmpty } from "@/components/trae-table-empty";
 import { TraePagination } from "@/components/trae-pagination";
@@ -40,13 +36,11 @@ import { appToast } from "@/components/app-toast";
 import { RequestErrorPanel } from "@/components/request-error-panel";
 import { BackofficeMoneyText as MoneyText } from "@/components/money";
 import {
-  CompatCard as Card,
   CompatInput as Input,
   CompatSelect as Select,
 } from "@/components/semi-compat";
 import { useAppStore } from "@/data/app-state";
 import { modelAlias } from "@/data/models";
-import { NEW_ENTERPRISE_CREATE_PATH } from "@/api/enterprise-certification";
 import {
   getUserApiKeyErrorMessage,
   getAllUserApiKeys,
@@ -1228,6 +1222,17 @@ export function ApiKeysPage({
   );
   // 所有限制相关配置统一跟随开关展开，避免默认表单过长。
   const advancedVisible = form.limitsEnabled;
+  // 弹窗垂直居中，模型区一旦增减元素整窗就会位移。加载中和正常的已选数量都不占位，
+  // 只在目录缺失、为空或超限这些持久问题上给出提示；加载中由下拉框的禁用态表达。
+  const subscriptionNotice = subscriptionModels.loading
+    ? ""
+    : !subscriptionModels.hasSubscription
+      ? t("console.account.subscriptionModelsUnavailable")
+      : !subscriptionModels.models.length
+        ? t("console.account.subscriptionModelsEmpty")
+        : form.modelIds.length > 256
+          ? t("console.account.subscriptionModelLimit")
+          : "";
   const availableModelsLoading = loading && result === null;
   // 仅首次无数据时整块加载；切换筛选时保留旧数据在表格内叠加加载态，避免整表闪烁。
   const initialTableLoading = availableModelsLoading;
@@ -1889,18 +1894,8 @@ export function ApiKeysPage({
                     <span>{t("console.account.selectedModel")}</span>
                   </label>
                 </div>
-                {form.billingSource === "subscription" && !subscriptionModels.error ? (
-                  <BannerNotice tone="info">
-                    {subscriptionModels.loading
-                      ? t("console.account.subscriptionModelsLoading")
-                      : !subscriptionModels.hasSubscription
-                        ? t("console.account.subscriptionModelsUnavailable")
-                        : !subscriptionModels.models.length
-                          ? t("console.account.subscriptionModelsEmpty")
-                          : form.modelIds.length > 256
-                            ? t("console.account.subscriptionModelLimit")
-                            : t("console.account.selectedCount", { count: form.modelIds.length })}
-                  </BannerNotice>
+                {form.billingSource === "subscription" && !subscriptionModels.error && subscriptionNotice ? (
+                  <BannerNotice tone="info">{subscriptionNotice}</BannerNotice>
                 ) : null}
                 <div className="api-key-model-picker">
                   <Select
@@ -1935,22 +1930,24 @@ export function ApiKeysPage({
               </div>
             </>
           ) : null}
-          {/* 来源 IP 限制独立于额度和限流开关，关闭限流后仍允许查看和修改。 */}
-          <div className="api-key-form-field api-key-whitelist-field api-key-advanced-inline-field">
-            <label className="field-label" htmlFor="key-whitelist">
-              {t("console.account.whitelist")}
-            </label>
-            <Input
-              id="key-whitelist"
-              value={form.whitelistText}
-              onChange={(value) => updateForm({ whitelistText: value, whitelistEdited: true })}
-              placeholder={t("console.account.whitelistPlaceholder")}
-              aria-describedby="key-whitelist-hint"
-            />
-            <span className="api-key-field-hint" id="key-whitelist-hint">
-              {t(bulkEditing ? "console.account.whitelistBulkHint" : "console.account.whitelistHint")}
-            </span>
-          </div>
+          {/* 来源 IP 限制随“启用限制”一起展开；关闭时表单不再显示，提交仍会保留密钥原有的白名单。 */}
+          {advancedVisible ? (
+            <div className="api-key-form-field api-key-whitelist-field api-key-advanced-inline-field">
+              <label className="field-label" htmlFor="key-whitelist">
+                {t("console.account.whitelist")}
+              </label>
+              <Input
+                id="key-whitelist"
+                value={form.whitelistText}
+                onChange={(value) => updateForm({ whitelistText: value, whitelistEdited: true })}
+                placeholder={t("console.account.whitelistPlaceholder")}
+                aria-describedby="key-whitelist-hint"
+              />
+              <span className="api-key-field-hint" id="key-whitelist-hint">
+                {t(bulkEditing ? "console.account.whitelistBulkHint" : "console.account.whitelistHint")}
+              </span>
+            </div>
+          ) : null}
           <div className="api-key-form-field api-key-limit-switch-field">
             <label className="api-key-switch-row">
               <span>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { UserModelItem, UserModelPricingPeriod } from '@/api/user-models'
+import type { UserModelItem, UserModelParameterConfig, UserModelPricingPeriod } from '@/api/user-models'
 import { filterModelRecords, filterModels, findModel, formatModelPrice, mapUserModels, MODEL_CATALOG, modelAlias, modelPermissionKey, priceSaving } from './models'
 
 describe('模型目录业务规则', () => {
@@ -162,5 +162,83 @@ describe('模型目录业务规则', () => {
     expect(configuredModel.videoOptions).toEqual(videoOptions)
     expect(emptyModel.videoOptions).toEqual({})
     expect(nullModel.videoOptions).toBeNull()
+  })
+
+  it('完整透传视频条件规则、素材规格和高级控制，不合并兼容选项', () => {
+    const parameterConfig: UserModelParameterConfig = {
+      schema_version: 1,
+      video: {
+        protocol: 'seedance', max_request_bytes: 64 * 1024 * 1024,
+        modes: ['text_to_video', 'image_to_video', 'first_last_frame', 'reference_to_video', 'video_edit', 'video_extend'],
+        resolutions: ['720p', '1080p'], ratios: ['adaptive', '16:9'], sizes: [{ width: 1280, height: 720 }],
+        durations: { min: 4, max: 30, step: 2, auto: true, omit_allowed: true },
+        defaults: { mode: 'text_to_video', resolution: '720p', ratio: 'adaptive', size: { width: 1280, height: 720 }, duration: -1 },
+        media: {
+          min_total: 0, max_total: 2,
+          roles: { first_frame: { min: 0, max: 1 }, last_frame: { min: 0, max: 1 }, reference_image: { min: 0, max: 2 }, source_video: { min: 0, max: 0 } },
+          dependencies: [{ role: 'last_frame', requires: ['first_frame'] }, { role: 'reference_audio', requires_any: ['reference_image', 'reference_video'] }],
+          exclusive_groups: [['first_frame', 'reference_image']],
+        },
+        generate_audio: { supported: true, default: false },
+        controls: {
+          watermark: { supported: true, default: false }, return_last_frame: { supported: false }, web_search: { supported: false },
+          output_format: { supported: true, values: ['mp4', 'mov'], default: 'mp4' },
+          omni_reference_task_type: { supported: true, values: ['reference', 'edit', 'extend'] },
+          service_tier: { supported: true, values: ['default'], default: 'default' },
+          callback_url: { supported: true, format: 'http_url', max_length: 2048 },
+          safety_identifier: { supported: true, max_length: 64, ascii: true },
+          priority: { supported: true, min: 0, max: 9, default: 0 },
+          execution_expires_after: { supported: true, min: 3600, max: 259200, default: 172800 },
+        },
+        input_media: {
+          image: { validation: 'provider', formats: ['jpeg', 'png'], max_bytes: 30 * 1024 * 1024, max_bytes_exclusive: true, min_width: 300, max_width: 6000, min_height: 300, max_height: 6000, min_ratio: 0.4, max_ratio: 2.5, min_pixels: 90000, max_pixels: 36000000 },
+          video: { validation: 'provider', formats: ['mp4'], max_bytes: 50 * 1024 * 1024, min_duration: 2, max_duration: 15, max_total_duration: 15, min_fps: 24, max_fps: 60 },
+          audio: { validation: 'provider', formats: ['mp3'], max_bytes: 15 * 1024 * 1024, min_duration: 2, max_duration: 15, max_total_duration: 15 },
+        },
+        rules: [{ mode: 'video_edit', resolution: '720p', ratio: 'adaptive', sizes: [{ width: 1280, height: 720 }], durations: { min: 4, max: 30, step: 2, auto: true, auto_only: true }, media: { min_total: 1, max_total: 1, roles: { reference_video: { min: 1, max: 1 } } }, allowed_ratios: ['adaptive'], default_ratio: 'adaptive', default_duration: -1, input_media: { video: { validation: 'provider', formats: ['mp4'], max_bytes: 30 * 1024 * 1024, max_duration: 10 } } }],
+      },
+    }
+    const [model] = mapUserModels([{
+      id: 'configured-video', name: '配置视频', company: '厂商', modality: 'video', billing_mode: 'usage', description: '', capabilities: null, provider_count: 1, prices: null,
+      parameter_config: parameterConfig, parameter_version: '9007199254740993001',
+      video_options: { ratios: ['21:9'], default_duration: 5, max_images: 99 },
+    }])
+
+    expect(model.parameterConfig).toEqual(parameterConfig)
+    expect(model.parameterVersion).toBe('9007199254740993001')
+    expect(model.parameterConfig?.video?.ratios).toEqual(['adaptive', '16:9'])
+    expect(model.parameterConfig?.video?.defaults.duration).toBe(-1)
+    expect(model.parameterConfig?.video?.media.max_total).toBe(2)
+    expect(model.parameterConfig?.video?.controls?.priority?.default).toBe(0)
+    expect(model.parameterConfig?.video?.controls?.watermark?.default).toBe(false)
+    expect(model.parameterConfig?.video?.controls?.return_last_frame).not.toHaveProperty('default')
+  })
+
+  it('参数映射区分缺失配置、可空集合和空默认值，并兼容旧版比例为null', () => {
+    const legacy: UserModelItem = {
+      id: 'legacy', name: 'Legacy', company: '厂商', modality: 'video', billing_mode: 'usage', description: '', capabilities: null, provider_count: 1, prices: null,
+    }
+    const parameterConfig: UserModelParameterConfig = {
+      schema_version: 1,
+      video: { modes: ['text_to_video'], resolutions: ['720p'], ratios: null, sizes: null, durations: { values: [5, 10], auto: false }, defaults: {}, media: { min_total: 0, max_total: 0, roles: null }, generate_audio: { supported: false } },
+      text: { reasoning: { supported: true, default_enabled: false }, temperature: { supported: true, default: 0 } },
+    }
+    const [oldModel, configuredModel, compatibleModel] = mapUserModels([
+      legacy,
+      { ...legacy, parameter_config: parameterConfig, parameter_version: '1' },
+      { ...legacy, parameter_version: '2', video_options: { ratios: null, auto_duration: false, max_images: 0, default_duration_source: 'provider' } },
+    ])
+
+    expect(oldModel).not.toHaveProperty('parameterConfig')
+    expect(oldModel).not.toHaveProperty('parameterVersion')
+    expect(configuredModel.parameterConfig).toEqual(parameterConfig)
+    expect(configuredModel.parameterConfig?.video?.defaults).toEqual({})
+    expect(configuredModel.parameterConfig?.video?.ratios).toBeNull()
+    expect(configuredModel.parameterConfig?.video?.sizes).toBeNull()
+    expect(configuredModel.parameterConfig?.video?.media).toEqual({ min_total: 0, max_total: 0, roles: null })
+    expect(configuredModel).not.toHaveProperty('videoOptions')
+    expect(compatibleModel).not.toHaveProperty('parameterConfig')
+    expect(compatibleModel.parameterVersion).toBe('2')
+    expect(compatibleModel.videoOptions).toEqual({ ratios: null, auto_duration: false, max_images: 0, default_duration_source: 'provider' })
   })
 })

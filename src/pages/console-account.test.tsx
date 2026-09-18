@@ -208,6 +208,12 @@ function mockEnterpriseKeyEditApi(key: typeof KEY_ITEM, subscriptionModels: type
   return fetchMock
 }
 
+// 订阅目录返回前模型下拉框是禁用态，用它作为“目录已就绪”的同步点；
+// id 可能落在 combobox 本身或它的容器上，两种结构都匹配。
+function modelSelect(): Element | null {
+  return document.querySelector('#key-models[role="combobox"], #key-models [role="combobox"]')
+}
+
 describe('密钥管理页面', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
@@ -221,20 +227,34 @@ describe('密钥管理页面', () => {
     expect(updateSelectedKeyIDs(['page-one-key', 'page-two-key'], ['page-two-key'], false)).toEqual(['page-one-key'])
   })
 
-  it('未启用费用限流时也提交白名单，并对混合分隔输入去重', async () => {
+  it('启用限制后提交白名单，并对混合分隔输入去重', async () => {
     const user = userEvent.setup()
     const { fetchMock } = mockApiKeyApi()
     renderPage()
     await user.click(await screen.findByRole('button', { name: /创建 API 密钥/ }))
     await user.type(screen.getByLabelText('密钥名称'), '白名单密钥')
+    await user.click(screen.getByRole('switch', { name: '启用限制' }))
     await user.type(screen.getByLabelText('白名单'), '192.0.2.1，192.0.2.1/32;2001:db8::1|10.0.0.7/24')
     await user.click(screen.getByRole('button', { name: 'confirm' }))
     await waitFor(() => expect(fetchMock.mock.calls.some(([, options]) => options?.method === 'POST')).toBe(true))
     const request = fetchMock.mock.calls.find(([, options]) => options?.method === 'POST')
     expect(JSON.parse(String(request?.[1]?.body))).toMatchObject({
       ip_whitelist: ['192.0.2.1/32', '2001:db8::1/128', '10.0.0.7/24'],
-      limits_enabled: false,
+      limits_enabled: true,
     })
+  })
+
+  it('白名单跟随启用限制展开，关闭时不渲染输入框', async () => {
+    const user = userEvent.setup()
+    mockApiKeyApi()
+    renderPage()
+    await user.click(await screen.findByRole('button', { name: /创建 API 密钥/ }))
+    const toggle = screen.getByRole('switch', { name: '启用限制' })
+    expect(screen.queryByLabelText('白名单')).not.toBeInTheDocument()
+    await user.click(toggle)
+    expect(screen.getByLabelText('白名单')).toBeInTheDocument()
+    await user.click(toggle)
+    expect(screen.queryByLabelText('白名单')).not.toBeInTheDocument()
   })
 
   it.each(['0.0.0.0/0', Array.from({ length: 65 }, (_, i) => `192.0.2.${i + 1}`).join(',')])('白名单无效时阻止创建请求：%s', async (value) => {
@@ -243,6 +263,7 @@ describe('密钥管理页面', () => {
     renderPage()
     await user.click(await screen.findByRole('button', { name: /创建 API 密钥/ }))
     await user.type(screen.getByLabelText('密钥名称'), '校验密钥')
+    await user.click(screen.getByRole('switch', { name: '启用限制' }))
     fireEvent.change(screen.getByLabelText('白名单'), { target: { value } })
     await user.click(screen.getByRole('button', { name: 'confirm' }))
     expect(fetchMock.mock.calls.some(([, options]) => options?.method === 'POST')).toBe(false)
@@ -251,7 +272,7 @@ describe('密钥管理页面', () => {
 
   it.each([false, true])('编辑回显并保存白名单，显式清空=%s', async (clear) => {
     const user = userEvent.setup()
-    const { fetchMock } = mockApiKeyApi({ limitsDisabled: true })
+    const { fetchMock } = mockApiKeyApi()
     renderPage()
     await user.click(await screen.findByRole('button', { name: '编辑 API 密钥' }))
     const input = screen.getByLabelText('白名单')
@@ -587,7 +608,6 @@ describe('密钥管理页面', () => {
     await user.click(screen.getByRole('switch', { name: '启用限制' }))
     await user.click(screen.getByRole('radio', { name: '按订阅消耗' }))
 
-    expect(await screen.findByText('已选 2 个')).toBeInTheDocument()
     const confirm = screen.getByRole('button', { name: 'confirm' })
     await waitFor(() => expect(confirm).toBeEnabled())
     await user.click(confirm)
@@ -619,6 +639,23 @@ describe('密钥管理页面', () => {
     expect(screen.getByRole('button', { name: 'confirm' })).toBeDisabled()
   })
 
+  it('切换费用来源不会在模型区插入提示行，避免居中的弹窗随高度位移', async () => {
+    const user = userEvent.setup()
+    mockApiKeyApi({ subscription: { hasSubscription: true, models: [{ id: 'sub-model-a', alias: 'sub-a', name: '订阅模型 A', company: '订阅厂商' }] } })
+    renderPage(false, '/console/api-keys')
+
+    await screen.findByText('默认密钥')
+    await user.click(screen.getByRole('button', { name: /创建 API 密钥/ }))
+    await user.type(screen.getByLabelText('密钥名称'), '订阅密钥')
+    await user.click(screen.getByRole('switch', { name: '启用限制' }))
+    expect(document.querySelector('.api-key-model-field .banner-notice')).toBeNull()
+
+    await user.click(screen.getByRole('radio', { name: '按订阅消耗' }))
+    // 加载中也不占位：等待目录就绪后，正常状态依然没有提示行。
+    await waitFor(() => expect(modelSelect()).not.toHaveAttribute('aria-disabled', 'true'))
+    expect(document.querySelector('.api-key-model-field .banner-notice')).toBeNull()
+  })
+
   it.each([
     { title: '保留原有子集', selected: ['sub-model-a'], available: ['sub-model-a', 'sub-model-b'], expected: ['sub-model-a'] },
     { title: '剔除已退出订阅的模型', selected: ['sub-model-a', 'sub-model-b'], available: ['sub-model-b', 'sub-model-c'], expected: ['sub-model-b'] },
@@ -631,7 +668,6 @@ describe('密钥管理页面', () => {
 
     await user.click(await screen.findByRole('button', { name: '编辑 API 密钥' }))
     await waitFor(() => expect(screen.getByRole('button', { name: 'confirm' })).toBeEnabled())
-    expect(screen.getByText(`已选 ${expected.length} 个`)).toBeInTheDocument()
     const nameInput = screen.getByLabelText('密钥名称')
     await user.clear(nameInput)
     await user.type(nameInput, '只修改密钥名称')
@@ -656,7 +692,9 @@ describe('密钥管理页面', () => {
     await user.click(await screen.findByRole('button', { name: '编辑 API 密钥' }))
     await waitFor(() => expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/subscription-models'))).toBe(true))
     // 等目录返回后的反馈，避免把请求中的暂时禁用误当作验证通过。
-    await screen.findByText(subscriptionError ? '订阅查询失败' : !hasSubscription ? '当前没有可用的订阅模型' : /已选|请选择订阅模型/)
+    if (subscriptionError) await screen.findByText('订阅查询失败')
+    else if (!hasSubscription) await screen.findByText('当前没有可用的订阅模型')
+    else await waitFor(() => expect(modelSelect()).not.toHaveAttribute('aria-disabled', 'true'))
     expect(screen.getByRole('button', { name: 'confirm' })).toBeDisabled()
     expect(fetchMock.mock.calls.some(([, options]) => options?.method === 'PUT')).toBe(false)
   })
@@ -667,7 +705,7 @@ describe('密钥管理页面', () => {
     const { fetchMock } = mockApiKeyApi({ items: [key], subscription: { hasSubscription: true, models: [{ id: 'sub-model-a', alias: 'sub-a', name: '订阅模型 A', company: '订阅厂商' }] } })
     renderPage()
     await user.click(await screen.findByRole('button', { name: '编辑 API 密钥' }))
-    await screen.findByText('已选 0 个')
+    await waitFor(() => expect(modelSelect()).not.toHaveAttribute('aria-disabled', 'true'))
     expect(screen.getByRole('button', { name: 'confirm' })).toBeDisabled()
     fireEvent.click(document.querySelector('#key-models') as HTMLElement)
     await user.click(screen.getByRole('option', { name: /订阅模型 A/ }))
@@ -677,21 +715,21 @@ describe('密钥管理页面', () => {
     expect(JSON.parse(String(request?.[1]?.body)).model_ids).toEqual(['sub-model-a'])
   })
 
-  it('订阅选择提示数量随手动取消更新，选空仍沿用原提交校验', async () => {
+  it('订阅模型手动取消后提交校验跟随选择，选空仍沿用原提交校验', async () => {
     const user = userEvent.setup()
     const models = ['sub-model-a', 'sub-model-b'].map((id) => ({ id, alias: id, name: id, company: '订阅厂商' }))
     const key = { ...structuredClone(KEY_ITEM), billing_source: 'subscription', scope: 'selected', model_ids: ['sub-model-a'] }
     const { fetchMock } = mockApiKeyApi({ items: [key], subscription: { hasSubscription: true, models } })
     renderPage()
     await user.click(await screen.findByRole('button', { name: '编辑 API 密钥' }))
-    await screen.findByText('已选 1 个')
+    const confirm = screen.getByRole('button', { name: 'confirm' })
+    await waitFor(() => expect(confirm).toBeEnabled())
     fireEvent.click(document.querySelector('#key-models') as HTMLElement)
     await user.click(screen.getByRole('option', { name: /sub-model-a/ }))
-    expect(screen.getByText('已选 0 个')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'confirm' })).toBeDisabled()
+    await waitFor(() => expect(confirm).toBeDisabled())
     await user.click(screen.getByRole('option', { name: /sub-model-b/ }))
-    expect(screen.getByText('已选 1 个')).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'confirm' }))
+    await waitFor(() => expect(confirm).toBeEnabled())
+    await user.click(confirm)
     await waitFor(() => expect(fetchMock.mock.calls.some(([, options]) => options?.method === 'PUT')).toBe(true))
     const request = fetchMock.mock.calls.find(([, options]) => options?.method === 'PUT')
     expect(JSON.parse(String(request?.[1]?.body)).model_ids).toEqual(['sub-model-b'])

@@ -528,9 +528,28 @@
   .subscription-plan-grid:where([data-plan-count="3"]) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
+/* 移动端标题行默认竖排并把操作按钮拉满整行；套餐管理的刷新按钮保持和 PC 一致留在标题右侧。 */
+@media (max-width: 720px) {
+  .subscription-page > .page-title-row {
+    flex-direction: row;
+    padding-right: 0;
+  }
+
+  .subscription-page > .page-title-row .page-actions {
+    width: auto;
+    flex: 0 0 auto;
+    align-self: flex-start;
+  }
+
+  .subscription-page > .page-title-row .page-actions .semi-button {
+    /* 覆盖移动端"所有按钮最小 44px"的触摸规则，刷新按钮保持 PC 尺寸不跳动。 */
+    flex: 0 0 auto;
+    height: 32px;
+    min-height: 32px;
+  }
+}
+
 @media (max-width: 680px) {
-  .subscription-page > .page-title-row { padding-right: 0; }
-  .subscription-page > .page-title-row .page-actions { width: auto; flex: 0 0 auto; align-self: flex-start; }
   .subscription-overview-grid,
   .subscription-plan-grid { grid-template-columns: minmax(0, 1fr); }
   .subscription-plan-card { min-width: 0; }

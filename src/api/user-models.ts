@@ -71,11 +71,12 @@ export interface UserModelPricingPeriod {
 
 export interface UserVideoOptions {
   family?: string
-  ratios?: string[]
+  ratios?: string[] | null
   resolutions?: string[]
   min_duration?: number
   max_duration?: number
   default_duration?: number
+  default_duration_source?: 'platform' | 'provider'
   default_resolution?: string
   auto_duration?: boolean
   max_images?: number
@@ -83,6 +84,142 @@ export interface UserVideoOptions {
   max_audios?: number
   requires_prompt?: boolean
   output_meter?: string
+}
+
+export type UserVideoMode = 'text_to_video' | 'image_to_video' | 'first_last_frame' | 'reference_to_video' | 'video_edit' | 'video_extend'
+export type UserVideoMediaRole = 'first_frame' | 'last_frame' | 'reference_image' | 'reference_video' | 'reference_audio' | 'source_video'
+
+export interface UserVideoSize {
+  width: number
+  height: number
+}
+
+export interface UserVideoDurationConfig {
+  values?: number[]
+  min?: number
+  max?: number
+  step?: number
+  auto: boolean
+  auto_only?: boolean
+  omit_allowed?: boolean
+}
+
+export interface UserVideoMediaRoleLimit {
+  min: number
+  max: number
+}
+
+export interface UserVideoMediaDependency {
+  role: UserVideoMediaRole
+  requires?: UserVideoMediaRole[]
+  requires_any?: UserVideoMediaRole[]
+}
+
+export interface UserVideoMediaConfig {
+  min_total: number
+  max_total: number
+  // null 与空映射都表示没有开放任何角色，不能在映射层补默认角色。
+  roles: Partial<Record<UserVideoMediaRole, UserVideoMediaRoleLimit>> | null
+  dependencies?: UserVideoMediaDependency[]
+  exclusive_groups?: UserVideoMediaRole[][]
+}
+
+export interface UserBooleanParameter {
+  supported: boolean
+  default?: boolean
+}
+
+export interface UserStringParameter {
+  supported: boolean
+  values?: string[]
+  default?: string
+  max_length?: number
+  ascii?: boolean
+  format?: string
+}
+
+export interface UserIntegerParameter {
+  supported: boolean
+  min: number
+  max: number
+  default?: number
+}
+
+export interface UserVideoControls {
+  watermark?: UserBooleanParameter
+  return_last_frame?: UserBooleanParameter
+  web_search?: UserBooleanParameter
+  output_format?: UserStringParameter
+  omni_reference_task_type?: UserStringParameter
+  service_tier?: UserStringParameter
+  callback_url?: UserStringParameter
+  safety_identifier?: UserStringParameter
+  priority?: UserIntegerParameter
+  execution_expires_after?: UserIntegerParameter
+}
+
+export interface UserVideoInputMediaSpec {
+  validation: 'provider'
+  formats: string[]
+  max_bytes: number
+  max_bytes_exclusive?: boolean
+  min_width?: number
+  max_width?: number
+  min_height?: number
+  max_height?: number
+  min_ratio?: number
+  max_ratio?: number
+  min_pixels?: number
+  max_pixels?: number
+  min_duration?: number
+  max_duration?: number
+  max_total_duration?: number
+  min_fps?: number
+  max_fps?: number
+}
+
+export type UserVideoInputMedia = Partial<Record<'image' | 'video' | 'audio', UserVideoInputMediaSpec>>
+
+export interface UserVideoRule {
+  mode?: UserVideoMode
+  resolution?: string
+  ratio?: string
+  sizes?: UserVideoSize[]
+  durations?: UserVideoDurationConfig
+  media?: UserVideoMediaConfig
+  allowed_ratios?: string[]
+  default_ratio?: string
+  default_duration?: number
+  input_media?: UserVideoInputMedia
+}
+
+export interface UserVideoParameterConfig {
+  protocol?: string
+  max_request_bytes?: number
+  modes: UserVideoMode[]
+  resolutions: string[] | null
+  ratios: string[] | null
+  sizes: UserVideoSize[] | null
+  durations: UserVideoDurationConfig
+  defaults: {
+    mode?: UserVideoMode
+    resolution?: string
+    ratio?: string
+    size?: UserVideoSize
+    duration?: number
+  }
+  media: UserVideoMediaConfig
+  generate_audio?: UserBooleanParameter
+  controls?: UserVideoControls
+  rules?: UserVideoRule[]
+  input_media?: UserVideoInputMedia
+}
+
+export interface UserModelParameterConfig {
+  schema_version: number
+  video?: UserVideoParameterConfig
+  // 其他模态使用各自合同，目录层完整透传，不能用视频默认值重写它们。
+  [modality: string]: unknown
 }
 
 export interface UserModelItem {
@@ -110,6 +247,9 @@ export interface UserModelItem {
   current_period_key?: string
   // 视频模型可选参数由目录接口透传，用于价格示例的分辨率/时长展示。
   params?: Record<string, string[] | number[]>
+  parameter_config?: UserModelParameterConfig
+  // 新接口必出，兼容旧目录时仍允许省略；版本保留字符串以免大整数精度丢失。
+  parameter_version?: string
   // 视频参数与素材限制以目录接口为准；可选以兼容尚未升级的模型。
   video_options?: UserVideoOptions | null
   availability?: {

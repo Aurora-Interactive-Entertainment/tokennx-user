@@ -74,11 +74,6 @@
 /* 没有记录时仍把空态放在工作区正中。 */
 .video-console-page .video-stage-state--empty { margin: auto; }
 
-.video-console-page .video-toolbar {
-  border-bottom: 1px solid var(--color-border-neutral-l1);
-  background: #fefefe;
-}
-
 .video-console-page .video-composer-box {
   background: #ffffff;
 }
@@ -86,8 +81,7 @@
 html[data-theme="dark"] .video-console-page .video-workspace,
 html[data-theme="dark"] .video-console-page > .empty-panel,
 html[data-theme="dark"] .video-console-page .video-workspace-main,
-html[data-theme="dark"] .video-console-page .video-stage,
-html[data-theme="dark"] .video-console-page .video-toolbar {
+html[data-theme="dark"] .video-console-page .video-stage {
   background: var(--color-bg-base-default);
 }
 
@@ -96,9 +90,6 @@ html[data-theme="dark"] .video-console-page .video-composer-box {
 }
 
 /* 视频生成控件弹层按参考图统一为轻量白底、细边框和柔和阴影。 */
-.video-console-page .video-toolbar-actions {
-  position: relative;
-}
 .video-console-page .video-history-panel {
   display: block;
   position: absolute;

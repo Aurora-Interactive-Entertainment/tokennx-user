@@ -13,7 +13,7 @@ import './home-hero-decorations.css'
 import { homepageEntryIsCurrent, homepageEntryMediaURL, homepageLocale, homepageMediaURL, homepagePopupCampaign, homepageTranslation } from '@/utils/homepage-display'
 import { ModelAvailability } from '@/components/model-availability'
 import { getPublicHomepage, getPublicHomepageStats, type HomepageDiscountKind, type HomepageEntry, type HomepagePromotionModel, type PublicHomepage } from '@/api/homepage'
-import { findModel, modelRouteKey, MODEL_CATALOG, type ModelAvailabilityHour, type ModelRecord } from '@/data/models'
+import { findModel, MODEL_CATALOG, type ModelAvailabilityHour, type ModelRecord } from '@/data/models'
 import { getAccessToken } from '@/auth/token-storage'
 import { useAppSelector } from '@/store/hooks'
 import { apiTimeToDate } from '@/utils/format'
@@ -22,12 +22,6 @@ import { HomeLiquidMetalQuickstartAction } from '@/components/home-liquid-metal-
 import { appToast } from '@/components/app-toast'
 
 // 首页独立为路由入口，避免首屏下载文档 Markdown、排行榜图表及其他公开页面依赖。
-// 公开页面的模型链接只使用面向用户的别名，旧模型 code 仅由查找逻辑兼容。
-function modelPublicHref(model: { id: string; alias?: string }): string | undefined {
-  const routeKey = modelRouteKey(model)
-  return routeKey ? `/models/${encodeURIComponent(routeKey)}` : undefined
-}
-
 const HOME_MODEL_MOSAIC_COLUMNS = 6
 const HOME_REWARD_STAT_KEYS = [
   { unitKey: 'rewardPendingUnit', labelKey: 'rewardPending' },

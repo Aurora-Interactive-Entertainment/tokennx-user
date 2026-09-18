@@ -8,6 +8,7 @@ import { AppStoreProvider } from '@/data/app-state'
 import { createAppStore } from '@/store'
 import type { VideoTask } from '@/api/video-runtime'
 import type { ModelRecord } from '@/data/models'
+import type { UserVideoParameterConfig } from '@/api/user-models'
 import { cancelVideoTask, getVideoTask, submitVideoGeneration } from '@/api/video-runtime'
 import { clearAuthTokens, saveAuthTokens } from '@/auth/token-storage'
 import { useUserModels } from '@/data/user-models'
@@ -33,12 +34,12 @@ vi.mock('@douyinfe/semi-ui', () => {
   type ButtonProps = { children?: ReactNode; onClick?: () => void; disabled?: boolean; className?: string; 'aria-label'?: string; title?: string }
   type InputProps = { id?: string; value?: string; onChange?: (value: string) => void; placeholder?: string; disabled?: boolean; maxLength?: number; rows?: number; className?: string; 'aria-label'?: string }
   type SelectProps = { id?: string; value?: string | number; onChange?: (value: string) => void; disabled?: boolean; className?: string; children?: ReactNode; 'aria-label'?: string }
-  type OptionProps = { value?: string | number; children?: ReactNode }
+  type OptionProps = { value?: string | number; children?: ReactNode; disabled?: boolean }
   const MockButton = ({ children, onClick, disabled, className, 'aria-label': ariaLabel, title }: ButtonProps) => <button type="button" className={className} aria-label={ariaLabel} title={title} disabled={disabled} onClick={onClick}>{children}</button>
   const MockInput = ({ id, value, onChange, placeholder, disabled, maxLength, className, 'aria-label': ariaLabel }: InputProps) => <input id={id} value={value ?? ''} placeholder={placeholder} disabled={disabled} maxLength={maxLength} className={className} aria-label={ariaLabel} onChange={(event) => onChange?.(event.currentTarget.value)} />
   const MockTextArea = ({ id, value, onChange, placeholder, disabled, maxLength, rows, className, 'aria-label': ariaLabel }: InputProps) => <textarea id={id} value={value ?? ''} placeholder={placeholder} disabled={disabled} maxLength={maxLength} rows={rows} className={className} aria-label={ariaLabel} onChange={(event) => onChange?.(event.currentTarget.value)} />
   const MockSelect = ({ id, value, onChange, disabled, className, children, 'aria-label': ariaLabel }: SelectProps) => <select id={id} value={value === undefined ? '' : String(value)} disabled={disabled} className={className} aria-label={ariaLabel} onChange={(event) => onChange?.(event.currentTarget.value)}>{children}</select>
-  const MockOption = ({ value, children }: OptionProps) => <option value={value === undefined ? '' : String(value)}>{children}</option>
+  const MockOption = ({ value, children, disabled }: OptionProps) => <option disabled={disabled} value={value === undefined ? '' : String(value)}>{children}</option>
   const Input = Object.assign(MockInput, { TextArea: MockTextArea })
   const Select = Object.assign(MockSelect, { Option: MockOption })
   const MockModal = ({ visible, children }: { visible?: boolean; children?: ReactNode }) => visible ? <div role="dialog">{children}</div> : null
@@ -75,11 +76,11 @@ vi.mock('@/components/semi-compat', () => {
   type KeyboardLike = { key: string; shiftKey: boolean; ctrlKey: boolean; metaKey: boolean; preventDefault: () => void }
   type InputProps = { id?: string; value?: string; onChange?: (value: string) => void; onKeyDown?: (event: KeyboardLike) => void; placeholder?: string; disabled?: boolean; maxLength?: number; rows?: number; className?: string; 'aria-label'?: string }
   type SelectProps = { id?: string; value?: string | number; onChange?: (value: string) => void; disabled?: boolean; className?: string; children?: ReactNode; innerTopSlot?: ReactNode; 'aria-label'?: string }
-  type OptionProps = { value?: string | number; children?: ReactNode }
+  type OptionProps = { value?: string | number; children?: ReactNode; disabled?: boolean }
   const MockInput = ({ id, value, onChange, onKeyDown, placeholder, disabled, maxLength, className, 'aria-label': ariaLabel }: InputProps) => <input id={id} value={value ?? ''} placeholder={placeholder} disabled={disabled} maxLength={maxLength} className={className} aria-label={ariaLabel} onKeyDown={onKeyDown} onChange={(event) => onChange?.(event.currentTarget.value)} />
   const MockTextArea = ({ id, value, onChange, onKeyDown, placeholder, disabled, maxLength, rows, className, 'aria-label': ariaLabel }: InputProps) => <textarea id={id} value={value ?? ''} placeholder={placeholder} disabled={disabled} maxLength={maxLength} rows={rows} className={className} aria-label={ariaLabel} onKeyDown={onKeyDown} onChange={(event) => onChange?.(event.currentTarget.value)} />
   const MockSelect = ({ id, value, onChange, disabled, className, children, innerTopSlot, 'aria-label': ariaLabel }: SelectProps) => <><select id={id} value={value === undefined ? '' : String(value)} disabled={disabled} className={className} aria-label={ariaLabel} onChange={(event) => onChange?.(event.currentTarget.value)}>{children}</select>{innerTopSlot}</>
-  const MockOption = ({ value, children }: OptionProps) => <option value={value === undefined ? '' : String(value)}>{children}</option>
+  const MockOption = ({ value, children, disabled }: OptionProps) => <option disabled={disabled} value={value === undefined ? '' : String(value)}>{children}</option>
   return { CompatInput: Object.assign(MockInput, { TextArea: MockTextArea }), CompatSelect: Object.assign(MockSelect, { Option: MockOption }) }
 })
 
@@ -87,6 +88,12 @@ function videoModel(overrides: Partial<ModelRecord> = {}): ModelRecord {
   return {
     id: 'cogvideo', code: 'cogvideo', alias: 'cogvideo-public', name: 'CogVideo', company: '智谱AI', modality: 'video', capabilities: ['视频生成'], description: '视频模型',
     officialPrice: { base: 2, unit: '¥/秒' }, tokenNxPrice: { base: 1.6, unit: '¥/秒' }, labels: ['视频'], availability: { rate: 99, window: '近 24 小时' }, providerCount: 1, throughput: { value: 1, unit: 'K seconds' },
+    // 业务回归使用目录明确声明的能力，不能依赖页面补出不存在的默认参数。
+    parameterConfig: { schema_version: 1, video: {
+      modes: ['text_to_video', 'image_to_video', 'first_last_frame', 'reference_to_video'], ratios: ['16:9', '9:16', '1:1'], resolutions: ['720p', '1080p'], sizes: null,
+      durations: { min: 2, max: 30, step: 1, auto: false }, defaults: { mode: 'text_to_video', duration: 5, ratio: '16:9', resolution: '720p' },
+      media: { min_total: 0, max_total: 1, roles: { first_frame: { min: 0, max: 1 }, reference_image: { min: 0, max: 1 } } },
+    } },
     ...overrides,
   }
 }
@@ -94,6 +101,7 @@ function videoModel(overrides: Partial<ModelRecord> = {}): ModelRecord {
 function configuredVideoModel(overrides: Partial<ModelRecord> = {}): ModelRecord {
   return videoModel({
     id: 'configured-video', alias: 'configured-video-public', name: 'Configured Video',
+    parameterConfig: undefined,
     videoOptions: {
       family: 'seedance', ratios: ['adaptive', '21:9', '16:9', '4:3', '1:1', '3:4', '9:16'], resolutions: ['480p', '720p', '1080p'],
       default_duration: 5, default_resolution: '720p', min_duration: 4, max_duration: 15, auto_duration: true,
@@ -122,12 +130,26 @@ function renderVideoPage(): ReturnType<typeof createAppStore> {
   return appStore
 }
 
+function fullVideoModel(videoOverrides: Partial<UserVideoParameterConfig> = {}, overrides: Partial<ModelRecord> = {}): ModelRecord {
+  return videoModel({
+    id: 'full-video', alias: 'full-video-public', name: 'Full Video', parameterVersion: 'video-v1',
+    parameterConfig: { schema_version: 1, video: {
+      protocol: 'seedance', modes: ['text_to_video', 'image_to_video', 'first_last_frame', 'reference_to_video'],
+      ratios: ['adaptive', '16:9', '9:16'], resolutions: ['720p', '1080p'], sizes: null,
+      durations: { min: 4, max: 12, step: 2, auto: true }, defaults: { duration: 6, ratio: '16:9', resolution: '720p' },
+      media: { min_total: 0, max_total: 4, roles: { first_frame: { min: 0, max: 1 }, last_frame: { min: 0, max: 1 }, reference_image: { min: 0, max: 3 }, reference_video: { min: 0, max: 2 }, reference_audio: { min: 0, max: 2 } } },
+      ...videoOverrides,
+    } },
+    ...overrides,
+  })
+}
+
 function saveVideoRecoveryHistory(tasks: Array<Pick<VideoTask, 'taskId' | 'status'>>, userId = 'video-user'): void {
   // 沿用正式历史格式，覆盖旧记录没有幂等键和多个任务恢复的场景。
   window.localStorage.setItem(VIDEO_SESSION_HISTORY_KEY, JSON.stringify({ version: 1, userId, entries: tasks.map((task, index) => ({
     ...pendingTask, ...task, id: `personal:personal:${task.taskId}`, workspaceKey: 'personal:personal',
     modelId: 'cogvideo', model: 'cogvideo-public', modelName: 'CogVideo', prompt: task.taskId,
-    duration: 5, size: '1280x720', inputReference: null, createdAt: new Date(Date.UTC(2026, 0, 2, 0, 0, -index)).toISOString(),
+    duration: 5, size: '', ratio: '16:9', resolution: '720p', inputReference: null, createdAt: new Date(Date.UTC(2026, 0, 2, 0, 0, -index)).toISOString(),
   })) }))
 }
 
@@ -314,11 +336,11 @@ describe('视频生成页面', () => {
 
   it('远程首帧形成草稿时保护刷新，成功记录URL后释放保护', async () => {
     const user = userEvent.setup()
+    mockVideoCatalog([fullVideoModel({ modes: ['image_to_video'], media: { min_total: 1, max_total: 1, roles: { first_frame: { min: 1, max: 1 } } } })])
     vi.mocked(submitVideoGeneration).mockResolvedValue(succeededTask)
     renderVideoPage()
-    await user.selectOptions(screen.getByRole('combobox', { name: '参考素材' }), 'first-last')
-    await user.click(screen.getByRole('button', { name: '首帧 URL' }))
-    await user.type(screen.getByLabelText('首帧 URL', { selector: 'input' }), 'https://cdn.example.com/first-frame.png')
+    await user.click(screen.getByRole('button', { name: '参考素材 · 添加参考素材' }))
+    await user.type(screen.getByLabelText('参考图 URL'), 'https://cdn.example.com/first-frame.png')
     await confirmReferenceDialog(user)
     expect(vi.mocked(useBuildUpdateBlocker).mock.lastCall?.[0]).toBe(true)
     await user.type(screen.getByLabelText('视频提示词'), '远程首帧生成')
@@ -440,7 +462,7 @@ describe('视频生成页面', () => {
     await user.click(screen.getByRole('button', { name: '生成视频' }))
 
     await waitFor(() => expect(submitVideoGeneration).toHaveBeenCalledTimes(1))
-    expect(vi.mocked(submitVideoGeneration).mock.calls[0]?.[0]).toMatchObject({ accessToken: 'user-access-token', model: 'cogvideo-public', prompt: '海边日落，镜头缓慢推进', duration: 5, size: '1280x720', inputReference: 'https://cdn.example.com/reference.png' })
+    expect(vi.mocked(submitVideoGeneration).mock.calls[0]?.[0]).toMatchObject({ accessToken: 'user-access-token', model: 'cogvideo-public', prompt: '海边日落，镜头缓慢推进', duration: 5, ratio: '16:9', resolution: '720p', references: [{ type: 'image', url: 'https://cdn.example.com/reference.png', role: 'reference_image' }] })
     await waitFor(() => expect(getVideoTask).toHaveBeenCalledWith('user-access-token', 'task-video-1', expect.anything()), { timeout: 2_500 })
     expect(await screen.findByLabelText('视频生成结果')).toBeInTheDocument()
     expect(document.querySelector('.video-status-success')).toHaveTextContent('已完成')
@@ -478,36 +500,35 @@ describe('视频生成页面', () => {
   })
 
   it.each([
-    ['16:9', '720P', '1280x720'], ['16:9', '1080P', '1920x1080'],
-    ['9:16', '720P', '720x1280'], ['1:1', '1024P', '1024x1024'],
-  ])('原比例图标菜单选择 %s · %s 原样提交真实尺寸 %s', async (ratio, resolution, size) => {
+    ['16:9', '720P'], ['16:9', '1080P'], ['9:16', '720P'], ['1:1', '1080P'],
+  ])('比例图标菜单选择 %s · %s 原样提交目录参数', async (ratio, resolution) => {
     const user = userEvent.setup()
     vi.mocked(submitVideoGeneration).mockResolvedValue(succeededTask)
     renderVideoPage()
     const sizeSelect = screen.getByRole('combobox', { name: '比例' })
     await user.click(screen.getByRole('button', { name: ratio }))
-    if (resolution !== '1024P') await user.click(screen.getByRole('button', { name: resolution }))
+    await user.click(screen.getByRole('button', { name: resolution }))
     expect(within(sizeSelect).getByRole('option', { selected: true })).toHaveTextContent(`${ratio} · ${resolution}`)
     await user.type(screen.getByLabelText('视频提示词'), '日落下的山川')
     await user.click(screen.getByRole('button', { name: '生成视频' }))
     await waitFor(() => expect(submitVideoGeneration).toHaveBeenCalledOnce())
-    expect(vi.mocked(submitVideoGeneration).mock.calls[0]?.[0].size).toBe(size)
+    expect(vi.mocked(submitVideoGeneration).mock.calls[0]?.[0]).toMatchObject({ ratio, resolution: resolution.toLowerCase(), size: '' })
   })
 
   it('保留全部原比例图标与清晰度排列，未支持选项不会伪装成其他尺寸', async () => {
     const user = userEvent.setup()
     renderVideoPage()
     const ratioButtons = within(document.querySelector('.video-aspect-options')!).getAllByRole('button')
-    expect(ratioButtons.map((button) => button.textContent)).toEqual(['adaptive', '21:9', '16:9', '4:3', '1:1', '3:4', '9:16'])
+    expect(ratioButtons.map((button) => button.textContent)).toEqual(['自适应', '21:9', '16:9', '4:3', '1:1', '3:4', '9:16'])
     expect(document.querySelectorAll('.video-ratio-icon')).toHaveLength(7)
     expect(within(document.querySelector('.video-resolution-options')!).getAllByRole('button').map((button) => button.textContent)).toEqual(['480P', '720P', '1080P'])
-    for (const option of ['adaptive', '21:9', '4:3', '3:4', '480P']) expect(screen.getByRole('button', { name: option })).toBeDisabled()
+    for (const option of ['自适应', '21:9', '4:3', '3:4', '480P']) expect(screen.getByRole('button', { name: option })).toBeDisabled()
     await user.click(screen.getByRole('button', { name: '1080P' }))
     await user.click(screen.getByRole('button', { name: '9:16' }))
-    expect(screen.getByRole('combobox', { name: '比例' })).toHaveTextContent('9:16 · 720P')
-    expect(screen.getByRole('button', { name: '1080P' })).toBeDisabled()
+    expect(screen.getByRole('combobox', { name: '比例' })).toHaveTextContent('9:16 · 1080P')
+    expect(screen.getByRole('button', { name: '1080P' })).toBeEnabled()
     await user.click(screen.getByRole('button', { name: '1:1' }))
-    expect(screen.getByRole('combobox', { name: '比例' })).toHaveTextContent('1:1 · 1024P')
+    expect(screen.getByRole('combobox', { name: '比例' })).toHaveTextContent('1:1 · 1080P')
   })
 
   it('对已有服务端任务的记录点「重新生成」会换新的幂等键，避免被服务端回放成同一条旧任务', async () => {
@@ -563,46 +584,32 @@ describe('视频生成页面', () => {
     expect(document.querySelector('.video-history-panel')).toBeInTheDocument()
   })
 
-  it('历史生成弹窗点击工作区其他位置会收起', async () => {
-    const user = userEvent.setup()
-    renderVideoPage()
-
-    await screen.findByRole('option', { name: /CogVideo/ })
-    const panel = document.querySelector('.video-history-panel')
-    await user.click(screen.getByRole('button', { name: '历史生成' }))
-    expect(panel).toHaveClass('is-open')
-
-    await user.click(screen.getByText('准备开始生成'))
-    expect(panel).not.toHaveClass('is-open')
-  })
-
   it('生成模式 Select 支持参考图与首尾帧切换', async () => {
     const user = userEvent.setup()
+    mockVideoCatalog([fullVideoModel()])
     renderVideoPage()
 
-    await screen.findByRole('option', { name: /CogVideo/ })
+    await screen.findByRole('option', { name: /Full Video/ })
     await user.selectOptions(screen.getByRole('combobox', { name: '参考素材' }), 'first-last')
     expect(screen.getByRole('button', { name: '首帧 URL' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '末帧 URL' })).toBeInTheDocument()
   })
 
-  it('首帧远程URL正常提交，旧模型未支持的末帧和声音保持明确禁用', async () => {
+  it('单图模式按声明映射首帧角色，未支持的首尾帧模式和声音保持禁用', async () => {
     const user = userEvent.setup()
+    mockVideoCatalog([fullVideoModel({ modes: ['image_to_video'], media: { min_total: 1, max_total: 1, roles: { first_frame: { min: 1, max: 1 } } } })])
     vi.mocked(submitVideoGeneration).mockResolvedValue(succeededTask)
     renderVideoPage()
-    await user.selectOptions(screen.getByRole('combobox', { name: '参考素材' }), 'first-last')
-    expect(screen.getByRole('button', { name: '首帧 URL' })).toBeEnabled()
-    expect(screen.getByRole('button', { name: '末帧 URL' })).toBeDisabled()
+    expect(screen.getByRole('option', { name: '首尾帧' })).toBeDisabled()
     expect(screen.getByRole('button', { name: '声音' })).toBeDisabled()
-    await user.click(screen.getByRole('button', { name: '首帧 URL' }))
-    await user.type(screen.getByLabelText('首帧 URL', { selector: 'input' }), 'https://cdn.example.com/first.png')
-    expect(screen.getByLabelText('末帧 URL', { selector: 'input' })).toBeDisabled()
+    await user.click(screen.getByRole('button', { name: '参考素材 · 添加参考素材' }))
+    await user.type(screen.getByLabelText('参考图 URL'), 'https://cdn.example.com/first.png')
     expect(document.querySelector('input[type="file"]')).toBeNull()
     await confirmReferenceDialog(user)
     await user.type(screen.getByLabelText('视频提示词'), '根据首帧生成视频')
     await user.click(screen.getByRole('button', { name: '生成视频' }))
     await waitFor(() => expect(submitVideoGeneration).toHaveBeenCalledOnce())
-    expect(vi.mocked(submitVideoGeneration).mock.calls[0]?.[0].inputReference).toBe('https://cdn.example.com/first.png')
+    expect(vi.mocked(submitVideoGeneration).mock.calls[0]?.[0].references).toEqual([{ type: 'image', url: 'https://cdn.example.com/first.png', role: 'first_frame' }])
   })
 
   it('模型、比例和时长弹层按参考页交互并保持互斥', async () => {
@@ -704,6 +711,230 @@ describe('视频生成页面', () => {
     expect(vi.mocked(submitVideoGeneration).mock.calls[0]?.[0]).toMatchObject({ model: 'configured-video-public', duration: 15, size: '', ratio: '21:9', resolution: '480p', videoOptions: model.videoOptions, references: [] })
   })
 
+  it('完整参数配置优先于旧字段，步长时长和提交参数均使用新契约', async () => {
+    const user = userEvent.setup()
+    const model = fullVideoModel({}, { videoOptions: { ratios: ['21:9'], resolutions: ['480p'], min_duration: 1, max_duration: 30, default_duration: 5 } })
+    mockVideoCatalog([model])
+    vi.mocked(submitVideoGeneration).mockResolvedValue(succeededTask)
+    renderVideoPage()
+    expect(screen.getByRole('button', { name: '21:9' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: '480P' })).toBeDisabled()
+    expect(screen.getByRole('slider', { name: '时长' })).toHaveAttribute('step', '2')
+    const input = screen.getByRole('spinbutton', { name: '时长' })
+    fireEvent.change(input, { target: { value: '9' } })
+    fireEvent.blur(input)
+    expect([8, 10]).toContain(Number(screen.getByRole('spinbutton', { name: '时长' }).getAttribute('value')))
+    await user.type(screen.getByLabelText('视频提示词'), '完整目录配置')
+    await user.click(screen.getByRole('button', { name: '生成视频' }))
+    await waitFor(() => expect(submitVideoGeneration).toHaveBeenCalledOnce())
+    expect(vi.mocked(submitVideoGeneration).mock.calls[0]?.[0]).toMatchObject({ parameterConfig: model.parameterConfig, generationMode: 'text_to_video', ratio: '16:9', resolution: '720p' })
+  })
+
+  it('首屏按默认模式的规则应用比例与时长默认值，即使基础秒数仍合法', async () => {
+    const user = userEvent.setup()
+    mockVideoCatalog([fullVideoModel({
+      durations: { min: 4, max: 12, step: 1, auto: false },
+      defaults: { mode: 'text_to_video', resolution: '720p', duration: 5 },
+      rules: [{ mode: 'text_to_video', default_ratio: '16:9', default_duration: 10 }],
+    })])
+    vi.mocked(submitVideoGeneration).mockResolvedValue(succeededTask)
+    renderVideoPage()
+    expect(screen.getByRole('combobox', { name: '比例' })).toHaveTextContent('16:9 · 720P')
+    expect(screen.getByRole('spinbutton', { name: '时长' })).toHaveValue(10)
+    await user.type(screen.getByLabelText('视频提示词'), '使用模式默认参数')
+    await user.click(screen.getByRole('button', { name: '生成视频' }))
+    await waitFor(() => expect(submitVideoGeneration).toHaveBeenCalledOnce())
+    expect(vi.mocked(submitVideoGeneration).mock.calls[0]?.[0]).toMatchObject({ generationMode: 'text_to_video', ratio: '16:9', resolution: '720p', duration: 10 })
+  })
+
+  it('同时声明默认尺寸与档位时优先档位，编辑档位历史不会补入默认尺寸', async () => {
+    const user = userEvent.setup()
+    mockVideoCatalog([fullVideoModel({
+      sizes: [{ width: 1280, height: 720 }],
+      defaults: { mode: 'text_to_video', ratio: '16:9', resolution: '720p', size: { width: 1280, height: 720 }, duration: 6 },
+    })])
+    vi.mocked(submitVideoGeneration).mockResolvedValue(succeededTask)
+    renderVideoPage()
+    expect(screen.getByRole('combobox', { name: '比例' })).toHaveTextContent('16:9 · 720P')
+    await user.type(screen.getByLabelText('视频提示词'), '恢复分辨率档位历史')
+    await user.click(screen.getByRole('button', { name: '生成视频' }))
+    await screen.findByLabelText('视频生成结果')
+    expect(vi.mocked(submitVideoGeneration).mock.calls[0]?.[0]).toMatchObject({ resolution: '720p', size: '' })
+    await user.click(screen.getByRole('button', { name: '1080P' }))
+    await user.click(screen.getByRole('button', { name: '编辑' }))
+    expect(screen.getByRole('combobox', { name: '比例' })).toHaveTextContent('16:9 · 720P')
+    await user.click(screen.getByRole('button', { name: '生成视频' }))
+    await waitFor(() => expect(submitVideoGeneration).toHaveBeenCalledTimes(2))
+    expect(vi.mocked(submitVideoGeneration).mock.calls[1]?.[0]).toMatchObject({ resolution: '720p', size: '' })
+  })
+
+  it('枚举时长按档位滑动，不能将滑块索引当作秒数提交', async () => {
+    const user = userEvent.setup()
+    mockVideoCatalog([fullVideoModel({ durations: { values: [4, 7, 12], auto: false }, defaults: { duration: 7, ratio: '16:9', resolution: '720p' } })])
+    vi.mocked(submitVideoGeneration).mockResolvedValue(succeededTask)
+    renderVideoPage()
+    const slider = screen.getByRole('slider', { name: '时长' })
+    expect(slider).toHaveAttribute('max', '2')
+    fireEvent.change(slider, { target: { value: '2' } })
+    expect(screen.getByRole('spinbutton', { name: '时长' })).toHaveValue(12)
+    await user.type(screen.getByLabelText('视频提示词'), '枚举时长')
+    await user.click(screen.getByRole('button', { name: '生成视频' }))
+    await waitFor(() => expect(submitVideoGeneration).toHaveBeenCalledOnce())
+    expect(vi.mocked(submitVideoGeneration).mock.calls[0]?.[0].duration).toBe(12)
+  })
+
+  it('声音使用接口默认false，并将用户开启后的true传到生成请求', async () => {
+    const user = userEvent.setup()
+    mockVideoCatalog([fullVideoModel({ generate_audio: { supported: true, default: false } })])
+    vi.mocked(submitVideoGeneration).mockResolvedValue(succeededTask)
+    renderVideoPage()
+    const sound = screen.getByRole('button', { name: '声音' })
+    expect(sound).toBeEnabled()
+    expect(sound).toHaveAttribute('aria-pressed', 'false')
+    await user.type(screen.getByLabelText('视频提示词'), '声音参数按选择提交')
+    await user.click(screen.getByRole('button', { name: '生成视频' }))
+    await waitFor(() => expect(submitVideoGeneration).toHaveBeenCalledOnce())
+    expect(vi.mocked(submitVideoGeneration).mock.calls[0]?.[0].generateAudio).toBe(false)
+    await user.click(sound)
+    expect(sound).toHaveAttribute('aria-pressed', 'true')
+    await user.click(screen.getByRole('button', { name: '生成视频' }))
+    await waitFor(() => expect(submitVideoGeneration).toHaveBeenCalledTimes(2))
+    expect(vi.mocked(submitVideoGeneration).mock.calls[1]?.[0].generateAudio).toBe(true)
+  })
+
+  it('视频编辑模式联动自动时长，并按声明提交source_video角色和模式', async () => {
+    const user = userEvent.setup()
+    mockVideoCatalog([fullVideoModel({
+      modes: ['text_to_video', 'video_edit'],
+      media: { min_total: 0, max_total: 1, roles: { source_video: { min: 0, max: 1 } } },
+      rules: [{ mode: 'video_edit', durations: { auto: true, auto_only: true }, default_duration: -1, media: { min_total: 1, max_total: 1, roles: { source_video: { min: 1, max: 1 } } } }],
+    })])
+    vi.mocked(submitVideoGeneration).mockResolvedValue(succeededTask)
+    renderVideoPage()
+    await user.selectOptions(screen.getByRole('combobox', { name: '参考素材' }), 'video_edit')
+    expect(screen.queryByRole('slider', { name: '时长' })).not.toBeInTheDocument()
+    expect(screen.getByRole('switch', { name: '自动' })).toBeDisabled()
+    await user.click(screen.getByRole('button', { name: '参考素材 · 添加参考素材' }))
+    expect(screen.getByRole('tab', { name: '视频' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('tab', { name: '图片' })).toBeDisabled()
+    await user.type(screen.getByLabelText('参考视频 URL'), 'https://cdn.example.com/source.mp4')
+    await confirmReferenceDialog(user)
+    await user.type(screen.getByLabelText('视频提示词'), '重新编辑视频')
+    await user.click(screen.getByRole('button', { name: '生成视频' }))
+    await waitFor(() => expect(submitVideoGeneration).toHaveBeenCalledOnce())
+    expect(vi.mocked(submitVideoGeneration).mock.calls[0]?.[0]).toMatchObject({ generationMode: 'video_edit', duration: -1, references: [{ type: 'video', url: 'https://cdn.example.com/source.mp4', role: 'source_video' }] })
+  })
+
+  it('仅自动时长不暴露手动输入，也不补出默认秒数', async () => {
+    const user = userEvent.setup()
+    mockVideoCatalog([fullVideoModel({ durations: { auto: true, auto_only: true }, defaults: { duration: -1, ratio: '16:9', resolution: '720p' } })])
+    vi.mocked(submitVideoGeneration).mockResolvedValue(succeededTask)
+    renderVideoPage()
+    expect(screen.queryByRole('slider', { name: '时长' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('spinbutton', { name: '时长' })).not.toBeInTheDocument()
+    expect(screen.getByRole('switch', { name: '自动' })).toBeDisabled()
+    await user.type(screen.getByLabelText('视频提示词'), '自动时长')
+    await user.click(screen.getByRole('button', { name: '生成视频' }))
+    await waitFor(() => expect(submitVideoGeneration).toHaveBeenCalledOnce())
+    expect(vi.mocked(submitVideoGeneration).mock.calls[0]?.[0].duration).toBe(-1)
+  })
+
+  it('允许省略时长时，清空已选秒数并失焦后提交省略时长', async () => {
+    const user = userEvent.setup()
+    mockVideoCatalog([fullVideoModel({ durations: { min: 4, max: 12, step: 2, auto: false, omit_allowed: true } })])
+    vi.mocked(submitVideoGeneration).mockResolvedValue(succeededTask)
+    renderVideoPage()
+    fireEvent.change(screen.getByRole('slider', { name: '时长' }), { target: { value: '8' } })
+    const durationInput = screen.getByRole('spinbutton', { name: '时长' })
+    expect(durationInput).toHaveValue(8)
+    await user.clear(durationInput)
+    fireEvent.blur(durationInput)
+    expect(screen.getByRole('spinbutton', { name: '时长' })).toHaveValue(null)
+    await user.type(screen.getByLabelText('视频提示词'), '由服务商决定生成时长')
+    await user.click(screen.getByRole('button', { name: '生成视频' }))
+    await waitFor(() => expect(submitVideoGeneration).toHaveBeenCalledOnce())
+    expect(vi.mocked(submitVideoGeneration).mock.calls[0]?.[0].duration).toBeUndefined()
+  })
+
+  it('目录只有完整尺寸组合时直接选择该组合，不从比例计算像素', async () => {
+    const user = userEvent.setup()
+    mockVideoCatalog([fullVideoModel({ ratios: null, resolutions: null, sizes: [{ width: 832, height: 480 }, { width: 480, height: 832 }], defaults: { duration: 6, size: { width: 832, height: 480 } } })])
+    vi.mocked(submitVideoGeneration).mockResolvedValue(succeededTask)
+    renderVideoPage()
+    expect(screen.getByRole('button', { name: '16:9' })).toBeDisabled()
+    expect(screen.queryByRole('button', { name: '720P' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '480x832' }))
+    await user.type(screen.getByLabelText('视频提示词'), '指定像素组合')
+    await user.click(screen.getByRole('button', { name: '生成视频' }))
+    await waitFor(() => expect(submitVideoGeneration).toHaveBeenCalledOnce())
+    expect(vi.mocked(submitVideoGeneration).mock.calls[0]?.[0]).toMatchObject({ size: '480x832' })
+  })
+
+  it('同时返回分辨率档位与多组像素尺寸时，尺寸栏仅展示分辨率档位', () => {
+    mockVideoCatalog([fullVideoModel({
+      resolutions: ['480p', '720p', '1080p'],
+      sizes: [{ width: 832, height: 480 }, { width: 480, height: 832 }, { width: 1280, height: 720 }, { width: 720, height: 1280 }, { width: 1920, height: 1080 }, { width: 1080, height: 1920 }],
+    })])
+    renderVideoPage()
+    const sizePanel = within(document.querySelector('.video-resolution-options')!)
+    expect(sizePanel.getAllByRole('button').map((button) => button.textContent)).toEqual(['480P', '720P', '1080P'])
+    for (const name of ['480P', '720P', '1080P']) expect(sizePanel.getByRole('button', { name })).toBeEnabled()
+    expect(sizePanel.queryByRole('button', { name: /\d+x\d+/ })).not.toBeInTheDocument()
+  })
+
+  it('同模型参数版本变更重置旧参数和素材，保留提示词', async () => {
+    const user = userEvent.setup()
+    const model = fullVideoModel()
+    mockVideoCatalog([model])
+    const appStore = renderVideoPage()
+    await user.type(screen.getByLabelText('视频提示词'), '继续保留提示词')
+    fireEvent.change(screen.getByRole('slider', { name: '时长' }), { target: { value: '12' } })
+    await user.click(screen.getByRole('button', { name: '参考素材 · 添加参考素材' }))
+    await user.type(screen.getByLabelText('参考图 URL'), 'https://cdn.example.com/previous.png')
+    await confirmReferenceDialog(user)
+    mockVideoCatalog([{ ...model, parameterVersion: 'video-v2' }])
+    act(() => appStore.dispatch(synchronizeAuthenticatedUser({ id: 'video-user', display_name: '更新目录', avatar_url: '', locale: 'zh-CN', timezone: 'Asia/Shanghai', status: 'active' })))
+    await waitFor(() => expect(screen.getByRole('spinbutton', { name: '时长' })).toHaveValue(6))
+    expect(screen.getByRole('button', { name: '参考素材 · 添加参考素材' })).toBeInTheDocument()
+    expect(screen.getByLabelText('视频提示词')).toHaveValue('继续保留提示词')
+  })
+
+  it('缺失契约时禁用生成与素材，null能力不虚构比例或分辨率', async () => {
+    const user = userEvent.setup()
+    mockVideoCatalog([videoModel({ parameterConfig: undefined, videoOptions: undefined })])
+    renderVideoPage()
+    await user.type(screen.getByLabelText('视频提示词'), '没有能力声明')
+    expect(screen.getByRole('button', { name: '生成视频' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: '参考素材 · 添加参考素材' })).toBeDisabled()
+    for (const name of ['16:9', '720P', '1080P']) expect(screen.getByRole('button', { name })).toBeDisabled()
+    expect(submitVideoGeneration).not.toHaveBeenCalled()
+  })
+
+  it('分辨率条件同步收紧时长和素材数量，超限旧素材必须编辑后才能提交', async () => {
+    const user = userEvent.setup()
+    mockVideoCatalog([fullVideoModel({ rules: [{ resolution: '1080p', durations: { values: [4, 6], auto: false }, default_duration: 4, media: { min_total: 0, max_total: 1, roles: { reference_image: { min: 0, max: 1 } } } }] })])
+    vi.mocked(submitVideoGeneration).mockResolvedValue(succeededTask)
+    renderVideoPage()
+    fireEvent.change(screen.getByRole('slider', { name: '时长' }), { target: { value: '12' } })
+    await user.click(screen.getByRole('button', { name: '参考素材 · 添加参考素材' }))
+    await user.type(screen.getByLabelText('参考图 URL'), 'https://cdn.example.com/one.png\nhttps://cdn.example.com/two.png')
+    await confirmReferenceDialog(user)
+    await user.click(screen.getByRole('button', { name: '1080P' }))
+    await waitFor(() => expect(screen.getByRole('spinbutton', { name: '时长' })).toHaveValue(4))
+    await user.type(screen.getByLabelText('视频提示词'), '高清条件限制')
+    await user.click(screen.getByRole('button', { name: '生成视频' }))
+    expect(submitVideoGeneration).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: '编辑参考素材：图片 · 2' }))
+    await confirmReferenceDialog(user)
+    expect(within(screen.getByRole('dialog')).getByRole('alert')).toHaveTextContent('1')
+    await user.clear(screen.getByLabelText('参考图 URL'))
+    await user.type(screen.getByLabelText('参考图 URL'), 'https://cdn.example.com/one.png')
+    await confirmReferenceDialog(user)
+    await user.click(screen.getByRole('button', { name: '生成视频' }))
+    await waitFor(() => expect(submitVideoGeneration).toHaveBeenCalledOnce())
+    expect(vi.mocked(submitVideoGeneration).mock.calls[0]?.[0]).toMatchObject({ duration: 4, resolution: '1080p', references: [{ type: 'image', url: 'https://cdn.example.com/one.png', role: 'reference_image' }] })
+  })
+
   it('目录中的自动时长默认值 -1 与默认分辨率直接用于生成', async () => {
     const user = userEvent.setup()
     const model = configuredVideoModel()
@@ -711,6 +942,7 @@ describe('视频生成页面', () => {
     mockVideoCatalog([model])
     vi.mocked(submitVideoGeneration).mockResolvedValue(succeededTask)
     renderVideoPage()
+    await user.click(screen.getByRole('button', { name: '自适应' }))
 
     expect(screen.getByRole('combobox', { name: '时长' })).toHaveTextContent('自动')
     expect(screen.getByRole('combobox', { name: '比例' })).toHaveTextContent('1080P')
@@ -730,12 +962,13 @@ describe('视频生成页面', () => {
     expect(screen.getByRole('button', { name: '720P' })).toBeEnabled()
     for (const name of ['21:9', '4:3', '1:1', '3:4', '9:16', '480P', '1080P']) expect(screen.getByRole('button', { name })).toBeDisabled()
     expect(screen.queryByRole('switch', { name: '自动' })).not.toBeInTheDocument()
-    expect(screen.getByRole('combobox', { name: '比例' })).toHaveTextContent('16:9 · 720P')
+    expect(screen.getByRole('combobox', { name: '比例' })).toHaveTextContent('720P')
+    expect(screen.getByRole('button', { name: '16:9' })).toHaveAttribute('aria-pressed', 'false')
   })
 
   it('支持双图的模型可填写首尾帧远程URL并保留各自角色', async () => {
     const user = userEvent.setup()
-    mockVideoCatalog([configuredVideoModel()])
+    mockVideoCatalog([fullVideoModel()])
     vi.mocked(submitVideoGeneration).mockResolvedValue(succeededTask)
     renderVideoPage()
     await user.selectOptions(screen.getByRole('combobox', { name: '参考素材' }), 'first-last')
@@ -768,6 +1001,7 @@ describe('视频生成页面', () => {
     await user.type(screen.getByLabelText('参考图 URL'), 'https://cdn.example.com/old-model.png')
     await confirmReferenceDialog(user)
     await user.selectOptions(screen.getByRole('combobox', { name: '视频模型' }), 'next-video-public')
+    await user.click(screen.getByRole('button', { name: '自适应' }))
     await user.type(screen.getByLabelText('视频提示词'), '切换后使用新参数')
     await user.click(screen.getByRole('button', { name: '生成视频' }))
 
@@ -780,6 +1014,7 @@ describe('视频生成页面', () => {
     mockVideoCatalog([configuredVideoModel()])
     vi.mocked(submitVideoGeneration).mockResolvedValue(succeededTask)
     renderVideoPage()
+    await user.click(screen.getByRole('button', { name: '自适应' }))
     await user.click(screen.getByRole('button', { name: '参考素材 · 添加参考素材' }))
     const referenceInput = screen.getByLabelText('参考图 URL')
     const urls = [1, 2, 3].map((index) => `https://cdn.example.com/reference-${index}.png`)
@@ -806,6 +1041,7 @@ describe('视频生成页面', () => {
     mockVideoCatalog([configuredVideoModel()])
     vi.mocked(submitVideoGeneration).mockResolvedValue(succeededTask)
     renderVideoPage()
+    await user.click(screen.getByRole('button', { name: '自适应' }))
     await user.click(screen.getByRole('button', { name: '参考素材 · 添加参考素材' }))
     expect(screen.getByRole('dialog')).toHaveTextContent('参考素材')
     const privacy = screen.getByLabelText('素材隐私说明')
@@ -841,9 +1077,10 @@ describe('视频生成页面', () => {
     { type: 'audio', label: '音频', input: '参考音频 URL', role: 'reference_audio', extension: 'mp3' },
   ])('$label素材校验接口上限，确认仅提交当前类型的URL和角色', async ({ type, label, input, role, extension }) => {
     const user = userEvent.setup()
-    mockVideoCatalog([configuredVideoModel()])
+    mockVideoCatalog([fullVideoModel({ media: { min_total: 0, max_total: 2, roles: { reference_image: { min: 0, max: 2 }, reference_video: { min: 0, max: 1 }, reference_audio: { min: 0, max: 1 } } } })])
     vi.mocked(submitVideoGeneration).mockResolvedValue(succeededTask)
     renderVideoPage()
+    await user.click(screen.getByRole('button', { name: '自适应' }))
     await user.click(screen.getByRole('button', { name: '参考素材 · 添加参考素材' }))
     await user.type(screen.getByLabelText('参考图 URL'), 'https://cdn.example.com/draft-image.png')
     await user.click(screen.getByRole('tab', { name: label }))
@@ -872,6 +1109,7 @@ describe('视频生成页面', () => {
     mockVideoCatalog([configuredVideoModel()])
     vi.mocked(submitVideoGeneration).mockResolvedValue(succeededTask)
     renderVideoPage()
+    await user.click(screen.getByRole('button', { name: '自适应' }))
     await user.click(screen.getByRole('button', { name: '参考素材 · 添加参考素材' }))
     const urls = 'https://cdn.example.com/first.png\nhttps://cdn.example.com/second.png'
     await user.type(screen.getByLabelText('参考图 URL'), urls)
@@ -916,6 +1154,7 @@ describe('视频生成页面', () => {
     mockVideoCatalog([optionalPromptModel, configuredVideoModel({ id: 'required-video', alias: 'required-video-public', name: 'Required Video' })])
     vi.mocked(submitVideoGeneration).mockResolvedValue(succeededTask)
     renderVideoPage()
+    await user.click(screen.getByRole('button', { name: '自适应' }))
 
     expect(screen.getByRole('button', { name: '生成视频' })).toBeEnabled()
     await user.click(screen.getByRole('button', { name: '生成视频' }))
@@ -951,6 +1190,7 @@ describe('视频生成页面', () => {
     mockVideoCatalog([configuredVideoModel()])
     vi.mocked(submitVideoGeneration).mockResolvedValue(succeededTask)
     renderVideoPage()
+    await user.click(screen.getByRole('button', { name: '自适应' }))
     await user.type(screen.getByLabelText('视频提示词'), '本地素材不能静默丢失')
     await user.click(screen.getByRole('button', { name: '生成视频' }))
     await screen.findByLabelText('视频生成结果')
@@ -985,6 +1225,7 @@ describe('视频生成页面', () => {
     mockVideoCatalog([configuredVideoModel()])
     vi.mocked(submitVideoGeneration).mockResolvedValue(succeededTask)
     renderVideoPage()
+    await user.click(screen.getByRole('button', { name: '自适应' }))
     await user.type(screen.getByLabelText('视频提示词'), '不能自动更换计费模型')
     await user.click(screen.getByRole('button', { name: '生成视频' }))
     await screen.findByLabelText('视频生成结果')

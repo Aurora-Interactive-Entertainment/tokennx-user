@@ -2,14 +2,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { MODEL_API_BASE_URL } from './model-runtime'
 import { VideoRuntimeError, cancelVideoTask, getVideoTask, submitVideoGeneration, videoTaskIsTerminal } from './video-runtime'
 import type { VideoGenerationInput, VideoReference } from './video-runtime'
-import type { UserVideoOptions } from './user-models'
+import type { UserModelParameterConfig, UserVideoOptions, UserVideoParameterConfig } from './user-models'
 
 const DEFAULT_INPUT = {
   accessToken: 'user-access-token',
   model: 'cogvideo-public',
   prompt: '海边日落，镜头缓慢推进',
   duration: 5,
-  size: '1280x720',
+  size: '',
+  ratio: '16:9',
+  videoOptions: { family: 'cogvideo', ratios: ['16:9'], resolutions: ['720p'], min_duration: 2, max_duration: 10, default_duration: 5, default_resolution: '720p', max_images: 1 },
   inputReference: 'https://example.com/reference.png',
   idempotencyKey: 'video-submit-1',
 }
@@ -27,6 +29,34 @@ const SEEDANCE_OPTIONS: UserVideoOptions = {
   max_videos: 3,
   max_audios: 3,
   requires_prompt: true,
+}
+
+const SEEDANCE_CONFIG: UserVideoParameterConfig = {
+  protocol: 'seedance',
+  max_request_bytes: 64 * 1024 * 1024,
+  modes: ['text_to_video', 'image_to_video', 'first_last_frame', 'reference_to_video', 'video_edit', 'video_extend'],
+  ratios: ['adaptive', '16:9', '9:16'],
+  resolutions: ['480p', '720p', '1080p'],
+  sizes: null,
+  durations: { min: 4, max: 30, step: 1, auto: true, omit_allowed: true },
+  defaults: { mode: 'reference_to_video', resolution: '720p', ratio: 'adaptive' },
+  media: {
+    min_total: 0, max_total: 12,
+    roles: {
+      first_frame: { min: 0, max: 1 }, last_frame: { min: 0, max: 1 },
+      reference_image: { min: 0, max: 9 }, reference_video: { min: 0, max: 3 }, reference_audio: { min: 0, max: 3 },
+    },
+    dependencies: [{ role: 'last_frame', requires: ['first_frame'] }],
+    exclusive_groups: [['first_frame', 'reference_image'], ['first_frame', 'reference_video'], ['first_frame', 'reference_audio']],
+  },
+  rules: [
+    { mode: 'first_last_frame', allowed_ratios: ['adaptive'], media: { min_total: 2, max_total: 2, roles: { first_frame: { min: 1, max: 1 }, last_frame: { min: 1, max: 1 } } } },
+    { mode: 'video_edit', allowed_ratios: ['adaptive'], durations: { min: 4, max: 30, step: 1, auto: true, auto_only: true }, media: { min_total: 1, max_total: 1, roles: { reference_video: { min: 1, max: 1 } } } },
+  ],
+}
+
+function parameterConfig(overrides: Partial<UserVideoParameterConfig> = {}): UserModelParameterConfig {
+  return { schema_version: 1, video: { ...SEEDANCE_CONFIG, ...overrides } }
 }
 
 function jsonResponse(data: unknown, status = 200, headers: Record<string, string> = {}): Response {
@@ -66,7 +96,8 @@ describe('视频任务运行时请求', () => {
       prompt: '海边日落，镜头缓慢推进',
       duration: 5,
       seconds: '5',
-      size: '1280x720',
+      resolution: '720p',
+      ratio: '16:9',
       input_reference: 'https://example.com/reference.png',
     })
   })
@@ -230,6 +261,10 @@ describe('视频任务运行时请求', () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse({ id: 'frames-task' }))
     await submitVideoGeneration({
       ...DEFAULT_INPUT,
+      size: undefined,
+      ratio: undefined,
+      parameterConfig: parameterConfig(),
+      generationMode: 'first_last_frame',
       videoOptions: { ...SEEDANCE_OPTIONS, max_images: 2 },
       references: [
         { type: 'image', url: DEFAULT_INPUT.inputReference, role: 'first_frame' },
@@ -265,6 +300,7 @@ describe('视频任务运行时请求', () => {
     ['关闭自动时长后传 -1', { duration: -1, videoOptions: { ...SEEDANCE_OPTIONS, auto_duration: false } }],
     ['不支持的分辨率', { resolution: '4k' }],
     ['不支持的比例', { ratio: '2:1' }],
+    ['兼容选项未声明的模式', { generationMode: 'reference_to_video' }],
     ['图片数量超过上限', { videoOptions: { ...SEEDANCE_OPTIONS, max_images: 0 } }],
     ['视频数量超过上限', { inputReference: undefined, references: [{ type: 'video', url: 'https://example.com/reference.mp4' }], videoOptions: { ...SEEDANCE_OPTIONS, max_videos: 0 } }],
     ['音频数量超过上限', { inputReference: undefined, references: [{ type: 'audio', url: 'https://example.com/reference.mp3' }], videoOptions: { ...SEEDANCE_OPTIONS, max_audios: 0 } }],
@@ -317,6 +353,155 @@ describe('视频任务运行时请求', () => {
       resultUrl: 'https://example.com/result.mp4',
       thumbnailUrl: 'https://example.com/last-frame.png',
     })
+  })
+
+  it('完整配置优先于旧选项，传递明确模式以及可控参数的 false/0 默认值', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse({ id: 'configured-task' }))
+    await submitVideoGeneration({
+      ...DEFAULT_INPUT, size: undefined, ratio: undefined, inputReference: undefined,
+      videoOptions: { ...SEEDANCE_OPTIONS, resolutions: ['480p'], max_duration: 2 },
+      parameterConfig: parameterConfig({
+        defaults: { mode: 'text_to_video', ratio: '16:9', resolution: '1080p', duration: 10 },
+        generate_audio: { supported: true, default: false },
+        controls: {
+          watermark: { supported: true, default: false }, return_last_frame: { supported: true, default: false },
+          web_search: { supported: true, default: true }, priority: { supported: true, min: 0, max: 9, default: 0 },
+          output_format: { supported: true, values: ['mp4', 'mov'], default: 'mp4' },
+          service_tier: { supported: false, default: 'invalid' }, callback_url: { supported: true },
+        },
+      }),
+      duration: undefined,
+    })
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual({
+      model: DEFAULT_INPUT.model, prompt: DEFAULT_INPUT.prompt, duration: 10, seconds: '10',
+      generation_mode: 'text_to_video', resolution: '1080p', ratio: '16:9', generate_audio: false,
+      watermark: false, return_last_frame: false, priority: 0, output_format: 'mp4', tools: [{ type: 'web_search' }],
+    })
+  })
+
+  it('仅允许省略时长时不补默认秒数，关闭检索时保留空 tools', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse({ id: 'omitted-duration' }))
+    await submitVideoGeneration({
+      ...DEFAULT_INPUT, size: undefined, ratio: undefined, inputReference: undefined, duration: undefined, generationMode: 'text_to_video',
+      parameterConfig: parameterConfig({ controls: { web_search: { supported: true, default: false } } }),
+    })
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual({
+      model: DEFAULT_INPUT.model, prompt: DEFAULT_INPUT.prompt, generation_mode: 'text_to_video', resolution: '720p', ratio: 'adaptive', tools: [],
+    })
+  })
+
+  it('默认模式命中的规则先收敛比例与时长，再构造实际请求', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse({ id: 'conditional-default-task' }))
+    await submitVideoGeneration({
+      ...DEFAULT_INPUT, size: undefined, ratio: undefined, duration: undefined,
+      parameterConfig: parameterConfig({
+        defaults: { mode: 'first_last_frame', resolution: '720p', ratio: '16:9', duration: 5 },
+        rules: [{ mode: 'first_last_frame', allowed_ratios: ['adaptive'], default_ratio: 'adaptive', default_duration: 10 }],
+      }),
+      references: [{ type: 'image', url: DEFAULT_INPUT.inputReference, role: 'first_frame' }, { type: 'image', url: 'https://example.com/end.png', role: 'last_frame' }],
+    })
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toMatchObject({ generation_mode: 'first_last_frame', resolution: '720p', ratio: 'adaptive', duration: 10, seconds: '10' })
+  })
+
+  it('精确尺寸由完整允许列表选择，不同时提交可能冲突的分辨率和比例', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse({ id: 'size-task' }))
+    await submitVideoGeneration({
+      ...DEFAULT_INPUT, inputReference: undefined, ratio: undefined, size: '720x1280',
+      parameterConfig: parameterConfig({ resolutions: null, ratios: null, sizes: [{ width: 720, height: 1280 }], defaults: { mode: 'text_to_video' }, rules: [] }),
+    })
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual({
+      model: DEFAULT_INPUT.model, prompt: DEFAULT_INPUT.prompt, duration: 5, seconds: '5', generation_mode: 'text_to_video', size: '720x1280',
+    })
+  })
+
+  it('选择分辨率后不补入精确尺寸默认值，也不从旧选项借用供应商协议', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse({ id: 'generic-image-task' }))
+    await submitVideoGeneration({
+      ...DEFAULT_INPUT, size: '', resolution: '720p', videoOptions: SEEDANCE_OPTIONS, generationMode: 'image_to_video',
+      parameterConfig: parameterConfig({
+        protocol: undefined,
+        sizes: [{ width: 1280, height: 720 }],
+        defaults: { mode: 'image_to_video', resolution: '720p', ratio: '16:9', size: { width: 1280, height: 720 } },
+        media: { min_total: 1, max_total: 1, roles: { first_frame: { min: 1, max: 1 } } },
+      }),
+    })
+    const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))
+    expect(body).toMatchObject({ generation_mode: 'image_to_video', resolution: '720p', ratio: '16:9', input_reference: DEFAULT_INPUT.inputReference })
+    expect(body).not.toHaveProperty('size')
+    expect(body).not.toHaveProperty('metadata')
+  })
+
+  it('完整合同声明的 source_video 角色原样交给平台，不猜测供应商角色转换', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse({ id: 'source-video-task' }))
+    await submitVideoGeneration({
+      ...DEFAULT_INPUT, size: undefined, ratio: undefined, inputReference: undefined, generationMode: 'video_extend',
+      parameterConfig: parameterConfig({ media: { min_total: 1, max_total: 1, roles: { source_video: { min: 1, max: 1 } } } }),
+      references: [{ type: 'video', url: 'https://example.com/source.mp4', role: 'source_video' }],
+    })
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toMatchObject({
+      generation_mode: 'video_extend',
+      metadata: { content: [{ type: 'text', text: DEFAULT_INPUT.prompt }, { type: 'video_url', video_url: { url: 'https://example.com/source.mp4' }, role: 'source_video' }] },
+    })
+  })
+
+  it('历史图片只校验 Data URL 语法，不将 MIME 标签当作已验证的真实格式', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse({ id: 'tiff-reference-task' }))
+    const input: VideoGenerationInput = {
+      ...DEFAULT_INPUT, size: undefined, ratio: undefined, inputReference: 'data:image/tiff;base64,aGVsbG8=',
+      parameterConfig: parameterConfig({ input_media: { image: { validation: 'provider', formats: ['tiff', 'png'], max_bytes: 30 * 1024 * 1024 } } }),
+    }
+    await submitVideoGeneration(input)
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toMatchObject({ metadata: { content: [{ type: 'text', text: DEFAULT_INPUT.prompt }, { type: 'image_url', image_url: { url: input.inputReference }, role: 'reference_image' }] } })
+    fetchMock.mockResolvedValue(jsonResponse({ id: 'provider-validates-format' }))
+    await expect(submitVideoGeneration({ ...input, inputReference: 'data:image/gif;base64,aGVsbG8=' })).resolves.toMatchObject({ taskId: 'provider-validates-format' })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
+  it('编辑模式执行时长和素材条件，且不发送与模式冲突的原生 auto 默认', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse({ id: 'edit-task' }))
+    const input: VideoGenerationInput = {
+      ...DEFAULT_INPUT, size: undefined, ratio: undefined, inputReference: undefined, generationMode: 'video_edit',
+      parameterConfig: parameterConfig({ controls: { omni_reference_task_type: { supported: true, values: ['auto', 'reference', 'edit', 'extend'], default: 'auto' } } }),
+      references: [{ type: 'video', url: 'https://example.com/source.mp4', role: 'reference_video' }],
+    }
+    await expect(submitVideoGeneration(input)).rejects.toMatchObject({ code: 'invalid_request' })
+    expect(fetchMock).not.toHaveBeenCalled()
+    await submitVideoGeneration({ ...input, duration: -1 })
+    const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))
+    expect(body).toMatchObject({ generation_mode: 'video_edit', duration: -1, ratio: 'adaptive' })
+    expect(body).not.toHaveProperty('omni_reference_task_type')
+  })
+
+  it('最终请求上限使用 UTF-8 JSON 字节数，边界可提交而不是按字符数误放行', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => jsonResponse({ id: 'body-limit-task' }))
+    const input = { ...DEFAULT_INPUT, size: undefined, ratio: undefined, prompt: '中文提示词'.repeat(40), parameterConfig: parameterConfig() }
+    await submitVideoGeneration(input)
+    const serialized = String(fetchMock.mock.calls[0]?.[1]?.body)
+    const bytes = new TextEncoder().encode(serialized).byteLength
+    expect(bytes).toBeGreaterThan(serialized.length)
+    await expect(submitVideoGeneration({ ...input, parameterConfig: parameterConfig({ max_request_bytes: bytes - 1 }) })).rejects.toMatchObject({ code: 'invalid_request' })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    await submitVideoGeneration({ ...input, parameterConfig: parameterConfig({ max_request_bytes: bytes }) })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
+  it.each([
+    ['未知模型能力', { videoOptions: undefined, parameterConfig: undefined }],
+    ['没有声明音频生成能力', { generateAudio: false }],
+    ['不支持音频生成', { generateAudio: true, parameterConfig: parameterConfig({ generate_audio: { supported: false } }) }],
+    ['没有声明的模式', { generationMode: 'unknown_mode' }],
+    ['未允许的素材角色', { inputReference: undefined, references: [{ type: 'video', url: 'https://example.com/source.mp4', role: 'source_video' }] }],
+    ['未允许省略时长', { duration: undefined, parameterConfig: parameterConfig({ durations: { values: [5, 10], auto: false } }) }],
+    ['时长不在枚举内', { duration: 6, parameterConfig: parameterConfig({ durations: { values: [5, 10], auto: false } }) }],
+    ['时长不符合步长', { duration: 5, parameterConfig: parameterConfig({ durations: { min: 4, max: 10, step: 2, auto: false } }) }],
+    ['素材总数上限为零', { inputReference: DEFAULT_INPUT.inputReference, parameterConfig: parameterConfig({ media: { min_total: 0, max_total: 0, roles: null } }) }],
+    ['控制默认值超过 UTF-8 长度限制', { parameterConfig: parameterConfig({ controls: { safety_identifier: { supported: true, default: '中文', max_length: 5 } } }) }],
+    ['控制默认值不符合格式', { parameterConfig: parameterConfig({ controls: { callback_url: { supported: true, default: 'https://name:password@example.com', format: 'http_url' } } }) }],
+    ['控制默认值超过整数范围', { parameterConfig: parameterConfig({ controls: { priority: { supported: true, min: 0, max: 9, default: 10 } } }) }],
+  ] satisfies Array<[string, Partial<VideoGenerationInput>]>)('完整合同在请求前拒绝%s', async (_name, overrides) => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch')
+    await expect(submitVideoGeneration({ ...DEFAULT_INPUT, size: undefined, ratio: undefined, parameterConfig: parameterConfig(), ...overrides })).rejects.toMatchObject({ code: 'invalid_request', status: 400 })
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 
   it('完整解析超过 4096 字符的提交和查询响应，不丢失任务状态与结果', async () => {

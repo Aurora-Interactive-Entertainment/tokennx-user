@@ -11,7 +11,7 @@ import { appToast } from '@/components/app-toast'
 import { CompatInput as Input, CompatSelect as Select } from '@/components/semi-compat'
 import { WaveBackground } from '@/components/wave-background'
 import { cancelVideoTask, getVideoTask, submitVideoGeneration, videoTaskIsTerminal, VideoRuntimeError, type VideoReference, type VideoTask, type VideoTaskStatus } from '@/api/video-runtime'
-import type { UserVideoOptions } from '@/api/user-models'
+import type { UserModelParameterConfig, UserVideoOptions } from '@/api/user-models'
 import { getAccessToken } from '@/auth/token-storage'
 import { isAuthenticationFailure } from '@/api/http'
 import { useAppDispatch, useAppSelector } from '@/store/hooks'
@@ -22,7 +22,7 @@ import { useUserModels } from '@/data/user-models'
 import { useBuildUpdateBlocker } from '@/runtime/use-build-update-blocker'
 import { workspaceContextFor, workspaceContextKey, type WorkspaceAccountContext } from '@/utils/workspace'
 import { LEGACY_VIDEO_HISTORY_KEY, VIDEO_SESSION_HISTORY_KEY, readUserSessionHistory, writeUserSessionHistory } from '@/utils/ephemeral-history'
-import { isVideoDurationAllowed, normalizeVideoOptions, validateVideoParameters, type NormalizedVideoOptions } from '@/utils/video-options'
+import { isVideoDurationAllowed, normalizeVideoOptions, resolveVideoMode, validateVideoParameters, type NormalizedVideoOptions } from '@/utils/video-options'
 import { VideoParameterControls } from './video-parameter-controls'
 import { VideoReferenceMedia } from './video-reference-media'
 import './video-generation.css'
@@ -33,13 +33,11 @@ const VIDEO_PROMPT_MAX_LENGTH = 8_000
 const VIDEO_POLL_INITIAL_DELAY_MS = 1_000
 const VIDEO_POLL_INTERVAL_MS = 2_500
 const VIDEO_POLL_MAX_ATTEMPTS = 120
-const DEFAULT_VIDEO_DURATION = 5
-const DEFAULT_VIDEO_SIZE = '1280x720'
+// 0 仅表示表单尚未选择时长，提交时转换为省略，不能当作后端默认秒数。
+const DEFAULT_VIDEO_DURATION = 0
+const DEFAULT_VIDEO_SIZE = ''
 // 提交失败、尚未拿到服务端 task_id 的记录用这个前缀，重试时复用原键找回可能已创建的任务。
 const LOCAL_FAILURE_TASK_PREFIX = 'local-failed-'
-
-// 旧模型与新目录校验共用同一组尺寸，避免界面和请求限制分叉。
-const VIDEO_SIZE_OPTIONS = normalizeVideoOptions().sizes
 
 type VideoHistoryEntry = {
   id: string
@@ -55,6 +53,8 @@ type VideoHistoryEntry = {
   ratio?: string
   resolution?: string
   references?: VideoReference[]
+  generationMode?: string
+  generateAudio?: boolean
   missingReferences?: boolean
   referenceCount?: number
   /** 创建响应丢失时，重新进入页面仍用原键找回任务；旧历史可缺省。 */
@@ -73,13 +73,16 @@ type VideoSubmissionSnapshot = {
   modelId: string
   modelName: string
   prompt: string
-  duration: number
+  duration?: number
   size: string
   inputReference: string
   ratio?: string
   resolution?: string
   references?: VideoReference[]
   videoOptions?: UserVideoOptions
+  parameterConfig?: UserModelParameterConfig
+  generationMode?: string
+  generateAudio?: boolean
   missingReferences?: boolean
   idempotencyKey: string
 }
@@ -89,14 +92,29 @@ type VideoRequestFailure = {
   requestId: string | null
 }
 
-type VideoDraft = Pick<VideoSubmissionSnapshot, 'model' | 'prompt' | 'duration' | 'size' | 'inputReference' | 'ratio' | 'resolution' | 'references'> & {
-  referenceMode: 'reference' | 'first-last'
+type VideoDraft = Pick<VideoSubmissionSnapshot, 'model' | 'prompt' | 'size' | 'inputReference' | 'ratio' | 'resolution' | 'references' | 'generateAudio'> & {
+  duration: number
+  referenceMode: 'reference' | 'first-last' | 'video_edit' | 'video_extend'
   firstFrameUrl: string
   lastFrameUrl: string
 }
 
 function emptyVideoDraft(model: string, options = normalizeVideoOptions()): VideoDraft {
-  return { model, prompt: '', duration: options.defaultDuration, size: options.defaultSize, inputReference: '', ratio: options.hasVideoOptions ? options.defaultRatio : undefined, resolution: options.hasVideoOptions ? options.defaultResolution : undefined, references: options.hasVideoOptions ? [] : undefined, referenceMode: 'reference', firstFrameUrl: '', lastFrameUrl: '' }
+  return { model, prompt: '', duration: options.defaultDuration, size: options.defaultSize, inputReference: '', ratio: options.hasVideoOptions ? options.defaultRatio : undefined, resolution: options.hasVideoOptions ? options.defaultResolution : undefined, references: options.hasVideoOptions ? [] : undefined, generateAudio: options.generateAudio?.supported ? options.generateAudio.default : undefined, referenceMode: referenceModeFor(options.defaultMode), firstFrameUrl: '', lastFrameUrl: '' }
+}
+
+function referenceModeFor(mode: string): VideoDraft['referenceMode'] {
+  return mode === 'first_last_frame' ? 'first-last' : mode === 'video_edit' || mode === 'video_extend' ? mode : 'reference'
+}
+
+function initialVideoOptions(model: ModelRecord | undefined): NormalizedVideoOptions {
+  const base = normalizeVideoOptions(model?.videoOptions, model?.parameterConfig)
+  const mode = base.defaultMode || resolveVideoMode(base, [], false)
+  const withMode = normalizeVideoOptions(model?.videoOptions, model?.parameterConfig, { mode })
+  const withResolution = normalizeVideoOptions(model?.videoOptions, model?.parameterConfig, { mode, resolution: withMode.defaultResolution })
+  const options = normalizeVideoOptions(model?.videoOptions, model?.parameterConfig, { mode, resolution: withResolution.defaultResolution, ratio: withResolution.defaultRatio })
+  // 按模式逐步解析条件默认值；有档位选择器时不再把像素默认值一起塞入表单。
+  return { ...options, defaultSize: model?.parameterConfig?.video?.resolutions?.length ? '' : options.defaultSize }
 }
 
 function sameVideoDraft(left: VideoDraft, right: VideoDraft): boolean {
@@ -126,8 +144,10 @@ function isVideoHistoryEntry(value: unknown): value is VideoHistoryEntry {
     && (value.inputReference === null || typeof value.inputReference === 'string')
     && (value.ratio === undefined || typeof value.ratio === 'string')
     && (value.resolution === undefined || typeof value.resolution === 'string')
+    && (value.generationMode === undefined || typeof value.generationMode === 'string')
+    && (value.generateAudio === undefined || typeof value.generateAudio === 'boolean')
     && (value.idempotencyKey === undefined || (typeof value.idempotencyKey === 'string' && value.idempotencyKey.trim().length > 0 && value.idempotencyKey.length <= 512))
-    && (value.references === undefined || (Array.isArray(value.references) && value.references.every((item) => isRecord(item) && ['image', 'video', 'audio'].includes(String(item.type)) && typeof item.url === 'string' && (item.role === undefined || ['reference_image', 'first_frame', 'last_frame', 'reference_video', 'reference_audio'].includes(String(item.role))))))
+    && (value.references === undefined || (Array.isArray(value.references) && value.references.every((item) => isRecord(item) && ['image', 'video', 'audio'].includes(String(item.type)) && typeof item.url === 'string' && (item.role === undefined || ['reference_image', 'first_frame', 'last_frame', 'reference_video', 'reference_audio', 'source_video'].includes(String(item.role))))))
     && isVideoTaskStatus(value.status)
     && (value.progress === null || (typeof value.progress === 'number' && Number.isFinite(value.progress)))
     && (value.resultUrl === null || typeof value.resultUrl === 'string')
@@ -271,7 +291,7 @@ function VideoHistoryPanel({ entries, selectedID, onSelect, onClear, onNew, disa
     {entries.length ? <div className="video-history-list">{entries.map((entry) => <button className={`video-history-item${entry.id === selectedID ? ' is-active' : ''}`} type="button" key={entry.id} onClick={() => onSelect(entry)}>
       <span className="video-history-item-top"><strong>{entry.modelName}</strong><span className={`video-history-status is-${entry.status}`}>{t(videoStatusLabelKey(entry.status))}</span></span>
       <span className="video-history-item-prompt">{entry.prompt}</span>
-      <span className="video-history-item-meta">{formatVideoDate(entry.createdAt)} · {entry.duration === -1 ? t('console.video.autoDuration') : `${entry.duration}${t('console.video.secondsShort')}`} · {[entry.ratio === 'adaptive' ? t('console.video.adaptiveRatio') : entry.ratio, entry.resolution?.toUpperCase(), entry.size].filter(Boolean).join(' · ')}</span>
+      <span className="video-history-item-meta">{formatVideoDate(entry.createdAt)} · {entry.duration === -1 ? t('console.video.autoDuration') : entry.duration > 0 ? `${entry.duration}${t('console.video.secondsShort')}` : t('console.video.durationUnspecified')} · {[entry.ratio === 'adaptive' ? t('console.video.adaptiveRatio') : entry.ratio, entry.resolution?.toUpperCase(), entry.size].filter(Boolean).join(' · ')}</span>
     </button>)}</div> : <div className="video-history-empty"><IconHistory aria-hidden="true" /><p>{t('console.video.historyEmpty')}</p><span>{t('console.video.historyEmptyHint')}</span></div>}
   </aside>
 }
@@ -374,7 +394,7 @@ function VideoRecord({ entry, generating, handlers }: { entry: VideoHistoryEntry
   const succeeded = entry.status === 'succeeded'
   return <article className="video-record" data-task-id={entry.taskId} aria-label={entry.prompt}>
     <h3 className="video-record-prompt">{entry.prompt}</h3>
-    <p className="video-record-meta">{entry.modelName} · {entry.duration === -1 ? t('console.video.autoDuration') : `${entry.duration}${t('console.video.secondsShort')}`}{entry.resolution ? ` · ${entry.resolution.toUpperCase()}` : ''}{entry.ratio ? ` · ${entry.ratio === 'adaptive' ? t('console.video.adaptiveRatio') : entry.ratio}` : ''}</p>
+    <p className="video-record-meta">{entry.modelName} · {entry.duration === -1 ? t('console.video.autoDuration') : entry.duration > 0 ? `${entry.duration}${t('console.video.secondsShort')}` : t('console.video.durationUnspecified')}{entry.resolution ? ` · ${entry.resolution.toUpperCase()}` : ''}{entry.ratio ? ` · ${entry.ratio === 'adaptive' ? t('console.video.adaptiveRatio') : entry.ratio}` : ''}</p>
     <div className="video-record-body"><VideoRecordBody entry={entry} statusLabel={statusLabel} /></div>
     <VideoRecordActions entry={entry} statusLabel={statusLabel} succeeded={succeeded} isActive={isActive} generating={generating} handlers={handlers} />
   </article>
@@ -417,7 +437,7 @@ export function VideoPage() {
   const { t } = useTranslation()
   const renderReferenceSelectedItem: RenderSingleSelectedItemFn = ({ value }) => <>
     <span className="video-reference-option-icon">{String(value) === 'reference' ? <IconImage aria-hidden="true" /> : <IconVideo aria-hidden="true" />}</span>
-    <span>{String(value) === 'reference' ? t('console.video.referenceMode') : t('console.video.firstLastFrame')}</span>
+    <span>{t(String(value) === 'reference' ? 'console.video.referenceMode' : String(value) === 'video_edit' ? 'console.video.videoEdit' : String(value) === 'video_extend' ? 'console.video.videoExtend' : 'console.video.firstLastFrame')}</span>
   </>
   const auth = useAppSelector((state) => state.auth)
   const userId = auth.status === 'authenticated'
@@ -443,6 +463,7 @@ export function VideoPage() {
   const [size, setSize] = useState(DEFAULT_VIDEO_SIZE)
   const [configuredRatio, setConfiguredRatio] = useState('')
   const [configuredResolution, setConfiguredResolution] = useState('')
+  const [generateAudio, setGenerateAudio] = useState<boolean | undefined>()
   const [mediaReferences, setMediaReferences] = useState<VideoReference[]>([])
   const [referenceRevision, setReferenceRevision] = useState(0)
   const [requiredReferenceCount, setRequiredReferenceCount] = useState(0)
@@ -455,7 +476,7 @@ export function VideoPage() {
   const [firstFrameUrl, setFirstFrameUrl] = useState('')
   const [lastFrameUrl, setLastFrameUrl] = useState('')
   const [historyOpen, setHistoryOpen] = useState(false)
-  const [referenceMode, setReferenceMode] = useState<'reference' | 'first-last'>('reference')
+  const [referenceMode, setReferenceMode] = useState<VideoDraft['referenceMode']>('reference')
   const [history, setHistory] = useState<VideoHistoryEntry[]>(() => readVideoHistory(userId).filter((entry) => entry.workspaceKey === workspaceKey))
   const [savedHistory, setSavedHistory] = useState(history)
   const [selectedHistoryID, setSelectedHistoryID] = useState('')
@@ -507,7 +528,7 @@ export function VideoPage() {
     // 所有弹层都支持点击外部区域收起，避免遮挡工作区内容。
     const handlePointerDown = (event: PointerEvent): void => {
       const target = event.target as HTMLElement | null
-      if (!target?.closest('.video-history-panel, .video-history-toggle')) setHistoryOpen(false)
+      if (!target?.closest('.video-history-panel')) setHistoryOpen(false)
     }
     document.addEventListener('pointerdown', handlePointerDown)
     return () => document.removeEventListener('pointerdown', handlePointerDown)
@@ -527,23 +548,28 @@ export function VideoPage() {
   }, [models])
   const displayVideoModels = videoModels
   const selectedModel = findModelInList(displayVideoModels, modelID) ?? displayVideoModels[0]
-  const videoOptions = useMemo(() => normalizeVideoOptions(selectedModel?.videoOptions), [selectedModel?.videoOptions])
-  const selectedSize = VIDEO_SIZE_OPTIONS.find((option) => option.value === size)
-  const aspectRatio = videoOptions.hasVideoOptions ? configuredRatio : selectedSize?.aspect ?? size
-  const resolution = videoOptions.hasVideoOptions ? configuredResolution : selectedSize?.resolution ?? ''
+  const baseVideoOptions = useMemo(() => normalizeVideoOptions(selectedModel?.videoOptions, selectedModel?.parameterConfig), [selectedModel?.videoOptions, selectedModel?.parameterConfig])
+  const defaultVideoOptions = useMemo(() => initialVideoOptions(selectedModel), [selectedModel])
+  const explicitMode = referenceMode === 'video_edit' || referenceMode === 'video_extend' ? referenceMode : undefined
+  const generationMode = explicitMode ?? resolveVideoMode(baseVideoOptions, mediaReferences, referenceMode === 'first-last')
+  const videoOptions = useMemo(() => normalizeVideoOptions(selectedModel?.videoOptions, selectedModel?.parameterConfig, { mode: generationMode, ratio: configuredRatio, resolution: configuredResolution }), [selectedModel?.videoOptions, selectedModel?.parameterConfig, generationMode, configuredRatio, configuredResolution])
+  const referenceOptions = useMemo(() => normalizeVideoOptions(selectedModel?.videoOptions, selectedModel?.parameterConfig, { mode: referenceMode === 'first-last' ? 'first_last_frame' : explicitMode, ratio: configuredRatio, resolution: configuredResolution }), [selectedModel?.videoOptions, selectedModel?.parameterConfig, referenceMode, explicitMode, configuredRatio, configuredResolution])
+  const aspectRatio = configuredRatio
+  const resolution = configuredResolution
   const selectedHistory = history.find((entry) => entry.id === selectedHistoryID)
   const operationBusy = submitting || polling || cancelling
   // 轮询最长可持续数分钟，参数栏不应跟着锁死：只在提交/取消请求在途时锁，生成期间仍可准备下一轮的参数。
   const paramsBusy = submitting || cancelling
-  const canSubmit = Boolean(selectedModel && (!videoOptions.requiresPrompt || prompt.trim()) && !operationBusy && !paramsBusy)
+  const canSubmit = Boolean(selectedModel && videoOptions.hasVideoOptions && (!videoOptions.requiresPrompt || prompt.trim()) && !operationBusy && !paramsBusy)
   // 生成中允许点击发送按钮取消任务；取消请求处理期间锁定按钮，空输入时禁止提交。
   const canCancel = submitting || Boolean(currentTask && taskIsActive(currentTask))
   const sendDisabled = cancelling || (!canCancel && !canSubmit)
   const currentModelAlias = selectedModel ? modelAlias(selectedModel) : ''
   if (initialModelRef.current === null && currentModelAlias && !modelsLoading) initialModelRef.current = currentModelAlias
-  const currentDraft: VideoDraft = { model: currentModelAlias, prompt: prompt.trim(), duration, size, inputReference: inputReference.trim(), referenceMode, firstFrameUrl, lastFrameUrl, ratio: videoOptions.hasVideoOptions ? configuredRatio : undefined, resolution: videoOptions.hasVideoOptions ? configuredResolution : undefined, references: videoOptions.hasVideoOptions ? mediaReferences : undefined }
+  const currentDraft: VideoDraft = { model: currentModelAlias, prompt: prompt.trim(), duration, size, inputReference: inputReference.trim(), referenceMode, firstFrameUrl, lastFrameUrl, generateAudio, ratio: videoOptions.hasVideoOptions ? configuredRatio : undefined, resolution: videoOptions.hasVideoOptions ? configuredResolution : undefined, references: videoOptions.hasVideoOptions ? mediaReferences : undefined }
   // 提交成功后提示词仍留在输入框，以历史保存时的快照区分下一轮草稿；本地图片无法写入历史，始终保护。
-  const hasUnsavedDraft = !sameVideoDraft(currentDraft, submittedDraft ?? emptyVideoDraft(initialModelRef.current ?? currentModelAlias, normalizeVideoOptions(findModelInList(videoModels, initialModelRef.current ?? currentModelAlias)?.videoOptions)))
+  const initialModel = findModelInList(videoModels, initialModelRef.current ?? currentModelAlias)
+  const hasUnsavedDraft = !sameVideoDraft(currentDraft, submittedDraft ?? emptyVideoDraft(initialModelRef.current ?? currentModelAlias, initialVideoOptions(initialModel)))
     || [inputReference, firstFrameUrl, lastFrameUrl].some((value) => value.trim() && (!isPersistableReference(value) || value.length > 4_096))
     || mediaReferences.some((item) => !isPersistableReference(item.url) || item.url.length > 4_096)
   useBuildUpdateBlocker(operationBusy || referenceDraftDirty || hasUnsavedDraft || requiredReferenceCount > (videoOptions.hasVideoOptions ? mediaReferences.length : inputReference ? 1 : 0) || Boolean(requestFailure)
@@ -552,7 +578,7 @@ export function VideoPage() {
     || history.some((entry) => taskIsActive(historyTask(entry))))
 
   function optionsKey(model: ModelRecord | undefined): string {
-    return JSON.stringify([userId, workspaceKey, model?.id, model?.videoOptions])
+    return JSON.stringify([userId, workspaceKey, model?.id, model?.parameterVersion, model?.parameterConfig, model?.videoOptions])
   }
 
   function resetModelParameters(options: NormalizedVideoOptions): void {
@@ -562,13 +588,14 @@ export function VideoPage() {
     setSize(options.defaultSize)
     setConfiguredRatio(options.defaultRatio)
     setConfiguredResolution(options.defaultResolution)
+    setGenerateAudio(options.generateAudio?.supported ? options.generateAudio.default : undefined)
     setMediaReferences([])
     setInputReference('')
     setReferenceUrl('')
     setReferenceName('')
     setFirstFrameUrl('')
     setLastFrameUrl('')
-    setReferenceMode('reference')
+    setReferenceMode(referenceModeFor(options.defaultMode))
   }
 
   useEffect(() => {
@@ -578,8 +605,16 @@ export function VideoPage() {
     // 切换模型后使用它自己的默认值；素材不跨模型沿用，避免新上限或协议与旧草稿冲突。
     if (appliedOptionsRef.current && (mediaReferences.length || inputReference)) Toast.info(t('console.video.modelReferencesCleared'))
     appliedOptionsRef.current = key
-    resetModelParameters(videoOptions)
-  }, [selectedModel, videoOptions, modelsLoading, workspaceKey, userId])
+    resetModelParameters(defaultVideoOptions)
+  }, [selectedModel, defaultVideoOptions, modelsLoading, workspaceKey, userId])
+
+  useEffect(() => {
+    // 条件改变后只撤销已经失效的选择；未声明默认值时保持未选择，避免伪造平台预设。
+    if (configuredRatio && !videoOptions.ratios.includes(configuredRatio)) setConfiguredRatio(videoOptions.defaultRatio)
+    if (configuredResolution && !videoOptions.resolutions.includes(configuredResolution)) setConfiguredResolution(videoOptions.defaultResolution)
+    if (size && !videoOptions.sizes.some((option) => option.value === size)) setSize(videoOptions.defaultSize)
+    if (duration !== 0 && !isVideoDurationAllowed(duration, videoOptions)) setDuration(videoOptions.defaultDuration)
+  }, [videoOptions, configuredRatio, configuredResolution, size, duration])
 
   useEffect(() => {
     submitAbortReasonRef.current = 'navigation'
@@ -673,7 +708,8 @@ export function VideoPage() {
       id: createHistoryID(workspaceKey, task.taskId), workspaceKey, taskId: task.taskId, modelId: snapshot.modelId, model: snapshot.model, modelName: snapshot.modelName,
       // 内存记录保留原始参考图（含本地文件转出的 data URL），重试/编辑时才拿得到；
       // 落盘由 compactVideoHistoryEntry 负责裁掉超长的 data URL。
-      prompt: snapshot.prompt, duration: snapshot.duration, size: snapshot.size, inputReference: snapshot.inputReference || null,
+      prompt: snapshot.prompt, duration: snapshot.duration ?? 0, size: snapshot.size, inputReference: snapshot.inputReference || null,
+      generationMode: snapshot.generationMode, generateAudio: snapshot.generateAudio,
       ratio: snapshot.ratio, resolution: snapshot.resolution, references: snapshot.references,
       idempotencyKey: snapshot.idempotencyKey,
       status: task.status, progress: task.progress, resultUrl: task.resultUrl, thumbnailUrl: task.thumbnailUrl, errorMessage: task.errorMessage, requestId: task.requestId, createdAt: new Date().toISOString(),
@@ -754,17 +790,17 @@ export function VideoPage() {
       Toast.warning(t('console.video.missingReferences'))
       return null
     }
-    const snapshot: VideoSubmissionSnapshot = retry ? { ...retry, videoOptions: submissionModel.videoOptions ?? undefined } : {
+    const snapshot: VideoSubmissionSnapshot = retry ? { ...retry, videoOptions: submissionModel.videoOptions ?? undefined, parameterConfig: submissionModel.parameterConfig ?? undefined } : {
       model: modelAlias(submissionModel), modelId: submissionModel.id, modelName: submissionModel.name,
-      prompt: prompt.trim(), duration, size, inputReference: inputReference.trim(), idempotencyKey: createIdempotencyKey(),
-      ...(videoOptions.hasVideoOptions ? { ratio: configuredRatio, resolution: configuredResolution, references: mediaReferences, videoOptions: submissionModel.videoOptions ?? undefined } : {}),
+      prompt: prompt.trim(), duration: duration || undefined, size, inputReference: inputReference.trim(), idempotencyKey: createIdempotencyKey(),
+      generationMode: generationMode || undefined, generateAudio,
+      ratio: configuredRatio, resolution: configuredResolution, references: mediaReferences,
+      videoOptions: submissionModel.videoOptions ?? undefined, parameterConfig: submissionModel.parameterConfig ?? undefined,
     }
-    const options = normalizeVideoOptions(submissionModel.videoOptions)
-    if (snapshot.references?.some((item) => item.role === 'last_frame') && !snapshot.references.some((item) => item.role === 'first_frame')) {
-      Toast.warning(t('console.video.firstFrameRequired'))
-      return null
-    }
-    const error = validateVideoParameters({ ...snapshot, imageCount: snapshot.references?.filter((item) => item.type === 'image').length ?? (snapshot.inputReference ? 1 : 0), videoCount: snapshot.references?.filter((item) => item.type === 'video').length, audioCount: snapshot.references?.filter((item) => item.type === 'audio').length }, options)
+    const base = normalizeVideoOptions(submissionModel.videoOptions, submissionModel.parameterConfig)
+    snapshot.generationMode ??= resolveVideoMode(base, snapshot.references ?? [], snapshot.references?.some((item) => item.role === 'last_frame') ?? false) || undefined
+    const options = normalizeVideoOptions(submissionModel.videoOptions, submissionModel.parameterConfig, { mode: snapshot.generationMode, ratio: snapshot.ratio, resolution: snapshot.resolution })
+    const error = validateVideoParameters({ ...snapshot, mode: snapshot.generationMode, imageCount: snapshot.references?.filter((item) => item.type === 'image').length ?? (snapshot.inputReference ? 1 : 0), videoCount: snapshot.references?.filter((item) => item.type === 'video').length, audioCount: snapshot.references?.filter((item) => item.type === 'audio').length }, options)
     if (error) {
       Toast.warning(t(error === 'prompt' ? 'console.video.promptRequired' : error === 'mixed-media' ? 'console.video.mixedMedia' : 'console.video.parametersChanged'))
       return null
@@ -794,9 +830,9 @@ export function VideoPage() {
       // 重试历史记录时不能把输入框里另一份新草稿也标为已保存。
       if ((task.status === 'succeeded' || taskIsActive(task))
         && snapshot.model === draftAtSubmission.model && snapshot.prompt === draftAtSubmission.prompt
-        && snapshot.duration === draftAtSubmission.duration && snapshot.size === draftAtSubmission.size
+        && (snapshot.duration ?? 0) === draftAtSubmission.duration && snapshot.size === draftAtSubmission.size
         && snapshot.inputReference === draftAtSubmission.inputReference && snapshot.ratio === draftAtSubmission.ratio
-        && snapshot.resolution === draftAtSubmission.resolution && JSON.stringify(snapshot.references) === JSON.stringify(draftAtSubmission.references)) setSubmittedDraft(draftAtSubmission)
+        && snapshot.resolution === draftAtSubmission.resolution && snapshot.generateAudio === draftAtSubmission.generateAudio && JSON.stringify(snapshot.references) === JSON.stringify(draftAtSubmission.references)) setSubmittedDraft(draftAtSubmission)
       Toast.success(task.status === 'succeeded' ? t('console.video.generated') : t('console.video.taskSubmitted'))
       if (!videoTaskIsTerminal(task.status) && task.status !== 'unknown') void pollTask(task, entry)
     } catch (error: unknown) {
@@ -880,17 +916,19 @@ export function VideoPage() {
   function restoreEntryParameters(entry: VideoHistoryEntry): VideoDraft {
     setReferenceRevision((revision) => revision + 1)
     const model = findModelInList(videoModels, entry.model)
-    const options = normalizeVideoOptions(model?.videoOptions)
+    const options = normalizeVideoOptions(model?.videoOptions, model?.parameterConfig, { mode: entry.generationMode, ratio: entry.ratio, resolution: entry.resolution })
     setRequiredReferenceCount(entry.missingReferences ? entry.referenceCount ?? (entry.references?.length ?? 0) + 1 : 0)
     appliedOptionsRef.current = optionsKey(model)
     const draft = emptyVideoDraft(entry.model, options)
     draft.prompt = entry.prompt
     draft.duration = isVideoDurationAllowed(entry.duration, options) ? entry.duration : options.defaultDuration
+    draft.generateAudio = options.generateAudio?.supported ? entry.generateAudio ?? options.generateAudio.default : undefined
+    draft.size = model?.parameterConfig?.video?.resolutions?.length ? '' : options.sizes.some((item) => item.value === entry.size) ? entry.size : options.defaultSize
     if (options.hasVideoOptions) {
       draft.ratio = options.ratios.includes(entry.ratio ?? '') ? entry.ratio : options.defaultRatio
       draft.resolution = options.resolutions.includes(entry.resolution ?? '') ? entry.resolution : options.defaultResolution
       draft.references = entry.references ?? (entry.inputReference ? [{ type: 'image', url: entry.inputReference, role: 'reference_image' }] : [])
-      draft.referenceMode = draft.references.some((item) => item.role === 'first_frame' || item.role === 'last_frame') ? 'first-last' : 'reference'
+      draft.referenceMode = draft.references.some((item) => item.role === 'last_frame') ? 'first-last' : referenceModeFor(entry.generationMode ?? '')
     } else {
       draft.size = options.sizes.some((item) => item.value === entry.size) ? entry.size : options.defaultSize
       draft.inputReference = entry.inputReference ?? (entry.references?.length === 1 && entry.references[0].type === 'image' ? entry.references[0].url : '')
@@ -903,6 +941,7 @@ export function VideoPage() {
     setSize(draft.size)
     setConfiguredRatio(draft.ratio ?? '')
     setConfiguredResolution(draft.resolution ?? '')
+    setGenerateAudio(draft.generateAudio)
     setMediaReferences(draft.references ?? [])
     setReferenceMode(draft.referenceMode)
     setFirstFrameUrl('')
@@ -935,7 +974,7 @@ export function VideoPage() {
 
   function startNewGeneration(): void {
     if (operationBusy) return
-    setSubmittedDraft(emptyVideoDraft(currentModelAlias, videoOptions))
+    setSubmittedDraft(emptyVideoDraft(currentModelAlias, defaultVideoOptions))
     stopPolling()
     setRequestFailure(null)
     setCurrentTask(null)
@@ -946,8 +985,8 @@ export function VideoPage() {
     setReferenceName('')
     setFirstFrameUrl('')
     setLastFrameUrl('')
-    resetModelParameters(videoOptions)
-    setReferenceMode('reference')
+    resetModelParameters(defaultVideoOptions)
+    setReferenceMode(referenceModeFor(defaultVideoOptions.defaultMode))
     setHistoryOpen(false)
   }
 
@@ -970,8 +1009,8 @@ export function VideoPage() {
     // 已经有服务端任务的记录必须换新键，否则服务端按幂等回放，返回的还是同一条旧任务。
     const idempotencyKey = entry.taskId.startsWith(LOCAL_FAILURE_TASK_PREFIX) ? entry.idempotencyKey : undefined
     const snapshot: VideoSubmissionSnapshot = {
-      model: entry.model, modelId: entry.modelId, modelName: entry.modelName, prompt: entry.prompt, duration: entry.duration, size: entry.size, inputReference: entry.inputReference ?? '', idempotencyKey: idempotencyKey ?? createIdempotencyKey(),
-      ratio: entry.ratio, resolution: entry.resolution, references: entry.references, missingReferences: entry.missingReferences,
+      model: entry.model, modelId: entry.modelId, modelName: entry.modelName, prompt: entry.prompt, duration: entry.duration || undefined, size: entry.size, inputReference: entry.inputReference ?? '', idempotencyKey: idempotencyKey ?? createIdempotencyKey(),
+      ratio: entry.ratio, resolution: entry.resolution, references: entry.references, missingReferences: entry.missingReferences, generationMode: entry.generationMode, generateAudio: entry.generateAudio,
     }
     void submitVideo(snapshot)
   }
@@ -987,16 +1026,12 @@ export function VideoPage() {
   }
 
   function selectAspectRatio(ratio: string): void {
-    if (videoOptions.hasVideoOptions) { setConfiguredRatio(ratio); return }
-    const options = VIDEO_SIZE_OPTIONS.filter((option) => option.aspect === ratio)
-    const option = options.find((item) => item.resolution === resolution) ?? options[0]
-    if (option) setSize(option.value)
+    setConfiguredRatio(ratio)
   }
 
   function selectResolution(nextResolution: string): void {
-    if (videoOptions.hasVideoOptions) { setConfiguredResolution(nextResolution); return }
-    const option = VIDEO_SIZE_OPTIONS.find((item) => item.aspect === aspectRatio && item.resolution === nextResolution)
-    if (option) setSize(option.value)
+    setConfiguredResolution(nextResolution)
+    setSize('')
   }
 
   if (modelsLoading) return <div className="page-stack video-console-page"><PageTitle title={t('console.video.title')} description={t('console.video.description')} /><EmptyPanel title={t('console.common.loadingModels')} description={t('console.common.readingModels')} /></div>
@@ -1005,6 +1040,7 @@ export function VideoPage() {
   const workspaceNotices: VideoWorkspaceNoticeItem[] = []
   if (requestFailure) workspaceNotices.push({ id: 'request-failure', message: requestFailure.message, requestId: requestFailure.requestId, action: <Button theme="outline" size="small" onClick={() => setRequestFailure(null)}>{t('console.common.close')}</Button> })
   if (!videoModels.length) workspaceNotices.push({ id: 'no-video-models', message: t('console.video.noModelsHint') })
+  else if (!videoOptions.hasVideoOptions) workspaceNotices.push({ id: 'unknown-video-options', message: t('console.video.capabilitiesUnavailable') })
   // 已有任务时优先保留结果卡片，提交/轮询错误直接展示在卡片内，保证仍可编辑、重试和删除。
   const showWorkspaceNotices = workspaceNotices.length > 0 && !submitting && !currentTask
 
@@ -1013,17 +1049,11 @@ export function VideoPage() {
     <section className="video-workspace experience-workbench" aria-label={t('console.video.workspace')}>
       <VideoHistoryPanel entries={history} selectedID={selectedHistoryID} onSelect={selectHistory} onClear={clearHistory} onNew={startNewGeneration} disabled={operationBusy} open={historyOpen} />
       <div className="video-workspace-main experience-main">
-        <header className="video-toolbar experience-toolbar" aria-label={t('console.video.connection')}>
-          <div className="video-toolbar-actions experience-toolbar-actions">
-            <span className="video-toolbar-workspace" title={store.activeWorkspace.name}>{store.activeWorkspace.name}</span>
-            <button className="video-history-toggle" type="button" aria-label={t('console.video.historyTitle')} title={t('console.video.historyTitle')} onClick={() => setHistoryOpen((open) => !open)}><IconHistory /></button>
-          </div>
-        </header>
         <main className="video-stage experience-content">{showWorkspaceNotices ? <VideoWorkspaceNotice items={workspaceNotices} /> : <VideoTimeline entries={history} submitting={submitting} pendingPrompt={prompt} generating={operationBusy} onCancelSubmit={cancelSubmission} handlers={{ onCancel: (entry) => { void cancelTask(entry) }, onRetry: retryEntry, onEdit: editEntry, onDelete: deleteEntry }} />}</main>
         <footer className="video-composer experience-composer">
           <div className="video-composer-box">
             <div className={`video-composer-input-row${referenceMode === 'first-last' ? ' is-first-last' : ''}`}>
-              <VideoReferenceMedia key={[optionsKey(selectedModel), referenceMode, referenceRevision].join(':')} value={videoOptions.hasVideoOptions ? mediaReferences : inputReference ? [{ type: 'image', url: inputReference, role: referenceMode === 'first-last' ? 'first_frame' : 'reference_image' }] : []} options={videoOptions} mode={referenceMode} disabled={paramsBusy} onChange={changeReferenceMedia} onDraftChange={handleReferenceDraftChange} />
+              <VideoReferenceMedia key={[optionsKey(selectedModel), referenceMode, referenceRevision].join(':')} value={videoOptions.hasVideoOptions ? mediaReferences : inputReference ? [{ type: 'image', url: inputReference, role: referenceMode === 'first-last' ? 'first_frame' : 'reference_image' }] : []} options={referenceOptions} mode={referenceMode === 'first-last' ? 'first-last' : 'reference'} disabled={paramsBusy} onChange={changeReferenceMedia} onDraftChange={handleReferenceDraftChange} />
               {inputReference ? <div className="video-reference-row">
                 {referenceUrl ? <span className="video-reference-chip video-reference-chip--url"><IconImage aria-hidden="true" /><span>{referenceUrl}</span><Button theme="borderless" size="small" icon={<IconClose />} aria-label={t('console.video.removeReference')} title={t('console.video.removeReference')} onClick={() => { setInputReference(''); setReferenceUrl(''); setReferenceName('') }} /></span> : <span className="video-reference-chip"><img src={inputReference} alt="" /><span>{referenceName || t('console.video.referenceImage')}</span><Button theme="borderless" size="small" icon={<IconClose />} aria-label={t('console.video.removeReference')} title={t('console.video.removeReference')} onClick={() => { setInputReference(''); setReferenceUrl(''); setReferenceName('') }} /></span>}
               </div> : null}
@@ -1033,10 +1063,11 @@ export function VideoPage() {
               <div className="video-control-group">
                 <div className="video-primary-controls">
                   <div className="video-reference-picker">
-                    <Select className={`video-control-button video-reference-trigger${referenceMode === 'first-last' ? ' video-reference-trigger--first-last' : ''}`} value={referenceMode} aria-label={t('console.video.referenceMedia')} arrowIcon={<IconChevronDownStroked />} dropdownClassName="video-reference-select-dropdown" position="topLeft" innerTopSlot={<div className="video-popover-title">{t('console.video.generationMode')}</div>} renderSelectedItem={renderReferenceSelectedItem} onChange={(value) => { const nextMode = String(value) as 'reference' | 'first-last'; if (nextMode !== referenceMode && mediaReferences.length) { setMediaReferences([]); Toast.info(t('console.video.modeReferencesCleared')) }; setReferenceMode(nextMode); setRequiredReferenceCount(0) }} disabled={paramsBusy}>
+                    <Select className={`video-control-button video-reference-trigger${referenceMode === 'first-last' ? ' video-reference-trigger--first-last' : ''}`} value={referenceMode} aria-label={t('console.video.referenceMedia')} arrowIcon={<IconChevronDownStroked />} dropdownClassName="video-reference-select-dropdown" position="topLeft" innerTopSlot={<div className="video-popover-title">{t('console.video.generationMode')}</div>} renderSelectedItem={renderReferenceSelectedItem} onChange={(value) => { const nextMode = String(value) as VideoDraft['referenceMode']; if (nextMode !== referenceMode && mediaReferences.length) { setMediaReferences([]); Toast.info(t('console.video.modeReferencesCleared')) }; setReferenceMode(nextMode); setRequiredReferenceCount(0) }} disabled={paramsBusy}>
                       {/* 生成模式选项不显示默认选中勾选，避免图标、勾选和文字错位。 */}
                       <Select.Option value="reference" showTick={false}><span className="video-reference-option-icon"><IconImage aria-hidden="true" /></span><span>{t('console.video.referenceMode')}</span></Select.Option>
-                      <Select.Option value="first-last" showTick={false} disabled={videoOptions.hasVideoOptions && (videoOptions.family !== 'seedance' || videoOptions.maxImages === 0)}><span className="video-reference-option-icon"><IconVideo aria-hidden="true" /></span><span>{t('console.video.firstLastFrame')}</span></Select.Option>
+                      <Select.Option value="first-last" showTick={false} disabled={!baseVideoOptions.modes.includes('first_last_frame') || !(baseVideoOptions.media?.roles?.first_frame?.max && baseVideoOptions.media?.roles?.last_frame?.max)}><span className="video-reference-option-icon"><IconVideo aria-hidden="true" /></span><span>{t('console.video.firstLastFrame')}</span></Select.Option>
+                      {baseVideoOptions.modes.filter((mode) => mode === 'video_edit' || mode === 'video_extend').map((mode) => <Select.Option value={mode} key={mode} showTick={false}><span className="video-reference-option-icon"><IconVideo aria-hidden="true" /></span><span>{t(mode === 'video_edit' ? 'console.video.videoEdit' : 'console.video.videoExtend')}</span></Select.Option>)}
                     </Select>
                   </div>
                   <div className="video-model-picker">
@@ -1044,8 +1075,8 @@ export function VideoPage() {
                   </div>
                 </div>
                 <div className="video-parameter-controls">
-                  <VideoParameterControls options={videoOptions} duration={duration} aspectRatio={aspectRatio} resolution={resolution} disabled={paramsBusy} onDurationChange={setDuration} onAspectRatioChange={selectAspectRatio} onResolutionChange={selectResolution} />
-                  <button className="video-control-button video-sound-trigger" type="button" aria-label={t('console.video.sound')} title={t('console.video.optionUnavailable')} disabled><IconVolume2 aria-hidden="true" /><span>{t('console.video.sound')}</span></button>
+                  <VideoParameterControls options={videoOptions} duration={duration} aspectRatio={aspectRatio} resolution={resolution} size={size} disabled={paramsBusy} onDurationChange={setDuration} onAspectRatioChange={selectAspectRatio} onResolutionChange={selectResolution} onSizeChange={(nextSize) => { setSize(nextSize); setConfiguredResolution('') }} />
+                  <button className={`video-control-button video-sound-trigger${generateAudio ? ' is-active' : ''}`} type="button" aria-label={t('console.video.sound')} aria-pressed={generateAudio === true} title={!videoOptions.generateAudio?.supported ? t('console.video.optionUnavailable') : generateAudio ? t('console.video.soundEnabled') : t('console.video.soundDisabled')} disabled={paramsBusy || !videoOptions.generateAudio?.supported} onClick={() => setGenerateAudio((value) => !value)}><IconVolume2 aria-hidden="true" /><span>{t('console.video.sound')}</span></button>
                 </div>
               </div>
               <Button className="generation-send-button video-send-button" theme="solid" type="primary" icon={operationBusy ? <IconStop /> : <IconArrowUp />} aria-label={operationBusy ? (submitting ? t('console.video.cancelRequest') : t('console.video.cancelGeneration')) : t('console.video.generate')} title={operationBusy ? (submitting ? t('console.video.cancelRequest') : t('console.video.cancelGeneration')) : t('console.video.generate')} disabled={sendDisabled} loading={submitting} onClick={() => { if (submitting) cancelSubmission(); else if (currentTask && taskIsActive(currentTask)) cancelActiveTask(); else void submitVideo() }} />

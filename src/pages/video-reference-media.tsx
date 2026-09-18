@@ -7,7 +7,7 @@ import { IconAlertTriangle, IconChevronUpDown, IconClose, IconImage, IconInfoCir
 import Modal from '@/components/app-modal'
 import { CompatInput as Input } from '@/components/semi-compat'
 import type { VideoReference } from '@/api/video-runtime'
-import type { NormalizedVideoOptions } from '@/utils/video-options'
+import { getVideoReferenceRole, normalizeVideoOptions, resolveVideoReferenceMode, validateVideoReferences, type NormalizedVideoOptions } from '@/utils/video-options'
 import './video-reference-media.css'
 
 type MediaType = VideoReference['type']
@@ -20,7 +20,6 @@ type Props = {
   onDraftChange: (dirty: boolean) => void
 }
 const MEDIA_TYPES: MediaType[] = ['image', 'video', 'audio']
-const MEDIA_ROLES = { image: 'reference_image', video: 'reference_video', audio: 'reference_audio' } as const
 const MEDIA_ICONS = { image: IconImage, video: IconVideo, audio: IconVolume2 }
 const splitUrls = (value: string): string[] => [...new Set(value.split(/\r?\n/).map((url) => url.trim()).filter(Boolean))]
 const draftFrom = (value: VideoReference[]): Record<MediaType, string> => ({
@@ -47,15 +46,29 @@ export function VideoReferenceMedia({ value, options, mode, disabled, onChange, 
   const [error, setError] = useState('')
   const [privacyHovered, setPrivacyHovered] = useState(false)
   const [privacyFocused, setPrivacyFocused] = useState(false)
-  // 尚未接入原生素材协议的旧模型继续只开放单图，避免出现可选却无法提交的类型。
-  const nativeMedia = options.hasVideoOptions && options.family === 'seedance'
-  const limits = { image: nativeMedia ? options.maxImages : Math.min(1, options.maxImages), video: nativeMedia ? options.maxVideos : 0, audio: nativeMedia ? options.maxAudios : 0 }
+  // 各类型按它实际使用的模式重算，不能把文生视频的零素材限制套到添加素材入口。
+  const optionsForType = (type: MediaType): NormalizedVideoOptions => {
+    if (!options.hasParameterConfig || mode === 'first-last') return options
+    const selectedMode = resolveVideoReferenceMode(options, type)
+    return normalizeVideoOptions(undefined, options.parameterConfig, { ...options.selection, mode: selectedMode })
+  }
+  const nativeMedia = options.family === 'seedance'
+  const limitForType = (type: MediaType): number => {
+    const effective = optionsForType(type)
+    const role = getVideoReferenceRole(effective, type)
+    if (options.hasParameterConfig) {
+      if (!role || !effective.selection?.mode) return 0
+      return Math.min(effective.media?.max_total ?? 0, effective.media?.roles?.[role]?.max ?? 0)
+    }
+    return type === 'image' ? (nativeMedia ? effective.maxImages : Math.min(1, effective.maxImages)) : nativeMedia ? (type === 'video' ? effective.maxVideos : effective.maxAudios) : 0
+  }
+  const limits = { image: mode === 'first-last' ? options.maxImages : limitForType('image'), video: limitForType('video'), audio: limitForType('audio') }
   const mediaLabel = (type: MediaType): string => t(`console.video.mediaTypes.${type}`)
   const savedType = value[0]?.type
   const savedFirst = value.find((item) => item.role === 'first_frame')?.url ?? ''
   const savedLast = value.find((item) => item.role === 'last_frame')?.url ?? ''
   const savedDrafts = draftFrom(value)
-  const supportsLastFrame = options.hasVideoOptions && options.family === 'seedance' && options.maxImages >= 2
+  const supportsLastFrame = options.hasParameterConfig && options.modes.includes('first_last_frame') && (options.media?.roles?.last_frame?.max ?? 0) > 0
   const title = t(mode === 'first-last' ? 'console.video.firstLastFrame' : 'console.video.referenceMedia')
   const count = splitUrls(drafts[activeType]).length
   const maximum = limits[activeType]
@@ -99,11 +112,13 @@ export function VideoReferenceMedia({ value, options, mode, disabled, onChange, 
     const next: VideoReference[] = mode === 'first-last' ? [
       ...(firstFrame.trim() ? [{ type: 'image' as const, url: firstFrame.trim(), role: 'first_frame' as const }] : []),
       ...(supportsLastFrame && lastFrame.trim() ? [{ type: 'image' as const, url: lastFrame.trim(), role: 'last_frame' as const }] : []),
-    ] : splitUrls(drafts[activeType]).map((url) => ({ type: activeType, url, role: MEDIA_ROLES[activeType] }))
+    ] : splitUrls(drafts[activeType]).map((url) => ({ type: activeType, url, role: getVideoReferenceRole(optionsForType(activeType), activeType) }))
     const type = mode === 'first-last' ? 'image' : activeType
     if (next.length > limits[type]) { setError(t('console.video.mediaLimitExceeded', { type: mediaLabel(type), count: limits[type] })); return }
     if (next.some((item) => !isRemoteUrl(item.url))) { setError(t('console.video.referenceUrlInvalid')); return }
-    if (next.some((item) => item.role === 'last_frame') && !next.some((item) => item.role === 'first_frame')) { setError(t('console.video.firstFrameRequired')); return }
+    // 清空素材始终允许；非空素材在关闭弹窗之前检查角色依赖与组合限制。
+    const mediaError = next.length ? validateVideoReferences(next, mode === 'first-last' ? options : optionsForType(activeType)) : null
+    if (mediaError) { setError(t(mediaError === 'media-dependency' ? 'console.video.mediaDependency' : 'console.video.parametersChanged')); return }
     onChange(next)
     setVisible(false)
     Toast.success(next.length ? t('console.video.mediaSaved', { type: mediaLabel(type), count: next.length }) : t('console.video.mediaCleared'))

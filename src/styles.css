@@ -722,19 +722,6 @@ html[data-theme="light"] .app-follow-tooltip {
 .video-console-page .video-workspace-main {
   min-height: 0;
 }
-.video-console-page .video-toolbar {
-  min-height: 48px;
-  padding: 8px 18px;
-  border-bottom: 0;
-  background: transparent;
-}
-.video-console-page .video-toolbar-actions {
-  gap: 8px;
-  /* 历史生成入口固定在工作区工具栏左侧，便于快速打开记录。 */
-  justify-content: flex-start;
-}
-.video-console-page .video-toolbar-workspace,
-.video-console-page .video-toolbar-actions > label,
 .video-console-page .video-key-link {
   display: none;
 }
@@ -747,22 +734,6 @@ html[data-theme="light"] .app-follow-tooltip {
   border: 1px solid var(--color-border-neutral-l1);
   border-radius: 8px;
   background: var(--color-bg-base-secondary);
-}
-.video-history-toggle {
-  display: inline-grid;
-  width: 32px;
-  height: 32px;
-  place-items: center;
-  padding: 0;
-  border: 0;
-  border-radius: 8px;
-  color: var(--color-text-tertiary);
-  background: transparent;
-  cursor: pointer;
-}
-.video-history-toggle:hover {
-  color: var(--color-text-default);
-  background: var(--color-bg-overlay-l2);
 }
 .video-console-page .video-history-panel {
   display: block;
@@ -7683,40 +7654,11 @@ html[data-theme="dark"] .generation-send-button.send-btn.is-running.semi-button:
   flex-direction: column;
   background: var(--color-bg-base-default);
 }
-.video-toolbar {
-  display: flex;
-  min-width: 0;
-  min-height: 56px;
-  align-items: center;
-  justify-content: flex-end;
-  padding: var(--spacing-12) var(--spacing-20);
-  border-bottom: 1px solid var(--color-border-neutral-l1);
-  background: var(--color-bg-base-secondary);
-}
-.video-toolbar-actions,
 .video-control-group,
 .video-composer-controls {
   display: flex;
   min-width: 0;
   align-items: center;
-}
-.video-toolbar-actions {
-  width: 100%;
-  justify-content: flex-end;
-  gap: var(--spacing-8);
-}
-.video-toolbar-workspace {
-  min-width: 0;
-  overflow: hidden;
-  color: var(--color-text-tertiary);
-  font-size: 11px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.video-toolbar-actions > label {
-  flex: 0 0 auto;
-  color: var(--color-text-secondary);
-  font-size: 12px;
 }
 .video-api-key-select {
   width: min(360px, 42vw);
@@ -8279,17 +8221,6 @@ html[data-theme="dark"] .generation-send-button.send-btn.is-running.semi-button:
   .composer,
   .video-composer {
     width: calc(100% - 24px);
-  }
-  .video-toolbar {
-    min-height: 56px;
-    padding: 0 var(--spacing-16);
-  }
-  .video-toolbar-actions {
-    justify-content: flex-start;
-    flex-wrap: wrap;
-  }
-  .video-toolbar-workspace {
-    display: none;
   }
   .video-api-key-select {
     width: auto;
@@ -19450,240 +19381,6 @@ html[data-theme="light"] .manuscript-support-notification-copy time {
   }
 }
 
-/* 时间范围弹层沿用目标页的双月日历交互，桌面端快捷项与日历并排。 */
-.analytics-time-range-picker {
-  position: relative;
-  min-width: 220px;
-}
-.analytics-time-range-trigger {
-  display: inline-flex;
-  align-items: center;
-  width: 100%;
-  min-height: 40px;
-  gap: var(--spacing-8);
-  padding: 0 var(--spacing-12);
-  border: 1px solid var(--color-border-neutral-l1);
-  border-radius: var(--radius-6);
-  background: var(--color-bg-base-secondary);
-  color: var(--color-text-default);
-  text-align: left;
-}
-.analytics-time-range-trigger:hover {
-  border-color: var(--color-border-neutral-l2);
-  background: var(--color-bg-base-tertiary);
-}
-.analytics-time-range-trigger-label {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.analytics-time-range-icon {
-  position: relative;
-  width: 15px;
-  height: 14px;
-  flex: 0 0 auto;
-  border: 1.5px solid currentColor;
-  border-radius: var(--radius-2);
-  opacity: 0.8;
-}
-.analytics-time-range-icon::before {
-  position: absolute;
-  top: 3px;
-  right: -1.5px;
-  left: -1.5px;
-  border-top: 1.5px solid currentColor;
-  content: "";
-}
-.analytics-time-range-icon::after {
-  position: absolute;
-  top: -3px;
-  left: 3px;
-  width: 2px;
-  height: 4px;
-  border-right: 1.5px solid currentColor;
-  border-left: 1.5px solid currentColor;
-  content: "";
-}
-.analytics-time-range-panel {
-  position: absolute;
-  z-index: 30;
-  top: calc(100% + var(--spacing-8));
-  left: 0;
-  display: grid;
-  grid-template-columns: 132px minmax(430px, 1fr);
-  width: min(680px, calc(100vw - 24px));
-  max-height: min(620px, calc(100vh - 32px));
-  overflow: auto;
-  padding: var(--spacing-12);
-  border: 1px solid var(--color-border-neutral-l1);
-  border-radius: var(--radius-6);
-  background: var(--color-bg-base-default);
-  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.34);
-}
-.analytics-time-range-presets {
-  display: grid;
-  align-content: start;
-  gap: var(--spacing-4);
-  padding-right: var(--spacing-12);
-  border-right: 1px solid var(--color-border-neutral-l1);
-}
-.analytics-time-range-preset {
-  min-height: 40px;
-  padding: 0 var(--spacing-10);
-  border-radius: var(--radius-6);
-  color: var(--color-text-secondary);
-  text-align: left;
-}
-.analytics-time-range-preset:hover {
-  background: var(--color-bg-base-secondary);
-  color: var(--color-text-default);
-}
-.analytics-time-range-preset[aria-pressed="true"] {
-  background: var(--color-bg-base-tertiary);
-  color: var(--color-text-default);
-  font-weight: 600;
-}
-.analytics-time-range-calendar-wrap {
-  min-width: 0;
-  padding-left: var(--spacing-12);
-}
-.analytics-time-range-calendar {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--spacing-12);
-}
-.analytics-time-range-calendar-head {
-  display: grid;
-  grid-column: 1 / -1;
-  grid-template-columns: 32px 1fr 32px;
-  align-items: center;
-}
-.analytics-time-range-calendar-nav {
-  width: 32px;
-  height: 32px;
-  border-radius: var(--radius-6);
-  color: var(--color-text-secondary);
-  font-size: 24px;
-  line-height: 1;
-}
-.analytics-time-range-calendar-nav:hover {
-  background: var(--color-bg-base-secondary);
-  color: var(--color-text-default);
-}
-.analytics-time-range-calendar-nav:disabled {
-  cursor: not-allowed;
-  color: var(--color-text-tertiary);
-  background: transparent;
-  opacity: 0.42;
-}
-.analytics-time-range-month {
-  min-width: 0;
-}
-.analytics-time-range-month h3 {
-  margin: 0 0 var(--spacing-8);
-  color: var(--color-text-default);
-  font-size: 14px;
-  font-weight: 600;
-  text-align: center;
-}
-.analytics-time-range-weekdays,
-.analytics-time-range-days {
-  display: grid;
-  grid-template-columns: repeat(7, minmax(28px, 1fr));
-  gap: 2px;
-}
-.analytics-time-range-weekdays {
-  margin-bottom: var(--spacing-4);
-  color: var(--color-text-tertiary);
-  font-size: 11px;
-  text-align: center;
-}
-.analytics-time-range-weekdays span {
-  display: grid;
-  min-height: 24px;
-  place-items: center;
-}
-.analytics-time-range-day {
-  position: relative;
-  min-width: 28px;
-  aspect-ratio: 1;
-  border-radius: var(--radius-6);
-  color: var(--color-text-secondary);
-  font-size: 12px;
-}
-.analytics-time-range-day[data-in-month="false"] {
-  color: var(--color-text-tertiary);
-  opacity: 0.58;
-}
-.analytics-time-range-day:hover {
-  background: var(--color-bg-base-secondary);
-  color: var(--color-text-default);
-}
-.analytics-time-range-day[data-in-range="true"] {
-  border-radius: 0;
-  background: color-mix(in srgb, var(--color-brand) 18%, transparent);
-  color: var(--color-text-default);
-}
-.analytics-time-range-day[data-start="true"],
-.analytics-time-range-day[data-end="true"] {
-  border-radius: var(--radius-6);
-  background: var(--color-brand);
-  color: var(--color-action-on-primary);
-  font-weight: 600;
-}
-.analytics-time-range-day:disabled,
-.analytics-time-range-day:disabled:hover {
-  cursor: not-allowed;
-  color: var(--color-text-tertiary);
-  background: transparent;
-  opacity: 0.34;
-}
-.analytics-time-range-summary {
-  min-height: 18px;
-  margin: var(--spacing-12) 0 var(--spacing-8);
-  color: var(--color-text-secondary);
-  font-size: 12px;
-}
-.analytics-time-range-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--spacing-8);
-}
-.analytics-time-range-actions button:disabled {
-  cursor: not-allowed;
-  opacity: 0.45;
-}
-
-@media (max-width: 720px) {
-  .analytics-time-range-picker {
-    width: 100%;
-    min-width: 0;
-  }
-  .analytics-time-range-panel {
-    left: 50%;
-    grid-template-columns: 1fr;
-    width: min(440px, calc(100vw - 16px));
-    max-height: calc(100vh - 20px);
-    transform: translateX(-50%);
-  }
-  .analytics-time-range-presets {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    padding: 0 0 var(--spacing-8);
-    border-right: 0;
-    border-bottom: 1px solid var(--color-border-neutral-l1);
-  }
-  .analytics-time-range-calendar-wrap {
-    padding: var(--spacing-8) 0 0;
-  }
-  .analytics-time-range-calendar {
-    grid-template-columns: 1fr;
-  }
-  .analytics-time-range-month:nth-of-type(2) {
-    display: none;
-  }
-}
-
 /* Figma 登录面板：418 × 953，内容宽 363，三种认证状态共用同一套控件。 */
 :is(.login-popover, .login-card) {
   width: min(418px, calc(100vw - 32px));
@@ -21740,24 +21437,6 @@ html[data-theme="light"]
   background: transparent;
 }
 
-/* Date range controls share one compact type scale across analytics and usage. */
-.analytics-time-range-trigger {
-  font-size: 14px;
-}
-.analytics-time-range-preset {
-  font-size: 14px;
-  line-height: 1.35;
-}
-.analytics-time-range-month h3 {
-  font-size: 14px;
-  line-height: 1.35;
-}
-.analytics-time-range-weekdays {
-  font-size: 12px;
-}
-.analytics-time-range-day {
-  font-size: 13px;
-}
 @media (max-width: 760px) {
   .user-dropdown-workspace-line > span:first-child {
     max-width: 150px;

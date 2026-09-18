@@ -13,7 +13,9 @@ const MODEL_NAMES = ['minimax', 'deepseek', 'seedance', 'glm', 'kimi']
 
 export function SubscriptionPlanCard({ plan, index, onSelect }: { plan: CatalogPlan; index: number; onSelect: (plan: CatalogPlan) => void }) {
   const { t, i18n } = useTranslation()
+  // 主标题放模型名(group)，副标题放套餐名(display_name，实际是版本号)。
   const name = planName(plan)
+  const group = planGroup(plan)
   const badge = planBonus(plan, i18n.language, t)
   const price = formatPlanPrice(plan.price?.price_cent)
   const available = canSelectPlan(plan)
@@ -31,12 +33,12 @@ export function SubscriptionPlanCard({ plan, index, onSelect }: { plan: CatalogP
     {badge && <span className="purchase-subscription-plan-badge">{badge}</span>}
     <div className="purchase-subscription-plan-content">
       <h3>
-        <span className="purchase-subscription-plan-name" title={name}>{name}</span>
+        <span className="purchase-subscription-plan-name" title={group}>{group}</span>
         {/* 公开目录不返回限购，只有登录后才展示真实限购次数。 */}
         {'purchase_limit' in plan && plan.purchase_limit > 0 && <span className="purchase-subscription-limit-tag">{t('console.purchasePage.api.purchaseLimit', { count: plan.purchase_limit })}</span>}
       </h3>
-      {/* 套餐副标题使用分组名，与套餐列表字段保持一致。 */}
-      <strong>{planGroup(plan)}</strong>
+      {/* 副标题展示套餐版本，与主标题的模型名区分开。 */}
+      <strong>{name}</strong>
       <div className="purchase-subscription-plan-info">
         <span>{planQuota(plan, i18n.language, t)}</span>
         <ul>{planFeatures(plan, i18n.language, t).map(feature => <li key={feature}>{feature}</li>)}</ul>

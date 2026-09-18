@@ -10,6 +10,19 @@
   height: auto;
 }
 
+/* 仅开放精确尺寸的模型按完整组合换行，长像素值不能被均分宽度挤在一起。 */
+.video-aspect-select-dropdown.video-aspect-options-dropdown .video-resolution-options--exact {
+  gap: 4px;
+  max-height: 160px;
+  overflow-y: auto;
+}
+
+.video-aspect-select-dropdown.video-aspect-options-dropdown .video-resolution-options--exact button {
+  flex: 0 0 auto;
+  min-width: max-content;
+  white-space: nowrap;
+}
+
 .video-duration-select-dropdown.video-duration-options-dropdown {
   --video-duration-track: #eeeeee;
   --video-duration-fill: #c7c7c7;

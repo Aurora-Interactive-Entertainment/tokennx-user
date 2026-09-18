@@ -16,7 +16,7 @@ const refreshed = () => response({ code: 0, msg: 'success', data: session('new-a
 const success = () => response({ id: 'video-task', status: 'queued', choices: [{ message: { content: '生成完成' }, finish_reason: 'stop' }] })
 const calls = {
   chat: (signal?: AbortSignal) => streamChatCompletion({ accessToken: 'old-access', model: 'model', prompt: '测试', temperature: 1, maxTokens: 128, signal }),
-  submit: (signal?: AbortSignal) => submitVideoGeneration({ accessToken: 'old-access', model: 'model', prompt: '测试', duration: 5, size: '1280x720', idempotencyKey: 'same-order', signal }),
+  submit: (signal?: AbortSignal) => submitVideoGeneration({ accessToken: 'old-access', model: 'model', prompt: '测试', duration: 5, size: '', videoOptions: { min_duration: 5, max_duration: 5, default_duration: 5, ratios: [], resolutions: [], max_images: 0, max_videos: 0, max_audios: 0 }, idempotencyKey: 'same-order', signal }),
   query: (signal?: AbortSignal) => getVideoTask('old-access', 'video-task', signal),
   cancel: (signal?: AbortSignal) => cancelVideoTask('old-access', 'video-task', signal),
 }

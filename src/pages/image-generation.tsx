@@ -16,7 +16,6 @@ import {
   IconArrowUp,
   IconChevronDown,
   IconClose,
-  IconCopy,
   IconDeleteStroked,
   IconEditStroked,
   IconImage,
@@ -106,7 +105,6 @@ function ImageResultCard({
 }: ImageResultCardProps): ReactNode {
   const { t } = useTranslation();
   const [moreOpen, setMoreOpen] = useState(false);
-  const [requestCopied, setRequestCopied] = useState(false);
   const moreWrapRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -119,17 +117,6 @@ function ImageResultCard({
     document.addEventListener("pointerdown", handleOutsidePointer);
     return () => document.removeEventListener("pointerdown", handleOutsidePointer);
   }, [moreOpen]);
-
-  async function copyRequestId(): Promise<void> {
-    if (!navigator.clipboard?.writeText) return;
-    try {
-      await navigator.clipboard.writeText(item.requestId);
-      setRequestCopied(true);
-      window.setTimeout(() => setRequestCopied(false), 1600);
-    } catch {
-      setRequestCopied(false);
-    }
-  }
 
   return (
     <article className="image-result-card">

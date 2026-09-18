@@ -9,13 +9,11 @@ import {
   useLocation,
   useNavigate,
 } from "react-router";
-import Button from "@douyinfe/semi-ui/lib/es/button";
 import {
   AppLoadingScreen,
   ConsoleLayout,
   DEFAULT_CONSOLE_PATH,
   prefetchUnreadNotificationCount,
-  PublicLayout,
 } from "@/components/common";
 import { AppStoreProvider } from "@/data/app-state";
 import {
@@ -313,23 +311,6 @@ function EnglishLocaleRoute() {
     if (!siteI18n.language.startsWith("en")) void siteI18n.changeLanguage("en-US");
   }, [pathname]);
   return <Outlet />;
-}
-
-function NotFoundPage() {
-  const { t } = useTranslation();
-  const navigate = useNavigate();
-  return (
-    <PublicLayout>
-      <div className="public-container not-found-page">
-        <span className="eyebrow">{t("console.modelDetail.notFoundCode")}</span>
-        <h1>{t("console.modelDetail.notFoundPageTitle")}</h1>
-        <p>{t("console.modelDetail.notFoundPageDescription")}</p>
-        <Button theme="solid" type="primary" onClick={() => navigate("/")}>
-          {t("console.modelDetail.backHome")}
-        </Button>
-      </div>
-    </PublicLayout>
-  );
 }
 
 function AppLoadingFallback() {

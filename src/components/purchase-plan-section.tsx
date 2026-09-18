@@ -35,7 +35,9 @@ function PurchasePlanCard({
   const tone = CARD_TONES[brandIndex >= 0 ? brandIndex : index % CARD_TONES.length]
   const fallback = CARD_BACKGROUNDS[brandIndex >= 0 ? brandIndex : index % CARD_BACKGROUNDS.length]
   const badge = planBonus(plan, i18n.language, t)
+  // 主标题放模型名(group)，副标题放套餐名(display_name，实际是版本号)。
   const name = planName(plan)
+  const group = planGroup(plan)
   const price = formatPlanPrice(plan.price?.price_cent)
   const disabled = !plan.can_purchase || selecting
   const buttonLabel = selecting
@@ -53,13 +55,13 @@ function PurchasePlanCard({
       {badge ? <span className="purchase-plan-badge">{badge}</span> : null}
       <div className="purchase-plan-content">
         <h3>
-          {/* 名字单行截断，把右侧空间让给限购标签，保证标签紧跟标题而不换行。 */}
-          <span className="purchase-plan-name" title={name}>{name}</span>
+          {/* 模型名作为主标题，单行截断把右侧空间让给限购标签，保证标签紧跟标题而不换行。 */}
+          <span className="purchase-plan-name" title={group}>{group}</span>
           {/* 限购次数由登录后的列表决定。 */}
           {plan.purchase_limit > 0 && <span className="purchase-plan-limit-tag">{t('console.purchasePage.api.purchaseLimit', { count: plan.purchase_limit })}</span>}
         </h3>
-        {/* 套餐副标题展示分组名，避免把权益模型名称误当成套餐名称。 */}
-        <strong>{planGroup(plan)}</strong>
+        {/* 副标题展示套餐版本，与主标题的模型名区分开。 */}
+        <strong>{name}</strong>
         <div className="purchase-plan-info">
           <span className="purchase-plan-quota">{planQuota(plan, i18n.language, t)}</span>
           <ul>

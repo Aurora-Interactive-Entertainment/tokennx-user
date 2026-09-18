@@ -4639,7 +4639,6 @@ export function PublicFooter() {
 
 export function ManuscriptSupportWidget() {
   const { t, i18n: translationI18n } = useTranslation();
-  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [tab, setTab] = useState<SupportTab>("contact");

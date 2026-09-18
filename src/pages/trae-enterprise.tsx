@@ -1,5 +1,5 @@
 import { createPortal } from "react-dom";
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import Toast from "@douyinfe/semi-ui/lib/es/toast";
 import { Form } from "@douyinfe/semi-ui/lib/es/form";
@@ -8,8 +8,6 @@ import Table from "@douyinfe/semi-ui/lib/es/table";
 import Tooltip from "@douyinfe/semi-ui/lib/es/tooltip";
 import {
   IconApartment,
-  IconBarChartVStroked,
-  IconBookmark,
   IconChevronDown,
   IconChevronRight,
   IconChevronUp,
@@ -84,9 +82,6 @@ type TraeMemberRow = {
   departmentID: string;
   version: EnterpriseVersion;
 };
-
-// 其他企业分析组件使用同一行模型；成员管理页本身只展示服务端返回的数据。
-const memberRows: TraeMemberRow[] = [];
 
 function toTraeMemberRow(member: EnterpriseMember, roleOptions: EnterpriseRoleOption[] = []): TraeMemberRow {
   const role = member.role === "owner" || roleOptions.some((option) => option.code === member.role && option.owner_role) ? "owner" : member.role === "administrator" || member.role === "admin" ? "admin" : "member";
@@ -230,8 +225,6 @@ function TraeSelect({
   );
 }
 
-type TraePickerTab = "people" | "departments";
-
 type TraeDepartmentNode = {
   id: string;
   name: string;
@@ -244,61 +237,6 @@ type TraeDepartmentNode = {
   isVirtual?: boolean;
   limits?: EnterpriseDepartment["limits"];
 };
-
-const traeDepartmentTree: TraeDepartmentNode[] = [
-  {
-    id: "company",
-    name: "极光互娱科技（深圳）有限公司",
-    children: [
-      {
-        id: "operation",
-        name: "运营",
-        children: [
-          {
-            id: "test-level-one",
-            name: "测试子级部门",
-            children: [
-              {
-                id: "test-level-two",
-                name: "四级子部门",
-                children: [{ id: "test-level-five", name: "五级" }],
-              },
-              {
-                id: "test-level-three",
-                name: "测试三级子部门",
-              },
-            ],
-          },
-        ],
-      },
-    ],
-  },
-];
-
-function flattenTraeDepartments(
-  nodes: TraeDepartmentNode[],
-  expanded: Record<string, boolean>,
-  depth = 0,
-): Array<Record<string, unknown>> {
-  return nodes.flatMap((node) => {
-    const hasChildren = Boolean(node.children?.length);
-    const row = {
-      value: `department:${node.id}`,
-      name: node.name,
-      email: "",
-      kind: "department",
-      depth,
-      hasChildren,
-      expanded: expanded[node.id] !== false,
-    };
-    return hasChildren && expanded[node.id] !== false
-      ? [
-          row,
-          ...flattenTraeDepartments(node.children ?? [], expanded, depth + 1),
-        ]
-      : [row];
-  });
-}
 
 function findTraeDepartmentName(
   nodes: TraeDepartmentNode[],
@@ -334,17 +272,6 @@ function flattenInvitationDepartments(nodes: TraeDepartmentNode[]): Array<{ id: 
     ...(node.isVirtual ? [] : [{ id: node.id, name: node.name }]),
     ...flattenInvitationDepartments(node.children ?? []),
   ]);
-}
-
-function containsTraeDepartmentNode(
-  node: TraeDepartmentNode,
-  id: string,
-): boolean {
-  return (
-    node.children?.some(
-      (child) => child.id === id || containsTraeDepartmentNode(child, id),
-    ) ?? false
-  );
 }
 
 function collectTraeDepartmentBranchIDs(
@@ -394,20 +321,6 @@ function getTraeDepartmentExpansionForSelection(
   return expanded;
 }
 
-function removeDepartmentNode(
-  nodes: TraeDepartmentNode[],
-  id: string,
-): TraeDepartmentNode[] {
-  return nodes
-    .filter((node) => node.id !== id)
-    .map((node) => ({
-      ...node,
-      children: node.children
-        ? removeDepartmentNode(node.children, id)
-        : undefined,
-    }));
-}
-
 function hasNextSibling(nodes: TraeDepartmentNode[], targetID: string): boolean {
   for (const node of nodes) {
     const children = node.children ?? [];
@@ -439,28 +352,6 @@ function flattenDepartmentTableRows(
       ? [row, ...flattenDepartmentTableRows(node.children ?? [], expanded, depth + 1)]
       : [row];
   });
-}
-
-function TraeSection({
-  title,
-  action,
-  children,
-  className = "",
-}: {
-  title: ReactNode;
-  action?: ReactNode;
-  children: ReactNode;
-  className?: string;
-}) {
-  return (
-    <section className={`trae-section ${className}`}>
-      <div className="trae-section-heading">
-        <h2>{title}</h2>
-        {action ? <div>{action}</div> : null}
-      </div>
-      {children}
-    </section>
-  );
 }
 
 export function TraeEnterpriseAnalysisPage() {
@@ -509,23 +400,6 @@ function MemberStatusRulesTooltip({ t }: { t: Translate }) {
       <p>{t("traeEnterprise.members.ruleActive")}</p>
       <p>{t("traeEnterprise.members.ruleSuspended")}</p>
     </div>
-  );
-}
-
-function updateDepartmentNodes(
-  nodes: TraeDepartmentNode[],
-  targetID: string,
-  update: (node: TraeDepartmentNode) => TraeDepartmentNode,
-): TraeDepartmentNode[] {
-  return nodes.map((node) =>
-    node.id === targetID
-      ? update(node)
-      : {
-          ...node,
-          children: node.children
-            ? updateDepartmentNodes(node.children, targetID, update)
-            : undefined,
-        },
   );
 }
 
@@ -1444,7 +1318,7 @@ function TraeEnterpriseMembersContent({ context }: { context: EnterpriseContext 
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [status, setStatus] = useState("all");
-  const [dialog, setDialog] = useState<"member" | "rules" | null>(null);
+  const [dialog, setDialog] = useState<"rules" | null>(null);
   const [memberActionDialog, setMemberActionDialog] = useState<{
     action: TraeMemberAction;
     members: TraeMemberRow[];
@@ -1575,10 +1449,6 @@ function TraeEnterpriseMembersContent({ context }: { context: EnterpriseContext 
       members.filter((member) => selectedMemberIDs.includes(member.id)),
     [members, selectedMemberIDs],
   );
-  function submitMember(_values: { email: string; role: string }, close: () => void) {
-    close();
-    showTraeToast(t("traeEnterprise.members.addSuccess"));
-  }
   function handleBulkMemberAction(action: TraeMemberBulkAction) {
     if (
       action === "changeDepartment" ||
@@ -1998,61 +1868,6 @@ function TraeEnterpriseMembersContent({ context }: { context: EnterpriseContext 
           onCreateOpenChange={setInvitationCreateOpen}
         />
       )}
-      {dialog === "member" ? (
-        <TraeDialog
-          title={t("traeEnterprise.members.addTitle")}
-          onClose={() => setDialog(null)}
-        >
-          {(close) => <Form<{ email: string; role: string }>
-            className="trae-dialog-form"
-            labelPosition="top"
-            initValues={{ email: "", role: "member" }}
-            autoScrollToError
-            showValidateIcon={false}
-            onSubmit={(values) => submitMember(values, close)}
-          >
-            <Form.Input
-              field="email"
-              label={t("traeEnterprise.members.email")}
-              type="email"
-              rules={[
-                {
-                  required: true,
-                  message: t("traeEnterprise.members.emailPlaceholder"),
-                },
-                {
-                  type: "email",
-                  message: t("traeEnterprise.members.emailPlaceholder"),
-                },
-              ]}
-              placeholder={t("traeEnterprise.members.emailPlaceholder")}
-            />
-            <Form.Select
-              field="role"
-              label={t("traeEnterprise.members.roleLabel")}
-            >
-              <Form.Select.Option value="member">
-                {t("traeEnterprise.members.member")}
-              </Form.Select.Option>
-              <Form.Select.Option value="admin">
-                {t("traeEnterprise.members.admin")}
-              </Form.Select.Option>
-            </Form.Select>
-            <div className="trae-dialog-actions">
-          <button
-            className="trae-secondary-button"
-            type="button"
-            onClick={close}
-              >
-                {t("traeEnterprise.common.cancel")}
-              </button>
-              <button className="trae-primary-button" type="submit">
-                {t("traeEnterprise.common.confirm")}
-              </button>
-            </div>
-          </Form>}
-        </TraeDialog>
-      ) : null}
       {dialog === "rules" ? (
         <TraeDialog
           title={t("traeEnterprise.members.stateRules")}
