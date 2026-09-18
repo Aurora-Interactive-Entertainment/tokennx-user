@@ -272,18 +272,48 @@
   gap: 8px;
 }
 
-.model-picker-avatar {
-  display: grid;
+/* 触发器直接复用统一模型 logo，缩到与原来的字母头像同尺寸。 */
+.model-picker .model-picker-logo.model-logo {
   width: 24px;
   height: 24px;
   flex: 0 0 24px;
-  place-items: center;
-  border-radius: 50%;
-  color: #fff;
-  background: #6656e8;
-  font-size: 11px;
-  font-weight: 600;
+  border-radius: 6px;
+  /* 选择器自身比所在行低 2px，沿用字母头像的补偿量让 logo 与模型名对齐。 */
   transform: translateY(2px);
+}
+
+.model-picker .model-picker-logo.model-logo svg {
+  width: 17px;
+  height: 17px;
+}
+
+/* 下拉项行高只有 32px，logo 与文字按 8px 间距排成一行。 */
+.app-select-dropdown .playground-model-option {
+  display: inline-flex;
+  max-width: 100%;
+  align-items: center;
+  gap: 8px;
+  vertical-align: middle;
+}
+
+.app-select-dropdown .playground-model-option .model-logo {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  border-radius: 4px;
+  font-size: 10px;
+}
+
+.app-select-dropdown .playground-model-option .model-logo svg {
+  width: 13px;
+  height: 13px;
+}
+
+.app-select-dropdown .playground-model-option-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .playground-console-page .playground-model-select .semi-select-selection {
@@ -317,15 +347,6 @@
   /* 根节点不能滚动，否则会在选择器右侧出现多余的上下滚动条。 */
   overflow: hidden;
   width: max-content;
-}
-
-.playground-select-dropdown .semi-select-option {
-  padding-left: 14px !important;
-  text-align: left;
-}
-
-.playground-select-dropdown .semi-select-option-icon {
-  display: none !important;
 }
 
 .playground-console-page .playground-model-select .semi-select-selection:hover,

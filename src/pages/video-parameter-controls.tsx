@@ -70,6 +70,7 @@ export function VideoParameterControls({ options, duration, aspectRatio, resolut
       <Select
         className="video-control-button video-aspect-trigger video-panel-select"
         value="settings"
+        clickToHide
         disabled={disabled}
         arrowIcon={<IconChevronDownStroked />}
         position="topLeft"
@@ -112,6 +113,7 @@ export function VideoParameterControls({ options, duration, aspectRatio, resolut
       <Select
         className="video-control-button video-duration-trigger video-panel-select"
         value="duration"
+        clickToHide
         disabled={disabled}
         arrowIcon={<IconChevronDownStroked />}
         position="topLeft"

@@ -1,9 +1,11 @@
+import type { EnterpriseContext } from "@/api/enterprise-console";
+import { hasEnterpriseMemberPermission } from "@/utils/enterprise-member-access";
 import Tooltip from "@douyinfe/semi-ui/lib/es/tooltip";
 import { useTranslation } from "react-i18next";
 import "./trae-member-bulk-actions.css";
 
 export type TraeMemberRole = "owner" | "admin" | "member";
-export type TraeMemberStatus = "active" | "pending" | "suspended";
+export type TraeMemberStatus = "active" | "pending" | "suspended" | "removed";
 
 export type TraeBulkMember = {
   id: string;
@@ -16,46 +18,25 @@ export type TraeMemberBulkAction =
 
 type BulkActionAvailability = {
   disabled: boolean;
-  reason?: "protectedMember" | "removeProtectedMember" | "inviteUnavailable";
+  reason?: "protectedMember" | "removeProtectedMember" | "inviteUnavailable" | "noPermission" | "batchLimit" | "invalidStatus";
 };
 
 export function getTraeBulkActionAvailability(
   action: TraeMemberBulkAction,
   members: TraeBulkMember[],
-  operator: { memberID: string; role: TraeMemberRole },
+  operator: { memberID: string; role: TraeMemberRole; context?: EnterpriseContext },
 ): BulkActionAvailability {
   if (members.length === 0) return { disabled: true };
 
-  // Only the signed-in super administrator can perform protected operations
-  // on their own account. Moving departments remains available to match the
-  // enterprise console behavior.
-  const hasRestrictedSuperAdmin = members.some(
-    (member) =>
-      member.role === "owner" &&
-      !(operator.role === "owner" && member.id === operator.memberID),
-  );
-  const containsNonRemovableOperator =
-    operator.role !== "owner" &&
-    members.some((member) => member.id === operator.memberID);
-
-  if (action === "changeDepartment") {
-    return { disabled: false };
-  }
-  if (action === "removeMember") {
-    return hasRestrictedSuperAdmin || containsNonRemovableOperator
-      ? { disabled: true, reason: "removeProtectedMember" }
-      : { disabled: false };
-  }
-  if (action === "sendInvite") {
-    if (hasRestrictedSuperAdmin)
-      return { disabled: true, reason: "protectedMember" };
-    return members.every((member) => member.status === "pending")
-      ? { disabled: false }
-      : { disabled: true, reason: "inviteUnavailable" };
-  }
-  return hasRestrictedSuperAdmin
-    ? { disabled: true, reason: "protectedMember" }
-    : { disabled: false };
+  const permission = action === "changeDepartment" ? "department_members.manage" : action === "changeRole" ? "roles.edit" : action === "removeMember" ? "members.remove" : "members.invite";
+  if (operator.context && !hasEnterpriseMemberPermission(operator.context, permission)) return { disabled: true, reason: "noPermission" };
+  // 普通成员操作不能修改所有者；部门调整与移除也禁止针对操作者本人。
+  const protectedMember = members.some((member) => member.role === "owner" || ((action === "changeDepartment" || action === "removeMember") && member.id === operator.memberID));
+  if (protectedMember) return { disabled: true, reason: action === "removeMember" ? "removeProtectedMember" : "protectedMember" };
+  if (action === "sendInvite") return members.every((member) => member.status === "pending") ? { disabled: false } : { disabled: true, reason: "inviteUnavailable" };
+  if (members.some((member) => member.status !== "active" && member.status !== "suspended")) return { disabled: true, reason: "invalidStatus" };
+  if (action === "changeRole" && members.length > 100) return { disabled: true, reason: "batchLimit" };
+  return { disabled: false };
 }
 
 const BULK_ACTIONS: TraeMemberBulkAction[] = [
@@ -70,9 +51,11 @@ export function TraeMemberBulkActions({
   operator,
   onCancel,
   onAction,
+  disabled = false,
 }: {
   members: TraeBulkMember[];
-  operator: { memberID: string; role: TraeMemberRole };
+  operator: { memberID: string; role: TraeMemberRole; context?: EnterpriseContext };
+  disabled?: boolean;
   onCancel: () => void;
   onAction: (action: TraeMemberBulkAction) => void;
 }) {
@@ -101,7 +84,7 @@ export function TraeMemberBulkActions({
           const button = (
             <button
               type="button"
-              disabled={availability.disabled}
+              disabled={disabled || availability.disabled}
               onClick={() => onAction(action)}
             >
               {t(`traeEnterprise.members.${action}`)}

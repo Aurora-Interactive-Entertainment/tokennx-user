@@ -119,6 +119,17 @@ describe('个人中心 API 封装', () => {
     expect(JSON.parse(String(lastRequest(fetchMock).options?.body))).toEqual({ values: { low_balance: false, product_updates: true } })
     expect(new Headers(lastRequest(fetchMock).options?.headers).get('Authorization')).toBe('Bearer profile-token')
   })
+
+  it('通知阈值按元原样提交', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(response({ items: [] }))
+
+    await updateNotificationPreferences('profile-token', { low_balance: true }, { low_balance: 1 })
+
+    expect(JSON.parse(String(lastRequest(fetchMock).options?.body))).toEqual({
+      values: { low_balance: true },
+      thresholds: { low_balance: 1 },
+    })
+  })
 })
 
 describe('个人中心输入约束和错误提示', () => {

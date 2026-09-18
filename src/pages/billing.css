@@ -3,6 +3,11 @@
   min-width: 920px;
 }
 
+/* 账本导出按钮保持原有尺寸，仅按设计收紧文案字号。 */
+.billing-ledger-section .billing-export-button.semi-button {
+  font-size: 12px;
+}
+
 /* 开票说明固定展示，标题采用普通文本，不再提供折叠交互。 */
 .invoice-faq {
   overflow: hidden;
@@ -32,6 +37,5 @@
     height: 32px;
     min-height: 32px;
     padding-inline: 10px;
-    font-size: 12px;
   }
 }

@@ -1,14 +1,16 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import Toast from '@douyinfe/semi-ui/lib/es/toast'
-import { getEnterpriseMembers, getEnterpriseDepartments, updateEnterpriseMemberRole, updateEnterpriseMemberDepartment, type EnterpriseContext, type EnterpriseMember } from '@/api/enterprise-console'
+import { getEnterpriseMembers, getEnterpriseDepartments, updateEnterpriseMemberRole, updateEnterpriseMemberDepartment, batchUpdateEnterpriseMembers, removeEnterpriseMember, getEnterpriseDepartment, updateEnterpriseDepartment, type EnterpriseContext, type EnterpriseMember } from '@/api/enterprise-console'
 import { TraeEnterpriseMembersPage } from './trae-enterprise'
 
 const fixture = vi.hoisted(() => ({
   context: { id: 'enterprise-test', name: '测试企业', member_id: 'owner', role: 'owner', roles: ['owner'], capabilities: {}, role_options: [] } as unknown as EnterpriseContext,
+  navigate: vi.fn(),
   errorHandler: vi.fn(() => null),
 }))
-vi.mock('@/api/enterprise-console', async (original) => ({ ...await original<object>(), getEnterpriseMembers: vi.fn(), getEnterpriseDepartments: vi.fn(), updateEnterpriseMemberRole: vi.fn(), updateEnterpriseMemberDepartment: vi.fn() }))
+vi.mock('react-router', async (original) => ({ ...await original<object>(), useNavigate: () => fixture.navigate }))
+vi.mock('@/api/enterprise-console', async (original) => ({ ...await original<object>(), getEnterpriseMembers: vi.fn(), getEnterpriseDepartments: vi.fn(), updateEnterpriseMemberRole: vi.fn(), updateEnterpriseMemberDepartment: vi.fn(), batchUpdateEnterpriseMembers: vi.fn(), removeEnterpriseMember: vi.fn(), getEnterpriseDepartment: vi.fn(), updateEnterpriseDepartment: vi.fn() }))
 vi.mock('./enterprise-console-shared', () => ({ EnterprisePageShell: ({ children }: { children: (context: EnterpriseContext) => React.ReactNode }) => children(fixture.context), useEnterpriseErrorHandler: () => fixture.errorHandler, EnterpriseError: () => null, EnterpriseLoading: () => null, useEnterpriseConsoleContext: () => ({ context: fixture.context }) }))
 
 const member = { id: 'member-test', user_id: 'user-1', display_name: '测试成员', masked_contact: 'test@example.com', status: 'active', join_source: 'invitation', joined_at: 1, role: 'finance_auditor', roles: ['finance_auditor'], version: '1' } as EnterpriseMember
@@ -23,6 +25,9 @@ async function openAction(name: string) {
 describe('企业成员角色与部门修改', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    fixture.context.role = "owner"
+    fixture.context.permissions = undefined
+    fixture.context.capabilities = {} as EnterpriseContext["capabilities"]
     fixture.context.role_options = [
       { code: 'finance_auditor', name: '财务审计员', owner_role: false },
       { code: 'administrator', name: '管理员', owner_role: false },
@@ -83,8 +88,8 @@ describe('企业成员角色与部门修改', () => {
     render(<TraeEnterpriseMembersPage />)
     const modal = await openAction('变更部门')
     expect(within(modal).getByRole('button', { name: '部门' })).toHaveTextContent('真实部门')
-    fireEvent.click(within(modal).getByRole('button', { name: '确定' }))
-    await waitFor(() => expect(updateEnterpriseMemberDepartment).toHaveBeenCalledWith({ enterprise_id: 'enterprise-test' }, 'member-test', { department_id: 'department-real', expected_version: '1' }))
+    expect(within(modal).getByRole('button', { name: '确定' })).toBeDisabled()
+    expect(updateEnterpriseMemberDepartment).not.toHaveBeenCalled()
   })
 
   it('虚拟根不可选择但可展开，嵌套真实部门仍可提交', async () => {
@@ -127,7 +132,7 @@ describe('企业成员角色与部门修改', () => {
     expect(selected).toBeChecked()
   })
 
-  it('移交所有者未接接口时不会提示成功', async () => {
+  it('移交所有者复用企业设置已有流程', async () => {
     vi.mocked(getEnterpriseMembers).mockResolvedValue({ items: [{ ...member, role: 'owner', roles: ['owner'] }], total: 1, page: 1, page_size: 100 } as never)
     const info = vi.spyOn(Toast, 'info')
     const success = vi.spyOn(Toast, 'success')
@@ -135,7 +140,8 @@ describe('企业成员角色与部门修改', () => {
     await screen.findByText('测试成员')
     fireEvent.click(screen.getByRole('button', { name: '更多操作 测试成员' }))
     fireEvent.click(screen.getByRole('button', { name: '移交超级管理员' }))
-    expect(info).toHaveBeenCalledWith('移交超级管理员即将上线')
+    expect(info).not.toHaveBeenCalled()
+    expect(fixture.navigate).toHaveBeenCalledWith('/console/enterprise-settings#enterprise-ownership')
     expect(success).not.toHaveBeenCalled()
     expect(updateEnterpriseMemberRole).not.toHaveBeenCalled()
   })
@@ -158,4 +164,85 @@ describe('企业成员角色与部门修改', () => {
     expect(success).not.toHaveBeenCalled()
     expect(screen.getAllByRole('row').map((row) => row.textContent)).toEqual(before)
   })
+  it('成员提交进行中防止重复点击，批量改角色只请求事务接口', async () => {
+    vi.mocked(getEnterpriseMembers).mockResolvedValue({ items: [member, { ...member, id: 'member-2', display_name: '第二成员' }], total: 2 } as never)
+    let resolve!: (value: never) => void
+    vi.mocked(batchUpdateEnterpriseMembers).mockImplementation(() => new Promise((done) => { resolve = done }))
+    render(<TraeEnterpriseMembersPage />)
+    await screen.findByText('第二成员')
+    for (const checkbox of screen.getAllByRole('checkbox', { name: 'Select this row' })) fireEvent.click(checkbox)
+    fireEvent.click(screen.getByRole('button', { name: '修改角色' }))
+    const modal = await screen.findByRole('dialog')
+    const confirm = within(modal).getByRole('button', { name: '确定' })
+    fireEvent.click(confirm)
+    fireEvent.click(confirm)
+    expect(confirm).toBeDisabled()
+    expect(batchUpdateEnterpriseMembers).toHaveBeenCalledOnce()
+    expect(updateEnterpriseMemberRole).not.toHaveBeenCalled()
+    expect(batchUpdateEnterpriseMembers).toHaveBeenCalledWith({ enterprise_id: 'enterprise-test' }, { action: 'role', role: 'finance_auditor', members: [{ member_id: 'member-test', expected_version: '1' }, { member_id: 'member-2', expected_version: '1' }] })
+    resolve({ items: [], updated: 2 } as never)
+    await waitFor(() => expect(getEnterpriseMembers).toHaveBeenCalledTimes(2))
+  })
+
+  it('批量移除第二人失败时刷新已完成的结果，不显示整批成功', async () => {
+    vi.mocked(getEnterpriseMembers).mockResolvedValue({ items: [member, { ...member, id: 'member-2', display_name: '第二成员' }], total: 2 } as never)
+    vi.mocked(removeEnterpriseMember).mockResolvedValueOnce(member).mockRejectedValueOnce(new Error('版本冲突'))
+    const success = vi.spyOn(Toast, 'success')
+    render(<TraeEnterpriseMembersPage />)
+    await screen.findByText('第二成员')
+    for (const checkbox of screen.getAllByRole('checkbox', { name: 'Select this row' })) fireEvent.click(checkbox)
+    fireEvent.click(screen.getByRole('button', { name: '移除人员' }))
+    fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: '移除人员' }))
+    await waitFor(() => expect(removeEnterpriseMember).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(getEnterpriseMembers).toHaveBeenCalledTimes(2))
+    expect(success).not.toHaveBeenCalled()
+  })
+
+  it('只读自定义角色禁用邀请、审核和人员写操作', async () => {
+    fixture.context.role = 'auditor'
+    fixture.context.permissions = ['members.view', 'departments.view']
+    render(<TraeEnterpriseMembersPage />)
+    await screen.findByText('测试成员')
+    expect(screen.getByRole('button', { name: '链接邀请' })).toBeDisabled()
+    expect(screen.getByRole('tab', { name: '申请列表' })).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByRole('button', { name: '新建部门' })).toBeDisabled()
+    fireEvent.click(screen.getByRole('button', { name: '更多操作 测试成员' }))
+    for (const name of ['修改角色', '变更部门', '移除人员']) expect(screen.getByRole('button', { name })).toBeDisabled()
+  })
+
+  it('旧部门列表缺少限制时先读取详情，编辑名称不会清空额度和限流配置', async () => {
+    const limits = { daily_cost_limit_yuan: '100.00', weekly_cost_limit_yuan: '500.00', monthly_cost_limit_yuan: null, concurrency_limit: 3, rpm_limit: 0, tpm_limit: 1000 }
+    vi.mocked(getEnterpriseDepartment).mockResolvedValue({ id: 'department-real', version: '1', limits: { configured: limits, effective: limits } } as never)
+    vi.mocked(updateEnterpriseDepartment).mockResolvedValue({ id: 'department-real', version: '2' } as never)
+    render(<TraeEnterpriseMembersPage />)
+    await screen.findByText('测试成员')
+    fireEvent.click(screen.getByRole('button', { name: '更多部门操作' }))
+    fireEvent.click(screen.getByRole('button', { name: '编辑部门' }))
+    const modal = await screen.findByRole('dialog')
+    fireEvent.change(within(modal).getByLabelText('部门名称'), { target: { value: '更新名称' } })
+    fireEvent.submit(modal.querySelector('form')!)
+    await waitFor(() => expect(updateEnterpriseDepartment).toHaveBeenCalledWith({ enterprise_id: 'enterprise-test' }, 'department-real', { name: '更新名称', parent_id: '', expected_version: '1', ...limits }))
+    expect(getEnterpriseDepartment).toHaveBeenCalledWith({ enterprise_id: 'enterprise-test' }, 'department-real')
+  })
+
+  it('部门列表显示真实人数而非演示的固定人数', async () => {
+    vi.mocked(getEnterpriseDepartments).mockResolvedValue({ items: [{ id: 'department-real', name: '真实部门', depth: 0, child_count: 0, member_count: 17, version: '1' }], total: 1 } as never)
+    render(<TraeEnterpriseMembersPage />)
+    await screen.findByText('测试成员')
+    fireEvent.click(screen.getByRole('tab', { name: '部门管理' }))
+    expect(screen.getAllByRole('gridcell', { name: '17' })).toHaveLength(2)
+  })
+
+  it('部门搜索可以找到折叠分支内的部门，清空后恢复折叠状态', async () => {
+    render(<TraeEnterpriseMembersPage />)
+    await screen.findByText('测试成员')
+    fireEvent.click(screen.getByRole('tab', { name: '部门管理' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Collapse' }))
+    expect(screen.queryByText('真实部门')).not.toBeInTheDocument()
+    fireEvent.change(screen.getByRole('textbox', { name: '搜索部门' }), { target: { value: '真实' } })
+    expect(screen.getByText('真实部门')).toBeInTheDocument()
+    fireEvent.change(screen.getByRole('textbox', { name: '搜索部门' }), { target: { value: '' } })
+    expect(screen.queryByText('真实部门')).not.toBeInTheDocument()
+  })
+
 })

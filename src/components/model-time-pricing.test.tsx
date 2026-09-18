@@ -114,8 +114,8 @@ describe('目录真实峰谷定价', () => {
 
     expect(container.querySelectorAll('.model-time-pricing-period')).toHaveLength(2)
     const peak = screen.getByText('峰价').closest('section')!
-    expect(within(peak).getByText('周一至周五 · 09:00–12:00')).toBeInTheDocument()
-    expect(within(peak).getByText('周一至周五 · 14:00–18:00')).toBeInTheDocument()
+    expect(within(peak).getByText('周一至周五 · 09:00–12:00、14:00–18:00')).toBeInTheDocument()
+    expect(peak.querySelectorAll('.model-time-pricing-schedule')).toHaveLength(1)
     expect(within(peak).getAllByRole('listitem')).toHaveLength(3)
     expect(within(peak).getByText('¥0.04')).toBeInTheDocument()
     expect(within(peak).getByText('¥2')).toBeInTheDocument()
@@ -160,9 +160,7 @@ describe('目录真实峰谷定价', () => {
 
     expect(screen.getAllByText('弹性优惠')).toHaveLength(1)
     const custom = screen.getByText('弹性优惠').closest('section')!
-    expect(within(custom).getByText('周一至周五 · 00:00–08:00')).toBeInTheDocument()
-    expect(within(custom).getByText('周一至周五 · 12:00–14:00')).toBeInTheDocument()
-    expect(within(custom).getByText('周一至周五 · 20:00–24:00')).toBeInTheDocument()
+    expect(within(custom).getByText('周一至周五 · 00:00–08:00、12:00–14:00、20:00–24:00')).toBeInTheDocument()
     expect(within(custom).getAllByRole('listitem')).toHaveLength(1)
     expect(within(custom).getByText('当前生效')).toBeInTheDocument()
     expect(within(screen.getByText('常规低谷').closest('section')!).queryByText('当前生效')).toBeNull()
@@ -178,8 +176,7 @@ describe('目录真实峰谷定价', () => {
     ] })} />)
 
     expect(within(screen.getByText('峰价').closest('section')!).getAllByRole('listitem')).toHaveLength(2)
-    expect(screen.getByText('周一至周五 · 09:00–12:00')).toBeInTheDocument()
-    expect(screen.getByText('周一至周五 · 14:00–18:00')).toBeInTheDocument()
+    expect(screen.getByText('周一至周五 · 09:00–12:00、14:00–18:00')).toBeInTheDocument()
     expect(screen.getByText(/context_window: 128k/)).toBeInTheDocument()
   })
 
@@ -197,6 +194,25 @@ describe('目录真实峰谷定价', () => {
     expect(screen.getByText('unnamed-a')).toBeInTheDocument()
     expect(screen.getByText('默认时间段')).toBeInTheDocument()
     expect(screen.queryByText('谷价')).toBeNull()
+  })
+
+  it('同价时只合并相同星期前缀，默认规则独立显示并支持英文', async () => {
+    render(<ModelTimePricing model={model({ pricing_periods: [
+      period({ key: 'morning', name: '峰价', start_minute: 540, end_minute: 720 }),
+      period({ key: 'weekend', name: '峰价', weekday_mask: 96, start_minute: 540, end_minute: 720 }),
+      period({ key: 'afternoon', name: '峰价', start_minute: 840, end_minute: 1080 }),
+      period({ key: 'default', name: '峰价', default: true }),
+      fallbackPeriod(),
+    ] })} />)
+    const peak = screen.getByText('峰价').closest('section')!
+    expect(peak.querySelectorAll('.model-time-pricing-schedule')).toHaveLength(3)
+    expect(within(peak).getByText('周一至周五 · 09:00–12:00、14:00–18:00')).toBeInTheDocument()
+    expect(within(peak).getByText('周六 / 周日 · 09:00–12:00')).toBeInTheDocument()
+    expect(within(peak).getByText('其余时段适用（默认）')).toBeInTheDocument()
+    await act(async () => { await i18n.changeLanguage('en-US') })
+    expect(within(peak).getByText('Mon–Fri · 09:00–12:00, 14:00–18:00')).toBeInTheDocument()
+    expect(within(peak).getByText('Sat / Sun · 09:00–12:00')).toBeInTheDocument()
+    expect(within(peak).getByText('All other times (default)')).toBeInTheDocument()
   })
 
   it('峰价及默认时间段标题支持英文，自定义名称不被覆盖', async () => {

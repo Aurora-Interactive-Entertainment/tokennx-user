@@ -8,6 +8,7 @@ import {
   createEnterpriseInvitation,
   getEnterpriseInvitationUsages,
   getEnterpriseInvitations,
+  updateEnterpriseInvitation,
   type EnterpriseContext,
   type EnterpriseInvitation,
 } from "@/api/enterprise-console";
@@ -16,7 +17,7 @@ import { invitationExpiryTimestamp, TraeEnterpriseInvitations } from "./trae-ent
 
 vi.mock("@/api/enterprise-console", async () => {
   const actual = await vi.importActual<typeof import("@/api/enterprise-console")>("@/api/enterprise-console");
-  return { ...actual, createEnterpriseInvitation: vi.fn(), getEnterpriseInvitations: vi.fn(), getEnterpriseInvitationUsages: vi.fn() };
+  return { ...actual, createEnterpriseInvitation: vi.fn(), getEnterpriseInvitations: vi.fn(), getEnterpriseInvitationUsages: vi.fn(), updateEnterpriseInvitation: vi.fn() };
 });
 
 const createInvitationMock = vi.mocked(createEnterpriseInvitation);
@@ -88,7 +89,7 @@ function renderInvitations(createOpen = false, context: EnterpriseContext = CONT
 
 describe("Trae 企业邀请链接", () => {
   it("将有效期自然日转换为 UTC 毫秒时间戳", () => {
-    expect(invitationExpiryTimestamp(new Date(2026, 8, 2))).toBe(Date.UTC(2026, 8, 2, 23, 59, 59, 999));
+    expect(invitationExpiryTimestamp(new Date(2026, 8, 2))).toBe(new Date(2026, 8, 2, 23, 59, 59, 999).getTime());
   });
 
   it("按每页 10 条查询邀请列表并展示链接操作", async () => {
@@ -136,4 +137,13 @@ describe("Trae 企业邀请链接", () => {
     expect(await screen.findByRole("dialog", { name: "邀请链接使用情况" })).toHaveTextContent("张三");
     expect(getUsagesMock).toHaveBeenCalledWith({ enterprise_id: "ent_test" }, "link_1", expect.any(Object));
   });
+  it("更新邀请失败后刷新版本，防止继续使用旧状态", async () => {
+    const user = userEvent.setup();
+    vi.mocked(updateEnterpriseInvitation).mockRejectedValueOnce(new Error("版本冲突"));
+    renderInvitations();
+    await user.click(await screen.findByRole("button", { name: "停用" }));
+    await waitFor(() => expect(getInvitationsMock).toHaveBeenCalledTimes(2));
+    expect(updateEnterpriseInvitation).toHaveBeenCalledWith({ enterprise_id: "ent_test" }, "link_1", { action: "revoke", expected_version: INVITATION.version }, expect.any(Object));
+  });
+
 });

@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate, type NavigateFunction } from "react-router";
+import { useNavigate } from "react-router";
 import AppModal from "@/components/app-modal";
 import { LoginDialog } from "@/components/common";
 import { useAppSelector } from "@/store/hooks";
@@ -8,10 +8,10 @@ import "./activity-campaign-modal.css";
 
 export type ActivityCampaign = {
   /** 活动主视觉图片，直接作为弹窗上半部分展示。 */
-  image: string;
+  image?: string;
   /** 主视觉图片替代文案，未配置时回退到多语言标题。 */
   copy?: string;
-  /** 接口声明活动是否必须登录后领取；未返回时按本地登录态判断。 */
+  /** 仅登录用户可见；不用于控制点击后的登录流程。 */
   loginRequired?: boolean;
   /** 主按钮跳转地址，同时支持站内路径与站外绝对地址。 */
   targetUrl?: string;
@@ -91,7 +91,10 @@ function pad(value: number): string {
   return String(Math.max(0, value)).padStart(2, "0");
 }
 
-export function getActivityCampaignCountdown(endAt: number, now: number): Countdown {
+export function getActivityCampaignCountdown(
+  endAt: number,
+  now: number,
+): Countdown {
   const totalSeconds = Math.ceil(Math.max(0, endAt - now) / 1000);
   return {
     days: pad(Math.floor(totalSeconds / 86400)),
@@ -107,7 +110,11 @@ export function getActivityCampaignTarget(
   origin: string,
 ): { href: string; external: boolean } | null {
   try {
-    const target = new URL(url, origin);
+    if (!url.trim()) return null;
+    const target = new URL(url.trim(), origin);
+    // 活动跳转仅接受网页地址，拒绝脚本和其他非网页协议。
+    if (target.protocol !== "http:" && target.protocol !== "https:")
+      return null;
     if (target.origin === origin) {
       return {
         href: `${target.pathname}${target.search}${target.hash}`,
@@ -120,14 +127,6 @@ export function getActivityCampaignTarget(
   }
 }
 
-function openCampaignTarget(url: string, navigate: NavigateFunction): void {
-  const target = getActivityCampaignTarget(url, window.location.origin);
-  if (!target) return;
-  // 站外地址不能交给路由，否则会被当成站内路径处理。
-  if (target.external) window.location.assign(target.href);
-  else navigate(target.href);
-}
-
 export function ActivityCampaignModal({
   campaign,
 }: ActivityCampaignModalProps) {
@@ -136,8 +135,16 @@ export function ActivityCampaignModal({
   const authStatus = useAppSelector((state) => state.auth.status);
   const [visible, setVisible] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
+  const [pendingTarget, setPendingTarget] =
+    useState<ReturnType<typeof getActivityCampaignTarget>>(null);
   const [now, setNow] = useState(() => Date.now());
-  const loginTimerRef = useRef<number | undefined>(undefined);
+  const target = campaign.targetUrl
+    ? getActivityCampaignTarget(campaign.targetUrl, window.location.origin)
+    : null;
+  // 登录态改变后立即隐藏旧响应中的受限活动，不等待首页请求完成。
+  const canDisplay =
+    (campaign.loginRequired !== true || authStatus === "authenticated") &&
+    (campaign.activityEndAt === undefined || campaign.activityEndAt > now);
   const campaignCopy =
     campaign.copy ?? t("console.purchasePage.activityModal.title");
 
@@ -147,14 +154,12 @@ export function ActivityCampaignModal({
     setVisible(true);
   }, []);
 
-  useEffect(
-    () => () => {
-      if (loginTimerRef.current !== undefined) {
-        window.clearTimeout(loginTimerRef.current);
-      }
-    },
-    [],
-  );
+  useEffect(() => {
+    if (!pendingTarget) return;
+    // 等活动弹窗关闭后再打开项目统一登录抽屉，避免两个遮罩叠加。
+    const timer = window.setTimeout(() => setLoginOpen(true), 180);
+    return () => window.clearTimeout(timer);
+  }, [pendingTarget]);
 
   useEffect(() => {
     if (!visible) return undefined;
@@ -178,99 +183,116 @@ export function ActivityCampaignModal({
   }, []);
 
   function handleConfirm(): void {
-    const loginRequired = campaign.loginRequired !== false;
+    if (!target || !canDisplay) return;
     closeCampaign();
-    if (loginRequired && authStatus !== "authenticated") {
-      // 先关闭活动弹窗，再拉起统一登录抽屉，避免两个遮罩叠加。
-      if (loginTimerRef.current !== undefined) {
-        window.clearTimeout(loginTimerRef.current);
-      }
-      loginTimerRef.current = window.setTimeout(() => {
-        loginTimerRef.current = undefined;
-        setLoginOpen(true);
-      }, 180);
+    if (authStatus !== "authenticated") {
+      // 可见性与领取登录分开处理，并锁定本次点击目标，避免接口刷新后跳错活动。
+      setPendingTarget(target);
       return;
     }
-    if (campaign.targetUrl) openCampaignTarget(campaign.targetUrl, navigate);
+    openTarget(target);
   }
+
+  function openTarget(destination: NonNullable<typeof target>): void {
+    // 站外地址使用完整导航，站内地址继续交给路由。
+    if (destination.external) window.location.assign(destination.href);
+    else navigate(destination.href);
+  }
+
+  const closeLogin = useCallback(() => {
+    setLoginOpen(false);
+    setPendingTarget(null);
+  }, []);
 
   return (
     <>
-      <AppModal
-        className="activity-campaign-modal"
-        visible={visible}
-        title={null}
-        aria-label={t("console.purchasePage.activityModal.title")}
-        closable={false}
-        footer={null}
-        width={480}
-        onCancel={closeCampaign}
-      >
-        <div className="activity-campaign-content">
-          <div className="activity-campaign-visual">
-            <img src={campaign.image} alt={campaignCopy} />
-            <button
-              className="activity-campaign-close"
-              type="button"
-              aria-label={t("console.purchasePage.activityModal.close")}
-              onClick={closeCampaign}
-            >
-              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                <path d="M5 5l14 14M19 5L5 19" />
-              </svg>
-            </button>
-          </div>
-          <div className="activity-campaign-body">
-            {countdown ? (
-              <>
-                <h2>{t("console.purchasePage.activityModal.countdown")}</h2>
-                <div
-                  className="activity-campaign-countdown"
-                  aria-label={t("console.purchasePage.activityModal.countdown")}
+      {/* 活动失效时卸载活动内容，已发起的登录流程仍正常完成。 */}
+      {canDisplay ? (
+        <AppModal
+          className={`activity-campaign-modal${campaign.image ? "" : " activity-campaign-modal--no-cover"}`}
+          visible={visible && canDisplay}
+          title={null}
+          aria-label={t("console.purchasePage.activityModal.title")}
+          closable={!campaign.image}
+          footer={null}
+          width={480}
+          onCancel={closeCampaign}
+        >
+          <div className="activity-campaign-content">
+            {campaign.image ? (
+              <div className="activity-campaign-visual">
+                <img src={campaign.image} alt={campaignCopy} />
+                <button
+                  className="activity-campaign-close"
+                  type="button"
+                  aria-label={t("console.purchasePage.activityModal.close")}
+                  onClick={closeCampaign}
                 >
-                  {[
-                    countdown.days,
-                    countdown.hours,
-                    countdown.minutes,
-                    countdown.seconds,
-                  ].map((value, index) => (
-                    <span
-                      className="activity-campaign-time-group"
-                      key={`${index}-${value}`}
-                    >
-                      <strong>{value}</strong>
-                      {index < 3 ? <i aria-hidden="true">:</i> : null}
-                    </span>
-                  ))}
-                </div>
-              </>
+                  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path d="M5 5l14 14M19 5L5 19" />
+                  </svg>
+                </button>
+              </div>
             ) : null}
-            <div className="activity-campaign-actions">
-              <button
-                className="activity-campaign-button activity-campaign-button--secondary"
-                type="button"
-                onClick={closeCampaign}
+            <div className="activity-campaign-body">
+              {countdown ? (
+                <>
+                  <h2>{t("console.purchasePage.activityModal.countdown")}</h2>
+                  <div
+                    className="activity-campaign-countdown"
+                    aria-label={t(
+                      "console.purchasePage.activityModal.countdown",
+                    )}
+                  >
+                    {[
+                      countdown.days,
+                      countdown.hours,
+                      countdown.minutes,
+                      countdown.seconds,
+                    ].map((value, index) => (
+                      <span
+                        className="activity-campaign-time-group"
+                        key={`${index}-${value}`}
+                      >
+                        <strong>{value}</strong>
+                        {index < 3 ? <i aria-hidden="true">:</i> : null}
+                      </span>
+                    ))}
+                  </div>
+                </>
+              ) : null}
+              <div
+                className={`activity-campaign-actions${target ? "" : " activity-campaign-actions--single"}`}
               >
-                {t("console.purchasePage.activityModal.later")}
-              </button>
-              <button
-                className="activity-campaign-button activity-campaign-button--primary"
-                type="button"
-                onClick={handleConfirm}
-              >
-                {campaign.targetText ??
-                  t("console.purchasePage.activityModal.confirm")}
-              </button>
+                <button
+                  className="activity-campaign-button activity-campaign-button--secondary"
+                  type="button"
+                  onClick={closeCampaign}
+                >
+                  {t("console.purchasePage.activityModal.later")}
+                </button>
+                {target ? (
+                  <button
+                    className="activity-campaign-button activity-campaign-button--primary"
+                    type="button"
+                    onClick={handleConfirm}
+                  >
+                    {campaign.targetText ??
+                      t("console.purchasePage.activityModal.confirm")}
+                  </button>
+                ) : null}
+              </div>
             </div>
           </div>
-        </div>
-      </AppModal>
+        </AppModal>
+      ) : null}
       <LoginDialog
         open={loginOpen}
-        onClose={() => setLoginOpen(false)}
+        dialogId="activity-login-dialog"
+        onClose={closeLogin}
         onSuccess={() => {
-          setLoginOpen(false);
-          if (campaign.targetUrl) openCampaignTarget(campaign.targetUrl, navigate);
+          if (pendingTarget) openTarget(pendingTarget);
+          closeLogin();
         }}
       />
     </>

@@ -685,6 +685,24 @@ describe('视频生成页面', () => {
     delete (Element.prototype as { scrollIntoView?: () => void }).scrollIntoView
   })
 
+  it('未选择时长且模型未声明默认秒数时，表单预选合法时长并按显示值提交', async () => {
+    const user = userEvent.setup()
+    mockVideoCatalog([fullVideoModel({
+      durations: { min: 4, max: 15, step: 1, auto: true },
+      defaults: { mode: 'text_to_video', ratio: '16:9', resolution: '720p' },
+    })])
+    vi.mocked(submitVideoGeneration).mockResolvedValue(succeededTask)
+    renderVideoPage()
+    expect(screen.getByRole('combobox', { name: '时长' })).toHaveTextContent('4秒')
+    expect(screen.getByRole('slider', { name: '时长' })).toHaveValue('4')
+    expect(screen.getByRole('spinbutton', { name: '时长' })).toHaveValue(4)
+    expect(screen.getByRole('switch', { name: '自动' })).not.toBeChecked()
+    await user.type(screen.getByLabelText('视频提示词'), '使用预选时长生成视频')
+    await user.click(screen.getByRole('button', { name: '生成视频' }))
+    await waitFor(() => expect(submitVideoGeneration).toHaveBeenCalledOnce())
+    expect(vi.mocked(submitVideoGeneration).mock.calls[0]?.[0].duration).toBe(4)
+  })
+
   it('目录视频配置决定新增比例、分辨率、时长范围与实际提交参数', async () => {
     const user = userEvent.setup()
     const model = configuredVideoModel()

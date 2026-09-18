@@ -34,7 +34,7 @@ describe("getTraeBulkActionAvailability", () => {
     ).toEqual({ disabled: true, reason: "inviteUnavailable" });
   });
 
-  it("protects a super administrator while retaining department changes", () => {
+  it("protects the owner from removal and department changes", () => {
     expect(
       getTraeBulkActionAvailability(
         "removeMember",
@@ -48,17 +48,17 @@ describe("getTraeBulkActionAvailability", () => {
         [admin, owner],
         regularAdminOperator,
       ),
-    ).toEqual({ disabled: false });
+    ).toEqual({ disabled: true, reason: "protectedMember" });
   });
 
-  it("allows a signed-in super administrator to manage their own account", () => {
+  it("protects even the signed-in owner from ordinary role and removal actions", () => {
     const ownerOperator = { memberID: owner.id, role: "owner" } as const;
     expect(
       getTraeBulkActionAvailability("changeRole", [owner], ownerOperator),
-    ).toEqual({ disabled: false });
+    ).toEqual({ disabled: true, reason: "protectedMember" });
     expect(
       getTraeBulkActionAvailability("removeMember", [owner], ownerOperator),
-    ).toEqual({ disabled: false });
+    ).toEqual({ disabled: true, reason: "removeProtectedMember" });
   });
 
   it("enables resend only when every selected member is pending review", () => {

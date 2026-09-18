@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Toast from "@douyinfe/semi-ui/lib/es/toast";
 import { Form } from "@douyinfe/semi-ui/lib/es/form";
@@ -40,7 +40,8 @@ type CreateInvitationValues = {
 
 /** 将邀请有效期自然日转换为接口要求的 UTC 毫秒时间戳。 */
 export function invitationExpiryTimestamp(value: Date) {
-  return Date.UTC(value.getFullYear(), value.getMonth(), value.getDate(), 23, 59, 59, 999);
+  // 日期选择器表示用户所在时区的自然日，不能把日期字段直接当作 UTC 日期。
+  return new Date(value.getFullYear(), value.getMonth(), value.getDate(), 23, 59, 59, 999).getTime();
 }
 
 /** 兼容 Semi 输入框手动录入产生的日期字符串，并始终按本地自然日解析。 */
@@ -71,7 +72,7 @@ function inviteStatusClass(status: string) {
 }
 
 function invitationRoleOptions(context: EnterpriseContext) {
-  return (context.role_options ?? []).filter((role) => !role.owner_role);
+  return (context.role_options ?? []).filter((role) => !role.owner_role && role.code !== "owner");
 }
 
 /** 新版人员管理的邀请链接列表、创建弹窗及使用情况详情。 */
@@ -94,6 +95,8 @@ export function TraeEnterpriseInvitations({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<EnterpriseRequestError | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
+  const creatingRef = useRef(false);
+  const updatingRef = useRef(false);
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<EnterpriseRequestError | null>(null);
   const [detailInvitation, setDetailInvitation] = useState<EnterpriseInvitation | null>(null);
@@ -182,6 +185,11 @@ export function TraeEnterpriseInvitations({
   }
 
   async function submitCreate(values: CreateInvitationValues, close: () => void) {
+    if (creatingRef.current) return;
+    if (!departments.some((department) => department.id === values.departmentId)) {
+      setCreateError({ message: t("traeEnterprise.inviteList.departmentRequired"), requestId: null });
+      return;
+    }
     if (!roles.some((role) => role.code === values.role)) {
       setCreateError({ message: t("traeEnterprise.inviteList.roleUnavailable"), requestId: null });
       return;
@@ -193,6 +201,7 @@ export function TraeEnterpriseInvitations({
     if (hasExpiryInput && !expiresAtValue) return;
     // 选择器之外仍可能通过表单 API 写入日期，因此提交时再次限制不能早于今天。
     if (expiresAtValue && startOfLocalDay(expiresAtValue) < startOfLocalDay(new Date())) return;
+    creatingRef.current = true;
     setCreating(true);
     setCreateError(null);
     try {
@@ -211,6 +220,7 @@ export function TraeEnterpriseInvitations({
       const handled = handleError(reason);
       if (handled) setCreateError(handled);
     } finally {
+      creatingRef.current = false;
       setCreating(false);
     }
   }
@@ -226,6 +236,8 @@ export function TraeEnterpriseInvitations({
   }
 
   async function updateInvitation(invitation: EnterpriseInvitation, action: "revoke" | "regenerate") {
+    if (updatingRef.current) return;
+    updatingRef.current = true;
     setUpdatingInvitationID(invitation.id);
     try {
       await updateEnterpriseInvitation(
@@ -234,13 +246,16 @@ export function TraeEnterpriseInvitations({
         { action, expected_version: invitation.version },
         { accessToken: getAccessToken() ?? undefined },
       );
-      setReloadToken((value) => value + 1);
+      if (action === "regenerate") { setPage(1); setStatus("all"); }
       Toast.success(t(`traeEnterprise.inviteList.${action}Success`));
     } catch (reason: unknown) {
       const handled = handleError(reason);
       if (handled) Toast.error(handled.message);
     } finally {
+      // 冲突或网络失败同样重新读取版本和状态，不能复用旧链接继续操作。
+      updatingRef.current = false;
       setUpdatingInvitationID(null);
+      setReloadToken((value) => value + 1);
     }
   }
 
@@ -311,10 +326,10 @@ export function TraeEnterpriseInvitations({
                   {invitationURL(invitation) ? <button type="button" onClick={() => void copyInvitationURL(invitationURL(invitation))}><CopyOutlineIcon />{t("traeEnterprise.inviteList.copy")}</button> : null}
                   <button type="button" onClick={() => setDetailInvitation(invitation)}>{t("traeEnterprise.inviteList.usageDetails")}</button>
                   {invitation.status === "active" ? <>
-                    <button type="button" disabled={updatingInvitationID === invitation.id} onClick={() => void updateInvitation(invitation, "regenerate")}>
+                    <button type="button" disabled={updatingInvitationID !== null || loading} onClick={() => void updateInvitation(invitation, "regenerate")}>
                       {t("traeEnterprise.inviteList.regenerate")}
                     </button>
-                    <button type="button" disabled={updatingInvitationID === invitation.id} onClick={() => void updateInvitation(invitation, "revoke")}>
+                    <button type="button" disabled={updatingInvitationID !== null || loading} onClick={() => void updateInvitation(invitation, "revoke")}>
                       {t("traeEnterprise.inviteList.revoke")}
                     </button>
                   </> : null}

@@ -356,6 +356,11 @@
   color: var(--color-text-default);
   font-size: 12px;
 }
+.model-visibility-search .model-visibility-icon-button {
+  flex: 0 0 20px;
+  width: 20px;
+  height: 20px;
+}
 .model-visibility-tabs {
   display: flex;
   gap: 2px;

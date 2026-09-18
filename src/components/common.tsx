@@ -13,6 +13,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { useBuildUpdateBlocker } from "@/runtime/use-build-update-blocker";
+import { useSupportDrag } from "./use-support-drag";
 import { CONSOLE_IMAGE_GENERATION_ENABLED } from "@/config/console-features";
 import {
   DEFAULT_CONSOLE_PATH,
@@ -4665,6 +4666,7 @@ export function ManuscriptSupportWidget() {
   const messageSequenceRef = useRef(0);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const assistantBallRef = useRef<SupportEmotionBallHandle | null>(null);
+  const supportDrag = useSupportDrag({ onClick: togglePanel, disabled: open || mounted });
   const supportLocale: SupportLocale = translationI18n.language.startsWith("en")
     ? "en-US"
     : "zh-CN";
@@ -4924,7 +4926,8 @@ export function ManuscriptSupportWidget() {
   }
 
   return (
-    <div ref={rootRef} className="manuscript-support-widget">
+    <div ref={rootRef} className="manuscript-support-widget" data-support-side={supportDrag.panelSide}>
+      <span ref={supportDrag.safeAreaRef} className="support-drag-safe-area" aria-hidden="true" />
       {mounted ? (
         <section
           className={`manuscript-support-panel${open ? " is-open" : " is-closing"}`}
@@ -5222,6 +5225,7 @@ export function ManuscriptSupportWidget() {
       {/* 弹窗展开时隐藏"在线助手"按钮，关闭后再过渡显现。 */}
       <div
         className={`manuscript-support-trigger${open ? " is-hidden" : ""}`}
+        ref={supportDrag.triggerRef}
       >
         <button
           className="manuscript-support-assistant-button"
@@ -5229,7 +5233,7 @@ export function ManuscriptSupportWidget() {
           aria-label={open ? t("support.close") : t("support.open")}
           title={open ? t("support.close") : t("support.open")}
           aria-expanded={open}
-          onClick={togglePanel}
+          {...supportDrag.buttonProps}
         >
           <SupportEmotionBall ref={assistantBallRef} />
           <span className="manuscript-support-assistant-label">

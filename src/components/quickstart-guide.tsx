@@ -9,6 +9,7 @@ import { QuickstartResourceState } from './quickstart-resource-state'
 import { IconFile } from '@douyinfe/semi-icons'
 import { findModelInList, modelAlias, type ModelRecord } from '@/data/models'
 import { useUserModels } from '@/data/user-models'
+import { QuickstartAgentTools } from './quickstart-agent-tools'
 import { normalizeQuickstartApiMode, normalizeQuickstartLanguage, normalizeQuickstartProtocol, quickstartCodeSample, type QuickstartApiMode, type QuickstartLanguage, type QuickstartProtocol } from '@/utils/quickstart'
 import openAiIcon from '@/assets/svg/OpenAl.svg'
 import claudeIcon from '@/assets/svg/Claudecode.svg'
@@ -17,7 +18,6 @@ import './quickstart-guide.css'
 
 type QuickstartStep = 0 | 1 | 2 | 3
 type QuickstartIntegrationMode = 'api' | 'agent'
-type QuickstartAgentTool = 'claudeCode' | 'workBuddy' | 'openClaw' | 'hermesAgent' | 'cline' | 'cursor'
 
 const QUICKSTART_API_DOC_HREF = '/docs/01M0765G0JAQQMZ1WDAE1DBG87/integration-overview'
 const QUICKSTART_API_KEY_DOC_HREF = '/docs/01M0765G0JRPD47SAHZQQZHAJN/authentication-and-keys'
@@ -32,15 +32,6 @@ const API_LANGUAGES = [
   { id: 'curl', labelKey: 'console.quickstart.curl' },
   { id: 'python', labelKey: 'console.quickstart.python' },
   { id: 'node', labelKey: 'console.quickstart.javascript' },
-] as const
-
-const AGENT_TOOLS: Array<{ id: QuickstartAgentTool; nameKey: string; short: string }> = [
-  { id: 'claudeCode', nameKey: 'console.quickstart.agentTools.claudeCode', short: '✳' },
-  { id: 'workBuddy', nameKey: 'console.quickstart.agentTools.workBuddy', short: '◆' },
-  { id: 'openClaw', nameKey: 'console.quickstart.agentTools.openClaw', short: '◆' },
-  { id: 'hermesAgent', nameKey: 'console.quickstart.agentTools.hermesAgent', short: '♟' },
-  { id: 'cline', nameKey: 'console.quickstart.agentTools.cline', short: '♟' },
-  { id: 'cursor', nameKey: 'console.quickstart.agentTools.cursor', short: '⬢' },
 ] as const
 
 function modelPrice(model: ModelRecord, t: (key: string, options?: Record<string, unknown>) => string): string {
@@ -132,24 +123,6 @@ function ModelStep({ models, selected, onSelect, onNext, t }: { models: ModelRec
   </>
 }
 
-function AgentToolsPanel({ t }: { t: (key: string, options?: Record<string, unknown>) => string }) {
-  const [selectedTool, setSelectedTool] = useState<QuickstartAgentTool>('workBuddy')
-  const tool = AGENT_TOOLS.find((item) => item.id === selectedTool) ?? AGENT_TOOLS[0]
-  return <div className="quickstart-pdf-agent-tools">
-    <div className="quickstart-pdf-agent-tool-tabs" role="tablist" aria-label={t('console.quickstart.agentTools.title')}>
-      {AGENT_TOOLS.map((item) => <button key={item.id} type="button" role="tab" aria-selected={selectedTool === item.id} className={selectedTool === item.id ? 'is-active' : ''} onClick={() => setSelectedTool(item.id)}>
-        <span className={`quickstart-pdf-agent-tool-icon tool-${item.id}`} aria-hidden="true">{item.short}</span>
-        <span>{t(`${item.nameKey}.name`)}</span>
-      </button>)}
-    </div>
-    <div className="quickstart-pdf-agent-tool-content" role="tabpanel">
-      <h3><span className={`quickstart-pdf-agent-tool-icon tool-${tool.id}`} aria-hidden="true">{tool.short}</span>{t(`${tool.nameKey}.name`)}</h3>
-      <p>{t(`${tool.nameKey}.description`)}</p>
-      <a href={t(`${tool.nameKey}.docsUrl`)} target="_blank" rel="noreferrer">{t('console.quickstart.agentTools.viewDocs')} ↗</a>
-    </div>
-  </div>
-}
-
 function AgentStep({ model, language, protocol, apiMode, setApiMode, setLanguage, setProtocol, t, onCopy }: { model: ModelRecord; language: QuickstartLanguage; protocol: QuickstartProtocol; apiMode: QuickstartApiMode; setApiMode: (value: QuickstartApiMode) => void; setLanguage: (value: QuickstartLanguage) => void; setProtocol: (value: QuickstartProtocol) => void; t: (key: string, options?: Record<string, unknown>) => string; onCopy: (value: string) => void }) {
   const [integrationMode, setIntegrationMode] = useState<QuickstartIntegrationMode>('api')
   const alias = modelAlias(model)
@@ -161,7 +134,7 @@ function AgentStep({ model, language, protocol, apiMode, setApiMode, setLanguage
       <button type="button" role="tab" aria-selected={integrationMode === 'api'} className={integrationMode === 'api' ? 'is-active' : ''} onClick={() => setIntegrationMode('api')}>{t('console.quickstart.apiIntegration')}</button>
       <button type="button" role="tab" aria-selected={integrationMode === 'agent'} className={integrationMode === 'agent' ? 'is-active' : ''} onClick={() => setIntegrationMode('agent')}>{t('console.quickstart.agentIntegration')}</button>
     </div>
-    {integrationMode === 'agent' ? <AgentToolsPanel t={t} /> : !supportsCodeSample ? <div className="quickstart-pdf-empty" role="status">
+    {integrationMode === 'agent' ? <QuickstartAgentTools /> : !supportsCodeSample ? <div className="quickstart-pdf-empty" role="status">
       <strong>{t('console.quickstart.noSampleTitle', { model: model.name })}</strong>
       <span>{t('console.quickstart.noSampleHint')}</span>
       <Link className="quickstart-pdf-doc-link" to={QUICKSTART_API_DOC_HREF}>{t('console.quickstart.viewDocs')} ↗</Link>

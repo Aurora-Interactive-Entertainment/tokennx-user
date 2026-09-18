@@ -1,5 +1,6 @@
 import type { ModelPrice, ModelRecord } from '@/data/models'
 import { CONSOLE_IMAGE_GENERATION_ENABLED } from '@/config/console-features'
+import { modelSortPrices } from './model-sort-price'
 
 export const MODEL_CATEGORIES = [
   { value: 'all', labelKey: 'console.common.all' },
@@ -118,11 +119,7 @@ export function modelIsFree(model: ModelRecord): boolean {
 }
 
 export function modelPriceForSort(model: ModelRecord): number | null {
-  for (const key of PRICE_KEYS) {
-    const value = model.tokenNxPrice[key]
-    if (typeof value === 'number' && Number.isFinite(value) && value >= 0) return value
-  }
-  return null
+  return modelSortPrices(model).primary
 }
 
 export function filterAndSortModels(models: readonly ModelRecord[], options: ModelFilterOptions = {}): ModelRecord[] {
@@ -145,12 +142,19 @@ export function filterAndSortModels(models: readonly ModelRecord[], options: Mod
 
   const direction = sort === 'price-asc' ? 1 : -1
   return filtered
-    .map((model, index) => ({ model, index, price: modelPriceForSort(model) }))
+    .map((model, index) => ({ model, index, ...modelSortPrices(model) }))
     .sort((left, right) => {
-      if (left.price === null && right.price === null) return left.index - right.index
-      if (left.price === null) return 1
-      if (right.price === null) return -1
-      return (left.price - right.price) * direction || left.index - right.index
+      if (left.primary === null && right.primary === null) return left.index - right.index
+      if (left.primary === null) return 1
+      if (right.primary === null) return -1
+      const primaryDifference = (left.primary - right.primary) * direction
+      if (primaryDifference) return primaryDifference
+      // 缺少输出价不能当作免费，同输入价时完整报价排在前面。
+      if (left.secondary === null && right.secondary !== null) return 1
+      if (right.secondary === null && left.secondary !== null) return -1
+      const secondaryDifference = left.secondary !== null && right.secondary !== null
+        ? (left.secondary - right.secondary) * direction : 0
+      return secondaryDifference || left.index - right.index
     })
     .map(({ model }) => model)
 }

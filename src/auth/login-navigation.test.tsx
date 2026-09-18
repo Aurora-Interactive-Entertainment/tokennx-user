@@ -5,6 +5,7 @@ import { MemoryRouter, Route, Routes, useLocation } from 'react-router'
 import { Provider } from 'react-redux'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { LoginRequiredAction } from '@/components/common'
+import { ActivityCampaignModal } from '@/components/activity-campaign-modal'
 import App, { AuthScopedStoreProvider } from '@/App'
 import { createAppStore } from '@/store'
 import { invalidateAuth } from '@/store/auth-slice'
@@ -23,12 +24,12 @@ function Location() {
   return <output data-testid="destination">{location.pathname}{location.search}{location.hash}</output>
 }
 
-function LoginRoutes({ mode, returnPath }: { mode: 'dialog' | 'page'; returnPath?: string }) {
+function LoginRoutes({ mode, returnPath }: { mode: 'dialog' | 'page' | 'campaign'; returnPath?: string }) {
   // 复用应用实际的账号作用域，覆盖登录等待、失败和成功时的组件生命周期。
   return <AuthScopedStoreProvider>
     <Location />
     <Routes>
-      <Route path="/models" element={mode === 'dialog' ? <LoginRequiredAction returnPath={returnPath}>体验模型</LoginRequiredAction> : <LoginPage />} />
+      <Route path="/models" element={mode === 'campaign' ? <ActivityCampaignModal campaign={{ image: '/cover.png', loginRequired: false, targetUrl: returnPath }} /> : mode === 'dialog' ? <LoginRequiredAction returnPath={returnPath}>体验模型</LoginRequiredAction> : <LoginPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/console/*" element={<div>登录成功</div>} />
     </Routes>
@@ -65,7 +66,7 @@ describe('登录后恢复业务目标', () => {
     expect(resolveLoginDestination(path)).toBe(DEFAULT_CONSOLE_PATH)
   })
 
-  it.each(['dialog', 'page'] as const)('%s 验证码返回 400 后保留表单、错误提示和返回目标，允许更正后登录', async (mode) => {
+  it.each(['dialog', 'page', 'campaign'] as const)('%s 验证码返回 400 后保留表单、错误提示和返回目标，允许更正后登录', async (mode) => {
     const user = userEvent.setup()
     const appStore = createAppStore()
     appStore.dispatch(invalidateAuth())
@@ -79,10 +80,11 @@ describe('登录后恢复业务目标', () => {
       const data = path.endsWith('/api/auth/phone/login') ? authResult : {}
       return new Response(JSON.stringify({ code: 0, msg: 'success', data }), { status: 200 })
     })
-    const initialPath = mode === 'dialog' ? '/models' : `/login?return=${encodeURIComponent(target)}`
+    const initialPath = mode !== 'page' ? '/models' : `/login?return=${encodeURIComponent(target)}`
     render(<MemoryRouter initialEntries={[initialPath]}><Provider store={appStore}><LoginRoutes mode={mode} returnPath={target} /></Provider></MemoryRouter>)
     if (mode === 'dialog') await user.click(screen.getByRole('link', { name: '体验模型' }))
-    const phoneInput = screen.getByLabelText('手机号')
+    if (mode === 'campaign') await user.click(screen.getByRole('button', { name: '立即领取' }))
+    const phoneInput = await screen.findByLabelText('手机号')
     const codeInput = screen.getByLabelText('验证码')
     await user.type(phoneInput, '13800138000')
     await user.click(screen.getByRole('button', { name: '获取验证码' }))

@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next'
 import type { UserModelPrice, UserModelPricingPeriod, UserModelPricingRule } from '@/api/user-models'
 import type { ModelRecord } from '@/data/models'
 import { formatYuanExact } from '@/utils/format'
-import { groupPricingPeriods, pricingPeriodName, pricingPeriodSchedule, pricingRuleDetails, pricingRuleLabel, pricingRuleUnit } from '@/utils/model-time-pricing'
+import { groupPricingPeriods, pricingPeriodName, pricingPeriodSchedules, pricingRuleDetails, pricingRuleLabel, pricingRuleUnit } from '@/utils/model-time-pricing'
 import './model-time-pricing.css'
 
 type TimePricingModel = Pick<ModelRecord, 'pricingPeriods' | 'pricingTimezone' | 'currentPeriodKey' | 'prices'>
@@ -11,7 +11,7 @@ function PricingSchedules({ periods }: { periods: UserModelPricingPeriod[] }) {
   const { t } = useTranslation()
   return (
     <div className="model-time-pricing-schedules">
-      {periods.map((period) => <div className="model-time-pricing-schedule" key={period.key}>{pricingPeriodSchedule(period, t)}</div>)}
+      {pricingPeriodSchedules(periods, t).map((schedule) => <div className="model-time-pricing-schedule" key={schedule}>{schedule}</div>)}
     </div>
   )
 }

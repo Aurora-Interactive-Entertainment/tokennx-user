@@ -7139,32 +7139,6 @@ html[data-theme="light"] .real-name-qr-expired-overlay span {
   .semi-select-selection-placeholder {
   color: var(--color-text-default) !important;
 }
-.playground-select-dropdown {
-  background: var(--color-bg-menu) !important;
-  border-color: var(--color-border-neutral-l2) !important;
-}
-.playground-select-dropdown .semi-select-option {
-  color: var(--color-text-default) !important;
-}
-.playground-select-dropdown .semi-select-option:hover,
-.playground-select-dropdown .semi-select-option-focused {
-  background: var(--color-bg-overlay-l2) !important;
-  color: var(--color-text-default-hover) !important;
-}
-.playground-select-dropdown .semi-select-option-selected,
-.playground-select-dropdown
-  .semi-select-option-selected.semi-select-option-focused {
-  color: var(--color-text-default-hover) !important;
-  background: var(--color-bg-overlay-l3) !important;
-}
-.playground-select-dropdown
-  .semi-select-option-selected
-  .semi-select-option-icon {
-  display: none !important;
-}
-.playground-select-dropdown .semi-select-text {
-  color: inherit !important;
-}
 .icon-button.semi-button {
   width: 36px;
   height: 36px;
@@ -10048,8 +10022,10 @@ html[data-theme="dark"] .generation-send-button.send-btn.is-running.semi-button:
   border-radius: 50%;
 }
 .billing-info-icon {
-  width: 14px;
-  height: 14px;
+  /* Semi 图标的 svg 固定 1em，尺寸必须由 font-size 决定。 */
+  width: 13px;
+  height: 13px;
+  font-size: 13px;
 }
 .billing-balance-card > strong {
   /* 大额数值按需换行，避免固定列宽下越出余额卡片。 */
@@ -13385,7 +13361,7 @@ html[data-theme="light"] .app-loading-screen__logo-shell .brand-logo-image {
 .header-trial-badge:lang(en) {
   --header-trial-copy-size: 14px;
 }
-/* 英文为右上角 Free 标记预留文字空间，不移动原有角标。 */
+/* 英文为右上角活动标记预留文字空间，不移动原有角标。 */
 .header-trial-badge:lang(en) strong,
 .header-trial-badge:lang(en) .header-trial-subscription {
   padding-inline-end: 12px;
@@ -13531,7 +13507,8 @@ html[data-theme="light"] .app-loading-screen__logo-shell .brand-logo-image {
   z-index: 1;
   display: grid;
   width: 100%;
-  height: 100%;
+  /* 排除角标底部拖尾，文字按标签主体居中，缩放时保持一致。 */
+  height: 80%;
   place-items: center;
   color: #fff;
   font-family: "Noto Sans SC", "Source Han Sans CN", sans-serif;
@@ -13539,7 +13516,10 @@ html[data-theme="light"] .app-loading-screen__logo-shell .brand-logo-image {
   font-style: normal;
   font-weight: 300;
   line-height: 1;
-  transform: translateY(-4px) rotate(-4.5deg);
+  transform: rotate(-6.3deg);
+}
+.header-trial-badge:lang(en) .header-trial-free em {
+  font-size: 9px;
 }
 @keyframes header-trial-sheen {
   0%,
@@ -13769,7 +13749,8 @@ html[data-theme="light"] .public-header .console-entry:focus-visible { color: #1
   width: 33px;
   height: 22px;
   border-radius: 11px;
-  background: #34353a;
+  /* 选中项与浅色主题下的“控制台”入口使用同一黑色。 */
+  background: #1f2329;
   box-shadow:
     0 1px 4px rgba(0, 0, 0, 0.28),
     inset 0 1px 0 rgba(255, 255, 255, 0.08);
@@ -15622,12 +15603,12 @@ html[data-theme="light"] .manuscript-hero::before {
     transform 0.26s cubic-bezier(0.16, 1, 0.3, 1) 0.22s,
     visibility 0s linear 0.22s;
 }
-/* 弹窗展开时按钮立即向右下角缩小淡出，与面板入场方向一致。 */
+/* 弹窗展开时按钮向停靠侧缩小淡出，与面板入场方向一致。 */
 .manuscript-support-trigger.is-hidden {
   opacity: 0;
   pointer-events: none;
   visibility: hidden;
-  transform: translate3d(10px, 10px, 0) scale(0.72);
+  transform: translate3d(var(--support-trigger-offset-x, 10px), 10px, 0) scale(0.72);
   transition:
     opacity 0.18s ease 0s,
     transform 0.18s cubic-bezier(0.4, 0, 0.2, 1) 0s,
@@ -15743,8 +15724,8 @@ html[lang="en"] .manuscript-support-assistant-label {
   backdrop-filter: blur(30px);
   opacity: 0;
   pointer-events: none;
-  transform: translate3d(12px, 12px, 0) scale(0.82);
-  transform-origin: calc(100% - 28px) calc(100% - 28px);
+  transform: translate3d(var(--support-panel-offset-x, 12px), 12px, 0) scale(0.82);
+  transform-origin: var(--support-panel-origin-x, calc(100% - 28px)) calc(100% - 28px);
   transition:
     opacity 0.24s ease-out,
     transform 0.42s cubic-bezier(0.16, 1, 0.3, 1);
@@ -15760,14 +15741,14 @@ html[lang="en"] .manuscript-support-assistant-label {
 .manuscript-support-panel.is-closing {
   opacity: 0;
   pointer-events: none;
-  transform: translate3d(12px, 12px, 0) scale(0.82);
+  transform: translate3d(var(--support-panel-offset-x, 12px), 12px, 0) scale(0.82);
   animation: manuscript-support-panel-exit 0.34s cubic-bezier(0.4, 0, 0.2, 1)
     both;
 }
 @keyframes manuscript-support-panel-enter {
   from {
     opacity: 0;
-    transform: translate3d(12px, 12px, 0) scale(0.82);
+    transform: translate3d(var(--support-panel-offset-x, 12px), 12px, 0) scale(0.82);
   }
   to {
     opacity: 1;
@@ -15781,7 +15762,7 @@ html[lang="en"] .manuscript-support-assistant-label {
   }
   to {
     opacity: 0;
-    transform: translate3d(12px, 12px, 0) scale(0.82);
+    transform: translate3d(var(--support-panel-offset-x, 12px), 12px, 0) scale(0.82);
   }
 }
 .manuscript-support-tabs {

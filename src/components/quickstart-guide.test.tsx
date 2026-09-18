@@ -1,5 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react'
-import { MemoryRouter, useLocation, useNavigate } from 'react-router'
+import { MemoryRouter, Route, Routes, useLocation, useNavigate } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import Toast from '@douyinfe/semi-ui/lib/es/toast'
 import i18n from '@/i18n'
@@ -18,11 +18,11 @@ const models = [
 function NavigationProbe() {
   const location = useLocation()
   const navigate = useNavigate()
-  return <><output data-testid="query">{location.search}</output><button onClick={() => navigate(-1)}>后退</button><button onClick={() => navigate(1)}>前进</button></>
+  return <><output data-testid="query">{location.search}</output><output data-testid="pathname">{location.pathname}</output><output data-testid="route-state">{JSON.stringify(location.state)}</output><button onClick={() => navigate(-1)}>后退</button><button onClick={() => navigate(1)}>前进</button></>
 }
 
 function renderGuide(query = '') {
-  return render(<MemoryRouter initialEntries={['/console/quickstart' + query]}><QuickstartGuide /><NavigationProbe /></MemoryRouter>)
+  return render(<MemoryRouter initialEntries={['/console/quickstart' + query]}><Routes><Route path="/console/quickstart" element={<QuickstartGuide />} /><Route path="/docs/*" element={<div />} /><Route path="/en/docs/*" element={<div />} /></Routes><NavigationProbe /></MemoryRouter>)
 }
 
 function currentParams() {
@@ -36,6 +36,44 @@ beforeEach(() => {
 afterEach(() => { Toast.destroyAll(); vi.restoreAllMocks() })
 
 describe('快速接入选项与模型边界', () => {
+  it.each([
+    ['ChatGPT', '/docs/01M074Z9VZ3ZVE60PRQYNFDVEQ/chatgpt'],
+    ['OpenCode 桌面端', '/docs/01M074Z9VZCQHJJYXD38M8C6QD/opencode-desktop'],
+    ['WorkBuddy', '/docs/01M074Z9VZA7TN69HNMJG6BAY1/workbuddy'],
+    ['CodeBuddy', '/docs/01M074Z9VZJ64B7AMDSAANE0X9/codebuddy'],
+    ['Hermes Agent', '/docs/01M074Z9VZDTQ59SB7F80TW1GP/hermes-agent'],
+    ['Cursor', '/docs/01M074Z9VZQAKBA72757SS2J1Y/cursor'],
+    ['Kilo Code', '/docs/01M074Z9VZZFYDP7W07HQW8MHG/kilo-code'],
+    ['Cherry Studio', '/docs/01M074Z9VZRFKCX72EKCTBBK87/cherry-studio'],
+    ['TRAE', '/docs/01M074Z9VZ7XNKVXWESFPA1PR6/trae'],
+  ])('%s 文档在当前路由打开，并携带使用指南回退标记', (tool, path) => {
+    renderGuide()
+    fireEvent.click(screen.getByRole('button', { name: '接入智能体' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'AI 工具接入' }))
+    fireEvent.click(screen.getByRole('tab', { name: tool }))
+    expect(screen.getByRole('tab', { name: tool }).querySelector('img')).toHaveAttribute('src', expect.stringMatching(/\.svg|^data:image\/svg\+xml/))
+    const link = screen.getByRole('link', { name: /查看文档/ })
+    expect(link).toHaveAttribute('href', path)
+    expect(link).not.toHaveAttribute('target')
+    fireEvent.click(link)
+    expect(screen.getByTestId('pathname')).toHaveTextContent(path)
+    expect(screen.getByTestId('route-state')).toHaveTextContent('"quickstartUsageGuide":true')
+  })
+
+  it('工具目录与使用指南顺序一致，移除旧占位工具', () => {
+    renderGuide()
+    fireEvent.click(screen.getByRole('button', { name: '接入智能体' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'AI 工具接入' }))
+    expect(Array.from(screen.getByRole('tablist', { name: 'AI 工具' }).querySelectorAll('[role="tab"]')).map((tab) => tab.textContent)).toEqual(['ChatGPT', 'OpenCode 桌面端', 'WorkBuddy', 'CodeBuddy', 'Cursor', 'Hermes Agent', 'Kilo Code', 'Cherry Studio', 'TRAE'])
+  })
+
+  it('英文工具文档保留英文路由', async () => {
+    await i18n.changeLanguage('en-US')
+    renderGuide()
+    fireEvent.click(screen.getByRole('button', { name: i18n.t('console.quickstart.stepAgent') }))
+    fireEvent.click(screen.getByRole('tab', { name: i18n.t('console.quickstart.agentIntegration') }))
+    expect(screen.getByRole('link', { name: /View docs/i })).toHaveAttribute('href', '/en/docs/01M074Z9VZA7TN69HNMJG6BAY1/workbuddy')
+  })
   it('Responses 模式同步 URL，切换语言、模型和创建密钥返回链接均保留模式', () => {
     renderGuide('?model=text-one&protocol=openai&language=curl&source=shared')
     fireEvent.click(screen.getByRole('button', { name: '接入智能体' }))

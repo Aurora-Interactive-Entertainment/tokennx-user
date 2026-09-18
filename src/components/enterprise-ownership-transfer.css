@@ -1,0 +1,28 @@
+.enterprise-ownership-modal .semi-modal-content { max-width: min(560px, calc(100vw - 24px)); }
+.enterprise-ownership-content { display: grid; gap: 20px; min-width: 0; color: var(--color-text-default-hover); }
+.enterprise-ownership-content p { margin: 0; line-height: 1.65; }
+.enterprise-ownership-field small { color: var(--color-text-secondary); font-size: 13px; line-height: 1.6; }
+.enterprise-ownership-field { display: grid; gap: 8px; min-width: 0; }
+.enterprise-ownership-field > label { font-size: 14px; font-weight: 600; }
+.enterprise-ownership-field > .semi-form-field-label { padding: 0; margin: 0; color: inherit; }
+.enterprise-ownership-field-error { color: #f65a5a; font-size: 11px; line-height: 16px; }
+/* 仅覆盖字段错误态，与新建密钥的必填红框一致。 */
+.enterprise-ownership-field .semi-input-wrapper.semi-input-wrapper-error,
+.enterprise-ownership-field .semi-select.semi-select-error { border-color: #f65a5a; }
+.enterprise-ownership-field .semi-select, .enterprise-ownership-field .semi-input-wrapper { width: 100%; min-width: 0; }
+.enterprise-ownership-contact-group.semi-input-group { display: flex; flex-wrap: nowrap; width: 100%; min-width: 0; }
+.enterprise-ownership-contact-group .enterprise-ownership-provider { flex: 0 0 92px; width: 92px; }
+.enterprise-ownership-contact-group > .semi-input-wrapper { flex: 1; width: 0; }
+.enterprise-ownership-code-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; }
+.enterprise-ownership-code-row .semi-button { min-width: 120px; }
+.enterprise-ownership-notice { padding: 12px 14px; border: 1px solid var(--color-border-neutral-l1); border-radius: 8px; background: var(--semi-color-fill-0); font-size: 12px; }
+.enterprise-ownership-error { color: var(--semi-color-danger); font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
+.enterprise-ownership-footer { display: flex; justify-content: flex-end; gap: 8px; }
+.enterprise-ownership-section { display: grid; gap: 12px; min-width: 0; }
+.enterprise-ownership-status { margin: 0; color: var(--color-text-secondary); font-size: 13px; }
+.enterprise-ownership-section > .enterprise-ownership-error { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+.enterprise-ownership-section > .enterprise-ownership-error p { margin: 0; }
+@media (max-width: 560px) {
+  .enterprise-ownership-code-row { grid-template-columns: 1fr; }
+  .enterprise-ownership-code-row .semi-button { width: 100%; }
+}

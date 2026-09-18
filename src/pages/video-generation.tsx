@@ -22,7 +22,7 @@ import { useUserModels } from '@/data/user-models'
 import { useBuildUpdateBlocker } from '@/runtime/use-build-update-blocker'
 import { workspaceContextFor, workspaceContextKey, type WorkspaceAccountContext } from '@/utils/workspace'
 import { LEGACY_VIDEO_HISTORY_KEY, VIDEO_SESSION_HISTORY_KEY, readUserSessionHistory, writeUserSessionHistory } from '@/utils/ephemeral-history'
-import { isVideoDurationAllowed, normalizeVideoOptions, resolveVideoMode, validateVideoParameters, type NormalizedVideoOptions } from '@/utils/video-options'
+import { initialVideoDuration, isVideoDurationAllowed, normalizeVideoOptions, resolveVideoMode, validateVideoParameters, type NormalizedVideoOptions } from '@/utils/video-options'
 import { VideoParameterControls } from './video-parameter-controls'
 import { VideoReferenceMedia } from './video-reference-media'
 import './video-generation.css'
@@ -100,7 +100,7 @@ type VideoDraft = Pick<VideoSubmissionSnapshot, 'model' | 'prompt' | 'size' | 'i
 }
 
 function emptyVideoDraft(model: string, options = normalizeVideoOptions()): VideoDraft {
-  return { model, prompt: '', duration: options.defaultDuration, size: options.defaultSize, inputReference: '', ratio: options.hasVideoOptions ? options.defaultRatio : undefined, resolution: options.hasVideoOptions ? options.defaultResolution : undefined, references: options.hasVideoOptions ? [] : undefined, generateAudio: options.generateAudio?.supported ? options.generateAudio.default : undefined, referenceMode: referenceModeFor(options.defaultMode), firstFrameUrl: '', lastFrameUrl: '' }
+  return { model, prompt: '', duration: initialVideoDuration(options), size: options.defaultSize, inputReference: '', ratio: options.hasVideoOptions ? options.defaultRatio : undefined, resolution: options.hasVideoOptions ? options.defaultResolution : undefined, references: options.hasVideoOptions ? [] : undefined, generateAudio: options.generateAudio?.supported ? options.generateAudio.default : undefined, referenceMode: referenceModeFor(options.defaultMode), firstFrameUrl: '', lastFrameUrl: '' }
 }
 
 function referenceModeFor(mode: string): VideoDraft['referenceMode'] {
@@ -584,7 +584,7 @@ export function VideoPage() {
   function resetModelParameters(options: NormalizedVideoOptions): void {
     setReferenceRevision((revision) => revision + 1)
     setRequiredReferenceCount(0)
-    setDuration(options.defaultDuration)
+    setDuration(initialVideoDuration(options))
     setSize(options.defaultSize)
     setConfiguredRatio(options.defaultRatio)
     setConfiguredResolution(options.defaultResolution)
@@ -609,11 +609,11 @@ export function VideoPage() {
   }, [selectedModel, defaultVideoOptions, modelsLoading, workspaceKey, userId])
 
   useEffect(() => {
-    // 条件改变后只撤销已经失效的选择；未声明默认值时保持未选择，避免伪造平台预设。
+    // 条件改变后只撤销失效的选择；时长回落到表单预选值，显式清空的省略值仍保留。
     if (configuredRatio && !videoOptions.ratios.includes(configuredRatio)) setConfiguredRatio(videoOptions.defaultRatio)
     if (configuredResolution && !videoOptions.resolutions.includes(configuredResolution)) setConfiguredResolution(videoOptions.defaultResolution)
     if (size && !videoOptions.sizes.some((option) => option.value === size)) setSize(videoOptions.defaultSize)
-    if (duration !== 0 && !isVideoDurationAllowed(duration, videoOptions)) setDuration(videoOptions.defaultDuration)
+    if (duration !== 0 && !isVideoDurationAllowed(duration, videoOptions)) setDuration(initialVideoDuration(videoOptions))
   }, [videoOptions, configuredRatio, configuredResolution, size, duration])
 
   useEffect(() => {
@@ -921,7 +921,7 @@ export function VideoPage() {
     appliedOptionsRef.current = optionsKey(model)
     const draft = emptyVideoDraft(entry.model, options)
     draft.prompt = entry.prompt
-    draft.duration = isVideoDurationAllowed(entry.duration, options) ? entry.duration : options.defaultDuration
+    draft.duration = isVideoDurationAllowed(entry.duration, options) ? entry.duration : initialVideoDuration(options)
     draft.generateAudio = options.generateAudio?.supported ? entry.generateAudio ?? options.generateAudio.default : undefined
     draft.size = model?.parameterConfig?.video?.resolutions?.length ? '' : options.sizes.some((item) => item.value === entry.size) ? entry.size : options.defaultSize
     if (options.hasVideoOptions) {
@@ -1063,7 +1063,7 @@ export function VideoPage() {
               <div className="video-control-group">
                 <div className="video-primary-controls">
                   <div className="video-reference-picker">
-                    <Select className={`video-control-button video-reference-trigger${referenceMode === 'first-last' ? ' video-reference-trigger--first-last' : ''}`} value={referenceMode} aria-label={t('console.video.referenceMedia')} arrowIcon={<IconChevronDownStroked />} dropdownClassName="video-reference-select-dropdown" position="topLeft" innerTopSlot={<div className="video-popover-title">{t('console.video.generationMode')}</div>} renderSelectedItem={renderReferenceSelectedItem} onChange={(value) => { const nextMode = String(value) as VideoDraft['referenceMode']; if (nextMode !== referenceMode && mediaReferences.length) { setMediaReferences([]); Toast.info(t('console.video.modeReferencesCleared')) }; setReferenceMode(nextMode); setRequiredReferenceCount(0) }} disabled={paramsBusy}>
+                    <Select className={`video-control-button video-reference-trigger${referenceMode === 'first-last' ? ' video-reference-trigger--first-last' : ''}`} value={referenceMode} clickToHide aria-label={t('console.video.referenceMedia')} arrowIcon={<IconChevronDownStroked />} dropdownClassName="video-reference-select-dropdown" position="topLeft" innerTopSlot={<div className="video-popover-title">{t('console.video.generationMode')}</div>} renderSelectedItem={renderReferenceSelectedItem} onChange={(value) => { const nextMode = String(value) as VideoDraft['referenceMode']; if (nextMode !== referenceMode && mediaReferences.length) { setMediaReferences([]); Toast.info(t('console.video.modeReferencesCleared')) }; setReferenceMode(nextMode); setRequiredReferenceCount(0) }} disabled={paramsBusy}>
                       {/* 生成模式选项不显示默认选中勾选，避免图标、勾选和文字错位。 */}
                       <Select.Option value="reference" showTick={false}><span className="video-reference-option-icon"><IconImage aria-hidden="true" /></span><span>{t('console.video.referenceMode')}</span></Select.Option>
                       <Select.Option value="first-last" showTick={false} disabled={!baseVideoOptions.modes.includes('first_last_frame') || !(baseVideoOptions.media?.roles?.first_frame?.max && baseVideoOptions.media?.roles?.last_frame?.max)}><span className="video-reference-option-icon"><IconVideo aria-hidden="true" /></span><span>{t('console.video.firstLastFrame')}</span></Select.Option>
@@ -1071,7 +1071,7 @@ export function VideoPage() {
                     </Select>
                   </div>
                   <div className="video-model-picker">
-                    <Select id="video-model" className="video-control-button video-model-trigger" dropdownClassName="video-model-select-dropdown" value={selectedModel ? modelAlias(selectedModel) : ''} placeholder={t('console.video.chooseModel')} arrowIcon={<IconChevronDownStroked />} position="topLeft" dropdownMatchSelectWidth={false} filter={false} aria-label={t('console.video.model')} onChange={(value) => { setModelID(String(value)); setRequestFailure(null) }} renderSelectedItem={() => selectedModel ? <><VideoModelLogo model={selectedModel} /><span className="video-model-trigger-label" title={`${selectedModel.company}: ${selectedModel.name}`}><span className="video-model-company">{selectedModel.company}: </span>{selectedModel.name}</span></> : null} renderOptionItem={({ value, selected, focused, onClick, onMouseEnter }) => { const model = displayVideoModels.find((item) => modelAlias(item) === String(value)); if (!model) return displayVideoModels.length === 0 && String(value) === '' ? <div className="video-model-empty-option">{t('console.video.noModels')}</div> : null; /* Semi 通过 props 下发点击处理，不透传 onClick 就永远切换不了模型。 */ return <div className={`video-model-option${selected ? ' is-selected' : ''}${focused ? ' is-focused' : ''}`} onClick={onClick} onMouseEnter={onMouseEnter}><VideoModelLogo model={model} /><span className="video-model-option-name">{model.company}: {model.name}</span><span className="video-model-advanced"><span className="video-model-premium-icon" aria-hidden="true">P</span><em>{t('console.video.advanced')}</em></span></div> }} disabled={paramsBusy}><Select.Option value="" disabled={displayVideoModels.length === 0}>{displayVideoModels.length === 0 ? t('console.video.noModels') : t('console.video.chooseModel')}</Select.Option>{displayVideoModels.map((model) => <Select.Option key={model.id} value={modelAlias(model)}>{model.company}: {model.name}</Select.Option>)}</Select>
+                    <Select id="video-model" className="video-control-button video-model-trigger" dropdownClassName="video-model-select-dropdown" value={selectedModel ? modelAlias(selectedModel) : ''} placeholder={t('console.video.chooseModel')} arrowIcon={<IconChevronDownStroked />} position="topLeft" dropdownMatchSelectWidth={false} filter={false} clickToHide aria-label={t('console.video.model')} onChange={(value) => { setModelID(String(value)); setRequestFailure(null) }} renderSelectedItem={() => selectedModel ? <><VideoModelLogo model={selectedModel} /><span className="video-model-trigger-label" title={`${selectedModel.company}: ${selectedModel.name}`}><span className="video-model-company">{selectedModel.company}: </span>{selectedModel.name}</span></> : null} renderOptionItem={({ value, selected, focused, onClick, onMouseEnter }) => { const model = displayVideoModels.find((item) => modelAlias(item) === String(value)); if (!model) return displayVideoModels.length === 0 && String(value) === '' ? <div className="video-model-empty-option">{t('console.video.noModels')}</div> : null; /* Semi 通过 props 下发点击处理，不透传 onClick 就永远切换不了模型。 */ return <div className={`video-model-option${selected ? ' is-selected' : ''}${focused ? ' is-focused' : ''}`} onClick={onClick} onMouseEnter={onMouseEnter}><VideoModelLogo model={model} /><span className="video-model-option-name">{model.company}: {model.name}</span><span className="video-model-advanced"><span className="video-model-premium-icon" aria-hidden="true">P</span><em>{t('console.video.advanced')}</em></span></div> }} disabled={paramsBusy}><Select.Option value="" disabled={displayVideoModels.length === 0}>{displayVideoModels.length === 0 ? t('console.video.noModels') : t('console.video.chooseModel')}</Select.Option>{displayVideoModels.map((model) => <Select.Option key={model.id} value={modelAlias(model)}>{model.company}: {model.name}</Select.Option>)}</Select>
                   </div>
                 </div>
                 <div className="video-parameter-controls">

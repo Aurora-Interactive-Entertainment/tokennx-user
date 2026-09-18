@@ -14,6 +14,10 @@ import Button from "@douyinfe/semi-ui/lib/es/button";
 import SemiFormLabel from "@douyinfe/semi-ui/lib/es/form/label";
 import { CopyOutlineIcon } from "@/components/copy-outline-icon";
 import { ApiKeyTagFilter } from "@/components/api-key-tag-filter";
+import {
+  ApiKeyBillingSourceBadge,
+  ApiKeyBillingSourceHeader,
+} from "@/components/api-key-billing-source";
 import Modal from "@/components/app-modal";
 import Switch from "@douyinfe/semi-ui/lib/es/switch";
 import Toast from "@douyinfe/semi-ui/lib/es/toast";
@@ -83,6 +87,7 @@ import { InvitationTrendChart } from "@/components/invitation-trend-chart";
 import { workspaceContextFor, workspaceContextKey } from "@/utils/workspace";
 import { EnterpriseApiKeyFilters } from "@/components/enterprise-api-key-filters";
 import { SettingsAnchorLayout, type SettingsAnchorItem } from "@/components/settings-anchor-layout";
+import { EnterpriseOwnershipCard } from "@/components/enterprise-ownership-card";
 import "./console-profile.css";
 import "./enterprise-settings.css";
 import "./console-api-key-modal.css";
@@ -1253,7 +1258,7 @@ export function ApiKeysPage({
       : t("console.account.apiKeysDescription");
   // 空状态也沿用完整表头，列数随企业选择列和扩展字段保持一致。
   const apiKeyTableColumnCount =
-    7 + (showExtendedColumns ? 5 : 0) + (enterpriseSelectionEnabled ? 1 : 0);
+    8 + (showExtendedColumns ? 5 : 0) + (enterpriseSelectionEnabled ? 1 : 0);
   const normalizedFilterMemberSearch = filterMemberSearch
     .trim()
     .toLocaleLowerCase();
@@ -1387,6 +1392,9 @@ export function ApiKeysPage({
                 {showExtendedColumns ? <th>{t("console.account.usageLimit")}</th> : null}
                 {showExtendedColumns ? <th>{t("console.account.availableModels")}</th> : null}
                 <th>{t("console.common.status")}</th>
+                <th>
+                  <ApiKeyBillingSourceHeader />
+                </th>
                 <th>{t("console.account.tags")}</th>
                 <th>{t("console.account.createdTime")}</th>
                 {showExtendedColumns ? <th>{t("console.account.lastUsed")}</th> : null}
@@ -1575,6 +1583,9 @@ export function ApiKeysPage({
                             ? t("console.account.disabled")
                             : t("console.account.expired")}
                       </span>
+                    </td>
+                    <td>
+                      <ApiKeyBillingSourceBadge source={row.billing_source} />
                     </td>
                     <td className="tag-cell">
                       {row.tags.length ? (
@@ -2515,25 +2526,7 @@ export function EnterpriseSettingsPage() {
               </h2>
               <p>{t("console.enterpriseSettings.ownershipHint")}</p>
             </header>
-            <div className="settings-card enterprise-settings-card enterprise-settings-card--ownership">
-              <div className="owner-row">
-                <span className="owner-avatar">
-                  {t("console.enterpriseSettings.ownerInitial")}
-                </span>
-                <strong>
-                  {t("console.enterpriseSettings.ownerName")}{" "}
-                  <small>{t("console.enterpriseSettings.owner")}</small>
-                </strong>
-              </div>
-              <Button
-                theme="outline"
-                onClick={() =>
-                  Toast.info(t("console.enterpriseSettings.transferHint"))
-                }
-              >
-                {t("console.enterpriseSettings.transfer")}
-              </Button>
-            </div>
+            <EnterpriseOwnershipCard />
           </section>
         </SettingsAnchorLayout>
       </div>

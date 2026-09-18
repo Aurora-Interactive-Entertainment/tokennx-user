@@ -33,6 +33,12 @@
   overflow: hidden;
 }
 
+/* 封面是可选字段，缺省时收起图片占位并沿用标准弹窗关闭按钮。 */
+.activity-campaign-modal--no-cover .semi-modal-content.app-modal-content,
+.activity-campaign-modal--no-cover .activity-campaign-content {
+  height: auto;
+}
+
 /* 上半部分完全由接口返回的活动图填充，不再叠加占位文案与背景。 */
 .activity-campaign-visual {
   position: relative;
@@ -160,6 +166,11 @@
   justify-content: center;
   gap: 35px;
   margin-top: 25px;
+}
+
+/* 没有跳转地址时，仅保留原有关闭操作并居中。 */
+.activity-campaign-actions.activity-campaign-actions--single {
+  grid-template-columns: minmax(0, 171px);
 }
 
 /* 活动未配置结束时间时按钮成为正文首个子元素，用外边距让它保持在正文中间。 */

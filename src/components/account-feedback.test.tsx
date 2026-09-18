@@ -73,7 +73,7 @@ describe('余额提醒的加载与保存边界', () => {
     await waitFor(() => expect(save).toBeEnabled())
     expect(within(dialog).queryByRole('alert')).not.toBeInTheDocument()
     fireEvent.click(save)
-    await waitFor(() => expect(mocks.updatePreferences).toHaveBeenCalledWith('test-token', { low_balance: false }, { low_balance: 25000000000 }))
+    await waitFor(() => expect(mocks.updatePreferences).toHaveBeenCalledWith('test-token', { low_balance: false }, { low_balance: 25 }))
   })
 
   it('读取尚未完成时禁止保存，关闭后迟到结果不覆盖重开的弹窗', async () => {

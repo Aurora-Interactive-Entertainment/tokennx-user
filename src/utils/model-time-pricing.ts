@@ -74,6 +74,23 @@ export function pricingPeriodSchedule(period: UserModelPricingPeriod, t: TFuncti
   return `${days} · ${minuteLabel(period.start_minute)}–${minuteLabel(period.end_minute)}`
 }
 
+export function pricingPeriodSchedules(periods: UserModelPricingPeriod[], t: TFunction): string[] {
+  const groups = new Map<number | 'default', UserModelPricingPeriod[]>()
+  // 调用方已按计费规则分组；这里只合并相同星期前缀，不跨价格合并时段。
+  for (const period of periods) {
+    const key = period.default ? 'default' : period.weekday_mask
+    const group = groups.get(key)
+    if (group) group.push(period)
+    else groups.set(key, [period])
+  }
+  return [...groups.values()].map(([first, ...rest]) => {
+    const schedule = pricingPeriodSchedule(first, t)
+    if (first.default) return schedule
+    return [schedule, ...rest.map((period) => `${minuteLabel(period.start_minute)}–${minuteLabel(period.end_minute)}`)]
+      .join(t('console.timePricing.scheduleSeparator'))
+  })
+}
+
 export function pricingRuleLabel(rule: UserModelPricingRule, prices: UserModelPrice[] | undefined, t: TFunction): string {
   const price = prices?.find((item) => item.meter_code === rule.meter_code)
   const key = METER_LABELS[rule.meter_code] || (price?.purpose ? PURPOSE_LABELS[price.purpose] : undefined)

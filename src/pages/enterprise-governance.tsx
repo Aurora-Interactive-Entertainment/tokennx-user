@@ -149,9 +149,6 @@ function RoleList({
           {t("console.enterprise.governance.roles")}
         </span>
         <span className="enterprise-governance-rail-tools">
-          <span className="enterprise-governance-rail-count">
-            {roles.length}
-          </span>
           <Button
             theme="borderless"
             type="tertiary"

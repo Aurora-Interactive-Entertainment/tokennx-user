@@ -44,7 +44,7 @@ beforeEach(() => {
 afterEach(cleanup)
 
 async function openCatalog() {
-  fireEvent.click(screen.getByRole('button', { name: '订阅' }))
+  fireEvent.click(screen.getByRole('button', { name: '立即订购' }))
   return screen.findByRole('dialog')
 }
 

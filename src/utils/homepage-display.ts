@@ -53,33 +53,33 @@ export function homepageEntryMediaURL(entry: HomepageEntry, language: string): s
 }
 
 /**
- * 从首页活动条目中挑选当前要展示的弹窗：过期或没有主视觉图片的条目视为无活动。
+ * 从首页活动条目中挑选当前要展示的弹窗，按有效期和登录态过滤。
  * 没有可展示的活动时返回 null，调用方据此不渲染弹窗。
  */
 export function homepagePopupCampaign(
   popups: HomepageEntry[] | undefined,
   language: string,
   now: number,
+  authenticated = false,
 ): ActivityCampaign | null {
   const candidates = [...(popups ?? [])]
     .filter((entry) => homepageEntryIsCurrent(entry, now))
+    .filter((entry) => entry.data.login_required !== true || authenticated)
     .sort((left, right) => Number(right.pinned) - Number(left.pinned) || left.sort_order - right.sort_order)
 
-  for (const entry of candidates) {
-    const image = homepageEntryMediaURL(entry, language)
-    if (!image) continue
-    const content = homepageTranslation(entry, language)
-    const endAt = apiTimeToMilliseconds(entry.expires_at ?? entry.data.expires_at)
-    const targetUrl = homepageString(entry.data.url)
-    const targetText = homepageString(entry.data.url_text)
-    return {
-      image,
-      copy: homepageString(content.title) ?? homepageString(content.description),
-      ...(endAt === null ? {} : { activityEndAt: endAt }),
-      ...(targetUrl ? { targetUrl } : {}),
-      ...(targetText ? { targetText } : {}),
-      ...(typeof entry.data.login_required === 'boolean' ? { loginRequired: entry.data.login_required } : {}),
-    }
+  const entry = candidates[0]
+  if (!entry) return null
+  const image = homepageEntryMediaURL(entry, language)
+  const content = homepageTranslation(entry, language)
+  const endAt = apiTimeToMilliseconds(entry.expires_at ?? entry.data.expires_at)
+  const targetUrl = homepageString(entry.data.url)
+  const targetText = homepageString(entry.data.url_text)
+  return {
+    image,
+    copy: homepageString(content.title) ?? homepageString(content.description),
+    ...(endAt === null ? {} : { activityEndAt: endAt }),
+    ...(targetUrl ? { targetUrl } : {}),
+    ...(targetText ? { targetText } : {}),
+    ...(typeof entry.data.login_required === 'boolean' ? { loginRequired: entry.data.login_required } : {}),
   }
-  return null
 }

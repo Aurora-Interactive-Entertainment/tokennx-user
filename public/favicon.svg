@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <!-- 保留原图透明轮廓；深色标签栏使用白底黑 Logo，浅色标签栏保持透明底。 -->
+  <style>
+    .background { fill: transparent; }
+    .logo { fill: #181a1e; }
+    @media (prefers-color-scheme: dark) {
+      .background { fill: #fff; }
+      .logo { fill: #000; }
+    }
+  </style>
+  <defs>
+    <mask id="logo" maskUnits="userSpaceOnUse" x="0" y="0" width="64" height="64" style="mask-type: alpha">
+      <image width="64" height="64" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAFK0lEQVR4Ae3Bf4yWdQEA8M/zfAEdF3WDdCiHnPwGkV8JCgh6Mk92K5hu1mo0tmKuHzbmYjXWbMuYtbS/tLWaZW3qXHG8Hhx6IKjMiCwhZ/5RzBwrp0lTmTHgeO99n9xqu/B57u557/2BW+/no6mpqampqen/ViStHdsxTrbT+Cbe8uEwC/cgyOdP2I7E+8ZIO449+AXGybYIt+CEC6sd+9Aun79gCxL/FWR7BcfxKQRpk7EWO3HahdGG/Zghn9fQidf9j2BoL+M41iOWdhnWYgfOaKzJ2Ie58vk7bsZrPiAY3sv4Gz6JWNrluAndOKMxPo69WCifN3EzjskQjOwlvIEuxNKm4EZ046z6asWTuEY+b6MTrxhCkM8f8Q90IZbWhjXoxln1MQG9WCmfk+jCEcMI8juKt9CFSNpUrMYO9Kut8XgCHfL5F9bjt0YQVOYI/ol1iKVdgevRjX61cTF+jXXyOY1b8awcgsq9iHfRiVjaNKxAAf2qMw6PYoN8+vFp9MkpGJ3f4z10IpLWjmtRwDmjMwYP4zPyKeLzKKhAMHq/wyl0IpJ2JZZjB4oqE/BTbJJPCV/EYyoUVOcwTmMtImnTsQwFFOUT4wHcIZ8SvoKfG4WgeofRj5sQSZuBJSigaHgRfoAt8knwdfzIKAW1cQgD6EAkbRYWo4AB2SJ8B9vkk+Bu3KcKQe38Bgk6ZJuNhdiJkrSv4XuI5HMv7lGloLYOIsYaRNLmYAF6MOB872A9Wo3sh9iGRJWC2juIMViNSNpczEcPSga9g16sR6uh/Rh3IVEDQX08h4uwWrZ5mIselAx6F71Yj1Zpv8SXUFYjkfqJ8H18w9B+hY0oOl8bFjtfCftRVENBfR1AC1bKdhVmYRfKBr2HYziGYziGV1FWY0H9HcAErJBtAaZjN8oaLKi/BPvRiutkW4hp2IOyBgoaI8E+TMJy2RZhKnqRaJCgcRLsxaVYJttitGEPEg0QNFaCPlyKa2Rbgsl4Cok6CxovwV5cjqWyfQKXoA+JOgoujDKewlQskW0ZJqJPHQW1FyNGjBgxYkRIDCqjF+1YJNtytGIfEnUwRm3NQC8mSitiM/oMKmEzYmyUbQvK2IqyGgtqpw0HMBstaEELWtCCj+I2HMFfDSpjD2biatlW4CPYj0QNBbVxCfZhruGNxW04ilcNKmE35uAq2VZiPParoaB6H8OTWCqfBD34s/OV0IN5mC/bKlyEZ9RIUJ3x2I3r5VPEJuyQrYxdmI95sq3CWDyrBoLRG4fHsU4+A7gDjxheCbuwAHOlRViNgOdUKRidMXgYt8unjDvxkHwG0INFmCMtwhr/cVAVgsrFeABfkE8ZW/GgygyggCWYLS3CjSjheaMUVCbCvbhLPgnuxn1GZwAFLMEs2TpwDoeMQlCZbfg2IiNLsB3fVZ0B9GApZkqL0IEzOKRCQX5fxv2I5XM/voVE9Yp4AssxXVqEtTiFwyoQ5LMRP0GQz4PYikTtFLET1+FKaRE6cRIvyCkY2QY8grHy+RnuRFntFVHACrRLi9CJk3hBDsHwOtCNi+XzKDajpH7OoYBVmCYtQifexh+MIBjatejFBPnswCYU1V8/CliNK6TFuAUn8KJhBNmuRh8mymc3PotzGqcf3bgBU6XF6MKbOGoIQdpMPI3L5PM0bscZjdePnbgBbdIidOENHJUhON8UHEC7fJ7HBpxy4ZxFAR2YIi1GF17HSz4gMijGQ1gonxP4HE76cJiExzBJtgF8FUc0NTU1NTU1Nb3v39ZeMbky8IP8AAAAAElFTkSuQmCC" />
+    </mask>
+  </defs>
+  <path class="background" d="M0 0h64v64H0z" />
+  <path class="logo" d="M0 0h64v64H0z" mask="url(#logo)" />
+</svg>

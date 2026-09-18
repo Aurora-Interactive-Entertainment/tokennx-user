@@ -350,6 +350,7 @@ describe('密钥管理页面', () => {
       'API 密钥',
       '创建人',
       '状态',
+      '计费来源',
       '标签',
       '创建时间',
       '操作',
@@ -361,6 +362,25 @@ describe('密钥管理页面', () => {
     expect(screen.getByRole('button', { name: '禁用 API 密钥' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '删除 API 密钥' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /密钥活动/ })).not.toBeInTheDocument()
+  })
+
+  // 计费来源列直接展示每把密钥扣哪里的款，订阅扣费额外高亮，避免用户以为只有余额扣费。
+  it('密钥列表展示扣费方式并高亮按订阅消耗', async () => {
+    const subscriptionKey = {
+      ...structuredClone(KEY_ITEM),
+      id: 'key-subscription',
+      name: '订阅密钥',
+      billing_source: 'subscription',
+    }
+    mockApiKeyApi({ items: [structuredClone(KEY_ITEM), subscriptionKey] })
+    renderPage()
+
+    const balanceRow = (await screen.findByText('默认密钥')).closest('tr') as HTMLElement
+    const subscriptionRow = screen.getByText('订阅密钥').closest('tr') as HTMLElement
+    expect(within(balanceRow).getByText('按余额消耗')).toHaveClass('api-key-billing-badge')
+    expect(within(subscriptionRow).getByText('按订阅消耗')).toHaveClass('api-key-billing-badge', 'subscription')
+    expect(within(balanceRow).queryByText('按订阅消耗')).not.toBeInTheDocument()
+    expect(screen.getByLabelText(/按余额消耗扣账户余额/)).toBeInTheDocument()
   })
 
   it('企业空间保留创建人信息', async () => {

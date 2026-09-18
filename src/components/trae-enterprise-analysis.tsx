@@ -174,11 +174,14 @@ function TraeMetricCard({
   label,
   value,
   unit,
+  hint,
   tone = "",
 }: {
   label: string;
   value: string;
   unit?: string;
+  // 说明文案解释指标口径，不能只重复指标名。
+  hint: string;
   tone?: string;
 }) {
   return (
@@ -188,11 +191,11 @@ function TraeMetricCard({
         <Tooltip
           autoAdjustOverflow
           className="app-info-tooltip"
-          content={label}
+          content={hint}
           position="top"
           showArrow={false}
         >
-          <span className="trae-metric-info" role="img" tabIndex={0} aria-label={label}>
+          <span className="trae-metric-info" role="img" tabIndex={0} aria-label={hint}>
             <IconInfoCircle className="app-info-icon" aria-hidden="true" />
           </span>
         </Tooltip>
@@ -591,10 +594,10 @@ export function TraeEnterpriseAnalysis({ context }: AnalysisProps) {
   const cumulativeTokens = (metrics?.cumulative_input_tokens ?? 0) + (metrics?.cumulative_output_tokens ?? 0);
   const latestDayTokens = (metrics?.latest_day_input_tokens ?? 0) + (metrics?.latest_day_output_tokens ?? 0);
   const personMetrics = [
-    [t("traeEnterprise.analysis.activeMembersCount"), metrics ? formatCount(metrics.active_members) : "--", t("traeEnterprise.analysis.memberUnit")],
-    [t("traeEnterprise.analysis.totalMembersCount"), metrics ? formatCount(metrics.total_members) : "--", t("traeEnterprise.analysis.memberUnit")],
-    [t("traeEnterprise.analysis.cumulativeTokens"), metrics ? formatCount(cumulativeTokens) : "--", t("traeEnterprise.analysis.tokenUnit")],
-    [t("traeEnterprise.analysis.latestDayTokens"), metrics ? formatCount(latestDayTokens) : "--", t("traeEnterprise.analysis.tokenUnit")],
+    [t("traeEnterprise.analysis.activeMembersCount"), metrics ? formatCount(metrics.active_members) : "--", t("traeEnterprise.analysis.memberUnit"), t("traeEnterprise.analysis.activeMembersCountHint")],
+    [t("traeEnterprise.analysis.totalMembersCount"), metrics ? formatCount(metrics.total_members) : "--", t("traeEnterprise.analysis.memberUnit"), t("traeEnterprise.analysis.totalMembersCountHint")],
+    [t("traeEnterprise.analysis.cumulativeTokens"), metrics ? formatCount(cumulativeTokens) : "--", t("traeEnterprise.analysis.tokenUnit"), t("traeEnterprise.analysis.cumulativeTokensHint")],
+    [t("traeEnterprise.analysis.latestDayTokens"), metrics ? formatCount(latestDayTokens) : "--", t("traeEnterprise.analysis.tokenUnit"), t("traeEnterprise.analysis.latestDayTokensHint")],
   ];
   // 工具榜按调用量排序；名称包含 Agent 的客户端仍然属于工具，不应被隐藏。
   const toolRows = [...(data?.tools ?? [])]
@@ -656,8 +659,8 @@ export function TraeEnterpriseAnalysis({ context }: AnalysisProps) {
 
       <TraeSection title={t("traeEnterprise.analysis.people")}>
         <div className="trae-metric-grid trae-analysis-metric-grid">
-          {personMetrics.map(([label, value, unit]) => (
-            <TraeMetricCard key={label} label={label} value={value} unit={unit} />
+          {personMetrics.map(([label, value, unit, hint]) => (
+            <TraeMetricCard key={label} label={label} value={value} unit={unit} hint={hint} />
           ))}
         </div>
       </TraeSection>
@@ -670,9 +673,9 @@ export function TraeEnterpriseAnalysis({ context }: AnalysisProps) {
 
       <TraeSection title={t("traeEnterprise.analysis.core")}>
         <div className="trae-metric-grid trae-metric-grid--three trae-analysis-metric-grid trae-core-metric-grid">
-          <TraeMetricCard label={t("traeEnterprise.analysis.peakRpm")} value={metrics ? formatCount(metrics.peak_rpm) : "--"} unit={t("traeEnterprise.analysis.rpmUnit")} />
-          <TraeMetricCard label={t("traeEnterprise.analysis.peakTpm")} value={metrics ? formatCount(metrics.peak_tpm) : "--"} unit={t("traeEnterprise.analysis.tpmUnit")} />
-          <TraeMetricCard label={t("traeEnterprise.analysis.requestCount")} value={metrics ? formatCount(metrics.request_count) : "--"} unit={t("traeEnterprise.analysis.countSuffix")} />
+          <TraeMetricCard label={t("traeEnterprise.analysis.peakRpm")} value={metrics ? formatCount(metrics.peak_rpm) : "--"} unit={t("traeEnterprise.analysis.rpmUnit")} hint={t("traeEnterprise.analysis.peakRpmHint")} />
+          <TraeMetricCard label={t("traeEnterprise.analysis.peakTpm")} value={metrics ? formatCount(metrics.peak_tpm) : "--"} unit={t("traeEnterprise.analysis.tpmUnit")} hint={t("traeEnterprise.analysis.peakTpmHint")} />
+          <TraeMetricCard label={t("traeEnterprise.analysis.requestCount")} value={metrics ? formatCount(metrics.request_count) : "--"} unit={t("traeEnterprise.analysis.countSuffix")} hint={t("traeEnterprise.analysis.requestCountHint")} />
         </div>
       </TraeSection>
 

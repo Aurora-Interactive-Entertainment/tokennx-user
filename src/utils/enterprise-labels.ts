@@ -21,22 +21,6 @@ export function enterpriseRoleLabel(
     : option?.name || code || i18n.t('console.enterprise.roleUnnamed')
 }
 
-const JOIN_SOURCE_KEYS: Record<string, string> = {
-  owner: 'owner',
-  admin: 'admin',
-  member: 'member',
-  invitation: 'invitation',
-  invite: 'invitation',
-  certification: 'certification',
-}
-
-// 「账号类型」列展示的是服务端下发的加入来源枚举，未知代码保留原值以兼容服务端扩展。
-export function joinSourceLabel(value: string): string {
-  const code = value.trim().toLowerCase()
-  const key = JOIN_SOURCE_KEYS[code]
-  return key ? i18n.t(`enterpriseLabels.joinSources.${key}`) : value.trim()
-}
-
 const AUDIT_RESOURCE_KEYS: Record<string, string> = {
   enterprise: 'enterprise',
   enterprise_department: 'department',

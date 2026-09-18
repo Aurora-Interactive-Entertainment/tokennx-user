@@ -2,13 +2,6 @@ export const enterpriseLabelResources = {
   'zh-CN': {
     enterpriseLabels: {
       roles: { owner: '所有者', admin: '管理员', member: '成员' },
-      joinSources: {
-        owner: '所有者',
-        admin: '管理员',
-        member: '成员',
-        invitation: '邀请加入',
-        certification: '认证加入',
-      },
       auditResources: {
         enterprise: '企业',
         department: '部门',
@@ -26,13 +19,6 @@ export const enterpriseLabelResources = {
   'en-US': {
     enterpriseLabels: {
       roles: { owner: 'Owner', admin: 'Admin', member: 'Member' },
-      joinSources: {
-        owner: 'Owner',
-        admin: 'Admin',
-        member: 'Member',
-        invitation: 'Invited',
-        certification: 'Certified',
-      },
       auditResources: {
         enterprise: 'Enterprise',
         department: 'Department',

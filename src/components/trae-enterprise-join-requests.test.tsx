@@ -173,4 +173,12 @@ describe("Trae 企业加入申请列表", () => {
       );
     });
   });
+  it("申请角色已停用时不能擅自改授其他角色，仍允许拒绝", async () => {
+    getRequestsMock.mockResolvedValue({ ...requestPage(), items: [{ ...REQUEST, requested_role: "retired-role" }] });
+    renderRequests();
+    expect(await screen.findByRole("button", { name: "通过" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "拒绝" })).toBeEnabled();
+    expect(reviewRequestMock).not.toHaveBeenCalled();
+  });
+
 });

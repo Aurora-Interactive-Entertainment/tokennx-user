@@ -58,9 +58,25 @@ describe('首页活动弹窗数据', () => {
     })
   })
 
-  it('缺少主视觉或已过期的活动条目不展示弹窗', () => {
-    expect(homepagePopupCampaign([popup({ data: {} })], 'zh-CN', now)).toBeNull()
+  it('封面可选，已过期的活动条目不展示弹窗', () => {
+    expect(homepagePopupCampaign([popup({ data: { expires_at: now + 1000, url: '/models' } })], 'zh-CN', now)).toMatchObject({ image: undefined, activityEndAt: now + 1000, targetUrl: '/models' })
     expect(homepagePopupCampaign([popup({ data: { cover_url: coverUrl, expires_at: now - 1000 } })], 'zh-CN', now)).toBeNull()
+  })
+
+  it('仅登录可见的活动按当前登录态过滤，并继续选择公开活动', () => {
+    const restricted = popup({ pinned: true, data: { cover_url: coverUrl, login_required: true } })
+    const publicPopup = popup({ data: { cover_url: 'https://cdn.example.com/public.png', login_required: false } })
+    expect(homepagePopupCampaign([restricted], 'zh-CN', now, false)).toBeNull()
+    expect(homepagePopupCampaign([restricted], 'zh-CN', now, true)?.loginRequired).toBe(true)
+    expect(homepagePopupCampaign([restricted, publicPopup], 'zh-CN', now, false)?.image).toBe(publicPopup.data.cover_url)
+  })
+
+  it('同置顶状态按 sort_order 升序选择，支持 data 中的毫秒到期时间', () => {
+    const campaign = homepagePopupCampaign([
+      popup({ sort_order: 2 }),
+      popup({ sort_order: 1, data: { cover_url: coverUrl, expires_at: now + 1000 } }),
+    ], 'zh-CN', now)
+    expect(campaign?.activityEndAt).toBe(now + 1000)
   })
 
   it('多条活动同时命中时优先展示置顶条目', () => {

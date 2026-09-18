@@ -39,6 +39,7 @@ import {
   type EnterpriseRequestError,
 } from './enterprise-console-shared';
 import AppModal from '@/components/app-modal';
+import ModelVisibilitySearchResults from '@/components/model-visibility-search-results';
 import { ModelLogo } from '@/components/common';
 import { appToast } from '@/components/app-toast';
 import { normalizeModelModality } from '@/data/models';
@@ -470,11 +471,20 @@ function ModelVisibilityDialog({
         ).filter((item) => item !== id),
     }));
   }
-  const visiblePeople = query
-    ? people.filter((person) =>
-        `${person.name} ${person.email}`.includes(query),
-      )
-    : people;
+  const isSearching = query.trim().length > 0;
+  const searchableDepartments = useMemo(() => departments.flatMap(collectDepartments)
+    .map((department) => ({ ...department, description: department.path })), [departments]);
+  const searchablePeople = useMemo(() => people.map((person) => ({
+    ...person, description: person.email,
+  })), [people]);
+  function togglePerson(id: string): void {
+    setSelection((current) => ({
+      ...current,
+      people: current.people.includes(id)
+        ? current.people.filter((item) => item !== id)
+        : [...current.people, id],
+    }));
+  }
   return (
     <AppModal
       className="model-visibility-modal"
@@ -555,8 +565,18 @@ function ModelVisibilityDialog({
                   placeholder={t('console.enterprise.model.visibility.search')}
                   aria-label={t('console.enterprise.model.visibility.search')}
                 />
+                {query ? (
+                  <button
+                    type="button"
+                    className="model-visibility-icon-button"
+                    aria-label={t('console.enterprise.model.visibility.clearSearch')}
+                    onClick={() => setQuery('')}
+                  >
+                    <IconClose />
+                  </button>
+                ) : null}
               </div>
-              {kind === null ? (
+              {kind === null && !isSearching ? (
                 <div className="model-visibility-kind-menu">
                   <button type="button" onClick={() => setKind('department')}>
                     <span>
@@ -573,7 +593,7 @@ function ModelVisibilityDialog({
                 </div>
               ) : null}
               <div className="model-visibility-picker-content">
-                {kind ? (
+                {kind && !isSearching ? (
                   <div className="model-visibility-breadcrumb">
                     <button type="button" onClick={() => setKind(null)}>
                       {t('console.enterprise.model.visibility.scopeRoot')}
@@ -587,7 +607,16 @@ function ModelVisibilityDialog({
                   </div>
                 ) : null}
                 <div className="model-visibility-scroll-area">
-                  {kind === 'department' ? (
+                  {isSearching ? (
+                    <ModelVisibilitySearchResults
+                      query={query}
+                      departments={searchableDepartments}
+                      people={searchablePeople}
+                      selection={selection}
+                      onToggleDepartment={toggleDepartment}
+                      onTogglePerson={togglePerson}
+                    />
+                  ) : kind === 'department' ? (
                     departments.length > 0 ? departments.map((department) => (
                       <DepartmentNode
                         key={department.id}
@@ -608,9 +637,9 @@ function ModelVisibilityDialog({
                       <p className="model-visibility-empty">{t('console.enterprise.model.visibility.emptyDepartments')}</p>
                     )
                   ) : kind === 'person' ? (
-                    visiblePeople.length > 0 ? (
+                    people.length > 0 ? (
                       <div className="model-visibility-people-list">
-                        {visiblePeople.map((person) => (
+                        {people.map((person) => (
                           <label
                             key={person.id}
                             title={`${person.name} · ${person.email}`}
@@ -618,16 +647,7 @@ function ModelVisibilityDialog({
                             <input
                               type="checkbox"
                               checked={selection.people.includes(person.id)}
-                              onChange={() =>
-                                setSelection((current) => ({
-                                  ...current,
-                                  people: current.people.includes(person.id)
-                                    ? current.people.filter(
-                                        (item) => item !== person.id,
-                                      )
-                                    : [...current.people, person.id],
-                                }))
-                              }
+                              onChange={() => togglePerson(person.id)}
                             />
                             <span>
                               <strong>{person.name}</strong>

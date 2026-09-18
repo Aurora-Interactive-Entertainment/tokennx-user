@@ -34,6 +34,8 @@ export interface EnterpriseCapabilities {
   can_view_departments?: boolean
   can_manage_departments?: boolean
   can_manage_department_members?: boolean
+  // 仅权威所有者可转让；旧上下文未返回时由页面保持不可提交。
+  can_transfer_ownership?: boolean
 }
 
 export interface EnterpriseRoleOption {
@@ -47,6 +49,10 @@ export interface EnterpriseContext {
   name: string
   code: string
   member_id: string
+  // 所有权转让使用独立的企业与当前成员版本，旧服务可能尚未返回。
+  member_status?: string
+  enterprise_version?: EnterpriseVersion
+  member_version?: EnterpriseVersion
   role: string
   roles: string[]
   role_options?: EnterpriseRoleOption[]
@@ -546,6 +552,50 @@ export interface EnterpriseAuditLogPage {
 
 export type EnterpriseListOptions = Pick<FetchJsonOptions, 'accessToken' | 'signal'>
 
+export type EnterpriseOwnershipTransferCodeInput = {
+  provider_code: 'phone'
+  destination: string
+  country_code?: '+86' | ''
+} | {
+  provider_code: 'email'
+  destination: string
+  country_code?: never
+}
+
+export interface EnterpriseOwnershipTransferCodeResult {
+  destination_masked: string
+  expires_at: string
+  retry_after_seconds: number
+}
+
+export interface EnterpriseOwnershipTransferInput {
+  provider_code: 'phone' | 'email'
+  destination: string
+  code: string
+  target_member_id: string
+  // 该新接口只接受正整数字符串，禁止转换为 number 后提交。
+  enterprise_expected_version: string
+  current_owner_expected_version: string
+  target_expected_version: string
+  confirm: true
+}
+
+export interface EnterpriseOwnershipTransferResult {
+  transfer_id: string
+  enterprise_id: string
+  enterprise_version: string
+  previous_owner_member_id: string
+  previous_owner_user_id: string
+  previous_owner_role: 'administrator'
+  previous_owner_version: string
+  new_owner_member_id: string
+  new_owner_user_id: string
+  new_owner_role: 'owner'
+  new_owner_version: string
+  transferred_at: ApiTimestamp
+  replayed: boolean
+}
+
 export type EnterpriseMembersRequest = EnterpriseListOptions & {
   page?: number
   page_size?: number
@@ -749,6 +799,31 @@ function requestOptions(options: EnterpriseListOptions): EnterpriseListOptions {
 
 export function getEnterpriseContext(context: EnterpriseRequestContext, options: EnterpriseListOptions = {}): Promise<EnterpriseContext> {
   return fetchAuthenticatedJson<EnterpriseContext>(`${enterpriseBasePath(context)}/context`, requestOptions(options))
+}
+
+export function sendEnterpriseOwnershipTransferCode(context: EnterpriseRequestContext, input: EnterpriseOwnershipTransferCodeInput, options: EnterpriseListOptions = {}): Promise<EnterpriseOwnershipTransferCodeResult> {
+  // 转让验证码必须调用专用接口，不能复用登录或联系方式换绑验证码。
+  const body = input.provider_code === 'phone'
+    ? { provider_code: input.provider_code, destination: input.destination, country_code: input.country_code }
+    : { provider_code: input.provider_code, destination: input.destination }
+  return mutate<EnterpriseOwnershipTransferCodeResult>(`${enterpriseBasePath(context)}/ownership-transfer/code`, 'POST', body, options)
+}
+
+export function transferEnterpriseOwnership(context: EnterpriseRequestContext, input: EnterpriseOwnershipTransferInput, idempotencyKey: string, options: EnterpriseListOptions = {}): Promise<EnterpriseOwnershipTransferResult> {
+  const normalizedKey = idempotencyKey.trim()
+  const versions = [input.enterprise_expected_version, input.current_owner_expected_version, input.target_expected_version]
+  if (!/^[\x21-\x7e]{1,128}$/.test(normalizedKey)
+    || input.confirm !== true
+    || !versions.every((version) => typeof version === 'string' && /^[1-9]\d*$/.test(version))) {
+    throw new ApiError(i18n.t('api.enterprise.errors.140001'), 400, 140001, null)
+  }
+  // 幂等键由确认表单持有，同一请求重试时必须复用，API 层不自行生成新键。
+  return fetchAuthenticatedJson<EnterpriseOwnershipTransferResult>(`${enterpriseBasePath(context)}/ownership-transfer`, {
+    ...requestOptions(options),
+    method: 'POST',
+    headers: { 'Idempotency-Key': normalizedKey },
+    body: input,
+  })
 }
 
 export function getEnterpriseGovernance(context: EnterpriseRequestContext, options: EnterpriseListOptions = {}): Promise<EnterpriseGovernanceResponse> {

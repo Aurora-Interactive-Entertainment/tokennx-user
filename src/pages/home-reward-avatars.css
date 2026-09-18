@@ -1,0 +1,13 @@
+/* 复用用户头像配色，保留首页头像原有的圆形、尺寸和叠放布局。 */
+html[data-theme] .public-layout--manuscript-home .manuscript-reward-avatar.manuscript-reward-avatar--named {
+  color: #fff;
+  background: var(--color-avatar);
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.manuscript-reward-avatar.manuscript-reward-avatar--named::before,
+.manuscript-reward-avatar.manuscript-reward-avatar--named::after {
+  content: none;
+}

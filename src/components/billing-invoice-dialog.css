@@ -187,19 +187,6 @@
   white-space: nowrap;
 }
 
-.invoice-enterprise-link {
-  margin-right: auto;
-  color: var(--color-action-primary);
-  font-size: 13px;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
-.invoice-enterprise-link:hover {
-  color: var(--color-text-default-hover);
-  text-decoration: underline;
-}
-
 .invoice-confirm-grid {
   display: grid;
   grid-template-columns: 140px minmax(0, 1fr);
@@ -284,12 +271,5 @@
 
   .invoice-dialog-footer {
     flex-wrap: wrap;
-  }
-
-  /* 窄屏时链接独占一行，避免中英文长文案挤压底部操作按钮。 */
-  .invoice-dialog-footer .invoice-enterprise-link {
-    min-width: 100%;
-    margin-bottom: var(--spacing-4);
-    text-align: left;
   }
 }

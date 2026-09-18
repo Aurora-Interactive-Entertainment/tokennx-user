@@ -15,6 +15,7 @@ import {
 import { MODEL_CHART_COLORS } from "@/components/chart-colors";
 import { useResolvedTheme } from "@/theme";
 import i18n from "@/i18n";
+import { formatTokenCount } from "@/utils/format-token-count";
 import { dateRangeToTrendQuery } from "./personal-usage-date-picker";
 import "./personal-usage-distribution-pies.css";
 
@@ -216,10 +217,7 @@ export function mergeDistributionEntries(
 
 function formatDistributionMetric(value: number | undefined, suffix = ""): string {
   if (value === undefined || !Number.isFinite(value)) return "--";
-  if (suffix === "token") {
-    if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(2)}M`;
-    if (value >= 1_000) return `${(value / 1_000).toFixed(2)}K`;
-  }
+  if (suffix === "token") return formatTokenCount(value, i18n.language);
   return new Intl.NumberFormat(i18n.language).format(value);
 }
 

@@ -93,4 +93,8 @@ describe("活动主按钮跳转地址", () => {
   it("非法地址不做跳转", () => {
     expect(getActivityCampaignTarget("http://[invalid", origin)).toBeNull();
   });
+
+  it.each(["", "   ", "javascript:alert(1)", "data:text/html,test", "file:///test"])("空地址和非网页协议不展示跳转：%s", (url) => {
+    expect(getActivityCampaignTarget(url, origin)).toBeNull();
+  });
 });

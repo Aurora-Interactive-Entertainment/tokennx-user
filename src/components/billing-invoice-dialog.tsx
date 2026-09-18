@@ -2,7 +2,6 @@ import type { ReactNode } from 'react'
 import Button from '@douyinfe/semi-ui/lib/es/button'
 import Steps from '@douyinfe/semi-ui/lib/es/steps'
 import { IconTickCircle } from '@douyinfe/semi-icons'
-import { Link } from 'react-router'
 import Modal from '@/components/app-modal'
 import { BackofficeMoneyText as MoneyText } from '@/components/money'
 import { CompatSelect as Select } from '@/components/semi-compat'
@@ -258,12 +257,6 @@ function InvoiceDialogFooter({
     <div className="invoice-dialog-footer">
       {step === 1 ? (
         <>
-          <Link
-            className="invoice-enterprise-link"
-            to="/console/enterprise-create"
-          >
-            {i18n.t('console.billing.enterpriseVerification')}
-          </Link>
           <Button theme="outline" type="tertiary" onClick={onClose}>
             {i18n.t('console.common.cancel')}
           </Button>

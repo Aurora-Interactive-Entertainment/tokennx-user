@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import DatePicker from '@douyinfe/semi-ui/lib/es/datePicker'
 import Select from '@douyinfe/semi-ui/lib/es/select'
 import Toast from '@douyinfe/semi-ui/lib/es/toast'
+import Tooltip from '@douyinfe/semi-ui/lib/es/tooltip'
 import { IconDownload, IconInfoCircle } from '@douyinfe/semi-icons'
 import * as echarts from 'echarts/core'
 import { PieChart } from 'echarts/charts'
@@ -206,6 +207,17 @@ type UsageBoardProps = {
   onDetail?: (memberID: string) => void
 }
 
+// 汇总卡的说明图标：内容解释指标口径，鼠标和键盘都能触发。
+function UsageInfoHint({ hint }: { hint: string }) {
+  return (
+    <Tooltip className="app-info-tooltip" content={hint} position="top">
+      <span className="app-info-icon-trigger trae-usage-info-trigger" role="img" tabIndex={0} aria-label={hint}>
+        <IconInfoCircle className="app-info-icon" aria-hidden="true" />
+      </span>
+    </Tooltip>
+  )
+}
+
 export function TraeUsageBoard({ context, onDetail }: UsageBoardProps) {
   const { t } = useTranslation()
   const handleError = useEnterpriseErrorHandler()
@@ -254,7 +266,7 @@ export function TraeUsageBoard({ context, onDetail }: UsageBoardProps) {
         <article className="trae-usage-summary-card trae-usage-summary-card--overall">
           <div className="trae-usage-overall-body">
             <div className="trae-usage-overall-copy">
-              <div className="trae-usage-summary-heading"><span>{t('traeEnterprise.usage.overall')}</span><IconInfoCircle className="app-info-icon" aria-hidden="true" /></div>
+              <div className="trae-usage-summary-heading"><span>{t('traeEnterprise.usage.overall')}</span><UsageInfoHint hint={t('traeEnterprise.usage.overallHint')} /></div>
               <div className="trae-usage-overall-details">
                 <strong>{canViewBilling ? formatYuan(totals.cost_yuan, BACKOFFICE_MONEY_DISPLAY_DECIMAL_PLACES) : '--'}</strong>
                 <span><i className="is-base" />{t('traeEnterprise.usage.usedCost')} {canViewBilling ? formatYuan(totals.cost_yuan, BACKOFFICE_MONEY_DISPLAY_DECIMAL_PLACES) : '--'}</span>
@@ -264,7 +276,7 @@ export function TraeUsageBoard({ context, onDetail }: UsageBoardProps) {
           </div>
         </article>
         <article className="trae-usage-summary-card trae-usage-summary-card--account">
-          <div className="trae-usage-summary-heading"><span>{t('traeEnterprise.usage.totalTokens')}</span><IconInfoCircle className="app-info-icon" aria-hidden="true" /></div>
+          <div className="trae-usage-summary-heading"><span>{t('traeEnterprise.usage.totalTokens')}</span><UsageInfoHint hint={t('traeEnterprise.usage.totalTokensHint')} /></div>
           <strong className="trae-usage-card-money">
             {formatCount(totalTokens)}
             <span>{t('traeEnterprise.usage.tokenUnit')}</span>

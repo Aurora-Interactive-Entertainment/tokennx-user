@@ -443,7 +443,7 @@ describe('用户费用管理页面', () => {
     expect(requestFocus).not.toBeNull()
     expect(within(requestFocus as HTMLElement).getByTitle('¥4.120000000')).toHaveTextContent('¥4.120')
     expect(screen.getAllByRole('row')).toHaveLength(4)
-    await user.click(screen.getByRole('button', { name: /导出 CSV/ }))
+    await user.click(screen.getByRole('button', { name: /导出$/ }))
     await waitFor(() => {
       expect(createObjectURL).toHaveBeenCalledOnce()
       expect(click).toHaveBeenCalledOnce()

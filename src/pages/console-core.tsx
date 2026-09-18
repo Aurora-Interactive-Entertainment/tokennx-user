@@ -9,7 +9,7 @@ import Modal from '@/components/app-modal'
 import Toast from '@douyinfe/semi-ui/lib/es/toast'
 import { IconAlertTriangle, IconArrowLeft, IconArrowRight, IconArrowUp, IconChevronDown, IconClose, IconCommentStroked, IconDeleteStroked, IconEdit, IconExpand, IconPlus, IconRedo, IconRedoStroked, IconSearch, IconSend, IconSetting, IconShrink, IconStop } from '@douyinfe/semi-icons'
 import { CopyOutlineIcon } from "@/components/copy-outline-icon";
-import { EmptyPanel, ModelCard, PageTitle } from '@/components/common'
+import { EmptyPanel, ModelCard, ModelLogo, PageTitle } from '@/components/common'
 import { appToast } from '@/components/app-toast'
 import { RequestErrorPanel } from '@/components/request-error-panel'
 import { ModelDetailDrawer } from '@/components/model-detail-drawer'
@@ -210,6 +210,11 @@ function formatSessionCost(value: number | null, t: TFunction): ReactNode {
 
 function lastUserMessage(session: { messages: PlaygroundMessage[]; prompt: string }): string {
   return [...session.messages].reverse().find((message) => message.role === 'user')?.content ?? session.prompt
+}
+
+// 下拉项用带 logo 的节点做 label，触发器要同一段纯文案，集中在一处拼接避免走偏。
+function modelOptionLabel(model: ModelRecord): string {
+  return `${model.name} | ${model.company}`
 }
 
 // 消息时间只展示月日和时分，保持气泡下方信息紧凑。
@@ -674,8 +679,8 @@ export function PlaygroundPage() {
           <div className="playground-actions">
             <label className="sr-only" htmlFor="playground-model">{t('console.playground.chooseModel')}</label>
             <div className="model-picker">
-              <span className="model-picker-avatar" aria-hidden="true">{selectedModel?.company?.slice(0, 1) ?? 'N'}</span>
-              <Select className="playground-model-select" dropdownClassName="playground-select-dropdown" id="playground-model" aria-label={t('console.playground.chooseModel')} value={selectedModel ? modelAlias(selectedModel) : ''} onChange={(value) => { const nextModelAlias = String(value); setModelId(nextModelAlias); store.setSelectedModelId(nextModelAlias); setSelectedSessionId(''); setEditingAttemptId(''); setEditingUserAttemptId(''); setEditingUserPrompt(''); setRetryingAttemptId('') }} disabled={selectableModels.length === 0}>{selectableModels.map((model) => <Select.Option key={model.id} value={modelAlias(model)}>{model.name} | {model.company}</Select.Option>)}</Select>
+              {selectedModel ? <ModelLogo model={selectedModel} className="model-picker-logo" /> : null}
+              <Select className="playground-model-select" id="playground-model" aria-label={t('console.playground.chooseModel')} value={selectedModel ? modelAlias(selectedModel) : ''} onChange={(value) => { const nextModelAlias = String(value); setModelId(nextModelAlias); store.setSelectedModelId(nextModelAlias); setSelectedSessionId(''); setEditingAttemptId(''); setEditingUserAttemptId(''); setEditingUserPrompt(''); setRetryingAttemptId('') }} disabled={selectableModels.length === 0} renderSelectedItem={() => (selectedModel ? modelOptionLabel(selectedModel) : '')}>{selectableModels.map((model) => <Select.Option key={model.id} value={modelAlias(model)} label={<span className="playground-model-option"><ModelLogo model={model} className="playground-model-option-logo" /><span className="playground-model-option-label">{modelOptionLabel(model)}</span></span>} />)}</Select>
             </div>
             <Button className="icon-button" theme="borderless" icon={<IconSetting />} aria-label={t('console.playground.modelParams')} title={t('console.playground.modelParams')} onClick={() => setParamsVisible(true)} disabled={!selectedModel} />
           </div>

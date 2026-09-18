@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import type { ModelRecord } from '@/data/models'
+import { userModelToRecord, type ModelRecord } from '@/data/models'
+import type { UserModelPrice } from '@/api/user-models'
 import { MODEL_CATEGORIES, MODEL_PRICE_FILTERS, MODEL_SORTS, filterAndSortModels, modelCategoryCounts, modelIsDiscounted, modelIsFree, modelMatchesCategory, paginateModels } from './model-filters'
 
 const baseModel: ModelRecord = {
@@ -67,6 +68,35 @@ describe('模型广场筛选与分页规则', () => {
 
     expect(filterAndSortModels(models, { sort: 'price-asc' }).map((item) => item.id)).toEqual(['low', 'same-first', 'same-second', 'no-price'])
     expect(filterAndSortModels(models, { sort: 'price-desc' }).map((item) => item.id)).toEqual(['same-first', 'same-second', 'low', 'no-price'])
+  })
+
+  it('按相同计费单位比较接口价格，输入价相同时继续比较输出价', () => {
+    const quoted = (id: string, input: string, output: string, quantity: number) => userModelToRecord({
+      id, name: id, company: 'Example', modality: 'text', billing_mode: 'token', description: '', capabilities: [], provider_count: 1,
+      prices: [
+        { meter_code: 'input_token', meter_kind: 'input_token', unit: 'token', currency: 'CNY', unit_quantity: quantity, unit_price_yuan: input, tier_no: 1 },
+        { meter_code: 'output_token', meter_kind: 'output_token', unit: 'token', currency: 'CNY', unit_quantity: quantity, unit_price_yuan: output, tier_no: 1 },
+      ],
+    })
+    const models = [quoted('expensive', '0.02', '0.04', 1000), quoted('higher-output', '6.4', '30', 1_000_000), quoted('lower-output', '6.4', '22.4', 1_000_000)]
+    expect(filterAndSortModels(models, { sort: 'price-asc' }).map(({ id }) => id)).toEqual(['lower-output', 'higher-output', 'expensive'])
+    expect(filterAndSortModels(models, { sort: 'price-desc' }).map(({ id }) => id)).toEqual(['expensive', 'higher-output', 'lower-output'])
+    expect(filterAndSortModels(models, { sort: 'default' })).toEqual(models)
+    const samePrices = [quoted('glm5.2', '6.4', '22.4', 1_000_000), quoted('glm5.3', '6.4', '22.4', 1_000_000)]
+    expect(filterAndSortModels(samePrices, { sort: 'price-asc' })).toEqual(samePrices)
+    expect(filterAndSortModels(samePrices, { sort: 'price-desc' })).toEqual(samePrices)
+  })
+
+  it('不把缓存价当输入价；无效报价置后，零价仍参与排序', () => {
+    const price = (meter: string, amount: string, quantity = 1_000_000): UserModelPrice => ({ meter_code: meter, meter_kind: meter, unit: 'token', currency: 'CNY', unit_quantity: quantity, unit_price_yuan: amount, tier_no: 1 })
+    const models = [
+      model({ id: 'cached', prices: [price('cache_read_input_token', '0.1'), price('input_token', '8')] }),
+      model({ id: 'cheaper', prices: [price('input_token', '6.4')] }),
+      model({ id: 'invalid', prices: [price('input_token', '', 0)] }),
+      model({ id: 'free', prices: [price('input_token', '0')] }),
+    ]
+    expect(filterAndSortModels(models, { sort: 'price-asc' }).map(({ id }) => id)).toEqual(['free', 'cheaper', 'cached', 'invalid'])
+    expect(filterAndSortModels(models, { sort: 'price-desc' }).map(({ id }) => id)).toEqual(['cached', 'cheaper', 'free', 'invalid'])
   })
 
   it('在当前搜索、公司和价格条件下计算分类数量', () => {

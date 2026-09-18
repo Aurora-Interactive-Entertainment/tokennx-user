@@ -153,7 +153,7 @@ describe("充值管理页面", () => {
       if (url.pathname === "/api/user/profile" && options?.method !== "PUT") return apiResponse({ id: "user-1", display_name: "测试用户", avatar_url: "", locale: "zh-CN", timezone: "Asia/Shanghai", status: "active", version: 1, phone: { bound: true, masked_identifier: "138****0000" }, email: { bound: true, masked_identifier: "t***@example.com" } });
       if (url.pathname === "/api/user/profile/notification-preferences" && options?.method === "PUT") {
         const body = JSON.parse(String(options.body)) as { values: { low_balance: boolean }; thresholds: { low_balance: number } };
-        preferences = { items: [{ ...preferences.items[0], enabled: body.values.low_balance, threshold_amount_nano: body.thresholds.low_balance, version: 2 }] };
+        preferences = { items: [{ ...preferences.items[0], enabled: body.values.low_balance, threshold_amount_nano: body.thresholds.low_balance * 1_000_000_000, version: 2 }] };
         return apiResponse(preferences);
       }
       throw new Error(`unexpected request: ${url.pathname}`);
@@ -180,11 +180,11 @@ describe("充值管理页面", () => {
     const thresholdInput = within(dialog).getByRole("textbox", { name: "额度阈值" });
     expect(thresholdInput).toHaveValue("4.28");
     await user.clear(thresholdInput);
-    await user.type(thresholdInput, "10");
+    await user.type(thresholdInput, "1");
     await user.click(dialog.querySelector(".semi-modal-footer .semi-button-primary") as HTMLElement);
     await waitFor(() => expect(fetchMock.mock.calls.some(([input, options]) => new URL(String(input), window.location.origin).pathname === "/api/user/profile/notification-preferences" && options?.method === "PUT")).toBe(true));
     const preferenceRequest = fetchMock.mock.calls.find(([input, options]) => new URL(String(input), window.location.origin).pathname === "/api/user/profile/notification-preferences" && options?.method === "PUT");
-    expect(JSON.parse(String(preferenceRequest?.[1]?.body))).toEqual({ values: { low_balance: true }, thresholds: { low_balance: 10_000_000_000 } });
+    expect(JSON.parse(String(preferenceRequest?.[1]?.body))).toEqual({ values: { low_balance: true }, thresholds: { low_balance: 1 } });
   });
 
   it("实名认证拦截仅展示引导弹窗，不显示重复的顶部提示", async () => {

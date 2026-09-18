@@ -18,10 +18,11 @@ function thresholdNanoToYuan(value: string | number | undefined): string {
   return (parsed / NOTIFICATION_THRESHOLD_SCALE).toFixed(2)
 }
 
-function thresholdYuanToNano(value: string): number | null {
+function parseThresholdYuan(value: string): number | null {
   const parsed = Number(value.trim())
   if (!Number.isFinite(parsed) || parsed < 0) return null
-  return Math.round(parsed * NOTIFICATION_THRESHOLD_SCALE)
+  // thresholds.low_balance 的请求单位是元，不能沿用响应字段的 nano 存储单位。
+  return parsed
 }
 
 // 余额提醒弹窗在费用页和充值管理页共享同一份通知偏好读写逻辑。
@@ -85,8 +86,8 @@ export function BalanceAlertDialog({ visible, onClose, onAuthFailure }: { visibl
     if (!visible || loading || !preferences || loadError || savingRequest.current) return
     const accessToken = getAccessToken()
     if (!accessToken) { onAuthFailure(); return }
-    const thresholdNano = thresholdYuanToNano(threshold)
-    if (thresholdNano === null) {
+    const thresholdYuan = parseThresholdYuan(threshold)
+    if (thresholdYuan === null) {
       Toast.error(t('console.billing.balanceAlertThresholdInvalid'))
       return
     }
@@ -94,7 +95,7 @@ export function BalanceAlertDialog({ visible, onClose, onAuthFailure }: { visibl
     savingRequest.current = true
     setSaving(true)
     try {
-      const nextPreferences = await updateNotificationPreferences(accessToken, { low_balance: enabled }, { low_balance: thresholdNano })
+      const nextPreferences = await updateNotificationPreferences(accessToken, { low_balance: enabled }, { low_balance: thresholdYuan })
       if (version !== sessionVersion.current) return
       setPreferences(nextPreferences)
       Toast.success(t('console.billing.balanceAlertSaved'))

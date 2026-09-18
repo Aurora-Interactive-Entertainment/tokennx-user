@@ -125,6 +125,7 @@ export interface NotificationPreferences {
   items: NotificationPreference[]
 }
 
+// 更新接口按用户看到的金额单位“元”接收阈值；响应中的 threshold_amount_nano 才是 nano 存储值。
 export type NotificationPreferenceThresholds = Partial<Record<NotificationPreferenceCode, number | null>>
 export interface NotificationPreferenceChannelSettings {
   in_app_enabled: boolean

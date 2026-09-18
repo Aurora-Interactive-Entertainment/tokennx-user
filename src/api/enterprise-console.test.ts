@@ -28,7 +28,9 @@ import {
   getEnterpriseErrorMessage,
   getEnterpriseRequestId,
   reviewEnterpriseJoinRequest,
+  sendEnterpriseOwnershipTransferCode,
   submitInvitationJoin,
+  transferEnterpriseOwnership,
   updateEnterpriseInvitation,
   updateEnterpriseModel,
   updateEnterpriseMemberBudget,
@@ -38,6 +40,7 @@ import {
   batchUpdateEnterpriseMembers,
   updateEnterpriseTag,
   type EnterpriseRequestContext,
+  type EnterpriseOwnershipTransferInput,
 } from './enterprise-console'
 
 function apiResponse(data: unknown, status = 200, code = 0, msg = 'success', requestId = 'enterprise-request-id'): Response {
@@ -83,6 +86,65 @@ describe('企业控制台 API 客户端', () => {
     expect(urls[4]?.searchParams.get('status')).toBe('pending')
     expect(urls[5]?.searchParams.get('page_size')).toBe(String(ENTERPRISE_PAGE_SIZE))
     expect(new Headers(fetchMock.mock.calls[0]?.[1]?.headers).get('Authorization')).toBe('Bearer enterprise-token')
+  })
+
+  it('所有权转让发码使用专用接口，保留绑定值与服务端倒计时', async () => {
+    const response = { destination_masked: '138****8000', expires_at: '2026-09-17T10:05:00Z', retry_after_seconds: 90 }
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => apiResponse(response))
+    const result = await sendEnterpriseOwnershipTransferCode(CONTEXT, {
+      provider_code: 'phone', destination: '13800138000', country_code: '+86',
+    }, { accessToken: 'enterprise-token' })
+    await sendEnterpriseOwnershipTransferCode(CONTEXT, {
+      provider_code: 'email', destination: 'Owner@example.com',
+    }, { accessToken: 'enterprise-token' })
+
+    expect(result).toEqual(response)
+    for (const [input, init] of fetchMock.mock.calls) {
+      expect(new URL(String(input), window.location.origin).pathname).toBe('/api/user/enterprise/ent%2F01K0NX/ownership-transfer/code')
+      expect(init?.method).toBe('POST')
+      expect(new Headers(init?.headers).get('Authorization')).toBe('Bearer enterprise-token')
+      expect(new Headers(init?.headers).has('Idempotency-Key')).toBe(false)
+    }
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual({ provider_code: 'phone', destination: '13800138000', country_code: '+86' })
+    expect(JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body))).toEqual({ provider_code: 'email', destination: 'Owner@example.com' })
+  })
+
+  it('所有权转让保留三方大整数版本，且网络重试复用相同幂等键和确认内容', async () => {
+    const body: EnterpriseOwnershipTransferInput = {
+      provider_code: 'phone', destination: '13800138000', code: '123456', target_member_id: 'member-2',
+      enterprise_expected_version: '9007199254740993', current_owner_expected_version: '9007199254740994', target_expected_version: '9007199254740995', confirm: true,
+    }
+    const result = { transfer_id: 'transfer-1', enterprise_version: '9007199254740996', previous_owner_role: 'administrator', new_owner_role: 'owner', replayed: true }
+    const fetchMock = vi.spyOn(globalThis, 'fetch')
+      .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+      .mockResolvedValueOnce(apiResponse(result))
+    await expect(transferEnterpriseOwnership(CONTEXT, body, 'own-transfer-1', { accessToken: 'enterprise-token' })).rejects.toThrow()
+    await expect(transferEnterpriseOwnership(CONTEXT, body, 'own-transfer-1', { accessToken: 'enterprise-token' })).resolves.toEqual(result)
+
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    for (const [input, init] of fetchMock.mock.calls) {
+      expect(new URL(String(input), window.location.origin).pathname).toBe('/api/user/enterprise/ent%2F01K0NX/ownership-transfer')
+      expect(init?.method).toBe('POST')
+      expect(new Headers(init?.headers).get('Idempotency-Key')).toBe('own-transfer-1')
+      expect(new Headers(init?.headers).get('Authorization')).toBe('Bearer enterprise-token')
+      expect(JSON.parse(String(init?.body))).toEqual(body)
+    }
+  })
+
+  it('拒绝缺失或非法幂等键、非字符串版本及未经确认的转让', () => {
+    const body: EnterpriseOwnershipTransferInput = {
+      provider_code: 'email', destination: 'owner@example.com', code: '123456', target_member_id: 'member-2',
+      enterprise_expected_version: '4', current_owner_expected_version: '6', target_expected_version: '2', confirm: true,
+    }
+    const fetchMock = vi.spyOn(globalThis, 'fetch')
+    for (const key of ['', ' ', '中文', 'invalid\nkey', 'x'.repeat(129)]) {
+      expect(() => transferEnterpriseOwnership(CONTEXT, body, key)).toThrowError(ApiError)
+    }
+    for (const version of [0, 4, '0', '-1', '1.5', '1e3', '']) {
+      expect(() => transferEnterpriseOwnership(CONTEXT, { ...body, enterprise_expected_version: version } as EnterpriseOwnershipTransferInput, 'own-transfer-1')).toThrowError(ApiError)
+    }
+    expect(() => transferEnterpriseOwnership(CONTEXT, { ...body, confirm: false } as unknown as EnterpriseOwnershipTransferInput, 'own-transfer-1')).toThrowError(ApiError)
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 
   it('读取邀请使用记录的新 items 信封，并兼容旧裸数组响应', async () => {

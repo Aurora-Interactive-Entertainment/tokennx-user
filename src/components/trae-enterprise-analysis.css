@@ -96,7 +96,8 @@
 .trae-metric-label svg {
   flex: 0 0 auto;
   color: var(--color-text-tertiary);
-  font-size: 14px;
+  /* 与人员管理、费用管理、密钥管理的说明图标统一为 13px。 */
+  font-size: 13px;
 }
 
 .trae-metric-info {

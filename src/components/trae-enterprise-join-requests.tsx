@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Form } from "@douyinfe/semi-ui/lib/es/form";
 import Select from "@douyinfe/semi-ui/lib/es/select";
@@ -48,7 +48,8 @@ function approvalRole(context: EnterpriseContext, request: EnterpriseJoinRequest
   const enabledRoles = (context.role_options ?? []).filter((role) => !role.owner_role);
   const requestedRole = enabledRoles.find((role) => role.code === request.requested_role);
   if (requestedRole) return requestedRole.code;
-  return enabledRoles.find((role) => role.code === "member")?.code ?? enabledRoles[0]?.code ?? "member";
+  // 角色已停用时不能擅自降级或改授第一个角色，须刷新企业目录后再审核。
+  return "";
 }
 
 /** 新版人员管理的加入申请列表，查询、分页和审核状态都限定在当前 Tab 内。 */
@@ -69,6 +70,7 @@ export function TraeEnterpriseJoinRequests({
   const [error, setError] = useState<EnterpriseRequestError | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
   const [reviewDialog, setReviewDialog] = useState<ReviewDialogState | null>(null);
+  const reviewingRef = useRef(false);
   const [reviewing, setReviewing] = useState(false);
   const [reviewError, setReviewError] = useState<EnterpriseRequestError | null>(null);
 
@@ -139,7 +141,12 @@ export function TraeEnterpriseJoinRequests({
   }
 
   async function submitReview(input: { action: "approve" | "reject"; rejection_reason?: string }, close: () => void) {
-    if (!reviewDialog) return;
+    if (!reviewDialog || reviewingRef.current) return;
+    if (input.action === "approve" && !approvalRole(context, reviewDialog.request)) {
+      setReviewError({ message: t("traeEnterprise.inviteList.roleUnavailable"), requestId: null });
+      return;
+    }
+    reviewingRef.current = true;
     setReviewing(true);
     setReviewError(null);
     try {
@@ -165,6 +172,7 @@ export function TraeEnterpriseJoinRequests({
       setReloadToken((value) => value + 1);
       if (isApiError(reason) && reason.status === 409) onReviewed();
     } finally {
+      reviewingRef.current = false;
       setReviewing(false);
     }
   }
@@ -275,6 +283,8 @@ export function TraeEnterpriseJoinRequests({
                         <button
                           type="button"
                           className="trae-request-approve"
+                          disabled={!approvalRole(context, request)}
+                          title={!approvalRole(context, request) ? t("traeEnterprise.inviteList.roleUnavailable") : undefined}
                           onClick={() => openReviewDialog("approve", request)}
                         >
                           {t("traeEnterprise.joinRequests.approve")}

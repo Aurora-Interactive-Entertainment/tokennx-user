@@ -1,0 +1,61 @@
+/* 只定位入口自身，避免拖动坐标改变面板的固定定位参照。 */
+.manuscript-support-widget .manuscript-support-trigger[data-support-mobile] {
+  position: fixed;
+  right: auto;
+  bottom: auto;
+  width: 47px;
+}
+
+.manuscript-support-widget .manuscript-support-trigger[data-support-mobile] .manuscript-support-assistant-button {
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.manuscript-support-widget .manuscript-support-trigger[data-support-snapping] {
+  transition:
+    left 280ms cubic-bezier(.2, .8, .2, 1),
+    top 280ms cubic-bezier(.2, .8, .2, 1),
+    opacity 260ms ease 220ms,
+    transform 260ms cubic-bezier(.16, 1, .3, 1) 220ms,
+    visibility 0s linear 220ms;
+}
+
+.manuscript-support-widget .manuscript-support-trigger[data-support-dragging] {
+  transition: none;
+}
+
+/* 移动端按悬浮球所在侧镜像开合动画；桌面端移除该属性后使用原有默认值。 */
+.manuscript-support-widget[data-support-side="left"] {
+  --support-panel-offset-x: -12px;
+  --support-panel-origin-x: 28px;
+  --support-trigger-offset-x: -10px;
+}
+
+/* 窄屏面板保留原来的双侧安全间距；宽一些的移动视口按所在侧停靠。 */
+@media (min-width: 681px) {
+  .manuscript-support-widget[data-support-side="left"] .manuscript-support-panel {
+    left: max(24px, env(safe-area-inset-left));
+    right: auto;
+  }
+}
+
+@media (min-width: 681px) and (max-width: 720px) {
+  .manuscript-support-widget[data-support-side="left"] .manuscript-support-panel {
+    left: max(14px, env(safe-area-inset-left));
+  }
+}
+
+.support-drag-safe-area {
+  position: fixed;
+  width: 0;
+  height: 0;
+  padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+  visibility: hidden;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .manuscript-support-widget .manuscript-support-trigger[data-support-snapping] { transition: none; }
+}

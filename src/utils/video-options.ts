@@ -219,6 +219,12 @@ export function isVideoDurationAllowed(duration: number | undefined, options: No
   return options.durationStep > 0 && duration >= options.minDuration && duration <= options.maxDuration && (duration - options.minDuration) % options.durationStep === 0
 }
 
+// 表单优先使用接口默认时长；缺省时预选最短合法时长，不改写接口能力声明。
+export function initialVideoDuration(options: NormalizedVideoOptions): number {
+  if (isVideoDurationAllowed(options.defaultDuration, options)) return options.defaultDuration
+  return nearestAllowedVideoDuration(options.minDuration, options)
+}
+
 export function nearestAllowedVideoDuration(value: number, options: NormalizedVideoOptions): number {
   if (options.autoOnly) return options.autoDuration ? -1 : 0
   if (value === -1 && options.autoDuration) return -1

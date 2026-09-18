@@ -1252,6 +1252,15 @@ html[data-theme='dark'] .video-console-page .video-composer-box {
   pointer-events: none;
 }
 .video-console-page .video-record-actions .semi-button-outline { padding-inline: 12px; }
+/* 浅色下这排按钮压在近白的记录区上，全局 outline 底色（overlay-l3/l4）会发灰；
+   这里改成白底 + 更浅的 hover，只作用于视频记录操作按钮，不影响其他页面的 outline 按钮。 */
+html[data-theme="light"] .video-console-page .video-record-actions .semi-button-outline {
+  background: #ffffff;
+}
+html[data-theme="light"] .video-console-page .video-record-actions .semi-button-outline:hover,
+html[data-theme="light"] .video-console-page .video-record-actions .semi-button-outline:focus-visible {
+  background: var(--color-bg-overlay-l2);
+}
 .video-console-page .video-task-more-dropdown { min-width: 120px; }
 .video-console-page .video-task-more-dropdown .semi-dropdown-item-danger { color: var(--color-danger, #f04438); }
 

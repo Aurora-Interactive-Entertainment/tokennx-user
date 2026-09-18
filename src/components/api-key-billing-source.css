@@ -1,0 +1,48 @@
+/* 计费来源：默认的按余额消耗保持中性但可读，订阅扣费用品牌色提醒还有另一种计费方式。 */
+.api-key-billing-header {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-4);
+}
+/* 图标与表头文字垂直居中，并使用次要文字色，避免实心高对比图标压过标签。 */
+.api-key-billing-header .app-info-icon-trigger {
+  display: inline-flex;
+  width: 16px;
+  height: 16px;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-tertiary);
+}
+/* 与人员管理、数据分析、费用管理的说明图标统一尺寸；Semi 图标的 svg 固定 1em。 */
+.api-key-billing-header .app-info-icon {
+  display: block;
+  width: 13px;
+  height: 13px;
+  font-size: 13px;
+}
+.api-key-billing-badge {
+  display: inline-flex;
+  height: 22px;
+  align-items: center;
+  padding: 0 var(--spacing-8);
+  border: 1px solid var(--color-border-neutral-l2);
+  border-radius: var(--radius-4);
+  background: var(--color-bg-overlay-l2);
+  color: var(--color-text-default);
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.api-key-billing-badge.subscription {
+  border-color: color-mix(in srgb, var(--color-brand) 45%, transparent);
+  background: var(--brand-soft);
+  color: var(--color-brand);
+}
+/* 提示同时说明两种扣费方式，允许换行，避免超出紧凑提示框的单行宽度。 */
+.app-info-tooltip.api-key-billing-tooltip {
+  height: auto;
+  min-height: 24px;
+  max-width: min(260px, calc(100vw - 16px));
+  padding: 3px var(--spacing-8);
+  white-space: normal;
+}

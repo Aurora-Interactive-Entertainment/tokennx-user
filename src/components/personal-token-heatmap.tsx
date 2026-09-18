@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { appToast } from "@/components/app-toast";
 import { RequestErrorPanel } from "@/components/request-error-panel";
+import { formatTokenCount } from "@/utils/format-token-count";
 import {
   getDailyTokenUsage,
   getDailyTokenUsageErrorMessage,
@@ -68,7 +69,7 @@ export function PersonalTokenHeatmap({
   }, [error, loading]);
 
   const formatTokens = useCallback(
-    (value: number) => new Intl.NumberFormat(i18n.language).format(value),
+    (value: number) => formatTokenCount(value, i18n.language),
     [i18n.language],
   );
   const dateFormatter = useMemo(

@@ -15,6 +15,7 @@ import {
   updateEnterpriseModel,
   type EnterpriseContext,
   type EnterpriseDepartment,
+  type EnterpriseMember,
   type EnterpriseModel,
   type EnterpriseModelPage,
 } from '@/api/enterprise-console'
@@ -126,6 +127,19 @@ function renderPage(): void {
   render(<MemoryRouter initialEntries={['/console/enterprise-models']}><Provider store={appStore}><AppStoreProvider><EnterpriseModelsPage /></AppStoreProvider></Provider></MemoryRouter>)
 }
 
+function mockSearchDirectory(): void {
+  const department = { id: 'engineering', name: 'Engineering', depth: 1, child_count: 1, member_count: 1, version: '1', created_at: 0, updated_at: 0 } as EnterpriseDepartment;
+  const child = { ...department, id: 'deep-team', name: 'Deep Team', depth: 2, child_count: 0 };
+  getEnterpriseDepartmentsMock.mockImplementation(async (_context, options) => ({
+    context: CONTEXT, items: options?.parent_id ? [child] : [department], total: 1, page: 1, page_size: 100,
+  }));
+  const member: EnterpriseMember = {
+    id: 'alice', user_id: 'user-alice', display_name: 'Alice Team', avatar_url: '', masked_contact: 'Alice@Example.com',
+    status: 'active', join_source: 'invite', joined_at: 0, role: 'member', roles: ['member'], tags: [], version: '1',
+  };
+  getAllEnterpriseMembersMock.mockResolvedValue([member, { ...member, id: 'bob', display_name: '其他人员', masked_contact: 'bob@example.com' }]);
+}
+
 beforeEach(() => {
   vi.clearAllMocks()
   clearAuthTokens()
@@ -199,6 +213,61 @@ describe('企业模型管理页面', () => {
     expect(screen.queryByRole('button', { name: '更多操作' })).toBeNull()
     expect(updateEnterpriseModelMock).not.toHaveBeenCalled()
   })
+
+  it('从入口跨部门层级和人员搜索，切换关键词仍保留选择并正确提交', async () => {
+    const user = userEvent.setup();
+    mockSearchDirectory();
+    renderPage();
+    await user.click((await screen.findAllByRole('button', { name: '更多操作' }))[0]);
+    await user.click(await screen.findByRole('menuitem', { name: '可见范围' }));
+    await user.click(await screen.findByRole('radio', { name: '部分人员可见' }));
+    const search = screen.getByRole('textbox', { name: '搜索部门、人员' });
+    await user.type(search, '  TEAM  ');
+    await user.click(screen.getByRole('checkbox', { name: 'Deep Team' }));
+    await user.click(screen.getByRole('checkbox', { name: 'Alice Team' }));
+    expect(screen.queryByRole('checkbox', { name: /其他人员/ })).not.toBeInTheDocument();
+    expect(screen.getByText('：1 个部门，1 个人员')).toBeInTheDocument();
+
+    await user.clear(search);
+    await user.type(search, '没有匹配项');
+    expect(screen.getByRole('status')).toHaveTextContent('未找到匹配的部门或人员');
+    expect(screen.getByText('：1 个部门，1 个人员')).toBeInTheDocument();
+    await user.clear(search);
+    await user.type(search, 'engineering/deep');
+    expect(screen.getByRole('checkbox', { name: 'Deep Team' })).toBeChecked();
+    expect(screen.queryByRole('checkbox', { name: 'Alice Team' })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: '清空搜索' }));
+    expect(screen.getByRole('button', { name: /^部门/ })).toBeInTheDocument();
+    expect(search).toHaveValue('');
+    await user.click(screen.getByRole('button', { name: '确定' }));
+    await waitFor(() => expect(updateEnterpriseModelMock).toHaveBeenCalledWith(
+      { enterprise_id: ENTERPRISE_ID }, GPT_MODEL.id,
+      { enabled: true, visibility_scope: 'partial', department_ids: ['deep-team'], member_ids: ['alice'], expected_version: GPT_MODEL.setting_version },
+    ));
+  });
+
+  it('搜索联系方式后清空关键词恢复原部门展开状态，空格不触发搜索', async () => {
+    const user = userEvent.setup();
+    mockSearchDirectory();
+    renderPage();
+    await user.click((await screen.findAllByRole('button', { name: '更多操作' }))[0]);
+    await user.click(await screen.findByRole('menuitem', { name: '可见范围' }));
+    await user.click(await screen.findByRole('radio', { name: '部分人员可见' }));
+    await user.click(screen.getByRole('button', { name: /部门/ }));
+    await user.click(screen.getByRole('button', { name: '展开部门' }));
+    await user.click(screen.getByRole('checkbox', { name: 'Deep Team' }));
+    const search = screen.getByRole('textbox', { name: '搜索部门、人员' });
+    await user.type(search, '  ALICE@EXAMPLE.COM  ');
+    await user.click(screen.getByRole('checkbox', { name: 'Alice Team' }));
+    expect(screen.queryByRole('checkbox', { name: 'Engineering' })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: '清空搜索' }));
+    expect(screen.getByRole('checkbox', { name: 'Deep Team' })).toBeChecked();
+    expect(screen.getByRole('button', { name: '收起部门' })).toBeInTheDocument();
+    await user.type(search, '   ');
+    expect(screen.getByRole('checkbox', { name: 'Deep Team' })).toBeChecked();
+    expect(screen.getByText('：1 个部门，1 个人员')).toBeInTheDocument();
+    expect(updateEnterpriseModelMock).not.toHaveBeenCalled();
+  });
 
   it('接口返回空目录时如实展示空状态，不注入本地模型', async () => {
     getEnterpriseModelsMock.mockResolvedValue(modelPage([]))

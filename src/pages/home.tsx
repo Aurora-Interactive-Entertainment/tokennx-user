@@ -10,6 +10,7 @@ import promoBannerArt from '@/assets/figma-home/promo-banner.png'
 import promoArticleArt from '@/assets/figma-home/promo-article.png'
 import '@/mobile-home.css'
 import './home-hero-decorations.css'
+import './home-reward-avatars.css'
 import { homepageEntryIsCurrent, homepageEntryMediaURL, homepageLocale, homepageMediaURL, homepagePopupCampaign, homepageTranslation } from '@/utils/homepage-display'
 import { ModelAvailability } from '@/components/model-availability'
 import { getPublicHomepage, getPublicHomepageStats, type HomepageDiscountKind, type HomepageEntry, type HomepagePromotionModel, type PublicHomepage } from '@/api/homepage'
@@ -788,8 +789,8 @@ export function HomePage({ onInitialScoreboardReady }: { onInitialScoreboardRead
   const managedPartnerItems = useMemo(() => managedPartners(homepage, i18n.language), [homepage, i18n.language])
   // 没有有效活动数据时保持为 null，首页不挂载活动弹窗。
   const activityCampaign = useMemo(
-    () => homepagePopupCampaign(homepage?.popups, i18n.language, contentTime),
-    [homepage, i18n.language, contentTime],
+    () => homepagePopupCampaign(homepage?.popups, i18n.language, contentTime, authStatus === 'authenticated'),
+    [homepage, i18n.language, contentTime, authStatus],
   )
   const partnerItems = managedPartnerItems
   const partnerRows = useMemo(() => {
@@ -897,7 +898,9 @@ export function HomePage({ onInitialScoreboardReady }: { onInitialScoreboardRead
           <div className="manuscript-section-heading"><div><h2 id="homePromotionTitle">{t('home.rebuild.promotionTitle')}</h2><p>{t('home.rebuild.manuscriptPromotionDescription')}</p></div></div>
           <div className="manuscript-promotion-grid" role={isHomepageLoading ? 'status' : undefined} aria-busy={isHomepageLoading || undefined}>{isHomepageLoading ? <><span className="public-sr-only">{t('home.rebuild.loadingPromotions')}</span><HomePromotionSkeleton /></> : <><article className="manuscript-reward-card"><h3>{t('home.rebuild.rewardTitle')}</h3><p>{t('home.rebuild.rewardDescription')}</p><div className="manuscript-reward-marks">{Array.from({ length: promotionUsernames.length || HOME_REWARD_AVATAR_COUNT }, (_, index) => {
             const username = promotionUsernames[index]
-            return <span className="manuscript-reward-avatar" aria-hidden={username ? undefined : true} aria-label={username} title={username} key={`reward-avatar-${index}-${username ?? 'placeholder'}`} />
+            // 与用户头像一致显示用户名首字，英文转大写；无用户名时保留占位头像。
+            const initial = Array.from(username?.trim() ?? '')[0]?.toUpperCase()
+            return <span className={`manuscript-reward-avatar${initial ? ' manuscript-reward-avatar--named' : ''}`} aria-hidden={username ? undefined : true} aria-label={username} title={username} key={`reward-avatar-${index}-${username ?? 'placeholder'}`}>{initial}</span>
           })}</div><div className="manuscript-reward-login"><span>{t('home.rebuild.rewardLoginHint')}</span><LoginRequiredAction returnPath="/console/invitations">{t('home.rebuild.rewardLoginAction')}</LoginRequiredAction></div><div className="manuscript-reward-stats">{HOME_REWARD_STAT_KEYS.map(({ unitKey, labelKey }, index) => <HomeRewardStat value={rewardValues[index] ?? '0'} unit={t(`home.rebuild.${unitKey}`)} label={t(`home.rebuild.${labelKey}`)} key={labelKey} />)}</div></article><div className="manuscript-news-column">
             {homepage?.ad_slots.length ? <ManagedAdSlots entries={homepage.ad_slots} /> : null}
             <div className="manuscript-news-grid">{managedNews.map((entry, index) => <ManagedNewsCard entry={entry} newsIndex={managedNewsSlots[index] ?? index % 2} key={entry.id} />)}</div>

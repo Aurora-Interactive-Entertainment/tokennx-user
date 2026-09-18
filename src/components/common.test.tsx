@@ -117,8 +117,8 @@ it('未登录购买套餐先打开登录弹窗，关闭登录不会显示支付�
   const user = userEvent.setup()
   render(<MemoryRouter><Provider store={createAppStore()}><AppStoreProvider><PublicHeader /></AppStoreProvider></Provider></MemoryRouter>)
 
-  await user.click(screen.getByRole('button', { name: '订阅' }))
-  fireEvent.click(await screen.findByRole('button', { name: /Deepseek V4 Pro/ }))
+  await user.click(screen.getByRole('button', { name: '立即订购' }))
+  fireEvent.click(await screen.findByRole('button', { name: /Deepseek V4 flash/ }))
   await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: /DeepSeek套餐包/ }))
 
   const login = await screen.findByRole('dialog', { name: i18n.t('login.dialogLabel') })
@@ -152,8 +152,8 @@ it.each(['verified', 'unverified'])('公开购买入口先校验实名状态 %s�
   appStore.dispatch({ type: 'auth/loginWithEmail/fulfilled', payload: { id: 'purchase-user', display_name: '测试用户', avatar_url: '', locale: 'zh-CN', timezone: 'Asia/Shanghai', status: 'active' } })
   render(<MemoryRouter><Provider store={appStore}><AppStoreProvider><PublicHeader /></AppStoreProvider></Provider></MemoryRouter>)
 
-  fireEvent.click(screen.getByRole('button', { name: '订阅' }))
-  fireEvent.click(await screen.findByRole('button', { name: /Deepseek V4 Pro/ }))
+  fireEvent.click(screen.getByRole('button', { name: '立即订购' }))
+  fireEvent.click(await screen.findByRole('button', { name: /Deepseek V4 flash/ }))
   fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: /DeepSeek套餐包/ }))
 
   if (status === 'verified') {

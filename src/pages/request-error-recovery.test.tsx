@@ -2,7 +2,8 @@ import '@/i18n'
 import type { ReactNode } from 'react'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter, Route, Routes } from 'react-router'
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router'
+import { ApiError } from '@/api/http'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AppsPage, DocsPage, RankingsPage } from './public'
 import { NewsDetailPage, NewsListPage } from './news'
@@ -32,7 +33,31 @@ beforeEach(() => {
 
 const newsArticle = { id: 'recovered-news', title: '恢复后的资讯', category: '', description: '接口已恢复', publish_date: 1780000000000 }
 
+function DocsLocationProbe() {
+  return <output data-testid="docs-path">{useLocation().pathname}</output>
+}
+
 describe('页面请求失败恢复', () => {
+  it.each(['missing', 'renamed', '404', 'guide'])('快速接入文档 %s 时回到使用指南，普通文档错误逻辑不受影响', async (mode) => {
+    const toolId = '01K00000000000000000000011'
+    const guideId = '01K00000000000000000000012'
+    vi.mocked(getPublicDocsTree).mockResolvedValue([
+      { id: 'api', parent_id: '', type: 'directory', slug: 'api-documentation', title: 'API 文档' },
+      { id: 'api-doc', parent_id: 'api', type: 'document', slug: 'api-overview', title: 'API 概览' },
+      { id: 'guide', parent_id: '', type: 'directory', slug: 'usage-guide', title: '使用指南' },
+      { id: guideId, parent_id: 'guide', type: 'document', slug: 'intro', title: '指南首页' },
+      ...(mode === 'missing' ? [] : [{ id: toolId, parent_id: 'guide', type: 'document' as const, slug: mode === 'renamed' ? 'new-tool' : 'tool', title: '工具' }]),
+    ])
+    vi.mocked(getPublicDocument).mockImplementation(async (id) => {
+      if (id === toolId) throw new ApiError('文档不存在', 404, 0, null)
+      return { id, slug: 'intro', title: '指南首页', content_markdown: '# 使用指南内容' }
+    })
+    render(<MemoryRouter initialEntries={[{ pathname: mode === 'guide' ? '/docs' : `/docs/${toolId}/tool`, state: { quickstartUsageGuide: true } }]}><DocsLocationProbe /><Routes><Route path="/docs/:publicId?/:slug?" element={<DocsPage />} /></Routes></MemoryRouter>)
+    await waitFor(() => expect(screen.getByTestId('docs-path')).toHaveTextContent(`/docs/${guideId}/intro`))
+    expect(await screen.findByRole('heading', { name: '使用指南内容' })).toBeInTheDocument()
+    expect(appToast.error).not.toHaveBeenCalled()
+    if (mode !== '404') expect(getPublicDocument).not.toHaveBeenCalledWith(toolId, expect.anything(), expect.anything())
+  })
   it('应用榜周期请求失败后不冒用旧榜单，重试仅重新加载当前周期', async () => {
     let weekAttempts = 0
     vi.mocked(getToolUsageLeaderboard).mockImplementation(async (period) => {

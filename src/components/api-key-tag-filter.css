@@ -6,6 +6,7 @@
   display: flex;
   align-items: center;
   min-width: 0;
+  margin-right: auto;
   gap: 8px;
   color: var(--color-text-secondary);
   font-size: 13px;
@@ -32,6 +33,12 @@
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+@media (max-width: 720px) {
+  .api-key-tag-filter-control {
+    margin-right: 0;
+  }
 }
 
 @media (max-width: 640px) {

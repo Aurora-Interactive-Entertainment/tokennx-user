@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import type { TFunction } from 'i18next'
-import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-router'
+import { Link, Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router'
 import Toast from '@douyinfe/semi-ui/lib/es/toast'
 import Skeleton from '@douyinfe/semi-ui/lib/es/skeleton'
 import { IconBookOpenStroked, IconChevronDown, IconCodeStroked, IconCustomerSupportStroked, IconShieldStroked } from '@douyinfe/semi-icons'
@@ -509,6 +509,7 @@ function resolveDocsImageUrl(url: string): string | undefined {
 export function DocsPage() {
   const { t, i18n } = useTranslation()
   const { publicId, slug } = useParams()
+  const quickstartUsageGuide = useLocation().state?.quickstartUsageGuide === true
   const navigate = useNavigate()
   const articleRef = useRef<HTMLElement>(null)
   const locale = docsLocale(i18n.resolvedLanguage ?? i18n.language)
@@ -530,6 +531,11 @@ export function DocsPage() {
   const rootNodes = useMemo(() => tree.filter((node) => !node.parent_id), [tree])
   const childrenByParent = useMemo(() => buildDocsChildrenMap(tree), [tree])
   const selectedNode = useMemo(() => tree.find((node) => node.type === 'document' && node.id === publicId), [publicId, tree])
+  const usageGuideDocument = useMemo(() => {
+    const root = rootNodes.find((node) => node.slug === 'usage-guide')
+    return root ? documentDescendants(root.id, tree)[0] : undefined
+  }, [rootNodes, tree])
+  const quickstartDocumentMoved = quickstartUsageGuide && (!selectedNode || selectedNode.slug !== slug)
   const activeRoot = useMemo(() => {
     if (selectedNode) return rootNodes.find((root) => documentDescendants(root.id, tree).some((node) => node.id === selectedNode.id)) ?? rootNodes[0]
     return rootNodes[0]
@@ -568,8 +574,9 @@ export function DocsPage() {
 
   useEffect(() => {
     if (treeLoading || error || !tree.length) return
-    if (!publicId) {
-      const firstDocument = rootNodes.flatMap((root) => documentDescendants(root.id, tree))[0]
+    // 仅快速接入入口启用回退，普通文档链接保留原有错误提示和地址修正行为。
+    if (!publicId || quickstartDocumentMoved) {
+      const firstDocument = (quickstartUsageGuide ? usageGuideDocument : undefined) ?? rootNodes.flatMap((root) => documentDescendants(root.id, tree))[0]
       if (firstDocument) navigate(publicDocumentHref(firstDocument, locale), { replace: true })
       return
     }
@@ -577,10 +584,10 @@ export function DocsPage() {
       setCurrentDocument(null)
       setError({ message: t('public.docs.manuscript.documentNotFound'), requestId: null })
     }
-  }, [error, locale, navigate, publicId, rootNodes, selectedNode, t, tree, treeLoading])
+  }, [error, locale, navigate, publicId, rootNodes, selectedNode, t, tree, treeLoading, quickstartDocumentMoved, quickstartUsageGuide, usageGuideDocument])
 
   useEffect(() => {
-    if (!selectedNode) return
+    if (!selectedNode || quickstartDocumentMoved) return
     const controller = new AbortController()
     setDocumentLoading(true)
     setCurrentDocument(null)
@@ -595,10 +602,14 @@ export function DocsPage() {
       setDocumentLoading(false)
       setCurrentDocument(null)
       setHeadings([])
+      if (quickstartUsageGuide && usageGuideDocument && isApiError(caught) && caught.status === 404) {
+        navigate(publicDocumentHref(usageGuideDocument, locale), { replace: true })
+        return
+      }
       setError({ message: caught instanceof Error ? caught.message : t('api.http.requestFailed'), requestId: isApiError(caught) ? caught.requestId : null })
     })
     return () => controller.abort()
-  }, [documentReload, locale, selectedNode, t])
+  }, [documentReload, locale, selectedNode, t, quickstartDocumentMoved, quickstartUsageGuide, usageGuideDocument, navigate])
 
   useEffect(() => {
     if (currentDocument && currentDocument.id === publicId && slug !== currentDocument.slug) navigate(publicDocumentHref(currentDocument, locale), { replace: true })

@@ -371,7 +371,7 @@
 .trae-members-page .trae-semi-member-table .semi-table-row-head button { display: inline-flex; border: 0; color: inherit; background: transparent; cursor: pointer; }
 /* 状态列的信息按钮按文字基线对齐，并固定按钮盒尺寸，避免图标向上或向下偏移。 */
 .trae-members-page .trae-semi-member-table .semi-table-row-head .app-info-icon-trigger { display: inline-flex; width: 18px; height: 18px; align-items: center; justify-content: center; padding: 0; vertical-align: middle; line-height: 1; }
-.trae-members-page .trae-semi-member-table .semi-table-row-head .app-info-icon-trigger .app-info-icon { display: block; width: 14px; height: 18px; margin: 0; }
+.trae-members-page .trae-semi-member-table .semi-table-row-head .app-info-icon-trigger .app-info-icon { display: block; width: 13px; height: 13px; font-size: 13px; margin: 0; color: var(--color-text-tertiary); }
 .trae-members-page .trae-semi-member-table .semi-table-row-head .semi-table-column-sorter { color: var(--color-text-tertiary); }
 /* 表格宽度不足时由 Semi Table body 承载横向滚动，外层只负责布局和边框。 */
 .trae-members-page .trae-table-scroll:has(.trae-semi-member-table) { overflow-x: auto; overflow-y: hidden; border: 0; scrollbar-color: var(--color-border-neutral-l2) transparent; scrollbar-width: thin; }
@@ -572,7 +572,8 @@
 .trae-usage-summary-card { display: grid; min-height: 176px; grid-template-rows: auto 1fr auto; gap: 12px; padding: 16px 22px; border: 1px solid var(--color-border-neutral-l1); border-radius: 7px; background: var(--color-bg-base-secondary); }
 .trae-usage-summary-card--overall { box-sizing: border-box; min-height: 175px; grid-template-rows: 1fr; padding: 24px; }
 .trae-usage-summary-heading { display: flex; align-items: center; gap: 6px; color: var(--color-text-secondary); font-size: 13px; }
-.trae-usage-summary-heading > svg { color: var(--color-text-tertiary); font-size: 13px; }
+.trae-usage-summary-heading > .trae-usage-info-trigger { display: inline-flex; align-items: center; }
+.trae-usage-summary-heading > .trae-usage-info-trigger svg { color: var(--color-text-tertiary); font-size: 13px; }
 .trae-usage-summary-heading > button:last-child { margin-left: auto; }
 .trae-usage-overall-body { display: flex; align-items: center; justify-content: space-between; gap: 18px; min-height: 112px; }
 .trae-usage-overall-copy { display: flex; min-width: 0; flex-direction: column; justify-content: flex-start; gap: 18px; height: 100%; }

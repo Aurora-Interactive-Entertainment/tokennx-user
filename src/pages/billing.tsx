@@ -364,9 +364,7 @@ function BillingLedgerSection({ state, lineType, page, pageSize, onLineTypeChang
     <div className="section-heading">
       <h2 id="billingLedgerHeading">{i18n.t('console.billing.ledger')}</h2>
       <div className="ledger-toolbar">
-        <span className="section-meta">{i18n.t('console.billing.ledgerCount', { count: formatCount(data?.total ?? 0) })}</span>
         <label className="ledger-filter-field" htmlFor="billing-ledger-type-filter">
-          <span id="billing-ledger-type-filter-label">{i18n.t('console.billing.consumptionType')}</span>
           <Select id="billing-ledger-type-filter" className="billing-filter" dropdownClassName="billing-filter-dropdown" aria-labelledby="billing-ledger-type-filter-label" value={lineType} disabled={loading} onChange={(value) => onLineTypeChange(String(value) as BillingStatementTypeFilter)} onSelect={(value) => onLineTypeChange(String(value) as BillingStatementTypeFilter)}>
             <Select.Option value="all">{i18n.t('console.billing.all')}</Select.Option>
             <Select.Option value="model_consume">{i18n.t('console.billing.modelConsumption')}</Select.Option>

@@ -73,7 +73,7 @@ describe('套餐到账后的已购权益同步', () => {
     render(<MemoryRouter><Provider store={store}><HeaderPurchase context={{ account_type: 'enterprise', enterprise_id: 'synthetic-enterprise' }} /><SubscriptionPage /></Provider></MemoryRouter>)
     await waitFor(() => expect(getPurchasedProductPlans).toHaveBeenCalledOnce())
     await waitFor(() => expect(getProductPlans).toHaveBeenCalledOnce())
-    fireEvent.click(screen.getByRole('button', { name: '订阅' }))
+    fireEvent.click(screen.getByRole('button', { name: '立即订购' }))
     fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'DeepSeek套餐包 ¥2.99' }))
     await screen.findByRole('heading', { name: '支付' })
     await act(async () => fireEvent.click(screen.getByRole('checkbox')))

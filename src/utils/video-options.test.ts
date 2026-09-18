@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { UserModelParameterConfig, UserVideoMediaConfig, UserVideoOptions, UserVideoParameterConfig } from '@/api/user-models'
-import { getVideoReferenceRole, isVideoDurationAllowed, nearestAllowedVideoDuration, normalizeVideoOptions, resolveVideoMode, resolveVideoReferenceMode, validateVideoParameters, validateVideoReferences, type VideoParameterReference } from './video-options'
+import { getVideoReferenceRole, initialVideoDuration, isVideoDurationAllowed, nearestAllowedVideoDuration, normalizeVideoOptions, resolveVideoMode, resolveVideoReferenceMode, validateVideoParameters, validateVideoReferences, type VideoParameterReference } from './video-options'
 
 const COMPAT_OPTIONS: UserVideoOptions = {
   family: 'wan3', ratios: ['adaptive', '16:9', '9:16'], resolutions: ['480p', '720p', '1080p'], min_duration: 2, max_duration: 30,
@@ -21,6 +21,17 @@ const video = (role: VideoParameterReference['role'] = 'reference_video'): Video
 const validParameters = { prompt: '海边日落', duration: 5, ratio: '16:9', resolution: '720p', mode: 'text_to_video' }
 
 describe('视频模型参数合同', () => {
+  it('表单预选优先默认时长，缺省时只选择合法档位，不改写合同默认值', () => {
+    expect(initialVideoDuration(normalizeVideoOptions(COMPAT_OPTIONS))).toBe(5)
+    const range = normalizeVideoOptions(undefined, contract({ defaults: {} }))
+    expect(initialVideoDuration(range)).toBe(4)
+    expect(range.defaultDuration).toBe(0)
+    expect(initialVideoDuration(normalizeVideoOptions(undefined, contract({ durations: { values: [7, 12], auto: false }, defaults: {} })))).toBe(7)
+    expect(initialVideoDuration(normalizeVideoOptions(undefined, contract({ durations: { auto: true, auto_only: true }, defaults: {} })))).toBe(-1)
+    expect(initialVideoDuration(normalizeVideoOptions())).toBe(0)
+    expect(initialVideoDuration(normalizeVideoOptions(undefined, contract({ durations: { values: [], auto: false }, defaults: {} })))).toBe(0)
+  })
+
   it('没有合同不再填入旧2–30秒、像素尺寸或上传能力', () => {
     const options = normalizeVideoOptions()
     expect(options).toMatchObject({ hasVideoOptions: false, hasParameterConfig: false, ratios: [], resolutions: [], sizes: [], modes: [], defaultMode: '', defaultRatio: '', defaultResolution: '', defaultSize: '', defaultDuration: 0, minDuration: 0, maxDuration: 0, durationStep: 0, maxImages: 0, maxVideos: 0, maxAudios: 0 })

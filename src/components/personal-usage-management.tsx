@@ -5,6 +5,7 @@ import Toast from "@douyinfe/semi-ui/lib/es/toast";
 import { IconDownload } from "@douyinfe/semi-icons";
 import { appToast } from "@/components/app-toast";
 import { RequestErrorPanel } from "@/components/request-error-panel";
+import { formatTokenCount } from "@/utils/format-token-count";
 import {
   getPersonalUsageErrorMessage,
   getUsageFilters,
@@ -358,8 +359,9 @@ function PersonalUsageRecords({
                 <td title={row.request_id}>{row.request_id}</td>
                 <td>{row.api_key_name || row.channel || row.event_type}</td>
                 <td>
-                  {formatCount(
+                  {formatTokenCount(
                     row.input_tokens + row.output_tokens + row.cached_tokens,
+                    i18n.language,
                   )}
                 </td>
                 <td>1</td>
